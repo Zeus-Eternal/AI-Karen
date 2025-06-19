@@ -1,15 +1,16 @@
 """Plugin discovery and routing with manifest parsing and RBAC."""
 
 from __future__ import annotations
+"""Plugin discovery and routing."""
 
 import importlib
 import json
 import os
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
+from typing import Dict
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
-
 
 @dataclass
 class PluginRecord:
@@ -18,8 +19,7 @@ class PluginRecord:
     name: str
     manifest: Dict[str, object]
     handler: Callable[[Dict[str, object]], object]
-
-
+      
 class PluginRouter:
     """Load plugins and route intents to their handlers."""
 
@@ -30,6 +30,10 @@ class PluginRouter:
     def load_plugins(self) -> None:
         """Scan the plugin directory and load manifests and handlers."""
         self.intent_map.clear()
+        self.intent_map: Dict[str, str] = {}
+        self.load_plugins()
+
+    def load_plugins(self) -> None:
         for name in os.listdir(PLUGIN_DIR):
             path = os.path.join(PLUGIN_DIR, name)
             if not os.path.isdir(path) or name.startswith("__"):
@@ -58,3 +62,12 @@ class PluginRouter:
 
     def get_plugin(self, intent: str) -> Optional[PluginRecord]:
         return self.intent_map.get(intent)
+            if intent:
+                self.intent_map[intent] = name
+
+    def get_handler(self, intent: str):
+        module_name = self.intent_map.get(intent)
+        if not module_name:
+            return None
+        module = importlib.import_module(f"plugins.{module_name}.handler")
+        return module.run

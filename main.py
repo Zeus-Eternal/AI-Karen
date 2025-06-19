@@ -33,6 +33,7 @@ def ping():
 @app.post("/chat")
 async def chat(req: ChatRequest):
     return await dispatcher.dispatch(req.text, role=req.role)
+    return await dispatcher.dispatch(req.text)
 
 
 @app.post("/store")
