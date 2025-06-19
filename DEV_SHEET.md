@@ -175,3 +175,34 @@ Maintain this cheat-sheet. Any future architectural change must update this file
 * Reflection loop for self-reason & critique
 * Prometheus shows self-reasoning stats
 * EchoCore Admin UI operational
+
+## Phase 4 – Plugin Ecosystem & UI Injection Sprint Plan
+
+**Sprint Length:** 2 weeks
+**Goal:** dynamic plugin system with manifest discovery and UI injection.
+
+| Day | Milestone |
+| --- | ----------------------------------------------------------------- |
+| 1   | Scaffold `plugin_manager.py` and manifest parser                  |
+| 2   | Implement plugin discovery: folder scan, manifest read            |
+| 3   | Build PluginRouter: map intents to plugin handler.run()           |
+| 4   | Add hot-reload: watch for file changes                            |
+| 5   | Scaffold UI injection engine: sidebar, panel, button modes        |
+| 6   | Build LLM Manager plugin: switch active model, download HF models |
+| 7   | Mid-sprint test: drop new plugin, see it live in Admin UI         |
+| 8   | Connect PluginRouter to CortexDispatcher                          |
+| 9   | QA tests: add/remove plugin, toggle active/inactive               |
+| 10  | Polish Admin UI: show plugin status, version, config              |
+| 11  | Final tests, code freeze                                          |
+| 12  | Demo Day: drag-drop new plugin, live UI appears                   |
+| 13  | Merge & tag `v0.4.0`                                              |
+
+### Deliverables
+
+* Auto-discovery of plugins from folder
+* Manifest-driven plugin config
+* UI injection for sidebar/panel/button
+* LLM Manager plugin fully working
+* Plugin admin view to activate/deactivate plugins
+
+**Next:** Phase 5 (Enterprise Hardening).
