@@ -9,11 +9,11 @@ skin. Memory and reasoning are simplified for local testing.
 ## Features
 
 * Intent detection with simple regex rules
-* Plugin router dispatching intents to plugin handlers
+* Plugin router with manifest-based discovery and role checks
 * In-memory embeddings and vector search for reasoning
 * Example plugins: Hello World, TUI fallback, desktop automation
 * Streamlit admin pages for chat, dashboard and memory matrix
-* Basic metrics collected in memory
+* Hot-reloadable plugins and basic metrics collected in memory
 * ICE-style wrapper for deep reasoning demo
 
 ## Directory

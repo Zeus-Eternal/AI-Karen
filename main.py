@@ -13,6 +13,7 @@ engine = SoftReasoningEngine()
 
 class ChatRequest(BaseModel):
     text: str
+    role: str = "user"
 
 
 class StoreRequest(BaseModel):
@@ -31,7 +32,7 @@ def ping():
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    return await dispatcher.dispatch(req.text)
+    return await dispatcher.dispatch(req.text, role=req.role)
 
 
 @app.post("/store")

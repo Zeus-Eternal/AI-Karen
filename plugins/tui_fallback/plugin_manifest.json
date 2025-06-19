@@ -1,5 +1,6 @@
 {
   "plugin_api_version": "1.0",
   "enable_external_workflow": false,
-  "required_roles": ["admin"]
+  "required_roles": ["admin"],
+  "intent": "tui_diagnostics"
 }
