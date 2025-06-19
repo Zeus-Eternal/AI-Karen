@@ -206,3 +206,7 @@ Maintain this cheat-sheet. Any future architectural change must update this file
 * Plugin admin view to activate/deactivate plugins
 
 **Next:** Phase 5 (Enterprise Hardening).
+
+## Outstanding Integrations
+
+- ICE reasoning wrapper for deep reasoning tasks

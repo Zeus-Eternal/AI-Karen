@@ -13,6 +13,7 @@ Kari is a modular, headless-first AI system combining custom memory layers (Milv
 * EchoCore for immutable truths and dark profiling
 * Prometheus observability + live tracing
 * Admin UI with drag-drop plugins, model manager, and logs
+* ICE wrapper for deep reasoning and memory recall
 
 ## Directory
 
