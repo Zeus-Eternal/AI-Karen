@@ -1,0 +1,8 @@
+fastapi
+streamlit
+uvicorn
+pyautogui
+urwid
+prompt_toolkit
+pydantic
+pytest
