@@ -1,0 +1,18 @@
+from fastapi.testclient import TestClient
+
+from main import app
+
+client = TestClient(app)
+
+
+def test_chat_endpoint():
+    resp = client.post("/chat", json={"text": "hello"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["intent"] == "greet"
+    assert data["response"] == "Hello World from plugin!"
+
+
+def test_ping():
+    resp = client.get("/ping")
+    assert resp.status_code == 200
