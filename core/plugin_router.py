@@ -46,6 +46,16 @@ class PluginRouter:
             intent = manifest.get("intent")
             if not intent:
                 continue
+            # Support both string and list of intents
+            if isinstance(intent, list):
+                for single_intent in intent:
+                    if not isinstance(single_intent, str):
+                        continue
+                    self.intent_map[single_intent] = PluginRecord(name, manifest, handler)
+            elif isinstance(intent, str):
+                self.intent_map[intent] = PluginRecord(name, manifest, handler)
+            else:
+                continue
             try:
                 module = importlib.import_module(f"plugins.{name}.handler")
             except ModuleNotFoundError:
@@ -62,12 +72,9 @@ class PluginRouter:
 
     def get_plugin(self, intent: str) -> Optional[PluginRecord]:
         return self.intent_map.get(intent)
-            if intent:
-                self.intent_map[intent] = name
 
     def get_handler(self, intent: str):
-        module_name = self.intent_map.get(intent)
-        if not module_name:
+        plugin_record = self.intent_map.get(intent)
+        if not plugin_record:
             return None
-        module = importlib.import_module(f"plugins.{module_name}.handler")
-        return module.run
+        return plugin_record.handler
