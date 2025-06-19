@@ -39,6 +39,9 @@ uvicorn main:app --reload
 
 # Launch the Admin UI
 streamlit run admin_ui/pages/chat.py
+
+# Run tests
+pytest -q
 ```
 
 ## Development
