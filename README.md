@@ -10,3 +10,5 @@ This project contains a minimal prototype of the Kari AI stack. It includes:
 - Streamlit admin pages for chat, dashboard and memory matrix.
 
 Run tests with `pytest -q`.
+
+See `DEV_SHEET.md` for the complete development specification and sprint plans.
