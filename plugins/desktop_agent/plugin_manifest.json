@@ -1,0 +1,6 @@
+{
+  "plugin_api_version": "1.0",
+  "enable_external_workflow": true,
+  "required_roles": ["admin"],
+  "intent": "desktop_action"
+}
