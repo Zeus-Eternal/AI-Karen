@@ -2,6 +2,8 @@ import asyncio
 from . import Response
 
 class TestClient:
+    __test__ = False  # Prevent pytest from collecting this class as tests
+
     def __init__(self, app):
         self.app = app
 
