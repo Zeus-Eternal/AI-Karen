@@ -100,6 +100,11 @@ Handlers implement:
 plugin_path/handler.py :: run(prompt: str, intent: dict, user_id: str) -> dict | str
 ```
 
+The router loads manifests on startup, mapping each `intent` to its handler.
+Plugins declare `required_roles`; the dispatcher enforces these before
+execution. A `reload()` helper can rescan the directory for hot-swapping
+plugins during development.
+
 ## Delivery Phases
 
 | Phase | Sprint Goal               | Key PR Gates                      |

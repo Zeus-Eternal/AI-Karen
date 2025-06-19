@@ -2,6 +2,20 @@
 
 ## Overview
 
+Kari is a modular, headless-first AI system. The repository contains a minimal
+prototype with intent detection, a plugin router and a Streamlit-based admin
+skin. Memory and reasoning are simplified for local testing.
+
+## Features
+
+* Intent detection with simple regex rules
+* Plugin router with manifest-based discovery and role checks
+* In-memory embeddings and vector search for reasoning
+* Example plugins: Hello World, TUI fallback, desktop automation
+* Streamlit admin pages for chat, dashboard and memory matrix
+* Hot-reloadable plugins and basic metrics collected in memory
+* ICE-style wrapper for deep reasoning demo
+
 Kari is a modular, headless-first AI system combining custom memory layers (Milvus, Redis, EchoVault), advanced self-reasoning (OSIRIS, KRONOS), a dynamic plugin ecosystem, and a Streamlit Admin skin.
 
 ## Features
@@ -15,15 +29,26 @@ Kari is a modular, headless-first AI system combining custom memory layers (Milv
 * Admin UI with drag-drop plugins, model manager, and logs
 * ICE wrapper for deep reasoning and memory recall
 
+
 ## Directory
 
 ```
+
+core/          # dispatch, embeddings, reasoning
+integrations/  # helper utilities (RPA, automation)
+plugins/       # drop-in plugins (manifest + handler)
+admin_ui/      # Streamlit pages
+fastapi/       # lightweight stubs for tests
+pydantic/      # lightweight stubs for tests
+tests/         # pytest suite
+
 core/           # Cortex, dispatch, embeddings, EchoCore
 memory/         # MilvusClient, EchoVault, DarkTracker
 plugins/        # Drop-in plugins (manifest, handler, ui)
 admin_ui/       # Streamlit skin + panels
 config/         # YAML settings
 models/         # Local LLMs
+
 ```
 
 ## Quickstart
@@ -32,11 +57,18 @@ models/         # Local LLMs
 # Install dependencies
 pip install -r requirements.txt
 
+# Run the API
+uvicorn main:app --reload
+
+# Launch the Admin UI
+streamlit run admin_ui/pages/chat.py
+
 # Start vector DB + Redis + Kari API + Prometheus
 docker compose up
 
 # Launch Admin UI
 streamlit run admin_ui/Main.py
+
 ```
 
 ## Development
@@ -62,6 +94,12 @@ streamlit run admin_ui/Main.py
 * **Logs/Trace**: Prometheus metrics & reasoning trace
 
 ## Deployment
+
+This repository is a minimal proof of concept. Run the API with
+`uvicorn main:app`, and open the Streamlit pages for a lightweight UI.
+
+For the full architecture specification and sprint roadmap see
+`DEV_SHEET.md`.
 
 * Local: `docker-compose.yml` (FastAPI, Milvus, Redis, Prometheus, Streamlit)
 * Cloud: Helm chart for K8s + GKE/EKS
