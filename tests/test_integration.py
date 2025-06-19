@@ -14,7 +14,9 @@ def test_chat_endpoint():
 
 
 def test_deep_reasoning_endpoint():
-    resp = client.post("/chat", json={"text": "why is the sky blue", "role": "user"})
+    resp = client.post(
+        "/chat", json={"text": "why is the sky blue", "role": "user"}
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["intent"] == "deep_reasoning"
