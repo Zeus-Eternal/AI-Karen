@@ -7,6 +7,7 @@ def test_detect_intent():
         "hello there": "greet",
         "hi": "greet",
         "ping": "greet",
+      
         "why so sad": "deep_reasoning",
         "unknown text": "unknown",
         "HELLO": "greet",

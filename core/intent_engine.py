@@ -10,6 +10,7 @@ class IntentEngine:
     def __init__(self) -> None:
         patterns = {
             "greet": re.compile(r"\b(hello|hi|ping)\b", re.I),
+          
             "deep_reasoning": re.compile(r"\b(why|reason|because)\b", re.I),
         }
         self.patterns = patterns
