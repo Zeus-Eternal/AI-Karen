@@ -12,8 +12,13 @@ from typing import Dict
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
 
-@dataclass
-class PluginRecord:
+            try:
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    manifest = json.load(f)
+            except json.JSONDecodeError as exc:
+                # Skip plugins with malformed manifest files
+                print(f"Failed to parse manifest for {name}: {exc}")
+                continue
     """Metadata for a loaded plugin."""
 
     name: str
