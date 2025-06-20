@@ -8,6 +8,8 @@ skin. Memory and reasoning are simplified for local testing.
 
 ## Features
 
+ 
+
 * Intent detection with simple regex rules
 * Plugin router with manifest-based discovery and role checks
 * In-memory embeddings and vector search for reasoning
@@ -20,6 +22,7 @@ Kari is a modular, headless-first AI system combining custom memory layers (Milv
 
 ## Features
 
+ 
 * Intent detection & dispatch
 * Dual vector memory with surprise weighting
 * Local-first LLM orchestration (LNM + OSIRIS)
@@ -29,11 +32,17 @@ Kari is a modular, headless-first AI system combining custom memory layers (Milv
 * Admin UI with drag-drop plugins, model manager, and logs
 * ICE wrapper for deep reasoning and memory recall
 
+ 
+## Directory
+
+```
+=======
 
 ## Directory
 
 ```
 
+ 
 core/          # dispatch, embeddings, reasoning
 integrations/  # helper utilities (RPA, automation)
 plugins/       # drop-in plugins (manifest + handler)
@@ -41,6 +50,8 @@ admin_ui/      # Streamlit pages
 fastapi/       # lightweight stubs for tests
 pydantic/      # lightweight stubs for tests
 tests/         # pytest suite
+ 
+
 
 core/           # Cortex, dispatch, embeddings, EchoCore
 memory/         # MilvusClient, EchoVault, DarkTracker
@@ -49,6 +60,7 @@ admin_ui/       # Streamlit skin + panels
 config/         # YAML settings
 models/         # Local LLMs
 
+ 
 ```
 
 ## Quickstart
@@ -63,12 +75,17 @@ uvicorn main:app --reload
 # Launch the Admin UI
 streamlit run admin_ui/pages/chat.py
 
+ 
+# Run tests (optional but recommended)
+pytest -q
+
 # Start vector DB + Redis + Kari API + Prometheus
 docker compose up
 
 # Launch Admin UI
 streamlit run admin_ui/Main.py
 
+ 
 ```
 
 ## Development
@@ -100,13 +117,18 @@ This repository is a minimal proof of concept. Run the API with
 
 For the full architecture specification and sprint roadmap see
 `DEV_SHEET.md`.
+ 
 
+
+ 
 * Local: `docker-compose.yml` (FastAPI, Milvus, Redis, Prometheus, Streamlit)
 * Cloud: Helm chart for K8s + GKE/EKS
 
 ## License
 
 MIT — Fork, fork deeply. 😈
+ 
+
 
 # AI-Karen
 
@@ -122,3 +144,4 @@ This project contains a minimal prototype of the Kari AI stack. It includes:
 Run tests with `pytest -q`.
 
 See `DEV_SHEET.md` for the complete development specification and sprint plans.
+ 
