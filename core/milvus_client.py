@@ -23,6 +23,12 @@ class MilvusClient:
         record_metric("vector_upsert_seconds", time.time() - start)
         return self._id
 
+    def delete(self, ids: List[int]) -> None:
+        """Delete records by ID."""
+        start = time.time()
+        self._data = [r for r in self._data if r["id"] not in ids]
+        record_metric("vector_delete_seconds", time.time() - start)
+
     @staticmethod
     def _similarity(v1: List[float], v2: List[float]) -> float:
         dot = sum(x * y for x, y in zip(v1, v2))
