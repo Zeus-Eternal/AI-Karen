@@ -13,8 +13,6 @@ skin. Memory and reasoning are simplified for local testing.
 
 * Dual vector memory (Milvus + Redis) with surprise weighting
 * Recency-weighted memory store with automatic TTL pruning
-
-* Dual vector memory (Milvus + Redis) and surprise weighting
  
 * Local-first LLM orchestration (LNM + OSIRIS)
 * **SelfRefactor Engine** for automated code improvement via DeepSeek and NANDA
