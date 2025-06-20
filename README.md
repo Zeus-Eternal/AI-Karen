@@ -8,13 +8,14 @@ skin. Memory and reasoning are simplified for local testing.
 
 ## Features
 
-* Intent detection with simple regex rules
-* Plugin router with manifest-based discovery and role checks
-* In-memory embeddings and vector search for reasoning
-* Example plugins: Hello World, TUI fallback, desktop automation
-* Streamlit admin pages for chat, dashboard and memory matrix
-* Hot-reloadable plugins and basic metrics collected in memory
-* ICE-style wrapper for deep reasoning demo
+* Intent detection & dispatch
+* Dual vector memory with surprise weighting
+* Local-first LLM orchestration (LNM + OSIRIS)
+* Dynamic plugin system (manifest + auto UI injection)
+* EchoCore for immutable truths and dark profiling
+* Prometheus observability + live tracing
+* Admin UI with drag-drop plugins, model manager, and logs
+* ICE wrapper for deep reasoning and memory recall
 
 ## Directory
 
@@ -73,6 +74,8 @@ This repository is a minimal proof of concept. Run the API with
 
 For the full architecture specification and sprint roadmap see
 `DEV_SHEET.md`.
+* Local: `docker-compose.yml` (FastAPI, Milvus, Redis, Prometheus, Streamlit)
+* Cloud: Helm chart for K8s + GKE/EKS
 
 ## License
 
