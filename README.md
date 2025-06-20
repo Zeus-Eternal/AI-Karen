@@ -10,7 +10,12 @@ skin. Memory and reasoning are simplified for local testing.
 
 * Intent detection with simple regex rules
 * Dynamic plugin router with manifest-based discovery and RBAC
+ 
+* NANDA client enables cross-agent snippet sharing
+ 
 
+
+ 
 * Dual vector memory (Milvus + Redis) with surprise weighting
 * Recency-weighted memory store with automatic TTL pruning
 * Local-first LLM orchestration (LNM + OSIRIS)
