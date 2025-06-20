@@ -10,8 +10,12 @@ skin. Memory and reasoning are simplified for local testing.
 
 * Intent detection with simple regex rules
 * Dynamic plugin router with manifest-based discovery and RBAC
+
 * Dual vector memory (Milvus + Redis) with surprise weighting
 * Recency-weighted memory store with automatic TTL pruning
+
+* Dual vector memory (Milvus + Redis) and surprise weighting
+ 
 * Local-first LLM orchestration (LNM + OSIRIS)
 * **SelfRefactor Engine** for automated code improvement via DeepSeek and NANDA
 * Example plugins: hello world, desktop agent, TUI fallback
