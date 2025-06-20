@@ -1,16 +1,15 @@
 """Plugin discovery and routing with manifest parsing and RBAC."""
 
 from __future__ import annotations
-"""Plugin discovery and routing."""
 
 import importlib
 import json
 import os
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
-from typing import Dict
+from typing import Callable, Dict, Optional
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
+
 
 @dataclass
 class PluginRecord:
@@ -19,7 +18,8 @@ class PluginRecord:
     name: str
     manifest: Dict[str, object]
     handler: Callable[[Dict[str, object]], object]
-      
+
+
 class PluginRouter:
     """Load plugins and route intents to their handlers."""
 
@@ -30,10 +30,6 @@ class PluginRouter:
     def load_plugins(self) -> None:
         """Scan the plugin directory and load manifests and handlers."""
         self.intent_map.clear()
-        self.intent_map: Dict[str, str] = {}
-        self.load_plugins()
-
-    def load_plugins(self) -> None:
         for name in os.listdir(PLUGIN_DIR):
             path = os.path.join(PLUGIN_DIR, name)
             if not os.path.isdir(path) or name.startswith("__"):
@@ -43,28 +39,22 @@ class PluginRouter:
                 continue
             with open(manifest_path, "r", encoding="utf-8") as f:
                 manifest = json.load(f)
-            intent = manifest.get("intent")
-            if not intent:
-                continue
-            # Support both string and list of intents
-            if isinstance(intent, list):
-                for single_intent in intent:
-                    if not isinstance(single_intent, str):
-                        continue
-                    self.intent_map[single_intent] = PluginRecord(name, manifest, handler)
-            elif isinstance(intent, str):
-                self.intent_map[intent] = PluginRecord(name, manifest, handler)
-            else:
-                continue
             try:
                 module = importlib.import_module(f"plugins.{name}.handler")
             except ModuleNotFoundError:
-                # Optional plugin dependency missing; skip loading
                 continue
             handler = getattr(module, "run", None)
             if handler is None:
                 continue
-            self.intent_map[intent] = PluginRecord(name, manifest, handler)
+            intent = manifest.get("intent")
+            if not intent:
+                continue
+            if isinstance(intent, list):
+                for single in intent:
+                    if isinstance(single, str):
+                        self.intent_map[single] = PluginRecord(name, manifest, handler)
+            elif isinstance(intent, str):
+                self.intent_map[intent] = PluginRecord(name, manifest, handler)
 
     def reload(self) -> None:
         """Reload plugin definitions from disk."""
