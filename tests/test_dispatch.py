@@ -3,14 +3,14 @@ import asyncio
 from core.cortex.dispatch import CortexDispatcher
 
 
-def test_dispatch_greet():
+def test_dispatch_greet_role():
     dispatcher = CortexDispatcher()
     result = asyncio.run(dispatcher.dispatch("hello", role="user"))
     assert result["intent"] == "greet"
     assert result["response"] == "Hello World from plugin!"
 
 
-def test_dispatch_deep_reasoning():
+def test_dispatch_deep_reasoning_role():
     dispatcher = CortexDispatcher()
     result = asyncio.run(dispatcher.dispatch("why do birds fly", role="user"))
     assert result["intent"] == "deep_reasoning"

@@ -14,9 +14,14 @@ def test_chat_endpoint():
     assert data["response"] == "Hello World from plugin!"
 
 
-def test_deep_reasoning_endpoint():
+def test_deep_reasoning_endpoint_with_role():
     resp = client.post("/chat", json={"text": "why is the sky blue", "role": "user"})
-    
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["intent"] == "deep_reasoning"
+    assert "entropy" in data["response"]
+
+
 def test_deep_reasoning_endpoint():
     resp = client.post("/chat", json={"text": "why is the sky blue"})
     assert resp.status_code == 200
@@ -35,3 +40,4 @@ def test_store_and_search():
     assert resp.status_code == 200
     results = resp.json()
     assert results[0]["payload"]["text"] == "memory test"
+

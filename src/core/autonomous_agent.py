@@ -34,8 +34,8 @@ class AutonomousAgent:
             result = plugin.run(subtask)
             print(f"[{correlation_id}] Result: {result}")
 
-            if plugin.manifest.get("enable_external_workflow"):
-                slug = plugin.manifest.get("workflow_slug", "")
+            if plugin.manifest.enable_external_workflow:
+                slug = plugin.manifest.workflow_slug or ""
                 self.workflow_engine.trigger(slug, result)
 
             time.sleep(2)

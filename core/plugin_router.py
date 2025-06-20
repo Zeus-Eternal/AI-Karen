@@ -6,7 +6,7 @@ import importlib
 import json
 import os
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
 
@@ -16,8 +16,27 @@ class PluginRecord:
     """Metadata for a loaded plugin."""
 
     name: str
-    manifest: Dict[str, object]
+    manifest: "PluginManifest"
     handler: Callable[[Dict[str, object]], object]
+
+
+@dataclass
+class PluginManifest:
+    plugin_api_version: str
+    enable_external_workflow: bool
+    required_roles: List[str]
+    intent: Union[str, List[str]]
+    workflow_slug: Optional[str] = None
+
+    @staticmethod
+    def from_dict(data: Dict[str, object]) -> "PluginManifest":
+        return PluginManifest(
+            plugin_api_version=str(data.get("plugin_api_version", "1.0")),
+            enable_external_workflow=bool(data.get("enable_external_workflow", False)),
+            required_roles=list(data.get("required_roles", [])),
+            intent=data.get("intent", ""),
+            workflow_slug=data.get("workflow_slug"),
+        )
 
 
 class PluginRouter:
@@ -38,7 +57,8 @@ class PluginRouter:
             if not os.path.exists(manifest_path):
                 continue
             with open(manifest_path, "r", encoding="utf-8") as f:
-                manifest = json.load(f)
+                manifest_data = json.load(f)
+            manifest = PluginManifest.from_dict(manifest_data)
             try:
                 module = importlib.import_module(f"plugins.{name}.handler")
             except ModuleNotFoundError:
@@ -46,7 +66,7 @@ class PluginRouter:
             handler = getattr(module, "run", None)
             if handler is None:
                 continue
-            intent = manifest.get("intent")
+            intent = manifest.intent
             if not intent:
                 continue
             if isinstance(intent, list):

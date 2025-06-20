@@ -28,7 +28,7 @@ class CortexDispatcher:
         plugin = self.router.get_plugin(intent)
         if not plugin:
             return {"response": "No plugin for intent"}
-        if role not in plugin.manifest.get("required_roles", []):
+        if role not in plugin.manifest.required_roles:
             return {"error": "forbidden", "intent": intent, "confidence": conf}
 
         result = await plugin.handler({})

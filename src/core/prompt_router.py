@@ -13,13 +13,18 @@ class PluginWrapper:
 
 
 class PromptRouter:
-    """Very small router that always returns the autonomous_task_handler plugin."""
+    """Basic text router mapping keywords to plugin intents."""
 
     def __init__(self) -> None:
         self.router = BaseRouter()
 
-    def route(self, _text: str) -> PluginWrapper:
-        record = self.router.get_plugin("autonomous_task_handler")
-        if not record:
+    def route(self, text: str) -> PluginWrapper:
+        text = text.lower()
+        for intent, record in self.router.intent_map.items():
+            if intent in text:
+                return PluginWrapper(record)
+
+        fallback = self.router.get_plugin("autonomous_task_handler")
+        if not fallback:
             raise ValueError("autonomous_task_handler plugin not found")
-        return PluginWrapper(record)
+        return PluginWrapper(fallback)

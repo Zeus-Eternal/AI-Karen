@@ -6,6 +6,7 @@ def test_load_plugin():
     plugin = router.get_plugin("greet")
     assert plugin is not None
     assert callable(plugin.handler)
-    assert "required_roles" in plugin.manifest
+    assert plugin.manifest.required_roles
     handler = router.get_handler("greet")
     assert handler is not None
+
