@@ -6,7 +6,11 @@ import importlib
 import json
 import os
 from dataclasses import dataclass
+ 
 from typing import Callable, Dict, List, Optional
+
+from typing import Callable, Dict, Optional
+ 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
 
@@ -37,6 +41,7 @@ class PluginRouter:
             manifest_path = os.path.join(path, "plugin_manifest.json")
             if not os.path.exists(manifest_path):
                 continue
+ 
             try:
                 with open(manifest_path, "r", encoding="utf-8") as f:
                     manifest = json.load(f)
@@ -51,11 +56,30 @@ class PluginRouter:
                 module = importlib.import_module(f"plugins.{name}.handler")
             except ModuleNotFoundError:
                 # Optional plugin dependency missing; skip loading
+
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            try:
+                module = importlib.import_module(f"plugins.{name}.handler")
+            except ModuleNotFoundError:
+ 
                 continue
             handler = getattr(module, "run", None)
             if handler is None:
                 continue
+ 
             self.intent_map[intent] = PluginRecord(name, manifest, handler)
+
+            intent = manifest.get("intent")
+            if not intent:
+                continue
+            if isinstance(intent, list):
+                for single in intent:
+                    if isinstance(single, str):
+                        self.intent_map[single] = PluginRecord(name, manifest, handler)
+            elif isinstance(intent, str):
+                self.intent_map[intent] = PluginRecord(name, manifest, handler)
+ 
 
     def reload(self) -> None:
         """Reload plugin definitions from disk."""
@@ -63,3 +87,12 @@ class PluginRouter:
 
     def get_plugin(self, intent: str) -> Optional[PluginRecord]:
         return self.intent_map.get(intent)
+ 
+
+
+    def get_handler(self, intent: str):
+        plugin_record = self.intent_map.get(intent)
+        if not plugin_record:
+            return None
+        return plugin_record.handler
+ 

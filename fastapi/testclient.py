@@ -3,6 +3,14 @@ from . import Response
 
 class TestClient:
     __test__ = False  # Prevent pytest from collecting this class as tests
+ 
+
+  
+    __test__ = False  # Prevent pytest from collecting this class as tests
+    
+    __test__ = False  # Prevent pytest from collecting this class as test
+
+ 
     def __init__(self, app):
         self.app = app
 

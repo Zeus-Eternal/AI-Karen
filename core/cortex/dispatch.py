@@ -1,5 +1,10 @@
 """Dispatch incoming prompts to plugins."""
 
+ 
+
+from __future__ import annotations
+
+ 
 import asyncio
 from typing import Any, Dict
 
@@ -18,7 +23,11 @@ class CortexDispatcher:
 
     async def dispatch(self, text: str, role: str = "user") -> Dict[str, Any]:
         """Route text to the appropriate plugin based on intent and role."""
+ 
         intent, conf, _category = self.engine.detect_intent(text)
+
+        intent, conf, _ = self.engine.detect_intent(text)
+ 
         if intent == "deep_reasoning":
             result = self.ice.process(text)
             return {"intent": intent, "confidence": conf, "response": result}
