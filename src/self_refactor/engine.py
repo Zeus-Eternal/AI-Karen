@@ -1,4 +1,7 @@
+ 
 
+
+ 
 """Self-refactoring engine with simple RL loop."""
 
 from __future__ import annotations
@@ -12,14 +15,20 @@ import shutil
 import subprocess
 import tempfile
 import time
+ 
+
 
 import ast
 import pathlib
+ 
  
 from typing import Dict, List, Tuple
 
 
 class PatchReport(dict):
+ 
+
+ 
  
     """Dictionary-based patch report with typed helpers."""
 
@@ -41,6 +50,8 @@ class SelfRefactorEngine:
         self.nanda = nanda
         self.test_cmd = test_cmd or ["pytest", "-q"]
 
+ 
+
     """Simple dict-based patch report"""
     pass
 
@@ -51,6 +62,7 @@ class SelfRefactorEngine:
         self.deepseek = deepseek
         self.nanda = nanda
 
+ 
     def static_analysis(self) -> List[Tuple[pathlib.Path, str]]:
         issues = []
         for file in self.repo_root.rglob("*.py"):
@@ -73,7 +85,11 @@ class SelfRefactorEngine:
         return {
             p: self.deepseek.generate(f"{context}\n### PATCH\n{pr}")
             for (p, _), pr in zip(issues, prompts)
+ 
+        }
+
         } 
+ 
 
     def test_patches(self, patches: Dict[pathlib.Path, str]) -> PatchReport:
         """Apply patches in a sandbox and run the test suite."""
@@ -120,5 +136,3 @@ class SelfRefactorEngine:
         for file_str, patch in report.patches.items():
             target = self.repo_root / file_str
             target.write_text(patch)
-
- 

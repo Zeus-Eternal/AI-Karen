@@ -10,19 +10,32 @@ skin. Memory and reasoning are simplified for local testing.
 
 * Intent detection with simple regex rules
 * Dynamic plugin router with manifest-based discovery and RBAC
+ 
 * NANDA client enables cross-agent snippet sharing
+ 
+
+
  
 * Dual vector memory (Milvus + Redis) with surprise weighting
 * Recency-weighted memory store with automatic TTL pruning
 * Local-first LLM orchestration (LNM + OSIRIS)
 * **SelfRefactor Engine** with sandboxed testing and RL-based patch merging
 * Hourly SRE scheduler continuously improves the codebase
+ 
+* NANDA client enables cross-agent snippet sharing
+* Example plugins: hello world, desktop agent, TUI fallback
+* Streamlit admin pages for chat, dashboard and memory matrix
+* Prometheus metrics, tracing and EchoCore logging
+
+ 
 
 * Dual vector memory (Milvus + Redis) with surprise weighting
 * Recency-weighted memory store with automatic TTL pruning
  
 * Local-first LLM orchestration (LNM + OSIRIS)
 * **SelfRefactor Engine** for automated code improvement via DeepSeek and NANDA
+
+ 
 
 * Example plugins: hello world, desktop agent, TUI fallback
 * Streamlit admin pages for chat, dashboard and memory matrix
@@ -31,6 +44,7 @@ skin. Memory and reasoning are simplified for local testing.
  
 ## Directory
 
+ 
 ```
 core/          # dispatch, embeddings, reasoning
 integrations/  # helper utilities (RPA, automation)
