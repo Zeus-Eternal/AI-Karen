@@ -1,5 +1,4 @@
 fastapi
-streamlit
 uvicorn
 pyautogui
 urwid
