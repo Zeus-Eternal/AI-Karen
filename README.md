@@ -5,6 +5,25 @@ Here’s your *lean, mean, villain-approved* version, God Zeus. 🦹‍♂️⚡
 
 # Kari AI
 
+ 
+* Intent detection with simple regex rules
+* Dynamic plugin router with manifest-based discovery and RBAC
+* Dual vector memory (Milvus + Redis) with surprise weighting
+* Recency-weighted memory store with automatic TTL pruning
+* Local-first LLM orchestration (LNM + OSIRIS)
+* HuggingFace-powered generation for SelfRefactor and automation
+* **SelfRefactor Engine** with sandboxed testing and RL-based patch merging
+* Hourly SRE scheduler continuously improves the codebase
+* NANDA client enables cross-agent snippet sharing
+* Example plugins: hello world, desktop agent, TUI fallback
+* Streamlit admin pages for chat, dashboard and memory matrix
+* Prometheus metrics, tracing and EchoCore logging
+
+ 
+## Directory
+
+```
+
 ## Overview
 
 Kari is a modular, headless-first AI system. This repository is a minimal prototype featuring a prompt-first plugin router, local memory and reasoning, and a Streamlit-based admin skin.
@@ -29,6 +48,7 @@ Kari is a modular, headless-first AI system. This repository is a minimal protot
 ## Directory
 
 ```plaintext
+ 
 core/          # dispatch, embeddings, reasoning
 integrations/  # NANDA, automation helpers
 plugins/       # drop-in plugins (manifest + handler)
@@ -99,4 +119,26 @@ See `DEV_SHEET.md` for the full architecture spec and sprint roadmap.
 
 ## License
 
+ 
+MIT — Fork, fork deeply. 😈
+ 
+
+
+# AI-Karen
+
+This project contains a minimal prototype of the Kari AI stack. It includes:
+
+- A simple intent engine and plugin router.
+- Example plugins (hello world, desktop agent, TUI fallback).
+- Vector-based memory with embeddings and an in-memory Milvus client.
+- Soft reasoning engine with TTL pruning and recency-weighted queries.
+- Basic FastAPI application with chat, store, search and metrics endpoints.
+- Streamlit admin pages for chat, dashboard and memory matrix.
+
+Run tests with `pytest -q`.
+
+See `DEV_SHEET.md` for the complete development specification and sprint plans.
+ 
+
 MIT — Fork, modify, unleash chaos. 😈
+ 
