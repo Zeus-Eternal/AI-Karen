@@ -7,7 +7,6 @@ def test_load_plugin():
     assert plugin is not None
     assert callable(plugin.handler)
     assert "required_roles" in plugin.manifest
- 
 
 
 def test_invalid_manifest(monkeypatch, tmp_path):
@@ -19,5 +18,4 @@ def test_invalid_manifest(monkeypatch, tmp_path):
     assert not router.intent_map
 
     handler = router.get_handler("greet")
-    assert handler is not None
- 
+    assert handler is None

@@ -6,3 +6,4 @@ urwid
 prompt_toolkit
 pydantic
 pytest
+transformers
