@@ -1,5 +1,8 @@
 import time
+ 
 import asyncio
+
+ 
 from core.soft_reasoning_engine import SoftReasoningEngine
 
 
@@ -20,6 +23,7 @@ def test_prune():
     texts = [r["payload"]["text"] for r in results]
     assert "new memory" in texts
     assert "old memory" not in texts
+ 
 
 
 def test_recency_weighting():
@@ -36,3 +40,5 @@ def test_async_query():
     engine.ingest("hello async")
     out = asyncio.run(engine.aquery("hello", top_k=1))
     assert out and out[0]["payload"]["text"] == "hello async"
+
+ 
