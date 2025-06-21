@@ -42,6 +42,10 @@ class Response:
         self.status_code = status_code
 
     def json(self):
+        if hasattr(self._data, "__dict__"):
+            return vars(self._data)
+        if isinstance(self._data, list):
+            return [vars(x) if hasattr(x, "__dict__") else x for x in self._data]
         return self._data
 
 class TestClient:

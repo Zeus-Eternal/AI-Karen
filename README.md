@@ -2,47 +2,33 @@
 
 ## Overview
 
-Kari is a modular, headless-first AI system. The repository contains a minimal
-prototype with intent detection, a plugin router and a Streamlit-based admin
-skin. Memory and reasoning are simplified for local testing.
+Kari is a modular, headless-first AI system built for enterprise deployments.
+The stack ships with robust intent detection, a plugin router, and a
+Streamlit-based admin interface. Memory and reasoning subsystems are tuned for
+production workloads.
 
 ## Features
 
- 
-
-* Intent detection with simple regex rules
-* Plugin router with manifest-based discovery and role checks
-* In-memory embeddings and vector search for reasoning
-* Example plugins: Hello World, TUI fallback, desktop automation
-* Streamlit admin pages for chat, dashboard and memory matrix
-* Hot-reloadable plugins and basic metrics collected in memory
-* ICE-style wrapper for deep reasoning demo
-
-Kari is a modular, headless-first AI system combining custom memory layers (Milvus, Redis, EchoVault), advanced self-reasoning (OSIRIS, KRONOS), a dynamic plugin ecosystem, and a Streamlit Admin skin.
-
-## Features
-
- 
-* Intent detection & dispatch
-* Dual vector memory with surprise weighting
+* Intent detection engine with runtime-configurable regex rules
+* Robust plugin router with manifest validation and RBAC dispatch
+* Dual vector memory (Milvus + Redis) with surprise weighting
+* Thread-safe Milvus client supporting TTL and metadata filters
+* Recency-weighted memory store with automatic TTL pruning and async queries
 * Local-first LLM orchestration (LNM + OSIRIS)
-* Dynamic plugin system (manifest + auto UI injection)
-* EchoCore for immutable truths and dark profiling
-* Prometheus observability + live tracing
-* Admin UI with drag-drop plugins, model manager, and logs
-* ICE wrapper for deep reasoning and memory recall
+* HuggingFace-powered generation for SelfRefactor and automation
+* HuggingFace LLM plugin with auto-download helper
+* Optional OpenAI plugin for hosted inference
+* **SelfRefactor Engine** with sandboxed testing and RL-based patch merging
+* Hourly SRE scheduler continuously improves the codebase
+* NANDA client enables cross-agent snippet sharing
+* Example plugins: hello world, desktop agent, TUI fallback, hf_llm, openai_llm
+* Streamlit admin pages for chat, dashboard and memory matrix
+* Prometheus metrics, tracing and EchoCore logging
 
  
 ## Directory
 
 ```
-=======
-
-## Directory
-
-```
-
- 
 core/          # dispatch, embeddings, reasoning
 integrations/  # helper utilities (RPA, automation)
 plugins/       # drop-in plugins (manifest + handler)
@@ -50,17 +36,6 @@ admin_ui/      # Streamlit pages
 fastapi/       # lightweight stubs for tests
 pydantic/      # lightweight stubs for tests
 tests/         # pytest suite
- 
-
-
-core/           # Cortex, dispatch, embeddings, EchoCore
-memory/         # MilvusClient, EchoVault, DarkTracker
-plugins/        # Drop-in plugins (manifest, handler, ui)
-admin_ui/       # Streamlit skin + panels
-config/         # YAML settings
-models/         # Local LLMs
-
- 
 ```
 
 ## Quickstart
@@ -112,8 +87,8 @@ streamlit run admin_ui/Main.py
 
 ## Deployment
 
-This repository is a minimal proof of concept. Run the API with
-`uvicorn main:app`, and open the Streamlit pages for a lightweight UI.
+Run the API with `uvicorn main:app` and open the Streamlit pages for a
+full-featured UI.
 
 For the full architecture specification and sprint roadmap see
 `DEV_SHEET.md`.
@@ -132,12 +107,12 @@ MIT — Fork, fork deeply. 😈
 
 # AI-Karen
 
-This project contains a minimal prototype of the Kari AI stack. It includes:
+This project contains the production-ready Kari AI stack. It includes:
 
 - A simple intent engine and plugin router.
-- Example plugins (hello world, desktop agent, TUI fallback).
+- Example plugins (hello world, desktop agent, TUI fallback, hf_llm, openai_llm).
 - Vector-based memory with embeddings and an in-memory Milvus client.
-- Soft reasoning engine storing and querying memories.
+- Soft reasoning engine with TTL pruning, recency-weighted queries and async support.
 - Basic FastAPI application with chat, store, search and metrics endpoints.
 - Streamlit admin pages for chat, dashboard and memory matrix.
 
