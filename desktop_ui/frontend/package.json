@@ -1,0 +1,10 @@
+{
+  "name": "kari-control-room",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

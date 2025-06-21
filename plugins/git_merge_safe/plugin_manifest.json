@@ -1,6 +1,6 @@
 {
   "plugin_api_version": "1.0",
+  "intent": "git_merge_safe",
   "enable_external_workflow": false,
-  "required_roles": ["admin"],
-  "intent": ["tui_diagnostics"]
+  "required_roles": ["devops"]
 }
