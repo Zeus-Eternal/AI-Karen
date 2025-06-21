@@ -113,7 +113,8 @@ This project contains the production-ready Kari AI stack. It includes:
 - Example plugins (hello world, desktop agent, TUI fallback, hf_llm, openai_llm).
 - Vector-based memory with embeddings and an in-memory Milvus client.
 - Soft reasoning engine with TTL pruning, recency-weighted queries and async support.
-- Basic FastAPI application with chat, store, search and metrics endpoints.
+- FastAPI service exposing chat, memory store, metadata-aware search, metrics,
+  plugin management and health checks.
 - Streamlit admin pages for chat, dashboard and memory matrix.
 
 Run tests with `pytest -q`.

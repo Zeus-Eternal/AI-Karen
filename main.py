@@ -27,6 +27,7 @@ class ChatResponse(BaseModel):
 class StoreRequest(BaseModel):
     text: str
     ttl_seconds: float | None = None
+    tag: str | None = None
 
 
 class StoreResponse(BaseModel):
@@ -37,6 +38,7 @@ class StoreResponse(BaseModel):
 class SearchRequest(BaseModel):
     text: str
     top_k: int = 3
+    metadata_filter: Dict[str, Any] | None = None
 
 
 class SearchResult(BaseModel):
@@ -54,6 +56,19 @@ def ping():
     return {"status": "ok"}
 
 
+@app.get("/health")
+def health() -> Dict[str, Any]:
+    return {
+        "status": "healthy",
+        "plugins": len(dispatcher.router.intent_map),
+    }
+
+
+@app.get("/ready")
+def ready() -> Dict[str, Any]:
+    return {"ready": True}
+
+
 @app.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
     role = getattr(req, "role", "user")
@@ -63,14 +78,23 @@ async def chat(req: ChatRequest) -> ChatResponse:
 
 @app.post("/store")
 async def store(req: StoreRequest) -> StoreResponse:
-    rid = engine.ingest(req.text, ttl_seconds=req.ttl_seconds)
+    metadata = {"tag": req.tag} if req.tag else None
+    rid = engine.ingest(
+        req.text,
+        metadata=metadata,
+        ttl_seconds=req.ttl_seconds,
+    )
     return StoreResponse(status="stored", id=rid)
 
 
 @app.post("/search")
 async def search(req: SearchRequest) -> List[SearchResult]:
     top_k = getattr(req, "top_k", 3)
-    results = engine.query(req.text, top_k=top_k)
+    results = engine.query(
+        req.text,
+        top_k=top_k,
+        metadata_filter=getattr(req, "metadata_filter", None),
+    )
     return [SearchResult(**r) for r in results]
 
 @app.get("/metrics")

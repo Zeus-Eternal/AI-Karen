@@ -24,8 +24,6 @@ class CortexDispatcher:
     async def dispatch(self, text: str, role: str = "user") -> Dict[str, Any]:
         """Route text to the appropriate plugin based on intent and role."""
  
-        intent, conf, _category = self.engine.detect_intent(text)
-
         intent, conf, _ = self.engine.detect_intent(text)
  
         if intent == "deep_reasoning":
