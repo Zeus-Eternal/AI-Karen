@@ -1,0 +1,6 @@
+{
+  "plugin_api_version": "1.0",
+  "intent": "k8s_scale",
+  "enable_external_workflow": false,
+  "required_roles": ["devops"]
+}

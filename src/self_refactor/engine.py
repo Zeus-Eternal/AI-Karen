@@ -1,4 +1,7 @@
+ 
 
+
+ 
 """Self-refactoring engine with simple RL loop."""
 
 from __future__ import annotations
@@ -14,14 +17,20 @@ import tempfile
 import time
  
 
+ 
+
 import ast
 import pathlib
+ 
  
 from typing import Dict, List, Tuple
 
 
 class PatchReport(dict):
+ 
 
+
+ 
     """Dictionary-based patch report with typed helpers."""
 
     @property
@@ -33,6 +42,9 @@ class PatchReport(dict):
         return self.get("patches", {})
 
 
+ 
+
+ 
  
 from integrations.nanda_client import NANDAClient
 from src.integrations.llm_utils import LLMUtils
@@ -52,6 +64,8 @@ class SelfRefactorEngine:
         self.deepseek = deepseek or LLMUtils()
         self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
         self.test_cmd = test_cmd or ["pytest", "-q"]
+
+ 
 
 
 class SelfRefactorEngine:
@@ -75,6 +89,7 @@ class SelfRefactorEngine:
         self.deepseek = deepseek
         self.nanda = nanda
 
+ 
  
  
     def static_analysis(self) -> List[Tuple[pathlib.Path, str]]:
@@ -106,9 +121,14 @@ class SelfRefactorEngine:
  
         }
 
+
+ 
+        }
+
         } 
  
 
+ 
     def test_patches(self, patches: Dict[pathlib.Path, str]) -> PatchReport:
         """Apply patches in a sandbox and run the test suite."""
         report: PatchReport = PatchReport()

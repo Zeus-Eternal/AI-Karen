@@ -19,3 +19,13 @@ def test_detect_intent():
         intent, conf, _ = engine.detect_intent(text)
         assert intent == expected
         assert 0.0 <= conf <= 1.0
+
+
+def test_runtime_registration():
+    engine = IntentEngine()
+    engine.add_intent("farewell", r"bye")
+    intent, _, _ = engine.detect_intent("bye")
+    assert intent == "farewell"
+    engine.remove_intent("farewell")
+    intent, _, _ = engine.detect_intent("bye")
+    assert intent == "unknown"

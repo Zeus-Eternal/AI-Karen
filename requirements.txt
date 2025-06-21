@@ -1,5 +1,4 @@
 fastapi
-streamlit
 uvicorn
 pyautogui
 urwid
@@ -7,3 +6,6 @@ prompt_toolkit
 pydantic
 pytest
 transformers
+ 
+huggingface_hub
+openai

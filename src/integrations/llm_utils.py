@@ -1,11 +1,48 @@
+ 
+"""HuggingFace-backed text generation utilities with optional caching."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
 """HuggingFace-backed text generation utilities."""
 
 from __future__ import annotations
 
+ 
 from typing import Optional
 
 
 class LLMUtils:
+ 
+    """Wrapper around a local HuggingFace pipeline with auto-download."""
+
+    def __init__(self, model_name: str = "distilgpt2", cache_dir: str | None = None) -> None:
+        self.model_name = model_name
+        self.cache_dir = Path(cache_dir or Path.home() / ".cache" / "hf_models" / model_name)
+        try:
+            from transformers import pipeline  # type: ignore
+            from huggingface_hub import snapshot_download  # type: ignore
+
+            # attempt to ensure the model is cached locally
+            try:
+                snapshot_download(
+                    repo_id=model_name,
+                    local_dir=str(self.cache_dir),
+                    local_dir_use_symlinks=True,
+                    resume_download=True,
+                    local_files_only=True,
+                )
+                model_path = str(self.cache_dir)
+            except Exception:
+                model_path = model_name
+
+            self.generator = pipeline(
+                "text-generation",
+                model=model_path,
+                tokenizer=model_path,
+                cache_dir=str(self.cache_dir),
+
     """Wrapper around a local HuggingFace pipeline."""
 
     def __init__(self, model_name: str = "distilgpt2") -> None:
@@ -14,6 +51,7 @@ class LLMUtils:
 
             self.generator = pipeline(
                 "text-generation", model=model_name, tokenizer=model_name
+ 
             )
         except Exception as exc:  # pragma: no cover - optional dependency
             self.generator = None
