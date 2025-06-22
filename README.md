@@ -122,14 +122,6 @@ cd desktop_ui && npx tauri dev
 ```
 
 Build signed desktop binaries:
-
- 
-# Launch the Control Room
-cd desktop_ui && npx tauri dev
-
-# Launch the mobile web UI
-streamlit run mobile_ui/app.py
-
 ```bash
 cd desktop_ui
 npx tauri build          # outputs .app / .exe / .AppImage
