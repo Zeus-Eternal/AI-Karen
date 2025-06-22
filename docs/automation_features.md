@@ -7,7 +7,7 @@ Kari ships with a **proprietary automation layer** for chaining tasks and local 
 Our `AutomationManager` orchestrates asynchronous tasks using a custom queue. Plugins can enqueue coroutines that interact with local scripts or trigger n8n workflows.
 
 ```python
-from integrations.automation_manager import AutomationManager
+from core.automation_manager import AutomationManager
 
 auto = AutomationManager()
 auto.add_task(some_async_task())
