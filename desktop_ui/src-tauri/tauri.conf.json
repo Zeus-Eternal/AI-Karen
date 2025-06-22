@@ -1,0 +1,33 @@
+{
+  "package": {
+    "productName": "Kari Control Room",
+    "version": "0.1.0"
+  },
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devPath": "http://localhost:3000",
+    "distDir": "../frontend/dist"
+  },
+  "tauri": {
+    "bundle": {
+      "identifier": "com.example.kari"
+    },
+    "windows": [
+      {
+        "title": "Kari Control Room",
+        "width": 1024,
+        "height": 768,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src http://localhost:8000"
+    },
+    "allowlist": {
+      "http": {
+        "request": true
+      }
+    }
+  }
+}

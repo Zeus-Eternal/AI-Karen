@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tauri = { version = "1", features = ["devtools", "http-api"] }
+tauri = { version = "1", features = ["api-all"] }

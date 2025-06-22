@@ -111,7 +111,11 @@ uvicorn main:app --reload
 
 # 3 · Run desktop Control Room (dev mode)
 cd desktop_ui
-npx tauri dev
+npm install
+npm run tauri:dev
+
+# Optionally point to a remote API
+export KARI_BACKEND="192.168.1.10:8000"
  
 ```
 
@@ -121,18 +125,19 @@ npx tauri dev
 docker compose up
 ```
 
-Build signed desktop binaries:
+
+# Build signed desktop binaries
 
  
 # Launch the Control Room
-cd desktop_ui && npx tauri dev
+cd desktop_ui && npm run tauri:dev
 
 # Launch the mobile web UI
 streamlit run mobile_ui/app.py
 
 ```bash
 cd desktop_ui
-npx tauri build          # outputs .app / .exe / .AppImage
+npm run tauri:build       # outputs .app / .exe / .AppImage
 ```
 
 Run tests:
