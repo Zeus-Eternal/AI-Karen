@@ -97,6 +97,11 @@ pydantic/      # DTOs & schemas
 tests/         # pytest suite
 docs/          # architecture docs (mesh_arch.md, …)
 ```
+### Prerequisites
+* Docker and Docker Compose
+* Node.js 18+ with npm
+* Rust toolchain (`cargo`) for Tauri builds
+
 
 ---
 
@@ -105,6 +110,15 @@ docs/          # architecture docs (mesh_arch.md, …)
 ```bash
 # 1 · Install Python deps
 ./scripts/install.sh
+
+# 2 · Install Control Room packages
+cd desktop_ui/frontend && npm install && cd ../..
+
+# 3 · Launch backend API + dependencies
+./scripts/start.sh
+
+# 4 · Run desktop Control Room (dev mode)
+cd desktop_ui && npx tauri dev
 
 # 2 · Launch backend API + dependencies
 ./scripts/start.sh
