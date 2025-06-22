@@ -60,6 +60,8 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 | **Observability**    | Prometheus metrics, OpenTelemetry tracing, EchoCore immutable logs            |
 | **UI**               | Tauri Control Room: dashboards, model manager, plugin config, memory matrix   |
 
+Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
+
  
 ```
 core/          # dispatch, embeddings, reasoning
@@ -136,6 +138,12 @@ Run tests:
 pytest -q
 ```
 
+### API Usage
+
+Kari's FastAPI backend exposes a small set of endpoints for headless deployments.
+See [docs/api_usage.md](docs/api_usage.md) for the full list and example `curl`
+commands.
+
 ---
 
 ## 5 · Development Cheatsheet
@@ -151,6 +159,10 @@ cd desktop_ui && npx tauri build
 | Lint               | `ruff .`                               |
 | Tests              | `pytest`                               |
 | Hot-reload plugins | just save the folder—Kari auto-detects |
+### Advanced / Unrestricted Mode
+
+Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs marked as untrusted. Use with caution.
+
  
 
 ---
@@ -223,6 +235,15 @@ full-featured desktop experience.
 
 Detailed architecture diagrams, sprint plans, and Hydra-Ops capsule spec are in **`DEV_SHEET.md`** and **`docs/mesh_arch.md`**.
 
+Additional guides:
+
+- [API Usage](docs/api_usage.md)
+- [Feature Guide](docs/features_usage.md)
+- [Automation Features](docs/automation_features.md)
+- [SelfRefactor Engine](docs/self_refactor.md)
+- [n8n Integration](docs/n8n_integration.md)
+- [OpenAI Customer Service](docs/openai_customer_service.md)
+
 ---
 
 ## 10 · License
@@ -239,7 +260,7 @@ This project contains the production-ready Kari AI stack. It includes:
 - Tauri Control Room for chat, dashboard and memory matrix.
 - Streamlit mobile UI for API demo.
 
-MIT — fork, modify, unleash chaos. 😈
+Released under the MIT license.
 
 ---
  

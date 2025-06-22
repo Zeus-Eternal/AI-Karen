@@ -2,5 +2,8 @@
   "plugin_api_version": "1.0",
   "intent": "hf_generate",
   "enable_external_workflow": false,
-  "required_roles": ["user"]
+  "required_roles": [
+    "user"
+  ],
+  "trusted_ui": false
 }
