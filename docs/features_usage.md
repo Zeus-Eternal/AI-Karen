@@ -67,4 +67,12 @@ Setting `ADVANCED_MODE=true` enables unrestricted plugin UIs and full SelfRefact
 
 ---
 
+ 
 For a list of raw REST endpoints see [api_usage.md](api_usage.md). Architectural notes live in [mesh_arch.md](mesh_arch.md) and the sprint plans in [DEV_SHEET.md](../DEV_SHEET.md). See [plugin_spec.md](plugin_spec.md) for writing new plugins and [memory_arch.md](memory_arch.md) for details on the vector store.
+
+ 
+For a list of raw REST endpoints see [api_usage.md](api_usage.md). Architectural notes live in [mesh_arch.md](mesh_arch.md) and the sprint plans in [DEV_SHEET.md](../DEV_SHEET.md). See [plugin_spec.md](plugin_spec.md) for writing new plugins and [memory_arch.md](memory_arch.md) for details on the vector store.
+
+For a list of raw REST endpoints see [api_usage.md](api_usage.md). For architectural details check [mesh_arch.md](mesh_arch.md) and the sprint plans in [DEV_SHEET.md](DEV_SHEET.md).
+ 
+ 

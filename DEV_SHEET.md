@@ -104,6 +104,7 @@ The router loads manifests on startup, mapping each `intent` to its handler.
 Plugins declare `required_roles`; the dispatcher enforces these before
 execution. A `reload()` helper can rescan the directory for hot-swapping
 plugins during development.
+ 
 
 ## Delivery Phases
 
