@@ -239,6 +239,9 @@ Additional guides:
 
 - [API Usage](docs/api_usage.md)
 - [Feature Guide](docs/features_usage.md)
+ 
+- [Chat Interface](docs/chat_interface.md)
+
 - [Automation Features](docs/automation_features.md)
 - [SelfRefactor Engine](docs/self_refactor.md)
 - [n8n Integration](docs/n8n_integration.md)
@@ -246,6 +249,13 @@ Additional guides:
  
 - [Plugin Specification](docs/plugin_spec.md)
 - [Memory Architecture](docs/memory_arch.md)
+- [Architecture Overview](docs/architecture.md)
+- [OpenAI vs Kari](docs/side_by_side_openai_kari.md)
+
+ 
+- [Plugin Specification](docs/plugin_spec.md)
+- [Memory Architecture](docs/memory_arch.md)
+ 
 - [LLM Guide](docs/llm_guide.md)
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
@@ -254,7 +264,6 @@ Additional guides:
 - [API Reference](docs/api_reference.md)
 - [Test Strategy](docs/tests.md)
 - [Contributing Guide](docs/contributing.md)
-
 
 
 ---
@@ -278,6 +287,11 @@ Released under the MIT license.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
+ 
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+ 
  
 
 ---

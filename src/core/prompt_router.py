@@ -23,3 +23,8 @@ class PromptRouter:
         if not record:
             raise ValueError("autonomous_task_handler plugin not found")
         return PluginWrapper(record)
+
+    def generate_reply(self, text: str) -> str:
+        plugin = self.route(text)
+        result = plugin.run(text)
+        return str(result)
