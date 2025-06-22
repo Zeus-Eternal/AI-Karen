@@ -243,6 +243,7 @@ Additional guides:
 - [SelfRefactor Engine](docs/self_refactor.md)
 - [n8n Integration](docs/n8n_integration.md)
 - [OpenAI Customer Service](docs/openai_customer_service.md)
+ 
 - [Plugin Specification](docs/plugin_spec.md)
 - [Memory Architecture](docs/memory_arch.md)
 - [LLM Guide](docs/llm_guide.md)
@@ -253,6 +254,8 @@ Additional guides:
 - [API Reference](docs/api_reference.md)
 - [Test Strategy](docs/tests.md)
 - [Contributing Guide](docs/contributing.md)
+
+
 
 ---
 
@@ -271,8 +274,11 @@ This project contains the production-ready Kari AI stack. It includes:
 - Streamlit mobile UI for API demo.
 
 Released under the MIT license.
+ 
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+ 
 
 ---
  

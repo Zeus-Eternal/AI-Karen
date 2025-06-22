@@ -104,6 +104,7 @@ The router loads manifests on startup, mapping each `intent` to its handler.
 Plugins declare `required_roles`; the dispatcher enforces these before
 execution. A `reload()` helper can rescan the directory for hot-swapping
 plugins during development.
+ 
 
 ## Delivery Phases
 
@@ -220,3 +221,5 @@ More detailed documentation lives in the `docs/` folder:
 - [plugin_spec.md](docs/plugin_spec.md) for plugin schemas
 - [memory_arch.md](docs/memory_arch.md) for the vector store design
 - [ui_handbook.md](docs/ui_handbook.md) for Control Room roles and pages
+
+ 
