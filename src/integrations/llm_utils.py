@@ -1,33 +1,25 @@
-
 """HuggingFace-backed text generation utilities with optional caching."""
 
 from __future__ import annotations
 
 from pathlib import Path
- 
-
-
-"""HuggingFace-backed text generation utilities."""
-
-from __future__ import annotations
-
- 
- 
 from typing import Optional
 
 
 class LLMUtils:
-
     """Wrapper around a local HuggingFace pipeline with auto-download."""
 
-    def __init__(self, model_name: str = "distilgpt2", cache_dir: str | None = None) -> None:
+    def __init__(
+        self, model_name: str = "distilgpt2", cache_dir: str | None = None
+    ) -> None:
         self.model_name = model_name
-        self.cache_dir = Path(cache_dir or Path.home() / ".cache" / "hf_models" / model_name)
-        try:
+        self.cache_dir = Path(
+            cache_dir or Path.home() / ".cache" / "hf_models" / model_name
+        )
+        try:  # pragma: no cover - optional dependency
             from transformers import pipeline  # type: ignore
             from huggingface_hub import snapshot_download  # type: ignore
 
-            # attempt to ensure the model is cached locally
             try:
                 snapshot_download(
                     repo_id=model_name,
@@ -45,18 +37,6 @@ class LLMUtils:
                 model=model_path,
                 tokenizer=model_path,
                 cache_dir=str(self.cache_dir),
-
-
-    """Wrapper around a local HuggingFace pipeline."""
-
-    def __init__(self, model_name: str = "distilgpt2") -> None:
-        try:
-            from transformers import pipeline  # type: ignore
-
-            self.generator = pipeline(
-                "text-generation", model=model_name, tokenizer=model_name
- 
- 
             )
         except Exception as exc:  # pragma: no cover - optional dependency
             self.generator = None
@@ -65,9 +45,7 @@ class LLMUtils:
 
     def generate_text(self, prompt: str, max_tokens: int = 128) -> str:
         if self.generator:
-            outputs = self.generator(
-                prompt, max_new_tokens=max_tokens, do_sample=False
-            )
+            outputs = self.generator(prompt, max_new_tokens=max_tokens, do_sample=False)
             return outputs[0]["generated_text"]
 
         # fallback when transformers or model is unavailable
