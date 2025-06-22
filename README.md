@@ -252,10 +252,6 @@ Additional guides:
 - [Architecture Overview](docs/architecture.md)
 - [OpenAI vs Kari](docs/side_by_side_openai_kari.md)
 
- 
-- [Plugin Specification](docs/plugin_spec.md)
-- [Memory Architecture](docs/memory_arch.md)
- 
 - [LLM Guide](docs/llm_guide.md)
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
@@ -300,7 +296,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 ### AI-Karen in One Glance
 
  
-See `DEV_SHEET.md` for the complete development specification and sprint plans.
+See `DEV_SHEET.md` for the complete development specification.
 The Hydra-Ops capsule design is further detailed in `docs/mesh_arch.md`.
  
 
