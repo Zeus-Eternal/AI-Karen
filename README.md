@@ -120,6 +120,12 @@ cd desktop_ui/frontend && npm install && cd ../..
 # 4 · Run desktop Control Room (dev mode)
 cd desktop_ui && npx tauri dev
 
+# 2 · Launch backend API + dependencies
+./scripts/start.sh
+
+# 3 · Run desktop Control Room (dev mode)
+cd desktop_ui && npx tauri dev
+
 ```
 
 **Full stack (API + Milvus + Redis + Prometheus):**
