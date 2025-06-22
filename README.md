@@ -59,6 +59,9 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 | **Ops Mesh**         | *Hydra-Ops* capsules (DevOps, Finance, Growth, …) with guardrails & event bus |
 | **Observability**    | Prometheus metrics, OpenTelemetry tracing, EchoCore immutable logs            |
 | **UI**               | Tauri Control Room: dashboards, model manager, plugin config, memory matrix   |
+| **Chat Hub**        | Slash commands with short-term memory via NeuroVault |
+
+Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
 
  
 ```
@@ -136,6 +139,12 @@ Run tests:
 pytest -q
 ```
 
+### API Usage
+
+Kari's FastAPI backend exposes a small set of endpoints for headless deployments.
+See [docs/api_usage.md](docs/api_usage.md) for the full list and example `curl`
+commands.
+
 ---
 
 ## 5 · Development Cheatsheet
@@ -151,6 +160,10 @@ cd desktop_ui && npx tauri build
 | Lint               | `ruff .`                               |
 | Tests              | `pytest`                               |
 | Hot-reload plugins | just save the folder—Kari auto-detects |
+### Advanced / Unrestricted Mode
+
+Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs marked as untrusted. Use with caution.
+
  
 
 ---
@@ -189,7 +202,7 @@ Drop the folder—Kari discovers it, registers routes, and injects UI automatica
  
 
 * **Dashboard** – CPU/RAM, capsule health, error feed
-* **LLM Manager** – download / switch local models
+* **LLM Manager** – download / switch local models via `/models` endpoints
 * **Plugins** – enable, disable, edit manifests live
 * **Memory Matrix** – inspect vector hits & decay curves
 * **Logs & Trace** – Prometheus charts, OT spans, SRE patch history
@@ -223,6 +236,29 @@ full-featured desktop experience.
 
 Detailed architecture diagrams, sprint plans, and Hydra-Ops capsule spec are in **`DEV_SHEET.md`** and **`docs/mesh_arch.md`**.
 
+Additional guides:
+
+- [API Usage](docs/api_usage.md)
+- [Feature Guide](docs/features_usage.md)
+- [Chat Interface](docs/chat_interface.md)
+- [Automation Features](docs/automation_features.md)
+- [SelfRefactor Engine](docs/self_refactor.md)
+- [n8n Integration](docs/n8n_integration.md)
+- [OpenAI Customer Service](docs/openai_customer_service.md)
+- [Plugin Specification](docs/plugin_spec.md)
+- [Memory Architecture](docs/memory_arch.md)
+- [Architecture Overview](docs/architecture.md)
+- [OpenAI vs Kari](docs/side_by_side_openai_kari.md)
+- [LLM Guide](docs/llm_guide.md)
+- [Event Bus](docs/event_bus.md)
+- [Observability](docs/observability.md)
+- [UI Handbook](docs/ui_handbook.md)
+- [ICE Wrapper](docs/ice_wrapper.md)
+- [Security Practices](docs/security.md)
+- [API Reference](docs/api_reference.md)
+- [Test Strategy](docs/tests.md)
+- [Contributing Guide](docs/contributing.md)
+
 ---
 
 ## 10 · License
@@ -239,7 +275,9 @@ This project contains the production-ready Kari AI stack. It includes:
 - Tauri Control Room for chat, dashboard and memory matrix.
 - Streamlit mobile UI for API demo.
 
-MIT — fork, modify, unleash chaos. 😈
+Released under the MIT license.
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ---
  
@@ -257,4 +295,5 @@ The Hydra-Ops capsule design is further detailed in `docs/mesh_arch.md`.
 * Example plugins: hello-world, desktop agent, HF LLM, OpenAI LLM
 * Tests: `pytest -q`
 * More in `DEV_SHEET.md` — happy hacking!
+* See the [UI Handbook](docs/ui_handbook.md) for Control Room navigation.
  

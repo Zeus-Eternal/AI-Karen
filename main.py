@@ -1,11 +1,11 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from typing import Any, Dict, List
 
 from core.cortex.dispatch import CortexDispatcher
-from core.soft_reasoning_engine import SoftReasoningEngine
 from core.embedding_manager import _METRICS as METRICS
-
-from typing import Any, Dict, List
+from core.soft_reasoning_engine import SoftReasoningEngine
+from fastapi import FastAPI
+from pydantic import BaseModel
+from src.integrations.llm_registry import registry as llm_registry
 
 app = FastAPI()
 
@@ -51,10 +51,18 @@ class MetricsResponse(BaseModel):
     metrics: Dict[str, float]
 
 
+class ModelListResponse(BaseModel):
+    models: List[str]
+    active: str
+
+
+class ModelSelectRequest(BaseModel):
+    model: str
+
+
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
-
 
 
 @app.get("/health")
@@ -68,23 +76,10 @@ def health() -> Dict[str, Any]:
 @app.get("/ready")
 def ready() -> Dict[str, Any]:
     return {"ready": True}
- 
 
 
 @app.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
-
-
-
-@app.post("/chat")
-async def chat(req: ChatRequest) -> ChatResponse:
-    role = getattr(req, "role", "user")
-    data = await dispatcher.dispatch(req.text, role=role)
-    return ChatResponse(**data)
-
-@app.post("/chat")
-async def chat(req: ChatRequest):
- 
     role = getattr(req, "role", "user")
     data = await dispatcher.dispatch(req.text, role=role)
     return ChatResponse(**data)
@@ -111,19 +106,23 @@ async def search(req: SearchRequest) -> List[SearchResult]:
     )
     return [SearchResult(**r) for r in results]
 
+
 @app.get("/metrics")
 def metrics() -> MetricsResponse:
     agg = {k: sum(v) / len(v) if v else 0 for k, v in METRICS.items()}
     return MetricsResponse(metrics=agg)
 
+
 @app.get("/plugins")
 def list_plugins() -> List[str]:
     return dispatcher.router.list_intents()
+
 
 @app.post("/plugins/reload")
 def reload_plugins():
     dispatcher.router.reload()
     return {"status": "reloaded", "count": len(dispatcher.router.intent_map)}
+
 
 @app.get("/plugins/{intent}")
 def plugin_manifest(intent: str):
@@ -131,3 +130,25 @@ def plugin_manifest(intent: str):
     if not plugin:
         return {"error": "not found"}
     return plugin.manifest
+
+
+@app.get("/models")
+def list_models() -> ModelListResponse:
+    models = list(llm_registry.list_models())
+    return ModelListResponse(models=models, active=llm_registry.active)
+
+
+@app.post("/models/select")
+def select_model(req: ModelSelectRequest) -> ModelListResponse:
+    llm_registry.set_active(req.model)
+    models = list(llm_registry.list_models())
+    return ModelListResponse(models=models, active=llm_registry.active)
+
+
+@app.get("/self_refactor/logs")
+def self_refactor_logs(full: bool = False):
+    """Return SelfRefactor logs. Sanitized unless ADVANCED_MODE allows full."""
+    from src.self_refactor import log_utils
+
+    logs = log_utils.load_logs(full=full)
+    return {"logs": logs}
