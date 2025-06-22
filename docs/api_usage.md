@@ -17,6 +17,7 @@ This document explains how to interact with Kari's FastAPI service. All endpoint
 | `POST` | `/plugins/reload` | Reload plugin manifests from disk. |
 | `GET`  | `/plugins/{intent}` | Return the manifest for a single plugin. |
 | `GET`  | `/self_refactor/logs` | Retrieve SelfRefactor logs. Use `?full=true` with `ADVANCED_MODE=true` for unsanitized output. |
+ 
 | `GET`  | `/models` | List LLM backends. |
 | `POST` | `/models/select` | Select the active LLM. |
 
@@ -41,6 +42,7 @@ Reload plugins:
 curl -X POST http://localhost:8000/plugins/reload
 ```
 
+ 
 List available models and switch the active one:
 
 ```bash
@@ -48,6 +50,7 @@ curl http://localhost:8000/models
 curl -X POST -H "Content-Type: application/json" \
     -d '{"model": "local"}' http://localhost:8000/models/select
 ```
+
 
 ## Advanced Mode
 

@@ -13,7 +13,9 @@ import time
 from typing import Dict, List, Tuple
 
 from integrations.nanda_client import NANDAClient
+ 
 from src.integrations.llm_registry import registry as llm_registry
+
 from src.integrations.llm_utils import LLMUtils
 
 
@@ -41,8 +43,13 @@ class SelfRefactorEngine:
         test_cmd=None,
     ) -> None:
         self.repo_root = pathlib.Path(repo_root)
+ 
         self.llm = llm or llm_registry.get_active()
         self.deepseek = deepseek or llm_registry.get_active()
+
+        self.llm = llm or LLMUtils()
+        self.deepseek = deepseek or LLMUtils()
+ 
         self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
         self.test_cmd = test_cmd or ["pytest", "-q"]
 

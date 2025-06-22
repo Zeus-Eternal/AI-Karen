@@ -11,7 +11,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List
 
+ 
 from src.integrations.llm_registry import registry as llm_registry
+
 from src.integrations.llm_utils import LLMUtils
 
 from ..soft_reasoning_engine import SoftReasoningEngine
@@ -23,7 +25,11 @@ class KariICEWrapper:
     def __init__(self, threshold: float = 0.3, llm: LLMUtils | None = None) -> None:
         self.engine = SoftReasoningEngine()
         self.threshold = threshold
+ 
         self.llm = llm or llm_registry.get_active()
+
+        self.llm = llm or LLMUtils()
+ 
 
     def process(self, text: str) -> Dict[str, Any]:
         """Return entropy, memory matches and a short analysis."""

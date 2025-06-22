@@ -93,9 +93,8 @@ ui:
   icon: "🖼️"
 ```
 
-Optional files include `prompt.txt`, `handler.py`, and `ui.py` exposing `render()`.
-Handlers implement:
 
+ 
 ```python
 plugin_path/handler.py :: run(prompt: str, intent: dict, user_id: str) -> dict | str
 ```
@@ -215,6 +214,7 @@ Maintain this cheat-sheet. Any future architectural change must update this file
 ## Outstanding Integrations
 
 - ICE reasoning wrapper for deep reasoning tasks
+
 
 More detailed documentation lives in the `docs/` folder:
 - [plugin_spec.md](docs/plugin_spec.md) for plugin schemas

@@ -132,6 +132,7 @@ def plugin_manifest(intent: str):
     return plugin.manifest
 
 
+ 
 @app.get("/models")
 def list_models() -> ModelListResponse:
     models = list(llm_registry.list_models())
@@ -143,6 +144,7 @@ def select_model(req: ModelSelectRequest) -> ModelListResponse:
     llm_registry.set_active(req.model)
     models = list(llm_registry.list_models())
     return ModelListResponse(models=models, active=llm_registry.active)
+
 
 
 @app.get("/self_refactor/logs")
