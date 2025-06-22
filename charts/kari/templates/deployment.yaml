@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kari
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kari
+  template:
+    metadata:
+      labels:
+        app: kari
+    spec:
+      containers:
+        - name: kari
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.service.port }}
