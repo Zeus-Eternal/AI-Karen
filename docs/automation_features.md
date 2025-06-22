@@ -1,10 +1,10 @@
 # Automation Features
 
-Kari includes a lightweight automation layer for chaining tasks and local RPA actions. These helpers are designed for on-prem deployments where network access may be limited.
+Kari ships with a **proprietary automation layer** for chaining tasks and local RPA actions. It's built for secure on‑prem deployments where network access may be restricted.
 
 ## 1. Automation Manager
 
-The `AutomationManager` collects asynchronous tasks and executes them sequentially. Plugins can enqueue coroutines that interact with external systems or local scripts.
+Our `AutomationManager` orchestrates asynchronous tasks using a custom queue. Plugins can enqueue coroutines that interact with local scripts or trigger n8n workflows.
 
 ```python
 from integrations.automation_manager import AutomationManager
@@ -16,7 +16,7 @@ results = await auto.run_all()
 
 ## 2. Local RPA Client
 
-`LocalRPAClient` wraps **PyAutoGUI** for desktop automation. It can click, type, and take screenshots.
+The `LocalRPAClient` is Kari's locked‑down wrapper around **PyAutoGUI** for desktop automation. It can click, type, and take screenshots.
 
 ```python
 from integrations.local_rpa_client import LocalRPAClient
@@ -31,16 +31,16 @@ Use this only on trusted machines because it controls the local keyboard and mou
 
 ## 3. Workflow Engine Integration
 
-`WorkflowEngineClient` is a simple bridge to trigger n8n workflows. Set `workflow_slug` in a plugin manifest and call `trigger()` with a payload.
+The `WorkflowEngineClient` provides a proprietary bridge to n8n. Set `workflow_slug` in a plugin manifest and call `trigger()` with a payload.
 
 ```python
-from src.core.workflow_engine_client import WorkflowEngineClient
+from core.workflow_engine_client import WorkflowEngineClient
 
 wf = WorkflowEngineClient()
 wf.trigger("onboarding", {"user_id": 123})
 ```
 
-In production you would implement real HTTP calls to your n8n instance. The current stub simply prints to the console.
+Our production build uses a custom HTTP client to contact your n8n instance. The open‑source stub simply prints the payload.
 
 ## Basic vs Advanced
 
