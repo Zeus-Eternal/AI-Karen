@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 - Plugin UI gating and SelfRefactor log sanitization
 - Documentation suite covering API, memory, event bus and UI
 
+ 
+## [0.4.1] - 2025-06-22
+### Added
+- ICE reasoning wrapper with LLM-based analysis
+- Documentation for the ICE wrapper
+
+
+ 
 ### Changed
 - Updated plugin router to handle file-based modules
 

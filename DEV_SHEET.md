@@ -93,6 +93,8 @@ ui:
   icon: "🖼️"
 ```
 
+
+ 
 More detailed documentation lives in the `docs/` folder:
 - [plugin_spec.md](docs/plugin_spec.md) for plugin schemas
 - [memory_arch.md](docs/memory_arch.md) for the vector store design

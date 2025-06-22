@@ -242,11 +242,15 @@ Additional guides:
  
 - [Chat Interface](docs/chat_interface.md)
 
+ 
+- [Chat Interface](docs/chat_interface.md)
+
+ 
 - [Automation Features](docs/automation_features.md)
 - [SelfRefactor Engine](docs/self_refactor.md)
 - [n8n Integration](docs/n8n_integration.md)
 - [OpenAI Customer Service](docs/openai_customer_service.md)
- 
+
 - [Plugin Specification](docs/plugin_spec.md)
 - [Memory Architecture](docs/memory_arch.md)
 - [Architecture Overview](docs/architecture.md)
@@ -256,6 +260,9 @@ Additional guides:
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
 - [UI Handbook](docs/ui_handbook.md)
+ 
+- [ICE Wrapper](docs/ice_wrapper.md)
+
 - [Security Practices](docs/security.md)
 - [API Reference](docs/api_reference.md)
 - [Test Strategy](docs/tests.md)
@@ -283,6 +290,11 @@ Released under the MIT license.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
+ 
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+ 
  
 
 ---
