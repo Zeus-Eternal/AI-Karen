@@ -9,3 +9,10 @@ transformers
  
 huggingface_hub
 openai
+requests
+streamlit
+
+ 
+huggingface_hub
+openai
+ 

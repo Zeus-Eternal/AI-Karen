@@ -1,20 +1,23 @@
- 
+
 """HuggingFace-backed text generation utilities with optional caching."""
 
 from __future__ import annotations
 
 from pathlib import Path
+ 
+
 
 """HuggingFace-backed text generation utilities."""
 
 from __future__ import annotations
 
  
+ 
 from typing import Optional
 
 
 class LLMUtils:
- 
+
     """Wrapper around a local HuggingFace pipeline with auto-download."""
 
     def __init__(self, model_name: str = "distilgpt2", cache_dir: str | None = None) -> None:
@@ -43,6 +46,7 @@ class LLMUtils:
                 tokenizer=model_path,
                 cache_dir=str(self.cache_dir),
 
+
     """Wrapper around a local HuggingFace pipeline."""
 
     def __init__(self, model_name: str = "distilgpt2") -> None:
@@ -51,6 +55,7 @@ class LLMUtils:
 
             self.generator = pipeline(
                 "text-generation", model=model_name, tokenizer=model_name
+ 
  
             )
         except Exception as exc:  # pragma: no cover - optional dependency

@@ -1,4 +1,7 @@
  
+
+ 
+ 
 from __future__ import annotations
 
 """Lightweight local NANDA snippet registry."""
@@ -49,6 +52,8 @@ class NANDAClient:
             }
         )
         self._save(data)
+ 
+
 
 class NANDAClient:
     """Stub client for the NANDA agent federation."""
@@ -65,4 +70,5 @@ class NANDAClient:
         _ = (snippet, metadata)
         return None
 
+ 
  

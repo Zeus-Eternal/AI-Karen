@@ -33,7 +33,7 @@ def test_invalid_manifest(monkeypatch, tmp_path):
 
     handler = router.get_handler("greet")
     assert handler is None
- 
+
 
 
 def test_dispatch_with_rbac():
@@ -58,5 +58,3 @@ def test_list_intents():
     router = PluginRouter()
     intents = router.list_intents()
     assert "greet" in intents
-
- 

@@ -3,11 +3,19 @@ import pathlib
 from src.self_refactor import SelfRefactorEngine
 
 
+ 
+class DummyLLM:
+    def __init__(self):
+        self.prompts = []
+
+    def generate_text(self, prompt: str, max_tokens: int = 128) -> str:
+
 class DummyDeepSeek:
     def __init__(self):
         self.prompts = []
 
     def generate(self, prompt: str) -> str:
+ 
         self.prompts.append(prompt)
         return "patched-code"
 
@@ -33,7 +41,11 @@ def test_propose_patches(tmp_path):
     make_large_file(f2)
 
     engine = SelfRefactorEngine(repo_root=repo,
+ 
+                                llm=DummyLLM(),
+
                                 deepseek=DummyDeepSeek(),
+ 
                                 nanda=DummyNANDA())
 
     issues = engine.static_analysis()

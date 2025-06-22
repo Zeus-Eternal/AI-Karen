@@ -7,12 +7,15 @@ import json
 import os
 import asyncio
 from dataclasses import dataclass
+ 
+
 
  
 from typing import Any, Callable, Dict, Iterable, Optional, List
-
-from typing import Callable, Dict, Optional
  
+
+from typing import Any, Callable, Dict, Iterable, Optional, List
+
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
@@ -56,10 +59,15 @@ class PluginRouter:
                 # Skip plugins with malformed manifest files
                 print(f"Failed to parse manifest for {name}: {exc}")
                 continue
+ rpblna-codex/implement-self-refactor-engine-workflow
+            if manifest.get("plugin_api_version") != "1.0":
+                continue
+
  
             if manifest.get("plugin_api_version") != "1.0":
                 continue
 
+ 
  
             try:
                 module = importlib.import_module(f"plugins.{name}.handler")
@@ -95,7 +103,7 @@ class PluginRouter:
         if not plugin_record:
             return None
         return plugin_record.handler
- 
+
 
     async def dispatch(
         self, intent: str, params: Dict[str, Any], roles: Iterable[str] | None = None
@@ -112,4 +120,3 @@ class PluginRouter:
             return await result
         return result
 
- 

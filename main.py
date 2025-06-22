@@ -56,7 +56,7 @@ def ping():
     return {"status": "ok"}
 
 
- 
+
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {
@@ -68,6 +68,12 @@ def health() -> Dict[str, Any]:
 @app.get("/ready")
 def ready() -> Dict[str, Any]:
     return {"ready": True}
+ 
+
+
+@app.post("/chat")
+async def chat(req: ChatRequest) -> ChatResponse:
+
 
 
 @app.post("/chat")
@@ -78,9 +84,10 @@ async def chat(req: ChatRequest) -> ChatResponse:
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    role = getattr(req, "role", "user")
-    return await dispatcher.dispatch(req.text, role=role)
  
+    role = getattr(req, "role", "user")
+    data = await dispatcher.dispatch(req.text, role=role)
+    return ChatResponse(**data)
 
 
 @app.post("/store")

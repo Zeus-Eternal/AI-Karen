@@ -1,7 +1,4 @@
- 
 
-
- 
 """Self-refactoring engine with simple RL loop."""
 
 from __future__ import annotations
@@ -19,18 +16,18 @@ import time
 
  
 
+ 
+
 import ast
 import pathlib
+ 
  
  
 from typing import Dict, List, Tuple
 
 
 class PatchReport(dict):
- 
 
-
- 
     """Dictionary-based patch report with typed helpers."""
 
     @property
@@ -42,25 +39,88 @@ class PatchReport(dict):
         return self.get("patches", {})
 
 
- 
 
- 
- 
 from integrations.nanda_client import NANDAClient
 from src.integrations.llm_utils import LLMUtils
 
 
+ 
+class _OpenAILLM:
+    """Very small wrapper around the OpenAI SDK"""
+
+    def __init__(self, model: str = "gpt-3.5-turbo") -> None:
+        try:  # pragma: no cover - optional dependency
+            import openai  # type: ignore
+
+            self._openai = openai
+            self.model = model
+        except Exception as exc:  # pragma: no cover
+            self._openai = None
+            self._error = exc
+            self.model = model
+
+    def generate_text(self, prompt: str, max_tokens: int = 128) -> str:
+        if not self._openai:
+            return f"{prompt} (openai unavailable)"
+        resp = self._openai.ChatCompletion.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+        )
+        return resp.choices[0].message["content"]
+
+
+
+ 
 class SelfRefactorEngine:
     """Run static analysis and LLM-guided refactoring cycles."""
 
     def __init__(
         self,
         repo_root: pathlib.Path,
+ 
+        llm: object | None = None,
+
         deepseek: LLMUtils | None = None,
+ 
         nanda: NANDAClient | None = None,
         test_cmd=None,
     ) -> None:
         self.repo_root = pathlib.Path(repo_root)
+ 
+        self.llm = llm or self._default_llm()
+        self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
+        self.test_cmd = test_cmd or ["pytest", "-q"]
+
+    def _default_llm(self) -> object:
+        backend = os.getenv("SRE_LLM", "hf").lower()
+        if backend == "openai":
+            return _OpenAILLM()
+        # "deepseek" backend is optional and treated the same as hf if missing
+        if backend == "deepseek":  # pragma: no cover - optional dependency
+            try:
+                from deepseek_engineer import DeepSeek
+
+                class _DSWrapper:
+                    def __init__(self) -> None:
+                        self._ds = DeepSeek(model_path="models/deepseek-v2.ggml")
+
+                    def generate_text(self, prompt: str, max_tokens: int = 128) -> str:
+                        return self._ds.generate(prompt, max_tokens)
+
+                return _DSWrapper()
+            except Exception:
+                pass
+        return LLMUtils()
+
+    def _generate(self, prompt: str) -> str:
+        if hasattr(self.llm, "generate_text"):
+            return self.llm.generate_text(prompt)
+        if hasattr(self.llm, "generate"):
+            return self.llm.generate(prompt)
+        raise AttributeError("LLM backend missing generate method")
+
+
         self.deepseek = deepseek or LLMUtils()
         self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
         self.test_cmd = test_cmd or ["pytest", "-q"]
@@ -91,7 +151,6 @@ class SelfRefactorEngine:
 
  
  
- 
     def static_analysis(self) -> List[Tuple[pathlib.Path, str]]:
         issues = []
         for file in self.repo_root.rglob("*.py"):
@@ -112,6 +171,12 @@ class SelfRefactorEngine:
         remote_hints = self.nanda.discover("python refactor large module")
         context = "\n\n".join(h.get("snippet", "") for h in remote_hints[:3])
         return {
+ 
+            p: self._generate(f"{context}\n### PATCH\n{pr}")
+            for (p, _), pr in zip(issues, prompts)
+        }
+
+
             p: self.deepseek.generate(f"{context}\n### PATCH\n{pr}")
             for (p, _), pr in zip(issues, prompts)
  
@@ -128,6 +193,7 @@ class SelfRefactorEngine:
         } 
  
 
+ 
  
     def test_patches(self, patches: Dict[pathlib.Path, str]) -> PatchReport:
         """Apply patches in a sandbox and run the test suite."""
