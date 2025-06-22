@@ -1,4 +1,5 @@
 import asyncio
+import json
 import sys
 from types import ModuleType
 import pytest
@@ -35,7 +36,6 @@ def test_invalid_manifest(monkeypatch, tmp_path):
     assert handler is None
 
 
-
 def test_dispatch_with_rbac():
     for dep in ["pyautogui", "urwid"]:
         ensure_optional_dependency(dep)
@@ -58,3 +58,31 @@ def test_list_intents():
     router = PluginRouter()
     intents = router.list_intents()
     assert "greet" in intents
+
+
+def test_plugin_ui_gating(tmp_path, monkeypatch):
+    plugin = tmp_path / "ui_plugin"
+    plugin.mkdir()
+    (plugin / "plugin_manifest.json").write_text(
+        json.dumps(
+            {
+                "plugin_api_version": "1.0",
+                "intent": "ui_intent",
+                "enable_external_workflow": False,
+                "required_roles": ["user"],
+                "trusted_ui": False,
+            }
+        )
+    )
+    (plugin / "handler.py").write_text("async def run(params):\n    return 'ok'\n")
+    (plugin / "ui.py").write_text("def render():\n    return '<div>UI</div>'\n")
+    monkeypatch.setattr("core.plugin_router.PLUGIN_DIR", str(tmp_path))
+    sys.path.insert(0, str(tmp_path))
+    router = PluginRouter(plugin_dir=str(tmp_path))
+    record = router.get_plugin("ui_intent")
+    assert record is not None
+    assert record.ui is None
+    monkeypatch.setenv("ADVANCED_MODE", "true")
+    router.reload()
+    record = router.get_plugin("ui_intent")
+    assert record.ui is not None

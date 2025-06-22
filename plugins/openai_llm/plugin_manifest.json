@@ -2,5 +2,8 @@
   "plugin_api_version": "1.0",
   "intent": "openai_generate",
   "enable_external_workflow": false,
-  "required_roles": ["admin"]
+  "required_roles": [
+    "admin"
+  ],
+  "trusted_ui": false
 }
