@@ -151,6 +151,10 @@ cd desktop_ui && npx tauri build
 | Lint               | `ruff .`                               |
 | Tests              | `pytest`                               |
 | Hot-reload plugins | just save the folder—Kari auto-detects |
+### Advanced / Unrestricted Mode
+
+Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs marked as untrusted. Use with caution.
+
  
 
 ---
