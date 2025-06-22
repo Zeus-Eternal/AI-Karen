@@ -17,7 +17,7 @@ except Exception:  # pragma: no cover
         def __init__(self, *a, **k): pass
         def observe(self, *a, **k): pass
 
-from src.core.prompt_router import PromptRouter
+from core.prompt_router import PromptRouter
 
 
 @dataclass
