@@ -136,6 +136,12 @@ Run tests:
 pytest -q
 ```
 
+### API Usage
+
+Kari's FastAPI backend exposes a small set of endpoints for headless deployments.
+See [docs/api_usage.md](docs/api_usage.md) for the full list and example `curl`
+commands.
+
 ---
 
 ## 5 · Development Cheatsheet
@@ -151,6 +157,10 @@ cd desktop_ui && npx tauri build
 | Lint               | `ruff .`                               |
 | Tests              | `pytest`                               |
 | Hot-reload plugins | just save the folder—Kari auto-detects |
+### Advanced / Unrestricted Mode
+
+Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs marked as untrusted. Use with caution.
+
  
 
 ---
