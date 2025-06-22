@@ -235,6 +235,15 @@ full-featured desktop experience.
 
 Detailed architecture diagrams, sprint plans, and Hydra-Ops capsule spec are in **`DEV_SHEET.md`** and **`docs/mesh_arch.md`**.
 
+Additional guides:
+
+- [API Usage](docs/api_usage.md)
+- [Feature Guide](docs/features_usage.md)
+- [Automation Features](docs/automation_features.md)
+- [SelfRefactor Engine](docs/self_refactor.md)
+- [n8n Integration](docs/n8n_integration.md)
+- [OpenAI Customer Service](docs/openai_customer_service.md)
+
 ---
 
 ## 10 · License
@@ -251,7 +260,7 @@ This project contains the production-ready Kari AI stack. It includes:
 - Tauri Control Room for chat, dashboard and memory matrix.
 - Streamlit mobile UI for API demo.
 
-MIT — fork, modify, unleash chaos. 😈
+Released under the MIT license.
 
 ---
  
