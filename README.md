@@ -60,6 +60,8 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 | **Observability**    | Prometheus metrics, OpenTelemetry tracing, EchoCore immutable logs            |
 | **UI**               | Tauri Control Room: dashboards, model manager, plugin config, memory matrix   |
 
+Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
+
  
 ```
 core/          # dispatch, embeddings, reasoning
