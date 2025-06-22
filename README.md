@@ -246,6 +246,8 @@ Additional guides:
 - [OpenAI Customer Service](docs/openai_customer_service.md)
 - [Plugin Specification](docs/plugin_spec.md)
 - [Memory Architecture](docs/memory_arch.md)
+- [Architecture Overview](docs/architecture.md)
+- [OpenAI vs Kari](docs/side_by_side_openai_kari.md)
 - [LLM Guide](docs/llm_guide.md)
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
