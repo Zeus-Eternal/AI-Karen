@@ -7,10 +7,12 @@ All notable changes to this project will be documented in this file.
 - Plugin UI gating and SelfRefactor log sanitization
 - Documentation suite covering API, memory, event bus and UI
 
+
 ## [0.4.1] - 2025-06-22
 ### Added
 - ICE reasoning wrapper with LLM-based analysis
 - Documentation for the ICE wrapper
+
 
 ### Changed
 - Updated plugin router to handle file-based modules
@@ -18,10 +20,12 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Scheduler and reasoning engine cleanup
 
+ 
 ## [0.4.2] - 2025-06-22
 ### Added
 - ChatHub with slash commands, short-term NeuroVault memory and metrics
 - Expanded feature guide and memory docs with ChatHub details
+
 
 ## [0.3.0] - 2025-05-10
 - EchoCore integration with reflection tokens
