@@ -1,4 +1,5 @@
 import asyncio
+import json
 import re
 from types import SimpleNamespace
 from urllib.parse import parse_qs
@@ -29,7 +30,7 @@ class FastAPI:
             return func
         return decorator
 
-    async def __call__(self, method, path, json=None):
+    async def _handle_request(self, method, path, json=None):
         query = {}
         if "?" in path:
             path, qs = path.split("?", 1)
@@ -56,6 +57,32 @@ class FastAPI:
                 arg = SimpleNamespace(**params)
                 return func(arg)
         raise KeyError((method, path))
+
+    async def __call__(self, *args, **kwargs):
+        if len(args) == 3 and isinstance(args[0], dict):
+            return await self._asgi(*args)  # type: ignore[arg-type]
+        return await self._handle_request(*args, **kwargs)
+
+    async def _asgi(self, scope, receive, send):
+        assert scope["type"] == "http"
+        body = b""
+        while True:
+            message = await receive()
+            body += message.get("body", b"")
+            if not message.get("more_body"):
+                break
+        json_data = None
+        if body:
+            try:
+                json_data = json.loads(body.decode())
+            except Exception:
+                json_data = None
+        data = await self._handle_request(scope["method"], scope["path"], json_data)
+        resp = Response(data)
+        content = json.dumps(resp.json()).encode()
+        headers = [(b"content-type", b"application/json")]
+        await send({"type": "http.response.start", "status": resp.status_code, "headers": headers})
+        await send({"type": "http.response.body", "body": content})
 
 class Response:
     def __init__(self, data, status_code=200):

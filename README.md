@@ -97,6 +97,11 @@ pydantic/      # DTOs & schemas
 tests/         # pytest suite
 docs/          # architecture docs (mesh_arch.md, …)
 ```
+### Prerequisites
+* Docker and Docker Compose
+* Node.js 18+ with npm
+* Rust toolchain (`cargo`) for Tauri builds
+
 
 ---
 
@@ -104,32 +109,27 @@ docs/          # architecture docs (mesh_arch.md, …)
 
 ```bash
 # 1 · Install Python deps
-pip install -r requirements.txt
+./scripts/install.sh
 
-# 2 · Launch backend API
-uvicorn main:app --reload
+# 2 · Install Control Room packages
+cd desktop_ui/frontend && npm install && cd ../..
 
-# 3 · Run desktop Control Room (dev mode)
-cd desktop_ui
-npx tauri dev
- 
+# 3 · Launch backend API + dependencies
+./scripts/start.sh
+
+# 4 · Run desktop Control Room (dev mode)
+cd desktop_ui && npx tauri dev
+
 ```
 
 **Full stack (API + Milvus + Redis + Prometheus):**
 
 ```bash
-docker compose up
+# after use
+./scripts/stop.sh
 ```
 
 Build signed desktop binaries:
-
- 
-# Launch the Control Room
-cd desktop_ui && npx tauri dev
-
-# Launch the mobile web UI
-streamlit run mobile_ui/app.py
-
 ```bash
 cd desktop_ui
 npx tauri build          # outputs .app / .exe / .AppImage
