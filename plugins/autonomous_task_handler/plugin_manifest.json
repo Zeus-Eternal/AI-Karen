@@ -3,5 +3,9 @@
   "intent": "autonomous_task_handler",
   "enable_external_workflow": true,
   "workflow_slug": "autonomous_task_followup",
-  "required_roles": ["admin", "power_user"]
+  "required_roles": [
+    "admin",
+    "power_user"
+  ],
+  "trusted_ui": false
 }

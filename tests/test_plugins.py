@@ -34,6 +34,7 @@ def test_manifest_and_handler():
         assert 'enable_external_workflow' in manifest
         assert 'required_roles' in manifest
         assert 'intent' in manifest
+        assert 'trusted_ui' in manifest
 
         # provide dummy optional deps such as pyautogui and urwid
         for dep in ['pyautogui', 'urwid']:

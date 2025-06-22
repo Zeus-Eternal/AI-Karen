@@ -1,6 +1,9 @@
 {
   "plugin_api_version": "1.0",
   "enable_external_workflow": false,
-  "required_roles": ["user"],
-  "intent": "greet"
+  "required_roles": [
+    "user"
+  ],
+  "intent": "greet",
+  "trusted_ui": false
 }
