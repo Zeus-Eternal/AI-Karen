@@ -16,3 +16,4 @@ streamlit
 huggingface_hub
 openai
  
+prometheus_client
