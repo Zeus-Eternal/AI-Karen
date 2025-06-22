@@ -59,6 +59,9 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 | **Ops Mesh**         | *Hydra-Ops* capsules (DevOps, Finance, Growth, …) with guardrails & event bus |
 | **Observability**    | Prometheus metrics, OpenTelemetry tracing, EchoCore immutable logs            |
 | **UI**               | Tauri Control Room: dashboards, model manager, plugin config, memory matrix   |
+| **Chat Hub**        | Slash commands with short-term memory via NeuroVault |
+
+Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
 
 Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
 
@@ -246,6 +249,10 @@ Additional guides:
 - [Chat Interface](docs/chat_interface.md)
 
  
+- [Chat Interface](docs/chat_interface.md)
+
+ 
+ 
 - [Automation Features](docs/automation_features.md)
 - [SelfRefactor Engine](docs/self_refactor.md)
 - [n8n Integration](docs/n8n_integration.md)
@@ -292,10 +299,6 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
  
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
-
- 
- 
 
 ---
  
