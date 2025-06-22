@@ -136,6 +136,12 @@ Run tests:
 pytest -q
 ```
 
+### API Usage
+
+Kari's FastAPI backend exposes a small set of endpoints for headless deployments.
+See [docs/api_usage.md](docs/api_usage.md) for the full list and example `curl`
+commands.
+
 ---
 
 ## 5 · Development Cheatsheet
