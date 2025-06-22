@@ -1,6 +1,6 @@
 # n8n Workflow Integration
 
-Kari can interface with n8n to trigger external workflows. This is useful for complex automations that span multiple services.
+Kari includes a proprietary bridge to n8n for orchestrating external workflows. Use it to chain our local agents with your existing automation pipelines.
 
 ## Setup
 
@@ -15,10 +15,10 @@ Kari can interface with n8n to trigger external workflows. This is useful for co
 3. In your plugin code, call `WorkflowEngineClient.trigger()` with the desired slug and payload.
 
 ```python
-from src.core.workflow_engine_client import WorkflowEngineClient
+from core.workflow_engine_client import WorkflowEngineClient
 
 wf = WorkflowEngineClient()
 wf.trigger("support_ticket", {"issue": "printer jam"})
 ```
 
-The default implementation prints the payload. Replace the method with an HTTP request to your n8n API for production use.
+The open-source implementation prints the payload. The production build uses our custom HTTP layer to communicate securely with n8n.
