@@ -2,20 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
+import importlib.util
 import json
 import os
-import asyncio
 from dataclasses import dataclass
- 
-
-
- 
 from typing import Any, Callable, Dict, Iterable, Optional, List
- 
-
-from typing import Any, Callable, Dict, Iterable, Optional, List
-
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
@@ -28,6 +21,7 @@ class PluginRecord:
     name: str
     manifest: Dict[str, object]
     handler: Callable[[Dict[str, object]], object]
+    ui: object | None = None
 
 
 class AccessDenied(Exception):
@@ -59,33 +53,50 @@ class PluginRouter:
                 # Skip plugins with malformed manifest files
                 print(f"Failed to parse manifest for {name}: {exc}")
                 continue
- rpblna-codex/implement-self-refactor-engine-workflow
             if manifest.get("plugin_api_version") != "1.0":
                 continue
 
- 
-            if manifest.get("plugin_api_version") != "1.0":
-                continue
-
- 
- 
             try:
                 module = importlib.import_module(f"plugins.{name}.handler")
             except ModuleNotFoundError:
-                # Optional plugin dependency missing; skip loading
-                continue
+                try:
+                    spec = importlib.util.spec_from_file_location(
+                        f"{name}.handler", os.path.join(path, "handler.py")
+                    )
+                    module = importlib.util.module_from_spec(spec)
+                    assert spec.loader
+                    spec.loader.exec_module(module)  # type: ignore
+                except Exception:
+                    continue
             handler = getattr(module, "run", None)
             if handler is None:
                 continue
+
+            ui_module = None
+            ui_path = os.path.join(path, "ui.py")
+            advanced = os.getenv("ADVANCED_MODE", "false").lower() == "true"
+            if os.path.exists(ui_path) and (manifest.get("trusted_ui") or advanced):
+                try:
+                    spec = importlib.util.spec_from_file_location(
+                        f"plugins.{name}.ui", ui_path
+                    )
+                    ui_module = importlib.util.module_from_spec(spec)
+                    assert spec.loader
+                    spec.loader.exec_module(ui_module)  # type: ignore
+                except Exception as exc:
+                    print(f"Failed to load UI for {name}: {exc}")
+                    ui_module = None
+
+            record = PluginRecord(name, manifest, handler, ui_module)
             intent = manifest.get("intent")
             if not intent:
                 continue
             if isinstance(intent, list):
                 for single in intent:
                     if isinstance(single, str):
-                        self.intent_map[single] = PluginRecord(name, manifest, handler)
+                        self.intent_map[single] = record
             elif isinstance(intent, str):
-                self.intent_map[intent] = PluginRecord(name, manifest, handler)
+                self.intent_map[intent] = record
 
     def reload(self) -> None:
         """Reload plugin definitions from disk."""
@@ -104,7 +115,6 @@ class PluginRouter:
             return None
         return plugin_record.handler
 
-
     async def dispatch(
         self, intent: str, params: Dict[str, Any], roles: Iterable[str] | None = None
     ) -> Any:
@@ -119,4 +129,3 @@ class PluginRouter:
         if asyncio.iscoroutine(result):
             return await result
         return result
-

@@ -56,7 +56,6 @@ def ping():
     return {"status": "ok"}
 
 
-
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {
@@ -68,23 +67,10 @@ def health() -> Dict[str, Any]:
 @app.get("/ready")
 def ready() -> Dict[str, Any]:
     return {"ready": True}
- 
 
 
 @app.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
-
-
-
-@app.post("/chat")
-async def chat(req: ChatRequest) -> ChatResponse:
-    role = getattr(req, "role", "user")
-    data = await dispatcher.dispatch(req.text, role=role)
-    return ChatResponse(**data)
-
-@app.post("/chat")
-async def chat(req: ChatRequest):
- 
     role = getattr(req, "role", "user")
     data = await dispatcher.dispatch(req.text, role=role)
     return ChatResponse(**data)
@@ -111,19 +97,23 @@ async def search(req: SearchRequest) -> List[SearchResult]:
     )
     return [SearchResult(**r) for r in results]
 
+
 @app.get("/metrics")
 def metrics() -> MetricsResponse:
     agg = {k: sum(v) / len(v) if v else 0 for k, v in METRICS.items()}
     return MetricsResponse(metrics=agg)
 
+
 @app.get("/plugins")
 def list_plugins() -> List[str]:
     return dispatcher.router.list_intents()
+
 
 @app.post("/plugins/reload")
 def reload_plugins():
     dispatcher.router.reload()
     return {"status": "reloaded", "count": len(dispatcher.router.intent_map)}
+
 
 @app.get("/plugins/{intent}")
 def plugin_manifest(intent: str):
@@ -131,3 +121,12 @@ def plugin_manifest(intent: str):
     if not plugin:
         return {"error": "not found"}
     return plugin.manifest
+
+
+@app.get("/self_refactor/logs")
+def self_refactor_logs(full: bool = False):
+    """Return SelfRefactor logs. Sanitized unless ADVANCED_MODE allows full."""
+    from src.self_refactor import log_utils
+
+    logs = log_utils.load_logs(full=full)
+    return {"logs": logs}
