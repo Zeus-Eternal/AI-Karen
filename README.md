@@ -64,6 +64,7 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
 
 Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
+ 
 
  
 ```
@@ -204,7 +205,7 @@ Drop the folder—Kari discovers it, registers routes, and injects UI automatica
  
 
 * **Dashboard** – CPU/RAM, capsule health, error feed
-* **LLM Manager** – download / switch local models
+* **LLM Manager** – download / switch local models via `/models` endpoints
 * **Plugins** – enable, disable, edit manifests live
 * **Memory Matrix** – inspect vector hits & decay curves
 * **Logs & Trace** – Prometheus charts, OT spans, SRE patch history
@@ -252,7 +253,9 @@ Additional guides:
 - [Chat Interface](docs/chat_interface.md)
 
  
- 
+- [Chat Interface](docs/chat_interface.md)
+
+
 - [Automation Features](docs/automation_features.md)
 - [SelfRefactor Engine](docs/self_refactor.md)
 - [n8n Integration](docs/n8n_integration.md)
@@ -270,6 +273,10 @@ Additional guides:
  
 - [ICE Wrapper](docs/ice_wrapper.md)
 
+ 
+- [ICE Wrapper](docs/ice_wrapper.md)
+
+ 
 - [Security Practices](docs/security.md)
 - [API Reference](docs/api_reference.md)
 - [Test Strategy](docs/tests.md)
@@ -299,6 +306,11 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
  
 
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+ 
+
+ 
 
 ---
  

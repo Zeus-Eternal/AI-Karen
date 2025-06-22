@@ -1,11 +1,11 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from typing import Any, Dict, List
 
 from core.cortex.dispatch import CortexDispatcher
-from core.soft_reasoning_engine import SoftReasoningEngine
 from core.embedding_manager import _METRICS as METRICS
-
-from typing import Any, Dict, List
+from core.soft_reasoning_engine import SoftReasoningEngine
+from fastapi import FastAPI
+from pydantic import BaseModel
+from src.integrations.llm_registry import registry as llm_registry
 
 app = FastAPI()
 
@@ -49,6 +49,15 @@ class SearchResult(BaseModel):
 
 class MetricsResponse(BaseModel):
     metrics: Dict[str, float]
+
+
+class ModelListResponse(BaseModel):
+    models: List[str]
+    active: str
+
+
+class ModelSelectRequest(BaseModel):
+    model: str
 
 
 @app.get("/ping")
@@ -121,6 +130,21 @@ def plugin_manifest(intent: str):
     if not plugin:
         return {"error": "not found"}
     return plugin.manifest
+
+
+ 
+@app.get("/models")
+def list_models() -> ModelListResponse:
+    models = list(llm_registry.list_models())
+    return ModelListResponse(models=models, active=llm_registry.active)
+
+
+@app.post("/models/select")
+def select_model(req: ModelSelectRequest) -> ModelListResponse:
+    llm_registry.set_active(req.model)
+    models = list(llm_registry.list_models())
+    return ModelListResponse(models=models, active=llm_registry.active)
+
 
 
 @app.get("/self_refactor/logs")

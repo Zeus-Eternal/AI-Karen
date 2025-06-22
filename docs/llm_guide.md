@@ -22,7 +22,9 @@ In `plugins/hf_llm`, the handler will automatically download a model from Huggin
 
 ## Choosing a Model
 
-Use the LLM Manager page in the Control Room or call the `/models` endpoints to select a backend. Plugins can override the global model by providing their own settings.
+ 
+Use the LLM Manager page in the Control Room or call the `/models` endpoints to select a backend. The `llm_manager` plugin stores the active model in a local registry so the SelfRefactor engine and other components share the same backend. Plugins can override the global model by providing their own settings.
+
 
 ```bash
 curl -X POST -H "Content-Type: application/json" \

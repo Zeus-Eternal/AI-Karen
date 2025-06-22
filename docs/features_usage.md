@@ -2,18 +2,21 @@
 
 This document explains how to use Kari's core features. It is written for both non-technical users and developers deploying the system in headless environments.
 
- 
+
 ## 1. Chat Hub & Capsule Planner
 
 Kari exposes a `/chat` endpoint managed by `ChatHub`. Messages are routed to the appropriate capsule (micro‑agent) based on intent detection. The hub also supports slash commands and short‑term context storage in **NeuroVault**.
 
 Use `/help` to list commands, `/memory` to view recent snippets and `/purge` to clear them. Developers can supply a `role` field in the request to trigger privileged plugins when authorized.
 
-## 1. Chat & Capsule Planner
-
-Kari exposes a `/chat` endpoint that routes messages to the appropriate capsule (micro‑agent) based on intent detection. Users simply send plain text; Kari returns structured responses. Developers can supply a `role` field in the request to trigger privileged plugins when authorized.
  
 
+## 1. Chat & Capsule Planner
+
+Karen exposes a `/chat` endpoint that routes messages to the appropriate capsule (micro‑agent) based on intent detection. Users simply send plain text; Kari returns structured responses. Developers can supply a `role` field in the request to trigger privileged plugins when authorized.
+ 
+
+ 
 Example request:
 
 ```bash
@@ -42,7 +45,11 @@ In the Control Room, admins and developers can enable or disable plugins and vie
 
 ## 4. LLM Manager
 
+ 
+The LLM Manager page allows you to download or switch local models. Behind the scenes this calls the `llm_manager` plugin's `/models` endpoints to fetch available engines and select one as active. Use it when you need different model sizes for SelfRefactor or chat. Remote providers can be added as optional backends.
+
 The LLM Manager page allows you to download or switch local models. Behind the scenes this calls `/models` endpoints to fetch available engines and select one as active. Use it when you need different model sizes for SelfRefactor or chat.
+ 
 
 ## 5. SelfRefactor Logs
 
@@ -68,11 +75,13 @@ Advanced capsules can invoke the [ICE wrapper](ice_wrapper.md) for deeper reason
 
 ## 9. Roles & Access
 
+
  
 
 ## 8. Roles & Access
  
 
+ 
  
 - **User** – basic chat and memory search.
 - **Dev** – plugin manager, log viewer, LLM manager, capsule preview.
@@ -87,9 +96,14 @@ Endpoints enforce role checks based on the `role` value passed to `/chat` or the
  
 ## 10. Advanced Mode
 
+
+ 
+## 10. Advanced Mode
+
 ## 9. Advanced Mode
  
 
+ 
  
 Setting `ADVANCED_MODE=true` enables unrestricted plugin UIs and full SelfRefactor log output. Only enable this for trusted operators, as plugins may execute unreviewed code and log entries may expose repository details.
 
@@ -97,4 +111,8 @@ Setting `ADVANCED_MODE=true` enables unrestricted plugin UIs and full SelfRefact
 
  
 For a list of raw REST endpoints see [api_usage.md](api_usage.md). Architectural notes live in [mesh_arch.md](mesh_arch.md) and the sprint plans in [DEV_SHEET.md](../DEV_SHEET.md). See [plugin_spec.md](plugin_spec.md) for writing new plugins and [memory_arch.md](memory_arch.md) for details on the vector store.
+
+ 
+For a list of raw REST endpoints see [api_usage.md](api_usage.md). Architectural notes live in [mesh_arch.md](mesh_arch.md) and the sprint plans in [DEV_SHEET.md](../DEV_SHEET.md). See [plugin_spec.md](plugin_spec.md) for writing new plugins and [memory_arch.md](memory_arch.md) for details on the vector store.
+
 
