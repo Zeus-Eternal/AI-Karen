@@ -6,7 +6,13 @@ prompt_toolkit
 pydantic
 pytest
 transformers
+ 
 huggingface_hub
 openai
 requests
 streamlit
+
+ 
+huggingface_hub
+openai
+ 

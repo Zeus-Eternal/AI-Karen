@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+ 
 import os
+
 import threading
 from typing import Optional
 
@@ -10,6 +12,7 @@ from .engine import SelfRefactorEngine
 
 
 class SREScheduler:
+ 
     """Run the self-refactor loop at a configurable interval."""
 
     DEFAULT_INTERVAL = 7 * 24 * 3600
@@ -22,6 +25,13 @@ class SREScheduler:
         self.interval = interval or (
             float(env_val) if env_val else self.DEFAULT_INTERVAL
         )
+
+    """Run the self-refactor loop at a fixed interval."""
+
+    def __init__(self, engine: SelfRefactorEngine, interval: float = 3600.0) -> None:
+        self.engine = engine
+        self.interval = interval
+ 
         self._timer: Optional[threading.Timer] = None
         self._running = False
 
@@ -42,6 +52,7 @@ class SREScheduler:
             self._timer.start()
             self._running = True
 
+ 
     def set_interval(self, interval: float) -> None:
         """Update the run interval. Restart the timer if running."""
         self.interval = interval

@@ -1,3 +1,4 @@
+
 """Self-refactoring engine with simple RL loop."""
 
 from __future__ import annotations
@@ -11,10 +12,22 @@ import shutil
 import subprocess
 import tempfile
 import time
+ 
+
+ 
+
+ 
+
+import ast
+import pathlib
+ 
+ 
+ 
 from typing import Dict, List, Tuple
 
 
 class PatchReport(dict):
+
     """Dictionary-based patch report with typed helpers."""
 
     @property
@@ -26,10 +39,12 @@ class PatchReport(dict):
         return self.get("patches", {})
 
 
+
 from integrations.nanda_client import NANDAClient
 from src.integrations.llm_utils import LLMUtils
 
 
+ 
 class _OpenAILLM:
     """Very small wrapper around the OpenAI SDK"""
 
@@ -55,17 +70,24 @@ class _OpenAILLM:
         return resp.choices[0].message["content"]
 
 
+
+ 
 class SelfRefactorEngine:
     """Run static analysis and LLM-guided refactoring cycles."""
 
     def __init__(
         self,
         repo_root: pathlib.Path,
+ 
         llm: object | None = None,
+
+        deepseek: LLMUtils | None = None,
+ 
         nanda: NANDAClient | None = None,
         test_cmd=None,
     ) -> None:
         self.repo_root = pathlib.Path(repo_root)
+ 
         self.llm = llm or self._default_llm()
         self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
         self.test_cmd = test_cmd or ["pytest", "-q"]
@@ -98,6 +120,37 @@ class SelfRefactorEngine:
             return self.llm.generate(prompt)
         raise AttributeError("LLM backend missing generate method")
 
+
+        self.deepseek = deepseek or LLMUtils()
+        self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
+        self.test_cmd = test_cmd or ["pytest", "-q"]
+
+ 
+
+
+class SelfRefactorEngine:
+    """Run static analysis and LLM-guided refactoring cycles."""
+
+    def __init__(self, repo_root: pathlib.Path, deepseek, nanda, test_cmd=None) -> None:
+        self.repo_root = pathlib.Path(repo_root)
+        self.deepseek = deepseek
+        self.nanda = nanda
+        self.test_cmd = test_cmd or ["pytest", "-q"]
+
+ 
+
+    """Simple dict-based patch report"""
+    pass
+
+
+class SelfRefactorEngine:
+    def __init__(self, repo_root: pathlib.Path, deepseek, nanda):
+        self.repo_root = pathlib.Path(repo_root)
+        self.deepseek = deepseek
+        self.nanda = nanda
+
+ 
+ 
     def static_analysis(self) -> List[Tuple[pathlib.Path, str]]:
         issues = []
         for file in self.repo_root.rglob("*.py"):
@@ -118,10 +171,30 @@ class SelfRefactorEngine:
         remote_hints = self.nanda.discover("python refactor large module")
         context = "\n\n".join(h.get("snippet", "") for h in remote_hints[:3])
         return {
+ 
             p: self._generate(f"{context}\n### PATCH\n{pr}")
             for (p, _), pr in zip(issues, prompts)
         }
 
+
+            p: self.deepseek.generate(f"{context}\n### PATCH\n{pr}")
+            for (p, _), pr in zip(issues, prompts)
+ 
+        }
+
+
+ 
+        }
+
+
+ 
+        }
+
+        } 
+ 
+
+ 
+ 
     def test_patches(self, patches: Dict[pathlib.Path, str]) -> PatchReport:
         """Apply patches in a sandbox and run the test suite."""
         report: PatchReport = PatchReport()

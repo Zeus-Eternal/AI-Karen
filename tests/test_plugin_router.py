@@ -35,6 +35,7 @@ def test_invalid_manifest(monkeypatch, tmp_path):
     assert handler is None
 
 
+
 def test_dispatch_with_rbac():
     for dep in ["pyautogui", "urwid"]:
         ensure_optional_dependency(dep)
