@@ -1,0 +1,14 @@
+{
+  "llama3": {
+    "model_name": "llama3-8b",
+    "provider": "ollama",
+    "tokenizer_type": "bpe",
+    "prompt_limit_bytes": 32768
+  },
+  "echo_byte_llm": {
+    "model_name": "echo_byte_v1",
+    "provider": "local",
+    "tokenizer_type": "byte",
+    "prompt_limit_bytes": 65536
+  }
+}
