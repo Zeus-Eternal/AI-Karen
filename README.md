@@ -118,7 +118,6 @@ cd frontend && npm install && cd ../..
 
 # 4 · Run desktop Control Room (dev mode)
 cd desktop_ui && tauri dev  # uses src-tauri/tauri.conf.json
-```
 
 # Optional: run everything with one command
 ./scripts/bootstrap_ui.sh
