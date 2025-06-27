@@ -110,15 +110,18 @@ docs/          # architecture docs (mesh_arch.md, …)
 ./scripts/install.sh
 
 # 2 · Install Control Room packages
-cd desktop_ui/frontend && npm install && cd ../..
+cd desktop_ui && npm install
+cd frontend && npm install && cd ../..
 
 # 3 · Launch backend API + dependencies
 ./scripts/start.sh
 
 # 4 · Run desktop Control Room (dev mode)
-cd desktop_ui && npx tauri dev  # uses src-tauri/tauri.conf.json
-
+cd desktop_ui && tauri dev  # uses src-tauri/tauri.conf.json
 ```
+
+# Optional: run everything with one command
+./scripts/bootstrap_ui.sh
 
 **Full stack (API + Milvus + Redis + Prometheus):**
 
@@ -130,7 +133,7 @@ cd desktop_ui && npx tauri dev  # uses src-tauri/tauri.conf.json
 Build signed desktop binaries:
 ```bash
 cd desktop_ui
-npx tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.conf.json
+tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.conf.json
 ```
 
 Run tests:
@@ -152,7 +155,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && npx tauri build  # uses src-tauri/tauri.conf.json
+cd desktop_ui && tauri dev  # hot reloads the desktop shell
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |
@@ -259,6 +262,7 @@ Additional guides:
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
 - [UI Handbook](docs/ui_handbook.md)
+- [Development Guide](docs/development_guide.md)
  
 - [ICE Wrapper](docs/ice_wrapper.md)
 
