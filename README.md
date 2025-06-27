@@ -62,8 +62,6 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 | **Chat Hub**        | Slash commands with short-term memory via NeuroVault |
 
 Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
-
-Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
  
 
  
@@ -118,13 +116,7 @@ cd desktop_ui/frontend && npm install && cd ../..
 ./scripts/start.sh
 
 # 4 · Run desktop Control Room (dev mode)
-cd desktop_ui && npx tauri dev
-
-# 2 · Launch backend API + dependencies
-./scripts/start.sh
-
-# 3 · Run desktop Control Room (dev mode)
-cd desktop_ui && npx tauri dev
+cd desktop_ui && npx tauri dev  # uses src-tauri/tauri.conf.json
 
 ```
 
@@ -138,7 +130,7 @@ cd desktop_ui && npx tauri dev
 Build signed desktop binaries:
 ```bash
 cd desktop_ui
-npx tauri build          # outputs .app / .exe / .AppImage
+npx tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.conf.json
 ```
 
 Run tests:
@@ -160,7 +152,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && npx tauri build
+cd desktop_ui && npx tauri build  # uses src-tauri/tauri.conf.json
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |
@@ -252,15 +244,6 @@ Additional guides:
  
 - [Chat Interface](docs/chat_interface.md)
 
- 
-- [Chat Interface](docs/chat_interface.md)
-
- 
-- [Chat Interface](docs/chat_interface.md)
-
- 
-- [Chat Interface](docs/chat_interface.md)
-
 
 - [Automation Features](docs/automation_features.md)
 - [SelfRefactor Engine](docs/self_refactor.md)
@@ -276,9 +259,6 @@ Additional guides:
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
 - [UI Handbook](docs/ui_handbook.md)
- 
-- [ICE Wrapper](docs/ice_wrapper.md)
-
  
 - [ICE Wrapper](docs/ice_wrapper.md)
 
@@ -306,10 +286,6 @@ This project contains the production-ready Kari AI stack. It includes:
 - Streamlit mobile UI for API demo.
 
 Released under the MIT license.
- 
-
-See [CHANGELOG.md](CHANGELOG.md) for version history.
-
  
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
