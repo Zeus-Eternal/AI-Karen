@@ -6,4 +6,4 @@ The Tauri shell lives in `src-tauri/` and launches the UI
 pointing at the FastAPI backend running on `localhost:8000`.
 
 Run the backend with `uvicorn main:app` and start the UI using
-`npx tauri dev` from within this folder.
+`npx tauri dev --config src-tauri/tauri.config.json` from within this folder.
