@@ -117,8 +117,7 @@ cd frontend && npm install && cd ../..
 ./scripts/start.sh
 
 # 4 · Run desktop Control Room (dev mode)
-cd desktop_ui && npx tauri dev  # uses src-tauri/tauri.conf.json
-```
+cd desktop_ui && tauri dev  # uses src-tauri/tauri.conf.json
 
 # Optional: run everything with one command
 ./scripts/bootstrap_ui.sh
@@ -133,7 +132,7 @@ cd desktop_ui && npx tauri dev  # uses src-tauri/tauri.conf.json
 Build signed desktop binaries:
 ```bash
 cd desktop_ui
-npx tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.conf.json
+tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.conf.json
 ```
 
 Run tests:
@@ -155,7 +154,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && npx tauri build  # uses src-tauri/tauri.conf.json
+cd desktop_ui && tauri dev  # hot reloads the desktop shell
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |

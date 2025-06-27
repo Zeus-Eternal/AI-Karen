@@ -27,10 +27,10 @@ source "$HOME/.cargo/env"
 cargo install tauri-cli
 
 # run in development mode with hot reload
-cargo tauri dev
+tauri dev
 
 # or build a release binary
-cargo tauri build
+tauri build
 ```
 
 ## Summary
@@ -39,6 +39,6 @@ cargo tauri build
 | ------------- | ----------------------------------- | ----------------------------------- |
 | Dev (API)     | `uvicorn main:app --reload`         | Hot reload the backend              |
 | Dev (UI)      | `python desktop_ui/main.py`         | Python UI for quick tests           |
-| Tauri Dev     | `cargo tauri dev`                   | Desktop shell with live reload      |
-| Build         | `cargo tauri build`                 | Create installable binaries         |
+| Tauri Dev     | `tauri dev`                         | Desktop shell with live reload      |
+| Build         | `tauri build`                       | Create installable binaries         |
 

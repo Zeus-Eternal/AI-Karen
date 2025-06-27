@@ -8,4 +8,4 @@ pointing at the FastAPI backend running on `localhost:8000`.
 1. Install dependencies with `npm install` in this directory.
 2. Install frontend packages: `npm --prefix frontend install`.
 3. Start the backend with `uvicorn main:app`.
-4. Launch the UI using `npx tauri dev`.
+4. Launch the UI using `tauri dev`.
