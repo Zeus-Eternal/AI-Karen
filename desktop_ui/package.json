@@ -4,5 +4,8 @@
   "scripts": {
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.5.0"
   }
 }
