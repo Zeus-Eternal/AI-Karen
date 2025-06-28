@@ -78,6 +78,11 @@ fastapi_stub/  # lightweight stubs for tests
 pydantic_stub/ # lightweight stubs for tests
 tests/         # pytest suite
 
+> **Note**
+> These stub modules exist solely for the test suite. Ensure any old
+> `fastapi/` or `pydantic/` directories are removed so the real packages
+> are used when running `uvicorn`.
+
 ---
 
 ## 3 · Repository Layout

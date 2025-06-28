@@ -66,3 +66,21 @@ def test_plugin_management():
     assert manifest["intent"] == "greet"
     resp = client.post("/plugins/reload")
     assert resp.status_code == 200
+
+
+def test_chat_errors():
+    resp = client.post("/chat", json={"text": "hello", "role": "guest"})
+    assert resp.status_code == 403
+
+    resp = client.post("/chat", json={"text": "nonsense"})
+    assert resp.status_code == 404
+
+
+def test_plugin_manifest_not_found():
+    resp = client.get("/plugins/bogus")
+    assert resp.status_code == 404
+
+
+def test_select_model_invalid():
+    resp = client.post("/models/select", json={"model": "unknown"})
+    assert resp.status_code == 404

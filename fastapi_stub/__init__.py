@@ -57,7 +57,10 @@ class FastAPI:
                     return await func(**params)
                 except TypeError:
                     arg = SimpleNamespace(**params)
-                    return await func(arg)
+                    try:
+                        return await func(arg)
+                    except HTTPException as exc:
+                        return Response({"detail": exc.detail}, exc.status_code)
                 except HTTPException as exc:
                     return Response({"detail": exc.detail}, exc.status_code)
             try:

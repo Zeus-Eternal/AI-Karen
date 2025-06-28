@@ -10,8 +10,11 @@ class TestClient:
 
     def post(self, path, json=None):
         data = asyncio.run(self.app("POST", path, json))
+        if isinstance(data, Response):
+            return data
         return Response(data)
 
     def get(self, path):
         data = asyncio.run(self.app("GET", path))
-        return Response(data)
+        if isinstance(data, Response):
+            return data
