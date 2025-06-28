@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Optional
+import logging
 
 
 class LLMUtils:
@@ -42,6 +43,10 @@ class LLMUtils:
             self.generator = None
             self._counter = 0
             self._error: Optional[Exception] = exc
+            logging.getLogger(__name__).warning(
+                "LLM backend unavailable: %s. Install PyTorch or TensorFlow for full functionality.",
+                exc,
+            )
 
     def generate_text(self, prompt: str, max_tokens: int = 128) -> str:
         if self.generator:

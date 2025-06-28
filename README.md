@@ -116,14 +116,19 @@ For a detailed setup and troubleshooting guide, see [docs/install_dev.md](docs/i
 # 1 · Install Python deps
 ./scripts/install.sh
 
-# 2 · Install Control Room packages
-cd desktop_ui/frontend && npm install && cd ../..
+# 2 · Install Tauri CLI for desktop builds
+cargo install tauri-cli
 
-# 3 · Launch backend API + dependencies
+# 3 · Install Control Room packages
+cd desktop_ui && npm install
+cd frontend && npm install && cd ../..
+
+# 4 · Launch backend API + dependencies
 ./scripts/start.sh
 
-# 4 · Run desktop Control Room (dev mode)
-cd desktop_ui && npx tauri dev
+# 5 · Run desktop Control Room (dev mode)
+cd desktop_ui && tauri dev  # uses src-tauri/tauri.conf.json
+```
 
 # Optional: run everything with one command
 ./scripts/bootstrap_ui.sh
@@ -138,7 +143,8 @@ cd desktop_ui && npx tauri dev
 Build signed desktop binaries:
 ```bash
 cd desktop_ui
-npx tauri build         # outputs .app / .exe / .AppImage
+tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.conf.json
+
 ```
 
 Run tests:
@@ -208,7 +214,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && npx tauri dev
+cd desktop_ui && tauri dev  # hot reloads the desktop shell
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |
@@ -312,6 +318,7 @@ Additional guides:
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
 - [UI Handbook](docs/ui_handbook.md)
+- [Development Guide](docs/development_guide.md)
  
 - [ICE Wrapper](docs/ice_wrapper.md)
  
