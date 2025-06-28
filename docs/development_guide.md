@@ -4,7 +4,7 @@ This guide explains two common workflows for running Kari during development and
 
 ## Development Mode (Python UI)
 
-Use this path for rapid iteration without packaging.
+Use this path for rapid iteration without packaging. The simplest UI runs with Streamlit.
 
 ```bash
 # start Kari's API backend
@@ -13,8 +13,8 @@ uvicorn main:app --reload --port 8000
 # open docs in the browser
 xdg-open http://localhost:8000/docs
 
-# run the UI directly (e.g. Streamlit or PySide)
-python desktop_ui/main.py
+# run the Streamlit UI
+streamlit run mobile_ui/app.py
 ```
 
 ## Build Mode (Tauri App)
@@ -38,7 +38,7 @@ tauri build
 | Mode          | Command                             | Description                         |
 | ------------- | ----------------------------------- | ----------------------------------- |
 | Dev (API)     | `uvicorn main:app --reload`         | Hot reload the backend              |
-| Dev (UI)      | `python desktop_ui/main.py`         | Python UI for quick tests           |
+| Dev (UI)      | `streamlit run mobile_ui/app.py`    | Streamlit UI for quick tests        |
 | Tauri Dev     | `tauri dev`                         | Desktop shell with live reload      |
 | Build         | `tauri build`                       | Create installable binaries         |
 
