@@ -10,7 +10,7 @@ if (Path(__file__).resolve().parent / "fastapi").is_dir():
         "Error: A local 'fastapi' directory exists. It shadows the installed FastAPI package.\n"
     )
     sys.exit(1)
-
+    
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
