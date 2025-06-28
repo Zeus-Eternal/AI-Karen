@@ -118,7 +118,8 @@ cd desktop_ui/frontend && npm install && cd ../..
 # 4 · Run desktop Control Room (dev mode)
 cd desktop_ui && npx tauri dev
 
-```
+# Optional: run everything with one command
+./scripts/bootstrap_ui.sh
 
 **Full stack (API + Milvus + Redis + Prometheus):**
 
@@ -295,7 +296,6 @@ Additional guides:
 - [UI Handbook](docs/ui_handbook.md)
  
 - [ICE Wrapper](docs/ice_wrapper.md)
-
  
 - [Security Practices](docs/security.md)
 - [API Reference](docs/api_reference.md)
