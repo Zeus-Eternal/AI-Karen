@@ -3,12 +3,22 @@ from typing import Any, Dict, List
 from core.cortex.dispatch import CortexDispatcher
 from core.embedding_manager import _METRICS as METRICS
 from core.soft_reasoning_engine import SoftReasoningEngine
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import asyncio
+import logging
 from src.integrations.llm_registry import registry as llm_registry
 
 app = FastAPI()
+
+logger = logging.getLogger("kari")
+
+
+@app.exception_handler(Exception)
+async def handle_unexpected(request: Request, exc: Exception):
+    logger.exception("Unhandled error")
+    return JSONResponse({"detail": str(exc)}, status_code=500)
 
 dispatcher = CortexDispatcher()
 engine = SoftReasoningEngine()
