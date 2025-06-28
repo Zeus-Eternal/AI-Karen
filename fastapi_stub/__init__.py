@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+import sys
 from types import SimpleNamespace
 from urllib.parse import parse_qs
 
@@ -34,6 +35,11 @@ class FastAPI:
     def post(self, path):
         def decorator(func):
             self.routes.append(_Route("POST", path, func))
+            return func
+        return decorator
+
+    def exception_handler(self, exc):
+        def decorator(func):
             return func
         return decorator
 
@@ -112,6 +118,18 @@ class Response:
         if isinstance(self._data, list):
             return [vars(x) if hasattr(x, "__dict__") else x for x in self._data]
         return self._data
+
+
+class JSONResponse(Response):
+    pass
+
+
+responses = SimpleNamespace(JSONResponse=JSONResponse)
+sys.modules["fastapi.responses"] = responses
+
+
+class Request:
+    pass
 
 class TestClient:
     def __init__(self, app):
