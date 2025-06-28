@@ -18,4 +18,3 @@ class TestClient:
         data = asyncio.run(self.app("GET", path))
         if isinstance(data, Response):
             return data
-        return Response(data)
