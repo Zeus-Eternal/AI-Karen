@@ -19,6 +19,7 @@ PID_FILE = Path("server.pid")
 
 def run_server(host: str, port: int, reload: bool = False) -> None:
     """Run the FastAPI server with graceful shutdown."""
+    
     local_pkg = Path("fastapi")
     if local_pkg.exists() and local_pkg.is_dir():
         print(
