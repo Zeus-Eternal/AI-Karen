@@ -109,6 +109,8 @@ docs/          # architecture docs (mesh_arch.md, …)
 ---
 
 ## 4 · Quick-Start
+For a detailed setup and troubleshooting guide, see [docs/install_dev.md](docs/install_dev.md).
+
 
 ```bash
 # 1 · Install Python deps
@@ -164,6 +166,17 @@ cargo install tauri-cli
 cd backend
 uvicorn main:app --reload
 ```
+
+You can also manage the API server via a small CLI:
+
+```bash
+python scripts/server_cli.py start --reload  # start
+python scripts/server_cli.py stop            # stop if running
+```
+
+If you encounter `ImportError: cannot import name 'FastAPI'`, check for a
+directory named `fastapi` in the project root. It will shadow the installed
+package. The server now exits with an error if such a folder exists.
 
 ### 3. Start Frontend (optional)
 
