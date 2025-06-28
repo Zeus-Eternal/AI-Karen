@@ -5,7 +5,6 @@ import sys
 from core.cortex.dispatch import CortexDispatcher
 from core.embedding_manager import _METRICS as METRICS
 from core.soft_reasoning_engine import SoftReasoningEngine
-
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.stderr.write(
         "Error: A local 'fastapi' directory exists. It shadows the installed FastAPI package.\n"
