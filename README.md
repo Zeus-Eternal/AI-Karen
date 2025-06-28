@@ -109,13 +109,14 @@ docs/          # architecture docs (mesh_arch.md, …)
 # 1 · Install Python deps
 ./scripts/install.sh
 
-# 2 · Install Tauri CLI for desktop builds
-cargo install tauri-cli
+# 2 · Install Control Room packages
+cd desktop_ui/frontend && npm install && cd ../..
 
-# 3 · Install Control Room packages
-cd desktop_ui && npm install
-cd frontend && npm install && cd ../..
-```
+# 3 · Launch backend API + dependencies
+./scripts/start.sh
+
+# 4 · Run desktop Control Room (dev mode)
+cd desktop_ui && npx tauri dev
 
 # Optional: run everything with one command
 ./scripts/bootstrap_ui.sh
@@ -293,7 +294,8 @@ Additional guides:
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
 - [UI Handbook](docs/ui_handbook.md)
-- [Development Guide](docs/development_guide.md)
+ 
+- [ICE Wrapper](docs/ice_wrapper.md)
  
 - [Security Practices](docs/security.md)
 - [API Reference](docs/api_reference.md)
