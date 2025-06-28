@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build"
+    "build": "npm --prefix frontend run build",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:start": "npm run build && tauri dev"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.5.0"
