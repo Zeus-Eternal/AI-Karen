@@ -172,9 +172,9 @@ python scripts/server_cli.py start --reload  # start
 python scripts/server_cli.py stop            # stop if running
 ```
 
-If you encounter `ImportError: cannot import name 'FastAPI'`, check that you
-don't have a directory named `fastapi` in the project root. It can shadow the
-installed package.
+If you encounter `ImportError: cannot import name 'FastAPI'`, check for a
+directory named `fastapi` in the project root. It will shadow the installed
+package. The server now exits with an error if such a folder exists.
 
 ### 3. Start Frontend (optional)
 
