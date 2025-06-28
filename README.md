@@ -165,6 +165,17 @@ cd backend
 uvicorn main:app --reload
 ```
 
+You can also manage the API server via a small CLI:
+
+```bash
+python scripts/server_cli.py start --reload  # start
+python scripts/server_cli.py stop            # stop if running
+```
+
+If you encounter `ImportError: cannot import name 'FastAPI'`, check that you
+don't have a directory named `fastapi` in the project root. It can shadow the
+installed package.
+
 ### 3. Start Frontend (optional)
 
 ```bash
