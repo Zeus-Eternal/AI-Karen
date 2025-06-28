@@ -1,0 +1,26 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev"
+  },
+  "package": {
+    "productName": "kari",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "bundle": {
+      "identifier": "com.example.kari",
+      "active": true
+    },
+    "security": {
+      "csp": "default-src 'self'; connect-src http://localhost:8000"
+    },
+    "allowlist": {
+      "http": {
+        "request": true,
+        "scope": ["http://localhost:8000/*"]
+      }
+    }
+  }
+}

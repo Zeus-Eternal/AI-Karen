@@ -5,13 +5,11 @@ import sys
 from core.cortex.dispatch import CortexDispatcher
 from core.embedding_manager import _METRICS as METRICS
 from core.soft_reasoning_engine import SoftReasoningEngine
-
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.stderr.write(
         "Error: A local 'fastapi' directory exists. It shadows the installed FastAPI package.\n"
     )
     sys.exit(1)
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -28,8 +26,7 @@ logger = logging.getLogger("kari")
 async def handle_unexpected(request: Request, exc: Exception):
     logger.exception("Unhandled error")
     return JSONResponse({"detail": str(exc)}, status_code=500)
-
-
+  
 dispatcher = CortexDispatcher()
 engine = SoftReasoningEngine()
 
