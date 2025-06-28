@@ -109,6 +109,8 @@ docs/          # architecture docs (mesh_arch.md, …)
 ---
 
 ## 4 · Quick-Start
+For a detailed setup and troubleshooting guide, see [docs/install_dev.md](docs/install_dev.md).
+
 
 ```bash
 # 1 · Install Python deps

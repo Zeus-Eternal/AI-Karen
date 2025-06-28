@@ -10,7 +10,6 @@ if (Path(__file__).resolve().parent / "fastapi").is_dir():
         "Error: A local 'fastapi' directory exists. It shadows the installed FastAPI package.\n"
     )
     sys.exit(1)
-    
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -27,7 +26,7 @@ logger = logging.getLogger("kari")
 async def handle_unexpected(request: Request, exc: Exception):
     logger.exception("Unhandled error")
     return JSONResponse({"detail": str(exc)}, status_code=500)
-
+  
 dispatcher = CortexDispatcher()
 engine = SoftReasoningEngine()
 
@@ -77,6 +76,12 @@ class ModelListResponse(BaseModel):
 
 class ModelSelectRequest(BaseModel):
     model: str
+
+
+@app.get("/")
+def route_map() -> Dict[str, Any]:
+    """Return all available route paths."""
+    return {"routes": [route.path for route in app.routes]}
 
 
 @app.get("/ping")
@@ -165,7 +170,6 @@ def plugin_manifest(intent: str):
     return plugin.manifest
 
 
- 
 @app.get("/models")
 def list_models() -> ModelListResponse:
     models = list(llm_registry.list_models())
@@ -180,7 +184,6 @@ def select_model(req: ModelSelectRequest) -> ModelListResponse:
         raise HTTPException(status_code=404, detail=str(exc))
     models = list(llm_registry.list_models())
     return ModelListResponse(models=models, active=llm_registry.active)
-
 
 
 @app.get("/self_refactor/logs")
