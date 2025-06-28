@@ -74,9 +74,14 @@ integrations/  # helper utilities (RPA, automation)
 plugins/       # drop-in plugins (manifest + handler)
 desktop_ui/    # Tauri Control Room
 mobile_ui/     # Streamlit mobile interface
-fastapi/       # lightweight stubs for tests
-pydantic/      # lightweight stubs for tests
+fastapi_stub/  # lightweight stubs for tests
+pydantic_stub/ # lightweight stubs for tests
 tests/         # pytest suite
+
+> **Note**
+> These stub modules exist solely for the test suite. Ensure any old
+> `fastapi/` or `pydantic/` directories are removed so the real packages
+> are used when running `uvicorn`.
 
 ---
 
@@ -90,8 +95,8 @@ capsules/      # domain-specific agents (DevOps, Finance, …)
 integrations/  # NANDA client, RPA helpers, external bridges
 plugins/       # drop-in plugins (manifest + handler + ui)
 desktop_ui/    # Tauri Control Room (Rust + React)
-fastapi/       # API entrypoints, chat & metrics
-pydantic/      # DTOs & schemas
+fastapi_stub/  # API entrypoints, chat & metrics
+pydantic_stub/ # DTOs & schemas
 tests/         # pytest suite
 docs/          # architecture docs (mesh_arch.md, …)
 ```
