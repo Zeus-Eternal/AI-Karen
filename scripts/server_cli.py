@@ -2,21 +2,32 @@ import argparse
 import asyncio
 import os
 import signal
+import sys
 from pathlib import Path
 
-import uvicorn
+try:
+    import uvicorn
+except ModuleNotFoundError:  # pragma: no cover - runtime guard
+    print(
+        "Error: uvicorn is not installed. Install it with 'pip install uvicorn'",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 PID_FILE = Path("server.pid")
 
 
 def run_server(host: str, port: int, reload: bool = False) -> None:
     """Run the FastAPI server with graceful shutdown."""
-    if Path("fastapi").exists() and Path("fastapi").is_dir():
+    
+    local_pkg = Path("fastapi")
+    if local_pkg.exists() and local_pkg.is_dir():
         print(
             "Error: a local 'fastapi' directory shadows the FastAPI package.\n"
-            "Rename or remove it before starting the server."
+            "Rename or remove it before starting the server.",
+            file=sys.stderr,
         )
-        return
+        sys.exit(1)
 
     config = uvicorn.Config("main:app", host=host, port=port, reload=reload)
     server = uvicorn.Server(config)
