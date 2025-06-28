@@ -62,8 +62,6 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 | **Chat Hub**        | Slash commands with short-term memory via NeuroVault |
 
 Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
-
-Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
  
 
  
@@ -120,12 +118,6 @@ cd desktop_ui/frontend && npm install && cd ../..
 # 4 · Run desktop Control Room (dev mode)
 cd desktop_ui && npx tauri dev
 
-# 2 · Launch backend API + dependencies
-./scripts/start.sh
-
-# 3 · Run desktop Control Room (dev mode)
-cd desktop_ui && npx tauri dev
-
 ```
 
 **Full stack (API + Milvus + Redis + Prometheus):**
@@ -138,7 +130,7 @@ cd desktop_ui && npx tauri dev
 Build signed desktop binaries:
 ```bash
 cd desktop_ui
-npx tauri build          # outputs .app / .exe / .AppImage
+npx tauri build         # outputs .app / .exe / .AppImage
 ```
 
 Run tests:
@@ -147,6 +139,43 @@ Run tests:
 ```bash
 pytest -q
 ```
+
+## 🔧 Local Dev Setup
+
+### 1. Install Prerequisites
+
+```bash
+brew install rustup
+rustup-init
+source $HOME/.cargo/env
+npm install -g pnpm
+cargo install tauri-cli
+```
+
+### 2. Start FastAPI
+
+```bash
+cd backend
+uvicorn main:app --reload
+```
+
+### 3. Start Frontend (optional)
+
+```bash
+cd frontend
+pnpm install
+pnpm run dev
+```
+
+### 4. Start Tauri Desktop App
+
+```bash
+cd desktop_ui
+pnpm install
+npx tauri dev
+```
+
+📦 Ensure `tauri.conf.json` is under `desktop_ui/src-tauri/`
 
 ### API Usage
 
@@ -160,7 +189,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && npx tauri build
+cd desktop_ui && npx tauri dev
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |
@@ -203,9 +232,6 @@ def run(message, context):
 Drop the folder—Kari discovers it, registers routes, and injects UI automatically.
 
 ---
-
- 
-## Control Room
 
 ## 7 · Control Room
  
@@ -252,15 +278,6 @@ Additional guides:
  
 - [Chat Interface](docs/chat_interface.md)
 
- 
-- [Chat Interface](docs/chat_interface.md)
-
- 
-- [Chat Interface](docs/chat_interface.md)
-
- 
-- [Chat Interface](docs/chat_interface.md)
-
 
 - [Automation Features](docs/automation_features.md)
 - [SelfRefactor Engine](docs/self_refactor.md)
@@ -276,9 +293,6 @@ Additional guides:
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
 - [UI Handbook](docs/ui_handbook.md)
- 
-- [ICE Wrapper](docs/ice_wrapper.md)
-
  
 - [ICE Wrapper](docs/ice_wrapper.md)
 
@@ -306,10 +320,6 @@ This project contains the production-ready Kari AI stack. It includes:
 - Streamlit mobile UI for API demo.
 
 Released under the MIT license.
- 
-
-See [CHANGELOG.md](CHANGELOG.md) for version history.
-
  
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
