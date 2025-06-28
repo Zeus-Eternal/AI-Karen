@@ -1,3 +1,11 @@
+import sys
+
+import fastapi_stub
+import pydantic_stub
+
+sys.modules["fastapi"] = fastapi_stub
+sys.modules["pydantic"] = pydantic_stub
+
 from fastapi.testclient import TestClient
 
 from main import app

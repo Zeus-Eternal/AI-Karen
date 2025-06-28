@@ -3,8 +3,9 @@ from typing import Any, Dict, List
 from core.cortex.dispatch import CortexDispatcher
 from core.embedding_manager import _METRICS as METRICS
 from core.soft_reasoning_engine import SoftReasoningEngine
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import asyncio
 from src.integrations.llm_registry import registry as llm_registry
 
 app = FastAPI()
@@ -81,29 +82,43 @@ def ready() -> Dict[str, Any]:
 @app.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
     role = getattr(req, "role", "user")
-    data = await dispatcher.dispatch(req.text, role=role)
+    try:
+        data = await dispatcher.dispatch(req.text, role=role)
+    except Exception as exc:  # pragma: no cover - safety net
+        raise HTTPException(status_code=500, detail=str(exc))
+    if data.get("error"):
+        raise HTTPException(status_code=403, detail=data["error"])
+    if data.get("response") == "No plugin for intent":
+        raise HTTPException(status_code=404, detail="unknown intent")
     return ChatResponse(**data)
 
 
 @app.post("/store")
 async def store(req: StoreRequest) -> StoreResponse:
     metadata = {"tag": req.tag} if req.tag else None
-    rid = engine.ingest(
-        req.text,
-        metadata=metadata,
-        ttl_seconds=req.ttl_seconds,
-    )
-    return StoreResponse(status="stored", id=rid)
+    try:
+        rid = await asyncio.to_thread(
+            engine.ingest,
+            req.text,
+            metadata=metadata,
+            ttl_seconds=req.ttl_seconds,
+        )
+    except Exception as exc:  # pragma: no cover - safety net
+        raise HTTPException(status_code=500, detail=str(exc))
+    status = "stored" if rid is not None else "ignored"
+    return StoreResponse(status=status, id=rid)
 
 
 @app.post("/search")
 async def search(req: SearchRequest) -> List[SearchResult]:
-    top_k = getattr(req, "top_k", 3)
-    results = engine.query(
-        req.text,
-        top_k=top_k,
-        metadata_filter=getattr(req, "metadata_filter", None),
-    )
+    try:
+        results = await engine.aquery(
+            req.text,
+            top_k=getattr(req, "top_k", 3),
+            metadata_filter=getattr(req, "metadata_filter", None),
+        )
+    except Exception as exc:  # pragma: no cover - safety net
+        raise HTTPException(status_code=500, detail=str(exc))
     return [SearchResult(**r) for r in results]
 
 
@@ -128,7 +143,7 @@ def reload_plugins():
 def plugin_manifest(intent: str):
     plugin = dispatcher.router.get_plugin(intent)
     if not plugin:
-        return {"error": "not found"}
+        raise HTTPException(status_code=404, detail="not found")
     return plugin.manifest
 
 
@@ -141,7 +156,10 @@ def list_models() -> ModelListResponse:
 
 @app.post("/models/select")
 def select_model(req: ModelSelectRequest) -> ModelListResponse:
-    llm_registry.set_active(req.model)
+    try:
+        llm_registry.set_active(req.model)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     models = list(llm_registry.list_models())
     return ModelListResponse(models=models, active=llm_registry.active)
 

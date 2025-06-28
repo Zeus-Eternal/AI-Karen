@@ -5,6 +5,13 @@ from types import SimpleNamespace
 from urllib.parse import parse_qs
 
 
+class HTTPException(Exception):
+    def __init__(self, status_code: int, detail: str) -> None:
+        super().__init__(detail)
+        self.status_code = status_code
+        self.detail = detail
+
+
 class _Route:
     __slots__ = ("method", "pattern", "func")
 
@@ -51,11 +58,18 @@ class FastAPI:
                 except TypeError:
                     arg = SimpleNamespace(**params)
                     return await func(arg)
+                except HTTPException as exc:
+                    return Response({"detail": exc.detail}, exc.status_code)
             try:
                 return func(**params)
             except TypeError:
                 arg = SimpleNamespace(**params)
-                return func(arg)
+                try:
+                    return func(arg)
+                except HTTPException as exc:
+                    return Response({"detail": exc.detail}, exc.status_code)
+            except HTTPException as exc:
+                return Response({"detail": exc.detail}, exc.status_code)
         raise KeyError((method, path))
 
     async def __call__(self, *args, **kwargs):
