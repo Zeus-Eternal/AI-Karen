@@ -1,4 +1,11 @@
-from fastapi.testclient import TestClient
+import sys
+
+import fastapi_stub as fastapi
+import pydantic_stub as pydantic
+from fastapi_stub.testclient import TestClient
+
+sys.modules.setdefault("fastapi", fastapi)
+sys.modules.setdefault("pydantic", pydantic)
 
 from main import app
 
