@@ -115,12 +115,6 @@ cargo install tauri-cli
 # 3 · Install Control Room packages
 cd desktop_ui && npm install
 cd frontend && npm install && cd ../..
-
-# 4 · Launch backend API + dependencies
-./scripts/start.sh
-
-# 5 · Run desktop Control Room (dev mode)
-cd desktop_ui && tauri dev  # uses src-tauri/tauri.conf.json
 ```
 
 # Optional: run everything with one command
@@ -136,7 +130,7 @@ cd desktop_ui && tauri dev  # uses src-tauri/tauri.conf.json
 Build signed desktop binaries:
 ```bash
 cd desktop_ui
-tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.conf.json
+npx tauri build         # outputs .app / .exe / .AppImage
 ```
 
 Run tests:
@@ -145,6 +139,43 @@ Run tests:
 ```bash
 pytest -q
 ```
+
+## 🔧 Local Dev Setup
+
+### 1. Install Prerequisites
+
+```bash
+brew install rustup
+rustup-init
+source $HOME/.cargo/env
+npm install -g pnpm
+cargo install tauri-cli
+```
+
+### 2. Start FastAPI
+
+```bash
+cd backend
+uvicorn main:app --reload
+```
+
+### 3. Start Frontend (optional)
+
+```bash
+cd frontend
+pnpm install
+pnpm run dev
+```
+
+### 4. Start Tauri Desktop App
+
+```bash
+cd desktop_ui
+pnpm install
+npx tauri dev
+```
+
+📦 Ensure `tauri.conf.json` is under `desktop_ui/src-tauri/`
 
 ### API Usage
 
@@ -158,7 +189,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && tauri dev  # hot reloads the desktop shell
+cd desktop_ui && npx tauri dev
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |
@@ -201,9 +232,6 @@ def run(message, context):
 Drop the folder—Kari discovers it, registers routes, and injects UI automatically.
 
 ---
-
- 
-## Control Room
 
 ## 7 · Control Room
  
@@ -266,9 +294,6 @@ Additional guides:
 - [Observability](docs/observability.md)
 - [UI Handbook](docs/ui_handbook.md)
 - [Development Guide](docs/development_guide.md)
- 
-- [ICE Wrapper](docs/ice_wrapper.md)
-
  
 - [Security Practices](docs/security.md)
 - [API Reference](docs/api_reference.md)
