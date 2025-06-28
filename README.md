@@ -74,9 +74,14 @@ integrations/  # helper utilities (RPA, automation)
 plugins/       # drop-in plugins (manifest + handler)
 desktop_ui/    # Tauri Control Room
 mobile_ui/     # Streamlit mobile interface
-fastapi/       # lightweight stubs for tests
-pydantic/      # lightweight stubs for tests
+fastapi_stub/  # lightweight stubs for tests
+pydantic_stub/ # lightweight stubs for tests
 tests/         # pytest suite
+
+> **Note**
+> These stub modules exist solely for the test suite. Ensure any old
+> `fastapi/` or `pydantic/` directories are removed so the real packages
+> are used when running `uvicorn`.
 
 ---
 
@@ -90,8 +95,8 @@ capsules/      # domain-specific agents (DevOps, Finance, …)
 integrations/  # NANDA client, RPA helpers, external bridges
 plugins/       # drop-in plugins (manifest + handler + ui)
 desktop_ui/    # Tauri Control Room (Rust + React)
-fastapi/       # API entrypoints, chat & metrics
-pydantic/      # DTOs & schemas
+fastapi_stub/  # API entrypoints, chat & metrics
+pydantic_stub/ # DTOs & schemas
 tests/         # pytest suite
 docs/          # architecture docs (mesh_arch.md, …)
 ```
@@ -104,6 +109,8 @@ docs/          # architecture docs (mesh_arch.md, …)
 ---
 
 ## 4 · Quick-Start
+For a detailed setup and troubleshooting guide, see [docs/install_dev.md](docs/install_dev.md).
+
 
 ```bash
 # 1 · Install Python deps
@@ -137,6 +144,7 @@ Build signed desktop binaries:
 ```bash
 cd desktop_ui
 tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.conf.json
+
 ```
 
 Run tests:
@@ -145,6 +153,54 @@ Run tests:
 ```bash
 pytest -q
 ```
+
+## 🔧 Local Dev Setup
+
+### 1. Install Prerequisites
+
+```bash
+brew install rustup
+rustup-init
+source $HOME/.cargo/env
+npm install -g pnpm
+cargo install tauri-cli
+```
+
+### 2. Start FastAPI
+
+```bash
+cd backend
+uvicorn main:app --reload
+```
+
+You can also manage the API server via a small CLI:
+
+```bash
+python scripts/server_cli.py start --reload  # start
+python scripts/server_cli.py stop            # stop if running
+```
+
+If you encounter `ImportError: cannot import name 'FastAPI'`, check for a
+directory named `fastapi` in the project root. It will shadow the installed
+package. The server now exits with an error if such a folder exists.
+
+### 3. Start Frontend (optional)
+
+```bash
+cd frontend
+pnpm install
+pnpm run dev
+```
+
+### 4. Start Tauri Desktop App
+
+```bash
+cd desktop_ui
+pnpm install
+npx tauri dev
+```
+
+📦 Ensure `tauri.conf.json` is under `desktop_ui/src-tauri/`
 
 ### API Usage
 
@@ -201,9 +257,6 @@ def run(message, context):
 Drop the folder—Kari discovers it, registers routes, and injects UI automatically.
 
 ---
-
- 
-## Control Room
 
 ## 7 · Control Room
  
@@ -268,7 +321,6 @@ Additional guides:
 - [Development Guide](docs/development_guide.md)
  
 - [ICE Wrapper](docs/ice_wrapper.md)
-
  
 - [Security Practices](docs/security.md)
 - [API Reference](docs/api_reference.md)

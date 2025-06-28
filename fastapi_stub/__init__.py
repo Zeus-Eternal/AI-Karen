@@ -1,8 +1,16 @@
 import asyncio
 import json
 import re
+import sys
 from types import SimpleNamespace
 from urllib.parse import parse_qs
+
+
+class HTTPException(Exception):
+    def __init__(self, status_code: int, detail: str) -> None:
+        super().__init__(detail)
+        self.status_code = status_code
+        self.detail = detail
 
 
 class _Route:
@@ -30,6 +38,11 @@ class FastAPI:
             return func
         return decorator
 
+    def exception_handler(self, exc):
+        def decorator(func):
+            return func
+        return decorator
+
     async def _handle_request(self, method, path, json=None):
         query = {}
         if "?" in path:
@@ -50,12 +63,22 @@ class FastAPI:
                     return await func(**params)
                 except TypeError:
                     arg = SimpleNamespace(**params)
-                    return await func(arg)
+                    try:
+                        return await func(arg)
+                    except HTTPException as exc:
+                        return Response({"detail": exc.detail}, exc.status_code)
+                except HTTPException as exc:
+                    return Response({"detail": exc.detail}, exc.status_code)
             try:
                 return func(**params)
             except TypeError:
                 arg = SimpleNamespace(**params)
-                return func(arg)
+                try:
+                    return func(arg)
+                except HTTPException as exc:
+                    return Response({"detail": exc.detail}, exc.status_code)
+            except HTTPException as exc:
+                return Response({"detail": exc.detail}, exc.status_code)
         raise KeyError((method, path))
 
     async def __call__(self, *args, **kwargs):
@@ -95,6 +118,18 @@ class Response:
         if isinstance(self._data, list):
             return [vars(x) if hasattr(x, "__dict__") else x for x in self._data]
         return self._data
+
+
+class JSONResponse(Response):
+    pass
+
+
+responses = SimpleNamespace(JSONResponse=JSONResponse)
+sys.modules["fastapi.responses"] = responses
+
+
+class Request:
+    pass
 
 class TestClient:
     def __init__(self, app):
