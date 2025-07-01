@@ -1,21 +1,31 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/tooling/schema/tauri.config.schema.json",
-  "identifier": "com.zeus.kari",
-  "productName": "Kari Control Room",
-  "version": "0.1.0",
-  "distDir": "../frontend/dist",
-  "devPath": "http://localhost:3000",
-  "windows": [
-    {
-      "label": "main",
-      "title": "Kari Control Room",
-      "width": 1280,
-      "height": 800
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "distDir": "../frontend/dist",
+    "devPath": "http://localhost:3000"
+  },
+  "package": {
+    "productName": "Kari Control Room",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "bundle": {
+      "identifier": "com.zeus.kari"
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Kari Control Room",
+        "width": 1280,
+        "height": 800
+      }
+    ],
+    "plugins": {
+      "log": {},
+      "http": {},
+      "shell": {}
     }
-  ],
-  "plugins": {
-    "log": {},
-    "http": {},
-    "shell": {}
   }
 }
