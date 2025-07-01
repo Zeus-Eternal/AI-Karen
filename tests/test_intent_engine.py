@@ -12,6 +12,7 @@ def test_detect_intent():
       
  
         "why so sad": "deep_reasoning",
+        "what time is it": "time_query",
         "unknown text": "unknown",
         "HELLO": "greet",
     }

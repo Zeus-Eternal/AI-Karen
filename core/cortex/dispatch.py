@@ -31,10 +31,13 @@ class CortexDispatcher:
             return {"intent": intent, "confidence": conf, "response": result}
 
         try:
-            result = await self.router.dispatch(intent, {}, roles=[role])
+            result = await self.router.dispatch(intent, {"prompt": text}, roles=[role])
         except AccessDenied:
             return {"error": "forbidden", "intent": intent, "confidence": conf}
         if result is None:
+            fallback = await self.router.dispatch("hf_generate", {"prompt": text}, roles=[role])
+            if fallback is not None:
+                return {"intent": "hf_generate", "confidence": conf, "response": fallback}
             return {
                 "intent": "unknown",
                 "confidence": conf,
