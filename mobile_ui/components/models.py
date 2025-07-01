@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from logic.model_registry import MODEL_REGISTRY, get_models
+from logic.model_registry import get_models, list_providers
 
 
 def select_model(provider: str):
@@ -11,7 +11,7 @@ def select_model(provider: str):
 
 def render_models():
     st.title("\U0001F9E0 Model Catalog")
-    provider = st.selectbox("Choose Provider", list(MODEL_REGISTRY.keys()))
+    provider = st.selectbox("Choose Provider", list_providers())
     data = get_models(provider)
     if data:
         st.table(pd.DataFrame(data))

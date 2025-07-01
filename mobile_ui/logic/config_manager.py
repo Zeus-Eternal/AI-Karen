@@ -54,7 +54,8 @@ def get_status() -> str:
     model = config.get("model")
     if not provider or not model:
         return "Pending Config"
-    if provider != "Local (Ollama)":
+    local_providers = {"local", "ollama_cpp"}
+    if provider not in local_providers:
         key = config.get("api_key") or load_secret(config.get("api_key_ref", "llm_api_key"))
         if not key:
             return "Invalid"

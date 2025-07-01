@@ -1,34 +1,31 @@
 import streamlit as st
 from logic.config_manager import load_config, save_config
-from logic.model_registry import get_models
+from logic.model_registry import get_models, list_providers
 
-
-PROVIDERS = [
-    "Local (Ollama)",
-    "OpenAI",
-    "Anthropic",
-    "Gemini",
-    "Groq",
-    "HuggingFace",
-    "Cohere",
-    "OpenRouter",
-    "Together",
-    "Custom",
-]
+LOCAL_PROVIDERS = {"local", "ollama_cpp"}
 
 
 def render_settings():
     st.title("\u2699\ufe0f Kari Configuration")
     config = load_config()
 
-    provider = st.selectbox("LLM Provider", PROVIDERS, index=PROVIDERS.index(config.get("provider", PROVIDERS[0])))
+    providers = list_providers()
+    provider = st.selectbox(
+        "LLM Provider",
+        providers,
+        index=providers.index(config.get("provider", providers[0])) if providers else 0,
+    )
     models = [m["name"] for m in get_models(provider)]
     model_default = config.get("model") if config.get("model") in models else models[0]
     model = st.selectbox("Model", models, index=models.index(model_default))
 
     api_key = ""
-    if provider != "Local (Ollama)":
-        api_key = st.text_input(f"{provider} API Key", type="password", value=config.get("api_key", ""))
+    if provider not in LOCAL_PROVIDERS:
+        api_key = st.text_input(
+            f"{provider} API Key",
+            type="password",
+            value=config.get("api_key", ""),
+        )
 
     st.subheader("Memory Settings")
     use_memory = st.checkbox("Enable Memory", value=config.get("use_memory", True))
