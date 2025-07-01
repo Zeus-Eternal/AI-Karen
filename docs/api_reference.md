@@ -8,7 +8,7 @@ This reference lists all FastAPI routes defined in `main.py`.
 | GET | `/ping` | – | Liveness check |
 | GET | `/health` | – | Return plugin count |
 | GET | `/ready` | – | Readiness probe |
-| POST | `/chat` | `text`, `role` | Route text to intent engine |
+| POST | `/chat` | `text`, `role` | Route text to intent engine. Unknown intents return a 200 with `intent: "unknown"`. |
 | POST | `/store` | `text`, `ttl_seconds`, `tag` | Persist memory |
 | POST | `/search` | `text`, `top_k`, `metadata_filter` | Query memory store |
 | GET | `/metrics` | – | Prometheus metrics |
