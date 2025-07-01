@@ -4,7 +4,6 @@ from logic.config_manager import update_config, load_config, get_status
 
 PROVIDERS = ["Local (Ollama)", "HuggingFace", "Groq"]
 
-
 def render_sidebar():
     st.sidebar.title("\U0001F9ED Navigation")
     config = load_config()
@@ -26,5 +25,4 @@ def render_sidebar():
     status = get_status()
     emoji = {"Ready": "🟢", "Pending Config": "🟡", "Invalid": "🔴"}.get(status, "❔")
     st.sidebar.markdown(f"**Status:** {emoji} {status}")
-
     return st.sidebar.radio("Go to", ["Home", "Settings", "Models", "Memory", "Diagnostics"])

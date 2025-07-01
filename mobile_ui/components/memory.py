@@ -1,7 +1,6 @@
 import streamlit as st
 from logic.memory_controller import sync_memory, flush_memory
 
-
 def memory_config():
     st.subheader("\U0001F9E0 Memory Configuration")
     use_memory = st.checkbox("Enable Memory", value=True)
@@ -12,7 +11,7 @@ def memory_config():
 
 def render_memory():
     st.title("\U0001F4E6 Memory Settings")
-
+    
     short_term = st.checkbox("Short-Term", value=True)
     long_term = st.checkbox("Long-Term", value=False)
     persistent = st.checkbox("Persistent", value=True)
@@ -30,6 +29,6 @@ def render_memory():
         if st.button("\U0001F5D1 Flush"):
             flush_memory()
             st.warning("Flushed")
-
+            
     memory_config()
 

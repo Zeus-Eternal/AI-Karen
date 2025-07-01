@@ -15,4 +15,3 @@ def render_models():
     data = get_models(provider)
     if data:
         st.table(pd.DataFrame(data))
-
