@@ -55,10 +55,25 @@ from pydantic import BaseModel
 import asyncio
 import logging
 from src.integrations.llm_registry import registry as llm_registry
+from src.integrations.model_discovery import sync_registry
 
 app = FastAPI()
 
 logger = logging.getLogger("kari")
+
+
+@app.on_event("startup")
+async def _refresh_registry_on_start() -> None:
+    """Refresh the model registry on startup and optionally on a schedule."""
+    sync_registry()
+    interval = int(os.getenv("LLM_REFRESH_INTERVAL", "0"))
+    if interval > 0:
+        async def _scheduled():
+            while True:
+                await asyncio.sleep(interval)
+                sync_registry()
+
+        asyncio.create_task(_scheduled())
 
 REQUEST_COUNT = Counter("kari_http_requests_total", "Total HTTP requests")
 REQUEST_LATENCY = Histogram("kari_http_request_seconds", "Latency of HTTP requests")

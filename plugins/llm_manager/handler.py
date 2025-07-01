@@ -1,10 +1,14 @@
 from src.integrations.llm_registry import registry
+from src.integrations.model_discovery import sync_registry
 
 
 async def run(params: dict) -> dict:
     action = params.get("action", "list")
     if action == "list":
         return {"models": list(registry.list_models()), "active": registry.active}
+    if action == "refresh":
+        models = sync_registry()
+        return {"status": "refreshed", "count": len(models)}
     if action == "select":
         model = params.get("model")
         if not model:
