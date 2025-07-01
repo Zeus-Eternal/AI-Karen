@@ -21,6 +21,11 @@ def _safe_pipeline_call(pipe: Pipeline, text: str, **kwargs: Any):
     task = getattr(pipe, "task", "")
     valid = allowed.get(task, [])
     clean = {k: v for k, v in kwargs.items() if k in valid}
+    dropped = {k: v for k, v in kwargs.items() if k not in valid}
+    if dropped:
+        print(
+            f"[LNM] \u26a0\ufe0f Dropped unsupported args for {task}: {', '.join(dropped.keys())}"
+        )
     return pipe(text, **clean)
 
 

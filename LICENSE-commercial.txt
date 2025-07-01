@@ -1,0 +1,39 @@
+KARI AI COMMERCIAL LICENSE v1.0
+Copyright (c) 2025 Michigan Home Innovation – Kari AI
+
+1. GRANT OF LICENSE
+   1.1 Subject to payment of all applicable fees, Licensor hereby grants Licensee a world-wide, non-exclusive, non-transferable, non-sublicensable license to use, reproduce, and distribute Kari AI (“Software”) in object-code or executable form as part of Licensee’s proprietary products or services (“Products”).
+   1.2 Licensee may modify the Software solely for integration into the Products. Modified source code may remain closed and is **not** subject to the MPL 2.0 copyleft obligations.
+
+2. PERMITTED USES
+   • Internal use, SaaS, on-prem, embedded devices.
+   • Unlimited commercial distribution of the Products.
+   • Creation of derivative works, provided they are shipped only as part of the Products.
+
+3. PROHIBITED USES
+   • Stand-alone redistribution of the Software or substantial portions thereof.
+   • Use of Licensor’s trademarks without prior written permission.
+   • Removal or alteration of copyright and license notices in source or documentation.
+
+4. FEES & AUDIT
+   • Fees are specified in the executed Commercial License Order Form (“Order Form”).
+   • Licensor may audit, no more than once per year, to confirm compliance. Licensee must retain records for three (3) years.
+
+5. SUPPORT & UPDATES
+   • If purchased, support terms are defined in a separate SLA. Otherwise, Software is provided “AS IS”.
+
+6. WARRANTY DISCLAIMER
+   SOFTWARE IS PROVIDED “AS IS” WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED…
+
+7. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES…
+
+8. TERMINATION
+   • Material breach not cured within thirty (30) days terminates this license.
+   • Upon termination, Licensee must cease distribution and certify destruction of all source copies.
+
+9. GOVERNING LAW
+   • Laws of the State of Michigan, USA; exclusive jurisdiction and venue in Washtenaw County courts or the U.S. District Court for the Eastern District of Michigan.
+
+10. CONTACT
+   legal@kari.ai | +1-XXX-XXX-XXXX
