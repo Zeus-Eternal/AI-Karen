@@ -1,4 +1,5 @@
 """spaCy wrapper for deeper NLP analysis."""
+
 from __future__ import annotations
 
 from typing import Dict, List
@@ -7,6 +8,7 @@ try:
     import spacy
 except Exception:  # pragma: no cover - optional dep
     spacy = None
+
 
 DEFAULT_MODEL = "en_core_web_trf"
 
@@ -19,10 +21,11 @@ class SpaCyClient:
             raise RuntimeError("spaCy is required for SpaCyClient")
         try:
             self.nlp = spacy.load(model_name)
-        except OSError:
-            from spacy.cli import download
-            download(model_name)
-            self.nlp = spacy.load(model_name)
+        except Exception:
+            print(
+                f"[SpaCyClient] ⚠️ Failed to load {model_name}. Falling back to en_core_web_sm."
+            )
+            self.nlp = spacy.load("en_core_web_sm")
 
     def extract_entities(self, text: str) -> List[Dict[str, str]]:
         doc = self.nlp(text)
@@ -34,4 +37,6 @@ class SpaCyClient:
 
     def dependency_tree(self, text: str) -> List[Dict[str, str]]:
         doc = self.nlp(text)
-        return [{"text": tok.text, "dep": tok.dep_, "head": tok.head.text} for tok in doc]
+        return [
+            {"text": tok.text, "dep": tok.dep_, "head": tok.head.text} for tok in doc
+        ]
