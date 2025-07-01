@@ -7,16 +7,24 @@ def render_sidebar():
     config = load_config()
 
     providers = list_providers()
+    default_provider = config.get("provider")
+    if default_provider not in providers and providers:
+        default_provider = providers[0]
+
     provider = st.sidebar.selectbox(
         "LLM Provider",
         providers,
-        index=providers.index(config.get("provider", providers[0])) if providers else 0,
+        index=providers.index(default_provider) if providers else 0,
     )
+
     if provider != config.get("provider"):
         update_config(provider=provider)
 
     models = [m["name"] for m in get_models(provider)]
-    model_default = config.get("model") if config.get("model") in models else models[0]
+    model_default = config.get("model")
+    if model_default not in models and models:
+        model_default = models[0]
+
     model = st.sidebar.selectbox("Model", models, index=models.index(model_default))
     if model != config.get("model"):
         update_config(model=model)
