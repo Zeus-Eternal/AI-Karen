@@ -1,0 +1,7 @@
+{
+  "plugin_api_version": "1.0",
+  "enable_external_workflow": false,
+  "required_roles": ["admin", "dev"],
+  "intent": "fine_tune_lnm",
+  "trusted_ui": false
+}
