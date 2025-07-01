@@ -31,3 +31,22 @@ def get_api_key() -> str | None:
 def get_model() -> str:
     """Return the selected model name from the session state."""
     return st.session_state.get("model", "llama3")
+
+import json
+from pathlib import Path
+
+CONFIG_PATH = Path("config/settings.json")
+
+
+def persist_config(config: dict):
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(config, f, indent=2)
+
+
+def load_config() -> dict:
+    if CONFIG_PATH.exists():
+        with open(CONFIG_PATH) as f:
+            return json.load(f)
+    return {}
+
