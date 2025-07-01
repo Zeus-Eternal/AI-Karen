@@ -34,11 +34,11 @@ class LLMRegistry:
 
         # optional llama.cpp / ollama wrapper
         try:
-            LlamaCppWrapper()
+            wrapper = LlamaCppWrapper()
         except Exception:
             pass
         else:
-            self.backends["ollama_cpp"] = LlamaCppWrapper()
+            self.backends["ollama_cpp"] = wrapper
 
         # optional OpenAI backend
         try:  # pragma: no cover - optional dep
