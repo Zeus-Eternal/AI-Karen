@@ -2,7 +2,18 @@ import streamlit as st
 from logic.model_registry import get_models
 from logic.config_manager import update_config, load_config, get_status
 
-PROVIDERS = ["Local (Ollama)", "HuggingFace", "Groq"]
+PROVIDERS = [
+    "Local (Ollama)",
+    "OpenAI",
+    "Anthropic",
+    "Gemini",
+    "Groq",
+    "HuggingFace",
+    "Cohere",
+    "OpenRouter",
+    "Together",
+    "Custom",
+]
 
 def render_sidebar():
     st.sidebar.title("\U0001F9ED Navigation")

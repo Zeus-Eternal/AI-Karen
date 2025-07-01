@@ -3,7 +3,18 @@ from logic.config_manager import load_config, save_config
 from logic.model_registry import get_models
 
 
-PROVIDERS = ["Local (Ollama)", "HuggingFace", "Groq"]
+PROVIDERS = [
+    "Local (Ollama)",
+    "OpenAI",
+    "Anthropic",
+    "Gemini",
+    "Groq",
+    "HuggingFace",
+    "Cohere",
+    "OpenRouter",
+    "Together",
+    "Custom",
+]
 
 
 def render_settings():
