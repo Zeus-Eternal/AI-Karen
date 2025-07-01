@@ -73,7 +73,14 @@ def test_chat_errors():
     assert resp.status_code == 403
 
     resp = client.post("/chat", json={"text": "nonsense"})
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["intent"] == "hf_generate"
+
+    resp = client.post("/chat", json={"text": "the time"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["intent"] == "time_query"
 
 
 def test_plugin_manifest_not_found():

@@ -4,10 +4,11 @@ This reference lists all FastAPI routes defined in `main.py`.
 
 | Method | Path | Parameters | Description |
 | ------ | ---- | ---------- | ----------- |
+| GET | `/` | – | List available routes |
 | GET | `/ping` | – | Liveness check |
 | GET | `/health` | – | Return plugin count |
 | GET | `/ready` | – | Readiness probe |
-| POST | `/chat` | `text`, `role` | Route text to intent engine |
+| POST | `/chat` | `text`, `role` | Route text to intent engine. Unknown intents are answered by the LLM fallback. |
 | POST | `/store` | `text`, `ttl_seconds`, `tag` | Persist memory |
 | POST | `/search` | `text`, `top_k`, `metadata_filter` | Query memory store |
 | GET | `/metrics` | – | Prometheus metrics |
