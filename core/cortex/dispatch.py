@@ -35,5 +35,9 @@ class CortexDispatcher:
         except AccessDenied:
             return {"error": "forbidden", "intent": intent, "confidence": conf}
         if result is None:
-            return {"response": "No plugin for intent"}
+            return {
+                "intent": "unknown",
+                "confidence": conf,
+                "response": "unknown intent",
+            }
         return {"intent": intent, "confidence": conf, "response": result}

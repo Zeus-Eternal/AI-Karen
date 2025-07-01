@@ -111,8 +111,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=500, detail=str(exc))
     if data.get("error"):
         raise HTTPException(status_code=403, detail=data["error"])
-    if data.get("response") == "No plugin for intent":
-        raise HTTPException(status_code=404, detail="unknown intent")
+    # Unknown intents return a normal response instead of 404
     return ChatResponse(**data)
 
 
