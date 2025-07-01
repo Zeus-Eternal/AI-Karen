@@ -14,6 +14,7 @@ This guide walks through setting up Kari for local development and troubleshooti
    python3 -m venv .env
    source .env/bin/activate
    pip install -r requirements.txt
+   python scripts/install_models.py
    ```
 2. **Remove any local `fastapi` directory** which would shadow the installed package:
    ```bash

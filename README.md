@@ -115,6 +115,8 @@ For a detailed setup and troubleshooting guide, see [docs/install_dev.md](docs/i
 ```bash
 # 1 · Install Python deps
 ./scripts/install.sh
+# Download base models
+python scripts/install_models.py
 
 # 2 · Install Tauri CLI for desktop builds
 cargo install tauri-cli
