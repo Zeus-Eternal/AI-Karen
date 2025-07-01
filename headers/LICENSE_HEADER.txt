@@ -1,0 +1,8 @@
+# Kari AI – Core Engine
+# Copyright (c) 2025 Michigan Home Innovation – Kari AI
+#
+# This file is part of Kari AI and is licensed under the Mozilla Public License 2.0.
+# You may obtain a copy of the MPL at <https://www.mozilla.org/MPL/2.0/>.
+#
+# If you obtained a Commercial License, you may use this file under those terms
+# instead of the MPL. See the project root for LICENSE and LICENSE-commercial.txt.
