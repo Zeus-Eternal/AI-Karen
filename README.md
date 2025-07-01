@@ -123,14 +123,14 @@ cargo install tauri-cli
 cd desktop_ui && npm install
 cd frontend && npm install && cd ../..
 
-# The Tauri configuration lives in `desktop_ui/src-tauri/tauri.conf.json`.
+# The Tauri configuration lives in `desktop_ui/src-tauri/tauri.config.json`.
 # Make sure this file exists before running desktop commands.
 
 # 4 · Launch backend API + dependencies
 ./scripts/start.sh
 
 # 5 · Run desktop Control Room (dev mode)
-cd desktop_ui && tauri dev  # uses src-tauri/tauri.conf.json
+cd desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 ```
 
 # Optional: run everything with one command
@@ -146,7 +146,7 @@ cd desktop_ui && tauri dev  # uses src-tauri/tauri.conf.json
 Build signed desktop binaries:
 ```bash
 cd desktop_ui
-tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.conf.json
+tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.config.json
 
 ```
 
@@ -203,7 +203,7 @@ pnpm install
 npx tauri dev
 ```
 
-📦 Ensure `tauri.conf.json` is under `desktop_ui/src-tauri/`
+📦 Ensure `tauri.config.json` is under `desktop_ui/src-tauri/`
 
 ### API Usage
 
@@ -217,7 +217,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/tauri.conf.json
+cd desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/tauri.config.json
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |
