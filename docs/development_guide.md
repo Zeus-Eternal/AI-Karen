@@ -26,9 +26,6 @@ Use this path to compile the full Tauri desktop application.
 source "$HOME/.cargo/env"
 cargo install tauri-cli
 
-# Both `tauri dev` and `tauri build` use `desktop_ui/src-tauri/tauri.config.json`
-# as the configuration file.
-
 # run in development mode with hot reload
 tauri dev
 

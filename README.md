@@ -123,14 +123,11 @@ cargo install tauri-cli
 cd desktop_ui && npm install
 cd frontend && npm install && cd ../..
 
-# The Tauri configuration lives in `desktop_ui/src-tauri/tauri.config.json`.
-# Make sure this file exists before running desktop commands.
-
 # 4 · Launch backend API + dependencies
 ./scripts/start.sh
 
 # 5 · Run desktop Control Room (dev mode)
-cd desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
+cd desktop_ui && tauri dev
 ```
 
 # Optional: run everything with one command
@@ -146,7 +143,7 @@ cd desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 Build signed desktop binaries:
 ```bash
 cd desktop_ui
-tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.config.json
+tauri build          # outputs .app / .exe / .AppImage
 
 ```
 
@@ -203,8 +200,6 @@ pnpm install
 npx tauri dev
 ```
 
-📦 Ensure `tauri.config.json` is under `desktop_ui/src-tauri/`
-
 ### API Usage
 
 Kari's FastAPI backend exposes a small set of endpoints for headless deployments.
@@ -217,7 +212,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/tauri.config.json
+cd desktop_ui && tauri dev
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |
