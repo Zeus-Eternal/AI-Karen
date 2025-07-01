@@ -4,6 +4,7 @@ This reference lists all FastAPI routes defined in `main.py`.
 
 | Method | Path | Parameters | Description |
 | ------ | ---- | ---------- | ----------- |
+| GET | `/` | – | Route map |
 | GET | `/ping` | – | Liveness check |
 | GET | `/health` | – | Return plugin count |
 | GET | `/ready` | – | Readiness probe |
