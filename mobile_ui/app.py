@@ -16,6 +16,7 @@ from components.settings import render_settings
 from components.memory import render_memory
 from components.models import render_models
 from components.diagnostics import render_diagnostics
+from utils.model_loader import ensure_spacy_models, ensure_sklearn_installed
 
 
 def load_styles() -> None:
@@ -55,6 +56,10 @@ def main() -> None:
         page_icon="🤖",
         initial_sidebar_state="expanded",
     )
+
+    # Ensure base NLP dependencies are available
+    ensure_spacy_models()
+    ensure_sklearn_installed()
 
     load_styles()
     selection = render_sidebar()
