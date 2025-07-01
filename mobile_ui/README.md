@@ -1,9 +1,15 @@
 # Kari Mobile Web UI
 
-This Streamlit app provides a simplified mobile-friendly interface for the Kari API. It exposes chat, memory search and plugin management features.
+This Streamlit interface exposes Kari's core features from any mobile browser.
 
-Run the FastAPI backend using `uvicorn main:app` then start the UI with:
+## Usage
+
+Run the FastAPI backend and launch the UI:
 
 ```bash
+uvicorn main:app --reload
 streamlit run mobile_ui/app.py
 ```
+
+The UI includes chat and a task dashboard out of the box. Additional sections can
+be added under `mobile_ui/sections/`.

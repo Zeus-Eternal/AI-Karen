@@ -1,0 +1,8 @@
+streamlit
+httpx
+websockets
+pymilvus
+duckdb
+pydantic
+watchdog
+aiofiles
