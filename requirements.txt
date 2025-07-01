@@ -11,6 +11,7 @@ huggingface_hub
 openai
 requests
 streamlit
+llama-cpp-python
 
  
 huggingface_hub

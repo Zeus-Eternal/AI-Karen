@@ -4,21 +4,25 @@ import streamlit as st
 
 API_URL = os.getenv("KARI_API_URL", "http://localhost:8000")
 
-client = httpx.AsyncClient(base_url=API_URL)
 
 async def post(path: str, payload: dict | None = None):
+    """Send a POST request to the backend and return the JSON response."""
     try:
-        resp = await client.post(path, json=payload or {})
-        resp.raise_for_status()
-        return resp.json()
+        async with httpx.AsyncClient(base_url=API_URL) as client:
+            resp = await client.post(path, json=payload or {})
+            resp.raise_for_status()
+            return resp.json()
     except Exception as exc:
         return {"error": str(exc)}
 
+
 async def get(path: str):
+    """Send a GET request to the backend and return the JSON response."""
     try:
-        resp = await client.get(path)
-        resp.raise_for_status()
-        return resp.json()
+        async with httpx.AsyncClient(base_url=API_URL) as client:
+            resp = await client.get(path)
+            resp.raise_for_status()
+            return resp.json()
     except Exception as exc:
         return {"error": str(exc)}
 

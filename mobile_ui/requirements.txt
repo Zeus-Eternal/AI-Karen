@@ -7,3 +7,4 @@ pydantic
 watchdog
 aiofiles
 cryptography
+llama-cpp-python
