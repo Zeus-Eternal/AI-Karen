@@ -46,9 +46,6 @@ class SelfRefactorEngine:
  
         self.llm = llm or llm_registry.get_active()
         self.deepseek = deepseek or llm_registry.get_active()
-
-        self.llm = llm or LLMUtils()
-        self.deepseek = deepseek or LLMUtils()
  
         self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
         self.test_cmd = test_cmd or ["pytest", "-q"]
