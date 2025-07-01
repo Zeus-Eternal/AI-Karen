@@ -1,36 +1,22 @@
-MODEL_REGISTRY = {
-    "Local (Ollama)": [
-        {"name": "llama3.2:latest", "size": "7B", "speed": "fast", "type": "chat"},
-        {"name": "mistral", "size": "7B", "speed": "fast", "type": "chat"},
-        {"name": "codellama", "size": "7B", "speed": "fast", "type": "code"},
-    ],
-    "OpenAI": [
-        {"name": "gpt-4o", "size": "n/a", "speed": "fast", "type": "chat"},
-        {"name": "gpt-3.5-turbo", "size": "n/a", "speed": "fast", "type": "chat"},
-    ],
-    "Anthropic": [
-        {"name": "claude-3-opus", "size": "n/a", "speed": "fast", "type": "chat"},
-        {"name": "claude-3-haiku", "size": "n/a", "speed": "fast", "type": "chat"},
-    ],
-    "Gemini": [
-        {"name": "gemini-pro", "size": "n/a", "speed": "fast", "type": "chat"},
-        {"name": "gemini-pro-vision", "size": "n/a", "speed": "fast", "type": "chat"},
-    ],
-    "Groq": [
-        {"name": "llama3-70b", "size": "70B", "speed": "fast", "type": "chat"},
-        {"name": "mixtral-8x7b", "size": "56B", "speed": "fast", "type": "chat"},
-    ],
-    "HuggingFace": [
-        {"name": "gpt2", "size": "small", "speed": "fast", "type": "chat"},
-        {"name": "bloom", "size": "176B", "speed": "slow", "type": "chat"},
-        {"name": "falcon-7b", "size": "7B", "speed": "medium", "type": "chat"},
-    ],
-    "Cohere": [
-        {"name": "command-r", "size": "n/a", "speed": "fast", "type": "chat"},
-        {"name": "command-r-plus", "size": "n/a", "speed": "fast", "type": "chat"},
-    ],
-}
+from __future__ import annotations
+
+from pathlib import Path
+from typing import List, Dict
+
+from src.integrations.llm_registry import registry as llm_registry
 
 
-def get_models(provider: str):
-    return MODEL_REGISTRY.get(provider, [])
+def list_providers() -> List[str]:
+    """Return available provider names."""
+    return list(llm_registry.list_models())
+
+
+def get_models(provider: str) -> List[Dict[str, str]]:
+    """Return model details for ``provider`` from the active registry."""
+    llm = llm_registry.backends.get(provider)
+    if not llm:
+        return []
+    name = getattr(llm, "model_name", None) or getattr(llm, "model", None)
+    if not name and hasattr(llm, "model_path"):
+        name = Path(getattr(llm, "model_path")).stem
+    return [{"name": name or provider}]

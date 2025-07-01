@@ -1,28 +1,16 @@
 import streamlit as st
-from logic.model_registry import get_models
+from logic.model_registry import get_models, list_providers
 from logic.config_manager import update_config, load_config, get_status
-
-PROVIDERS = [
-    "Local (Ollama)",
-    "OpenAI",
-    "Anthropic",
-    "Gemini",
-    "Groq",
-    "HuggingFace",
-    "Cohere",
-    "OpenRouter",
-    "Together",
-    "Custom",
-]
 
 def render_sidebar():
     st.sidebar.title("\U0001F9ED Navigation")
     config = load_config()
 
+    providers = list_providers()
     provider = st.sidebar.selectbox(
         "LLM Provider",
-        PROVIDERS,
-        index=PROVIDERS.index(config.get("provider", PROVIDERS[0])),
+        providers,
+        index=providers.index(config.get("provider", providers[0])) if providers else 0,
     )
     if provider != config.get("provider"):
         update_config(provider=provider)

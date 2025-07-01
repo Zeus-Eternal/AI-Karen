@@ -1,5 +1,5 @@
 {
-  "provider": "Local (Ollama)",
+  "provider": "local",
   "model": "llama3.2:latest",
   "api_key": "",
   "use_memory": true,
