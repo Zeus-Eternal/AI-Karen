@@ -1,4 +1,4 @@
-"""Inference helper for DistilBERT models with auto-download."""
+"""Inference helper for DistilBERT models with auto-download and clean generation flags."""
 
 from pathlib import Path
 from typing import Any, List
@@ -18,7 +18,8 @@ def _safe_pipeline_call(pipe: Pipeline, text: str, **kwargs: Any):
         "chat": ["temperature", "top_k", "max_new_tokens"],
         "text2text-generation": ["temperature", "top_k", "max_new_tokens"],
     }
-    valid = allowed.get(getattr(pipe, "task", ""), [])
+    task = getattr(pipe, "task", "")
+    valid = allowed.get(task, [])
     clean = {k: v for k, v in kwargs.items() if k in valid}
     return pipe(text, **clean)
 
@@ -27,6 +28,7 @@ try:
     import torch
 except Exception:  # pragma: no cover - optional dep
     torch = None
+
 try:
     from transformers import (
         AutoModelForSequenceClassification,
@@ -40,15 +42,10 @@ except Exception:  # pragma: no cover - optional dep
 class LNMClient:
     """Thin wrapper around transformers pipelines."""
 
-    def __init__(
-        self, model_dir: Path, model_name: str = "distilbert-base-uncased"
-    ) -> None:
-        if (
-            AutoTokenizer is None
-            or AutoModelForSequenceClassification is None
-            or pipeline is None
-        ):
+    def __init__(self, model_dir: Path, model_name: str = "distilbert-base-uncased") -> None:
+        if AutoTokenizer is None or AutoModelForSequenceClassification is None or pipeline is None:
             raise RuntimeError("transformers library is required for LNMClient")
+
         self.model_dir = model_dir
         if not model_dir.exists() or not (model_dir / "pytorch_model.bin").exists():
             print(f"[LNM] ⚠️ Model not found, downloading base: {model_name}")
@@ -62,6 +59,7 @@ class LNMClient:
             self.model = AutoModelForSequenceClassification.from_pretrained(model_dir)
 
         device = 0 if (torch and torch.cuda.is_available()) else -1
+
         self.cls_pipe = pipeline(
             "text-classification",
             model=self.model,
@@ -91,8 +89,4 @@ class LNMClient:
 
     def generate(self, text: str, context: str | None = None) -> str:
         label = self.classify(text)
-        return (
-            f"Intent '{label}' acknowledged."
-            if context is None
-            else f"{context} … {text}"
-        )
+        return f"Intent '{label}' acknowledged." if context is None else f"{context} … {text}"
