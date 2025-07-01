@@ -1,6 +1,6 @@
 import streamlit as st
 import asyncio
-from ..utils import api_client
+from utils import api_client
 
 async def fetch_tasks():
     return await api_client.get("/tasks")

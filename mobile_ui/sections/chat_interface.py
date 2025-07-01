@@ -1,6 +1,6 @@
 import streamlit as st
 import asyncio
-from ..utils import api_client
+from utils import api_client
 
 async def send_message(text: str, role: str = "user"):
     return await api_client.post("/chat", {"text": text, "role": role})

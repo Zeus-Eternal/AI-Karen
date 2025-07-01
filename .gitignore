@@ -3,3 +3,4 @@ logs/
 desktop_ui/node_modules/
 server.pid
 /.env
+/desktop_ui/frontend/node_modules
