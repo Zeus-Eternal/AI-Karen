@@ -6,6 +6,7 @@ import streamlit as st
 from sections import (
     chat_interface,
     task_dashboard,
+    settings,
 )
 
 PAGES = {
@@ -13,8 +14,11 @@ PAGES = {
     "📆 Tasks": task_dashboard,
 }
 
-st.set_page_config(page_title="Karen Mobile UI", layout="wide")
+st.set_page_config(page_title="Kari Mobile UI", layout="wide")
+
+settings.settings_panel()
+
 st.sidebar.title("🧠 Kari Control Panel (Mobile)")
-selection = st.sidebar.radio("Navigation", list(PAGES.keys()))
+selection = st.sidebar.radio("📱 Navigate", list(PAGES.keys()))
 
 PAGES[selection].render()
