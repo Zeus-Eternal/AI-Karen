@@ -32,7 +32,6 @@ class BasicClassifier:
             self.vectorizer = None
             if auto_init:
                 self._train_default()
-
     def fit(self, texts: List[str], labels: List[str]) -> None:
         self.vectorizer = TfidfVectorizer(max_features=25_000, ngram_range=(1, 2))
         X = self.vectorizer.fit_transform(texts)
