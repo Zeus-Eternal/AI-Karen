@@ -1,5 +1,6 @@
 import os
 import httpx
+import streamlit as st
 
 API_URL = os.getenv("KARI_API_URL", "http://localhost:8000")
 
@@ -20,3 +21,13 @@ async def get(path: str):
         return resp.json()
     except Exception as exc:
         return {"error": str(exc)}
+
+
+def get_api_key() -> str | None:
+    """Return the current LLM API key from the session state."""
+    return st.session_state.get("llm_api_key")
+
+
+def get_model() -> str:
+    """Return the selected model name from the session state."""
+    return st.session_state.get("model", "llama3")
