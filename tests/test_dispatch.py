@@ -6,7 +6,9 @@ def test_dispatch_greet():
     dispatcher = CortexDispatcher()
     result = asyncio.run(dispatcher.dispatch("hello", role="user"))
     assert result["intent"] == "greet"
-    assert result["response"] == "Hello World from plugin!"
+    assert result["response"] == (
+        "Hey there! I'm Kari—your AI co-pilot. What can I help with today?"
+    )
 
 
 def test_dispatch_time_query():

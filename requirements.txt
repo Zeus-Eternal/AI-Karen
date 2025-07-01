@@ -15,10 +15,6 @@ llama-cpp-python
 scikit-learn==1.5.*
 spacy==3.7.*
 datasets
-
- 
-huggingface_hub
-openai
- 
+jinja2
 prometheus_client
 cryptography

@@ -41,7 +41,9 @@ def test_dispatch_with_rbac():
         ensure_optional_dependency(dep)
     router = PluginRouter()
     result = asyncio.run(router.dispatch("greet", {}, roles=["user"]))
-    assert result == "Hello World from plugin!"
+    assert result == (
+        "Hey there! I'm Kari—your AI co-pilot. What can I help with today?"
+    )
 
 
 def test_dispatch_denied():

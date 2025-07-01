@@ -6,9 +6,9 @@ import pydantic_stub
 sys.modules["fastapi"] = fastapi_stub
 sys.modules["pydantic"] = pydantic_stub
 
-from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient  # noqa: E402
 
-from main import app
+from main import app  # noqa: E402
 
 client = TestClient(app)
 
@@ -18,7 +18,9 @@ def test_chat_endpoint():
     assert resp.status_code == 200
     data = resp.json()
     assert data["intent"] == "greet"
-    assert data["response"] == "Hello World from plugin!"
+    assert data["response"] == (
+        "Hey there! I'm Kari—your AI co-pilot. What can I help with today?"
+    )
 
 
 def test_deep_reasoning_endpoint():

@@ -1,0 +1,28 @@
+[
+  {"text": "hello", "intent": "greet"},
+  {"text": "hi", "intent": "greet"},
+  {"text": "hey there", "intent": "greet"},
+  {"text": "good morning", "intent": "greet"},
+  {"text": "goodbye", "intent": "farewell"},
+  {"text": "bye", "intent": "farewell"},
+  {"text": "see you later", "intent": "farewell"},
+  {"text": "thanks", "intent": "thanks"},
+  {"text": "thank you", "intent": "thanks"},
+  {"text": "much appreciated", "intent": "thanks"},
+  {"text": "what time is it", "intent": "time_query"},
+  {"text": "tell me the time", "intent": "time_query"},
+  {"text": "current time please", "intent": "time_query"},
+  {"text": "open the door", "intent": "open_door"},
+  {"text": "close the door", "intent": "close_door"},
+  {"text": "play some music", "intent": "play_music"},
+  {"text": "stop the music", "intent": "stop_music"},
+  {"text": "weather today", "intent": "weather_query"},
+  {"text": "what's the forecast", "intent": "weather_query"},
+  {"text": "turn on the lights", "intent": "lights_on"},
+  {"text": "turn off the lights", "intent": "lights_off"},
+  {"text": "increase volume", "intent": "volume_up"},
+  {"text": "decrease volume", "intent": "volume_down"},
+  {"text": "who are you", "intent": "identity_query"},
+  {"text": "what can you do", "intent": "capabilities_query"}
+]
+
