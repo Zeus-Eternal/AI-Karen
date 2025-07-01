@@ -17,7 +17,12 @@ class SpaCyClient:
     def __init__(self, model_name: str = DEFAULT_MODEL) -> None:
         if spacy is None:
             raise RuntimeError("spaCy is required for SpaCyClient")
-        self.nlp = spacy.load(model_name)
+        try:
+            self.nlp = spacy.load(model_name)
+        except OSError:
+            from spacy.cli import download
+            download(model_name)
+            self.nlp = spacy.load(model_name)
 
     def extract_entities(self, text: str) -> List[Dict[str, str]]:
         doc = self.nlp(text)

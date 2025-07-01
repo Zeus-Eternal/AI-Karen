@@ -19,7 +19,7 @@ VECT_FILE = "vectorizer.joblib"
 class BasicClassifier:
     """Tiny TF-IDF + LogisticRegression model."""
 
-    def __init__(self, model_dir: Path) -> None:
+    def __init__(self, model_dir: Path, auto_init: bool = True) -> None:
         if any(dep is None for dep in (joblib, np, TfidfVectorizer, LogisticRegression)):
             raise RuntimeError("scikit-learn is required for BasicClassifier")
         self.model_path = model_dir / MODEL_FILE
@@ -30,7 +30,8 @@ class BasicClassifier:
         else:
             self.clf = None
             self.vectorizer = None
-
+            if auto_init:
+                self._train_default()
     def fit(self, texts: List[str], labels: List[str]) -> None:
         self.vectorizer = TfidfVectorizer(max_features=25_000, ngram_range=(1, 2))
         X = self.vectorizer.fit_transform(texts)
@@ -47,3 +48,22 @@ class BasicClassifier:
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(self.clf, self.model_path)
         joblib.dump(self.vectorizer, self.vector_path)
+
+    def _train_default(self) -> None:
+        texts = [
+            "hello",
+            "hi",
+            "goodbye",
+            "bye",
+            "thanks",
+            "thank you",
+        ]
+        labels = [
+            "greet",
+            "greet",
+            "farewell",
+            "farewell",
+            "thanks",
+            "thanks",
+        ]
+        self.fit(texts, labels)
