@@ -14,6 +14,7 @@ class IntentEngine:
         else:
             self.add_intent("greet", r"\b(hello|hi|ping)\b")
             self.add_intent("deep_reasoning", r"\b(why|reason|because)\b")
+            self.add_intent("time_query", r"\b(time|clock|date)\b")
 
     def _load_from_file(self, path: str) -> None:
         import json
