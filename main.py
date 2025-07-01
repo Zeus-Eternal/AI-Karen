@@ -6,12 +6,14 @@ import os
 from core.cortex.dispatch import CortexDispatcher
 from core.embedding_manager import _METRICS as METRICS
 from core.soft_reasoning_engine import SoftReasoningEngine
+
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.stderr.write(
         "Error: A local 'fastapi' directory exists. It shadows the installed FastAPI package.\n"
     )
     sys.exit(1)
 from fastapi import FastAPI, HTTPException, Request
+
 try:
     from fastapi.responses import JSONResponse, Response
 except Exception:  # fastapi_stub compatibility
@@ -25,6 +27,7 @@ try:
         CONTENT_TYPE_LATEST,
     )
 except Exception:  # pragma: no cover - fallback when package is missing
+
     class _DummyMetric:
         def __init__(self, *args, **kwargs):
             pass
@@ -58,9 +61,8 @@ app = FastAPI()
 logger = logging.getLogger("kari")
 
 REQUEST_COUNT = Counter("kari_http_requests_total", "Total HTTP requests")
-REQUEST_LATENCY = Histogram(
-    "kari_http_request_seconds", "Latency of HTTP requests"
-)
+REQUEST_LATENCY = Histogram("kari_http_request_seconds", "Latency of HTTP requests")
+LNM_ERROR_COUNT = Counter("lnm_runtime_errors_total", "Total LNM pipeline failures")
 
 
 _sre_scheduler: SREScheduler | None = None
@@ -70,19 +72,23 @@ _sre_scheduler: SREScheduler | None = None
 async def handle_unexpected(request: Request, exc: Exception):
     logger.exception("Unhandled error")
     return JSONResponse({"detail": str(exc)}, status_code=500)
-  
+
+
 dispatcher = CortexDispatcher()
 engine = SoftReasoningEngine()
 
 
 if hasattr(app, "middleware"):
+
     @app.middleware("http")
     async def record_metrics(request: Request, call_next):
         with REQUEST_LATENCY.time():
             response = await call_next(request)
         REQUEST_COUNT.inc()
         return response
+
 else:
+
     async def record_metrics(request: Request, call_next):
         return await call_next(request)
 
@@ -159,12 +165,16 @@ def ready() -> Dict[str, Any]:
 
 
 @app.post("/chat")
-async def chat(req: ChatRequest) -> ChatResponse:
+async def chat(req: ChatRequest, request: Request | None = None) -> ChatResponse:
     role = getattr(req, "role", "user")
     try:
         data = await dispatcher.dispatch(req.text, role=role)
     except Exception as exc:  # pragma: no cover - safety net
-        raise HTTPException(status_code=500, detail=str(exc))
+        import traceback
+
+        traceback.print_exc()
+        LNM_ERROR_COUNT.inc()
+        return JSONResponse(status_code=500, content={"error": str(exc)})
     if data.get("error"):
         raise HTTPException(status_code=403, detail=data["error"])
     # Unknown intents return a normal response instead of 404
@@ -262,7 +272,5 @@ def self_refactor_logs(full: bool = False):
 
 
 if os.getenv("ENABLE_SELF_REFACTOR"):
-    _sre_scheduler = SREScheduler(
-        SelfRefactorEngine(Path(__file__).resolve().parent)
-    )
+    _sre_scheduler = SREScheduler(SelfRefactorEngine(Path(__file__).resolve().parent))
     _sre_scheduler.start()

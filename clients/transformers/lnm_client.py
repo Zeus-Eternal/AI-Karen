@@ -1,7 +1,27 @@
 """Inference helper for DistilBERT models with auto-download."""
 
 from pathlib import Path
-from typing import List
+from typing import Any, List
+
+try:
+    from transformers.pipelines.base import Pipeline
+except Exception:  # pragma: no cover - optional dep
+    Pipeline = Any  # type: ignore
+
+
+def _safe_pipeline_call(pipe: Pipeline, text: str, **kwargs: Any):
+    """Call a HuggingFace pipeline with only supported kwargs."""
+    allowed = {
+        "text-classification": [],
+        "feature-extraction": [],
+        "text-generation": ["temperature", "top_k", "max_new_tokens"],
+        "chat": ["temperature", "top_k", "max_new_tokens"],
+        "text2text-generation": ["temperature", "top_k", "max_new_tokens"],
+    }
+    valid = allowed.get(getattr(pipe, "task", ""), [])
+    clean = {k: v for k, v in kwargs.items() if k in valid}
+    return pipe(text, **clean)
+
 
 try:
     import torch
@@ -56,11 +76,16 @@ class LNMClient:
         )
 
     def classify(self, text: str) -> str:
-        return max(self.cls_pipe(text), key=lambda x: x["score"])["label"]
+        result = _safe_pipeline_call(self.cls_pipe, text)
+        return max(result, key=lambda x: x["score"])["label"]
 
     def embed(self, text: str) -> List[float]:
-        vector = self.feat_pipe(
-            text, truncation=True, padding=True, return_tensors="pt"
+        vector = _safe_pipeline_call(
+            self.feat_pipe,
+            text,
+            truncation=True,
+            padding=True,
+            return_tensors="pt",
         )[0]
         return vector.mean(dim=0).tolist()
 

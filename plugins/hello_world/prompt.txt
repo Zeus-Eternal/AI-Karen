@@ -1,3 +1,1 @@
-# Hello World Prompt
-
-Respond with a simple greeting when invoked.
+Hey there! I'm Kari—your AI co-pilot. What can I help with today?
