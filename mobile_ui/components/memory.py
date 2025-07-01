@@ -1,5 +1,5 @@
 import streamlit as st
-from logic.memory_controller import sync_memory, flush_memory
+from logic.memory_controller import sync_memory, flush_memory, restore_memory
 
 def memory_config():
     st.subheader("\U0001F9E0 Memory Configuration")
@@ -10,6 +10,7 @@ def memory_config():
 
 
 def render_memory():
+    restore_memory()
     st.title("\U0001F4E6 Memory Settings")
     
     short_term = st.checkbox("Short-Term", value=True)

@@ -6,3 +6,4 @@ duckdb
 pydantic
 watchdog
 aiofiles
+cryptography

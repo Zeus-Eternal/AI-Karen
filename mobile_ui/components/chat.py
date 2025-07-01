@@ -1,25 +1,61 @@
+import asyncio
 import streamlit as st
 
+from logic.memory_controller import restore_memory, sync_memory
+from utils.api_client import post, get
 
-def render_chat():
-    st.title("\U0001F4AC Chat with Kari")
+
+async def send_message(text: str, role: str = "user"):
+    """Send a chat message to the backend."""
+    return await post("/chat", {"text": text, "role": role})
+
+
+def _display_history() -> None:
+    """Render chat history stored in session state."""
+    for msg in st.session_state.get("messages", []):
+        with st.chat_message(msg.get("role", "user")):
+            st.markdown(msg.get("text", ""))
+
+
+def render_chat() -> None:
+    """Interactive chat interface linked to Kari's backend."""
+    st.title("\U0001f4ac Chat with Kari")
+
+    restore_memory()
 
     col1, col2 = st.columns([3, 1])
 
     with col2:
-        if st.button("\U0001F9E0 Recall Memory"):
-            st.info("Memory recall not implemented.")
-        if st.button("\U0001F4DC Show Logs"):
-            st.info("Log viewer coming soon.")
+        if st.button("\U0001f9e0 Recall Memory"):
+            restore_memory()
+            st.toast("Memory restored")
+        if st.button("\U0001f4dc Show Logs"):
+            logs = asyncio.run(get("/self_refactor/logs"))
+            st.expander("Logs").write("\n".join(logs.get("logs", [])))
 
     with col1:
         show_prompt = st.checkbox("Show system prompt", value=False)
         if show_prompt:
             st.expander("System Prompt").write("Placeholder system prompt.")
 
+        _display_history()
+
         user_input = st.chat_input("Type your message")
         if user_input:
-            st.chat_message("user").write(user_input)
-            # TODO: integrate with Kari backend
-            st.chat_message("assistant").write("\u26A1 Response from Kari goes here.")
-
+            st.session_state.setdefault("messages", []).append(
+                {"role": "user", "text": user_input}
+            )
+            with st.chat_message("user"):
+                st.markdown(user_input)
+            with st.chat_message("assistant"):
+                placeholder = st.empty()
+                data = asyncio.run(send_message(user_input))
+                if data and not data.get("error"):
+                    response = data.get("response", "")
+                    placeholder.markdown(response)
+                    st.session_state["messages"].append(
+                        {"role": "assistant", "text": response}
+                    )
+                    sync_memory()
+                else:
+                    placeholder.error(data.get("error", "error"))

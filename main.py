@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 from pathlib import Path
 import sys
+import os
 
 from core.cortex.dispatch import CortexDispatcher
 from core.embedding_manager import _METRICS as METRICS
@@ -11,7 +12,42 @@ if (Path(__file__).resolve().parent / "fastapi").is_dir():
     )
     sys.exit(1)
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+try:
+    from fastapi.responses import JSONResponse, Response
+except Exception:  # fastapi_stub compatibility
+    from fastapi.responses import JSONResponse
+    from fastapi_stub import Response
+try:
+    from prometheus_client import (
+        Counter,
+        Histogram,
+        generate_latest,
+        CONTENT_TYPE_LATEST,
+    )
+except Exception:  # pragma: no cover - fallback when package is missing
+    class _DummyMetric:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def inc(self, amount: int = 1) -> None:
+            pass
+
+        def time(self):
+            class _Ctx:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, tb):
+                    pass
+
+            return _Ctx()
+
+    def generate_latest() -> bytes:
+        return b""
+
+    CONTENT_TYPE_LATEST = "text/plain"
+    Counter = Histogram = _DummyMetric
+from src.self_refactor import SelfRefactorEngine, SREScheduler
 from pydantic import BaseModel
 import asyncio
 import logging
@@ -21,6 +57,14 @@ app = FastAPI()
 
 logger = logging.getLogger("kari")
 
+REQUEST_COUNT = Counter("kari_http_requests_total", "Total HTTP requests")
+REQUEST_LATENCY = Histogram(
+    "kari_http_request_seconds", "Latency of HTTP requests"
+)
+
+
+_sre_scheduler: SREScheduler | None = None
+
 
 @app.exception_handler(Exception)
 async def handle_unexpected(request: Request, exc: Exception):
@@ -29,6 +73,18 @@ async def handle_unexpected(request: Request, exc: Exception):
   
 dispatcher = CortexDispatcher()
 engine = SoftReasoningEngine()
+
+
+if hasattr(app, "middleware"):
+    @app.middleware("http")
+    async def record_metrics(request: Request, call_next):
+        with REQUEST_LATENCY.time():
+            response = await call_next(request)
+        REQUEST_COUNT.inc()
+        return response
+else:
+    async def record_metrics(request: Request, call_next):
+        return await call_next(request)
 
 
 class ChatRequest(BaseModel):
@@ -150,6 +206,17 @@ def metrics() -> MetricsResponse:
     return MetricsResponse(metrics=agg)
 
 
+@app.get("/metrics/prometheus")
+def metrics_prometheus() -> Response:
+    data = generate_latest()
+    try:
+        return Response(data, media_type=CONTENT_TYPE_LATEST)
+    except TypeError:
+        resp = Response(data)
+        resp.media_type = CONTENT_TYPE_LATEST
+        return resp
+
+
 @app.get("/plugins")
 def list_plugins() -> List[str]:
     return dispatcher.router.list_intents()
@@ -192,3 +259,10 @@ def self_refactor_logs(full: bool = False):
 
     logs = log_utils.load_logs(full=full)
     return {"logs": logs}
+
+
+if os.getenv("ENABLE_SELF_REFACTOR"):
+    _sre_scheduler = SREScheduler(
+        SelfRefactorEngine(Path(__file__).resolve().parent)
+    )
+    _sre_scheduler.start()
