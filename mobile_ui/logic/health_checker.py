@@ -1,8 +1,8 @@
 """Basic runtime diagnostics for the mobile UI."""
 
 from src.integrations.llm_registry import registry as llm_registry
-from .memory_controller import MEM_DB
-from .vault import VAULT_DB
+from mobile_ui.logic.memory_controller import MEM_DB
+from mobile_ui.logic.vault import VAULT_DB
 
 
 def get_system_health() -> dict:

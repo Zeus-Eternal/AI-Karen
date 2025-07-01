@@ -5,3 +5,4 @@ server.pid
 /.env
 /desktop_ui/frontend/node_modules
 mobile_ui/config/secrets.json
+*.duckdb
