@@ -4,8 +4,10 @@ from typing import Dict, Iterable
 
 from pathlib import Path
 
+import os
 from .llm_utils import LLMUtils
 from services.ollama_inprocess import generate as local_generate
+from services.deepseek_client import DeepSeekClient
 
 
 class LlamaCppWrapper:
@@ -24,11 +26,40 @@ class LLMRegistry:
     """Manage available LLM backends with a local-first default."""
 
     def __init__(self) -> None:
-        self.backends: Dict[str, object] = {
-            "local": LLMUtils(),
-            "ollama_cpp": LlamaCppWrapper(),
-        }
+        self.backends: Dict[str, object] = {}
+
+        # local HF/transformers backend is always available
+        self.backends["local"] = LLMUtils()
         self.active = "local"
+
+        # optional llama.cpp / ollama wrapper
+        try:
+            LlamaCppWrapper()
+        except Exception:
+            pass
+        else:
+            self.backends["ollama_cpp"] = LlamaCppWrapper()
+
+        # optional OpenAI backend
+        try:  # pragma: no cover - optional dep
+            import openai  # type: ignore
+        except Exception:
+            pass
+        else:
+            class OpenAIWrapper:
+                def generate_text(self, prompt: str, max_tokens: int = 128) -> str:
+                    resp = openai.ChatCompletion.create(
+                        model="gpt-3.5-turbo",
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=max_tokens,
+                    )
+                    return resp.choices[0].message.content
+
+            self.backends["openai"] = OpenAIWrapper()
+
+        # optional DeepSeek backend
+        if os.getenv("DEEPSEEK_API_KEY"):
+            self.backends["deepseek"] = DeepSeekClient()
 
     def register(self, name: str, llm: object) -> None:
         self.backends[name] = llm

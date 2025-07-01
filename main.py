@@ -165,7 +165,7 @@ def ready() -> Dict[str, Any]:
 
 
 @app.post("/chat")
-async def chat(req: ChatRequest, request: Request | None = None) -> ChatResponse:
+async def chat(req: ChatRequest) -> ChatResponse:
     role = getattr(req, "role", "user")
     try:
         data = await dispatcher.dispatch(req.text, role=role)
