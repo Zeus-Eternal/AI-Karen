@@ -11,6 +11,8 @@ uvicorn main:app --reload
 streamlit run mobile_ui/app.py
 ```
 
-The UI includes chat and a task dashboard out of the box. A settings panel lets you
-store credentials and model preferences securely in session state (and optionally
-on disk). Additional sections can be added under `mobile_ui/sections/`.
+The UI includes chat and a task dashboard out of the box. A configuration panel
+lets you choose an LLM provider, model, and memory options. These widgets live in
+`mobile_ui/components/` and can be reused across future pages. Settings are kept
+locally in session state and can later be persisted to disk. Additional sections
+can be added under `mobile_ui/sections/`.
