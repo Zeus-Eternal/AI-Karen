@@ -1,5 +1,4 @@
 """scikit-learn intent classifier."""
-from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Tuple
@@ -7,36 +6,44 @@ from typing import List, Tuple
 try:
     import joblib
     import numpy as np
-    from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
+    from sklearn.feature_extraction.text import TfidfVectorizer
 except Exception:  # pragma: no cover - optional dep
-    joblib = np = TfidfVectorizer = LogisticRegression = None
-
-MODEL_FILE = "classifier.joblib"
-VECT_FILE = "vectorizer.joblib"
+    joblib = np = LogisticRegression = TfidfVectorizer = None
+import json
 
 
 class BasicClassifier:
-    """Tiny TF-IDF + LogisticRegression model."""
-
-    def __init__(self, model_dir: Path, auto_init: bool = True) -> None:
-        if any(dep is None for dep in (joblib, np, TfidfVectorizer, LogisticRegression)):
+    def __init__(self, model_dir: Path):
+        if any(
+            dep is None for dep in (joblib, np, LogisticRegression, TfidfVectorizer)
+        ):
             raise RuntimeError("scikit-learn is required for BasicClassifier")
-        self.model_path = model_dir / MODEL_FILE
-        self.vector_path = model_dir / VECT_FILE
-        if self.model_path.exists():
+        self.model_path = model_dir / "classifier.joblib"
+        self.vector_path = model_dir / "vectorizer.joblib"
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        if self.model_path.exists() and self.vector_path.exists():
             self.clf = joblib.load(self.model_path)
             self.vectorizer = joblib.load(self.vector_path)
         else:
-            self.clf = None
-            self.vectorizer = None
-            if auto_init:
-                self._train_default()
-    def fit(self, texts: List[str], labels: List[str]) -> None:
-        self.vectorizer = TfidfVectorizer(max_features=25_000, ngram_range=(1, 2))
+            print(
+                "[BasicClassifier] ⚠️ No model found. Attempting to train from default data."
+            )
+            default_data = self._load_bootstrap_data()
+            if default_data:
+                texts = [d["text"] for d in default_data]
+                labels = [d["intent"] for d in default_data]
+                self.fit(texts, labels)
+            else:
+                self.clf, self.vectorizer = None, None
+
+    def fit(self, texts: List[str], labels: List[str]):
+        self.vectorizer = TfidfVectorizer(max_features=25000, ngram_range=(1, 2))
         X = self.vectorizer.fit_transform(texts)
-        self.clf = LogisticRegression(max_iter=1_000).fit(X, labels)
-        self._save()
+        self.clf = LogisticRegression(max_iter=1000).fit(X, labels)
+        joblib.dump(self.clf, self.model_path)
+        joblib.dump(self.vectorizer, self.vector_path)
 
     def predict(self, text: str) -> Tuple[str, float]:
         X = self.vectorizer.transform([text])
@@ -44,26 +51,11 @@ class BasicClassifier:
         idx = int(np.argmax(proba))
         return self.clf.classes_[idx], float(proba[idx])
 
-    def _save(self) -> None:
-        self.model_path.parent.mkdir(parents=True, exist_ok=True)
-        joblib.dump(self.clf, self.model_path)
-        joblib.dump(self.vectorizer, self.vector_path)
-
-    def _train_default(self) -> None:
-        texts = [
-            "hello",
-            "hi",
-            "goodbye",
-            "bye",
-            "thanks",
-            "thank you",
-        ]
-        labels = [
-            "greet",
-            "greet",
-            "farewell",
-            "farewell",
-            "thanks",
-            "thanks",
-        ]
-        self.fit(texts, labels)
+    def _load_bootstrap_data(self):
+        # fallback training if user data is missing
+        try:
+            with open("data/bootstrap/classifier_seed.json") as f:
+                return json.load(f)
+        except Exception:
+            print("[BasicClassifier] ❌ No bootstrap data found.")
+            return []
