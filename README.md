@@ -123,6 +123,10 @@ cargo install tauri-cli
 cd desktop_ui && npm install
 cd frontend && npm install && cd ../..
 
+# The Tauri configuration lives in `desktop_ui/src-tauri/tauri.conf.json`.
+# It points to the frontend dev server at `http://localhost:5173`.
+# Make sure this file exists before running desktop commands.
+
 # 4 · Launch backend API + dependencies
 ./scripts/start.sh
 
@@ -214,7 +218,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && tauri dev  # hot reloads the desktop shell
+cd desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/tauri.conf.json
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |

@@ -26,6 +26,10 @@ Use this path to compile the full Tauri desktop application.
 source "$HOME/.cargo/env"
 cargo install tauri-cli
 
+# Both `tauri dev` and `tauri build` use `desktop_ui/src-tauri/tauri.conf.json`
+# as the configuration file. The default `devPath` expects the frontend
+# server to run on `http://localhost:5173`.
+
 # run in development mode with hot reload
 tauri dev
 
