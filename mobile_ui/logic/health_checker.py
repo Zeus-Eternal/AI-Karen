@@ -4,6 +4,7 @@ import importlib
 import platform
 import subprocess
 import logging
+import os
 from pathlib import Path
 
 from src.integrations.llm_registry import registry as llm_registry
@@ -74,13 +75,49 @@ def _check_gpu_info() -> str:
 def _get_python_version() -> str:
     return platform.python_version()
 
+# --- Database & Service Checks --- #
+
+def _test_duckdb(db_path: Path) -> bool:
+    """Attempt to connect to a DuckDB file."""
+    try:
+        import duckdb  # local import to avoid mandatory dependency
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        con = duckdb.connect(str(db_path))
+        con.execute("SELECT 1")
+        con.close()
+        return True
+    except Exception as e:
+        logger.warning(f"DuckDB check failed for {db_path}: {e}")
+        return False
+
+
+def _ping_milvus() -> bool:
+    """Ping Milvus if pymilvus is installed."""
+    try:
+        from pymilvus import connections
+    except Exception:
+        return False
+    host = os.getenv("MILVUS_HOST", "localhost")
+    port = os.getenv("MILVUS_PORT", "19530")
+    try:
+        connections.connect(alias="health", host=host, port=port)
+        conn = connections.get_connection("health")
+        conn.list_collections()
+        connections.disconnect("health")
+        return True
+    except Exception as e:
+        logger.warning(f"Milvus ping failed: {e}")
+        return False
+
 # --- Main System Health Check --- #
 
 def get_system_health() -> dict:
     """Perform full diagnostics across memory, LLMs, GPU, and package status."""
 
     # Core DBs
-    duckdb_ok = MEM_DB.exists() or VAULT_DB.exists()
+    duckdb_memory = _test_duckdb(MEM_DB)
+    duckdb_vault = _test_duckdb(VAULT_DB)
+    milvus_ok = _ping_milvus()
 
     # Ensure base NLP stack
     spacy_ok = _check_and_install("spacy")
@@ -92,6 +129,12 @@ def get_system_health() -> dict:
     if spacy_ok:
         _ensure_spacy_model("en_core_web_sm")
 
+    backends = {
+        "ollama_cpp": "ollama_cpp" in llm_registry.backends,
+        "openai": "openai" in llm_registry.backends,
+        "deepseek": "deepseek" in llm_registry.backends,
+    }
+
     return {
         "runtime": {
             "python_version": _get_python_version(),
@@ -100,10 +143,12 @@ def get_system_health() -> dict:
         },
         "memory": {
             "redis": "ok",
-            "duckdb": "ok" if duckdb_ok else "init",
-            "milvus": "ok",  # Assume local
+            "duckdb_memory": duckdb_memory,
+            "duckdb_vault": duckdb_vault,
+            "milvus": milvus_ok,
         },
         "llm_registry": llm_registry.active,
+        "llm_backends": backends,
         "packages": {
             "spacy": spacy_ok,
             "scikit-learn": sklearn_ok,
@@ -112,3 +157,4 @@ def get_system_health() -> dict:
         },
         "spacy_models": _get_spacy_models(),
     }
+
