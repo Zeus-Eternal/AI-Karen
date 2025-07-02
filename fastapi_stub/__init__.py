@@ -25,6 +25,7 @@ class _Route:
 class FastAPI:
     def __init__(self):
         self.routes = []
+        self._startup = []
 
     def get(self, path):
         def decorator(func):
@@ -35,6 +36,13 @@ class FastAPI:
     def post(self, path):
         def decorator(func):
             self.routes.append(_Route("POST", path, func))
+            return func
+        return decorator
+
+    def on_event(self, event: str):
+        def decorator(func):
+            if event == "startup":
+                self._startup.append(func)
             return func
         return decorator
 
