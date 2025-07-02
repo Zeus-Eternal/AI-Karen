@@ -72,8 +72,7 @@ guardrails/    # YAML validators
 capsules/      # domain-specific micro agents
 integrations/  # helper utilities (RPA, automation)
 plugins/       # drop-in plugins (manifest + handler)
-desktop_ui/    # Tauri Control Room
-mobile_ui/     # Streamlit mobile interface
+ui/            # Frontend UIs (desktop, mobile, admin)
 fastapi_stub/  # lightweight stubs for tests
 pydantic_stub/ # lightweight stubs for tests
 tests/         # pytest suite
@@ -94,7 +93,7 @@ guardrails/    # YAML validators & rule engine
 capsules/      # domain-specific agents (DevOps, Finance, …)
 integrations/  # NANDA client, RPA helpers, external bridges
 plugins/       # drop-in plugins (manifest + handler + ui)
-desktop_ui/    # Tauri Control Room (Rust + React)
+ui/desktop_ui/ # Tauri Control Room (Rust + React)
 fastapi_stub/  # API entrypoints, chat & metrics
 pydantic_stub/ # DTOs & schemas
 tests/         # pytest suite
@@ -122,16 +121,16 @@ python scripts/install_models.py
 cargo install tauri-cli
 
 # 3 · Install Control Room packages
-cd desktop_ui && npm install
+cd ui/desktop_ui && npm install
 
-# The Tauri configuration lives in `desktop_ui/src-tauri/tauri.config.json`.
+# The Tauri configuration lives in `ui/desktop_ui/src-tauri/tauri.config.json`.
 # Make sure this file exists before running desktop commands.
 
 # 4 · Launch backend API + dependencies
 ./scripts/start.sh
 
 # 5 · Run desktop Control Room (dev mode)
-cd desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
+cd ui/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 ```
 
 # Optional: run everything with one command
@@ -146,7 +145,7 @@ cd desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 
 Build signed desktop binaries:
 ```bash
-cd desktop_ui
+cd ui/desktop_ui
 tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.config.json
 
 ```
@@ -191,7 +190,7 @@ package. The server now exits with an error if such a folder exists.
 ### 3. Start Frontend (optional)
 
 ```bash
-cd desktop_ui
+cd ui/desktop_ui
 pnpm install
 pnpm run dev
 ```
@@ -199,12 +198,12 @@ pnpm run dev
 ### 4. Start Tauri Desktop App
 
 ```bash
-cd desktop_ui
+cd ui/desktop_ui
 pnpm install
 npx tauri dev
 ```
 
-📦 Ensure `tauri.config.json` is under `desktop_ui/src-tauri/`
+📦 Ensure `tauri.config.json` is under `ui/desktop_ui/src-tauri/`
 
 ### API Usage
 
@@ -218,7 +217,7 @@ commands.
 
  
 # Launch Control Room
-cd desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/tauri.config.json
+cd ui/desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/tauri.config.json
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |
