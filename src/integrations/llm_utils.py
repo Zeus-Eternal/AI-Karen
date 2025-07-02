@@ -6,15 +6,28 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    pipeline,
-    Pipeline,
-    set_seed,
-)
-from huggingface_hub import snapshot_download
-from transformers.pipelines.base import PipelineException
+try:  # pragma: no cover - optional dependencies
+    from transformers import (
+        AutoTokenizer,
+        AutoModelForCausalLM,
+        pipeline,
+        Pipeline,
+        set_seed,
+    )
+    from transformers.pipelines.base import PipelineException
+except Exception:  # library missing
+    AutoTokenizer = AutoModelForCausalLM = pipeline = None  # type: ignore
+    Pipeline = None  # type: ignore
+    def set_seed(_seed: int) -> None:  # type: ignore
+        pass
+
+    class PipelineException(Exception):
+        pass
+
+try:  # pragma: no cover - optional dependency
+    from huggingface_hub import snapshot_download
+except Exception:  # pragma: no cover
+    snapshot_download = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +48,12 @@ class LLMUtils:
         self._counter = 0
         self._error: Optional[Exception] = None
         self.generator: Optional[Pipeline] = None
+
+        if AutoTokenizer is None or AutoModelForCausalLM is None or pipeline is None or snapshot_download is None:
+            logger.warning("transformers or huggingface_hub unavailable; using mock generator")
+            self.generator = None
+            self._error = ImportError("transformers or huggingface_hub missing")
+            return
 
         set_seed(seed)
 
