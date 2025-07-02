@@ -96,20 +96,46 @@ def get_providers() -> List[str]:
     return list(MODEL_PROVIDERS.keys())
 
 
-def get_models() -> List[dict]:
-    """Return list of model metadata blocks from the registry."""
+def _discover_provider_models() -> List[dict]:
+    """Return minimal metadata discovered from :data:`MODEL_PROVIDERS`."""
+    models: List[dict] = []
+    for provider, entry in MODEL_PROVIDERS.items():
+        available = entry() if callable(entry) else entry
+        for name in available:
+            models.append({"model_name": name, "provider": canonical_provider(provider)})
+    return models
+
+def _load_registry_entries() -> List[dict]:
+    """Return model blocks from :data:`REGISTRY_PATH`."""
     if not REGISTRY_PATH.exists():
         return []
     try:
-        data = json.loads(REGISTRY_PATH.read_text())
+        raw = json.loads(REGISTRY_PATH.read_text())
     except Exception as exc:  # pragma: no cover - optional
         logger.warning("failed to load registry: %s", exc)
         return []
 
-    entries = []
-    for _, meta in (data.items() if isinstance(data, dict) else []):
-        if isinstance(meta, dict):
+    if isinstance(raw, dict):
+        return [meta for meta in raw.values() if isinstance(meta, dict)]
+    entries: List[dict] = []
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict):
+                entries.append(item)
+    return entries
+
+
+def get_models() -> List[dict]:
+    """Return union of registry metadata and discovered provider models."""
+    registry_entries = _load_registry_entries()
+    entries = list(registry_entries)
+    seen = {meta.get("model_name") for meta in entries}
+
+    for meta in _discover_provider_models():
+        if meta["model_name"] not in seen:
             entries.append(meta)
+            seen.add(meta["model_name"])
+
     return entries
   
 def get_ready_models() -> List[dict]:
@@ -117,9 +143,10 @@ def get_ready_models() -> List[dict]:
     models = [
         m
         for m in get_models()
-        if ensure_model_downloaded(m.get("provider", ""), m.get("model_name", ""))
+        if not str(m.get("model_name", "")).startswith("<")
+        and ensure_model_downloaded(m.get("provider", ""), m.get("model_name", ""))
     ]
-    if not models:
+    if not models or not _load_registry_entries():
         models.append(
             {
                 "model_name": "distilbert-base-uncased",

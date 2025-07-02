@@ -58,15 +58,26 @@ def list_lmstudio_models():
     return ["lmstudio-api-models"]
 
 
+def list_anthropic_models():
+    """Return available Anthropic models (placeholder)."""
+    return ["claude-3-opus-20240229", "claude-3-sonnet"]
+
+
+def list_groq_models():
+    """Return local Groq models under ``/models/groq`` if present."""
+    groq_dir = Path("/models/groq")
+    return [p.stem for p in groq_dir.glob("*.gguf")] if groq_dir.exists() else []
+
+
 # === Final Aggregation ===
 
 MODEL_PROVIDERS = {
     "llama-cpp": list_llama_cpp_models("/models"),
-    "ollama": list_ollama_models(),
-    "transformers": list_transformers_models(),
     "lmstudio": list_lmstudio_models(),
     "gemini": list_gemini_models(),
-    "claude": ["claude-3-opus-20240229"],
-    "deepseek": ["deepseek-coder-6.7b", "deepseek-llm-7b"],
+    "anthropic": list_anthropic_models(),
+    "groq": list_groq_models(),
     "mistral": ["mistral-small", "mistral-medium", "mistral-large"],
+    "deepseek": ["deepseek-coder-6.7b", "deepseek-llm-7b"],
+    "transformers": list_transformers_models(),
 }
