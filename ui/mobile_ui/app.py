@@ -5,7 +5,12 @@ import pathlib
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]  # AI-Karen root
 SRC_PATH = PROJECT_ROOT / "src"
 
-# Add src/ to sys.path to allow absolute imports like "from src.integrations..."
+# Make project modules importable before anything else is loaded. This mirrors
+# the logic in ``ui.mobile_ui.__init__`` but is repeated here for direct script
+# execution.
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
@@ -14,7 +19,7 @@ import streamlit as st
 from components.sidebar import render_sidebar
 from components.provider_selector import select_provider
 from config.config_manager import ConfigManager
-from services.model_loader import ensure_spacy_models, ensure_sklearn_installed
+from utils.model_loader import ensure_spacy_models, ensure_sklearn_installed
 
 def load_styles():
     try:
