@@ -5,22 +5,45 @@ from typing import Callable, Dict, Any
 
 import requests
 from prometheus_client import Histogram
+from services.ollama_inprocess import generate as local_generate
+
+try:  # pragma: no cover - optional dep
+    import onnxruntime as ort  # type: ignore
+except Exception:  # pragma: no cover - optional
+    ort = None
 
 # Placeholder runtime loaders -------------------------------------------------
 
 def run_llama_model(meta: dict, prompt: str) -> str:
+    """Execute a llama.cpp model using the in-process generator."""
     path = os.path.join(meta.get("path", ""), meta.get("model_name", ""))
-    return f"[llama_cpp:{path}] {prompt}"
+    if not os.path.exists(path):
+        path = meta.get("model_name", "")
+    return local_generate(prompt, model_path=path)
 
 
 def run_hf_model(meta: dict, prompt: str) -> str:
+    """Use HuggingFace transformers with automatic download."""
     from src.integrations.llm_utils import LLMUtils
-    llm = LLMUtils(meta.get("model_name", "distilgpt2"))
+
+    model_name = meta.get("model_name", "distilbert-base-uncased")
+    llm = LLMUtils(model_name)
     return llm.generate_text(prompt)
 
 
 def run_onnx_model(meta: dict, prompt: str) -> str:
-    return f"[onnx:{meta.get('path')}] {prompt}"
+    if ort is None:
+        return f"{prompt} (onnxruntime unavailable)"
+    model_path = meta.get("path") or meta.get("model_name")
+    if not model_path:
+        return f"{prompt} (invalid model path)"
+    try:
+        sess = ort.InferenceSession(model_path)
+        inp_name = sess.get_inputs()[0].name
+        out = sess.run(None, {inp_name: prompt})
+        return str(out[0])
+    except Exception:
+        return f"{prompt} (onnx error)"
 
 
 def run_remote_rest(meta: dict, prompt: str) -> Any:

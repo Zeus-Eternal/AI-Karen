@@ -2,14 +2,14 @@ import time
 import streamlit as st
 
 from logic.config_manager import load_config, update_config
-from logic.model_registry import get_models, get_model_meta
+from logic.model_registry import get_ready_models, get_model_meta
 from logic.runtime_dispatcher import dispatch_runtime
 
 
 def render_chat_page() -> None:
     st.markdown("## :speech_balloon: Chat")
-
-    models = [m.get("model_name") for m in get_models()]
+    
+    models = [m.get("model_name") for m in get_ready_models()]
     if not models:
         st.warning("No models available")
         return

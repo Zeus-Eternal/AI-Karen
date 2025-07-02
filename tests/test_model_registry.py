@@ -36,3 +36,11 @@ def test_get_models_reads_registry(tmp_path, monkeypatch):
     models = mr.get_models()
     assert any(m["model_name"] == "foo" for m in models)
     assert any(m["provider"] == "custom_provider" for m in models)
+
+
+def test_ready_models_default(tmp_path, monkeypatch):
+    path = tmp_path / "reg.json"
+    path.write_text("{}")
+    monkeypatch.setattr(mr, "REGISTRY_PATH", path)
+    ready = mr.get_ready_models()
+    assert any(m["model_name"] == "distilbert-base-uncased" for m in ready)

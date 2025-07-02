@@ -111,8 +111,31 @@ def get_models() -> List[dict]:
         if isinstance(meta, dict):
             entries.append(meta)
     return entries
+  
+def get_ready_models() -> List[dict]:
+    """Return models that appear usable, otherwise provide distilbert."""
+    models = [
+        m
+        for m in get_models()
+        if ensure_model_downloaded(m.get("provider", ""), m.get("model_name", ""))
+    ]
+    if not models:
+        models.append(
+            {
+                "model_name": "distilbert-base-uncased",
+                "provider": "huggingface",
+                "runtime": "huggingface",
+                "tokenizer_type": "bpe",
+                "prompt_limit_bytes": 4096,
+            }
+        )
+    return models
 
 
+def list_ready_providers() -> List[str]:
+    """Return providers that have at least one ready model."""
+    return sorted({m.get("provider") for m in get_ready_models()})
+  
 def get_model_meta(name: str) -> Optional[dict]:
     """Return a single model metadata block by name or alias."""
     registry = load_registry()
