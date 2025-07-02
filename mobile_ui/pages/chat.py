@@ -44,7 +44,7 @@ class ChatManager:
             st.warning("Please wait before sending another message")
             return False
         return True
-
+      
     def _validate_input(self, text: str) -> bool:
         if not text or not text.strip():
             st.warning("Message cannot be empty")

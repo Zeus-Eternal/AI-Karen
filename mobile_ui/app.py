@@ -275,4 +275,5 @@ if __name__ == "__main__":
         app.run()
     except Exception as e:
         logger.critical(f"Bootstrap failed: {e}")
+ 
         sys.exit(1)
