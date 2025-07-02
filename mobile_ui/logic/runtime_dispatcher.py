@@ -5,24 +5,48 @@ from typing import Callable, Dict, Any
 
 import requests
 from prometheus_client import Histogram
+from services.ollama_inprocess import generate as local_generate
+
+try:  # pragma: no cover - optional dep
+    import onnxruntime as ort  # type: ignore
+except Exception:  # pragma: no cover - optional
+    ort = None
 
 # Placeholder runtime loaders -------------------------------------------------
 
-def load_llama_model(meta: dict) -> Any:
+def run_llama_model(meta: dict, prompt: str) -> str:
+    """Execute a llama.cpp model using the in-process generator."""
     path = os.path.join(meta.get("path", ""), meta.get("model_name", ""))
-    return {"runtime": "llama_cpp", "path": path}
+    if not os.path.exists(path):
+        path = meta.get("model_name", "")
+    return local_generate(prompt, model_path=path)
 
 
-def load_hf_model(meta: dict) -> Any:
+def run_hf_model(meta: dict, prompt: str) -> str:
+    """Use HuggingFace transformers with automatic download."""
     from src.integrations.llm_utils import LLMUtils
-    return LLMUtils(meta.get("model_name", "distilgpt2"))
+
+    model_name = meta.get("model_name", "distilbert-base-uncased")
+    llm = LLMUtils(model_name)
+    return llm.generate_text(prompt)
 
 
-def load_onnx_model(meta: dict) -> Any:
-    return {"runtime": "onnx", "path": meta.get("path")}
+def run_onnx_model(meta: dict, prompt: str) -> str:
+    if ort is None:
+        return f"{prompt} (onnxruntime unavailable)"
+    model_path = meta.get("path") or meta.get("model_name")
+    if not model_path:
+        return f"{prompt} (invalid model path)"
+    try:
+        sess = ort.InferenceSession(model_path)
+        inp_name = sess.get_inputs()[0].name
+        out = sess.run(None, {inp_name: prompt})
+        return str(out[0])
+    except Exception:
+        return f"{prompt} (onnx error)"
 
 
-def query_rest_endpoint(meta: dict, prompt: str) -> Any:
+def run_remote_rest(meta: dict, prompt: str) -> Any:
     headers = meta.get("headers", {}).copy()
     if meta.get("auth"):
         headers["Authorization"] = meta["auth"]
@@ -34,10 +58,10 @@ def query_rest_endpoint(meta: dict, prompt: str) -> Any:
 
 
 RUNTIME_EXECUTORS: Dict[str, Callable[..., Any]] = {
-    "llama_cpp": load_llama_model,
-    "huggingface": load_hf_model,
-    "onnx": load_onnx_model,
-    "remote_rest": query_rest_endpoint,
+    "llama_cpp": run_llama_model,
+    "huggingface": run_hf_model,
+    "onnx": run_onnx_model,
+    "remote_rest": run_remote_rest,
 }
 
 RUNTIME_LATENCY = Histogram(

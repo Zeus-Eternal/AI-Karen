@@ -32,7 +32,7 @@ def load_styles() -> None:
 def dispatch_selection(selection: str) -> None:
     """Dispatch the current sidebar selection to the correct view."""
     try:
-        if selection == "Home":
+        if selection == "Chat":
             render_chat()
         elif selection == "Settings":
             render_settings()

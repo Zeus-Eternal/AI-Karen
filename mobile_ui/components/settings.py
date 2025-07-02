@@ -1,6 +1,6 @@
 import streamlit as st
 from logic.config_manager import load_config, save_config
-from logic.model_registry import get_models, list_providers
+from logic.model_registry import get_ready_models, list_ready_providers
 
 LOCAL_PROVIDERS = {"local", "ollama_cpp"}
 
@@ -9,21 +9,31 @@ def render_settings():
     st.title("\u2699\ufe0f Kari Configuration")
     config = load_config()
 
-    providers = list_providers()
-    if any(m.get("provider") == "custom_provider" for m in get_models()):
-        providers.append("custom_provider")
+    providers = list_ready_providers()
+    if any(m.get("provider") == "custom_provider" for m in get_ready_models()):
+        if "custom_provider" not in providers:
+            providers.append("custom_provider")
+    default_provider = config.get("provider")
+    if default_provider not in providers and providers:
+        default_provider = providers[0]
     provider = st.selectbox(
         "LLM Provider",
         providers,
-        index=providers.index(config.get("provider", providers[0])) if providers else 0,
+        index=providers.index(default_provider) if providers else 0,
     )
     models = [
         m.get("alias", m.get("model_name"))
-        for m in get_models()
+        for m in get_ready_models()
         if m.get("provider") == provider
     ]
-    model_default = config.get("model") if config.get("model") in models else models[0]
-    model = st.selectbox("Model", models, index=models.index(model_default))
+    if models:
+        model_default = (
+            config.get("model") if config.get("model") in models else models[0]
+        )
+        model = st.selectbox("Model", models, index=models.index(model_default))
+    else:
+        st.warning("No models available for selected provider")
+        model = ""
 
     api_key = ""
     if provider not in LOCAL_PROVIDERS:
