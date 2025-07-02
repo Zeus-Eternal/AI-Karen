@@ -12,6 +12,7 @@ Core application entry point with enhanced:
 import sys
 import logging
 from pathlib import Path
+from datetime import datetime
 from typing import Optional
 
 # 🚀 Initialization before imports to ensure path correctness
