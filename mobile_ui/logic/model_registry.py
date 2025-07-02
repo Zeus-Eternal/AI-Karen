@@ -6,7 +6,10 @@ import os
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from huggingface_hub import snapshot_download
+try:
+    from huggingface_hub import snapshot_download
+except Exception:  # pragma: no cover - optional dep
+    snapshot_download = None
 
 logger = logging.getLogger(__name__)
 
@@ -151,8 +154,63 @@ def get_models(provider: Optional[str] = None) -> List[Dict[str, Any]]:
         if provider and prov != provider:
             continue
         entries = loader() if callable(loader) else loader
-        out.extend([normalize_model_entry({**e, "provider": prov}) for e in entries])
+        for e in entries:
+            item = normalize_model_entry({**e, "provider": prov})
+            item["model_name"] = item.get("name", "")
+            out.append(item)
+
+    # Append registry-defined models
+    out.extend(get_registry_models(provider))
+
     return out
+
+
+def load_registry() -> Dict[str, Dict[str, Any]]:
+    """Load raw registry JSON from ``REGISTRY_PATH`` if present."""
+    if not REGISTRY_PATH.exists():
+        return {}
+    try:
+        return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    except Exception as e:  # pragma: no cover - invalid json
+        logger.error("Failed to load registry: %s", e)
+        return {}
+
+
+def get_registry_models(provider: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return models declared in ``llm_registry.json`` filtered by provider."""
+    data = load_registry()
+    models = []
+    for entry in data.values():
+        prov = entry.get("provider", "")
+        if provider:
+            alias = provider.lower()
+            if alias == "local":
+                alias = "llama-cpp"
+            if prov != alias:
+                continue
+        models.append(entry)
+    return models
+
+
+def get_ready_models() -> List[Dict[str, Any]]:
+    """Return union of static models and registry models with fallback."""
+    ready = get_models(None) + get_registry_models(None)
+    if not any(m.get("model_name") == "distilbert-base-uncased" for m in ready):
+        ready.append(
+            {
+                "model_name": "distilbert-base-uncased",
+                "provider": "local",
+                "runtime": "transformers",
+            }
+        )
+    return ready
+
+
+def get_providers() -> List[str]:
+    """Return all provider keys including registry providers."""
+    providers = set(MODEL_PROVIDERS.keys())
+    providers.update(m.get("provider", "") for m in load_registry().values())
+    return sorted(p for p in providers if p)
 
 
 def ensure_model_downloaded(model: Dict[str, Any]) -> str:
@@ -172,6 +230,8 @@ def ensure_model_downloaded(model: Dict[str, Any]) -> str:
 
     # HuggingFace snapshot
     if runtime == "transformers" and "/" in name:
+        if snapshot_download is None:
+            raise RuntimeError("huggingface_hub is required to download models")
         dest = LOCAL_MODEL_DIR / name.replace("/", "_")
         if dest.exists():
             return str(dest)
