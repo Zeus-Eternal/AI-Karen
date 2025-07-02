@@ -4,7 +4,13 @@ from logic.model_registry import (
     list_providers,
     ensure_model_downloaded,
 )
-from logic.config_manager import update_config, load_config, get_status
+from logic.config_manager import (
+    update_config,
+    load_config,
+    get_status,
+    list_configured_providers,
+    get_provider_config,
+)
 import streamlit as st
 import pandas as pd
 
@@ -83,6 +89,15 @@ def render_sidebar():
     status = get_status()
     emoji = {"Ready": "🟢", "Pending Config": "🟡", "Invalid": "🔴"}.get(status, "❔")
     st.sidebar.markdown(f"**Status:** {emoji} {status}")
+
+    # Configured providers summary
+    configured = list_configured_providers()
+    if configured:
+        st.sidebar.subheader("Configured Providers")
+        for prov in configured:
+            meta = get_provider_config(prov)
+            model = meta.get("model", "-")
+            st.sidebar.write(f"- {prov}: {model}")
 
     # Navigation
     return st.sidebar.radio("🧭 Navigate", ["Chat", "Settings", "Models", "Memory", "Diagnostics"])
