@@ -18,11 +18,10 @@ def render_settings():
     if any(m.get("provider") == "custom_provider" for m in get_models()):
         if "custom_provider" not in providers:
             providers.append("custom_provider")
-
+            
     default_provider = config.get("provider", "deepseek")
     if default_provider not in providers and providers:
         default_provider = "deepseek" if "deepseek" in providers else providers[0]
-
     provider = st.selectbox(
         "Default Provider",
         providers,
