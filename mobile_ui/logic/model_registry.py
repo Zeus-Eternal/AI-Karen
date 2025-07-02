@@ -113,6 +113,17 @@ def get_models() -> List[dict]:
     return entries
 
 
+def get_model_meta(name: str) -> Optional[dict]:
+    """Return a single model metadata block by name or alias."""
+    registry = load_registry()
+    if name in registry:
+        return registry[name]
+    for meta in registry.values():
+        if meta.get("alias") == name or meta.get("model_name") == name:
+            return meta
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Registry helpers
 # ---------------------------------------------------------------------------
