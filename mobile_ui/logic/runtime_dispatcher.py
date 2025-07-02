@@ -8,21 +8,22 @@ from prometheus_client import Histogram
 
 # Placeholder runtime loaders -------------------------------------------------
 
-def load_llama_model(meta: dict) -> Any:
+def run_llama_model(meta: dict, prompt: str) -> str:
     path = os.path.join(meta.get("path", ""), meta.get("model_name", ""))
-    return {"runtime": "llama_cpp", "path": path}
+    return f"[llama_cpp:{path}] {prompt}"
 
 
-def load_hf_model(meta: dict) -> Any:
+def run_hf_model(meta: dict, prompt: str) -> str:
     from src.integrations.llm_utils import LLMUtils
-    return LLMUtils(meta.get("model_name", "distilgpt2"))
+    llm = LLMUtils(meta.get("model_name", "distilgpt2"))
+    return llm.generate_text(prompt)
 
 
-def load_onnx_model(meta: dict) -> Any:
-    return {"runtime": "onnx", "path": meta.get("path")}
+def run_onnx_model(meta: dict, prompt: str) -> str:
+    return f"[onnx:{meta.get('path')}] {prompt}"
 
 
-def query_rest_endpoint(meta: dict, prompt: str) -> Any:
+def run_remote_rest(meta: dict, prompt: str) -> Any:
     headers = meta.get("headers", {}).copy()
     if meta.get("auth"):
         headers["Authorization"] = meta["auth"]
@@ -34,10 +35,10 @@ def query_rest_endpoint(meta: dict, prompt: str) -> Any:
 
 
 RUNTIME_EXECUTORS: Dict[str, Callable[..., Any]] = {
-    "llama_cpp": load_llama_model,
-    "huggingface": load_hf_model,
-    "onnx": load_onnx_model,
-    "remote_rest": query_rest_endpoint,
+    "llama_cpp": run_llama_model,
+    "huggingface": run_hf_model,
+    "onnx": run_onnx_model,
+    "remote_rest": run_remote_rest,
 }
 
 RUNTIME_LATENCY = Histogram(
