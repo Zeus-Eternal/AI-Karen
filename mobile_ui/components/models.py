@@ -19,3 +19,6 @@ def render_models():
     data = [m for m in get_models() if m.get("provider") == provider]
     if data:
         st.table(pd.DataFrame(data))
+    else:
+        st.info("No models to display for this provider.")
+

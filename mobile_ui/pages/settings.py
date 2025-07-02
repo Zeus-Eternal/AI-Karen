@@ -1,6 +1,7 @@
 import streamlit as st
 
 from logic.model_registry import get_models
+from logic.runtime_dispatcher import dispatch_runtime
 
 
 def render_model_catalog() -> None:
@@ -49,3 +50,4 @@ def render_model_catalog() -> None:
 
 if __name__ == "__main__":
     render_model_catalog()
+
