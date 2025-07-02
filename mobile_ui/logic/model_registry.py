@@ -55,7 +55,7 @@ def list_groq_models() -> List[str]:
 STATIC_MODELS: Dict[str, List[str]] = {
     "deepseek": ["deepseek-coder-6.7b", "deepseek-llm-7b"],
     "mistral": ["mistral-small", "mistral-medium", "mistral-large"],
-    "transformers": ["gpt2", "bert-base", "custom-finetune"],
+    "huggingface": ["gpt2", "bert-base", "custom-finetune"],
 }
 
 # ---------------------------------------------------------------------------
@@ -70,7 +70,7 @@ MODEL_PROVIDERS: Dict[str, Union[List[str], Callable[[], List[str]]]] = {
     "groq": list_groq_models,
     "mistral": STATIC_MODELS["mistral"],
     "deepseek": STATIC_MODELS["deepseek"],
-    "transformers": STATIC_MODELS["transformers"],
+    "huggingface": STATIC_MODELS["huggingface"],
 }
 
 ALIAS_MAP = {
@@ -96,18 +96,21 @@ def get_providers() -> List[str]:
     return list(MODEL_PROVIDERS.keys())
 
 
-def get_models(provider: str) -> List[str]:
-    """Returns model list from dynamic/static provider or empty if not found."""
-    prov = canonical_provider(provider)
-    loader = MODEL_PROVIDERS.get(prov)
-    if not loader:
+def get_models() -> List[dict]:
+    """Return list of model metadata blocks from the registry."""
+    if not REGISTRY_PATH.exists():
         return []
     try:
-        models = loader() if callable(loader) else loader
+        data = json.loads(REGISTRY_PATH.read_text())
     except Exception as exc:  # pragma: no cover - optional
-        logger.warning("provider %s failed: %s", prov, exc)
+        logger.warning("failed to load registry: %s", exc)
         return []
-    return [str(m) for m in models if isinstance(m, str)]
+
+    entries = []
+    for _, meta in (data.items() if isinstance(data, dict) else []):
+        if isinstance(meta, dict):
+            entries.append(meta)
+    return entries
 
 
 # ---------------------------------------------------------------------------

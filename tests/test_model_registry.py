@@ -25,6 +25,14 @@ def test_get_registry_models_filter(tmp_path, monkeypatch):
     assert llama_only[0]["model_name"] == "foo"
 
 
-def test_get_models_alias(monkeypatch):
-    monkeypatch.setitem(mr.MODEL_PROVIDERS, "llama-cpp", lambda: ["m1"])
-    assert mr.get_models("ollama") == ["m1"]
+def test_get_models_reads_registry(tmp_path, monkeypatch):
+    data = {
+        "foo": {"model_name": "foo", "provider": "llama-cpp"},
+        "bar": {"model_name": "bar", "provider": "custom_provider"},
+    }
+    path = tmp_path / "reg.json"
+    path.write_text(json.dumps(data))
+    monkeypatch.setattr(mr, "REGISTRY_PATH", path)
+    models = mr.get_models()
+    assert any(m["model_name"] == "foo" for m in models)
+    assert any(m["provider"] == "custom_provider" for m in models)

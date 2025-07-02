@@ -8,7 +8,11 @@ from logic.model_registry import get_models, list_providers, ensure_model_downlo
 
 def select_model(provider: str):
     st.subheader("\U0001F3AF Select Model")
-    models = [m["name"] for m in get_models(provider)]
+    models = [
+        m.get("alias", m.get("model_name"))
+        for m in get_models()
+        if m.get("provider") == provider
+    ]
     selected = st.selectbox("Model", models)
     if st.button("Ensure Model Ready"):
         ensure_model_downloaded(selected, provider)
@@ -19,7 +23,7 @@ def select_model(provider: str):
 def render_models():
     st.title("\U0001F9E0 Model Catalog")
     provider = st.selectbox("Choose Provider", list_providers())
-    data = get_models(provider)
+    data = [m for m in get_models() if m.get("provider") == provider]
     if data:
         st.table(pd.DataFrame(data))
 
@@ -29,6 +33,9 @@ def render_sidebar():
 
     # Providers and initial selection
     providers = list_providers()
+    if any(m.get("provider") == "custom_provider" for m in get_models()):
+        providers.append("custom_provider")
+
     current_provider = config.get("provider")
     if current_provider not in providers and providers:
         current_provider = providers[0]
@@ -44,8 +51,12 @@ def render_sidebar():
         config["provider"] = selected_provider
 
     # Get models for selected provider
-    models_list = get_models(selected_provider)
-    model_names = [m["name"] for m in models_list]
+    if selected_provider == "custom_provider":
+        models_list = [m for m in get_models() if m.get("provider") == "custom_provider"]
+        model_names = [m.get("alias", m.get("model_name")) for m in models_list]
+    else:
+        models_list = [m for m in get_models() if m.get("provider") == selected_provider]
+        model_names = [m.get("alias", m.get("model_name")) for m in models_list]
 
     current_model = config.get("model")
     if current_model not in model_names and model_names:
