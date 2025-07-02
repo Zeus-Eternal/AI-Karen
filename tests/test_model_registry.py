@@ -44,3 +44,16 @@ def test_ready_models_default(tmp_path, monkeypatch):
     monkeypatch.setattr(mr, "REGISTRY_PATH", path)
     ready = mr.get_ready_models()
     assert any(m["model_name"] == "distilbert-base-uncased" for m in ready)
+
+
+def test_get_providers_includes_registry_providers(tmp_path, monkeypatch):
+    data = {
+        "foo": {"model_name": "foo", "provider": "llama-cpp"},
+        "bar": {"model_name": "bar", "provider": "custom_provider"},
+    }
+    path = tmp_path / "reg.json"
+    path.write_text(json.dumps(data))
+    monkeypatch.setattr(mr, "REGISTRY_PATH", path)
+    providers = mr.get_providers()
+    assert "llama-cpp" in providers
+    assert "custom_provider" in providers
