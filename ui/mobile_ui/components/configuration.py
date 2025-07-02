@@ -1,5 +1,5 @@
 import streamlit as st
-from .provider import select_provider
+from .provider_selector import select_provider
 from .models import select_model
 from .memory import memory_config
 from utils.api_client import persist_config

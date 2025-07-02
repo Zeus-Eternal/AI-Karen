@@ -5,9 +5,9 @@ from typing import Dict, Iterable
 from pathlib import Path
 
 import os
-from .llm_utils import LLMUtils
-from services.ollama_inprocess import generate as local_generate
-from services.deepseek_client import DeepSeekClient
+from .integrations.llm_utils import LLMUtils
+from .services.ollama_inprocess import generate as local_generate
+from .services.deepseek_client import DeepSeekClient
 
 
 class LlamaCppWrapper:

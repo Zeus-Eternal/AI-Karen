@@ -1,9 +1,20 @@
 #!/usr/bin/env python3
+import sys
+import pathlib
+
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]  # AI-Karen root
+SRC_PATH = PROJECT_ROOT / "src"
+
+# Add src/ to sys.path to allow absolute imports like "from src.integrations..."
+if str(SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(SRC_PATH))
+
+# Now safe to import modules that depend on src
 import streamlit as st
 from components.sidebar import render_sidebar
+from components.provider_selector import select_provider
 from config.config_manager import ConfigManager
 from services.model_loader import ensure_spacy_models, ensure_sklearn_installed
-
 
 def load_styles():
     try:
