@@ -1,15 +1,20 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable
-
+from typing import Dict, Iterable, Optional
 from pathlib import Path
-
 import os
-from src.integrations.llm_utils import LLMUtils
-from services.ollama_inprocess import generate as local_generate
-from services.deepseek_client import DeepSeekClient
+import logging
 
+# Configure logger
+logger = logging.getLogger(__name__)
 
+try:
+    from integrations.llm_utils import LLMUtils
+    from services.ollama_inprocess import generate as local_generate
+    from services.deepseek_client import DeepSeekClient
+except ImportError as e:
+    logger.warning(f"Import error: {e}")
+    
 class LlamaCppWrapper:
     """Adapter exposing a generate_text method for llama-cpp."""
 

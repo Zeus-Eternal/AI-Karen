@@ -1,14 +1,20 @@
-import sys
-import pathlib
+"""
+UI Module: mobile_ui
 
-PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]  # AI-Karen root
-SRC_PATH = PROJECT_ROOT / "src"
+This package contains the mobile Streamlit interface for Kari AI, including:
+- Component rendering
+- Model and provider configuration
+- Memory visualization
+- Chat interaction panel
+"""
 
-# Ensure both the project root and ``src`` directory are importable before any
-# submodules within ``ui.mobile_ui`` are loaded. Streamlit eagerly imports
-# components, so ``sys.path`` must be patched at package import time.
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+# This makes the package explicit and enables relative imports when used via `python -m ui.mobile_ui.app`
 
-if str(SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(SRC_PATH))
+__version__ = "1.0.0"
+__all__ = [
+    "app",
+    "components",
+    "config",
+    "services",
+    "styles",
+]

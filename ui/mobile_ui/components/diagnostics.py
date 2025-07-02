@@ -17,7 +17,7 @@ REFRESH_INTERVAL = 300  # seconds
 LOG_TAIL_LINES = 100
 CRITICAL_PATHS = ["/etc/app/config.yaml", "/var/log/app"]
 
-class EnterpriseDiagnostics:
+class Diagnostics:
     def __init__(self):
         self.last_refresh = None
         self.cached_metrics = {}
@@ -350,5 +350,5 @@ class EnterpriseDiagnostics:
 
 # Initialize and run the dashboard
 if __name__ == "__main__":
-    diag = EnterpriseDiagnostics()
+    diag = Diagnostics()
     diag.render_dashboard()

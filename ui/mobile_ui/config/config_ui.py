@@ -1,44 +1,57 @@
-import streamlit as st
-from services.model_registry import MODEL_PROVIDERS, get_models
+from typing import Optional
+from pydantic import BaseModel, Field
+import os
 
 
-def render_model_config():
-    st.subheader("🧠 Model Configuration")
+class ProviderSettings(BaseModel):
+    provider: str = Field(default="local", description="LLM provider (local, ollama, openai, etc.)")
+    model: str = Field(default="llama3", description="Default model name")
+    api_key: Optional[str] = Field(default=None, description="API Key for remote providers")
+    base_url: Optional[str] = Field(default=None, description="Base URL for remote provider (if any)")
 
-    # 1. Provider Selection
-    provider_keys = list(MODEL_PROVIDERS.keys())
-    selected_provider = st.selectbox("Select Model Provider", provider_keys)
 
-    # 2. Load Available Models for Provider
-    try:
-        models = get_models(selected_provider)
-    except Exception as e:
-        st.error(f"🚨 Error loading models for provider '{selected_provider}': {str(e)}")
-        models = []
+class MemorySettings(BaseModel):
+    enabled: bool = Field(default=True, description="Enable memory system")
+    memory_type: str = Field(default="duckdb", description="Memory backend: duckdb, redis, milvus, etc.")
+    vector_top_k: int = Field(default=10, description="Top K results to return from vector memory")
+    memory_decay: float = Field(default=0.1, description="Exponential decay factor for memory scoring")
 
-    # 3. Handle string-based static model lists
-    model_options = []
-    if models and isinstance(models[0], str):
-        model_options = models
-        model_meta_list = [{"name": name} for name in models]
-    elif models and isinstance(models[0], dict):
-        model_options = [m["name"] for m in models]
-        model_meta_list = models
-    else:
-        model_options = []
-        model_meta_list = []
 
-    # 4. Model Selection Dropdown
-    selected_model = st.selectbox("Select Model", model_options)
+class UISettings(BaseModel):
+    theme: str = Field(default="dark", description="UI theme")
+    language: str = Field(default="en", description="Default UI language")
+    notifications: bool = Field(default=True, description="Enable UI notifications")
+    max_results: int = Field(default=5, description="Maximum results per panel or section")
 
-    # 5. Retrieve Metadata for selected model (if any)
-    model_metadata = next((m for m in model_meta_list if m.get("name") == selected_model), {})
 
-    # 6. Save to Session State
-    st.session_state["model_provider"] = selected_provider
-    st.session_state["model_name"] = selected_model
-    st.session_state["model_metadata"] = model_metadata
+class ConfigUI(BaseModel):
+    provider: ProviderSettings = Field(default_factory=ProviderSettings)
+    memory: MemorySettings = Field(default_factory=MemorySettings)
+    ui: UISettings = Field(default_factory=UISettings)
 
-    # 7. Optional Debug View
-    with st.expander("🔍 Model Metadata"):
-        st.json(model_metadata)
+    class Config:
+        validate_assignment = True
+        extra = "forbid"
+
+    @classmethod
+    def load_from_env(cls) -> "ConfigUI":
+        return cls(
+            provider=ProviderSettings(
+                provider=os.getenv("KARI_PROVIDER", "local"),
+                model=os.getenv("KARI_MODEL", "llama3"),
+                api_key=os.getenv("KARI_API_KEY"),
+                base_url=os.getenv("KARI_BASE_URL"),
+            ),
+            memory=MemorySettings(
+                enabled=os.getenv("KARI_MEMORY_ENABLED", "true").lower() == "true",
+                memory_type=os.getenv("KARI_MEMORY_TYPE", "duckdb"),
+                vector_top_k=int(os.getenv("KARI_VECTOR_TOP_K", 10)),
+                memory_decay=float(os.getenv("KARI_MEMORY_DECAY", 0.1)),
+            ),
+            ui=UISettings(
+                theme=os.getenv("KARI_THEME", "dark"),
+                language=os.getenv("KARI_LANG", "en"),
+                notifications=os.getenv("KARI_NOTIFICATIONS", "true").lower() == "true",
+                max_results=int(os.getenv("KARI_MAX_RESULTS", 5)),
+            )
+        )

@@ -4,7 +4,7 @@ from .settings import render_settings
 from .memory import render_memory, memory_config
 from .models import render_models, select_model
 from .provider_selector import select_provider
-from .diagnostics import render_diagnostics
+from .diagnostics import Diagnostics
 
 __all__ = [
     "render_sidebar",
@@ -15,6 +15,6 @@ __all__ = [
     "render_models",
     "select_model",
     "select_provider",
-    "render_diagnostics",
+    "Diagnostics",
 ]
 
