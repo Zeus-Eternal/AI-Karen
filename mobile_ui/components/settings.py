@@ -1,5 +1,10 @@
 import streamlit as st
-from logic.config_manager import load_config, save_config
+from logic.config_manager import (
+    load_config,
+    save_config,
+    save_provider_config,
+    get_provider_config,
+)
 from logic.model_registry import get_models, list_providers
 
 LOCAL_PROVIDERS = {"local", "ollama_cpp"}
@@ -13,35 +18,56 @@ def render_settings():
     if any(m.get("provider") == "custom_provider" for m in get_models()):
         if "custom_provider" not in providers:
             providers.append("custom_provider")
-    default_provider = config.get("provider")
+
+    default_provider = config.get("provider", "deepseek")
     if default_provider not in providers and providers:
-        default_provider = providers[0]
+        default_provider = "deepseek" if "deepseek" in providers else providers[0]
+
     provider = st.selectbox(
-        "LLM Provider",
+        "Default Provider",
         providers,
-        index=providers.index(default_provider) if providers else 0,
+        index=providers.index(default_provider) if default_provider in providers else 0,
     )
+    prov_conf = get_provider_config(provider)
     models = [
         m.get("alias", m.get("model_name"))
         for m in get_models()
         if m.get("provider") == provider
     ]
-    if models:
-        model_default = (
-            config.get("model") if config.get("model") in models else models[0]
-        )
-        model = st.selectbox("Model", models, index=models.index(model_default))
-    else:
-        st.warning("No models available for selected provider")
-        model = ""
+    default_model = st.selectbox(
+        "Default Model",
+        models,
+        index=models.index(prov_conf.get("model", models[0])) if models else 0,
+    ) if models else ""
 
-    api_key = ""
-    if provider not in LOCAL_PROVIDERS:
-        api_key = st.text_input(
-            f"{provider} API Key",
-            type="password",
-            value=config.get("api_key", ""),
-        )
+    st.markdown("### Provider Configuration")
+    for prov in providers:
+        with st.expander(prov, expanded=False):
+            prov_conf = get_provider_config(prov)
+            models = [
+                m.get("alias", m.get("model_name"))
+                for m in get_models()
+                if m.get("provider") == prov
+            ]
+            model = st.selectbox(
+                "Model",
+                models,
+                index=models.index(prov_conf.get("model", models[0])) if models else 0,
+                key=f"model_{prov}",
+            ) if models else ""
+
+            api_key = ""
+            if prov not in LOCAL_PROVIDERS:
+                api_key = st.text_input(
+                    f"{prov} API Key",
+                    type="password",
+                    value=prov_conf.get("api_key", ""),
+                    key=f"key_{prov}",
+                )
+
+            if st.button("Save", key=f"save_{prov}"):
+                save_provider_config(prov, {"model": model, "api_key": api_key})
+                st.success(f"Saved {prov}")
 
     st.subheader("Memory Settings")
     use_memory = st.checkbox("Enable Memory", value=config.get("use_memory", True))
@@ -50,11 +76,12 @@ def render_settings():
 
     persona = st.text_input("Persona", value=config.get("persona", "default"))
 
+    prov_conf = get_provider_config(provider)
     if st.button("\U0001F4BE Save Configuration"):
         save_config({
             "provider": provider,
-            "model": model,
-            "api_key": api_key,
+            "model": default_model,
+            "api_key": prov_conf.get("api_key", ""),
             "use_memory": use_memory,
             "context_length": context_len,
             "decay": decay,

@@ -4,7 +4,13 @@ from logic.model_registry import (
     list_providers,
     ensure_model_downloaded,
 )
-from logic.config_manager import update_config, load_config, get_status
+from logic.config_manager import (
+    update_config,
+    load_config,
+    get_status,
+    list_configured_providers,
+    get_provider_config,
+)
 import streamlit as st
 import pandas as pd
 
@@ -39,9 +45,9 @@ def render_sidebar():
     if any(m.get("provider") == "custom_provider" for m in get_models()):
         providers.append("custom_provider")
 
-    current_provider = config.get("provider")
+    current_provider = config.get("provider", "deepseek")
     if current_provider not in providers and providers:
-        current_provider = providers[0]
+        current_provider = "deepseek" if "deepseek" in providers else providers[0]
 
     selected_provider = st.sidebar.selectbox(
         "LLM Provider",
@@ -83,6 +89,15 @@ def render_sidebar():
     status = get_status()
     emoji = {"Ready": "🟢", "Pending Config": "🟡", "Invalid": "🔴"}.get(status, "❔")
     st.sidebar.markdown(f"**Status:** {emoji} {status}")
+
+    # Configured providers summary
+    configured = list_configured_providers()
+    if configured:
+        st.sidebar.subheader("Configured Providers")
+        for prov in configured:
+            meta = get_provider_config(prov)
+            model = meta.get("model", "-")
+            st.sidebar.write(f"- {prov}: {model}")
 
     # Navigation
     return st.sidebar.radio("🧭 Navigate", ["Chat", "Settings", "Models", "Memory", "Diagnostics"])
