@@ -37,8 +37,12 @@ def render_chat_page() -> None:
     if user_input:
         st.chat_message("user").write(user_input)
         start = time.perf_counter()
-        with st.spinner("Thinking..."):
-            response = dispatch_runtime(meta, user_input)
+        try:
+            with st.spinner("Thinking..."):
+                response = dispatch_runtime(meta, user_input)
+        except Exception as exc:
+            st.chat_message("ai").error(f"Runtime error: {exc}")
+            return
         duration = time.perf_counter() - start
         st.chat_message("ai").write(response)
         token_count = len(response.split())

@@ -1,11 +1,11 @@
 import streamlit as st
 
-from logic.model_registry import get_ready_models
+from logic.model_registry import get_models
 
 
 def render_model_catalog() -> None:
     st.markdown("## :brain: Model Catalog")
-    models = get_ready_models()
+    models = get_models()
     if not models:
         st.info("No models found in registry")
         return
