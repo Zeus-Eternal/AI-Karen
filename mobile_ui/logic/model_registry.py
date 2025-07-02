@@ -1,227 +1,189 @@
-"""Dynamic LLM provider registry used by the mobile UI."""
-
-from __future__ import annotations
+# mobile_ui/logic/model_registry.py
 
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
+
+from huggingface_hub import snapshot_download
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Discovery helpers
-# ---------------------------------------------------------------------------
+# Paths & constants
+BASE_DIR = Path(__file__).resolve().parent.parent
+REGISTRY_PATH = BASE_DIR / "models" / "llm_registry.json"
+LOCAL_MODEL_DIR = Path.home() / ".cache" / "kari_models"
+SUPPORTED_EXTENSIONS = {".bin", ".gguf", ".safetensors", ".pt"}
 
-def list_llama_cpp_models(models_dir: str = "/models") -> List[str]:
-    """Return local GGUF/bin models if present."""
-    exts = {".gguf", ".bin"}
-    out: List[str] = []
+# Static fallback entries
+STATIC_MODELS: Dict[str, List[Dict[str, Any]]] = {
+    "huggingface": [
+        {"id": "meta_llama_2_7b", "name": "meta-llama/Llama-2-7b-chat-hf", "runtime": "transformers", "prompt_size": 4096},
+        {"id": "mistral_7b",     "name": "mistralai/Mistral-7B-Instruct-v0.1",   "runtime": "transformers", "prompt_size": 32768},
+    ],
+    "mistral": [
+        {"id": "mixtral_8x7b",   "name": "mistralai/Mixtral-8x7B-Instruct-v0.1", "runtime": "transformers", "prompt_size": 32768},
+    ],
+    "deepseek": [
+        {"id": "deepseek_coder","name": "deepseek-ai/deepseek-coder-6.7b-instruct","runtime": "transformers","prompt_size": 32768},
+    ],
+}
+
+
+def normalize_model_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure every model dict has the same shape."""
+    _id = entry.get("id") or entry.get("name", "").lower().replace(" ", "_")
+    return {
+        "id": _id,
+        "name": entry.get("name", ""),
+        "provider": entry.get("provider", ""),
+        "runtime": entry.get("runtime", ""),
+        "path": entry.get("path"),
+        "prompt_size": entry.get("prompt_size", 0),
+        "metadata": entry.get("metadata", {}),
+    }
+
+
+def list_llama_cpp_models() -> List[Dict[str, Any]]:
+    root = Path(os.getenv("MODEL_DIR", "/models/llama-cpp"))
     try:
-        for f in Path(models_dir).iterdir():
-            if f.is_file() and f.suffix in exts:
-                out.append(f.stem)
-    except Exception as exc:  # pragma: no cover - optional
-        logger.warning("[llama-cpp] scan failed: %s", exc)
+        return [
+            normalize_model_entry({
+                "id": p.stem,
+                "name": p.stem,
+                "provider": "llama-cpp",
+                "runtime": "llama_cpp",
+                "path": str(p),
+                "prompt_size": 32768,
+            })
+            for p in root.iterdir() if p.suffix in SUPPORTED_EXTENSIONS
+        ]
+    except Exception as e:
+        logger.debug("llama-cpp scan failed: %s", e)
+        return []
+
+
+def list_lmstudio_models() -> List[Dict[str, Any]]:
+    # reuse llama-cpp logic for now
+    return list_llama_cpp_models()
+
+
+def list_gemini_models() -> List[Dict[str, Any]]:
+    specs = [
+        {"name": "gemini-pro",    "runtime": "api", "prompt_size": 32768},
+        {"name": "gemini-1.5-pro","runtime": "api", "prompt_size": 1048576},
+    ]
+    return [
+        normalize_model_entry({**s, "provider": "gemini"})
+        for s in specs
+    ]
+
+
+def list_anthropic_models() -> List[Dict[str, Any]]:
+    specs = [
+        {"name": "claude-3-opus-20240229",   "runtime": "api", "prompt_size": 1048576},
+        {"name": "claude-3-sonnet-20240229", "runtime": "api", "prompt_size": 1048576},
+    ]
+    return [
+        normalize_model_entry({**s, "provider": "anthropic"})
+        for s in specs
+    ]
+
+
+def list_groq_models() -> List[Dict[str, Any]]:
+    specs = [
+        {"name": "mixtral-8x7b-32768", "runtime": "api", "prompt_size": 32768},
+        {"name": "llama3-70b-8192",   "runtime": "api", "prompt_size": 8192},
+    ]
+    return [
+        normalize_model_entry({**s, "provider": "groq"})
+        for s in specs
+    ]
+
+
+def list_custom_models() -> List[Dict[str, Any]]:
+    """Read user-defined entries from llm_registry.json under key 'custom'."""
+    if not REGISTRY_PATH.exists():
+        return []
+    try:
+        raw = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+        return [
+            normalize_model_entry({**m, "provider": "custom"})
+            for m in raw.get("custom", [])
+        ]
+    except Exception as e:
+        logger.error("Failed to load custom registry: %s", e)
+        return []
+
+
+# Top-level provider→loader map
+MODEL_PROVIDERS: Dict[str, Union[List[Dict[str, Any]], Callable[[], List[Dict[str, Any]]]]] = {
+    "llama-cpp":   list_llama_cpp_models,
+    "lmstudio":    list_lmstudio_models,
+    "gemini":      list_gemini_models,
+    "anthropic":   list_anthropic_models,
+    "groq":        list_groq_models,
+    "huggingface": STATIC_MODELS["huggingface"],
+    "mistral":     STATIC_MODELS["mistral"],
+    "deepseek":    STATIC_MODELS["deepseek"],
+    "custom":      list_custom_models,
+}
+
+
+def list_providers(only_ready: bool = True) -> List[str]:
+    """
+    Return all provider keys. If only_ready, omit providers without models.
+    """
+    keys = list(MODEL_PROVIDERS.keys())
+    if only_ready:
+        keys = [k for k in keys if get_models(k)]
+    return sorted(keys)
+
+
+def get_models(provider: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Fetch normalized model entries for a given provider.
+    If provider is None, returns all models across all providers.
+    """
+    out: List[Dict[str, Any]] = []
+    for prov, loader in MODEL_PROVIDERS.items():
+        if provider and prov != provider:
+            continue
+        entries = loader() if callable(loader) else loader
+        out.extend([normalize_model_entry({**e, "provider": prov}) for e in entries])
     return out
 
 
-def list_lmstudio_models() -> List[str]:
-    """Placeholder for LM Studio REST lookup."""
-    return ["lmstudio-api-models"]
+def ensure_model_downloaded(model: Dict[str, Any]) -> str:
+    """
+    Ensure the given model entry is available locally.
+    Returns the local filesystem path.
+    """
+    name = model["name"]
+    runtime = model["runtime"]
+    path = model.get("path")
 
+    # Already local
+    if runtime in ("llama_cpp",) and path:
+        if Path(path).exists():
+            return path
+        raise FileNotFoundError(f"Local model not found: {path}")
 
-def list_gemini_models() -> List[str]:
-    """Placeholder for Gemini API."""
-    return ["gemini-pro", "gemini-1.5-pro"]
+    # HuggingFace snapshot
+    if runtime == "transformers" and "/" in name:
+        dest = LOCAL_MODEL_DIR / name.replace("/", "_")
+        if dest.exists():
+            return str(dest)
+        dest.mkdir(parents=True, exist_ok=True)
+        try:
+            snapshot_download(repo_id=name, local_dir=str(dest), resume_download=True)
+            return str(dest)
+        except Exception as e:
+            raise RuntimeError(f"HF download failed for {name}: {e}")
 
+    # Custom via URL (not yet implemented)
+    if runtime == "custom":
+        raise NotImplementedError("Custom URL download not implemented")
 
-def list_anthropic_models() -> List[str]:
-    """Placeholder for Anthropic API."""
-    return ["claude-3-opus-20240229", "claude-3-sonnet"]
-
-
-def list_groq_models() -> List[str]:
-    """Return GGUF models under /models/groq if present."""
-    groq_dir = Path("/models/groq")
-    return [p.stem for p in groq_dir.glob("*.gguf")] if groq_dir.exists() else []
-
-
-# ---------------------------------------------------------------------------
-# Static lists
-# ---------------------------------------------------------------------------
-
-STATIC_MODELS: Dict[str, List[str]] = {
-    "deepseek": ["deepseek-coder-6.7b", "deepseek-llm-7b"],
-    "mistral": ["mistral-small", "mistral-medium", "mistral-large"],
-    "huggingface": ["gpt2", "bert-base", "custom-finetune"],
-}
-
-# ---------------------------------------------------------------------------
-# Provider mapping and canonicalization
-# ---------------------------------------------------------------------------
-
-MODEL_PROVIDERS: Dict[str, Union[List[str], Callable[[], List[str]]]] = {
-    "llama-cpp": list_llama_cpp_models,
-    "lmstudio": list_lmstudio_models,
-    "gemini": list_gemini_models,
-    "anthropic": list_anthropic_models,
-    "groq": list_groq_models,
-    "mistral": STATIC_MODELS["mistral"],
-    "deepseek": STATIC_MODELS["deepseek"],
-    "huggingface": STATIC_MODELS["huggingface"],
-}
-
-ALIAS_MAP = {
-    "local": "llama-cpp",
-    "ollama": "llama-cpp",
-    "claude": "anthropic",
-}
-
-REGISTRY_PATH = Path(__file__).resolve().parents[2] / "models" / "llm_registry.json"
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
-
-def canonical_provider(name: str) -> str:
-    """Return canonical provider key for name."""
-    return ALIAS_MAP.get(name, name)
-
-
-def get_providers() -> List[str]:
-    """Return list of all known provider keys including registry entries."""
-    providers = set(MODEL_PROVIDERS.keys())
-    for meta in _load_registry_entries():
-        p = canonical_provider(str(meta.get("provider", "")))
-        if p:
-            providers.add(p)
-    return sorted(providers)
-
-
-def _discover_provider_models() -> List[dict]:
-    """Return minimal metadata discovered from :data:`MODEL_PROVIDERS`."""
-    models: List[dict] = []
-    for provider, entry in MODEL_PROVIDERS.items():
-        available = entry() if callable(entry) else entry
-        for name in available:
-            models.append({"model_name": name, "provider": canonical_provider(provider)})
-    return models
-
-def _load_registry_entries() -> List[dict]:
-    """Return model blocks from :data:`REGISTRY_PATH`."""
-    if not REGISTRY_PATH.exists():
-        return []
-    try:
-        raw = json.loads(REGISTRY_PATH.read_text())
-    except Exception as exc:  # pragma: no cover - optional
-        logger.warning("failed to load registry: %s", exc)
-        return []
-
-    if isinstance(raw, dict):
-        return [meta for meta in raw.values() if isinstance(meta, dict)]
-    entries: List[dict] = []
-    if isinstance(raw, list):
-        for item in raw:
-            if isinstance(item, dict):
-                entries.append(item)
-    return entries
-
-
-def get_models() -> List[dict]:
-    """Return union of registry metadata and discovered provider models."""
-    registry_entries = _load_registry_entries()
-    entries = list(registry_entries)
-    seen = {meta.get("model_name") for meta in entries}
-
-    for meta in _discover_provider_models():
-        if meta["model_name"] not in seen:
-            entries.append(meta)
-            seen.add(meta["model_name"])
-
-    return entries
-  
-def get_ready_models() -> List[dict]:
-    """Return models that appear usable, otherwise provide distilbert."""
-    models = [
-        m
-        for m in get_models()
-        if not str(m.get("model_name", "")).startswith("<")
-        and ensure_model_downloaded(m.get("provider", ""), m.get("model_name", ""))
-    ]
-    if not models or not _load_registry_entries():
-        models.append(
-            {
-                "model_name": "distilbert-base-uncased",
-                "provider": "huggingface",
-                "runtime": "huggingface",
-                "tokenizer_type": "bpe",
-                "prompt_limit_bytes": 4096,
-            }
-        )
-    return models
-
-
-def list_ready_providers() -> List[str]:
-    """Return providers that have at least one ready model."""
-    return sorted({m.get("provider") for m in get_ready_models()})
-  
-def get_model_meta(name: str) -> Optional[dict]:
-    """Return a single model metadata block by name or alias."""
-    registry = load_registry()
-    if name in registry:
-        return registry[name]
-    for meta in registry.values():
-        if meta.get("alias") == name or meta.get("model_name") == name:
-            return meta
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Registry helpers
-# ---------------------------------------------------------------------------
-
-def load_registry() -> Dict[str, dict]:
-    """Loads llm_registry.json or returns empty dict."""
-    if not REGISTRY_PATH.exists():
-        return {}
-    try:
-        raw = json.loads(REGISTRY_PATH.read_text())
-    except Exception as exc:  # pragma: no cover - load error
-        logger.warning("failed to load registry: %s", exc)
-        return {}
-
-    if isinstance(raw, dict):
-        return raw
-    result: Dict[str, dict] = {}
-    if isinstance(raw, list):
-        for item in raw:
-            if isinstance(item, dict):
-                name = item.get("model_name") or item.get("name")
-                if name:
-                    result[name] = item
-    return result
-
-
-def get_registry_models(provider_filter: Optional[str] = None) -> List[dict]:
-    """Return models from registry.json, optionally filtered by provider."""
-    data = load_registry()
-    models = list(data.values())
-    if provider_filter:
-        p = canonical_provider(provider_filter)
-        models = [m for m in models if canonical_provider(str(m.get("provider", ""))) == p]
-    return models
-
-
-# Backwards compatibility -----------------------------------------------------
-
-# Legacy API used by some UI components
-list_providers = get_providers
-
-
-def ensure_model_downloaded(provider: str, model: str) -> bool:
-    """Stub for verifying or pre-fetching a model."""
-    logger.info("[model_registry] assume '%s' for '%s' is ready.", model, provider)
-    return True
+    raise RuntimeError(f"Cannot download model: {model}")

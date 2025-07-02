@@ -1,103 +1,114 @@
+# mobile_ui/components/sidebar.py
+
 import streamlit as st
-from logic.model_registry import (
-    get_models,
-    list_providers,
-    ensure_model_downloaded,
-)
+import pandas as pd
+from typing import Optional
+
 from logic.config_manager import (
-    update_config,
     load_config,
+    update_config,
     get_status,
     list_configured_providers,
     get_provider_config,
 )
-import streamlit as st
-import pandas as pd
+from logic.model_registry import list_providers, get_models, ensure_model_downloaded
 
 
-def select_model(provider: str):
-    st.subheader("\U0001F3AF Select Model")
-    models = [
-        m.get("alias", m.get("model_name"))
-        for m in get_models()
-        if m.get("provider") == provider
-    ]
-    selected = st.selectbox("Model", models)
+def select_model(provider: str) -> Optional[str]:
+    """Render a model selection widget for a given provider and allow on-demand download."""
+    st.subheader("🎯 Select Model")
+    entries = get_models(provider)
+    options = [m.get("alias", m.get("name")) for m in entries]
+    if not options:
+        st.warning("No models available for this provider.")
+        return None
+
+    choice = st.selectbox("Model", options)
     if st.button("Ensure Model Ready"):
-        ensure_model_downloaded(selected, provider)
-        st.success(f"{selected} is ready to go.")
-    return selected
+        entry = next((m for m in entries if m.get("alias", m.get("name")) == choice), None)
+        if entry:
+            try:
+                path = ensure_model_downloaded(entry)
+                st.success(f"{choice} is ready at {path}.")
+            except Exception as e:
+                st.error(f"Failed to download {choice}: {e}")
+    return choice
 
 
-def render_models():
-    st.title("\U0001F9E0 Model Catalog")
+def render_models() -> None:
+    """Show a table of all models for the selected provider."""
+    st.title("🧠 Model Catalog")
     provider = st.selectbox("Choose Provider", list_providers())
-    data = [m for m in get_models() if m.get("provider") == provider]
+    data = get_models(provider)
     if data:
         st.table(pd.DataFrame(data))
-
-def render_sidebar():
-    st.sidebar.title("⚙️ LLM Configuration")
-    config = load_config()
-
-    # Providers and initial selection
-    providers = list_providers()
-    if any(m.get("provider") == "custom_provider" for m in get_models()):
-        providers.append("custom_provider")
-
-    current_provider = config.get("provider", "deepseek")
-    if current_provider not in providers and providers:
-        current_provider = "deepseek" if "deepseek" in providers else providers[0]
-
-    selected_provider = st.sidebar.selectbox(
-        "LLM Provider",
-        providers,
-        index=providers.index(current_provider) if current_provider in providers else 0,
-    )
-
-    if selected_provider != config.get("provider"):
-        update_config(provider=selected_provider)
-        config["provider"] = selected_provider
-
-    # Get models for selected provider
-    if selected_provider == "custom_provider":
-        models_list = [m for m in get_models() if m.get("provider") == "custom_provider"]
-        model_names = [m.get("alias", m.get("model_name")) for m in models_list]
     else:
-        models_list = [m for m in get_models() if m.get("provider") == selected_provider]
-        model_names = [m.get("alias", m.get("model_name")) for m in models_list]
+        st.info("No models to display for this provider.")
 
-    current_model = config.get("model")
-    if current_model not in model_names and model_names:
-        current_model = model_names[0]
+
+def render_sidebar() -> str:
+    """
+    Render the sidebar UI for LLM configuration and navigation.
+    Returns the selected page key.
+    """
+    st.sidebar.title("⚙️ LLM Configuration")
+    cfg = load_config()
+
+    # Providers
+    providers = list_providers()
+    if any(m.get("provider") == "custom" for m in get_models()):
+        providers.append("custom")
+
+    default_prov = cfg.get("provider", providers[0] if providers else "")
+    if default_prov not in providers and providers:
+        default_prov = providers[0]
+
+    selected_prov = st.sidebar.selectbox(
+        "LLM Provider", providers, index=providers.index(default_prov)
+    )
+    if selected_prov != cfg.get("provider"):
+        update_config(provider=selected_prov)
+        cfg["provider"] = selected_prov
+
+    # Models
+    entries = get_models(selected_prov)
+    names = [m.get("alias", m.get("name")) for m in entries]
+    default_model = cfg.get("model", names[0] if names else "")
+    if default_model not in names and names:
+        default_model = names[0]
 
     selected_model = st.sidebar.selectbox(
-        "Model",
-        model_names,
-        index=model_names.index(current_model) if current_model in model_names else 0,
+        "Model", names, index=names.index(default_model) if names else 0
     )
-
-    if selected_model != config.get("model"):
+    if selected_model and selected_model != cfg.get("model"):
         update_config(model=selected_model)
-        config["model"] = selected_model
+        cfg["model"] = selected_model
 
-    # Auto-download if Local (Ollama)
-    if selected_provider.lower().startswith("local"):
-        ensure_model_downloaded(selected_model)
+    # Auto-download for local providers
+    if selected_prov.startswith("local") and selected_model:
+        entry = next((m for m in entries if m.get("alias", m.get("name")) == selected_model), None)
+        if entry:
+            try:
+                ensure_model_downloaded(entry)
+            except Exception:
+                pass  # silent; user can re-trigger via select_model
 
-    # Status display
+    # Status
     status = get_status()
     emoji = {"Ready": "🟢", "Pending Config": "🟡", "Invalid": "🔴"}.get(status, "❔")
     st.sidebar.markdown(f"**Status:** {emoji} {status}")
 
-    # Configured providers summary
+    # Configured providers
     configured = list_configured_providers()
     if configured:
         st.sidebar.subheader("Configured Providers")
         for prov in configured:
             meta = get_provider_config(prov)
-            model = meta.get("model", "-")
-            st.sidebar.write(f"- {prov}: {model}")
+            st.sidebar.write(f"- {prov}: {meta.get('model', '-')}" )
 
     # Navigation
-    return st.sidebar.radio("🧭 Navigate", ["Chat", "Settings", "Models", "Memory", "Diagnostics"])
+    return st.sidebar.radio(
+        "🧭 Navigate",
+        ["Chat", "Settings", "Models", "Memory", "Diagnostics"],
+        index=0,
+    )
