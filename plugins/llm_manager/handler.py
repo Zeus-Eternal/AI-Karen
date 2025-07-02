@@ -1,7 +1,6 @@
 from src.integrations.llm_registry import registry
 from src.integrations import model_discovery
 
-
 async def run(params: dict) -> dict:
     action = params.get("action", "list")
     if action == "list":
