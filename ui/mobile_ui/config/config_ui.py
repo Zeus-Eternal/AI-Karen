@@ -1,5 +1,5 @@
 import streamlit as st
-from ui.mobile_ui.services.model_registry import MODEL_PROVIDERS, get_models
+from services.model_registry import MODEL_PROVIDERS, get_models
 
 
 def render_model_config():

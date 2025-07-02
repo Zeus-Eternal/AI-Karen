@@ -14,7 +14,7 @@ uvicorn main:app --reload --port 8000
 xdg-open http://localhost:8000/docs
 
 # run the Streamlit UI
-streamlit run mobile_ui/app.py
+streamlit run ui/mobile_ui/app.py
 ```
 
 ## Build Mode (Tauri App)
@@ -41,7 +41,7 @@ tauri build
 | Mode          | Command                             | Description                         |
 | ------------- | ----------------------------------- | ----------------------------------- |
 | Dev (API)     | `uvicorn main:app --reload`         | Hot reload the backend              |
-| Dev (UI)      | `streamlit run mobile_ui/app.py`    | Streamlit UI for quick tests        |
+| Dev (UI)      | `streamlit run ui/mobile_ui/app.py` | Streamlit UI for quick tests        |
 | Tauri Dev     | `tauri dev`                         | Desktop shell with live reload      |
 | Build         | `tauri build`                       | Create installable binaries         |
 
