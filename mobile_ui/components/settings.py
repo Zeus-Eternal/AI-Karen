@@ -10,12 +10,18 @@ def render_settings():
     config = load_config()
 
     providers = list_providers()
+    if any(m.get("provider") == "custom_provider" for m in get_models()):
+        providers.append("custom_provider")
     provider = st.selectbox(
         "LLM Provider",
         providers,
         index=providers.index(config.get("provider", providers[0])) if providers else 0,
     )
-    models = [m["name"] for m in get_models(provider)]
+    models = [
+        m.get("alias", m.get("model_name"))
+        for m in get_models()
+        if m.get("provider") == provider
+    ]
     model_default = config.get("model") if config.get("model") in models else models[0]
     model = st.selectbox("Model", models, index=models.index(model_default))
 
