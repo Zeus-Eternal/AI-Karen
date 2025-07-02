@@ -92,8 +92,13 @@ def canonical_provider(name: str) -> str:
 
 
 def get_providers() -> List[str]:
-    """Return list of all known provider keys."""
-    return list(MODEL_PROVIDERS.keys())
+    """Return list of all known provider keys including registry entries."""
+    providers = set(MODEL_PROVIDERS.keys())
+    for meta in _load_registry_entries():
+        p = canonical_provider(str(meta.get("provider", "")))
+        if p:
+            providers.add(p)
+    return sorted(providers)
 
 
 def _discover_provider_models() -> List[dict]:
