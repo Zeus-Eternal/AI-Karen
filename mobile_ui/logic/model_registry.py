@@ -111,8 +111,7 @@ def get_models() -> List[dict]:
         if isinstance(meta, dict):
             entries.append(meta)
     return entries
-
-
+  
 def get_ready_models() -> List[dict]:
     """Return models that appear usable, otherwise provide distilbert."""
     models = [
@@ -136,8 +135,7 @@ def get_ready_models() -> List[dict]:
 def list_ready_providers() -> List[str]:
     """Return providers that have at least one ready model."""
     return sorted({m.get("provider") for m in get_ready_models()})
-
-
+  
 def get_model_meta(name: str) -> Optional[dict]:
     """Return a single model metadata block by name or alias."""
     registry = load_registry()

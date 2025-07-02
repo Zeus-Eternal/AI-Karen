@@ -1,7 +1,6 @@
 import streamlit as st
 
 from logic.model_registry import get_ready_models
-from logic.runtime_dispatcher import dispatch_runtime
 
 
 def render_model_catalog() -> None:

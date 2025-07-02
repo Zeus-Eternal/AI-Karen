@@ -8,7 +8,7 @@ from logic.runtime_dispatcher import dispatch_runtime
 
 def render_chat_page() -> None:
     st.markdown("## :speech_balloon: Chat")
-
+    
     models = [m.get("model_name") for m in get_ready_models()]
     if not models:
         st.warning("No models available")
