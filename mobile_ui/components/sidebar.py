@@ -45,9 +45,9 @@ def render_sidebar():
     if any(m.get("provider") == "custom_provider" for m in get_models()):
         providers.append("custom_provider")
 
-    current_provider = config.get("provider")
+    current_provider = config.get("provider", "deepseek")
     if current_provider not in providers and providers:
-        current_provider = providers[0]
+        current_provider = "deepseek" if "deepseek" in providers else providers[0]
 
     selected_provider = st.sidebar.selectbox(
         "LLM Provider",

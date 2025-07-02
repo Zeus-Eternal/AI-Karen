@@ -23,18 +23,20 @@ def _init_db(con: duckdb.DuckDBPyConnection) -> None:
 
 
 def load_config() -> dict:
+    """Return saved configuration with DeepSeek defaults."""
     if not DB_PATH.exists():
-        return {}
+        return {"provider": "deepseek"}
     con = _connect()
     _init_db(con)
     row = con.execute("SELECT data FROM settings WHERE id=1").fetchone()
     con.close()
     if row:
         data = json.loads(row[0])
+        data.setdefault("provider", "deepseek")
         if "api_key_ref" in data:
             data["api_key"] = load_secret(data["api_key_ref"]) or ""
         return data
-    return {}
+    return {"provider": "deepseek"}
 
 
 def save_config(config: dict) -> None:
