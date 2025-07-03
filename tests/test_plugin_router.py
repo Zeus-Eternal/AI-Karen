@@ -88,3 +88,26 @@ def test_plugin_ui_gating(tmp_path, monkeypatch):
     router.reload()
     record = router.get_plugin("ui_intent")
     assert record.ui is not None
+
+
+def test_manifest_schema_reject(tmp_path, monkeypatch):
+    plugin = tmp_path / "bad_schema"
+    plugin.mkdir()
+    (plugin / "plugin_manifest.json").write_text(
+        json.dumps(
+            {
+                "plugin_api_version": "1.0",
+                "intent": 123,
+                "enable_external_workflow": False,
+                "required_roles": ["user"],
+                "trusted_ui": False,
+            }
+        )
+    )
+    (plugin / "handler.py").write_text("async def run(params):\n    return 'ok'\n")
+    monkeypatch.setattr("src.core.plugin_router.PLUGIN_DIR", str(tmp_path))
+    for dep in ["pyautogui", "urwid"]:
+        ensure_optional_dependency(dep)
+    router = PluginRouter(plugin_dir=str(tmp_path))
+    assert not router.intent_map
+

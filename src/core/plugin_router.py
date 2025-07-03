@@ -7,11 +7,22 @@ import importlib
 import importlib.util
 import json
 import os
+try:
+    from jsonschema import ValidationError, validate
+except Exception:  # pragma: no cover - optional dependency
+    ValidationError = Exception  # type: ignore
+    def validate(*args, **kwargs):  # type: ignore
+        return None
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, Optional, List
 
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
+SCHEMA_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "config",
+    "plugin_schema.json",
+)
 
 
 @dataclass
@@ -39,6 +50,12 @@ class PluginRouter:
     def load_plugins(self) -> None:
         """Scan the plugin directory and load manifests and handlers."""
         self.intent_map.clear()
+        try:
+            with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+                schema = json.load(f)
+        except FileNotFoundError as exc:
+            print(f"Plugin schema not found: {exc}")
+            schema = None
         for name in os.listdir(self.plugin_dir):
             path = os.path.join(self.plugin_dir, name)
             if not os.path.isdir(path) or name.startswith("__"):
@@ -53,6 +70,12 @@ class PluginRouter:
                 # Skip plugins with malformed manifest files
                 print(f"Failed to parse manifest for {name}: {exc}")
                 continue
+            if schema is not None:
+                try:
+                    validate(instance=manifest, schema=schema)
+                except ValidationError as exc:
+                    print(f"Manifest validation failed for {name}: {exc}")
+                    continue
             if manifest.get("plugin_api_version") != "1.0":
                 continue
 

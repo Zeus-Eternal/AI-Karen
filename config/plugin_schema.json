@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "plugin_api_version",
+    "intent",
+    "required_roles",
+    "enable_external_workflow",
+    "trusted_ui"
+  ],
+  "properties": {
+    "plugin_api_version": { "const": "1.0" },
+    "intent": {
+      "anyOf": [
+        {"type": "string"},
+        {"type": "array", "items": {"type": "string"}}
+      ]
+    },
+    "required_roles": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "enable_external_workflow": {"type": "boolean"},
+    "workflow_slug": {"type": "string"},
+    "trusted_ui": {"type": "boolean"}
+  },
+  "additionalProperties": true
+}
