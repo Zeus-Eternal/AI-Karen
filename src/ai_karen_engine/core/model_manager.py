@@ -1,6 +1,5 @@
 """Multi-tenant model manager with license enforcement."""
 from __future__ import annotations
-
 import json
 import os
 import shutil
@@ -64,10 +63,11 @@ class ModelManager:
     def list_models(self, user_id: str, tenant_id: str | None = None) -> List[str]:
         tenant = tenant_id or self.DEFAULT_TENANT
         user_root = self.base_dir / tenant / user_id / "model"
+        
         if not user_root.exists():
             return []
         return [p.name for p in user_root.iterdir() if p.is_dir()]
-
+    
     def delete_model(self, user_id: str, model_name: str, tenant_id: str | None = None) -> None:
         tenant = tenant_id or self.DEFAULT_TENANT
         target = self._user_model_dir(tenant, user_id, model_name)
@@ -87,3 +87,4 @@ class ModelManager:
             raise LicenseError("Malformed license file") from exc
         if not data.get("valid"):
             raise LicenseError("License is no longer valid")
+            

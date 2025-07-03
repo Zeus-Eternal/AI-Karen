@@ -1,21 +1,22 @@
-"""Plugin discovery and routing with manifest parsing and RBAC."""
+"""Public plugin router located under the ai_karen_engine namespace."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Iterable, Optional, List
 import asyncio
 import importlib
 import importlib.util
 import json
 import os
+
 try:
     from jsonschema import ValidationError, validate
 except Exception:  # pragma: no cover - optional dependency
     ValidationError = Exception  # type: ignore
+
     def validate(*args, **kwargs):  # type: ignore
         return None
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, Optional, List
-
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
 SCHEMA_PATH = os.path.join(
@@ -45,14 +46,11 @@ class PluginRouter:
     def __init__(self, plugin_dir: str | None = None) -> None:
         self.plugin_dir = plugin_dir or PLUGIN_DIR
         self.intent_map: Dict[str, PluginRecord] = {}
-        self.all_plugins: Dict[str, PluginRecord] = {}
-        self.disabled: set[str] = set()
         self.load_plugins()
 
     def load_plugins(self) -> None:
         """Scan the plugin directory and load manifests and handlers."""
         self.intent_map.clear()
-        self.all_plugins.clear()
         try:
             with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
                 schema = json.load(f)
@@ -70,7 +68,6 @@ class PluginRouter:
                 with open(manifest_path, "r", encoding="utf-8") as f:
                     manifest = json.load(f)
             except json.JSONDecodeError as exc:
-                # Skip plugins with malformed manifest files
                 print(f"Failed to parse manifest for {name}: {exc}")
                 continue
             if schema is not None:
@@ -81,7 +78,6 @@ class PluginRouter:
                     continue
             if manifest.get("plugin_api_version") != "1.0":
                 continue
-
             try:
                 module = importlib.import_module(f"src.plugins.{name}.handler")
             except ModuleNotFoundError:
@@ -97,7 +93,6 @@ class PluginRouter:
             handler = getattr(module, "run", None)
             if handler is None:
                 continue
-
             ui_module = None
             ui_path = os.path.join(path, "ui.py")
             advanced = os.getenv("ADVANCED_MODE", "false").lower() == "true"
@@ -112,7 +107,6 @@ class PluginRouter:
                 except Exception as exc:
                     print(f"Failed to load UI for {name}: {exc}")
                     ui_module = None
-
             record = PluginRecord(name, manifest, handler, ui_module)
             intent = manifest.get("intent")
             if not intent:
@@ -120,13 +114,9 @@ class PluginRouter:
             if isinstance(intent, list):
                 for single in intent:
                     if isinstance(single, str):
-                        self.all_plugins[single] = record
-                        if single not in self.disabled:
-                            self.intent_map[single] = record
+                        self.intent_map[single] = record
             elif isinstance(intent, str):
-                self.all_plugins[intent] = record
-                if intent not in self.disabled:
-                    self.intent_map[intent] = record
+                self.intent_map[intent] = record
 
     def reload(self) -> None:
         """Reload plugin definitions from disk."""
@@ -136,10 +126,6 @@ class PluginRouter:
         """Return the loaded intent names."""
         return list(self.intent_map.keys())
 
-    def list_all_intents(self) -> List[str]:
-        """Return all known intent names including disabled ones."""
-        return list(self.all_plugins.keys())
-
     def get_plugin(self, intent: str) -> Optional[PluginRecord]:
         return self.intent_map.get(intent)
 
@@ -148,23 +134,6 @@ class PluginRouter:
         if not plugin_record:
             return None
         return plugin_record.handler
-
-    def disable(self, intent: str) -> bool:
-        """Disable the plugin for ``intent``."""
-        record = self.intent_map.pop(intent, None)
-        if record:
-            self.disabled.add(intent)
-            self.all_plugins[intent] = record
-            return True
-        return False
-
-    def enable(self, intent: str) -> bool:
-        """Enable a previously disabled plugin."""
-        if intent in self.all_plugins:
-            self.disabled.discard(intent)
-            self.intent_map[intent] = self.all_plugins[intent]
-            return True
-        return False
 
     async def dispatch(
         self, intent: str, params: Dict[str, Any], roles: Iterable[str] | None = None

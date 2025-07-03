@@ -2,6 +2,8 @@
 
 Kari can improve its own code using the built-in SelfRefactor engine. This component generates patches, runs tests, and merges the changes automatically when they pass.
 
+The OSIRIS Knowledge Engine feeds the SelfRefactor pipeline. As new information is ingested through multi-hop queries, the engine refreshes its knowledge base and schedules refactor runs, forming a continuous self-updating loop.
+
 ## 1. Overview
 
 The engine reads prompts from `self_refactor/prompts/` and uses a local or remote LLM to suggest code improvements. Patches are applied in a sandboxed git worktree and executed with `pytest` before merging.
