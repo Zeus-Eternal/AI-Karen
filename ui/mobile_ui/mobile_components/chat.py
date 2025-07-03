@@ -1,7 +1,7 @@
 import asyncio
 import streamlit as st
 
-from services.memory_controller import restore_memory, sync_memory
+from src.services.memory_controller import restore_memory, sync_memory
 from utils.api_client import post, get
 
 

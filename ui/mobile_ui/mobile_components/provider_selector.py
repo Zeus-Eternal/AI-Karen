@@ -1,7 +1,7 @@
 import streamlit as st
 import logging
 
-from integrations.llm_registry import registry as llm_registry  # This import will now work
+from src.integrations.llm_registry import registry as llm_registry  # This import will now work
 
 def _providers() -> list[str]:
     return list(llm_registry.list_models())

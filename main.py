@@ -2,13 +2,9 @@ from typing import Any, Dict, List
 from pathlib import Path
 import sys
 import os
-# Add ./src to sys.path
-SRC_PATH = os.path.join(os.path.dirname(__file__), "src")
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
-from core.cortex.dispatch import CortexDispatcher
-from core.embedding_manager import _METRICS as METRICS
-from core.soft_reasoning_engine import SoftReasoningEngine
+from src.core.cortex.dispatch import CortexDispatcher
+from src.core.embedding_manager import _METRICS as METRICS
+from src.core.soft_reasoning_engine import SoftReasoningEngine
 
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.stderr.write(
@@ -21,7 +17,7 @@ try:
     from fastapi.responses import JSONResponse, Response
 except Exception:  # fastapi_stub compatibility
     from fastapi.responses import JSONResponse
-    from fastapi_stub import Response
+    from src.fastapi_stub import Response
 try:
     from prometheus_client import (
         Counter,

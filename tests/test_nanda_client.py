@@ -1,4 +1,4 @@
-from integrations.nanda_client import NANDAClient
+from src.integrations.nanda_client import NANDAClient
 
 
 

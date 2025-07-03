@@ -1,6 +1,6 @@
 import asyncio
 
-from plugins.llm_manager.handler import run
+from src.plugins.llm_manager.handler import run
 from src.integrations.llm_registry import registry
 from src.integrations import model_discovery
 

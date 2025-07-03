@@ -57,11 +57,12 @@ class PluginRouter:
                 continue
 
             try:
-                module = importlib.import_module(f"plugins.{name}.handler")
+                module = importlib.import_module(f"src.plugins.{name}.handler")
             except ModuleNotFoundError:
                 try:
                     spec = importlib.util.spec_from_file_location(
-                        f"{name}.handler", os.path.join(path, "handler.py")
+                        f"src.plugins.{name}.handler",
+                        os.path.join(path, "handler.py"),
                     )
                     module = importlib.util.module_from_spec(spec)
                     assert spec.loader

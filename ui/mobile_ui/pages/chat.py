@@ -124,7 +124,7 @@ class ChatUI:
         with col1:
             if st.button("🧠 Recall Memory", help="Restore conversation context"):
                 try:
-                    from services.memory_controller import restore_memory
+                    from src.services.memory_controller import restore_memory
                     restore_memory()
                     st.toast("Memory restored from database")
                 except Exception as e:
@@ -153,9 +153,9 @@ async def render_chat_page() -> None:
         st.markdown("---")
 
         try:
-            from services.model_registry import get_ready_models, get_model_meta
-            from services.config_manager import load_config, update_config
-            from services.runtime_dispatcher import dispatch_runtime
+            from src.services.model_registry import get_ready_models, get_model_meta
+            from src.services.config_manager import load_config, update_config
+            from src.services.runtime_dispatcher import dispatch_runtime
 
             models = [m.get("model_name") for m in get_ready_models()]
             config = load_config()
@@ -196,7 +196,7 @@ async def render_chat_page() -> None:
                     duration = time.perf_counter() - start_time
                     token_count = len(full_response.split())
                     st.session_state.chat_history.append({"role": "ai", "content": full_response})
-                    from services.memory_controller import sync_memory
+                    from src.services.memory_controller import sync_memory
                     sync_memory()
                     ui.render_performance_metrics(duration, token_count)
             except Exception as e:

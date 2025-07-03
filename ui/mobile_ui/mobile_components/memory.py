@@ -1,5 +1,5 @@
 import streamlit as st
-from services.memory_controller import sync_memory, flush_memory, restore_memory
+from src.services.memory_controller import sync_memory, flush_memory, restore_memory
 
 def memory_config():
     st.subheader("\U0001F9E0 Memory Configuration")
