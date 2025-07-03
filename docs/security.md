@@ -11,6 +11,8 @@ Kari enforces role-based access control and signs releases with ed25519 keys. Se
 | `admin` | Full access including guardrail editing and capsule hot-swap |
 
 Roles are checked by `PluginRouter.dispatch()` before invoking a plugin.
+UI pages additionally call `require_role()` from `ui.common.components.rbac` to
+prevent unauthorized access.
 
 ## Secrets Management
 
@@ -29,3 +31,4 @@ gpg --verify kari-desktop.tar.gz.sig kari-desktop.tar.gz
 ```
 
 See [docs/ui_handbook.md](ui_handbook.md) for secure UI practices and [docs/plugin_spec.md](plugin_spec.md) for plugin-level permissions.
+

@@ -45,11 +45,14 @@ class PluginRouter:
     def __init__(self, plugin_dir: str | None = None) -> None:
         self.plugin_dir = plugin_dir or PLUGIN_DIR
         self.intent_map: Dict[str, PluginRecord] = {}
+        self.all_plugins: Dict[str, PluginRecord] = {}
+        self.disabled: set[str] = set()
         self.load_plugins()
 
     def load_plugins(self) -> None:
         """Scan the plugin directory and load manifests and handlers."""
         self.intent_map.clear()
+        self.all_plugins.clear()
         try:
             with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
                 schema = json.load(f)
@@ -117,9 +120,13 @@ class PluginRouter:
             if isinstance(intent, list):
                 for single in intent:
                     if isinstance(single, str):
-                        self.intent_map[single] = record
+                        self.all_plugins[single] = record
+                        if single not in self.disabled:
+                            self.intent_map[single] = record
             elif isinstance(intent, str):
-                self.intent_map[intent] = record
+                self.all_plugins[intent] = record
+                if intent not in self.disabled:
+                    self.intent_map[intent] = record
 
     def reload(self) -> None:
         """Reload plugin definitions from disk."""
@@ -129,6 +136,10 @@ class PluginRouter:
         """Return the loaded intent names."""
         return list(self.intent_map.keys())
 
+    def list_all_intents(self) -> List[str]:
+        """Return all known intent names including disabled ones."""
+        return list(self.all_plugins.keys())
+
     def get_plugin(self, intent: str) -> Optional[PluginRecord]:
         return self.intent_map.get(intent)
 
@@ -137,6 +148,23 @@ class PluginRouter:
         if not plugin_record:
             return None
         return plugin_record.handler
+
+    def disable(self, intent: str) -> bool:
+        """Disable the plugin for ``intent``."""
+        record = self.intent_map.pop(intent, None)
+        if record:
+            self.disabled.add(intent)
+            self.all_plugins[intent] = record
+            return True
+        return False
+
+    def enable(self, intent: str) -> bool:
+        """Enable a previously disabled plugin."""
+        if intent in self.all_plugins:
+            self.disabled.discard(intent)
+            self.intent_map[intent] = self.all_plugins[intent]
+            return True
+        return False
 
     async def dispatch(
         self, intent: str, params: Dict[str, Any], roles: Iterable[str] | None = None

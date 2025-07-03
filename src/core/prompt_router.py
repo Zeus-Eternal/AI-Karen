@@ -1,5 +1,5 @@
 import asyncio
-from src.core.plugin_router import PluginRouter as BaseRouter
+from ai_karen_engine.plugin_router import PluginRouter as BaseRouter
 
 
 class PluginWrapper:

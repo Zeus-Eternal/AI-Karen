@@ -26,9 +26,10 @@ class KariICEWrapper:
         self.engine = SoftReasoningEngine()
         self.threshold = threshold
  
-        self.llm = llm or llm_registry.get_active()
-
-        self.llm = llm or LLMUtils()
+        if llm is not None:
+            self.llm = llm
+        else:
+            self.llm = llm_registry.get_active() or LLMUtils()
  
 
     def process(self, text: str) -> Dict[str, Any]:
