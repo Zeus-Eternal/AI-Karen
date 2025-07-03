@@ -100,6 +100,7 @@ src/pydantic_stub/ # DTOs & schemas
 tests/         # pytest suite
 docs/          # architecture docs (mesh_arch.md, …)
 ```
+Each UI directory also contains a `README.md` with build notes and setup tips.
 ### Prerequisites
 * Docker and Docker Compose
 * Node.js 18+ with npm
@@ -292,6 +293,8 @@ Drop the folder—Kari discovers it, registers routes, and injects UI automatica
 * **Memory Matrix** – inspect vector hits & decay curves
 * **Logs & Trace** – Prometheus charts, OT spans, SRE patch history
 
+Updates are typically released once a month. See `ui/desktop_ui/README.md` for the latest cycle notes.
+
 Runs as a native Tauri app; all traffic stays on `localhost`.
 
  
@@ -342,7 +345,6 @@ Additional guides:
 - [LLM Guide](docs/llm_guide.md)
 - [Event Bus](docs/event_bus.md)
 - [Observability](docs/observability.md)
-- [UI Handbook](docs/ui_handbook.md)
 - [Development Guide](docs/development_guide.md)
  
 - [ICE Wrapper](docs/ice_wrapper.md)
@@ -394,5 +396,5 @@ The Hydra-Ops capsule design is further detailed in `docs/mesh_arch.md`.
 * Example plugins: hello-world, desktop agent, HF LLM, OpenAI LLM
 * Tests: `pytest -q`
 * More in `DEV_SHEET.md` — happy hacking!
-* See the [UI Handbook](docs/ui_handbook.md) for Control Room navigation.
+* See `ui/desktop_ui/README.md` for Control Room navigation tips.
  

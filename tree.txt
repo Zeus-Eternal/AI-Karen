@@ -50,7 +50,6 @@ AI-Karen
 │   ├── self_refactor.md
 │   ├── side_by_side_openai_kari.md
 │   ├── tests.md
-│   └── ui_handbook.md
 ├── guardrails
 │   ├── __init__.py
 │   └── validator.py
