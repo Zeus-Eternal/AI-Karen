@@ -15,7 +15,7 @@ Kari includes a proprietary bridge to n8n for orchestrating external workflows. 
 3. In your plugin code, call `WorkflowEngineClient.trigger()` with the desired slug and payload.
 
 ```python
-from core.workflow_engine_client import WorkflowEngineClient
+from src.core.workflow_engine_client import WorkflowEngineClient
 
 wf = WorkflowEngineClient()
 wf.trigger("support_ticket", {"issue": "printer jam"})

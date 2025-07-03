@@ -1,5 +1,5 @@
 import asyncio
-from core.plugin_router import PluginRouter as BaseRouter
+from src.core.plugin_router import PluginRouter as BaseRouter
 
 
 class PluginWrapper:

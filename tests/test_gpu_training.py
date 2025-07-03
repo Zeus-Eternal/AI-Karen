@@ -1,7 +1,7 @@
 import pytest
 import importlib
 
-import core.gpu_training as gpu_training
+import src.core.gpu_training as gpu_training
 
 
 def test_gpu_training_requires_torch():

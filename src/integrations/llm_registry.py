@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 from .llm_utils import LLMUtils
 
 # Absolute imports from services package
-from services.ollama_inprocess import generate as local_generate
-from services.deepseek_client import DeepSeekClient
+from src.services.ollama_inprocess import generate as local_generate
+from src.services.deepseek_client import DeepSeekClient
 
 
 class LlamaCppWrapper:

@@ -1,4 +1,4 @@
-from core.intent_engine import IntentEngine
+from src.core.intent_engine import IntentEngine
 
 
 def test_detect_intent():
