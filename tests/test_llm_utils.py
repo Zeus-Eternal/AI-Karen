@@ -1,4 +1,4 @@
-from src.integrations.llm_utils import LLMUtils
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 
 def test_llm_utils_fallback():

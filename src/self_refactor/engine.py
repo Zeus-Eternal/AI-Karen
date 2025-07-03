@@ -12,11 +12,11 @@ import tempfile
 import time
 from typing import Dict, List, Tuple
 
-from src.integrations.nanda_client import NANDAClient
- 
-from src.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.nanda_client import NANDAClient
 
-from src.integrations.llm_utils import LLMUtils
+from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 
 class PatchReport(dict):

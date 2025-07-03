@@ -2,9 +2,9 @@ from typing import Any, Dict, List
 from pathlib import Path
 import sys
 import os
-from src.core.cortex.dispatch import CortexDispatcher
-from src.core.embedding_manager import _METRICS as METRICS
-from src.core.soft_reasoning_engine import SoftReasoningEngine
+from ai_karen_engine.core.cortex.dispatch import CortexDispatcher
+from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
+from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.stderr.write(
@@ -53,8 +53,8 @@ from src.self_refactor import SelfRefactorEngine, SREScheduler
 from pydantic import BaseModel
 import asyncio
 import logging
-from src.integrations.llm_registry import registry as llm_registry
-from src.integrations.model_discovery import sync_registry
+from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.model_discovery import sync_registry
 
 app = FastAPI()
 
