@@ -184,6 +184,15 @@ python scripts/server_cli.py start --reload  # start
 python scripts/server_cli.py stop            # stop if running
 ```
 
+### 2.1 Self-test the install
+
+Run a quick self-test to ensure the configuration loads and all plugins are
+valid:
+
+```bash
+python cli.py --self-test
+```
+
 If you encounter `ImportError: cannot import name 'FastAPI'`, check for a
 directory named `fastapi` in the project root. It will shadow the installed
 package. The server now exits with an error if such a folder exists.
