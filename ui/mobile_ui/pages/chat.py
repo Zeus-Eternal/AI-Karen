@@ -20,6 +20,9 @@ import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 import traceback
 
+from ui.mobile_ui.mobile_components.persona_controls import render_persona_controls
+from ui.mobile_ui.services.config_manager import load_config
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
@@ -79,6 +82,18 @@ class ChatUI:
             st.session_state.chat_history = []
         if "model_info" not in st.session_state:
             st.session_state.model_info = {}
+        defaults = {
+            "persona": "default",
+            "tone": "neutral",
+            "language": "en",
+            "emotion": "neutral",
+        }
+        try:
+            cfg = load_config()
+        except Exception:
+            cfg = {}
+        for k, v in defaults.items():
+            st.session_state.setdefault(k, cfg.get(k, v))
 
     @staticmethod
     def render_model_selector(models: List[str], current_model: str) -> Optional[str]:
@@ -181,6 +196,7 @@ async def render_chat_page() -> None:
 
         ui.render_chat_history()
         ui.render_memory_controls()
+        render_persona_controls()
 
         prompt = st.chat_input("Message AI...")
         if prompt and chat_mgr._validate_input(prompt):

@@ -74,6 +74,23 @@ def render_settings():
     decay = st.slider("Memory Decay", 0.0, 1.0, value=config.get("decay", 0.1))
 
     persona = st.text_input("Persona", value=config.get("persona", "default"))
+    tone = st.selectbox(
+        "Tone",
+        ["neutral", "friendly", "professional", "playful"],
+        index=["neutral", "friendly", "professional", "playful"].index(
+            config.get("tone", "neutral")
+        ),
+    )
+    language = st.selectbox(
+        "Language",
+        ["en", "es", "fr", "de"],
+        index=["en", "es", "fr", "de"].index(config.get("language", "en")),
+    )
+    emotion = st.selectbox(
+        "Emotion",
+        ["neutral", "happy", "sad", "angry"],
+        index=["neutral", "happy", "sad", "angry"].index(config.get("emotion", "neutral")),
+    )
 
     prov_conf = get_provider_config(provider)
     if st.button("\U0001F4BE Save Configuration"):
@@ -85,5 +102,8 @@ def render_settings():
             "context_length": context_len,
             "decay": decay,
             "persona": persona,
+            "tone": tone,
+            "language": language,
+            "emotion": emotion,
         })
         st.success("Settings saved.")

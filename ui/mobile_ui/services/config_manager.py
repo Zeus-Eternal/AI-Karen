@@ -31,7 +31,13 @@ def _init_db(con: duckdb.DuckDBPyConnection) -> None:
 def load_config() -> dict:
     """Return saved configuration with DeepSeek defaults."""
     if not DB_PATH.exists():
-        return {"provider": "deepseek"}
+        return {
+            "provider": "deepseek",
+            "persona": "default",
+            "tone": "neutral",
+            "language": "en",
+            "emotion": "neutral",
+        }
     con = _connect()
     _init_db(con)
     row = con.execute("SELECT data FROM settings WHERE id=1").fetchone()
@@ -39,10 +45,20 @@ def load_config() -> dict:
     if row:
         data = json.loads(row[0])
         data.setdefault("provider", "deepseek")
+        data.setdefault("persona", "default")
+        data.setdefault("tone", "neutral")
+        data.setdefault("language", "en")
+        data.setdefault("emotion", "neutral")
         if "api_key_ref" in data:
             data["api_key"] = load_secret(data["api_key_ref"]) or ""
         return data
-    return {"provider": "deepseek"}
+    return {
+        "provider": "deepseek",
+        "persona": "default",
+        "tone": "neutral",
+        "language": "en",
+        "emotion": "neutral",
+    }
 
 
 def save_config(config: dict) -> None:
