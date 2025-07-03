@@ -1,21 +1,19 @@
 from __future__ import annotations
-
-from typing import Dict, Iterable, Optional
-from pathlib import Path
 import os
 import logging
+from pathlib import Path
+from typing import Dict, Iterable, Optional
 
-# Configure logger
 logger = logging.getLogger(__name__)
 
-try:
-    # Use the shared LLM helper from the same package
-    from .llm_utils import LLMUtils
-    from ..services.ollama_inprocess import generate as local_generate
-    from ..services.deepseek_client import DeepSeekClient
-except ImportError as e:
-    logger.warning(f"Import error: {e}")
-    
+    # Relative import for same-package utilities
+from .llm_utils import LLMUtils
+
+# Absolute imports from services package
+from services.ollama_inprocess import generate as local_generate
+from services.deepseek_client import DeepSeekClient
+
+
 class LlamaCppWrapper:
     """Adapter exposing a generate_text method for llama-cpp."""
 

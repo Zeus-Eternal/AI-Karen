@@ -2,7 +2,10 @@ from typing import Any, Dict, List
 from pathlib import Path
 import sys
 import os
-
+# Add ./src to sys.path
+SRC_PATH = os.path.join(os.path.dirname(__file__), "src")
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
 from core.cortex.dispatch import CortexDispatcher
 from core.embedding_manager import _METRICS as METRICS
 from core.soft_reasoning_engine import SoftReasoningEngine

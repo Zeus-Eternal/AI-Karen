@@ -16,8 +16,8 @@ if str(MOBILE_UI_PATH) not in sys.path:
 
 # ========== STANDARD IMPORTS ==========
 import streamlit as st
-from components.sidebar import render_sidebar
-from components.provider_selector import select_provider
+from mobile_components.sidebar import render_sidebar
+from mobile_components.provider_selector import select_provider
 from config.config_manager import ConfigManager
 from utils.model_loader import ensure_spacy_models, ensure_sklearn_installed
 
