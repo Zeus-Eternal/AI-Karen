@@ -5,13 +5,7 @@ Kari uses a multi-tier memory system to balance speed and recall quality.
 
 1. **NeuroVault** – an in-memory buffer used by `ChatHub` for short-term context. Records decay with `v(t)=v₀ e^{-0.05t}` (days) and can be purged via slash command.
 2. **MilvusClient** – an in-process vector store with TTL pruning. It stores embeddings along with metadata such as `timestamp`, `tag` and optional `ttl_override`.
-3. **Redis Cache** – a lightweight cache for hot items and recent events. The example implementation is an in-memory stub but the API mirrors Redis commands.
-
-
-Kari uses a dual-layer memory system to balance speed and recall quality.
-
-1. **MilvusClient** – an in-process vector store with TTL pruning. It stores embeddings along with metadata such as `timestamp`, `tag` and optional `ttl_override`.
-2. **Redis Cache** – a lightweight cache for hot items and recent events. The example implementation is an in-memory stub but the API mirrors Redis commands.
+3. **Redis Cache** – a lightweight cache for hot items and recent events. This is currently a stub implementation in memory; the API mirrors Redis commands.
  
 
  
