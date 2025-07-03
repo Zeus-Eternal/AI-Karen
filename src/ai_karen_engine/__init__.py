@@ -3,11 +3,11 @@
 from .clients.slm_pool import SLMPool
 from .llm_orchestrator import LLMOrchestrator
 from .echocore.fine_tuner import NightlyFineTuner
-from core.model_manager import ModelManager
-from core.echo_core import EchoCore
-from clients.transformers.lnm_client import LNMClient
-from clients.nlp.basic_classifier import BasicClassifier
-from clients.nlp.spacy_client import SpaCyClient
+from ai_karen_engine.core.model_manager import ModelManager
+from ai_karen_engine.core.echo_core import EchoCore
+from ai_karen_engine.clients.transformers.lnm_client import LNMClient
+from ai_karen_engine.clients.nlp.basic_classifier import BasicClassifier
+from ai_karen_engine.clients.nlp.spacy_client import SpaCyClient
 
 __all__ = [
     "SLMPool",

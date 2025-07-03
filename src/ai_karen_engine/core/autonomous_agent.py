@@ -1,10 +1,10 @@
 import time
 import uuid
 
-from core.prompt_router import PromptRouter
-from core.automation_manager import AutomationManager
-from core.workflow_engine_client import WorkflowEngineClient
-from src.integrations.llm_utils import LLMUtils
+from ai_karen_engine.core.prompt_router import PromptRouter
+from ai_karen_engine.core.automation_manager import AutomationManager
+from ai_karen_engine.core.workflow_engine_client import WorkflowEngineClient
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 
 class AutonomousAgent:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import List
 
-from core.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
 
 
 def _byte_embedding_model(byte_input: bytes, dim: int = 8) -> List[float]:

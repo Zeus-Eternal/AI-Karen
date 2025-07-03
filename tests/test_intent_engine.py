@@ -1,4 +1,4 @@
-from core.intent_engine import IntentEngine
+from ai_karen_engine.core.intent_engine import IntentEngine
 
 
 def test_detect_intent():

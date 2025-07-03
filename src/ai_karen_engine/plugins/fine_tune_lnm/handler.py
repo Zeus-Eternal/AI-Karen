@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.echo_core import EchoCore
+from ai_karen_engine.core.echo_core import EchoCore
 
 
 async def run(params: dict) -> str:

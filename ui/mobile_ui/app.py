@@ -1,18 +1,7 @@
 #!/usr/bin/env python3
-import sys
 import pathlib
 
-# ==== PATH PATCHING FOR IMPORTS ====
-CURRENT_FILE = pathlib.Path(__file__).resolve()
-PROJECT_ROOT = CURRENT_FILE.parents[2]  # AI-Karen root
-SRC_PATH = PROJECT_ROOT / "src"
-MOBILE_UI_PATH = PROJECT_ROOT / "ui" / "mobile_ui"
-
-if str(SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(SRC_PATH))
-
-if str(MOBILE_UI_PATH) not in sys.path:
-    sys.path.insert(0, str(MOBILE_UI_PATH))
+# "src" is now a proper package location; no path patching needed.
 
 # ========== STANDARD IMPORTS ==========
 import streamlit as st

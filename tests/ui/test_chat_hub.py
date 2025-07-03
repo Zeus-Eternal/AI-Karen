@@ -1,6 +1,6 @@
 import asyncio
 
-from src.ui.chat_hub import ChatHub, SlashCommand, NeuroVault
+from ai_karen_engine.ui.chat_hub import ChatHub, SlashCommand, NeuroVault
 
 
 class DummyRouter:

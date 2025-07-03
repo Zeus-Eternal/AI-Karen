@@ -17,7 +17,7 @@ except Exception:  # pragma: no cover
         def __init__(self, *a, **k): pass
         def observe(self, *a, **k): pass
 
-from core.prompt_router import PromptRouter
+from ai_karen_engine.core.prompt_router import PromptRouter
 
 
 @dataclass
