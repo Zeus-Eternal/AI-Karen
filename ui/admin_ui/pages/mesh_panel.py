@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from .. import tauri
 
 
 def render(events: list[dict]) -> str:
