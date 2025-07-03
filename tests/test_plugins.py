@@ -6,7 +6,7 @@ from pathlib import Path
 from types import ModuleType
 import sys
 
-PLUGIN_DIR = Path(__file__).resolve().parents[1] / "src" / "plugins"
+PLUGIN_DIR = Path(__file__).resolve().parents[1] / "src" / "ai_karen_engine" / "plugins"
 
 
 def ensure_optional_dependency(name: str):
@@ -36,6 +36,6 @@ def test_manifest_and_handler():
         # provide dummy optional deps such as pyautogui and urwid
         for dep in ['pyautogui', 'urwid']:
             ensure_optional_dependency(dep)
-        handler_module = importlib.import_module(f'src.plugins.{plugin}.handler')
+        handler_module = importlib.import_module(f'ai_karen_engine.plugins.{plugin}.handler')
         assert hasattr(handler_module, 'run')
         assert inspect.iscoroutinefunction(handler_module.run)
