@@ -9,6 +9,7 @@ import importlib
 import importlib.util
 import json
 import os
+from src.core import plugin_router as core_router
 
 try:
     from jsonschema import ValidationError, validate
@@ -18,12 +19,8 @@ except Exception:  # pragma: no cover - optional dependency
     def validate(*args, **kwargs):  # type: ignore
         return None
 
-PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
-SCHEMA_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "config",
-    "plugin_schema.json",
-)
+PLUGIN_DIR = core_router.PLUGIN_DIR
+SCHEMA_PATH = core_router.SCHEMA_PATH
 
 
 @dataclass
@@ -44,7 +41,7 @@ class PluginRouter:
     """Load plugins and route intents to their handlers."""
 
     def __init__(self, plugin_dir: str | None = None) -> None:
-        self.plugin_dir = plugin_dir or PLUGIN_DIR
+        self.plugin_dir = plugin_dir or core_router.PLUGIN_DIR
         self.intent_map: Dict[str, PluginRecord] = {}
         self.load_plugins()
 

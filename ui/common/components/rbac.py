@@ -1,4 +1,16 @@
-import streamlit as st
+try:
+    import streamlit as st
+except ModuleNotFoundError:  # pragma: no cover - fallback for non-UI environments
+    class _DummyStreamlit:
+        """Minimal stub for Streamlit when the package is unavailable."""
+
+        def __init__(self) -> None:
+            self.session_state = {}
+
+        def error(self, *args, **kwargs) -> None:  # noqa: D401
+            """Placeholder for ``st.error`` used in tests."""
+
+    st = _DummyStreamlit()
 from typing import Callable, Any
 
 def has_role(role: str) -> bool:
