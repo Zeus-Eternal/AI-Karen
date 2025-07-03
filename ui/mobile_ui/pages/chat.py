@@ -124,7 +124,7 @@ class ChatUI:
         with col1:
             if st.button("🧠 Recall Memory", help="Restore conversation context"):
                 try:
-                    from services.memory_controller import restore_memory
+                    from ui.mobile_ui.services.memory_controller import restore_memory
                     restore_memory()
                     st.toast("Memory restored from database")
                 except Exception as e:
@@ -133,7 +133,7 @@ class ChatUI:
         with col2:
             if st.button("📝 Show Logs", help="View system logs"):
                 try:
-                    from utils.api_client import get
+                    from ui.mobile_ui.utils.api_client import get
                     logs = asyncio.run(get("/logs"))
                     if logs and not logs.get("error"):
                         st.expander("System Logs").code("\n".join(logs.get("logs", [])))
@@ -153,9 +153,15 @@ async def render_chat_page() -> None:
         st.markdown("---")
 
         try:
-            from services.model_registry import get_ready_models, get_model_meta
-            from services.config_manager import load_config, update_config
-            from services.runtime_dispatcher import dispatch_runtime
+            from ui.mobile_ui.services.model_registry import (
+                get_ready_models,
+                get_model_meta,
+            )
+            from ui.mobile_ui.services.config_manager import (
+                load_config,
+                update_config,
+            )
+            from ui.mobile_ui.services.runtime_dispatcher import dispatch_runtime
 
             models = [m.get("model_name") for m in get_ready_models()]
             config = load_config()
@@ -196,7 +202,7 @@ async def render_chat_page() -> None:
                     duration = time.perf_counter() - start_time
                     token_count = len(full_response.split())
                     st.session_state.chat_history.append({"role": "ai", "content": full_response})
-                    from services.memory_controller import sync_memory
+                    from ui.mobile_ui.services.memory_controller import sync_memory
                     sync_memory()
                     ui.render_performance_metrics(duration, token_count)
             except Exception as e:

@@ -1,8 +1,8 @@
 import streamlit as st
-from .provider_selector import select_provider
-from .models import select_model
-from .memory import memory_config
-from utils.api_client import persist_config
+from ui.mobile_ui.mobile_components.provider_selector import select_provider
+from ui.mobile_ui.mobile_components.models import select_model
+from ui.mobile_ui.mobile_components.memory import memory_config
+from ui.mobile_ui.utils.api_client import persist_config
 
 
 def render_configuration():

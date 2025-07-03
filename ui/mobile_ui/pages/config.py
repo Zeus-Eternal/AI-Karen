@@ -1,6 +1,6 @@
 import json
 import streamlit as st
-from ..services import config_manager
+from ui.mobile_ui.services import config_manager
 
 
 def render() -> None:
