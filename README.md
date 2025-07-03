@@ -94,6 +94,7 @@ capsules/      # domain-specific agents (DevOps, Finance, …)
 integrations/  # NANDA client, RPA helpers, external bridges
 plugins/       # drop-in plugins (manifest + handler + ui)
 ui/desktop_ui/ # Tauri Control Room (Rust + React)
+ui/mobile_ui/config/config_ui.py # Streamlit UI settings (ConfigUI class)
 fastapi_stub/  # API entrypoints, chat & metrics
 pydantic_stub/ # DTOs & schemas
 tests/         # pytest suite
