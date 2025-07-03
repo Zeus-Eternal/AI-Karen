@@ -160,6 +160,12 @@ Setting `ADVANCED_MODE=true` unlocks unrestricted behavior:
 
 > 🔒 Use only in dev environments or trusted operator sessions.
 
+## 🦾 11. Autonomous Agents
+
+Kari includes a lightweight autonomous agent that decomposes a goal into
+subtasks and executes them via the `autonomous_task_handler` plugin. Results may
+trigger external workflows when permitted by the plugin manifest.
+
 ---
 
 ## 📚 Additional Docs
