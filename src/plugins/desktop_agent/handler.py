@@ -1,4 +1,4 @@
-from .agent import DesktopAgent
+from src.plugins.desktop_agent.agent import DesktopAgent
 
 async def run(params: dict) -> dict:
     """Entry point for the desktop automation plugin."""

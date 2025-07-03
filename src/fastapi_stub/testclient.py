@@ -1,5 +1,5 @@
 import asyncio
-from . import Response
+from fastapi_stub import Response
 
 
 class TestClient:

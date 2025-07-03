@@ -7,7 +7,7 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     GraphDatabase = None
 
-from .reasoning import ReasoningGraph
+from ai_karen_engine.core.reasoning import ReasoningGraph
 
 
 class MeshPlanner:

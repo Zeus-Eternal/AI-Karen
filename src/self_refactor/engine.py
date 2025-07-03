@@ -114,7 +114,7 @@ class SelfRefactorEngine:
                 }
             )
         try:
-            from . import log_utils
+            from src.self_refactor import log_utils
 
             log_utils.record_report(report)
         except Exception:

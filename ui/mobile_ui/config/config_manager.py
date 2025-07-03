@@ -1,7 +1,7 @@
 # ui/mobile_ui/config/config_manager.py
 import os
 import json
-from .config_ui import ConfigUI
+from ui.mobile_ui.config.config_ui import ConfigUI
 
 config = ConfigUI.load_from_env()
 class ConfigManager:

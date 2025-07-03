@@ -3,8 +3,8 @@ import math
 import time
 from typing import Any, Dict, List, Optional
 
-from .embedding_manager import EmbeddingManager
-from .milvus_client import MilvusClient
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.milvus_client import MilvusClient
 
 
 class SoftReasoningEngine:

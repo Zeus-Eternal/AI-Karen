@@ -52,7 +52,7 @@ from ai_karen_engine.self_refactor import SelfRefactorEngine, SREScheduler
 from pydantic import BaseModel
 import asyncio
 import logging
-from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from src.integrations.llm_registry import registry as llm_registry
 from ai_karen_engine.integrations.model_discovery import sync_registry
 
 app = FastAPI()

@@ -3,10 +3,10 @@ import pathlib
 
 # ========== STANDARD IMPORTS ==========
 import streamlit as st
-from .mobile_components.sidebar import render_sidebar
-from .mobile_components.provider_selector import select_provider
-from .config.config_manager import ConfigManager
-from .utils.model_loader import ensure_spacy_models, ensure_sklearn_installed
+from ui.mobile_ui.mobile_components.sidebar import render_sidebar
+from ui.mobile_ui.mobile_components.provider_selector import select_provider
+from ui.mobile_ui.config.config_manager import ConfigManager
+from ui.mobile_ui.utils.model_loader import ensure_spacy_models, ensure_sklearn_installed
 
 # ========== STYLING ==========
 def load_styles():
@@ -33,10 +33,10 @@ def main():
 
     selection = render_sidebar()
     if selection == "Chat":
-        from .pages import chat as chat_page
+        from ui.mobile_ui.pages import chat as chat_page
         chat_page.render_chat()
     elif selection == "Settings":
-        from .pages import settings as settings_page
+        from ui.mobile_ui.pages import settings as settings_page
         settings_page.render_settings()
     else:
         st.error(f"Unknown page: {selection}")

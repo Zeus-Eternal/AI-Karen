@@ -8,9 +8,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict
 
-from ..intent_engine import IntentEngine
-from ..plugin_router import PluginRouter, AccessDenied
-from ..reasoning.ice_integration import KariICEWrapper
+from ai_karen_engine.core.intent_engine import IntentEngine
+from ai_karen_engine.plugin_router import PluginRouter, AccessDenied
+from ai_karen_engine.core.reasoning.ice_integration import KariICEWrapper
 
 
 class CortexDispatcher:

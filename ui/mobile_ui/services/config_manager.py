@@ -1,14 +1,19 @@
 import json
 from pathlib import Path
-import duckdb
+try:
+    import duckdb
+except ModuleNotFoundError:  # pragma: no cover
+    duckdb = None
 
-from .vault import store_secret, load_secret
+from ui.mobile_ui.services.vault import store_secret, load_secret
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "data" / "config.duckdb"
 
 
 def _connect():
+    if duckdb is None:
+        raise ImportError("duckdb is required for configuration persistence")
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     return duckdb.connect(str(DB_PATH))
 
