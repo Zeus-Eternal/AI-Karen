@@ -28,7 +28,7 @@ class Capsule:
 class MeshPlanner:
     """Load capsules and route intents to the safest candidate."""
 
-    def __init__(self, capsule_dir: str | Path = "capsules") -> None:
+    def __init__(self, capsule_dir: str | Path = "src/capsules") -> None:
         self.capsule_dir = Path(capsule_dir)
         self.capsules: Dict[str, Capsule] = {}
         self._load_capsules()

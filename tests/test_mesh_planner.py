@@ -5,7 +5,7 @@ from core.mesh_planner import MeshPlanner
 def test_load_and_route(tmp_path, monkeypatch):
     from pathlib import Path
     import shutil
-    src = Path('capsules/devops')
+    src = Path('src/capsules/devops')
     dest = tmp_path / 'devops'
     shutil.copytree(src, dest)
 

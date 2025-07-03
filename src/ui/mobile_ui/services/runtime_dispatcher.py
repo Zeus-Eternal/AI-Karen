@@ -1,11 +1,20 @@
 from __future__ import annotations
 
 import os
-from typing import Callable, Dict, Any
+import sys
+from pathlib import Path
+from typing import Any, Callable, Dict
 
 import requests
 from prometheus_client import Histogram
-from services.ollama_inprocess import generate as local_generate
+
+# Ensure project src directory is available when running as a script
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from src.services.ollama_inprocess import generate as local_generate
 
 try:  # pragma: no cover - optional dep
     import onnxruntime as ort  # type: ignore
