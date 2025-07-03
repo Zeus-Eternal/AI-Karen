@@ -1,7 +1,7 @@
 import streamlit as st
 import logging
 
-from services.model_registry import get_ready_models
+from ui.mobile_ui.services.model_registry import get_ready_models
 
 def select_model(provider: str):
     options = [
