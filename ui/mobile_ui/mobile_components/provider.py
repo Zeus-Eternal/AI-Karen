@@ -32,7 +32,7 @@ class ProviderManager:
         """Fetch providers with caching and error handling"""
         try:
             time.sleep(0.2)
-            from src.integrations.llm_registry import registry as llm_registry
+            from ai_karen_engine.integrations.llm_registry import registry as llm_registry
             providers = list(llm_registry.list_models())
             if not providers:
                 raise ValueError("No providers available in registry")
