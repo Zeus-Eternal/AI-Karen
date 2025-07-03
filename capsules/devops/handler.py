@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict
 
-from src.core.plugin_router import PluginRouter
+from ai_karen_engine.plugin_router import PluginRouter
 
 router = PluginRouter()
 
