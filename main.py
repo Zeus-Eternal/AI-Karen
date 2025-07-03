@@ -246,10 +246,29 @@ def list_plugins() -> List[str]:
     return dispatcher.router.list_intents()
 
 
+@app.get("/plugins/all")
+def list_all_plugins() -> List[str]:
+    return dispatcher.router.list_all_intents()
+
+
 @app.post("/plugins/reload")
 def reload_plugins():
     dispatcher.router.reload()
     return {"status": "reloaded", "count": len(dispatcher.router.intent_map)}
+
+
+@app.post("/plugins/{intent}/disable")
+def disable_plugin(intent: str):
+    if dispatcher.router.disable(intent):
+        return {"status": "disabled"}
+    raise HTTPException(status_code=404, detail="not found")
+
+
+@app.post("/plugins/{intent}/enable")
+def enable_plugin(intent: str):
+    if dispatcher.router.enable(intent):
+        return {"status": "enabled"}
+    raise HTTPException(status_code=404, detail="not found")
 
 
 @app.get("/plugins/{intent}")
