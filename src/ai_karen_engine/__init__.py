@@ -3,7 +3,7 @@
 from .clients.slm_pool import SLMPool
 from .llm_orchestrator import LLMOrchestrator
 from .echocore.fine_tuner import NightlyFineTuner
-from src.core.model_manager import ModelManager
+from src.ai_karen_engine.core.model_manager import ModelManager
 from src.core.echo_core import EchoCore
 from src.clients.transformers.lnm_client import LNMClient
 from src.clients.nlp.basic_classifier import BasicClassifier
@@ -13,6 +13,9 @@ __all__ = [
     "SLMPool",
     "LLMOrchestrator",
     "NightlyFineTuner",
+    "AutomationManager",
+    "PluginRouter",
+    "AccessDenied",
     "ModelManager",
     "EchoCore",
     "LNMClient",

@@ -10,5 +10,3 @@ if src_path.exists():
     spec.loader.exec_module(module)
     globals().update(module.__dict__)
     __path__ = [str(src_path)]
-
-

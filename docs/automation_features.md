@@ -47,3 +47,10 @@ Our production build uses a custom HTTP client to contact your n8n instance. The
 - **Basic usage** uses only the local AutomationManager and RPA client.
 - **Advanced usage** combines RPA tasks with external workflow triggers via n8n when enabled by the plugin manifest.
 
+## 4. Autonomous Agents
+
+The `autonomous_task_handler` plugin showcases a simple autonomous loop. The
+agent breaks a goal into steps with the local LLM, executes each subtask, and
+queues follow-up tasks through the Automation Manager. When a workflow slug is
+configured, results can be sent to n8n for additional processing.
+
