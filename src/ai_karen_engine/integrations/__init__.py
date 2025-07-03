@@ -1,1 +1,1 @@
-"""Integration helpers for Kari AI (compatibility wrappers)."""
+"""Integration adapters for AI Karen."""
