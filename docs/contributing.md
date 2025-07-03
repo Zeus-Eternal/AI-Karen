@@ -6,7 +6,7 @@ We welcome community plugins and bug fixes. Please follow the checklist below wh
 
 ```bash
 pip install -r requirements.txt
-pre-commit install
+pre-commit install  # sets up git hooks from .pre-commit-config.yaml
 ```
 
 ## Coding Standards

@@ -236,6 +236,12 @@ cd ui/desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/t
 | Lint               | `ruff .`                               |
 | Tests              | `pytest`                               |
 | Hot-reload plugins | just save the folder—Kari auto-detects |
+
+Pre-commit hooks run these checks automatically. After cloning run:
+
+```bash
+pre-commit install
+```
 ### Advanced / Unrestricted Mode
 
 Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs marked as untrusted. Use with caution.
