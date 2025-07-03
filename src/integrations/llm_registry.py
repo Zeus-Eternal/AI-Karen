@@ -9,7 +9,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    from integrations.llm_utils import LLMUtils
+    # Use the shared LLM helper from the src.integrations package
+    from src.integrations.llm_utils import LLMUtils
     from services.ollama_inprocess import generate as local_generate
     from services.deepseek_client import DeepSeekClient
 except ImportError as e:
