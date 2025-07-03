@@ -7,7 +7,7 @@ from typing import Callable, Dict, Any
 import requests
 from prometheus_client import Histogram
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-from src.services.ollama_inprocess import generate as local_generate
+from ai_karen_engine.services.ollama_inprocess import generate as local_generate
 
 try:  # pragma: no cover - optional dep
     import onnxruntime as ort  # type: ignore
@@ -26,7 +26,7 @@ def run_llama_model(meta: dict, prompt: str) -> str:
 
 def run_hf_model(meta: dict, prompt: str) -> str:
     """Use HuggingFace transformers with automatic download."""
-    from src.integrations.llm_utils import LLMUtils
+    from ai_karen_engine.integrations.llm_utils import LLMUtils
 
     model_name = meta.get("model_name", "distilbert-base-uncased")
     llm = LLMUtils(model_name)

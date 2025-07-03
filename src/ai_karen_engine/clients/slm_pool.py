@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, Optional
 
-from src.integrations.llm_utils import LLMUtils
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 
 class SLMPool:
