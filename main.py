@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import os
 
+# Ensure src directory is on the Python path
 BASE_DIR = Path(__file__).resolve().parent
 SRC_DIR = BASE_DIR / "src"
 if SRC_DIR.is_dir() and str(SRC_DIR) not in sys.path:

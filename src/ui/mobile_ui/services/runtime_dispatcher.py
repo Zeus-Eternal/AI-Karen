@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import os
 import sys
 from pathlib import Path
@@ -7,7 +6,11 @@ from typing import Callable, Dict, Any
 
 import requests
 from prometheus_client import Histogram
-sys.path.append(str(Path(__file__).resolve().parents[3] / "src"))
+
+# Ensure the 'src' directory is importable
+SRC_DIR = Path(__file__).resolve().parents[3]
+if str(SRC_DIR) not in sys.path:
+    sys.path.append(str(SRC_DIR))
 
 from src.services.ollama_inprocess import generate as local_generate
 
