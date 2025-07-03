@@ -1,15 +1,12 @@
 import importlib
 import json
 import os
-import sys
 import inspect
+from pathlib import Path
 from types import ModuleType
+import sys
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-PLUGIN_DIR = os.path.join(BASE_DIR, 'src', 'plugins')
-
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+PLUGIN_DIR = Path(__file__).resolve().parents[1] / "src" / "plugins"
 
 
 def ensure_optional_dependency(name: str):
