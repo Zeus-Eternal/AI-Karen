@@ -1,3 +1,10 @@
+"""Utility helpers used by the mobile UI to ensure optional ML libraries.
+
+This module is unrelated to ``LLMUtils``; it simply verifies that small
+dependencies like spaCy models or scikit-learn are installed so the
+Streamlit interface works out of the box.
+"""
+
 import importlib.util
 import subprocess
 
