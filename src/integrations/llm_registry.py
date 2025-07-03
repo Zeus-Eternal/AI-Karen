@@ -9,10 +9,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    # Use the shared LLM helper from the src.integrations package
-    from src.integrations.llm_utils import LLMUtils
-    from services.ollama_inprocess import generate as local_generate
-    from services.deepseek_client import DeepSeekClient
+    # Use the shared LLM helper from the same package
+    from .llm_utils import LLMUtils
+    from ..services.ollama_inprocess import generate as local_generate
+    from ..services.deepseek_client import DeepSeekClient
 except ImportError as e:
     logger.warning(f"Import error: {e}")
     
