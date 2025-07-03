@@ -13,7 +13,7 @@ The Integrated Cognitive Engine (ICE) is Kari's lightweight deep reasoning layer
 ## Example
 
 ```python
-from src.core.reasoning.ice_integration import KariICEWrapper
+from ai_karen_engine.core.reasoning.ice_integration import KariICEWrapper
 
 ice = KariICEWrapper()
 result = ice.process("How does Milvus handle vector deletes?")
