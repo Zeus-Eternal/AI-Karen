@@ -1,5 +1,5 @@
-from src.integrations.llm_registry import registry
-from src.integrations import model_discovery
+from ai_karen_engine.integrations.llm_registry import registry
+from ai_karen_engine.integrations import model_discovery
 
 async def run(params: dict) -> dict:
     action = params.get("action", "list")

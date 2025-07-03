@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from src.integrations.llm_registry import registry
+from ai_karen_engine.integrations.llm_registry import registry
 from .clients.slm_pool import SLMPool
 
 
