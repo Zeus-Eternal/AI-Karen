@@ -4,14 +4,18 @@ import streamlit as st
 import pandas as pd
 from typing import Optional
 
-from services.config_manager import (
+from src.services.config_manager import (
     load_config,
     update_config,
     get_status,
     list_configured_providers,
     get_provider_config,
 )
-from services.model_registry import list_providers, get_models, ensure_model_downloaded
+from src.services.model_registry import (
+    list_providers,
+    get_models,
+    ensure_model_downloaded,
+)
 
 
 def select_model(provider: str) -> Optional[str]:

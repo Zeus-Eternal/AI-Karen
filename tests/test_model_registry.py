@@ -1,5 +1,5 @@
 import json
-from ui.mobile_ui.services import model_registry as mr
+from src.ui.mobile_ui.services import model_registry as mr
 
 
 def test_load_registry(tmp_path, monkeypatch):

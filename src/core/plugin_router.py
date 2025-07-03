@@ -57,11 +57,11 @@ class PluginRouter:
                 continue
 
             try:
-                module = importlib.import_module(f"plugins.{name}.handler")
+                module = importlib.import_module(f"src.plugins.{name}.handler")
             except ModuleNotFoundError:
                 try:
                     spec = importlib.util.spec_from_file_location(
-                        f"{name}.handler", os.path.join(path, "handler.py")
+                        f"src.plugins.{name}.handler", os.path.join(path, "handler.py")
                     )
                     module = importlib.util.module_from_spec(spec)
                     assert spec.loader
@@ -78,7 +78,7 @@ class PluginRouter:
             if os.path.exists(ui_path) and (manifest.get("trusted_ui") or advanced):
                 try:
                     spec = importlib.util.spec_from_file_location(
-                        f"plugins.{name}.ui", ui_path
+                        f"src.plugins.{name}.ui", ui_path
                     )
                     ui_module = importlib.util.module_from_spec(spec)
                     assert spec.loader

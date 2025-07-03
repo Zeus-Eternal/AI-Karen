@@ -12,7 +12,7 @@ import tempfile
 import time
 from typing import Dict, List, Tuple
 
-from integrations.nanda_client import NANDAClient
+from src.integrations.nanda_client import NANDAClient
  
 from src.integrations.llm_registry import registry as llm_registry
 

@@ -1,9 +1,9 @@
 import time
 import uuid
 
-from core.prompt_router import PromptRouter
-from core.automation_manager import AutomationManager
-from core.workflow_engine_client import WorkflowEngineClient
+from src.core.prompt_router import PromptRouter
+from src.core.automation_manager import AutomationManager
+from src.core.workflow_engine_client import WorkflowEngineClient
 from src.integrations.llm_utils import LLMUtils
 
 

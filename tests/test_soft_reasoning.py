@@ -7,7 +7,7 @@ import asyncio
 
  
  
-from core.soft_reasoning_engine import SoftReasoningEngine
+from src.core.soft_reasoning_engine import SoftReasoningEngine
 
 
 def test_ingest_and_query():
