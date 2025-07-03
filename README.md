@@ -348,7 +348,7 @@ This project contains the production-ready Kari AI stack. It includes:
 - Tauri Control Room for chat, dashboard and memory matrix.
 - Streamlit mobile UI for API demo.
 
-Released under the MIT license.
+Released under a dual license: the Mozilla Public License 2.0 with an optional commercial license. See `LICENSE-commercial.txt` for commercial terms.
  
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
