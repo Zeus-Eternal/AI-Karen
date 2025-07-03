@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import duckdb
 
-from .vault import store_secret, load_secret
+from ai_karen_engine.ui.mobile_ui.services.vault import store_secret, load_secret
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "data" / "config.duckdb"

@@ -12,11 +12,11 @@ import asyncio
 from typing import Any, Dict, List
 
  
-from src.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.llm_registry import registry as llm_registry
 
-from src.integrations.llm_utils import LLMUtils
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
-from ..soft_reasoning_engine import SoftReasoningEngine
+from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 
 
 class KariICEWrapper:

@@ -1,5 +1,5 @@
 import asyncio
-from . import Response
+from ai_karen_engine.fastapi_stub import Response
 
 
 class TestClient:

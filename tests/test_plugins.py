@@ -8,9 +8,6 @@ from types import ModuleType
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 PLUGIN_DIR = os.path.join(BASE_DIR, 'src', 'plugins')
 
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
 
 def ensure_optional_dependency(name: str):
     """Create a dummy module if the real one is missing."""
@@ -39,6 +36,6 @@ def test_manifest_and_handler():
         # provide dummy optional deps such as pyautogui and urwid
         for dep in ['pyautogui', 'urwid']:
             ensure_optional_dependency(dep)
-        handler_module = importlib.import_module(f'src.plugins.{plugin}.handler')
+        handler_module = importlib.import_module(f'ai_karen_engine.plugins.{plugin}.handler')
         assert hasattr(handler_module, 'run')
         assert inspect.iscoroutinefunction(handler_module.run)

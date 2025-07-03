@@ -3,7 +3,7 @@ import os
 import pathlib
 from typing import List, Dict, Any
 
-from .engine import PatchReport
+from ai_karen_engine.self_refactor.engine import PatchReport
 
 LOG_PATH = pathlib.Path(os.getenv("SRE_LOG_PATH", "logs/self_refactor.log"))
 

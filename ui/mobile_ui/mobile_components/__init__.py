@@ -1,10 +1,18 @@
-from .sidebar import render_sidebar
-from .chat import render_chat
-from .settings import render_settings
-from .memory import render_memory, memory_config
-from .models import render_models, select_model
-from .provider_selector import select_provider
-from .diagnostics import Diagnostics
+from ai_karen_engine.ui.mobile_ui.mobile_components.sidebar import render_sidebar
+from ai_karen_engine.ui.mobile_ui.mobile_components.chat import render_chat
+from ai_karen_engine.ui.mobile_ui.mobile_components.settings import render_settings
+from ai_karen_engine.ui.mobile_ui.mobile_components.memory import (
+    render_memory,
+    memory_config,
+)
+from ai_karen_engine.ui.mobile_ui.mobile_components.models import (
+    render_models,
+    select_model,
+)
+from ai_karen_engine.ui.mobile_ui.mobile_components.provider_selector import (
+    select_provider,
+)
+from ai_karen_engine.ui.mobile_ui.mobile_components.diagnostics import Diagnostics
 
 __all__ = [
     "render_sidebar",

@@ -1,5 +1,5 @@
-from src.self_refactor.log_utils import record_report, load_logs, LOG_PATH
-from src.self_refactor.engine import PatchReport
+from ai_karen_engine.self_refactor.log_utils import record_report, load_logs, LOG_PATH
+from ai_karen_engine.self_refactor.engine import PatchReport
 import os
 import json
 

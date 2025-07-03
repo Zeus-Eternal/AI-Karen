@@ -1,5 +1,5 @@
 import asyncio
-from . import tui
+from ai_karen_engine.plugins.tui_fallback import tui
 
 async def run(params: dict) -> dict:
     """Launch the interactive TUI with the given state dictionaries."""

@@ -23,7 +23,7 @@ try:
 except Exception:  # pragma: no cover - optional dep
     AutoTokenizer = AutoModelForSequenceClassification = Trainer = TrainingArguments = None
 
-from .model_manager import ModelManager
+from ai_karen_engine.core.model_manager import ModelManager
 
 
 class EchoCore:

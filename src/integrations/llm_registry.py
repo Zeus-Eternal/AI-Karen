@@ -7,11 +7,11 @@ from typing import Dict, Iterable, Optional
 logger = logging.getLogger(__name__)
 
     # Relative import for same-package utilities
-from .llm_utils import LLMUtils
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 # Absolute imports from services package
-from src.services.ollama_inprocess import generate as local_generate
-from src.services.deepseek_client import DeepSeekClient
+from ai_karen_engine.services.ollama_inprocess import generate as local_generate
+from ai_karen_engine.services.deepseek_client import DeepSeekClient
 
 
 class LlamaCppWrapper:

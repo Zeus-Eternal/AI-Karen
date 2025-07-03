@@ -7,9 +7,9 @@ import logging
 import os
 from pathlib import Path
 
-from src.integrations.llm_registry import registry as llm_registry
-from .memory_controller import MEM_DB
-from .vault import VAULT_DB
+from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.ui.mobile_ui.services.memory_controller import MEM_DB
+from ai_karen_engine.ui.mobile_ui.services.vault import VAULT_DB
 
 logger = logging.getLogger(__name__)
 
