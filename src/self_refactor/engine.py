@@ -128,3 +128,14 @@ class SelfRefactorEngine:
         for file_str, patch in report.patches.items():
             target = self.repo_root / file_str
             target.write_text(patch)
+
+    # Convenience -----------------------------------------------------------
+    def self_heal(self) -> PatchReport | None:
+        """Run one complete self-refactor cycle."""
+        issues = self.static_analysis()
+        if not issues:
+            return None
+        patches = self.propose_patches(issues)
+        report = self.test_patches(patches)
+        self.reinforce(report)
+        return report
