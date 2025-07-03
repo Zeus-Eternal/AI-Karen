@@ -23,12 +23,16 @@ from utils.model_loader import ensure_spacy_models, ensure_sklearn_installed
 
 # ========== STYLING ==========
 def load_styles():
+    css_path = pathlib.Path(__file__).parent / "styles" / "styles.css"
     try:
-        with open("styles/styles.css", "r") as f:
+        with open(css_path, "r") as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+            return
     except Exception:
-        fallback_css = ".stButton>button { border-radius: 8px; border: 1px solid #4CAF50; }"
-        st.markdown(f"<style>{fallback_css}</style>", unsafe_allow_html=True)
+        pass
+
+    fallback_css = ".stButton>button { border-radius: 8px; border: 1px solid #4CAF50; }"
+    st.markdown(f"<style>{fallback_css}</style>", unsafe_allow_html=True)
 
 # ========== MAIN ==========
 def main():
