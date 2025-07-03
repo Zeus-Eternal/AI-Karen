@@ -3,6 +3,8 @@
 from .clients.slm_pool import SLMPool
 from .llm_orchestrator import LLMOrchestrator
 from .echocore.fine_tuner import NightlyFineTuner
+from .automation_manager import AutomationManager
+from .plugin_router import PluginRouter, AccessDenied
 from src.core.model_manager import ModelManager
 from src.core.echo_core import EchoCore
 from src.clients.transformers.lnm_client import LNMClient
@@ -13,6 +15,9 @@ __all__ = [
     "SLMPool",
     "LLMOrchestrator",
     "NightlyFineTuner",
+    "AutomationManager",
+    "PluginRouter",
+    "AccessDenied",
     "ModelManager",
     "EchoCore",
     "LNMClient",
