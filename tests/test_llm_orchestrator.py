@@ -1,5 +1,5 @@
-from src.ai_karen_engine import SLMPool, LLMOrchestrator
-from src.integrations.llm_utils import LLMUtils
+from ai_karen_engine import SLMPool, LLMOrchestrator
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 
 def test_orchestrator_uses_skill_model():

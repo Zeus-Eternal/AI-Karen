@@ -66,12 +66,12 @@ Detailed usage instructions for each feature are in [docs/features_usage.md](doc
 
  
 ```
-core/          # dispatch, embeddings, reasoning
-event_bus/     # in-memory event streams
+src/ai_karen_engine/core/          # dispatch, embeddings, reasoning
+src/ai_karen_engine/event_bus/     # in-memory event streams
 guardrails/    # YAML validators
 capsules/      # domain-specific micro agents
-src/integrations/  # helper utilities (RPA, automation)
-src/plugins/       # drop-in plugins (manifest + handler)
+src/ai_karen_engine/integrations/  # helper utilities (RPA, automation)
+src/ai_karen_engine/plugins/       # drop-in plugins (manifest + handler)
 ui/            # Frontend UIs (desktop, mobile, admin)
 src/fastapi_stub/  # lightweight stubs for tests
 src/pydantic_stub/ # lightweight stubs for tests
@@ -87,12 +87,12 @@ tests/         # pytest suite
 ## 3 · Repository Layout
 
 ```text
-core/          # dispatcher, embeddings, capsule planner
-event_bus/     # Redis-Streams helpers
+src/ai_karen_engine/core/          # dispatcher, embeddings, capsule planner
+src/ai_karen_engine/event_bus/     # Redis-Streams helpers
 guardrails/    # YAML validators & rule engine
 capsules/      # domain-specific agents (DevOps, Finance, …)
-src/integrations/  # NANDA client, RPA helpers, external bridges
-src/plugins/       # drop-in plugins (manifest + handler + ui)
+src/ai_karen_engine/integrations/  # NANDA client, RPA helpers, external bridges
+src/ai_karen_engine/plugins/       # drop-in plugins (manifest + handler + ui)
 ui/desktop_ui/ # Tauri Control Room (Rust + React)
 ui/mobile_ui/config/config_ui.py # Streamlit UI settings (ConfigUI class)
 src/fastapi_stub/  # API entrypoints, chat & metrics
