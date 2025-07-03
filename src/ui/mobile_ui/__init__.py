@@ -13,7 +13,7 @@ This package contains the mobile Streamlit interface for Kari AI, including:
 __version__ = "1.0.0"
 __all__ = [
     "app",
-    "components",
+    "mobile_components",
     "config",
     "services",
     "styles",

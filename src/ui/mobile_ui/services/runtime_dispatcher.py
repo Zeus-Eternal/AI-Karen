@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 from typing import Callable, Dict, Any
 
 import requests
 from prometheus_client import Histogram
-from services.ollama_inprocess import generate as local_generate
+sys.path.append(str(Path(__file__).resolve().parents[3] / "src"))
+
+from src.services.ollama_inprocess import generate as local_generate
 
 try:  # pragma: no cover - optional dep
     import onnxruntime as ort  # type: ignore
