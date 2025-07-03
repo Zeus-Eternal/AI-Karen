@@ -7,7 +7,7 @@ Kari ships with a **proprietary automation layer** for chaining tasks and local 
 Our `AutomationManager` orchestrates asynchronous tasks using a custom queue. Plugins can enqueue coroutines that interact with local scripts or trigger n8n workflows.
 
 ```python
-from src.core.automation_manager import AutomationManager
+from ai_karen_engine.core.automation_manager import AutomationManager
 
 auto = AutomationManager()
 auto.add_task(some_async_task())
@@ -34,7 +34,7 @@ Use this only on trusted machines because it controls the local keyboard and mou
 The `WorkflowEngineClient` provides a proprietary bridge to n8n. Set `workflow_slug` in a plugin manifest and call `trigger()` with a payload.
 
 ```python
-from src.core.workflow_engine_client import WorkflowEngineClient
+from ai_karen_engine.core.workflow_engine_client import WorkflowEngineClient
 
 wf = WorkflowEngineClient()
 wf.trigger("onboarding", {"user_id": 123})

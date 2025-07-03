@@ -1,4 +1,4 @@
-from src.ai_karen_engine.clients.slm_pool import SLMPool
+from ai_karen_engine.clients.slm_pool import SLMPool
 from src.integrations.llm_utils import LLMUtils
 
 
