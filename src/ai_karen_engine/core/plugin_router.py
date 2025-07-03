@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, Iterable, Optional, List
 
 PLUGIN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "plugins")
 SCHEMA_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
     "config",
     "plugin_schema.json",
 )
@@ -80,7 +80,7 @@ class PluginRouter:
                 continue
 
             try:
-                module = importlib.import_module(f"src.plugins.{name}.handler")
+                module = importlib.import_module(f"ai_karen_engine.plugins.{name}.handler")
             except ModuleNotFoundError:
                 try:
                     spec = importlib.util.spec_from_file_location(
@@ -101,7 +101,7 @@ class PluginRouter:
             if os.path.exists(ui_path) and (manifest.get("trusted_ui") or advanced):
                 try:
                     spec = importlib.util.spec_from_file_location(
-                        f"src.plugins.{name}.ui", ui_path
+                        f"ai_karen_engine.plugins.{name}.ui", ui_path
                     )
                     ui_module = importlib.util.module_from_spec(spec)
                     assert spec.loader
