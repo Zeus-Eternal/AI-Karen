@@ -1,5 +1,6 @@
-"""Core utilities for AI Karen engine."""
+"""Core utilities and mesh reasoning primitives."""
 
-from .workflow_engine_client import WorkflowEngineClient
+from .mesh_planner import MeshPlanner
+from .reasoning import ReasoningGraph
 
-__all__ = ["WorkflowEngineClient"]
+__all__ = ["MeshPlanner", "ReasoningGraph"]

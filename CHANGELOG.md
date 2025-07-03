@@ -37,6 +37,12 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - README and guides updated for model selection
 
+## [0.4.4] - 2025-06-22
+### Added
+- ReasoningGraph with graph CRUD and multi-hop queries
+- MeshPlanner Neo4j integration and plugin chaining
+- Documentation updates for mesh_arch and event_bus
+
  
 
 ## [0.3.0] - 2025-05-10

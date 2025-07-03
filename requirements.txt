@@ -21,3 +21,4 @@ cryptography
 GPUtil
 psutil
 matplotlib
+neo4j
