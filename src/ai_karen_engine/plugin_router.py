@@ -19,3 +19,4 @@ __all__ = [
 class PluginRouter(CorePluginRouter):
     """Thin subclass for backwards compatibility."""
     pass
+  

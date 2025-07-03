@@ -1,6 +1,8 @@
 # Development Guide
 
 This guide explains two common workflows for running Kari during development and when building a production desktop app.
+The desktop Control Room follows a roughly one‑month update cycle.
+Each UI directory (desktop, mobile, admin) ships with its own `README.md` detailing setup and release notes.
 
 ## Development Mode (Python UI)
 
