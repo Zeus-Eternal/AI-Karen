@@ -54,19 +54,11 @@ class MilvusClient:
 
 
     def delete(self, ids: Iterable[int]) -> None:
+        """Delete records by ID."""
         start = time.time()
         with self._lock:
             for rid in list(ids):
                 self._data.pop(rid, None)
- 
-
-
-    def delete(self, ids: List[int]) -> None:
-        """Delete records by ID."""
-        start = time.time()
-        self._data = [r for r in self._data if r["id"] not in ids]
- 
- 
         record_metric("vector_delete_seconds", time.time() - start)
 
     @staticmethod
