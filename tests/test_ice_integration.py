@@ -1,6 +1,6 @@
 import asyncio
 
-from core.reasoning.ice_integration import KariICEWrapper
+from src.core.reasoning.ice_integration import KariICEWrapper
 
 
 def test_process_returns_keys():

@@ -1,7 +1,7 @@
 import sys
 
-import fastapi_stub
-import pydantic_stub
+import src.fastapi_stub as fastapi_stub
+import src.pydantic_stub as pydantic_stub
 
 sys.modules["fastapi"] = fastapi_stub
 sys.modules["pydantic"] = pydantic_stub

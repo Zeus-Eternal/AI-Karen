@@ -70,11 +70,11 @@ core/          # dispatch, embeddings, reasoning
 event_bus/     # in-memory event streams
 guardrails/    # YAML validators
 capsules/      # domain-specific micro agents
-integrations/  # helper utilities (RPA, automation)
-plugins/       # drop-in plugins (manifest + handler)
+src/integrations/  # helper utilities (RPA, automation)
+src/plugins/       # drop-in plugins (manifest + handler)
 ui/            # Frontend UIs (desktop, mobile, admin)
-fastapi_stub/  # lightweight stubs for tests
-pydantic_stub/ # lightweight stubs for tests
+src/fastapi_stub/  # lightweight stubs for tests
+src/pydantic_stub/ # lightweight stubs for tests
 tests/         # pytest suite
 
 > **Note**
@@ -91,12 +91,12 @@ core/          # dispatcher, embeddings, capsule planner
 event_bus/     # Redis-Streams helpers
 guardrails/    # YAML validators & rule engine
 capsules/      # domain-specific agents (DevOps, Finance, …)
-integrations/  # NANDA client, RPA helpers, external bridges
-plugins/       # drop-in plugins (manifest + handler + ui)
+src/integrations/  # NANDA client, RPA helpers, external bridges
+src/plugins/       # drop-in plugins (manifest + handler + ui)
 ui/desktop_ui/ # Tauri Control Room (Rust + React)
 ui/mobile_ui/config/config_ui.py # Streamlit UI settings (ConfigUI class)
-fastapi_stub/  # API entrypoints, chat & metrics
-pydantic_stub/ # DTOs & schemas
+src/fastapi_stub/  # API entrypoints, chat & metrics
+src/pydantic_stub/ # DTOs & schemas
 tests/         # pytest suite
 docs/          # architecture docs (mesh_arch.md, …)
 ```
