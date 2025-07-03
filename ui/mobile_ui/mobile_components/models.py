@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from services.model_registry import get_models, list_providers
+from ui.mobile_ui.services.model_registry import get_models, list_providers
 
 
 def select_model(provider: str):

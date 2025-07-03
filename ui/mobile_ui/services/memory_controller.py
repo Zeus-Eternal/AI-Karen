@@ -1,14 +1,26 @@
 """Persist chat memory using DuckDB."""
 
 from pathlib import Path
-import duckdb
-import streamlit as st
+try:
+    import duckdb
+except ModuleNotFoundError:  # pragma: no cover
+    duckdb = None
+try:
+    import streamlit as st
+except ModuleNotFoundError:  # pragma: no cover - fallback for tests
+    class _DummyStreamlit:
+        def __init__(self) -> None:
+            self.session_state = {}
+
+    st = _DummyStreamlit()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MEM_DB = BASE_DIR / "data" / "memory.duckdb"
 
 
 def _connect():
+    if duckdb is None:
+        raise ImportError("duckdb is required for memory persistence")
     MEM_DB.parent.mkdir(parents=True, exist_ok=True)
     return duckdb.connect(str(MEM_DB))
 

@@ -8,7 +8,7 @@ This package contains the mobile Streamlit interface for Kari AI, including:
 - Chat interaction panel
 """
 
-# This makes the package explicit and enables relative imports when used via `python -m ui.mobile_ui.app`
+# This package can be launched via ``python -m ui.mobile_ui.app``
 
 __version__ = "1.0.0"
 __all__ = [

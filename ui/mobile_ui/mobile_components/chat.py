@@ -1,8 +1,8 @@
 import asyncio
 import streamlit as st
 
-from services.memory_controller import restore_memory, sync_memory
-from utils.api_client import post, get
+from ui.mobile_ui.services.memory_controller import restore_memory, sync_memory
+from ui.mobile_ui.utils.api_client import post, get
 
 
 def _run_async(coro):

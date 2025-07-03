@@ -1,11 +1,11 @@
 import streamlit as st
-from services.config_manager import (
+from ui.mobile_ui.services.config_manager import (
     load_config,
     save_config,
     save_provider_config,
     get_provider_config,
 )
-from services.model_registry import get_models, list_providers
+from ui.mobile_ui.services.model_registry import get_models, list_providers
 
 LOCAL_PROVIDERS = {"local", "ollama_cpp"}
 
