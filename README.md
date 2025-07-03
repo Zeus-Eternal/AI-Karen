@@ -242,6 +242,12 @@ Pre-commit hooks run these checks automatically. After cloning run:
 ```bash
 pre-commit install
 ```
+Ruff also enforces the UI boundaries described in `AGENTS.md`:
+
+* relative imports are forbidden inside `ui/`
+* modules under `src/ui/` may not import from the top-level `ui` package
+
+See `pyproject.toml` for the full configuration.
 ### Advanced / Unrestricted Mode
 
 Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs marked as untrusted. Use with caution.
