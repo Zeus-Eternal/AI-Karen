@@ -34,3 +34,22 @@ def test_ttl_pruning():
     texts = [r["payload"]["text"] for r in results]
     assert "new" in texts
     assert "old" not in texts
+
+
+def test_delete_removes_ids_and_preserves_dict():
+    client = MilvusClient()
+    id1 = client.upsert([0.1, 0.2], {"text": "a"})
+    id2 = client.upsert([0.2, 0.1], {"text": "b"})
+    id3 = client.upsert([0.3, 0.3], {"text": "c"})
+    client.delete([id1, id3])
+    assert isinstance(client._data, dict)
+    assert id1 not in client._data
+    assert id3 not in client._data
+    assert id2 in client._data
+
+
+def test_delete_nonexistent_id_no_error():
+    client = MilvusClient()
+    kept = client.upsert([1.0, 0.0], {"text": "keep"})
+    client.delete([9999])
+    assert kept in client._data
