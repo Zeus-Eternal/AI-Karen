@@ -1,4 +1,5 @@
-**Kari AI Modular Agent Doctrine & Manifest**
+# **Kari AI Modular Agent Doctrine & Manifest**
+
 *The Hydra’s Law for Contributors, AI Agents, and Codegen Tools*
 
 ---
@@ -83,11 +84,11 @@ from ai_karen_engine.echocore.fine_tuner import FineTuner
 ### Folder Strategy
 
 * All core runtime logic lives under `src/ai_karen_engine/`.
-* Every major subsystem (plugins, clients, integrations, core, event bus, self\_refactor, echocore, etc.) is its own subfolder—pip and repo ready.
+* Every major subsystem (plugins, clients, integrations, core, event\_bus, self\_refactor, echocore, etc.) is its own subfolder—pip and repo ready.
 * Repo-level configs, docs, Docker, scripts, tests, and bootstraps stay top-level.
 * UI folders (`ui/mobile_ui`, `ui/desktop_ui`, `ui/admin_ui`) remain top-level only.
 
-### Example Tree
+#### Example Tree
 
 ```
 AI-Karen/
@@ -133,5 +134,3 @@ Treat these as break-out ready:
 ### Licensing
 
 All modules obey Kari’s dual license: MPL 2.0 + commercial.
-
----
