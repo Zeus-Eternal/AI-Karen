@@ -57,3 +57,13 @@ def test_get_providers_includes_registry_providers(tmp_path, monkeypatch):
     providers = mr.get_providers()
     assert "llama-cpp" in providers
     assert "custom_provider" in providers
+
+
+def test_get_model_meta(monkeypatch):
+    models = [
+        {"model_name": "foo", "provider": "llama-cpp"},
+        {"model_name": "bar", "provider": "anthropic"},
+    ]
+    monkeypatch.setattr(mr, "get_ready_models", lambda: models)
+    assert mr.get_model_meta("foo") == models[0]
+    assert mr.get_model_meta("missing") is None

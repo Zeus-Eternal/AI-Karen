@@ -213,6 +213,14 @@ def get_providers() -> List[str]:
     return sorted(p for p in providers if p)
 
 
+def get_model_meta(model_name: str) -> Optional[Dict[str, Any]]:
+    """Return the metadata dict for ``model_name`` if available."""
+    for model in get_ready_models():
+        if model.get("model_name") == model_name:
+            return model
+    return None
+
+
 def ensure_model_downloaded(model: Dict[str, Any]) -> str:
     """
     Ensure the given model entry is available locally.
