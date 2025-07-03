@@ -23,6 +23,6 @@ Each `Event` has:
 
 ## Hydra-Ops Integration
 
-Capsules emit events when they execute tasks. The mesh planner and guardrail system inspect these events to decide whether to continue or halt a workflow. The desktop UI can subscribe over WebSocket (future work) to show live updates.
+Capsules emit events when they execute tasks. The mesh planner and guardrail system inspect these events to decide whether to continue or halt a workflow. The desktop UI can subscribe over WebSocket (future work) to show live updates. Events can optionally reference ReasoningGraph nodes for multi-hop decisions.
 
 See [docs/mesh_arch.md](mesh_arch.md) for the capsule mesh design and [docs/security.md](security.md) for permission considerations.
