@@ -1,4 +1,4 @@
-from src.integrations.nanda_client import NANDAClient
+from ai_karen_engine.integrations.nanda_client import NANDAClient
 
 
 

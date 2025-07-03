@@ -1,8 +1,8 @@
 import asyncio
 
-from src.plugins.llm_manager.handler import run
-from src.integrations.llm_registry import registry
-from src.integrations import model_discovery
+from ai_karen_engine.plugins.llm_manager.handler import run
+from ai_karen_engine.integrations.llm_registry import registry
+from ai_karen_engine.integrations import model_discovery
 
 
 def test_refresh_models(tmp_path, monkeypatch):

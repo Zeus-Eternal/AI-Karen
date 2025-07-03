@@ -1,4 +1,4 @@
-from src.ai_karen_engine.core.tokenizer_manager import TokenizerManager
+from ai_karen_engine.core.tokenizer_manager import TokenizerManager
 
 
 def test_byte_encoding():
