@@ -116,9 +116,12 @@ class FastAPI:
         await send({"type": "http.response.body", "body": content})
 
 class Response:
-    def __init__(self, data, status_code=200):
+    def __init__(self, data, status_code=200, media_type=None, headers=None):
         self._data = data
         self.status_code = status_code
+        self.headers = {"content-type": media_type or "application/json"}
+        if headers:
+            self.headers.update(headers)
 
     def json(self):
         if hasattr(self._data, "__dict__"):
@@ -145,8 +148,22 @@ class TestClient:
 
     def post(self, path, json=None):
         data = asyncio.run(self.app("POST", path, json))
-        return Response(data)
+        status = getattr(data, "status_code", 200)
+        resp = Response(
+            getattr(data, "_data", data),
+            status,
+            media_type=data.headers.get("content-type") if hasattr(data, "headers") else None,
+        )
+        resp.headers.update(getattr(data, "headers", {}))
+        return resp
 
     def get(self, path):
         data = asyncio.run(self.app("GET", path))
-        return Response(data)
+        status = getattr(data, "status_code", 200)
+        resp = Response(
+            getattr(data, "_data", data),
+            status,
+            media_type=data.headers.get("content-type") if hasattr(data, "headers") else None,
+        )
+        resp.headers.update(getattr(data, "headers", {}))
+        return resp

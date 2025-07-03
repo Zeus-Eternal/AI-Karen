@@ -10,6 +10,7 @@ This guide summarises the differences between OpenAI's cloud-centric CS-Agent fr
 | **Extensibility** | Limited to features exposed by OpenAI | Plugin framework with SelfRefactor auto‑patching |
 | **Offline Use** | Not supported | Fully functional offline |
 | **Data Control** | User data processed by OpenAI | Data never leaves your machine by default |
+| **SaaS** | Single-tenant | Multi-tenant with contract licensing |
 
 Kari reuses the idea of chained agents and event buses but implements them with a Prompt‑First plugin model and a Hydra-Ops mesh that can operate without external services. For heavy reasoning you may enable cloud plugins via `enable_external_workflow: true` in the plugin manifest.
 

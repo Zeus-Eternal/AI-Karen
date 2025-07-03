@@ -10,5 +10,7 @@ Key components:
 - **Hydra-Ops Mesh** – capsules executed via the event bus with guardrails.
 - **SelfRefactor Engine** – runs tests in a sandbox and records sanitized logs.
 - **Control Room** – Tauri desktop app streaming metrics and plugin UIs.
+- **OSIRIS Knowledge Engine** – hybrid soft/hard reasoning with multi-hop queries.
+- **EchoCore** – per-user training utilities and immutable vault backups.
 
 For a comparison with OpenAI's CS-Agent stack see [side_by_side_openai_kari.md](side_by_side_openai_kari.md). More detail on capsules and risk management is in [mesh_arch.md](mesh_arch.md).

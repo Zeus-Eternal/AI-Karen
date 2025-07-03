@@ -7,6 +7,7 @@ Kari includes a pytest suite that covers the core API, plugin router and SelfRef
 - **Unit Tests** – run quickly and mock external services. Located under `tests/`.
 - **Contract Tests** – verify that plugin manifests match the expected schema.
 - **End-to-End** – store text and retrieve it via search to ensure the memory layer works.
+- **SaaS Tests** – validate tenant isolation and license enforcement.
 
 Run all tests:
 
