@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
-from .embedding_manager import record_metric
+from ai_karen_engine.core.embedding_manager import record_metric
 
 
 @dataclass

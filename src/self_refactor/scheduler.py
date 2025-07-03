@@ -6,7 +6,7 @@ import os
 import threading
 from typing import Optional
 
-from .engine import SelfRefactorEngine
+from src.self_refactor.engine import SelfRefactorEngine
 
 
 class SREScheduler:
