@@ -16,6 +16,9 @@ xdg-open http://localhost:8000/docs
 # run the Streamlit UI
 streamlit run ui/mobile_ui/app.py
 ```
+The Streamlit UI reads environment variables via
+`ui/mobile_ui/config/config_ui.py`.
+If you previously imported `config/config_ui.py`, switch to this new path.
 
 ## Build Mode (Tauri App)
 
