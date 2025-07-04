@@ -22,6 +22,7 @@ def _check_import(package_name: str) -> bool:
     except ImportError:
         return False
 
+
 def _install_package(package_name: str):
     try:
         subprocess.run([sys.executable, "-m", "pip", "install", package_name], check=True)
@@ -31,8 +32,11 @@ def _install_package(package_name: str):
 
 def _check_and_install(package: str) -> bool:
     if not _check_import(package):
-        _install_package(package)
-        return _check_import(package)
+        logger.warning(
+            "Package '%s' is not installed. Please install it before running the application.",
+            package,
+        )
+        return False
     return True
 
 # --- SpaCy Model Check --- #
