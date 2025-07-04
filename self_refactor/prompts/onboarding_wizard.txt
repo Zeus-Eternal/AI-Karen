@@ -1,0 +1,37 @@
+Kari Onboarding Wizard — Spec & Requirements
+============================================
+
+Purpose:
+--------
+Defines the canonical, multi-step onboarding experience for all new Kari users,  
+including role assignment, preference capture, consent flows, and memory/profile setup.
+
+UX Requirements:
+----------------
+- Multi-step, stateful wizard (login/register ➔ profile ➔ consent ➔ finish)
+- Steps:
+    1. **Identity**: Login/Register, assign user_id (uses /ui_logic/hooks/auth.py)
+    2. **Profile**: Capture name, preferred pronouns, persona/voice (uses /ui_logic/components/memory/profile_panel.py)
+    3. **Consent**: Memory policy, privacy, EchoCore opt-in/out, analytics
+    4. **Feature Discovery**: Quick tour of main UI features, plugins, chat, etc.
+    5. **Finish**: Success, route to main app/dashboard
+- **RBAC**: Public for Step 1, `user` required for all subsequent steps
+- **Config**: All onboarding UX should pull options/text from `/ui_logic/config/ui_config.py`
+- **Telemetry**: All onboarding actions/events must be logged (use `/ui_logic/hooks/telemetry.py`)
+- **Extensible**: New steps/features may be added via plugin manifest
+
+Acceptance Criteria:
+--------------------
+- A brand-new user is guided through all steps; session persists across reloads.
+- Completion of onboarding is audit-logged.
+- Users can review/edit their profile later in memory/profile_panel.py.
+
+Dev Notes:
+----------
+- All onboarding logic must be reusable in both Tauri/React and Streamlit UIs.
+- For major onboarding changes, update this doc and attach sample UX flows.
+- See also: `nav_tree_map.txt` for page/modal integration.
+
+----
+
+[Copy this template and update as onboarding evolves!]

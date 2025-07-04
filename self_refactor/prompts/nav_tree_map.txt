@@ -1,0 +1,69 @@
+Kari UI Navigation Tree — Source of Truth
+=========================================
+
+Purpose:
+--------
+Defines the canonical sidebar/topbar/modal navigation layout for all Kari UIs (Tauri, Streamlit, Mobile, etc).  
+ALL new features/pages MUST be registered here and grouped by user role and context.
+
+Format:
+-------
+- Use markdown-style bullets to denote nesting.
+- Include role badges: [user], [dev], [admin], [enterprise], [public]
+- For modals or dynamic panes, prefix with (modal).
+- For feature-flagged panels, append [flag:NAME].
+
+Example (update as UI grows):
+-----------------------------
+
+- Home [user, public]
+- Chat [user, dev, admin]
+    - Persona Controls [user]
+    - Multimodal Upload [flag:enable_multimodal_chat]
+    - (modal) Session Memory
+- Analytics [dev, admin]
+    - Data Explorer
+    - Auto Parser
+    - Chart Builder
+- Plugins [dev, admin]
+    - Plugin Store
+    - Plugin Manager
+    - Workflow Builder [flag:enable_workflows]
+- Memory [user, dev]
+    - Knowledge Graph
+    - Profile Panel
+    - Session Explorer
+- IOT [user, dev]
+    - Device Manager
+    - Scene Builder
+    - IOT Logs
+- Settings [user, admin]
+    - Theme Switcher
+    - API Vault [admin]
+    - Privacy Console
+    - (modal) Onboarding Wizard [public]
+- Admin [admin, enterprise]
+    - System Status
+    - Diagnostics
+    - Audit Log
+    - RBAC Panel
+    - Org Admin
+- White Label [enterprise]
+    - Branding Center
+    - Widget Builder
+    - API Tokens
+- Scheduling [user, dev]
+    - Calendar
+    - Follow-Up Engine
+    - Reminders Panel
+
+Instructions:
+-------------
+- Always keep this updated as the single source of truth.
+- Propose any navigation/UX changes here BEFORE implementation.
+- Use in onboarding, testing, and for dev handoff.
+
+----
+
+[Copy/extend this tree as features evolve. Attach change-sets to PRs.]
+

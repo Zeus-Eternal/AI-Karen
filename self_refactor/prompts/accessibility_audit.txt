@@ -1,0 +1,44 @@
+Kari UI Accessibility Audit — Living Report
+===========================================
+
+Purpose:
+--------
+Audit all Kari UI views and components for accessibility (A11y) compliance:  
+WCAG 2.1 AA/AAA, ARIA tags, keyboard navigation, high-contrast support, screen reader compatibility.
+
+Audit Checklist:
+----------------
+- [ ] Keyboard navigability (tab order, focus rings, shortcut keys)
+- [ ] ARIA roles/labels for all widgets/inputs
+- [ ] High-contrast theme toggle (with `/ui_logic/themes/`)
+- [ ] Text resizing and responsive layout
+- [ ] Screen reader test (NVDA/VoiceOver/JAWS)
+- [ ] Alt-text on all icons/images/avatars
+- [ ] Error/validation states: descriptive, not color-only
+- [ ] Form labels/inputs: associated, unique IDs
+- [ ] Modal dialogs: focus trap, escape closes
+- [ ] Live region updates for dynamic content (e.g., chat, plugin output)
+- [ ] Drag-and-drop: accessible fallback
+
+Audit Log:
+----------
+2025-07-03 — Initial Audit:  
+• Home, Chat, Settings: pass most keyboard and ARIA checks  
+• Plugin panels: require unique ARIA labels  
+• Persona/emotion pickers: need descriptive alt/text  
+• Modal dialogs: focus management to be improved  
+• High-contrast: available, not default; recommend user toggle in all flows
+
+Remediation Plan:
+-----------------
+- [ ] Update plugin UI template to include `aria-label` and tabIndex
+- [ ] Add screen-reader-only error summary on forms
+- [ ] Enforce alt-text upload in Branding Center
+- [ ] Extend `theme_manager.py` with user font-size override
+
+Owner: Kari-UX-Architect  
+Next Review: 2025-08-01
+
+---
+
+[Update this file as audits are run; attach test output if ADVANCED_MODE=true]

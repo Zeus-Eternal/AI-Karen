@@ -1,6 +1,0 @@
-name: devops
-intent: deploy_request
-risk_threshold: 0.6
-toolkit:
-  - git_merge_safe
-  - k8s_scale

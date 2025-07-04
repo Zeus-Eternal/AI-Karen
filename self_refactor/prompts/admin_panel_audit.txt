@@ -1,0 +1,43 @@
+Kari Admin Panel Audit — Access & Observability Review
+======================================================
+
+Purpose:
+--------
+Review all admin and developer panels for correct role gating, observability,  
+real-time metrics, and feature discoverability.
+
+Audit Checklist:
+----------------
+- [ ] RBAC: All admin/dev pages require `admin` or `dev` role (see `/ui_logic/hooks/rbac.py`)
+- [ ] Prometheus metrics surfaced for all key services (hot, stale, error)
+- [ ] System status and plugin status shown live
+- [ ] Capsule/feature flag toggles visible to admins only
+- [ ] Audit log panel displays last 100 actions, filterable by user/date/type
+- [ ] Capsule/plugin hot-reload with safety/fallback warning
+- [ ] Settings: SSO/LDAP, backup, encryption, API token management
+- [ ] Guardrail/prompt editor: versioned, audit-logged
+- [ ] Emergency “Safe Mode” and “Restart” controls—double confirm before use
+
+Findings:
+---------
+2025-07-03 — Audit by Kari-UX-Architect  
+• Admin Dashboard requires `admin` role (PASS)  
+• Org Admin panel: RBAC correct, needs clearer error states  
+• Diagnostics: all critical stats present  
+• Plugin Manager: “Install/Remove” should log all actions, require double-confirm  
+• Guardrail Editor: RBAC correct, versioning working, add rollback confirmation  
+• API Vault: token hashes only, no plaintext (PASS)  
+• SSO integration pending
+
+Remediation Plan:
+-----------------
+- [ ] Add Safe Mode toggle to system panel, RBAC + audit
+- [ ] Make plugin hot-reload status more visible
+- [ ] Document “last change” in audit_log.py for all admin actions
+
+Owner: Kari-UX-Architect  
+Next Review: 2025-08-01
+
+---
+
+[Continue audit after major refactors; keep as source of admin policy truth.]

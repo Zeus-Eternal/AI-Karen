@@ -1,0 +1,49 @@
+Kari Plugin UI Injection — Manifest-Driven Integration
+=====================================================
+
+Overview:
+---------
+Describes how all plugins can auto-inject their UI widgets/panels/flows into the Kari main UI (regardless of framework)  
+based on manifest definitions and trusted security checks.
+
+Principles:
+-----------
+- **Manifest-First**: Each plugin declares UI panels, placement, and RBAC in `plugin_manifest.json`.
+- **Auto-Discovery**: The UI core scans `/plugins/*/plugin_manifest.json` at startup for registered panels.
+- **Trusted Only**: UI elements only injected if `trusted_ui: true` in manifest or `ADVANCED_MODE=true`.
+- **RBAC-Gated**: All plugin UIs are only visible if current user passes required roles in manifest.
+- **Sandboxed**: All plugin panels must execute in a memory/process sandbox; never in global scope.
+
+Injection Workflow:
+-------------------
+1. **Manifest Scan**: Parse all `/plugins/*/plugin_manifest.json` for `"ui_panels"` declarations.
+2. **Registration**: Add new plugin panels to main navigation (`nav_tree_map.txt`) by role/context.
+3. **Load Panel**: When user visits registered route, dynamic import `/plugins/<plugin>/ui.py`, run `render_panel()`.
+4. **Security Check**: Validate plugin’s `trusted_ui` flag and role requirements before render.
+5. **Feature Flags**: Optionally gate plugin UI behind feature flags from `/ui_logic/config/feature_flags.py`.
+6. **Telemetry**: Log all plugin UI injection events in `/ui_logic/hooks/telemetry.py`.
+
+Example plugin_manifest.json:
+-----------------------------
+{
+    "name": "Sentiment Analyzer",
+    "trusted_ui": true,
+    "ui_panels": [
+        {
+            "route": "/plugins/sentiment",
+            "label": "Sentiment Analysis",
+            "roles": ["user", "dev"],
+            "feature_flag": "enable_sentiment_plugin"
+        }
+    ]
+}
+
+Notes:
+------
+- UI injection must be hot-reloadable; new plugins should appear/disappear live.
+- Plugin UIs may expose API endpoints, but all backend logic must remain isolated.
+- Update `nav_tree_map.txt` with each new plugin UI registration.
+
+----
+
+[Copy, extend, and refine as plugin system evolves.]

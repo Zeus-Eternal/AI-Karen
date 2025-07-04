@@ -1,0 +1,19 @@
+{
+    "enable_multimodal_chat": true,
+    "enable_plugin_store": true,
+    "enable_workflow_builder": false,
+    "enable_self_refactor": true,
+    "enable_experimental_capsules": false,
+    "enable_branding_center": true,
+    "enable_memory_matrix": true,
+    "enable_live_telemetry": true,
+    "enable_accessibility_audit": true,
+    "enable_admin_panel": true,
+    "enable_hot_reload_plugins": true,
+    "enable_onboarding_wizard": true,
+    "enable_self_healing_ui": false,
+    "default_theme": "light",
+    "max_chat_history": 250,
+    "max_active_plugins": 20
+  }
+  

@@ -1,0 +1,52 @@
+Kari UI — Legacy Migration Notes
+================================
+
+Overview:
+---------
+This file tracks all pending, active, and completed migrations from legacy panels/components/pages to the modern Kari UI architecture. Use this as the authoritative migration backlog and as a “change-of-record” doc for technical debt, rollbacks, and sunset logic.
+
+Instructions:
+-------------
+- For **each legacy feature**: document location, migration status, responsible owner, and replacement path.
+- For **every removal**: note any feature flags, rollback instructions, and last release containing the legacy component.
+- Update this file on every merge/PR that touches legacy UI or API endpoints.
+
+Schema (copy/paste for each entry):
+-----------------------------------
+
+Feature/Panel:        [Name/short desc]
+Legacy Location:      [/absolute/path/to/old]
+New Location:         [/absolute/path/to/new]
+Migration Status:     [Pending | In Progress | Complete | Deprecated | Flagged]
+Owner:                [Name/Git handle]
+Feature Flag:         [yes/no; if yes, name it: e.g. "enable_legacy_admin"]
+Last Legacy Release:  [e.g. v0.4.1]
+Notes/Rollback:       [How to re-enable, critical dependencies, special testing notes]
+
+Example:
+--------
+
+Feature/Panel:        Admin Dashboard (legacy)
+Legacy Location:      /admin_ui/pages/dashboard.py
+New Location:         /ui_logic/pages/admin.py
+Migration Status:     Complete
+Owner:                @devops-evil
+Feature Flag:         yes ("enable_legacy_admin")
+Last Legacy Release:  v0.4.1
+Notes/Rollback:       Rollback by toggling feature flag; ensure Prometheus metrics still route to new admin.
+
+----
+
+Feature/Panel:        Plugin Store
+Legacy Location:      /plugins/legacy_store.py
+New Location:         /ui_logic/components/plugins/plugin_store.py
+Migration Status:     Pending
+Owner:                @frontend-nemesis
+Feature Flag:         no
+Last Legacy Release:  v0.3.8
+Notes/Rollback:       None (plugin auto-injection disables legacy after migration)
+
+----
+
+[Copy this schema for new/active migrations. Update statuses as you merge!]
+
