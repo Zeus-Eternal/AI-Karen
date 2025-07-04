@@ -10,6 +10,7 @@ from ui_launchers.streamlit_ui.pages.iot import iot_page
 from ui_launchers.streamlit_ui.pages.memory import memory_page
 from ui_launchers.streamlit_ui.pages.admin import admin_page
 from ui_launchers.streamlit_ui.pages.settings import settings_page
+from ui_launchers.streamlit_ui.pages.presence import presence_page
 
 PAGE_MAP = {
     "Home": home_page,
@@ -18,6 +19,7 @@ PAGE_MAP = {
     "Plugins": plugins_page,
     "IoT": iot_page,
     "Memory": memory_page,
+    "Presence": presence_page,
     "Admin": admin_page,
     "Settings": settings_page,
 }
