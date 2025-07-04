@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.integrations.llm_registry import registry
+from integrations.llm_registry import registry
 
 
 def route_input(model: Any, text: str) -> Any:

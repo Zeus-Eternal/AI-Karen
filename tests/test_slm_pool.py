@@ -1,5 +1,5 @@
 from ai_karen_engine.clients.slm_pool import SLMPool
-from src.integrations.llm_utils import LLMUtils
+from integrations.llm_utils import LLMUtils
 
 
 def test_slm_pool_register_and_get():

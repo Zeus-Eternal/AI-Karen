@@ -1,6 +1,6 @@
 import types
 import ui.common.components.rbac as rbac
-from ui.mobile_ui.services import health_checker
+from services import health_checker
 from fastapi.testclient import TestClient
 from main import app
 

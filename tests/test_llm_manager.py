@@ -1,8 +1,8 @@
 import asyncio
 
 from src.plugins.llm_manager.handler import run
-from src.integrations.llm_registry import registry
-from src.integrations import model_discovery
+from integrations.llm_registry import registry
+from integrations import model_discovery
 
 
 def test_refresh_models(tmp_path, monkeypatch):

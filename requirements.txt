@@ -22,3 +22,10 @@ GPUtil
 psutil
 matplotlib
 neo4j
+PyJWT
+markdown
+pytesseract
+fitz
+bs4
+plotly
+seaborn

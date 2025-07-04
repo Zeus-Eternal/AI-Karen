@@ -1,0 +1,22 @@
+# DevOps Capsule Manifest - Kari AI
+name: devops
+version: "1.0"
+description: |
+  Nuclear-grade DevOps capsule for secure, hardware-isolated, zero-trust task execution.
+required_roles:
+  - devops_admin
+  - sysop
+capabilities:
+  - provision_infrastructure
+  - restart_service
+  - deploy_code
+  - apply_patch
+  - run_compliance_scan
+  - view_audit_log
+  - manage_rbac
+auditable: true
+prompt_type: jinja2
+timeout: 60  # seconds
+max_tokens: 256
+author: Evil Twin
+date: 2025-07-03
