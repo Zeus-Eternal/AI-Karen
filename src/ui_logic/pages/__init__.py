@@ -11,6 +11,7 @@ from .home import *
 from .iot import *
 from .memory import *
 from .plugins import *
+from .presence import *
 from .settings import *
 
 # Registry for dynamic UI routers
@@ -21,6 +22,7 @@ PAGES = {
     "home": "Home",
     "iot": "IoT & Devices",
     "memory": "Memory & Knowledge",
+    "presence": "Live Sessions",
     "plugins": "Plugins & Workflows",
     "settings": "Settings & Privacy",
 }
