@@ -5,5 +5,6 @@ PAGES = [
     {"key": "autonomous", "label": "Autonomous Ops", "roles": ["admin", "devops"], "flag": "premium"},
     {"key": "automation", "label": "Automation", "roles": ["user", "admin"], "flag": "premium"},
     {"key": "presence", "label": "Live Sessions", "roles": ["admin"], "flag": "premium"},
+    {"key": "plugin_manager", "label": "Plugin Manager", "roles": ["admin", "developer"], "flag": "enable_plugins"},
     # ...
 ]
