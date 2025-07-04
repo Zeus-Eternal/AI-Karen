@@ -297,6 +297,8 @@ Updates are typically released once a month. See `ui/desktop_ui/README.md` for t
 
 Runs as a native Tauri app; all traffic stays on `localhost`.
 
+For a high-level overview of the planned user interface, see the [UI Blueprint](docs/ui_blueprint.md) which outlines conversational features, plugin management screens and memory visualization tools.
+
  
 Run the API with `uvicorn main:app` and start the Tauri Control Room for a
 full-featured desktop experience.
