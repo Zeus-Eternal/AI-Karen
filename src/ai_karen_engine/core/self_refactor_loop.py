@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Optional
 
-from src.self_refactor import SelfRefactorEngine
+from ai_karen_engine.self_refactor import SelfRefactorEngine
 
 
 def run_self_refactor_cycle(

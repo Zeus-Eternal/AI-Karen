@@ -8,10 +8,11 @@ import streamlit as st
 from helpers.session import get_user_context
 from config.routing import PAGE_MAP, DEFAULT_PAGE
 
-# Theme injection (uses streamlit's built-in/theming, with CSS from styles/)
+# Theme injection (uses streamlit's built-in/theming with CSS from the repo)
 def inject_theme():
     from pathlib import Path
-    theme_css = Path("styles/light.css")
+    # Resolve theme path relative to repo root to avoid missing file issues
+    theme_css = Path(__file__).resolve().parents[2] / "src" / "ui_logic" / "themes" / "light.css"
     st.markdown(f"<style>{theme_css.read_text()}</style>", unsafe_allow_html=True)
 
 def main():
