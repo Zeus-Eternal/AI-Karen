@@ -1,24 +1,40 @@
-"""
-Kari Pages Manifest – Ultra-Sovereign Navigation Control
-- Defines all UI pages, roles, icons, and feature flags.
-- Auto-discovers plugin/extension pages at runtime.
-- Enforces RBAC and feature flag logic.
+"""Kari Pages Manifest -- Ultra-Sovereign Navigation Control
+
+Defines all built-in UI pages along with RBAC roles and feature flag gating.
+Each page entry uses the following keys:
+    - ``route``: page identifier and import name under ``ui_logic.pages``
+    - ``label``: human readable name for navigation
+    - ``icon``: short emoji label used in menus
+    - ``import``: dotted module path for dynamic loading
+    - ``feature_flag``: key from :mod:`ui_logic.config.feature_flags` controlling visibility
+    - ``roles``: list of roles allowed to access the page
+    - ``enabled``: boolean derived from ``feature_flag`` at load time
+
+Plugins may append additional entries at runtime via :func:`register_plugin_page`.
 """
 
 import os
 from ui_logic.config.feature_flags import get_flag
 
-# --- Core pages manifest ---
+
+def _flag_enabled(flag: str | None) -> bool:
+    """Return ``True`` if ``flag`` is enabled or not specified."""
+    if not flag:
+        return True
+    return bool(get_flag(flag))
+
+
+# --- Core pages manifest ----------------------------------------------------
 PAGES = [
-    # Public/Home/Onboarding
+    # Public/Home
     {
         "route": "home",
         "label": "Home",
         "icon": "🏠",
         "import": "ui_logic.pages.home",
         "feature_flag": None,
-        "required_roles": [],
-        "enabled": True,
+        "roles": [],
+        "enabled": _flag_enabled(None),
     },
     {
         "route": "onboarding",
@@ -26,8 +42,8 @@ PAGES = [
         "icon": "🧭",
         "import": "ui_logic.pages.onboarding",
         "feature_flag": "enable_onboarding_wizard",
-        "required_roles": [],
-        "enabled": get_flag("enable_onboarding_wizard"),
+        "roles": [],
+        "enabled": _flag_enabled("enable_onboarding_wizard"),
     },
     # Chat/Core Interaction
     {
@@ -36,8 +52,8 @@ PAGES = [
         "icon": "💬",
         "import": "ui_logic.pages.chat",
         "feature_flag": None,
-        "required_roles": ["user", "admin"],
-        "enabled": True,
+        "roles": ["user", "admin"],
+        "enabled": _flag_enabled(None),
     },
     # Memory/Knowledge
     {
@@ -46,8 +62,8 @@ PAGES = [
         "icon": "🧠",
         "import": "ui_logic.pages.memory",
         "feature_flag": "enable_memory_explorer",
-        "required_roles": ["user", "admin"],
-        "enabled": get_flag("enable_memory_explorer"),
+        "roles": ["user", "admin"],
+        "enabled": _flag_enabled("enable_memory_explorer"),
     },
     # Analytics
     {
@@ -56,18 +72,27 @@ PAGES = [
         "icon": "📊",
         "import": "ui_logic.pages.analytics",
         "feature_flag": "enable_automation",
-        "required_roles": ["admin", "analyst", "devops"],
-        "enabled": get_flag("enable_automation"),
+        "roles": ["admin", "analyst", "devops"],
+        "enabled": _flag_enabled("enable_automation"),
     },
-    # Task/Automation/Autonomous Agents
+    # Automation/Task management
+    {
+        "route": "automation",
+        "label": "Automation",
+        "icon": "🛠️",
+        "import": "ui_logic.pages.automation",
+        "feature_flag": "enable_workflows",
+        "roles": ["user", "admin"],
+        "enabled": _flag_enabled("enable_workflows"),
+    },
     {
         "route": "task_manager",
         "label": "Task Manager",
         "icon": "📋",
         "import": "ui_logic.pages.task_manager",
         "feature_flag": "enable_task_manager",
-        "required_roles": ["user", "admin", "devops"],
-        "enabled": get_flag("enable_task_manager"),
+        "roles": ["user", "admin", "devops"],
+        "enabled": _flag_enabled("enable_task_manager"),
     },
     {
         "route": "autonomous",
@@ -75,18 +100,8 @@ PAGES = [
         "icon": "🤖",
         "import": "ui_logic.pages.autonomous",
         "feature_flag": "enable_autonomous_agents",
-        "required_roles": ["admin", "devops"],
-        "enabled": get_flag("enable_autonomous_agents"),
-    },
-    # Scheduling/Calendar
-    {
-        "route": "calendar",
-        "label": "Calendar",
-        "icon": "🗓️",
-        "import": "ui_logic.pages.scheduling",
-        "feature_flag": "enable_automation",
-        "required_roles": ["user", "admin"],
-        "enabled": get_flag("enable_automation"),
+        "roles": ["admin", "devops"],
+        "enabled": _flag_enabled("enable_autonomous_agents"),
     },
     # Plugins/Workflow
     {
@@ -95,8 +110,8 @@ PAGES = [
         "icon": "🧩",
         "import": "ui_logic.pages.plugins",
         "feature_flag": "enable_plugin_hot_reload",
-        "required_roles": ["admin", "dev"],
-        "enabled": get_flag("enable_plugin_hot_reload"),
+        "roles": ["admin", "dev"],
+        "enabled": _flag_enabled("enable_plugin_hot_reload"),
     },
     {
         "route": "workflows",
@@ -104,8 +119,8 @@ PAGES = [
         "icon": "🕸️",
         "import": "ui_logic.pages.workflows",
         "feature_flag": "enable_workflows",
-        "required_roles": ["admin", "dev"],
-        "enabled": get_flag("enable_workflows"),
+        "roles": ["admin", "dev"],
+        "enabled": _flag_enabled("enable_workflows"),
     },
     # Personas
     {
@@ -114,8 +129,8 @@ PAGES = [
         "icon": "🦹‍♂️",
         "import": "ui_logic.pages.personas",
         "feature_flag": "enable_advanced_personas",
-        "required_roles": ["user", "admin", "analyst"],
-        "enabled": get_flag("enable_advanced_personas"),
+        "roles": ["user", "admin", "analyst"],
+        "enabled": _flag_enabled("enable_advanced_personas"),
     },
     # Files / Code / Vision / Voice
     {
@@ -124,8 +139,8 @@ PAGES = [
         "icon": "📁",
         "import": "ui_logic.pages.files",
         "feature_flag": None,
-        "required_roles": ["user", "admin"],
-        "enabled": True,
+        "roles": ["user", "admin"],
+        "enabled": _flag_enabled(None),
     },
     {
         "route": "code_lab",
@@ -133,8 +148,8 @@ PAGES = [
         "icon": "🧪",
         "import": "ui_logic.pages.code_lab",
         "feature_flag": "enable_code_lab",
-        "required_roles": ["admin", "dev"],
-        "enabled": get_flag("enable_code_lab"),
+        "roles": ["admin", "dev"],
+        "enabled": _flag_enabled("enable_code_lab"),
     },
     {
         "route": "vision",
@@ -142,8 +157,8 @@ PAGES = [
         "icon": "👁️",
         "import": "ui_logic.pages.vision",
         "feature_flag": "enable_vision",
-        "required_roles": ["user", "admin", "analyst"],
-        "enabled": get_flag("enable_vision"),
+        "roles": ["user", "admin", "analyst"],
+        "enabled": _flag_enabled("enable_vision"),
     },
     {
         "route": "voice",
@@ -151,8 +166,8 @@ PAGES = [
         "icon": "🎙️",
         "import": "ui_logic.pages.voice",
         "feature_flag": "enable_voice",
-        "required_roles": ["user", "admin", "analyst"],
-        "enabled": get_flag("enable_voice"),
+        "roles": ["user", "admin", "analyst"],
+        "enabled": _flag_enabled("enable_voice"),
     },
     # Admin/Security/Diagnostics
     {
@@ -161,8 +176,8 @@ PAGES = [
         "icon": "🛡️",
         "import": "ui_logic.pages.admin",
         "feature_flag": "enable_admin_panel",
-        "required_roles": ["admin"],
-        "enabled": get_flag("enable_admin_panel"),
+        "roles": ["admin"],
+        "enabled": _flag_enabled("enable_admin_panel"),
     },
     {
         "route": "security",
@@ -170,8 +185,8 @@ PAGES = [
         "icon": "🔒",
         "import": "ui_logic.pages.security",
         "feature_flag": "enable_security_center",
-        "required_roles": ["admin"],
-        "enabled": get_flag("enable_security_center"),
+        "roles": ["admin"],
+        "enabled": _flag_enabled("enable_security_center"),
     },
     {
         "route": "diagnostics",
@@ -179,8 +194,8 @@ PAGES = [
         "icon": "🧬",
         "import": "ui_logic.pages.diagnostics",
         "feature_flag": "enable_diagnostics",
-        "required_roles": ["admin", "devops"],
-        "enabled": get_flag("enable_diagnostics"),
+        "roles": ["admin", "devops"],
+        "enabled": _flag_enabled("enable_diagnostics"),
     },
     # Presence/IoT/Integrations
     {
@@ -189,8 +204,8 @@ PAGES = [
         "icon": "🌐",
         "import": "ui_logic.pages.presence",
         "feature_flag": "enable_presence",
-        "required_roles": ["admin", "user"],
-        "enabled": get_flag("enable_presence"),
+        "roles": ["admin", "user"],
+        "enabled": _flag_enabled("enable_presence"),
     },
     {
         "route": "iot",
@@ -198,8 +213,8 @@ PAGES = [
         "icon": "🔌",
         "import": "ui_logic.pages.iot",
         "feature_flag": "enable_iot",
-        "required_roles": ["admin", "user", "devops"],
-        "enabled": get_flag("enable_iot"),
+        "roles": ["admin", "user", "devops"],
+        "enabled": _flag_enabled("enable_iot"),
     },
     {
         "route": "integrations",
@@ -207,8 +222,8 @@ PAGES = [
         "icon": "🔗",
         "import": "ui_logic.pages.integrations",
         "feature_flag": None,
-        "required_roles": ["admin", "user"],
-        "enabled": True,
+        "roles": ["admin", "user"],
+        "enabled": _flag_enabled(None),
     },
     # White Label / Branding / EchoCore / Labs
     {
@@ -217,8 +232,8 @@ PAGES = [
         "icon": "🏷️",
         "import": "ui_logic.pages.white_label",
         "feature_flag": "enable_white_label",
-        "required_roles": ["admin", "enterprise"],
-        "enabled": get_flag("enable_white_label"),
+        "roles": ["admin", "enterprise"],
+        "enabled": _flag_enabled("enable_white_label"),
     },
     {
         "route": "labs",
@@ -226,8 +241,8 @@ PAGES = [
         "icon": "🔬",
         "import": "ui_logic.pages.labs",
         "feature_flag": "enable_lab_tools",
-        "required_roles": ["admin", "dev"],
-        "enabled": get_flag("enable_lab_tools"),
+        "roles": ["admin", "dev"],
+        "enabled": _flag_enabled("enable_lab_tools"),
     },
     {
         "route": "echo_core",
@@ -235,8 +250,8 @@ PAGES = [
         "icon": "🗝️",
         "import": "ui_logic.pages.echo_core",
         "feature_flag": "enable_echo_core",
-        "required_roles": ["admin"],
-        "enabled": get_flag("enable_echo_core"),
+        "roles": ["admin"],
+        "enabled": _flag_enabled("enable_echo_core"),
     },
     # Context Panel
     {
@@ -245,8 +260,8 @@ PAGES = [
         "icon": "🧩",
         "import": "ui_logic.pages.context",
         "feature_flag": None,
-        "required_roles": ["user", "admin"],
-        "enabled": True,
+        "roles": ["user", "admin"],
+        "enabled": _flag_enabled(None),
     },
     # Settings
     {
@@ -255,34 +270,33 @@ PAGES = [
         "icon": "⚙️",
         "import": "ui_logic.pages.settings",
         "feature_flag": None,
-        "required_roles": ["user", "admin"],
-        "enabled": True,
+        "roles": ["user", "admin"],
+        "enabled": _flag_enabled(None),
     },
 ]
 
-def get_pages(role: str = None) -> list:
-    """
-    Returns all enabled pages, optionally filtered by role.
-    :param role: Filter to pages visible to this role.
-    """
+
+def get_pages(role: str | None = None) -> list:
+    """Return enabled pages, optionally filtered by ``role``."""
     if role is None:
-        # Return all enabled pages
         return [p for p in PAGES if p["enabled"]]
-    return [
-        p for p in PAGES
-        if p["enabled"] and (not p["required_roles"] or role in p["required_roles"])
-    ]
+    return [p for p in PAGES if p["enabled"] and (not p["roles"] or role in p["roles"])]
+
 
 def get_page_manifest() -> list:
-    """Returns the manifest for use by navigation, routing, admin UI."""
+    """Return the raw page manifest."""
     return PAGES
 
-# Dynamic plugin UI injection (plugins can call this at runtime)
-def register_plugin_page(page_dict: dict):
-    """Register a new plugin or extension page at runtime (MUST follow manifest schema)."""
+
+# Dynamic plugin UI injection -------------------------------------------------
+def register_plugin_page(page_dict: dict) -> None:
+    """Register a plugin or extension page at runtime."""
+    page_dict.setdefault("enabled", _flag_enabled(page_dict.get("feature_flag")))
+    page_dict.setdefault("roles", [])
     PAGES.append(page_dict)
 
+
 if __name__ == "__main__":
-    # Demo: print manifest (evil audit mode)
     import json
+
     print(json.dumps(get_page_manifest(), indent=2))
