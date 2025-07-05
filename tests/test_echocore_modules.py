@@ -1,5 +1,5 @@
-from ..src.ai_karen_engine.echocore.echo_vault import EchoVault
-from ..src.ai_karen_engine.echocore.dark_tracker import DarkTracker
+from ai_karen_engine.echocore.echo_vault import EchoVault
+from ai_karen_engine.echocore.dark_tracker import DarkTracker
 
 
 def test_vault_backup_restore(tmp_path):
