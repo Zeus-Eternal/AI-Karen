@@ -27,3 +27,10 @@ def render_page(user_ctx: dict | None = None) -> None:
         raise RuntimeError("Task Manager feature is disabled")
     raise NotImplementedError("Task Manager page not implemented")
 
+
+if __name__ == "__main__":
+    try:
+        render_page({})
+    except NotImplementedError:
+        print("Task Manager page stub")
+
