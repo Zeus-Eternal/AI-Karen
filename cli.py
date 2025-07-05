@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from src.ai_karen_engine import LLMOrchestrator
-from ai_karen_engine.plugin_router import PluginRouter
+from ai_karen_engine.plugin_router import get_plugin_router
 
 
 CONFIG_PATH = Path("config") / "settings.json"
@@ -26,7 +26,7 @@ def self_test() -> None:
             sys.modules[dep] = type(sys)(dep)
 
     orchestrator = LLMOrchestrator()
-    router = PluginRouter()
+    router = get_plugin_router()
 
     summary = {
         "provider": cfg.get("provider", "unknown"),

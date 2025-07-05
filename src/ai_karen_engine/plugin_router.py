@@ -102,6 +102,16 @@ class PluginRouter:
                 "traceback": traceback_str,
             }
 
-# --- Singleton Instance ---
-plugin_router = PluginRouter()
+# --- Lazy Accessor for Singleton Instance ---
+_plugin_router: Optional[PluginRouter] = None
+
+
+def get_plugin_router() -> PluginRouter:
+    """Return a cached :class:`PluginRouter` instance."""
+    global _plugin_router
+    if _plugin_router is None:
+        _plugin_router = PluginRouter()
+    return _plugin_router
+
+__all__ = ["PluginRouter", "get_plugin_router"]
 
