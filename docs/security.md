@@ -30,5 +30,5 @@ Build artifacts are signed using ed25519 keys. Verify signatures before deployin
 gpg --verify kari-desktop.tar.gz.sig kari-desktop.tar.gz
 ```
 
-See `ui/desktop_ui/README.md` for secure UI practices and [docs/plugin_spec.md](plugin_spec.md) for plugin-level permissions.
+See `ui_launchers/desktop_ui/README.md` for secure UI practices and [docs/plugin_spec.md](plugin_spec.md) for plugin-level permissions.
 

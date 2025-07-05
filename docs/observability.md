@@ -28,5 +28,5 @@ Grafana dashboards should include:
 | Vector Search     | `vector_search_latency_seconds` |
 | Memory Usage      | Custom Python gauge or system metric |
 
-See `ui/desktop_ui/README.md` for adding the metrics dashboard to the Control Room.
+See `ui_launchers/desktop_ui/README.md` for adding the metrics dashboard to the Control Room.
 The new Diagnostics page surfaces the output of `get_system_health()` with a JSON viewer.
