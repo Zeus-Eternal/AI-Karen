@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
     # Relative import for same-package utilities
 from ai_karen_engine.integrations.llm_utils import LLMUtils
 
-from ai_karen_engine.services.ollama_inprocess import generate as local_generate
-from ai_karen_engine.services.deepseek_client import DeepSeekClient
+from ai_karen_engine.services.deepseek import DeepSeekClient
+from ai_karen_engine.services.ollama_engine import generate as local_generate
 
 
 class LlamaCppWrapper:

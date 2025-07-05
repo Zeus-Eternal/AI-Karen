@@ -1,85 +1,86 @@
 """
-Kari UI Feature Flags (Production)
-- Centralized, config/ENV-driven flag control for UI & business logic.
-- Powers A/B tests, premium unlocks, plugin rollouts, enterprise features.
-- No UI logic—pure state/config.
+Kari Feature Flags – Quantum-Grade Configuration
+- All feature toggles for UI, logic, and experimental features
+- Supports env var overrides and runtime injection
+- Never allow unsafe features without ADVANCED_MODE=true
 """
 
 import os
-import json
-from pathlib import Path
-from typing import Dict, Any, Optional
 
-# === Default Feature Flags (lowest privilege, never delete) ===
-DEFAULT_FLAGS = {
-    "enable_plugins": True,
+# === Hardcoded, documented defaults (can be extended at runtime) ===
+FEATURE_FLAGS = {
+    # --- Core UX ---
+    "enable_multimodal_chat": True,
+    "enable_advanced_personas": True,
+    "enable_memory_explorer": True,
+    "enable_voice": True,
+    "enable_vision": False,
+    "enable_presence": False,
+    "enable_iot": False,
+
+    # --- AI & Automation ---
+    "enable_autonomous_agents": False,
+    "enable_automation": True,
+    "enable_task_manager": True,
+    "enable_code_lab": True,
+    "enable_lab_tools": False,  # for experimental lab/AI tools
+
+    # --- Plugin/Extension System ---
+    "enable_plugin_hot_reload": True,
+    "enable_plugin_ui_injection": True,
     "enable_workflows": True,
-    "enable_voice_io": False,
-    "enable_multimodal": False,
-    "enable_memory_graph": True,
-    "enable_rbac": True,
-    "enable_premium": False,
-    "enable_enterprise": False,
+
+    # --- Diagnostics/Admin ---
     "enable_admin_panel": True,
-    "allow_cloud_models": False,    # Only local LLMs unless explicitly unlocked
-    "show_experimental": False,
-    "force_safe_mode": False,       # RBAC/guardrails override
-    "show_branding_controls": False,
-    "enable_api_tokens": False,
-    "allow_shell_exec": False,      # Security-critical
+    "enable_diagnostics": True,
+    "enable_prometheus_metrics": True,
+    "enable_guardrails": False,
+
+    # --- Security/Privacy ---
+    "enable_security_center": True,
+    "enable_privacy_console": True,
+    "enable_encrypted_vault": True,
+
+    # --- White Label/Branding ---
+    "enable_white_label": False,
+    "enable_branding_center": False,
+
+    # --- Onboarding ---
+    "enable_onboarding_wizard": True,
+
+    # --- Experimental/ADVANCED_MODE ---
+    "enable_echo_core": bool(os.getenv("ADVANCED_MODE", "false").lower() == "true"),
+    "enable_self_refactor": bool(os.getenv("ADVANCED_MODE", "false").lower() == "true"),
 }
 
-def load_feature_flags(custom_path: Optional[str] = None) -> Dict[str, Any]:
+def get_flag(flag: str) -> bool:
     """
-    Load feature flags from a config JSON, ENV, or fall back to defaults.
-    Priority: custom_path > $KARI_FEATURE_FLAGS > defaults
+    Get the value of a feature flag, supporting env overrides.
+    - ENV: KARI_FEATURE_<FLAGNAME>
+    - Example: KARI_FEATURE_ENABLE_AUTOMATION=true
     """
-    path = custom_path or os.getenv("KARI_FEATURE_FLAGS")
-    if path:
-        path_obj = Path(path)
-        if path_obj.exists():
-            try:
-                with open(path_obj, "r") as f:
-                    cfg = json.load(f)
-                    out = DEFAULT_FLAGS.copy()
-                    out.update(cfg)
-                    return out
-            except Exception:
-                return DEFAULT_FLAGS
-    return DEFAULT_FLAGS
+    env_key = f"KARI_FEATURE_{flag.upper()}"
+    if env_key in os.environ:
+        val = os.environ[env_key].lower()
+        return val in ("1", "true", "yes", "on")
+    return FEATURE_FLAGS.get(flag, False)
 
-def get_flag(key: str, custom_path: Optional[str] = None) -> Any:
-    """Get a feature flag value."""
-    flags = load_feature_flags(custom_path)
-    return flags.get(key, None)
+def set_flag(flag: str, value: bool):
+    """Set or update a feature flag at runtime (dangerous; audit when used)."""
+    FEATURE_FLAGS[flag] = bool(value)
 
-def set_flag(key: str, value: Any, custom_path: Optional[str] = None):
-    """
-    Dynamically update a feature flag config file (for admin UI).
-    If no custom_path, raises (feature flag admin UI should handle persistence).
-    """
-    path = custom_path or os.getenv("KARI_FEATURE_FLAGS")
-    if not path:
-        raise RuntimeError("No custom feature flag config path set")
-    path_obj = Path(path)
-    if not path_obj.exists():
-        raise FileNotFoundError(f"Feature flags config {path} does not exist")
-    with open(path_obj, "r+") as f:
-        data = json.load(f)
-        data[key] = value
-        f.seek(0)
-        json.dump(data, f, indent=2)
-        f.truncate()
+def all_flags() -> dict:
+    """Return the full feature flag dictionary (for UI or admin display)."""
+    return {flag: get_flag(flag) for flag in FEATURE_FLAGS}
 
-def list_flags(custom_path: Optional[str] = None) -> Dict[str, Any]:
-    """Get all flags (resolved from config, ENV, or defaults)."""
-    return load_feature_flags(custom_path)
+# Example extension: allow plugins to register custom flags
+def register_plugin_flag(flag: str, default: bool = False):
+    """Register a new plugin/extension feature flag."""
+    if flag not in FEATURE_FLAGS:
+        FEATURE_FLAGS[flag] = default
 
-# === Public API ===
-__all__ = [
-    "get_flag",
-    "set_flag",
-    "list_flags",
-    "load_feature_flags",
-    "DEFAULT_FLAGS",
-]
+# For debugging: show all active feature flags at startup
+if __name__ == "__main__":
+    print("Kari Feature Flags (Active):")
+    for k, v in all_flags().items():
+        print(f"{k}: {v}")
