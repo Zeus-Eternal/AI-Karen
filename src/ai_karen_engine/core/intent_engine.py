@@ -1,5 +1,5 @@
 """Intent detection wrapper for Kari."""
 
-from src.core.intent_engine import IntentEngine
+from ai_karen_engine.core.intent_engine import IntentEngine
 
 __all__ = ["IntentEngine"]
