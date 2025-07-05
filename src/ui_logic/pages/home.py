@@ -3,7 +3,9 @@ Kari Home Page
 - Orchestrates: Onboarding, activity, branding, news/announcements
 """
 
-from components.white_label.branding_center import render_branding_center
+from ui_logic.components.white_label.branding_center import \
+    render_branding_center
+
 
 def home_page(user_ctx=None):
     # Welcome and Branding
