@@ -75,11 +75,17 @@ def list_flags(custom_path: Optional[str] = None) -> Dict[str, Any]:
     """Get all flags (resolved from config, ENV, or defaults)."""
     return load_feature_flags(custom_path)
 
+
+def is_feature_enabled(key: str, custom_path: str | None = None) -> bool:
+    """Return ``True`` if the feature flag ``key`` is enabled."""
+    return bool(get_flag(key, custom_path))
+
 # === Public API ===
 __all__ = [
     "get_flag",
     "set_flag",
     "list_flags",
     "load_feature_flags",
+    "is_feature_enabled",
     "DEFAULT_FLAGS",
 ]
