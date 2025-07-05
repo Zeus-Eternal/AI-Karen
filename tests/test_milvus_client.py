@@ -1,7 +1,7 @@
 import time
 import pytest
 
-from src.core.milvus_client import MilvusClient
+from ..src.core.milvus_client import MilvusClient
 
 
 def test_upsert_and_search():

@@ -1,10 +1,9 @@
 """Shared pytest configuration."""
 
+import importlib
 import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
-for p in (ROOT, SRC_DIR):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+# Alias installed-style packages for tests
+sys.modules.setdefault("ai_karen_engine", importlib.import_module("src.ai_karen_engine"))
+sys.modules.setdefault("ui_logic", importlib.import_module("src.ui_logic"))
+sys.modules.setdefault("services", importlib.import_module("src.services"))

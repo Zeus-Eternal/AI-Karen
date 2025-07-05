@@ -1,5 +1,5 @@
 import asyncio
-from src.core.mesh_planner import MeshPlanner
+from ..src.core.mesh_planner import MeshPlanner
 
 
 def test_load_and_route(tmp_path, monkeypatch):

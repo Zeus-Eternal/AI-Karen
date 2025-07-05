@@ -1,4 +1,4 @@
-from src.self_refactor import SelfRefactorEngine
+from ..src.self_refactor import SelfRefactorEngine
 
 
 class DummyLLM:

@@ -1,4 +1,4 @@
-from src.core.embedding_manager import EmbeddingManager, _METRICS
+from ..src.core.embedding_manager import EmbeddingManager, _METRICS
 
 
 def test_embed_shape():
