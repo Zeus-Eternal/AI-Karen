@@ -1,5 +1,5 @@
 import asyncio
-from ai_karen_engine.plugin_router import PluginRouter as BaseRouter
+from ai_karen_engine.plugin_router import get_plugin_router
 
 
 class PluginWrapper:
@@ -16,7 +16,7 @@ class PromptRouter:
     """Very small router that always returns the autonomous_task_handler plugin."""
 
     def __init__(self) -> None:
-        self.router = BaseRouter()
+        self.router = get_plugin_router()
 
     def route(self, _text: str) -> PluginWrapper:
         record = self.router.get_plugin("autonomous_task_handler")

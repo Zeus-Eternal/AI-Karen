@@ -9,7 +9,7 @@ import asyncio
 from typing import Any, Dict
 
 from ai_karen_engine.core.intent_engine import IntentEngine
-from ai_karen_engine.plugin_router import PluginRouter, AccessDenied
+from ai_karen_engine.plugin_router import get_plugin_router, AccessDenied
 from ai_karen_engine.core.reasoning.ice_integration import KariICEWrapper
 
 
@@ -18,7 +18,7 @@ class CortexDispatcher:
 
     def __init__(self) -> None:
         self.engine = IntentEngine()
-        self.router = PluginRouter()
+        self.router = get_plugin_router()
         self.ice = KariICEWrapper()
 
     async def dispatch(self, text: str, role: str = "user") -> Dict[str, Any]:
