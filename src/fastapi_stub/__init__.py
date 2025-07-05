@@ -1,3 +1,5 @@
+"""Minimal FastAPI look-alike used for tests and offline runs."""
+
 import asyncio
 import json
 import re
@@ -156,6 +158,8 @@ class TestClient:
         )
         resp.headers.update(getattr(data, "headers", {}))
         return resp
+
+__all__ = ["FastAPI", "HTTPException", "Response", "TestClient"]
 
     def get(self, path):
         data = asyncio.run(self.app("GET", path))

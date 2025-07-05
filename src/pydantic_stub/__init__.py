@@ -1,3 +1,5 @@
+"""Tiny Pydantic ``BaseModel`` stub for optional dependency use."""
+
 from typing import Any
 
 
