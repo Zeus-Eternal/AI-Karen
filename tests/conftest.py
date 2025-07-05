@@ -1,5 +1,4 @@
 """Shared pytest configuration."""
-
 import importlib
 import sys
 
