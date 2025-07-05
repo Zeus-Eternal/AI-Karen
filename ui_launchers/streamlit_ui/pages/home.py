@@ -1,4 +1,4 @@
-from src.ui_logic.pages.home import home_page as _home_page
+from ui_logic.pages.home import home_page as _home_page
 
 
 def home_page(user_ctx=None):
