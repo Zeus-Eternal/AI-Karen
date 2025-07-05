@@ -3,7 +3,7 @@ import json
 import sys
 from pathlib import Path
 
-from src.ai_karen_engine import LLMOrchestrator
+from ai_karen_engine import LLMOrchestrator
 from ai_karen_engine.plugin_router import get_plugin_router
 
 

@@ -11,12 +11,11 @@ sys.modules.setdefault("pyautogui", dummy)
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ai_karen_engine.core.workflow_engine_client import WorkflowEngineClient
 from ai_karen_engine.integrations.automation_manager import AutomationManager
 from ai_karen_engine.integrations.local_rpa_client import LocalRPAClient
-from src.core.plugin_router import PluginRouter
+from ai_karen_engine.core.plugin_router import PluginRouter
 
 
 def test_workflow_engine_trigger(capfd):

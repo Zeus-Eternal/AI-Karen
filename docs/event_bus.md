@@ -5,7 +5,7 @@ Kari ships with a simple in-memory EventBus that mirrors Redis Streams. Capsules
 ## API
 
 ```python
-from src.event_bus import EventBus
+from ai_karen_engine.event_bus import EventBus
 
 bus = EventBus()
 msg_id = bus.publish("devops", "deploy", {"status": "ok"}, risk=0.2)

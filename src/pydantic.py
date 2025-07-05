@@ -1,3 +1,3 @@
 """Minimal stub for pydantic used in tests."""
-from pydantic_stub import BaseModel
+from ai_karen_engine.pydantic_stub import BaseModel
 __all__ = ['BaseModel']

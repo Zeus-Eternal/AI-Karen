@@ -1,6 +1,6 @@
 import asyncio
 
-from src.plugins.llm_manager.handler import run
+from ai_karen_engine.plugins.llm_manager.handler import run
 from integrations.llm_registry import registry
 from integrations import model_discovery
 

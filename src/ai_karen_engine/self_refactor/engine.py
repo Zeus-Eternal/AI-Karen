@@ -114,7 +114,7 @@ class SelfRefactorEngine:
                 }
             )
         try:
-            from src.self_refactor import log_utils
+            from ai_karen_engine.self_refactor import log_utils
 
             log_utils.record_report(report)
         except Exception:

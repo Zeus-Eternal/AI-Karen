@@ -1,11 +1,11 @@
-from src.self_refactor.log_utils import record_report, load_logs, LOG_PATH
-from src.self_refactor.engine import PatchReport
+from ai_karen_engine.self_refactor.log_utils import record_report, load_logs, LOG_PATH
+from ai_karen_engine.self_refactor.engine import PatchReport
 import os
 import json
 
 
 def test_log_sanitization(tmp_path, monkeypatch):
-    monkeypatch.setattr("src.self_refactor.log_utils.LOG_PATH", tmp_path / "log.jsonl")
+    monkeypatch.setattr("ai_karen_engine.self_refactor.log_utils.LOG_PATH", tmp_path / "log.jsonl")
     report = PatchReport()
     report.update(
         {
