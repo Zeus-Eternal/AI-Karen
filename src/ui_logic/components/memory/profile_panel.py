@@ -5,8 +5,8 @@ Kari Profile Panel Logic
 """
 
 from typing import Dict, Any
-from ui.hooks.rbac import require_roles
-from ui.utils.api import fetch_user_profile, save_user_profile, fetch_audit_logs
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_user_profile, save_user_profile, fetch_audit_logs
 
 def get_user_profile(user_ctx: Dict) -> Dict[str, Any]:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin"]):

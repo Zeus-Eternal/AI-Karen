@@ -5,8 +5,8 @@ Kari Memory Analytics Logic
 """
 
 from typing import Dict, Any, List
-from ui.hooks.rbac import require_roles
-from ui.utils.api import fetch_memory_analytics, fetch_audit_logs
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_memory_analytics, fetch_audit_logs
 
 def get_memory_analytics(user_ctx: Dict) -> Dict[str, Any]:
     if not user_ctx or not require_roles(user_ctx, ["admin", "analyst", "user"]):

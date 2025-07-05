@@ -4,8 +4,8 @@ Kari Calendar Panel Business Logic
 """
 
 from typing import Dict, List
-from ui.hooks.rbac import require_roles
-from ui.utils.api import (
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import (
     fetch_user_calendar,
     add_event_to_calendar,
     remove_event_from_calendar,

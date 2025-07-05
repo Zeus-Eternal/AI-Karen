@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Optional
 from importlib import import_module
 
 
-get_current_user = import_module("ui.hooks.auth").get_current_user  # type: ignore
+get_current_user = import_module("ui_logic.hooks.auth").get_current_user  # type: ignore
 
 RBAC_LOG_PATH = "/secure/logs/kari/rbac_audit.log"
 

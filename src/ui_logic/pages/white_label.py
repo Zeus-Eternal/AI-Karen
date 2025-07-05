@@ -1,8 +1,8 @@
 """Enterprise white‑label configuration UI stub."""
 
-from ui.config.feature_flags import get_flag
-from ui.hooks.auth import get_current_user
-from ui.hooks.rbac import check_rbac
+from ui_logic.config.feature_flags import get_flag
+from ui_logic.hooks.auth import get_current_user
+from ui_logic.hooks.rbac import check_rbac
 
 REQUIRED_ROLES = ["enterprise"]
 FEATURE_FLAG = "show_branding_controls"

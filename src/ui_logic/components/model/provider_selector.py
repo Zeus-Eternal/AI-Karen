@@ -4,8 +4,8 @@ Kari LLM Provider Selector Logic
 """
 
 from typing import Dict, List
-from ui.hooks.rbac import require_roles
-from ui.utils.api import fetch_providers
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_providers
 
 def get_available_providers(user_ctx: Dict) -> List[Dict]:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin"]):

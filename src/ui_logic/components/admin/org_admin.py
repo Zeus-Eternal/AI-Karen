@@ -5,7 +5,7 @@ Kari Organization Admin Logic
 """
 
 from typing import Dict, List, Optional
-from ui.utils.api import (
+from ui_logic.utils.api import (
     fetch_org_users, add_org_user, update_org_user, remove_org_user, 
     fetch_org_settings, update_org_settings
 )
