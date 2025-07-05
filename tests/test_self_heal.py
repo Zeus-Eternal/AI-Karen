@@ -1,7 +1,5 @@
 from pathlib import Path
-
 from ai_karen_engine.self_refactor import SelfRefactorEngine
-
 
 class DummyLLM:
     def generate_text(self, prompt: str, max_tokens: int = 128) -> str:

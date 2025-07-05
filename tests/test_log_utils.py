@@ -17,10 +17,10 @@ def test_log_sanitization(tmp_path, monkeypatch):
             "signatures": {"a.py": "123"},
         }
     )
-    record_report(report)
-    logs = load_logs()
+    log_utils.record_report(report)
+    logs = log_utils.load_logs()
     assert logs and "patches" not in logs[0]
     monkeypatch.setenv("ADVANCED_MODE", "true")
-    record_report(report)
-    logs_full = load_logs(full=True)
+    log_utils.record_report(report)
+    logs_full = log_utils.load_logs(full=True)
     assert "patches" in logs_full[-1]

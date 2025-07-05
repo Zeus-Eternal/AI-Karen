@@ -1,7 +1,6 @@
 import asyncio
 from ai_karen_engine.core.cortex.dispatch import CortexDispatcher
 
-
 def test_dispatch_greet():
     dispatcher = CortexDispatcher()
     result = asyncio.run(dispatcher.dispatch("hello", role="user"))

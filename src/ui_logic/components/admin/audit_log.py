@@ -5,7 +5,7 @@ Kari Audit Log Logic
 """
 
 from typing import List, Dict, Any, Optional
-from ui.utils.api import fetch_audit_logs
+from ui_logic.utils.api import fetch_audit_logs
 
 def get_audit_log(user_ctx: Dict, filter: Optional[Dict] = None, limit: int = 100) -> List[Dict]:
     """

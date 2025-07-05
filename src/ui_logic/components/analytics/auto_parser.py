@@ -6,7 +6,7 @@ Kari Auto-Parser Logic
 
 import pandas as pd
 from typing import Dict, Any, Tuple, Optional
-from ui.utils.file_utils import secure_read_file, parse_csv_excel
+from ui_logic.utils.file_utils import secure_read_file, parse_csv_excel
 
 def auto_parse_data(file_bytes: bytes, filename: str, options: Optional[Dict[str, Any]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """

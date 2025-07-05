@@ -6,7 +6,7 @@ Kari Diagnostics Logic
 
 import psutil
 from typing import Dict, Any
-from ui.utils.api import ping_services
+from ui_logic.utils.api import ping_services
 
 def get_system_diagnostics() -> Dict[str, Any]:
     """Returns system health/metrics for the dashboard."""

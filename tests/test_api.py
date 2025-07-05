@@ -3,6 +3,10 @@ import sys
 import ai_karen_engine.fastapi_stub as fastapi_stub
 import ai_karen_engine.pydantic_stub as pydantic_stub
 
+# Expose stubs under their expected top-level names
+sys.modules.setdefault("fastapi_stub", fastapi_stub)
+sys.modules.setdefault("pydantic_stub", pydantic_stub)
+
 sys.modules["fastapi"] = fastapi_stub
 sys.modules["pydantic"] = pydantic_stub
 

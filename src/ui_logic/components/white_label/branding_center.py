@@ -5,8 +5,8 @@ Kari Branding Center Logic (Framework-Agnostic)
 """
 
 from typing import Dict, Optional
-from ui.hooks.rbac import require_roles
-from ui.utils.api import (
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import (
     fetch_branding_config,
     save_branding_config,
     fetch_audit_logs

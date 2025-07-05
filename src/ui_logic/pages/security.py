@@ -1,8 +1,8 @@
 """Security settings and audit page stub."""
 
-from ui.config.feature_flags import get_flag
-from ui.hooks.auth import get_current_user
-from ui.hooks.rbac import check_rbac
+from ui_logic.config.feature_flags import get_flag
+from ui_logic.hooks.auth import get_current_user
+from ui_logic.hooks.rbac import check_rbac
 
 REQUIRED_ROLES = ["admin"]
 FEATURE_FLAG = "enable_enterprise"

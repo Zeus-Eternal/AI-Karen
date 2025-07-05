@@ -1,6 +1,6 @@
 import asyncio
 
-from ai_karen_engine.core.reasoning.ice_integration import KariICEWrapper
+from ..src.ai_karen_engine.core.reasoning.ice_integration import KariICEWrapper
 
 
 def test_multi_hop_flow():

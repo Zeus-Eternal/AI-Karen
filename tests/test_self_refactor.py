@@ -1,7 +1,6 @@
 import pathlib
 from ai_karen_engine.self_refactor import SelfRefactorEngine
 
-
 class DummyLLM:
     def __init__(self):
         self.prompts = []

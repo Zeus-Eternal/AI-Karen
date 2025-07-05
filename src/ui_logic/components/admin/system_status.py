@@ -5,7 +5,7 @@ Kari System Status Logic
 """
 
 from typing import Dict
-from ui.utils.api import fetch_system_status
+from ui_logic.utils.api import fetch_system_status
 
 def get_system_status() -> Dict:
     return fetch_system_status()

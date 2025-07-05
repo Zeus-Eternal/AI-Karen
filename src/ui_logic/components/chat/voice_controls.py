@@ -5,8 +5,8 @@ Kari Voice Controls Logic
 """
 
 from typing import Dict, Any
-from ui.hooks.rbac import require_roles
-from ui.utils.api import run_stt, run_tts, fetch_voice_logs
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import run_stt, run_tts, fetch_voice_logs
 
 def transcribe_voice(user_ctx: Dict, audio_bytes: bytes, meta: Dict = None) -> str:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin"]):

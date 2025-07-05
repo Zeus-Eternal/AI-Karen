@@ -4,7 +4,8 @@ import sys
 from types import ModuleType
 import pytest
 
-from ai_karen_engine.plugin_router import AccessDenied, PluginRouter
+from ..src.ai_karen_engine.plugin_router import AccessDenied, PluginRouter
+from ..src.core import plugin_router as core_plugin_router
 
 
 def ensure_optional_dependency(name: str):
@@ -27,6 +28,7 @@ def test_invalid_manifest(monkeypatch, tmp_path):
     bad.mkdir()
     (bad / "plugin_manifest.json").write_text("{ invalid json }")
     monkeypatch.setattr("ai_karen_engine.core.plugin_router.PLUGIN_DIR", str(tmp_path))
+  
     for dep in ["pyautogui", "urwid"]:
         ensure_optional_dependency(dep)
     router = PluginRouter()
@@ -106,6 +108,7 @@ def test_manifest_schema_reject(tmp_path, monkeypatch):
     )
     (plugin / "handler.py").write_text("async def run(params):\n    return 'ok'\n")
     monkeypatch.setattr("ai_karen_engine.core.plugin_router.PLUGIN_DIR", str(tmp_path))
+  
     for dep in ["pyautogui", "urwid"]:
         ensure_optional_dependency(dep)
     router = PluginRouter(plugin_dir=str(tmp_path))

@@ -6,8 +6,8 @@ Kari Model Benchmark Panel Logic
 """
 
 from typing import Dict, Any, List
-from ui.hooks.rbac import require_roles
-from ui.utils.api import (
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import (
     fetch_model_benchmarks, 
     run_model_benchmark, 
     fetch_audit_logs

@@ -5,7 +5,7 @@ Kari RBAC Panel Logic
 """
 
 from typing import Dict, List
-from ui.utils.api import (
+from ui_logic.utils.api import (
     fetch_user_roles, update_user_roles, fetch_role_policies, update_role_policies
 )
 

@@ -1,8 +1,8 @@
 """Task Manager UI page stub with RBAC and feature gating."""
 
-from ui.config.feature_flags import get_flag
-from ui.hooks.auth import get_current_user
-from ui.hooks.rbac import check_rbac
+from ui_logic.config.feature_flags import get_flag
+from ui_logic.hooks.auth import get_current_user
+from ui_logic.hooks.rbac import check_rbac
 
 REQUIRED_ROLES = ["user", "dev"]
 FEATURE_FLAG = "enable_workflows"
@@ -26,4 +26,11 @@ def render_page(user_ctx: dict | None = None) -> None:
     if not get_flag(FEATURE_FLAG):
         raise RuntimeError("Task Manager feature is disabled")
     raise NotImplementedError("Task Manager page not implemented")
+
+
+if __name__ == "__main__":
+    try:
+        render_page({})
+    except NotImplementedError:
+        print("Task Manager page stub")
 

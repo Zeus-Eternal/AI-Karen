@@ -1,4 +1,4 @@
-from ai_karen_engine.core.mesh_planner import MeshPlanner
+from ..src.ai_karen_engine.core.mesh_planner import MeshPlanner
 
 
 def test_graph_crud():

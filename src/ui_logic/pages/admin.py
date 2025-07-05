@@ -4,11 +4,12 @@ Kari Admin Page
 - Only layout and context passing
 """
 
-from components.admin.diagnostics import render_diagnostics
-from components.admin.org_admin import render_org_admin
-from components.admin.audit_log import render_audit_log
-from components.admin.rbac_panel import render_rbac_panel
-from components.admin.system_status import render_system_status
+from ui_logic.components.admin.audit_log import render_audit_log
+from ui_logic.components.admin.diagnostics import render_diagnostics
+from ui_logic.components.admin.org_admin import render_org_admin
+from ui_logic.components.admin.rbac_panel import render_rbac_panel
+from ui_logic.components.admin.system_status import render_system_status
+
 
 def admin_page(user_ctx=None):
     # Top: System Status + Diagnostics

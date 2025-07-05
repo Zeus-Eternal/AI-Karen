@@ -1,8 +1,8 @@
 """Automation dashboard stub with role and feature gating."""
 
-from ui.config.feature_flags import get_flag
-from ui.hooks.auth import get_current_user
-from ui.hooks.rbac import check_rbac
+from ui_logic.config.feature_flags import get_flag
+from ui_logic.hooks.auth import get_current_user
+from ui_logic.hooks.rbac import check_rbac
 
 REQUIRED_ROLES = ["user", "admin"]
 FEATURE_FLAG = "enable_workflows"

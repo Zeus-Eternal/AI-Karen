@@ -3,10 +3,11 @@ Kari Memory Page
 - Orchestrates: knowledge graph, session explorer, profile, analytics
 """
 
-from components.memory.knowledge_graph import render_knowledge_graph
-from components.memory.session_explorer import render_session_explorer
-from components.memory.profile_panel import render_profile_panel
-from components.memory.memory_analytics import render_memory_analytics
+from ui_logic.components.memory.knowledge_graph import render_knowledge_graph
+from ui_logic.components.memory.memory_analytics import render_memory_analytics
+from ui_logic.components.memory.profile_panel import render_profile_panel
+from ui_logic.components.memory.session_explorer import render_session_explorer
+
 
 def memory_page(user_ctx=None):
     render_session_explorer(user_ctx=user_ctx)
