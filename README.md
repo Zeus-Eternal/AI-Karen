@@ -173,6 +173,16 @@ npm install -g pnpm
 cargo install tauri-cli
 ```
 
+Before launching any Python entrypoints, make sure the packages under `src/`
+are on your `PYTHONPATH`. The easiest way is to install the repo in editable
+mode:
+
+```bash
+pip install -e .
+```
+
+Alternatively, set `PYTHONPATH=src` in your environment.
+
 ### 2. Start FastAPI
 
 ```bash
