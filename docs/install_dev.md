@@ -14,8 +14,12 @@ This guide walks through setting up Kari for local development and troubleshooti
    python3 -m venv .env
    source .env/bin/activate
    pip install -r requirements.txt
+   # install Kari packages in editable mode
+   pip install -e .
    python scripts/install_models.py
    ```
+
+> The API server and desktop UI both rely on the packages under `src/`. Running `pip install -e .` (or `scripts/install.sh`) ensures they are available before launching.
 2. **Remove any local `fastapi` directory** which would shadow the installed package:
    ```bash
    mv fastapi fastapi_local_backup  # or delete it

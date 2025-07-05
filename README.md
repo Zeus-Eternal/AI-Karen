@@ -115,7 +115,7 @@ For a detailed setup and troubleshooting guide, see [docs/install_dev.md](docs/i
 
 ```bash
 # 1 · Install Python deps
-./scripts/install.sh
+./scripts/install.sh  # installs requirements and runs `pip install -e .`
 # Download base models
 python scripts/install_models.py
 
@@ -134,6 +134,8 @@ cd ui_launchers/desktop_ui && npm install
 # 5 · Run desktop Control Room (dev mode)
 cd ui_launchers/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 ```
+
+> **Note** The API server and Control Room require the packages under `src/` to be installed. The `install.sh` script runs `pip install -e .` for you.
 
 # Optional: run everything with one command
 ./scripts/bootstrap_ui.sh
