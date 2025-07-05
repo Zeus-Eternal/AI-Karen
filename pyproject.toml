@@ -14,3 +14,30 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "ui" = { msg = "src/ui must not import from the /ui package" }
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-karen"
+version = "0.1.0"
+description = "Kari AI modular engine"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = [
+    "ai_karen_engine",
+    "ai_karen_engine.*",
+    "ui_logic",
+    "ui_logic.*",
+    "config",
+    "config.*",
+    "event_bus",
+    "event_bus.*",
+]

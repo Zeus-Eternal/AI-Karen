@@ -115,7 +115,7 @@ For a detailed setup and troubleshooting guide, see [docs/install_dev.md](docs/i
 
 ```bash
 # 1 · Install Python deps
-./scripts/install.sh
+./scripts/install.sh  # runs `pip install -r requirements.txt` and `pip install -e .`
 # Download base models
 python scripts/install_models.py
 
@@ -172,6 +172,9 @@ cargo install tauri-cli
 ```
 
 ### 2. Start FastAPI
+
+Make sure the project has been installed in editable mode (`pip install -e .` or
+`./scripts/install.sh`) before launching the server.
 
 ```bash
 uvicorn main:app --reload
