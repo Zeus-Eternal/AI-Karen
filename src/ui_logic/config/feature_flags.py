@@ -79,8 +79,16 @@ def register_plugin_flag(flag: str, default: bool = False):
     if flag not in FEATURE_FLAGS:
         FEATURE_FLAGS[flag] = default
 
-# For debugging: show all active feature flags at startup
-if __name__ == "__main__":
-    print("Kari Feature Flags (Active):")
-    for k, v in all_flags().items():
-        print(f"{k}: {v}")
+def is_feature_enabled(key: str, custom_path: str | None = None) -> bool:
+    """Return ``True`` if the feature flag ``key`` is enabled."""
+    return bool(get_flag(key, custom_path))
+
+# === Public API ===
+__all__ = [
+    "get_flag",
+    "set_flag",
+    "list_flags",
+    "load_feature_flags",
+    "is_feature_enabled",
+    "DEFAULT_FLAGS",
+]
