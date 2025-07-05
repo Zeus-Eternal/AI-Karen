@@ -7,7 +7,6 @@ import pytest
 from ai_karen_engine.plugin_router import AccessDenied, PluginRouter
 from ai_karen_engine import plugin_router as core_plugin_router
 
-
 def ensure_optional_dependency(name: str):
     if name not in sys.modules:
         sys.modules[name] = ModuleType(name)
