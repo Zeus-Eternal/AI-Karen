@@ -1,6 +1,6 @@
 import os
 
-from src.self_refactor import SREScheduler, SelfRefactorEngine
+from ..src.self_refactor import SREScheduler, SelfRefactorEngine
 
 
 class DummyEngine(SelfRefactorEngine):
