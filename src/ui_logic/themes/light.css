@@ -1,0 +1,75 @@
+/*
+Kari UI - Light Theme
+Simple bright default look.
+*/
+
+:root {
+    --background: #ffffff;
+    --surface: #f5f5f5;
+    --surface-alt: #fafafa;
+    --text: #222222;
+    --text-secondary: #555555;
+    --accent: #1e88e5;
+    --accent-hover: #1565c0;
+    --border: #dddddd;
+    --shadow: 0 2px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
+    --radius: 12px;
+    --font-main: 'Inter', 'Segoe UI', Arial, sans-serif;
+    --code-bg: #f4f4f4;
+    --success: #28a745;
+    --error: #dc3545;
+    --warning: #ffc107;
+}
+
+body, .stApp {
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-main);
+}
+
+.stApp {
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+h1, h2, h3, h4 {
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+a, .stLink {
+    color: var(--accent);
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+a:hover, .stLink:hover {
+    color: var(--accent-hover);
+}
+
+.stButton>button, .stSidebar .stButton>button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    padding: 0.5em 1em;
+    transition: background 0.2s;
+}
+.stButton>button:hover, .stSidebar .stButton>button:hover {
+    background: var(--accent-hover);
+}
+
+input, textarea, select, .stTextInput>div>input {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.4em 0.8em;
+    color: var(--text);
+}
+
+pre, code, .stCodeBlock {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 0.15em 0.4em;
+}
