@@ -72,7 +72,7 @@ guardrails/    # YAML validators
 capsules/      # domain-specific micro agents
 src/integrations/  # helper utilities (RPA, automation)
 src/plugins/       # drop-in plugins (manifest + handler)
-ui/            # Frontend UIs (desktop, mobile, admin)
+ui_launchers/  # Frontend UIs (desktop, mobile, admin)
 src/fastapi_stub/  # lightweight stubs for tests
 src/pydantic_stub/ # lightweight stubs for tests
 tests/         # pytest suite
@@ -93,8 +93,8 @@ guardrails/    # YAML validators & rule engine
 capsules/      # domain-specific agents (DevOps, Finance, …)
 src/integrations/  # NANDA client, RPA helpers, external bridges
 src/plugins/       # drop-in plugins (manifest + handler + ui)
-ui/desktop_ui/ # Tauri Control Room (Rust + React)
-ui/mobile_ui/config/config_ui.py # Streamlit UI settings (ConfigUI class)
+ui_launchers/desktop_ui/ # Tauri Control Room (Rust + React)
+ui_launchers/streamlit_ui/config/config_ui.py # Streamlit UI settings (ConfigUI class)
 src/fastapi_stub/  # API entrypoints, chat & metrics
 src/pydantic_stub/ # DTOs & schemas
 tests/         # pytest suite
@@ -123,16 +123,16 @@ python scripts/install_models.py
 cargo install tauri-cli
 
 # 3 · Install Control Room packages
-cd ui/desktop_ui && npm install
+cd ui_launchers/desktop_ui && npm install
 
-# The Tauri configuration lives in `ui/desktop_ui/src-tauri/tauri.config.json`.
+# The Tauri configuration lives in `ui_launchers/desktop_ui/src-tauri/tauri.config.json`.
 # Make sure this file exists before running desktop commands.
 
 # 4 · Launch backend API + dependencies
 ./scripts/start.sh
 
 # 5 · Run desktop Control Room (dev mode)
-cd ui/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
+cd ui_launchers/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 ```
 
 # Optional: run everything with one command
@@ -147,7 +147,7 @@ cd ui/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 
 Build signed desktop binaries:
 ```bash
-cd ui/desktop_ui
+cd ui_launchers/desktop_ui
 tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.config.json
 
 ```
@@ -174,7 +174,6 @@ cargo install tauri-cli
 ### 2. Start FastAPI
 
 ```bash
-cd backend
 uvicorn main:app --reload
 ```
 
@@ -201,7 +200,7 @@ package. The server now exits with an error if such a folder exists.
 ### 3. Start Frontend (optional)
 
 ```bash
-cd ui/desktop_ui
+cd ui_launchers/desktop_ui
 pnpm install
 pnpm run dev
 ```
@@ -209,12 +208,12 @@ pnpm run dev
 ### 4. Start Tauri Desktop App
 
 ```bash
-cd ui/desktop_ui
+cd ui_launchers/desktop_ui
 pnpm install
 npx tauri dev
 ```
 
-📦 Ensure `tauri.config.json` is under `ui/desktop_ui/src-tauri/`
+📦 Ensure `tauri.config.json` is under `ui_launchers/desktop_ui/src-tauri/`
 
 ### API Usage
 
@@ -228,7 +227,7 @@ commands.
 
  
 # Launch Control Room
-cd ui/desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/tauri.config.json
+cd ui_launchers/desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/tauri.config.json
 
 | Task               | Command                                |
 | ------------------ | -------------------------------------- |
@@ -245,8 +244,8 @@ pre-commit install
 ```
 Ruff also enforces the UI boundaries described in `AGENTS.md`:
 
-* relative imports are forbidden inside `ui/`
-* modules under `src/ui/` may not import from the top-level `ui` package
+* relative imports are forbidden inside `ui_launchers/`
+* modules under `src/ui_logic/` may not import from the top-level `ui_launchers` package
 
 See `pyproject.toml` for the full configuration.
 ### Advanced / Unrestricted Mode
@@ -293,7 +292,7 @@ Drop the folder—Kari discovers it, registers routes, and injects UI automatica
 * **Memory Matrix** – inspect vector hits & decay curves
 * **Logs & Trace** – Prometheus charts, OT spans, SRE patch history
 
-Updates are typically released once a month. See `ui/desktop_ui/README.md` for the latest cycle notes.
+Updates are typically released once a month. See `ui_launchers/desktop_ui/README.md` for the latest cycle notes.
 
 Runs as a native Tauri app; all traffic stays on `localhost`.
 
@@ -398,5 +397,5 @@ The Hydra-Ops capsule design is further detailed in `docs/mesh_arch.md`.
 * Example plugins: hello-world, desktop agent, HF LLM, OpenAI LLM
 * Tests: `pytest -q`
 * More in `DEV_SHEET.md` — happy hacking!
-* See `ui/desktop_ui/README.md` for Control Room navigation tips.
+* See `ui_launchers/desktop_ui/README.md` for Control Room navigation tips.
  

@@ -16,10 +16,10 @@ uvicorn main:app --reload --port 8000
 xdg-open http://localhost:8000/docs
 
 # run the Streamlit UI
-streamlit run ui/mobile_ui/app.py
+streamlit run ui_launchers/streamlit_ui/app.py
 ```
 The Streamlit UI reads environment variables via
-`ui/mobile_ui/config/config_ui.py`.
+`ui_launchers/streamlit_ui/config/config_ui.py`.
 If you previously imported `config/config_ui.py`, switch to this new path.
 
 ## Build Mode (Tauri App)
@@ -31,7 +31,7 @@ Use this path to compile the full Tauri desktop application.
 source "$HOME/.cargo/env"
 cargo install tauri-cli
 
-# Both `tauri dev` and `tauri build` use `desktop_ui/src-tauri/tauri.config.json`
+# Both `tauri dev` and `tauri build` use `ui_launchers/desktop_ui/src-tauri/tauri.config.json`
 # as the configuration file.
 
 # run in development mode with hot reload
@@ -46,7 +46,7 @@ tauri build
 | Mode          | Command                             | Description                         |
 | ------------- | ----------------------------------- | ----------------------------------- |
 | Dev (API)     | `uvicorn main:app --reload`         | Hot reload the backend              |
-| Dev (UI)      | `streamlit run ui/mobile_ui/app.py` | Streamlit UI for quick tests        |
+| Dev (UI)      | `streamlit run ui_launchers/streamlit_ui/app.py` | Streamlit UI for quick tests        |
 | Tauri Dev     | `tauri dev`                         | Desktop shell with live reload      |
 | Build         | `tauri build`                       | Create installable binaries         |
 

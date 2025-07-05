@@ -33,4 +33,4 @@ This document outlines the high level design goals for the Kari user interface. 
 - Transparency log of what Kari has stored with delete/export options.
 - Consent flows for personal profiling and EchoCore learning.
 
-This blueprint acts as a guideline for building a modular, user focused interface. Features should remain configurable through feature flags and developed as independent components under the `ui/` directory.
+This blueprint acts as a guideline for building a modular, user focused interface. Features should remain configurable through feature flags and developed as independent components under the `ui_launchers/` directory.
