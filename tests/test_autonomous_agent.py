@@ -1,4 +1,4 @@
-from ..src.ai_karen_engine.core.autonomous_agent import AutonomousAgent
+from ai_karen_engine.core.autonomous_agent import AutonomousAgent
 
 
 def test_autonomous_agent(monkeypatch):

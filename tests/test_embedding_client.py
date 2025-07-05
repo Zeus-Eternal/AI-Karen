@@ -1,4 +1,4 @@
-from ..src.ai_karen_engine.clients.embedding.embedding_client import get_embedding
+from ai_karen_engine.clients.embedding.embedding_client import get_embedding
 
 
 def test_get_embedding_byte_and_default():

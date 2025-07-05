@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from ..src.ai_karen_engine.core import model_manager
-from ..src.ai_karen_engine.core.model_manager import ModelManager, LicenseError
+from ai_karen_engine.core import model_manager
+from ai_karen_engine.core.model_manager import ModelManager, LicenseError
 
 
 def test_tenant_create_and_delete(tmp_path: Path, monkeypatch) -> None:
