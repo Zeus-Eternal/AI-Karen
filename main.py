@@ -2,9 +2,9 @@ from typing import Any, Dict, List
 from pathlib import Path
 import sys
 import os
-from ai_karen_engine.core.cortex.dispatch import CortexDispatcher
-from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
-from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
+from src.ai_karen_engine.core.cortex.dispatch import CortexDispatcher
+from src.ai_karen_engine.core.embedding_manager import _METRICS as METRICS
+from src.ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.stderr.write(
         "Error: A local 'fastapi' directory exists. It shadows the installed FastAPI package.\n"
@@ -16,7 +16,7 @@ try:
     from fastapi.responses import JSONResponse, Response
 except Exception:  # fastapi_stub compatibility
     from fastapi.responses import JSONResponse
-    from ai_karen_engine.fastapi_stub import Response
+    from src.ai_karen_engine.fastapi_stub import Response
 try:
     from prometheus_client import (
         Counter,
@@ -48,12 +48,12 @@ except Exception:  # pragma: no cover - fallback when package is missing
 
     CONTENT_TYPE_LATEST = "text/plain"
     Counter = Histogram = _DummyMetric
-from ai_karen_engine.self_refactor import SelfRefactorEngine, SREScheduler
+from src.ai_karen_engine.self_refactor import SelfRefactorEngine, SREScheduler
 from pydantic import BaseModel
 import asyncio
 import logging
-from integrations.llm_registry import registry as llm_registry
-from ai_karen_engine.integrations.model_discovery import sync_registry
+from src.integrations.llm_registry import registry as llm_registry
+from src.ai_karen_engine.integrations.model_discovery import sync_registry
 
 app = FastAPI()
 
@@ -297,7 +297,7 @@ def select_model(req: ModelSelectRequest) -> ModelListResponse:
 @app.get("/self_refactor/logs")
 def self_refactor_logs(full: bool = False):
     """Return SelfRefactor logs. Sanitized unless ADVANCED_MODE allows full."""
-    from ai_karen_engine.self_refactor import log_utils
+    from src.ai_karen_engine.self_refactor import log_utils
 
     logs = log_utils.load_logs(full=full)
     return {"logs": logs}
