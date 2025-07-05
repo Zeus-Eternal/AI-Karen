@@ -7,12 +7,14 @@ Kari UI RBAC Enforcement
 
 import uuid
 import time
-import logging
 from typing import List, Dict, Any, Optional
+from importlib import import_module
 
-from ui.hooks.auth import get_current_user
+
+get_current_user = import_module("ui.hooks.auth").get_current_user  # type: ignore
 
 RBAC_LOG_PATH = "/secure/logs/kari/rbac_audit.log"
+
 
 def rbac_audit(event: Dict[str, Any]):
     """Log RBAC checks for full forensic trace."""
@@ -24,25 +26,28 @@ def rbac_audit(event: Dict[str, Any]):
     except Exception:
         pass
 
+
 def check_rbac(user_ctx: Optional[Dict[str, Any]], required_roles: List[str]) -> bool:
     """
     Return True if user_ctx['roles'] overlaps with required_roles (or wildcard '*').
     Logs all checks for audit trail.
     """
-    user = user_ctx or get_current_user()
+    user = user_ctx or get_current_user() or {}
     user_roles = set(user.get("roles", []))
     required_roles_set = set(required_roles)
-    allowed = (
-        "*" in required_roles_set
-        or bool(user_roles.intersection(required_roles_set))
+    allowed = "*" in required_roles_set or bool(
+        user_roles.intersection(required_roles_set)
     )
-    rbac_audit({
-        "user": user.get("name", "unknown"),
-        "user_roles": list(user_roles),
-        "required_roles": list(required_roles_set),
-        "allowed": allowed,
-    })
+    rbac_audit(
+        {
+            "user": user.get("name", "unknown"),
+            "user_roles": list(user_roles),
+            "required_roles": list(required_roles_set),
+            "allowed": allowed,
+        }
+    )
     return allowed
+
 
 def require_role(required_roles: List[str]):
     """
@@ -51,14 +56,18 @@ def require_role(required_roles: List[str]):
         @require_role(["admin"])
         def panel(): ...
     """
+
     def decorator(fn):
         def wrapped(*args, **kwargs):
-            user = get_current_user()
+            user = get_current_user() or {}
             if not check_rbac(user, required_roles):
                 raise PermissionError(f"RBAC: Access denied for roles {required_roles}")
             return fn(*args, **kwargs)
+
         return wrapped
+
     return decorator
+
 
 __all__ = [
     "check_rbac",
