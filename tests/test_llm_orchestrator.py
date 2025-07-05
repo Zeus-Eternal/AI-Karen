@@ -1,4 +1,4 @@
-from ..src.ai_karen_engine import SLMPool, LLMOrchestrator
+from ai_karen_engine import SLMPool, LLMOrchestrator
 from integrations.llm_utils import LLMUtils
 
 

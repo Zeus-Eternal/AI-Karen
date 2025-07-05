@@ -4,8 +4,8 @@ import sys
 from types import ModuleType
 import pytest
 
-from ..src.ai_karen_engine.plugin_router import AccessDenied, PluginRouter
-from ..src.core import plugin_router as core_plugin_router
+from ai_karen_engine.plugin_router import AccessDenied, PluginRouter
+from ai_karen_engine.core import plugin_router as core_plugin_router
 
 
 def ensure_optional_dependency(name: str):
