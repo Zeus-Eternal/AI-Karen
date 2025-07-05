@@ -29,6 +29,7 @@ This guide walks through setting up Kari for local development and troubleshooti
    pip show fastapi
    ```
 4. **Start the API server**
+   Make sure the project has been installed in editable mode with `pip install -e .` (or by running `scripts/install.sh`) before starting.
    ```bash
    python scripts/server_cli.py start --reload
    ```
