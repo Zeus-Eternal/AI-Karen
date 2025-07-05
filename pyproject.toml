@@ -1,6 +1,21 @@
 [tool.ruff]
 line-length = 100
 
+[project]
+name = "ai-karen"
+version = "0.1.0"
+description = "Kari AI modular engine"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Kari AI Team" }]
+license = { file = "LICENSE" }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.ruff.lint]
 extend-select = ["TID252", "TID251"]
 
