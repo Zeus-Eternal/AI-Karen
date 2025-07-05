@@ -5,8 +5,8 @@ Kari Chat Input Logic
 """
 
 from typing import Dict, Any
-from ui.hooks.rbac import require_roles
-from ui.utils.api import submit_message, fetch_input_audit
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import submit_message, fetch_input_audit
 
 def handle_chat_input(user_ctx: Dict, message: str, attachments: list = None, meta: Dict = None) -> str:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin"]):

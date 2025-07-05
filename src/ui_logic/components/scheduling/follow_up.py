@@ -4,8 +4,8 @@ Kari Follow-Up Engine Logic
 """
 
 from typing import Dict, List
-from ui.hooks.rbac import require_roles
-from ui.utils.api import (
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import (
     fetch_follow_ups,
     create_follow_up,
     remove_follow_up,

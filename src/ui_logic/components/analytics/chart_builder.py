@@ -6,7 +6,7 @@ Kari Chart Builder Logic
 
 import pandas as pd
 from typing import Dict, Any
-from ui.utils.chart_utils import create_chart, get_supported_chart_types
+from ui_logic.utils.chart_utils import create_chart, get_supported_chart_types
 
 def build_chart(data: pd.DataFrame, chart_type: str, config: Dict[str, Any]) -> Any:
     """
