@@ -1,3 +1,5 @@
-from . import health_checker
+"""Service adapters for Kari AI."""
 
-__all__ = ["health_checker"]
+from services import deepseek_client, ollama_inprocess
+
+__all__ = ["deepseek_client", "ollama_inprocess"]
