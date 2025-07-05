@@ -27,7 +27,8 @@ def test_invalid_manifest(monkeypatch, tmp_path):
     bad = tmp_path / "bad_plugin"
     bad.mkdir()
     (bad / "plugin_manifest.json").write_text("{ invalid json }")
-    monkeypatch.setattr(core_plugin_router, "PLUGIN_DIR", str(tmp_path))
+    monkeypatch.setattr("ai_karen_engine.core.plugin_router.PLUGIN_DIR", str(tmp_path))
+  
     for dep in ["pyautogui", "urwid"]:
         ensure_optional_dependency(dep)
     router = PluginRouter()
@@ -79,7 +80,8 @@ def test_plugin_ui_gating(tmp_path, monkeypatch):
     )
     (plugin / "handler.py").write_text("async def run(params):\n    return 'ok'\n")
     (plugin / "ui.py").write_text("def render():\n    return '<div>UI</div>'\n")
-    monkeypatch.setattr(core_plugin_router, "PLUGIN_DIR", str(tmp_path))
+    monkeypatch.setattr("ai_karen_engine.core.plugin_router.PLUGIN_DIR", str(tmp_path))
+    sys.path.insert(0, str(tmp_path))
     router = PluginRouter(plugin_dir=str(tmp_path))
     record = router.get_plugin("ui_intent")
     assert record is not None
@@ -105,7 +107,8 @@ def test_manifest_schema_reject(tmp_path, monkeypatch):
         )
     )
     (plugin / "handler.py").write_text("async def run(params):\n    return 'ok'\n")
-    monkeypatch.setattr(core_plugin_router, "PLUGIN_DIR", str(tmp_path))
+    monkeypatch.setattr("ai_karen_engine.core.plugin_router.PLUGIN_DIR", str(tmp_path))
+  
     for dep in ["pyautogui", "urwid"]:
         ensure_optional_dependency(dep)
     router = PluginRouter(plugin_dir=str(tmp_path))

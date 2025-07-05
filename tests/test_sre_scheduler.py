@@ -1,7 +1,5 @@
 import os
-
-from ..src.self_refactor import SREScheduler, SelfRefactorEngine
-
+from ai_karen_engine.self_refactor import SREScheduler, SelfRefactorEngine
 
 class DummyEngine(SelfRefactorEngine):
     def __init__(self):

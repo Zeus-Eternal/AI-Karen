@@ -1,6 +1,5 @@
 import pathlib
-from ..src.self_refactor import SelfRefactorEngine
-
+from ai_karen_engine.self_refactor import SelfRefactorEngine
 
 class DummyLLM:
     def __init__(self):

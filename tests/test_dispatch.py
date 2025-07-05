@@ -1,6 +1,5 @@
 import asyncio
-from ..src.core.cortex.dispatch import CortexDispatcher
-
+from ai_karen_engine.core.cortex.dispatch import CortexDispatcher
 
 def test_dispatch_greet():
     dispatcher = CortexDispatcher()

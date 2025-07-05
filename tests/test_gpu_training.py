@@ -1,7 +1,6 @@
 import pytest
 import importlib
-
-from ..src.core import gpu_training
+from ai_karen_engine.core import gpu_training
 
 
 def test_gpu_training_requires_torch():
