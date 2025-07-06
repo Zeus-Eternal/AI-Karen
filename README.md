@@ -71,7 +71,7 @@ event_bus/     # in-memory event streams
 guardrails/    # YAML validators
 capsules/      # domain-specific micro agents
 src/integrations/  # helper utilities (RPA, automation)
-src/plugins/       # drop-in plugins (manifest + handler)
+ src/ai_karen_engine/plugins/       # drop-in plugins (manifest + handler)
 ui_launchers/  # Frontend UIs (desktop, mobile, admin)
 src/fastapi_stub/  # lightweight stubs for tests
 src/pydantic_stub/ # lightweight stubs for tests
@@ -92,7 +92,7 @@ event_bus/     # Redis-Streams helpers
 guardrails/    # YAML validators & rule engine
 capsules/      # domain-specific agents (DevOps, Finance, …)
 src/integrations/  # NANDA client, RPA helpers, external bridges
-src/plugins/       # drop-in plugins (manifest + handler + ui)
+ src/ai_karen_engine/plugins/       # drop-in plugins (manifest + handler + ui)
 ui_launchers/desktop_ui/ # Tauri Control Room (Rust + React)
 ui_launchers/streamlit_ui/config/config_ui.py # Streamlit UI settings (ConfigUI class)
 src/fastapi_stub/  # API entrypoints, chat & metrics
@@ -273,7 +273,7 @@ Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs m
 
 ## 6 · Writing a Plugin
 
-1. `mkdir plugins/my_plugin`
+1. `mkdir src/ai_karen_engine/plugins/my_plugin`
 2. Add **manifest.json**
 
 ```json

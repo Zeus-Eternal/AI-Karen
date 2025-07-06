@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "required": ["plugin_api_version", "intent", "enable_external_workflow", "required_roles", "trusted_ui"],
+  "properties": {
+    "plugin_api_version": {"type": "string"},
+    "intent": {"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
+    "enable_external_workflow": {"type": "boolean"},
+    "required_roles": {"type": "array", "items": {"type": "string"}},
+    "trusted_ui": {"type": "boolean"},
+    "workflow_slug": {"type": "string"}
+  }
+}

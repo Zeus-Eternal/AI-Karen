@@ -54,7 +54,7 @@ Plugins extend Kari with new intents, memory hooks, and optional UI.
 
 ### How to use:
 
-1. Drop your plugin in `plugins/<name>/` with `plugin_manifest.json` + `handler.py`.
+1. Drop your plugin in `src/ai_karen_engine/plugins/<name>/` with `plugin_manifest.json` + `handler.py`.
 2. Reload all plugins:
 
 ```bash

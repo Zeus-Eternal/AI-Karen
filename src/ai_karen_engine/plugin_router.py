@@ -10,13 +10,61 @@ import json
 import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Callable, Optional
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+
+class AccessDenied(Exception):
+    """Raised when a user lacks required roles for a plugin."""
+    pass
+try:
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+except Exception:  # pragma: no cover - optional dependency
+    class FileSystemLoader:  # type: ignore
+        def __init__(self, *a, **k):
+            pass
+
+    def select_autoescape(*a, **k):
+        return False
+
+    class Environment:  # type: ignore
+        def __init__(self, *a, **k):
+            pass
+
+        def from_string(self, text):
+            class T:
+                def render(self, ctx):
+                    return text.format(**ctx)
+
+            return T()
+
+PLUGIN_SCHEMA_PATH = Path(__file__).parents[1] / "config" / "plugin_schema.json"
 
 PLUGIN_ROOT = Path(__file__).parent / "plugins"
 PLUGIN_META = "__meta"
 PLUGIN_MANIFEST = "plugin_manifest.json"
 PROMPT_FILE = "prompt.txt"
 HANDLER_FILE = "handler.py"
+
+
+def load_schema() -> Dict[str, Any]:
+    try:
+        with open(PLUGIN_SCHEMA_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def validate_manifest(manifest: Dict[str, Any], schema: Dict[str, Any]) -> bool:
+    try:
+        import jsonschema  # type: ignore
+
+        jsonschema.validate(instance=manifest, schema=schema)
+        return True
+    except Exception:
+        required = schema.get(
+            "required",
+            ["plugin_api_version", "intent", "enable_external_workflow", "required_roles", "trusted_ui"],
+        )
+        return all(k in manifest for k in required)
 
 # --- Helper: Load Plugin Manifest ---
 def load_manifest(plugin_dir: Path) -> Dict[str, Any]:
@@ -42,65 +90,90 @@ def load_handler(plugin_dir: Path) -> Callable:
         raise FileNotFoundError(f"Missing handler.py: {handler_path}")
     spec = importlib.util.spec_from_file_location(
         f"plugin_{plugin_dir.name}_handler",
-        str(handler_path)
+        str(handler_path),
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    if not hasattr(module, "handle"):
-        raise AttributeError(f"Plugin {plugin_dir.name} handler.py must export a 'handle(context)' function")
-    return module.handle
+    if not hasattr(module, "run"):
+        raise AttributeError(
+            f"Plugin {plugin_dir.name} handler.py must export a 'run(params)' function"
+        )
+    return module.run
 
 # --- Jinja2 Environment for Prompt Rendering ---
-jinja_env = Environment(
-    loader=FileSystemLoader(str(PLUGIN_ROOT)),
-    autoescape=select_autoescape(['txt'])
-)
+jinja_env = Environment(loader=FileSystemLoader(str(PLUGIN_ROOT)), autoescape=select_autoescape(['txt']))
 
 # --- PluginRouter Class ---
+class PluginRecord:
+    def __init__(self, manifest: Dict[str, Any], handler: Callable, ui: Optional[Callable], dir_path: Path):
+        self.manifest = manifest
+        self.handler = handler
+        self.ui = ui
+        self.dir = dir_path
+
+
 class PluginRouter:
     def __init__(self, plugin_root: Path = PLUGIN_ROOT):
-        self.plugin_root = plugin_root
-        self.plugins = self._discover_plugins()
+        self.plugin_root = Path(plugin_root)
+        self.schema = load_schema()
+        self.intent_map: Dict[str, PluginRecord] = {}
+        self.reload()
 
-    def _discover_plugins(self) -> Dict[str, Dict[str, Any]]:
-        plugins = {}
+    def _discover_plugins(self) -> Dict[str, PluginRecord]:
+        plugins: Dict[str, PluginRecord] = {}
         for p in self.plugin_root.iterdir():
             if p.is_dir() and (p / PLUGIN_MANIFEST).exists():
                 try:
                     manifest = load_manifest(p)
-                    plugins[manifest["name"]] = {
-                        "dir": p,
-                        "manifest": manifest,
-                        "prompt": load_prompt(p),
-                        "handler": load_handler(p),
-                    }
+                    if not validate_manifest(manifest, self.schema):
+                        raise ValueError("manifest schema invalid")
+                    handler = load_handler(p)
+                    prompt = load_prompt(p)
+                    ui = None
+                    ui_path = p / "ui.py"
+                    if ui_path.exists() and (os.getenv("ADVANCED_MODE") or manifest.get("trusted_ui")):
+                        import importlib.util
+
+                        spec = importlib.util.spec_from_file_location(f"plugin_{p.name}_ui", str(ui_path))
+                        ui_mod = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(ui_mod)
+                        ui = getattr(ui_mod, "render", None)
+
+                    intents = manifest.get("intent")
+                    if isinstance(intents, str):
+                        intents = [intents]
+                    for intent in intents or []:
+                        plugins[intent] = PluginRecord(manifest, handler, ui, p)
                 except Exception as e:
                     print(f"Plugin discovery failed in {p}: {e}")
         return plugins
 
-    def list_plugins(self) -> List[str]:
-        return list(self.plugins.keys())
+    def reload(self) -> None:
+        global jinja_env
+        jinja_env.loader = FileSystemLoader(str(self.plugin_root))
+        self.intent_map = self._discover_plugins()
 
-    def route(self, plugin_name: str, context: Dict[str, Any]) -> Any:
-        if plugin_name not in self.plugins:
-            raise RuntimeError(f"Plugin '{plugin_name}' not found or failed validation.")
-        plugin = self.plugins[plugin_name]
+    def list_intents(self) -> List[str]:
+        return list(self.intent_map.keys())
 
-        # Phase 1: Render prompt with context
-        prompt_template = jinja_env.from_string(plugin["prompt"])
-        rendered_prompt = prompt_template.render(context)
+    def get_plugin(self, intent: str) -> Optional[PluginRecord]:
+        return self.intent_map.get(intent)
 
-        # Phase 2: Execute handler in isolated scope (sandboxed in future phases)
-        try:
-            result = plugin["handler"]({"prompt": rendered_prompt, **context})
-            return result
-        except Exception as ex:
-            traceback_str = traceback.format_exc()
-            print(f"Error executing plugin '{plugin_name}': {ex}\n{traceback_str}")
-            return {
-                "error": str(ex),
-                "traceback": traceback_str,
-            }
+    def get_handler(self, intent: str) -> Optional[Callable]:
+        rec = self.get_plugin(intent)
+        return rec.handler if rec else None
+
+    async def dispatch(self, intent: str, params: Dict[str, Any], roles: Optional[List[str]] = None) -> Any:
+        rec = self.get_plugin(intent)
+        if not rec:
+            raise RuntimeError(f"Plugin '{intent}' not found or failed validation.")
+        allowed = rec.manifest.get("required_roles", [])
+        if roles is not None and not set(roles).intersection(allowed):
+            raise AccessDenied(intent)
+
+        prompt_template = jinja_env.from_string(rec.manifest.get("prompt", "{{prompt}}"))
+        rendered_prompt = prompt_template.render(params)
+        return await rec.handler({"prompt": rendered_prompt, **params})
 
 # --- Lazy Accessor for Singleton Instance ---
 _plugin_router: Optional[PluginRouter] = None
@@ -113,5 +186,5 @@ def get_plugin_router() -> PluginRouter:
         _plugin_router = PluginRouter()
     return _plugin_router
 
-__all__ = ["PluginRouter", "get_plugin_router"]
+__all__ = ["PluginRouter", "get_plugin_router", "AccessDenied", "PluginRecord"]
 

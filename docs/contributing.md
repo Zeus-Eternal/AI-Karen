@@ -18,7 +18,7 @@ pre-commit install  # sets up git hooks from .pre-commit-config.yaml
 
 ## Plugin Development
 
-1. Create a folder under `plugins/` with `plugin_manifest.json` and `handler.py`.
+1. Create a folder under `src/ai_karen_engine/plugins/` with `plugin_manifest.json` and `handler.py`.
 2. Optionally add `ui.py` if your plugin provides a Control Room widget.
 3. Reload plugins via `POST /plugins/reload` or the Plugin Manager page.
 
