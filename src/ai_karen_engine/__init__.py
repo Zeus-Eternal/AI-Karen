@@ -26,6 +26,12 @@ def __getattr__(name):
     if name == "SpaCyClient":
         from ai_karen_engine.clients.nlp.spacy_client import SpaCyClient as _SC
         return _SC
+    if name == "PluginRouter":
+        from ai_karen_engine.plugin_router import PluginRouter as _PR
+        return _PR
+    if name == "AccessDenied":
+        from ai_karen_engine.plugin_router import AccessDenied as _AD
+        return _AD
     raise AttributeError(name)
 
 __all__ = [
