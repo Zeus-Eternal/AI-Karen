@@ -33,7 +33,7 @@ try:
         flush_short_term,
         flush_long_term
     )
-    from config.config_manager import load_config
+    from ai_karen_engine.config.config_manager import load_config
     HAS_LOCAL = True
 except ImportError:
     HAS_LOCAL = False

@@ -15,7 +15,7 @@ Plugins live under the `src/ai_karen_engine/plugins/` folder and must contain at
 | `workflow_slug` | string | Optional slug passed to the workflow engine. |
 | `trusted_ui` | bool | If `true`, the Control Room will render `ui.py` without requiring `ADVANCED_MODE`. |
 
-The manifest is validated against `config/plugin_schema.json` when `PluginRouter.load_plugins()` scans the directory. Plugins missing required fields are skipped.
+The manifest is validated against `ai_karen_engine/config/plugin_schema.json` when `PluginRouter.load_plugins()` scans the directory. Plugins missing required fields are skipped.
 
 ## Handler Interface
 

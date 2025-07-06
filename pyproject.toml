@@ -20,10 +20,6 @@ include = [
     "ai_karen_engine.*",
     "ui_logic",
     "ui_logic.*",
-    "config",
-    "config.*",
-    "event_bus",
-    "event_bus.*",
 ]
 
 [tool.ruff.lint]
