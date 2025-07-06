@@ -19,7 +19,7 @@ import logging
 
 PLUGIN_DIR = Path(os.getenv("KARI_PLUGIN_DIR", "src/ai_karen_engine/plugins"))
 MANIFEST_NAME = "plugin_manifest.json"
-PLUGIN_SCHEMA_PATH = Path("src/config/plugin_schema.json")
+PLUGIN_SCHEMA_PATH = Path("src/ai_karen_engine/config/plugin_schema.json")
 
 # --- Observability ---
 def plugin_audit_log(event: Dict[str, Any]):

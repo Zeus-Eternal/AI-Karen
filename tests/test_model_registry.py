@@ -1,5 +1,5 @@
 import json
-from services import model_registry as mr
+from ai_karen_engine.config import model_registry as mr
 
 
 def test_load_registry(tmp_path, monkeypatch):

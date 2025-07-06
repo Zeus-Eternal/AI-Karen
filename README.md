@@ -67,7 +67,7 @@ Detailed usage instructions for each feature are in [docs/features_usage.md](doc
  
 ```
 core/          # dispatch, embeddings, reasoning
-event_bus/     # in-memory event streams
+ai_karen_engine/event_bus/     # in-memory event streams
 guardrails/    # YAML validators
 capsules/      # domain-specific micro agents
 src/integrations/  # helper utilities (RPA, automation)
@@ -88,7 +88,7 @@ tests/         # pytest suite
 
 ```text
 core/          # dispatcher, embeddings, capsule planner
-event_bus/     # Redis-Streams helpers
+ai_karen_engine/event_bus/     # Redis-Streams helpers
 guardrails/    # YAML validators & rule engine
 capsules/      # domain-specific agents (DevOps, Finance, …)
 src/integrations/  # NANDA client, RPA helpers, external bridges
