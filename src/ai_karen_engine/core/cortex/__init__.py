@@ -1,3 +1,3 @@
-from ai_karen_engine.core.cortex.dispatch import CortexDispatcher
+from ai_karen_engine.core.cortex.dispatch import dispatch, CortexDispatchError
 
-__all__ = ["CortexDispatcher"]
+__all__ = ["dispatch", "CortexDispatchError"]

@@ -1,18 +1,114 @@
 """
 Kari File Utilities (Production)
-- Secure, high-performance file operations for UI, plugins, and batch flows.
-- Multimodal: images, PDFs, docs, audio, OCR, metadata, previews, upload.
-- Pluggable for Streamlit/FastAPI/desktop/multi-user/enterprise.
+- Secure, high-performance file operations for UI, plugins, batch.
+- Handles text, CSV/Excel, images, PDFs, audio stub, OCR, metadata, preview, uploads.
+- Pluggable for Streamlit, FastAPI, desktop, enterprise, multi-user.
 """
 
 import os
+import io
+import csv
+import uuid
 import pathlib
 import mimetypes
 import hashlib
-import uuid
-from typing import Optional, Dict, Any, List, Tuple
+import chardet
+import pandas as pd
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-# --- Optional: OCR/Image ---
+# === Secure Read (Text/Bytes, encoding safe, anti-RAM bomb) ===
+def secure_read_file(
+    file_path: str,
+    max_bytes: int = 5 * 1024 * 1024,    # 5MB cap by default
+    text: bool = True,
+    encoding: Optional[str] = None,
+    errors: str = "replace"
+) -> Union[str, bytes]:
+    """
+    Securely read a file (with optional size/encoding controls).
+    Only reads up to max_bytes.
+    Returns str (text) or bytes.
+    """
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"Not found: {file_path}")
+    size = os.path.getsize(file_path)
+    if size > max_bytes:
+        raise ValueError(f"File too large ({size} bytes > {max_bytes})")
+    with open(file_path, "rb") as f:
+        raw = f.read(max_bytes)
+    if not text:
+        return raw
+    enc = encoding
+    if not enc:
+        enc_guess = chardet.detect(raw)
+        enc = enc_guess.get("encoding", "utf-8")
+    try:
+        return raw.decode(enc, errors=errors)
+    except Exception as e:
+        raise ValueError(f"Decode failed for {file_path}: {e}")
+
+# === Parse CSV/Excel (Streaming, anti-RAM bomb, safe for Streamlit/FastAPI) ===
+def parse_csv_excel(
+    file: Union[str, io.BytesIO],
+    max_rows: int = 100_000,
+    max_cols: int = 256,
+    as_dict: bool = True,
+    excel_sheets: Optional[List[str]] = None
+) -> Union[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]:
+    """
+    Parse a CSV or Excel file (XLSX, XLS, CSV, TSV).
+    Reads from path or file-like. Returns list-of-dict (CSV) or {sheet: list-of-dict} (Excel).
+    """
+    if isinstance(file, str):
+        ext = pathlib.Path(file).suffix.lower()
+        open_file = open(file, "rb")
+    else:
+        ext = None
+        open_file = file
+
+    if ext in [".xlsx", ".xls"]:
+        xl = pd.ExcelFile(open_file)
+        sheets = excel_sheets or xl.sheet_names
+        result = {}
+        for sheet in sheets:
+            df = xl.parse(sheet)
+            if df.shape[0] > max_rows or df.shape[1] > max_cols:
+                raise ValueError(f"Sheet {sheet} too large")
+            data = df.head(max_rows).to_dict(orient="records") if as_dict else df.head(max_rows)
+            result[sheet] = data
+        return result
+    else:
+        open_file.seek(0)
+        sample = open_file.read(8192)
+        open_file.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample.decode("utf-8", "ignore"))
+            delimiter = dialect.delimiter
+        except Exception:
+            delimiter = ","  # Fallback to comma
+        df = pd.read_csv(open_file, delimiter=delimiter, nrows=max_rows)
+        if df.shape[1] > max_cols:
+            raise ValueError("Too many columns")
+        return df.to_dict(orient="records") if as_dict else df
+
+# === File SHA256 (RAM safe) ===
+def file_sha256(file_path: str, max_bytes: int = 100 * 1024 * 1024) -> str:
+    """Return SHA256 hash of a file (streaming, up to max_bytes)."""
+    h = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        total = 0
+        while True:
+            chunk = f.read(65536)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_bytes:
+                raise ValueError("File too large for hash")
+            h.update(chunk)
+    return h.hexdigest()
+
+# === File Info, Preview, OCR, PDF, etc. ===
+
 try:
     import pytesseract
     from PIL import Image
@@ -20,14 +116,10 @@ except ImportError:
     pytesseract = None
     Image = None
 
-# --- Optional: PDF Parsing ---
 try:
     import fitz  # PyMuPDF
 except ImportError:
     fitz = None
-
-# --- Optional: Audio/Video (future) ---
-# import ffmpeg, librosa, etc.
 
 def get_file_info(file_path: str) -> Dict[str, Any]:
     """Extract comprehensive metadata for any file."""
@@ -44,34 +136,22 @@ def get_file_info(file_path: str) -> Dict[str, Any]:
         "modified": stat.st_mtime,
         "mime": mime,
         "ext": p.suffix.lower(),
-        "hash": sha256_file(file_path),
+        "hash": file_sha256(file_path),
         "preview": preview_file(file_path, 1024) if mime.startswith("text/") else None,
     }
 
-def sha256_file(file_path: str) -> str:
-    """SHA256 hash of file (streaming, no RAM hogging)."""
-    h = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
 def is_image(file_path: str) -> bool:
-    """True if file is any common image."""
     mime = mimetypes.guess_type(str(file_path))[0]
     return bool(mime and mime.startswith("image/"))
 
 def is_pdf(file_path: str) -> bool:
-    """True if file is a PDF."""
     return pathlib.Path(file_path).suffix.lower() == ".pdf"
 
 def is_text(file_path: str) -> bool:
-    """True if file is a text or code file (UTF-8, etc)."""
     mime = mimetypes.guess_type(str(file_path))[0]
     return bool(mime and (mime.startswith("text/") or "json" in mime or "xml" in mime))
 
 def ocr_image(file_path: str, lang: str = "eng") -> Optional[str]:
-    """OCR text from image file using Tesseract (if installed)."""
     if not (pytesseract and Image):
         raise ImportError("Install pytesseract & Pillow for OCR support.")
     try:
@@ -82,7 +162,6 @@ def ocr_image(file_path: str, lang: str = "eng") -> Optional[str]:
         return f"OCR failed: {str(e)}"
 
 def pdf_to_text(file_path: str) -> str:
-    """Extract all text from a PDF using PyMuPDF."""
     if not fitz:
         raise ImportError("Install PyMuPDF (fitz) for PDF parsing.")
     doc = fitz.open(file_path)
@@ -91,7 +170,6 @@ def pdf_to_text(file_path: str) -> str:
     return text.strip()
 
 def preview_file(file_path: str, max_bytes: int = 2048) -> str:
-    """Preview first N bytes/chars of a file as text (auto-decode, safe for logs/UI)."""
     if is_image(file_path) or is_pdf(file_path):
         return f"[{pathlib.Path(file_path).suffix.upper()[1:]} file]"
     try:
@@ -105,9 +183,6 @@ def preview_file(file_path: str, max_bytes: int = 2048) -> str:
         return f"Preview failed: {str(e)}"
 
 def save_uploaded_file(uploaded_file, dest_dir: str) -> str:
-    """
-    Save a file-like object (Streamlit, FastAPI, etc) to disk with a unique name.
-    """
     ext = pathlib.Path(uploaded_file.name).suffix
     os.makedirs(dest_dir, exist_ok=True)
     dest = os.path.join(dest_dir, f"{uuid.uuid4().hex}{ext}")
@@ -116,7 +191,6 @@ def save_uploaded_file(uploaded_file, dest_dir: str) -> str:
     return dest
 
 def list_files(directory: str, exts: Optional[List[str]] = None) -> List[str]:
-    """List all files (optionally filtered by extension) in a directory."""
     p = pathlib.Path(directory)
     if not p.exists():
         return []
@@ -128,12 +202,10 @@ def list_files(directory: str, exts: Optional[List[str]] = None) -> List[str]:
     ]
 
 def get_audio_metadata(file_path: str) -> Optional[Dict[str, Any]]:
-    """(Stub) Extract audio metadata — to be expanded with librosa or ffmpeg."""
-    # You can implement mp3/wav/ogg parsing here for real analytics.
+    # Stub: add librosa, ffmpeg, etc. for real analytics later.
     return None
 
 def get_doc_type(file_path: str) -> str:
-    """High-level type: image, pdf, text, audio, video, other."""
     if is_image(file_path):
         return "image"
     if is_pdf(file_path):
@@ -148,9 +220,6 @@ def get_doc_type(file_path: str) -> str:
     return "other"
 
 def smart_preview(file_path: str, max_bytes: int = 4096) -> str:
-    """
-    Multimodal preview: text for text, OCR for images, text for PDFs, stub for audio/video.
-    """
     doc_type = get_doc_type(file_path)
     if doc_type == "text":
         return preview_file(file_path, max_bytes)
@@ -164,10 +233,20 @@ def smart_preview(file_path: str, max_bytes: int = 4096) -> str:
         return "[video file]"
     return "[binary or unsupported file]"
 
-# --- Example usage for devs (not for prod import) ---
-if __name__ == "__main__":
-    path = "your_test_file.txt"
-    print(get_file_info(path))
-    # print(ocr_image("your_image.png"))
-    # print(pdf_to_text("your_doc.pdf"))
-    # print(list_files(".", [".py", ".txt"]))
+__all__ = [
+    "secure_read_file",
+    "parse_csv_excel",
+    "file_sha256",
+    "get_file_info",
+    "is_image",
+    "is_pdf",
+    "is_text",
+    "ocr_image",
+    "pdf_to_text",
+    "preview_file",
+    "save_uploaded_file",
+    "list_files",
+    "get_audio_metadata",
+    "get_doc_type",
+    "smart_preview"
+]

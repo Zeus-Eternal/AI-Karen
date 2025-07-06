@@ -1,5 +1,4 @@
-"""Production-grade in-memory vector store simulating Milvus."""
-
+"""Production-grade in-memory vector store simulating Milvus for Kari AI."""
 from __future__ import annotations
 
 import math
@@ -10,7 +9,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 from ai_karen_engine.core.embedding_manager import record_metric
 
-
+# === IN-MEMORY VECTOR STORE CORE ===
 @dataclass
 class _Record:
     id: int
@@ -18,7 +17,6 @@ class _Record:
     payload: Dict[str, Any]
     norm: float
     timestamp: float
-
 
 class MilvusClient:
     """Thread-safe vector database with TTL and metadata filtering."""
@@ -52,9 +50,7 @@ class MilvusClient:
         record_metric("vector_upsert_seconds", time.time() - start)
         return self._id
 
-
     def delete(self, ids: Iterable[int]) -> None:
-        """Delete records by ID."""
         start = time.time()
         with self._lock:
             for rid in list(ids):
@@ -84,3 +80,34 @@ class MilvusClient:
             results.sort(key=lambda r: r["score"], reverse=True)
         record_metric("vector_search_latency_seconds", time.time() - start)
         return results[:top_k]
+
+# === KARI AI ADAPTERS: PLUG FOR MEMORY MANAGER ===
+# ⚡ This is what you import elsewhere!
+_vector_store = MilvusClient()
+
+def store_vector(user_id: str, query: str, result: Any) -> int:
+    """
+    Store a query/result in the vector DB using the embedding as vector.
+    For demo: simulate with dummy embedding. Replace with real embedder.
+    """
+    from ai_karen_engine.core.embedding_manager import embed_text
+    vec = embed_text(query)
+    payload = {
+        "user_id": user_id,
+        "query": query,
+        "result": result,
+        "timestamp": int(time.time())
+    }
+    return _vector_store.upsert(vec, payload)
+
+def recall_vectors(user_id: str, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    """
+    Retrieve most relevant memory/context for user/query using vector search.
+    """
+    from ai_karen_engine.core.embedding_manager import embed_text
+    vec = embed_text(query)
+    results = _vector_store.search(vec, top_k=top_k, metadata_filter={"user_id": user_id})
+    # Extract relevant context info
+    return [r["payload"] for r in results]
+
+__all__ = ["store_vector", "recall_vectors", "MilvusClient"]

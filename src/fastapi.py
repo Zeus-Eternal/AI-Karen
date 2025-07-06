@@ -1,5 +1,5 @@
 """Compatibility wrapper for environments without FastAPI."""
-from fastapi_stub import (
+from ai_karen_engine.fastapi_stub import (
     FastAPI,
     HTTPException,
     Request,
