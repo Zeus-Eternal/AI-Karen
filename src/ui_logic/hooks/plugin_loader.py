@@ -17,9 +17,9 @@ from ui_logic.hooks.rbac import check_rbac
 from ui_logic.hooks.auth import get_current_user
 import logging
 
-PLUGIN_DIR = Path(os.getenv("KARI_PLUGIN_DIR", "src/plugins"))
+PLUGIN_DIR = Path(os.getenv("KARI_PLUGIN_DIR", "src/ai_karen_engine/plugins"))
 MANIFEST_NAME = "plugin_manifest.json"
-PLUGIN_SCHEMA_PATH = Path("config/plugin_schema.json")  # Hard path, adjust if needed
+PLUGIN_SCHEMA_PATH = Path("src/config/plugin_schema.json")
 
 # --- Observability ---
 def plugin_audit_log(event: Dict[str, Any]):

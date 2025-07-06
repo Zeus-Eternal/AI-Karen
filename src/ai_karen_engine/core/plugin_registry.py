@@ -32,7 +32,7 @@ def _discover_plugins(base_path, type_label):
 
 def load_plugins():
     # Core plugins
-    core_dir = Path(__file__).parent / "plugins"
+    core_dir = Path(__file__).parent.parent / "plugins"
     core_plugins = _discover_plugins(core_dir, "core")
 
     # Community plugins (top-level under ai_karen_engine)

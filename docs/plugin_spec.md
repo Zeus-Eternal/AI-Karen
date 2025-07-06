@@ -2,7 +2,7 @@
 
 This document describes how to build plugins for Kari and how they are loaded at runtime.
 
-Plugins live under the `plugins/` folder and must contain at least a `plugin_manifest.json` and a `handler.py` file. Optionally a `ui.py` file can expose a widget for the Control Room.
+Plugins live under the `src/ai_karen_engine/plugins/` folder and must contain at least a `plugin_manifest.json` and a `handler.py` file. Optionally a `ui.py` file can expose a widget for the Control Room.
 
 ## Manifest Schema
 
@@ -22,7 +22,7 @@ The manifest is validated against `config/plugin_schema.json` when `PluginRouter
 `handler.py` must export a `run(params: dict) -> dict | str` function. It receives the request parameters and returns a response. Async functions are supported.
 
 ```python
-# plugins/hello_world/handler.py
+# src/ai_karen_engine/plugins/hello_world/handler.py
 
 def run(params: dict) -> dict:
     return {"message": "Hello World from plugin!"}
