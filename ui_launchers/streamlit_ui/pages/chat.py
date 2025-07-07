@@ -7,17 +7,17 @@ Kari Chat Panel (Evil Twin Enterprise Version)
 import streamlit as st
 import time
 import uuid
-from ui_logic.hooks.rbac import require_roles, user_has_role
-from ui_logic.utils.api import (
+from src.ui_logic.hooks.rbac import require_roles, user_has_role
+from src.ui_logic.utils.api import (
     fetch_user_profile, 
     fetch_announcements,
     ping_services,
 )
-from ui_logic.components.memory.profile_panel import render_profile_panel
-from ui_logic.components.analytics.chart_builder import render_quick_charts
-from ui_logic.components.memory.session_explorer import render_session_explorer
-from ui_logic.components.plugins.plugin_manager import render_plugin_manager
-from ui_logic.components.memory.memory_analytics import render_memory_analytics
+from src.ui_logic.components.memory.profile_panel import render_profile_panel
+from src.ui_logic.components.analytics.chart_builder import render_quick_charts
+from src.ui_logic.components.memory.session_explorer import render_session_explorer
+from src.ui_logic.components.plugins.plugin_manager import render_plugin_manager
+from src.ui_logic.components.memory.memory_analytics import render_memory_analytics
 
 # ==============================================
 # ====== EVIL CONTEXT AND STATE HANDLING =======

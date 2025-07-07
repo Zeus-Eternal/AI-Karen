@@ -4,8 +4,8 @@ Kari Privacy Console Logic (Framework-Agnostic)
 - NO UI code—logic only
 """
 
-from ui_logic.hooks.rbac import require_roles
-from ui_logic.config.ui_config import get_privacy_data, anonymize_user_data, export_user_data, delete_user_data
+from src.ui_logic.hooks.rbac import require_roles
+from src.ui_logic.config.ui_config import get_privacy_data, anonymize_user_data, export_user_data, delete_user_data
 
 def fetch_privacy_data(user_ctx):
     if not user_ctx or not require_roles(user_ctx, ["user", "admin"]):

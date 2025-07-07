@@ -77,4 +77,3 @@ class IntentEngine:
         return "greet" if "hello" in text else "hf_generate"
 
 intent_stub.IntentEngine = IntentEngine
-sys.modules.setdefault("ai_karen_engine.core.intent_engine", intent_stub)

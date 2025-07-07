@@ -10,6 +10,7 @@ import os
 import time
 import logging
 import json
+import threading
 
 # ========== Backend Imports ==========
 try:
@@ -46,6 +47,99 @@ logger.setLevel(logging.INFO)
 
 # ========== Backend Init ==========
 postgres = PostgresClient(use_sqlite=True) if PostgresClient else None
+duckdb_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
+
+
+class PostgresSyncer:
+    """Background checker and DuckDB flusher for Postgres connectivity."""
+
+    def __init__(self, client: PostgresClient, db_path: str, interval: float = 5.0) -> None:
+        self.client = client
+        self.db_path = db_path
+        self.interval = interval
+        self.postgres_available = client.health() if client else False
+        self._timer: Optional[threading.Timer] = None
+        self._lock = threading.Lock()
+        
+    def start(self) -> None:
+        if not self.client:
+            return
+        with self._lock:
+            if self._timer is None:
+                self._timer = threading.Timer(self.interval, self._loop)
+                self._timer.daemon = True
+                self._timer.start()
+
+    def _loop(self) -> None:
+        with self._lock:
+            self._timer = None
+        self.run_once()
+        self.start()
+
+    def run_once(self) -> None:
+        if not self.client:
+            return
+        healthy = False
+        try:
+            healthy = self.client.health()
+        except Exception as ex:  # pragma: no cover - defensive
+            logger.warning(f"[MemoryManager] Postgres health check failed: {ex}")
+        if healthy:
+            if not self.postgres_available:
+                logger.info("[MemoryManager] Postgres reconnected; flushing backlog")
+                self.postgres_available = True
+                flush_duckdb_to_postgres(self.client, self.db_path)
+        else:
+            if self.postgres_available:
+                logger.warning("[MemoryManager] Postgres connection lost")
+            self.postgres_available = False
+
+    def mark_unavailable(self) -> None:
+        self.postgres_available = False
+
+    def stop(self) -> None:
+        with self._lock:
+            if self._timer is not None:
+                self._timer.cancel()
+                self._timer = None
+
+
+def flush_duckdb_to_postgres(client: PostgresClient, db_path: str) -> None:
+    """Flush unsynced DuckDB entries into Postgres."""
+    if not (client and duckdb):
+        return
+    try:
+        con = duckdb.connect(db_path, read_only=False)
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS memory (
+                user_id VARCHAR,
+                session_id VARCHAR,
+                query VARCHAR,
+                result VARCHAR,
+                timestamp BIGINT,
+                synced BOOLEAN DEFAULT TRUE
+            )
+            """
+        )
+        rows = con.execute(
+            "SELECT rowid, user_id, session_id, query, result, timestamp FROM memory WHERE synced=FALSE"
+        ).fetchall()
+        for rowid, user_id, session_id, query, result, ts in rows:
+            try:
+                client.upsert_memory(-1, user_id, session_id, query, result, ts)
+                con.execute("UPDATE memory SET synced=TRUE WHERE rowid=?", [rowid])
+                logger.info(f"[MemoryManager] Flushed record {rowid} to Postgres")
+            except Exception as ex:
+                logger.warning(f"[MemoryManager] Flush failed for record {rowid}: {ex}")
+                break
+    except Exception as ex:  # pragma: no cover - failsafe
+        logger.warning(f"[MemoryManager] DuckDB flush error: {ex}")
+
+
+pg_syncer = PostgresSyncer(postgres, duckdb_path) if postgres else None
+if pg_syncer:
+    pg_syncer.start()
 
 
 def recall_context(
@@ -167,6 +261,7 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     }
     ok = False
     vector_id = None
+    postgres_ok = False
 
     # ==== 1. Milvus ====
     if store_vector:
@@ -178,7 +273,7 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
             logger.warning(f"[MemoryManager] Milvus store failed: {ex}")
 
     # ==== 2. Postgres ====
-    if postgres:
+    if postgres and pg_syncer and pg_syncer.postgres_available:
         try:
             postgres.upsert_memory(
                 vector_id or -1,
@@ -188,9 +283,11 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
                 result,
                 entry["timestamp"],
             )
+            postgres_ok = True
             ok = True
             logger.info(f"[MemoryManager] Postgres upserted memory for user {user_id}")
         except Exception as ex:
+            pg_syncer.mark_unavailable()
             logger.warning(f"[MemoryManager] Postgres store failed: {ex}")
 
     # ==== 3. Redis ====
@@ -215,16 +312,19 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
                     session_id VARCHAR,
                     query VARCHAR,
                     result VARCHAR,
-                    timestamp BIGINT
+                    timestamp BIGINT,
+                    synced BOOLEAN DEFAULT TRUE
                 )
-            """
+                """
             )
             con.execute(
-                "INSERT INTO memory (user_id, session_id, query, result, timestamp) VALUES (?, ?, ?, ?, ?)",
-                [user_id, session_id, query, json.dumps(result), entry["timestamp"]],
+                "INSERT INTO memory (user_id, session_id, query, result, timestamp, synced) VALUES (?, ?, ?, ?, ?, ?)",
+                [user_id, session_id, query, json.dumps(result), entry["timestamp"], postgres_ok],
             )
             ok = True
             logger.info(f"[MemoryManager] DuckDB stored memory for user {user_id}")
+            if postgres_ok:
+                flush_duckdb_to_postgres(postgres, db_path)
         except Exception as ex:
             logger.warning(f"[MemoryManager] DuckDB store failed: {ex}")
 
@@ -250,4 +350,4 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     return ok
 
 
-__all__ = ["recall_context", "update_memory"]
+__all__ = ["recall_context", "update_memory", "flush_duckdb_to_postgres"]

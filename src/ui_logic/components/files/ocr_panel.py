@@ -6,8 +6,8 @@ Kari OCR Panel Logic
 """
 
 from typing import Dict, Any
-from ui_logic.hooks.rbac import require_roles
-from ui_logic.utils.api import run_ocr, fetch_audit_logs
+from src.ui_logic.hooks.rbac import require_roles
+from src.ui_logic.utils.api import run_ocr, fetch_audit_logs
 
 def extract_ocr(user_ctx: Dict, file_id: str) -> Dict:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin", "analyst"]):

@@ -13,13 +13,16 @@ import hashlib
 import hmac
 import logging
 import os
-import secrets
-import sys
 import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict
+
+from ai_karen_engine.automation_manager.encryption_utils import (
+    decrypt_data,
+    encrypt_data,
+)
 
 import duckdb
 
@@ -167,7 +170,7 @@ class AutomationManager:
                     "schedule": job[2],
                     "status": job[3],
                     "last_run": job[4],
-                    "result": job[5],
+                    "result": decrypt_data(job[5]),
                     "signature": job[6],
                     "created_at": job[7],
                     "updated_at": job[8],
@@ -248,7 +251,7 @@ class AutomationManager:
             if job:
                 job["status"] = status
                 job["last_run"] = time.time()
-                job["result"] = result  # TODO: Encrypt result for at-rest
+                job["result"] = encrypt_data(result)
                 job["updated_at"] = time.time()
                 self._persist_job(job_id)
 
