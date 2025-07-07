@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import os
 
-from ai_karen_engine.core.cortex.dispatch import dispatch, CortexDispatchError
+from ai_karen_engine.core.cortex.dispatch import dispatch
 from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
 from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 
@@ -47,6 +47,7 @@ import asyncio
 import logging
 from ai_karen_engine.integrations.llm_registry import registry as llm_registry
 from ai_karen_engine.integrations.model_discovery import sync_registry
+from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
 
 app = FastAPI()
 logger = logging.getLogger("kari")
@@ -189,7 +190,7 @@ def metrics() -> MetricsResponse:
 
 @app.get("/metrics/prometheus")
 def metrics_prometheus() -> Response:
-    data = generate_latest()
+    data = generate_latest(PROM_REGISTRY) if PROM_REGISTRY is not None else generate_latest()
     try:
         return Response(data, media_type=CONTENT_TYPE_LATEST)
     except TypeError:
