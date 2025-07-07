@@ -55,3 +55,26 @@ When ElasticSearch is available the memory manager uses it as the first lookup l
 - `ELASTIC_INDEX` – index name for Kari memory (default `kari_memory`)
 
 If these variables are unset the client falls back to its in-memory stub.
+
+## Session Buffering
+
+Kari's chat runtime stores every user interaction using the `SessionBuffer`
+class located at `ai_karen_engine.core.memory.session_buffer`. The buffer
+records operations into a local DuckDB file before they are persisted to the
+primary Postgres store. This design allows high-throughput logging while
+offline and protects against transient database outages.
+
+When `SessionBuffer` is enabled, each chat turn is appended to a DuckDB table.
+Periodically a background task flushes these rows in batches to Postgres. The
+flush threshold and time interval are controlled via the following environment
+variables:
+
+- `SESSION_BUFFER_PATH` – location of the DuckDB file (default
+  `session_buffer.duckdb`)
+- `SESSION_FLUSH_BATCH` – number of operations to accumulate before flushing
+- `SESSION_FLUSH_SECONDS` – maximum seconds between flushes
+
+If Postgres is unreachable, the buffer simply continues writing to DuckDB.
+During the next startup `SessionBuffer.replay()` scans any unflushed entries and
+replays them to Postgres so no chat history is lost.
+
