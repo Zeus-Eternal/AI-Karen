@@ -3,12 +3,6 @@ from pathlib import Path
 import sys
 import os
 
-# === [Evil Twin] Namespace Correction: Ensure src/ is in sys.path if needed ===
-root = Path(__file__).resolve().parent
-src_path = root / "src"
-if src_path.is_dir() and str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
-
 from ai_karen_engine.core.cortex.dispatch import dispatch, CortexDispatchError
 from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
 from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
