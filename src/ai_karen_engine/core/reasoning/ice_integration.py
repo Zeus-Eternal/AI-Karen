@@ -9,7 +9,7 @@ added to the memory store when it exceeds an entropy threshold.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict
 
  
 from integrations.llm_registry import registry as llm_registry

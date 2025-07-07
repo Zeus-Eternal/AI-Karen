@@ -10,7 +10,7 @@ DeepSeekClient: Enterprise-Grade Client for DeepSeek API
 import os
 import logging
 import time
-from typing import Any, Dict, Optional, List, Generator, AsyncGenerator, Union
+from typing import Any, Dict, Optional, List, Generator, AsyncGenerator
 import httpx
 from pydantic import BaseModel, Field, validator, HttpUrl, AnyUrl
 from tenacity import (
@@ -249,7 +249,7 @@ class DeepSeekClient:
         """Standard headers for all requests"""
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": f"DeepSeekClient/1.0",
+            "User-Agent": "DeepSeekClient/1.0",
             "Accept": "application/json"
         }
         if self.config.api_key:

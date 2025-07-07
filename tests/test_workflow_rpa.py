@@ -1,5 +1,4 @@
 import sys
-from pathlib import Path
 from types import ModuleType
 import asyncio
 
@@ -9,12 +8,11 @@ dummy.typewrite = lambda *args, **kwargs: None
 dummy.screenshot = lambda path="screenshot.png": path
 sys.modules.setdefault("pyautogui", dummy)
 
-import pytest
 
-from ai_karen_engine.core.workflow_engine_client import WorkflowEngineClient
-from ai_karen_engine.integrations.automation_manager import AutomationManager
-from ai_karen_engine.integrations.local_rpa_client import LocalRPAClient
-from ai_karen_engine.plugin_router import PluginRouter
+from ai_karen_engine.core.workflow_engine_client import WorkflowEngineClient  # noqa: E402
+from ai_karen_engine.integrations.automation_manager import AutomationManager  # noqa: E402
+from ai_karen_engine.integrations.local_rpa_client import LocalRPAClient  # noqa: E402
+from ai_karen_engine.plugin_router import PluginRouter  # noqa: E402
 
 def test_workflow_engine_trigger(capfd):
     wf = WorkflowEngineClient()

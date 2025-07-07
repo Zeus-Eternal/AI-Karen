@@ -4,7 +4,7 @@ Kari Chat Input Logic
 - RBAC, message validation, input audit
 """
 
-from typing import Dict, Any
+from typing import Dict
 from src.ui_logic.hooks.rbac import require_roles
 from src.ui_logic.utils.api import submit_message, fetch_input_audit
 

@@ -15,9 +15,16 @@ import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
 
 # ================== Exceptions ==================
-class ChartBuilderError(Exception): pass
-class InvalidChartConfig(ChartBuilderError): pass
-class DataValidationError(ChartBuilderError): pass
+class ChartBuilderError(Exception):
+    pass
+
+
+class InvalidChartConfig(ChartBuilderError):
+    pass
+
+
+class DataValidationError(ChartBuilderError):
+    pass
 
 # ================== Constants ===================
 DEFAULT_CHART_TYPES = [
@@ -64,9 +71,12 @@ class ChartBuilder:
                 raise DataValidationError(f"Data exceeds col limit ({self.max_cols})")
             numeric, categorical, datetime_cols = [], [], []
             for col in df.columns:
-                if is_numeric_dtype(df[col]): numeric.append(col)
-                elif is_datetime64_any_dtype(df[col]): datetime_cols.append(col)
-                else: categorical.append(col)
+                if is_numeric_dtype(df[col]):
+                    numeric.append(col)
+                elif is_datetime64_any_dtype(df[col]):
+                    datetime_cols.append(col)
+                else:
+                    categorical.append(col)
             return {
                 "numeric": numeric,
                 "categorical": categorical,

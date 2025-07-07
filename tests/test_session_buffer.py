@@ -1,4 +1,3 @@
-import os
 from ai_karen_engine.core.memory.session_buffer import SessionBuffer
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
 from ai_karen_engine.clients.database.postgres_client import PostgresClient

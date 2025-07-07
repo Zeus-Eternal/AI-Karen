@@ -6,15 +6,12 @@ Kari CORTEX Dispatch Core
 - 100% backend: no UI, no Streamlit, no mercy
 """
 
-from typing import Any, Dict, Optional, Callable, List
+from typing import Any, Dict, Optional, List
 from ai_karen_engine.core.cortex.intent import resolve_intent
 from ai_karen_engine.core.plugin_registry import plugin_registry, execute_plugin
 from ai_karen_engine.core.memory.manager import recall_context, update_memory
 from ai_karen_engine.core.cortex.errors import CortexDispatchError, UnsupportedIntentError
 from ai_karen_engine.core.predictors import predictor_registry, run_predictor
-
-class CortexDispatchError(Exception):
-    """CORTEX-level error, intent dispatch failed."""
 
 def dispatch(
     user_ctx: Dict[str, Any],

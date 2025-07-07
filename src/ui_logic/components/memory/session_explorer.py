@@ -12,7 +12,6 @@ from typing import Dict, Any
 from src.ui_logic.components.memory.session_core import (
     get_session_records,
     get_audit_logs_for_entry,
-    SessionExplorerError,
 )
 
 def render_session_explorer(user_ctx: Dict[str, Any]):

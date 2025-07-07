@@ -4,7 +4,7 @@ Kari Chat Context Panel Logic
 - RBAC: user/admin/analyst
 """
 
-from typing import Dict, Any
+from typing import Dict
 from src.ui_logic.hooks.rbac import require_roles
 from src.ui_logic.hooks.memory_hook import fetch_session_memory
 

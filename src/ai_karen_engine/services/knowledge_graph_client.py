@@ -8,7 +8,7 @@ Kari KnowledgeGraphClient – Evil Twin Edition
   * Supports batch ops, upsert, advanced traversal, healthcheck
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 from py2neo import Graph, Node, Relationship, NodeMatcher, RelationshipMatcher
 from py2neo.database import Transaction
 import logging

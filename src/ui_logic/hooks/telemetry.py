@@ -7,7 +7,6 @@ Kari UI Telemetry & Observability Module
 
 import time
 import uuid
-import logging
 from typing import Dict, Any, Optional
 
 try:
@@ -31,9 +30,12 @@ if PROM_ENABLED:
     )
 else:
     # Fallback stubs
-    TELEMETRY_EVENT_COUNT = lambda *a, **k: None
-    TELEMETRY_EVENT_LATENCY = lambda *a, **k: None
-    TELEMETRY_ACTIVE_USERS = lambda *a, **k: None
+    def _noop(*_args, **_kwargs):
+        return None
+
+    TELEMETRY_EVENT_COUNT = _noop
+    TELEMETRY_EVENT_LATENCY = _noop
+    TELEMETRY_ACTIVE_USERS = _noop
 
 def telemetry_event(event_type: str, event_data: Optional[Dict[str, Any]] = None, user_id: Optional[str] = None):
     """
@@ -53,7 +55,7 @@ def telemetry_event(event_type: str, event_data: Optional[Dict[str, Any]] = None
     try:
         with open(TELEMETRY_LOG_PATH, "a") as f:
             f.write(str(event) + "\n")
-    except Exception as e:
+    except Exception:
         # Do not raise—telemetry is best effort
         pass
 

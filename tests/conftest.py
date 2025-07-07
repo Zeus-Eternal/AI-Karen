@@ -1,7 +1,10 @@
 """Shared pytest configuration."""
 import importlib
-import sys
 import os
+import sys
+import types
+import ai_karen_engine.clients.database.postgres_client as pg_mod
+
 
 # Alias installed-style packages for tests
 sys.modules.setdefault("ai_karen_engine", importlib.import_module("src.ai_karen_engine"))
@@ -20,9 +23,6 @@ os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "test")
 os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")
 os.environ.setdefault("KARI_JOB_SIGNING_KEY", "test")
 os.environ.setdefault("DUCKDB_PATH", ":memory:")
-
-import types
-import ai_karen_engine.clients.database.postgres_client as pg_mod
 
 # Lightweight LLMOrchestrator stub to avoid heavyweight dependencies
 llm_stub = types.ModuleType("ai_karen_engine.llm_orchestrator")
@@ -44,7 +44,7 @@ class TestPostgresClient(pg_mod.PostgresClient):
 pg_mod.PostgresClient = TestPostgresClient  # type: ignore
 
 # Provide lightweight stubs for modules missing in the test environment
-import types
+cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 
 cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 

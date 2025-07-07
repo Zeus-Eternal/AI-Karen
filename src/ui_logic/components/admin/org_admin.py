@@ -4,7 +4,7 @@ Kari Organization Admin Logic
 - CRUD for users/org settings, RBAC enforced
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 from src.ui_logic.utils.api import (
     fetch_org_users, add_org_user, update_org_user, remove_org_user, 
     fetch_org_settings, update_org_settings

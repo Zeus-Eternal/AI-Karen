@@ -9,7 +9,7 @@ import os
 import json
 import threading
 import shutil
-from typing import Any, Callable, Dict, Optional, List
+from typing import Any, Callable, Dict, List
 from pathlib import Path
 from dotenv import load_dotenv
 import logging

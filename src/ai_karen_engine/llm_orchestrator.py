@@ -132,16 +132,18 @@ class SecureLLMPool:
             raise RuntimeError(f"Circuit breaker tripped for {model_id}")
 
         cpu_id = random.randint(0, self.cpu_count - 1)
+
         def secured_call():
             set_worker_affinity(cpu_id)
             try:
-                start = time.time()
                 result = fn(*args, **kwargs)
                 self._record_success(model_id)
                 return result
             except Exception as e:
                 self._record_failure(model_id)
-                logger.error(f"Model {model_id} execution failed: {str(e)}", exc_info=True)
+                logger.error(
+                    f"Model {model_id} execution failed: {str(e)}", exc_info=True
+                )
                 raise
 
         return self.executor.submit(secured_call)

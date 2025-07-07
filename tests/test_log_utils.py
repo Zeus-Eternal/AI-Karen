@@ -1,7 +1,5 @@
-from ai_karen_engine.self_refactor.log_utils import record_report, load_logs, LOG_PATH
 from ai_karen_engine.self_refactor.engine import PatchReport
-import os
-import json
+from ai_karen_engine.self_refactor import log_utils
 
 
 def test_log_sanitization(tmp_path, monkeypatch):

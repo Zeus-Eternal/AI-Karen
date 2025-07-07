@@ -10,7 +10,7 @@ OpenAIClient: Production-Grade OpenAI API Client
 import os
 import logging
 import time
-from typing import Any, Dict, List, Optional, Generator, AsyncGenerator, Union
+from typing import Any, Dict, List, Optional, Generator, AsyncGenerator
 import httpx
 from pydantic import BaseModel, Field, validator, HttpUrl, AnyUrl
 from tenacity import (
@@ -254,7 +254,7 @@ class OpenAIClient:
         """Standard headers for all requests"""
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": f"OpenAIClient/1.0",
+            "User-Agent": "OpenAIClient/1.0",
             "Accept": "application/json"
         }
         if self.config.api_key:

@@ -1,4 +1,3 @@
-import asyncio
 from ai_karen_engine.plugins.tui_fallback import tui
 
 async def run(params: dict) -> dict:

@@ -13,7 +13,6 @@ Each page entry uses the following keys:
 Plugins may append additional entries at runtime via :func:`register_plugin_page`.
 """
 
-import os
 from src.ui_logic.config.feature_flags import get_flag
 
 

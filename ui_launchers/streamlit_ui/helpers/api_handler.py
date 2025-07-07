@@ -1,6 +1,8 @@
 import os
 import httpx
 import streamlit as st
+from pathlib import Path
+import json
 
 API_URL = os.getenv("KARI_API_URL", "http://localhost:8000")
 
@@ -35,9 +37,6 @@ def get_api_key() -> str | None:
 def get_model() -> str:
     """Return the selected model name from the session state."""
     return st.session_state.get("model", "llama3")
-
-import json
-from pathlib import Path
 
 CONFIG_PATH = Path("config/settings.json")
 

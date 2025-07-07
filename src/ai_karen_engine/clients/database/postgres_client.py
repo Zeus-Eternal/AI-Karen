@@ -52,7 +52,6 @@ class PostgresClient:
         return res
 
     def _ensure_tables(self) -> None:
-        ph = self.placeholder
         if self.use_sqlite:
             sql = (
                 "CREATE TABLE IF NOT EXISTS memory ("

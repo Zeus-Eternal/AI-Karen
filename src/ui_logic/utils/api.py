@@ -6,7 +6,8 @@ Kari UI Universal API Utility
 """
 
 import os
-import time, datetime
+import time
+import datetime
 import threading
 import requests
 from typing import Any, Dict, List, Optional, Set, Union
@@ -462,7 +463,7 @@ def fetch_session_memory(
         params["end_date"] = end_date.isoformat()
     try:
         return api_get("memory/session", params=params, token=token, org=org)
-    except Exception as ex:
+    except Exception:
         # Standardize the error structure for UI consumers
         return []
 
