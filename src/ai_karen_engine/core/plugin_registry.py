@@ -6,38 +6,36 @@ Unified Plugin Registry for Kari AI
 """
 
 import importlib
-import os
-import sys
-from pathlib import Path
+import pkgutil
+
 from types import ModuleType
 
-PLUGIN_REGISTRY = {}
+PLUGIN_REGISTRY: dict[str, dict[str, ModuleType]] = {}
 
-def _discover_plugins(base_path, type_label):
-    plugins = {}
-    for item in Path(base_path).iterdir():
-        if item.is_dir() and not item.name.startswith('__'):
-            handler_path = item / "handler.py"
-            if handler_path.exists():
-                mod_name = f"{item.parent.name}.{item.name}.handler"
-                # Insert base_path into sys.path for dynamic import
-                if str(item.parent) not in sys.path:
-                    sys.path.insert(0, str(item.parent))
-                try:
-                    mod = importlib.import_module(f"{item.name}.handler")
-                    plugins[item.name] = {"handler": mod, "type": type_label}
-                except Exception as ex:
-                    print(f"Plugin load failed: {item.name} ({type_label}): {ex}")
+
+def _discover_plugins(base_pkg: str, type_label: str) -> dict[str, dict[str, ModuleType]]:
+    """Discover and import plugins under ``base_pkg``."""
+    plugins: dict[str, dict[str, ModuleType]] = {}
+    try:
+        package = importlib.import_module(base_pkg)
+    except ModuleNotFoundError:
+        return plugins
+    for _, name, ispkg in pkgutil.iter_modules(package.__path__):
+        if not ispkg:
+            continue
+        try:
+            mod = importlib.import_module(f"{base_pkg}.{name}.handler")
+            plugins[name] = {"handler": mod, "type": type_label}
+        except Exception as ex:  # pragma: no cover - safety net
+            print(f"Plugin load failed: {name} ({type_label}): {ex}")
     return plugins
 
-def load_plugins():
-    # Core plugins
-    core_dir = Path(__file__).parent.parent / "plugins"
-    core_plugins = _discover_plugins(core_dir, "core")
-
-    # Community plugins (top-level under ai_karen_engine)
-    comm_dir = Path(__file__).parent.parent / "community_plugins"
-    community_plugins = _discover_plugins(comm_dir, "community")
+def load_plugins() -> dict[str, dict[str, ModuleType]]:
+    """Reload plugin registry from available packages."""
+    core_plugins = _discover_plugins("ai_karen_engine.plugins", "core")
+    community_plugins = _discover_plugins(
+        "ai_karen_engine.community_plugins", "community"
+    )
 
     # Merge and publish
     PLUGIN_REGISTRY.clear()
