@@ -3,9 +3,9 @@ Kari Plugins Page
 - Orchestrates: plugin manager, plugin store, workflow builder
 """
 
-from ui_logic.components.plugins.plugin_manager import render_plugin_manager
-from ui_logic.components.plugins.plugin_store import render_plugin_store
-from ui_logic.components.plugins.workflow_builder import \
+from src.ui_logic.components.plugins.plugin_manager import render_plugin_manager
+from src.ui_logic.components.plugins.plugin_store import render_plugin_store
+from src.ui_logic.components.plugins.workflow_builder import \
     render_workflow_builder
 
 
