@@ -17,7 +17,7 @@ production workloads.
  
 * Intent detection engine with runtime-configurable regex rules
 * Robust plugin router with manifest validation and RBAC dispatch
-* Dual vector memory (Milvus + Redis) with surprise weighting
+* Dual vector memory (Milvus + Redis) with Postgres metadata
 * Thread-safe Milvus client supporting TTL and metadata filters
 * Recency-weighted memory store with automatic TTL pruning and async queries
 * Local-first LLM orchestration (LNM + OSIRIS)
@@ -39,7 +39,7 @@ The stack ships with:
 
 * an intent engine and role-based plugin router
 * a **SelfRefactor Engine** that patches its own code every hour
-* dual-tier vector memory (Milvus + Redis) with surprise & recency weighting
+* dual-tier vector memory (Milvus + Redis + Postgres metadata) with surprise & recency weighting
 * a **Tauri** desktop Control Room (React+Rust) for ops, metrics, and logs
 
 Everything runs locally by default; cloud APIs are optional, opt-in plugins.
@@ -53,7 +53,7 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 | -------------------- | ----------------------------------------------------------------------------- |
 | **Intent & Routing** | Regex intent matcher → Prompt-First Router → Capsule Planner                  |
 | **Plugins**          | Drop a folder with `manifest.json` & `handler.py`; UI auto-appears            |
-| **Memory**           | Milvus (dense vectors) + Redis (hot cache) + TTL pruning                      |
+| **Memory**           | Milvus (dense vectors) + Redis (hot cache) + Postgres metadata + TTL pruning |
 | **LLMs**             | Local LNM & OSIRIS models (ggml / llama.cpp); HF and OpenAI plugins optional  |
 | **Self-Improvement** | DeepSeek-powered **SRE** runs in sandbox, merges patches after tests          |
 | **Ops Mesh**         | *Hydra-Ops* capsules (DevOps, Finance, Growth, …) with guardrails & event bus |
