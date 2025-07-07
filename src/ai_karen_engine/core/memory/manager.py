@@ -21,6 +21,11 @@ except ImportError:
     duckdb = None
 
 try:
+    import psycopg
+except ImportError:
+    psycopg = None
+
+try:
     import redis
 except ImportError:
     redis = None
@@ -28,7 +33,7 @@ except ImportError:
 def recall_context(user_ctx: Dict[str, Any], query: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
     """
     Recall recent or most relevant context for the user/query.
-    Tries Milvus first, then DuckDB, then Redis, else returns None.
+    Tries Milvus first, then Postgres, then DuckDB, then Redis.
     """
     user_id = user_ctx.get("user_id") or "anonymous"
     # 1. Milvus
@@ -40,7 +45,30 @@ def recall_context(user_ctx: Dict[str, Any], query: str, limit: int = 10) -> Opt
         except Exception as ex:
             print(f"[MemoryManager] Milvus recall failed: {ex}")
 
-    # 2. DuckDB
+    # 2. Postgres
+    if psycopg:
+        try:
+            with psycopg.connect(
+                dbname=os.getenv("POSTGRES_DB", "postgres"),
+                user=os.getenv("POSTGRES_USER", "postgres"),
+                password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+                host=os.getenv("POSTGRES_HOST", "localhost"),
+                port=int(os.getenv("POSTGRES_PORT", "5432")),
+            ) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT user_id, query, result, timestamp FROM memory WHERE user_id=%s ORDER BY timestamp DESC LIMIT %s",
+                        (user_id, limit),
+                    )
+                    rows = cur.fetchall()
+            return [
+                {"user_id": uid, "query": q, "result": r, "timestamp": ts}
+                for uid, q, r, ts in rows
+            ]
+        except Exception as ex:
+            print(f"[MemoryManager] Postgres recall failed: {ex}")
+
+    # 3. DuckDB
     if duckdb:
         try:
             db_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
@@ -84,7 +112,30 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
         except Exception as ex:
             print(f"[MemoryManager] Milvus store failed: {ex}")
 
-    # 2. DuckDB
+    # 2. Postgres
+    if psycopg:
+        try:
+            with psycopg.connect(
+                dbname=os.getenv("POSTGRES_DB", "postgres"),
+                user=os.getenv("POSTGRES_USER", "postgres"),
+                password=os.getenv("POSTGRES_PASSWORD", "postgres"),
+                host=os.getenv("POSTGRES_HOST", "localhost"),
+                port=int(os.getenv("POSTGRES_PORT", "5432")),
+            ) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "CREATE TABLE IF NOT EXISTS memory (user_id VARCHAR, query VARCHAR, result TEXT, timestamp BIGINT)"
+                    )
+                    cur.execute(
+                        "INSERT INTO memory (user_id, query, result, timestamp) VALUES (%s, %s, %s, %s)",
+                        (user_id, query, str(result), entry["timestamp"]),
+                    )
+                    conn.commit()
+            ok = True
+        except Exception as ex:
+            print(f"[MemoryManager] Postgres store failed: {ex}")
+
+    # 3. DuckDB
     if duckdb:
         try:
             db_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
