@@ -17,7 +17,7 @@ production workloads.
  
 * Intent detection engine with runtime-configurable regex rules
 * Robust plugin router with manifest validation and RBAC dispatch
-* Dual vector memory (Milvus + Redis) with Postgres metadata
+* Dual vector memory (Milvus + Redis) with Postgres metadata and optional Elasticsearch index
 * Thread-safe Milvus client supporting TTL and metadata filters
 * Recency-weighted memory store with automatic TTL pruning and async queries
 * Local-first LLM orchestration (LNM + OSIRIS)
@@ -39,7 +39,7 @@ The stack ships with:
 
 * an intent engine and role-based plugin router
 * a **SelfRefactor Engine** that patches its own code every hour
-* dual-tier vector memory (Milvus + Redis + Postgres metadata) with surprise & recency weighting
+* dual-tier vector memory (Milvus + Redis + Postgres metadata) with optional Elasticsearch search and surprise & recency weighting
 * a **Tauri** desktop Control Room (React+Rust) for ops, metrics, and logs
 
 Everything runs locally by default; cloud APIs are optional, opt-in plugins.
@@ -53,7 +53,7 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 | -------------------- | ----------------------------------------------------------------------------- |
 | **Intent & Routing** | Regex intent matcher → Prompt-First Router → Capsule Planner                  |
 | **Plugins**          | Drop a folder with `manifest.json` & `handler.py`; UI auto-appears            |
-| **Memory**           | Milvus (dense vectors) + Redis (hot cache) + Postgres metadata + TTL pruning |
+| **Memory**           | Milvus (dense vectors) + Redis (hot cache) + Postgres metadata + optional Elasticsearch + TTL pruning |
 | **LLMs**             | Local LNM & OSIRIS models (ggml / llama.cpp); HF and OpenAI plugins optional  |
 | **Self-Improvement** | DeepSeek-powered **SRE** runs in sandbox, merges patches after tests          |
 | **Ops Mesh**         | *Hydra-Ops* capsules (DevOps, Finance, Growth, …) with guardrails & event bus |
@@ -105,6 +105,7 @@ Each UI directory also contains a `README.md` with build notes and setup tips.
 * Docker and Docker Compose
 * Node.js 18+ with npm
 * Rust toolchain (`cargo`) for Tauri builds
+* Running instances of **Postgres** and **Elasticsearch** (Docker images are fine)
 
 
 ---
@@ -128,8 +129,7 @@ cd ui_launchers/desktop_ui && npm install
 # The Tauri configuration lives in `ui_launchers/desktop_ui/src-tauri/tauri.config.json`.
 # Make sure this file exists before running desktop commands.
 
-# 4 · Launch backend API + dependencies
-cp .env.example .env  # populate default environment variables
+# 4 · Launch backend API + dependencies (ensure Postgres & Elasticsearch are running)
 ./scripts/start.sh
 
 # 4.1 · Initialize databases
@@ -147,7 +147,7 @@ cd ui_launchers/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 # Optional: run everything with one command
 ./scripts/bootstrap_ui.sh
 
-**Full stack (API + Milvus + Redis + Prometheus):**
+**Full stack (API + Milvus + Redis + Postgres + Elasticsearch + Prometheus):**
 
 ```bash
 # after use

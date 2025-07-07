@@ -31,7 +31,8 @@ This document summarizes the official development protocol for Kari AI. It captu
 │ Memory Layer               │
 │ • Milvus (vectors)         │
 │ • Redis  (cache)           │
-│ • DuckDB (structured logs) │
+│ • Postgres (metadata)      │
+│ • Elasticsearch (search)   │
 │ • EchoVault / DarkTracker  │
 └────────────────────────────┘
              │
@@ -61,7 +62,8 @@ This document summarizes the official development protocol for Kari AI. It captu
 | Task Queue       | Celery + Redis                       | Battle-tested, supports KRONOS beat | RQ                         |
 | Vector DB        | **Milvus 2.4**                       | billion-scale, metadata filter      | FAISS (local), Chroma      |
 | Cache            | Redis                                | fast kv / pubsub                    | —                          |
-| Structured DB    | DuckDB                               | serverless OLAP, Parquet IO         | Postgres (if multi-tenant) |
+| Structured DB    | Postgres                             | relational metadata & plugin state | DuckDB for local dev |
+| Full-text Search | Elasticsearch                        | keyword + phrase search             | — |
 | LLMs (local)     | GGUF models via llama.cpp server     | GPU/CPU flexible                    | vLLM, TensorRT             |
 | LLM Orchestrator | **OSIRIS** custom                    | reflection tokens, latent reasoning | —                          |
 | Embeddings       | Sentence-Transformers (MiniLM + BGE) | dual-model recall/precision         | E5-Large                   |
