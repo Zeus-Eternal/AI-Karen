@@ -1,6 +1,6 @@
 """
 Unified MemoryManager: context recall and update
-- Local-first: Elastic, Milvus, Postgres, Redis, DuckDB
+- Local-first: Elastic, Milvus, Postgres, Redis, DuckDB (hybrid)
 - Handles short/long-term, hot-pluggable
 - All ops logged/audited for observability
 """
@@ -27,6 +27,16 @@ except Exception:
     PostgresClient = None
 
 try:
+    from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
+except Exception:
+    DuckDBClient = None
+
+try:
+    from ai_karen_engine.clients.database.elastic_client import ElasticClient
+except Exception:
+    ElasticClient = None
+
+try:
     import redis
 except ImportError:
     redis = None
@@ -36,11 +46,6 @@ try:
 except ImportError:
     duckdb = None
 
-try:
-    from ai_karen_engine.clients.database.elastic_client import ElasticClient
-except Exception:
-    ElasticClient = None
-
 # ========== Logging ==========
 logger = logging.getLogger("kari.memory.manager")
 logger.setLevel(logging.INFO)
@@ -49,7 +54,7 @@ logger.setLevel(logging.INFO)
 postgres = PostgresClient(use_sqlite=True) if PostgresClient else None
 duckdb_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
 
-
+# ---- Postgres Hybrid Flush Logic ----
 class PostgresSyncer:
     """Background checker and DuckDB flusher for Postgres connectivity."""
 
@@ -60,7 +65,7 @@ class PostgresSyncer:
         self.postgres_available = client.health() if client else False
         self._timer: Optional[threading.Timer] = None
         self._lock = threading.Lock()
-        
+
     def start(self) -> None:
         if not self.client:
             return
@@ -82,7 +87,7 @@ class PostgresSyncer:
         healthy = False
         try:
             healthy = self.client.health()
-        except Exception as ex:  # pragma: no cover - defensive
+        except Exception as ex:
             logger.warning(f"[MemoryManager] Postgres health check failed: {ex}")
         if healthy:
             if not self.postgres_available:
@@ -102,7 +107,6 @@ class PostgresSyncer:
             if self._timer is not None:
                 self._timer.cancel()
                 self._timer = None
-
 
 def flush_duckdb_to_postgres(client: PostgresClient, db_path: str) -> None:
     """Flush unsynced DuckDB entries into Postgres."""
@@ -133,15 +137,14 @@ def flush_duckdb_to_postgres(client: PostgresClient, db_path: str) -> None:
             except Exception as ex:
                 logger.warning(f"[MemoryManager] Flush failed for record {rowid}: {ex}")
                 break
-    except Exception as ex:  # pragma: no cover - failsafe
+    except Exception as ex:
         logger.warning(f"[MemoryManager] DuckDB flush error: {ex}")
-
 
 pg_syncer = PostgresSyncer(postgres, duckdb_path) if postgres else None
 if pg_syncer:
     pg_syncer.start()
 
-
+# ====== Context Recall ======
 def recall_context(
     user_ctx: Dict[str, Any], query: str, limit: int = 10
 ) -> Optional[List[Dict[str, Any]]]:
@@ -151,7 +154,7 @@ def recall_context(
     """
     user_id = user_ctx.get("user_id") or "anonymous"
 
-    # ==== 1. ElasticSearch (optional, semantic/keyword) ====
+    # 1. ElasticSearch (optional, semantic/keyword)
     if ElasticClient:
         try:
             es_host = os.getenv("ELASTIC_HOST", "localhost")
@@ -169,7 +172,7 @@ def recall_context(
         except Exception as ex:
             logger.warning(f"[MemoryManager] Elastic recall failed: {ex}")
 
-    # ==== 2. Milvus ====
+    # 2. Milvus
     if recall_vectors:
         try:
             vec_results = recall_vectors(user_id, query, top_k=limit)
@@ -185,8 +188,8 @@ def recall_context(
         except Exception as ex:
             logger.warning(f"[MemoryManager] Milvus recall failed: {ex}")
 
-    # ==== 2. Postgres ====
-    if postgres:
+    # 3. Postgres
+    if postgres and pg_syncer and pg_syncer.postgres_available:
         try:
             db_results = postgres.recall_memory(
                 user_id=user_id, query=query, limit=limit
@@ -199,7 +202,7 @@ def recall_context(
         except Exception as ex:
             logger.warning(f"[MemoryManager] Postgres recall failed: {ex}")
 
-    # ==== 3. Redis ====
+    # 4. Redis
     if redis:
         try:
             r = redis.Redis()
@@ -218,11 +221,10 @@ def recall_context(
         except Exception as ex:
             logger.warning(f"[MemoryManager] Redis recall failed: {ex}")
 
-    # ==== 4. DuckDB (optional, local OLAP) ====
+    # 5. DuckDB (local OLAP/fallback)
     if duckdb:
         try:
-            db_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
-            con = duckdb.connect(db_path, read_only=True)
+            con = duckdb.connect(duckdb_path, read_only=True)
             query_sql = """
                 SELECT * FROM memory 
                 WHERE user_id = ? 
@@ -244,7 +246,7 @@ def recall_context(
     )
     return None
 
-
+# ====== Context Write ======
 def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     """
     Store context/result to all available memory backends.
@@ -263,7 +265,7 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     vector_id = None
     postgres_ok = False
 
-    # ==== 1. Milvus ====
+    # 1. Milvus
     if store_vector:
         try:
             vector_id = store_vector(user_id, query, result)
@@ -272,7 +274,7 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
         except Exception as ex:
             logger.warning(f"[MemoryManager] Milvus store failed: {ex}")
 
-    # ==== 2. Postgres ====
+    # 2. Postgres (if available, else buffer in DuckDB)
     if postgres and pg_syncer and pg_syncer.postgres_available:
         try:
             postgres.upsert_memory(
@@ -290,7 +292,7 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
             pg_syncer.mark_unavailable()
             logger.warning(f"[MemoryManager] Postgres store failed: {ex}")
 
-    # ==== 3. Redis ====
+    # 3. Redis
     if redis:
         try:
             r = redis.Redis()
@@ -300,11 +302,10 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
         except Exception as ex:
             logger.warning(f"[MemoryManager] Redis store failed: {ex}")
 
-    # ==== 4. DuckDB (optional, local OLAP) ====
+    # 4. DuckDB (buffer/fallback if Postgres fails or for all writes)
     if duckdb:
         try:
-            db_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
-            con = duckdb.connect(db_path, read_only=False)
+            con = duckdb.connect(duckdb_path, read_only=False)
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS memory (
@@ -324,11 +325,11 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
             ok = True
             logger.info(f"[MemoryManager] DuckDB stored memory for user {user_id}")
             if postgres_ok:
-                flush_duckdb_to_postgres(postgres, db_path)
+                flush_duckdb_to_postgres(postgres, duckdb_path)
         except Exception as ex:
             logger.warning(f"[MemoryManager] DuckDB store failed: {ex}")
 
-    # ==== 5. ElasticSearch (optional, document index) ====
+    # 5. ElasticSearch (optional, document index)
     if ElasticClient:
         try:
             es_host = os.getenv("ELASTIC_HOST", "localhost")
@@ -348,6 +349,5 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
             f"[MemoryManager] FAILED to store memory for user {user_id} on all backends"
         )
     return ok
-
 
 __all__ = ["recall_context", "update_memory", "flush_duckdb_to_postgres"]
