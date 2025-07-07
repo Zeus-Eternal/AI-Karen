@@ -1,7 +1,6 @@
 import asyncio
 
-from ui_launchers.backend.chat_hub import ChatHub
-
+from ui_launchers.backend.chat_hub import ChatHub, SlashCommand, NeuroVault
 
 class DummyRouter:
     def __init__(self):
