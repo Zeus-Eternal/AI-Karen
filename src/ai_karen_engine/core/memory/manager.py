@@ -25,6 +25,9 @@ try:
 except Exception:
     PostgresClient = None
 
+from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
+from ai_karen_engine.core.memory.session_buffer import SessionBuffer
+
 try:
     import redis
 except ImportError:
@@ -46,6 +49,8 @@ logger.setLevel(logging.INFO)
 
 # ========== Backend Init ==========
 postgres = PostgresClient(use_sqlite=True) if PostgresClient else None
+duckdb_client = DuckDBClient(os.getenv("DUCKDB_PATH", "kari_mem.duckdb"))
+session_buffer = SessionBuffer(duckdb_client, postgres)
 
 
 def recall_context(
@@ -177,21 +182,23 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
         except Exception as ex:
             logger.warning(f"[MemoryManager] Milvus store failed: {ex}")
 
-    # ==== 2. Postgres ====
-    if postgres:
+    # ==== 2. Session Buffer ====
+    if session_buffer:
         try:
-            postgres.upsert_memory(
-                vector_id or -1,
+            session_buffer.add_entry(
                 user_id,
                 session_id,
                 query,
                 result,
+                vector_id,
                 entry["timestamp"],
             )
+            if user_ctx.get("session_end"):
+                session_buffer.flush_to_postgres(session_id)
             ok = True
-            logger.info(f"[MemoryManager] Postgres upserted memory for user {user_id}")
+            logger.info(f"[MemoryManager] Buffered memory for user {user_id}")
         except Exception as ex:
-            logger.warning(f"[MemoryManager] Postgres store failed: {ex}")
+            logger.warning(f"[MemoryManager] SessionBuffer store failed: {ex}")
 
     # ==== 3. Redis ====
     if redis:
