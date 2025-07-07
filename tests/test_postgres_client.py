@@ -1,106 +1,52 @@
-import sqlite3
-import sys
-from types import SimpleNamespace
-
-sys.modules.setdefault("psycopg", SimpleNamespace(connect=lambda **_: None))
+import time
 from ai_karen_engine.clients.database.postgres_client import PostgresClient
-from ai_karen_engine.core.memory import manager as memory_manager
 
+def test_upsert_and_recall():
+    client = PostgresClient(dsn="sqlite:///:memory:", use_sqlite=True)
+    client.upsert_memory(1, "u1", "s1", "q", "r", timestamp=123)
+    rec = client.get_by_vector(1)
+    assert rec["user_id"] == "u1"
+    assert rec["session_id"] == "s1"
+    assert rec["query"] == "q"
+    assert rec["result"] == "r"
+    assert rec["timestamp"] == 123
 
-class FakePgCursor:
-    def __init__(self, cur):
-        self.cur = cur
+    # Overwrite same vector, check update
+    client.upsert_memory(1, "u1", "s1", "q2", "r2", timestamp=124)
+    rec2 = client.get_by_vector(1)
+    assert rec2["query"] == "q2"
+    assert rec2["result"] == "r2"
+    assert rec2["timestamp"] == 124
 
-    def execute(self, query, params=None):
-        q = query.replace("%s", "?")
-        self.cur.execute(q, params or [])
+    # Session fetch
+    sess = client.get_session_records("s1")
+    assert len(sess) == 1
+    assert sess[0]["result"] == "r2"
 
-    def fetchone(self):
-        return self.cur.fetchone()
+    # Delete logic
+    client.delete(1)
+    assert client.get_by_vector(1) is None
 
-    def fetchall(self):
-        return self.cur.fetchall()
+def test_recall_memory_batch():
+    client = PostgresClient(dsn="sqlite:///:memory:", use_sqlite=True)
+    for i in range(5):
+        client.upsert_memory(i, "u2", "s2", f"q{i}", f"r{i}", timestamp=100 + i)
+    recs = client.recall_memory("u2", limit=3)
+    assert len(recs) == 3
+    assert recs[0]["query"] == "q4"
+    assert recs[1]["query"] == "q3"
+    assert recs[2]["query"] == "q2"
 
-    def __enter__(self):
-        return self
+def test_health_ok():
+    client = PostgresClient(dsn="sqlite:///:memory:", use_sqlite=True)
+    assert client.health() is True
 
-    def __exit__(self, exc_type, exc, tb):
-        pass
-
-
-class FakePgConnection:
-    def __init__(self):
-        self.conn = sqlite3.connect(":memory:")
-
-    def cursor(self):
-        return FakePgCursor(self.conn.cursor())
-
-    def commit(self):
-        self.conn.commit()
-
-    def close(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        pass
-
-
-def setup_fake_tables(conn):
-    cur = conn.cursor()
-    cur.execute(
-        "CREATE TABLE profiles (user_id TEXT PRIMARY KEY, profile_json TEXT, last_update TIMESTAMP)"
-    )
-    cur.execute(
-        "CREATE TABLE profile_history (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, timestamp REAL, field TEXT, old TEXT, new TEXT)"
-    )
-    cur.execute(
-        "CREATE TABLE long_term_memory (user_id TEXT, memory_json TEXT)"
-    )
-    cur.execute(
-        "CREATE TABLE user_roles (user_id TEXT, role TEXT)"
-    )
-    cur.execute(
-        "CREATE TABLE memory (user_id TEXT, query TEXT, result TEXT, timestamp INTEGER)"
-    )
-    conn.commit()
-
-
-def test_postgres_client_profile_crud(monkeypatch):
-    conn = FakePgConnection()
-    setup_fake_tables(conn)
-    monkeypatch.setattr(PostgresClient, "_get_conn", lambda self: conn)
-    monkeypatch.setattr(PostgresClient, "_ensure_tables", lambda self: None)
-    client = PostgresClient()
-
-    client.create_profile("u1", {"name": "test"})
-    prof = client.get_profile("u1")
-    assert prof["name"] == "test"
-
-    client.update_profile("u1", "name", "new")
-    prof = client.get_profile("u1")
-    assert prof["name"] == "new"
-
-    client.delete_profile("u1")
-    assert client.get_profile("u1") is None
-
-
-def test_memory_manager_postgres(monkeypatch):
-    conn = FakePgConnection()
-    setup_fake_tables(conn)
-
-    class FakePg:
-        def connect(self, **_):
-            return conn
-
-    monkeypatch.setattr(memory_manager, "psycopg", FakePg())
-    monkeypatch.setattr(memory_manager, "duckdb", None)
-    monkeypatch.setattr(memory_manager, "redis", None)
-
-    memory_manager.update_memory({"user_id": "u1"}, "q", "r")
-    res = memory_manager.recall_context({"user_id": "u1"}, "q", limit=1)
-    assert res and res[0]["query"] == "q"
-
+def test_sqlite_fallback_without_psycopg(monkeypatch):
+    import sys
+    sys.modules["psycopg"] = None
+    client = PostgresClient(dsn="sqlite:///:memory:", use_sqlite=True)
+    client.upsert_memory(2, "u3", "s3", "test_query", "test_result")
+    rec = client.get_by_vector(2)
+    assert rec["user_id"] == "u3"
+    assert rec["query"] == "test_query"
 

@@ -1,222 +1,183 @@
-"""Postgres-backed storage client mirroring DuckDBClient."""
+"""PostgresClient: persistent store for user and session metadata.
 
-import json
-import os
+This client wraps psycopg for real Postgres usage but can fall back to
+an in-memory SQLite database for tests or local development.
+"""
+
+from __future__ import annotations
+
 import threading
-from datetime import datetime
+import time
+from typing import Any, Dict, List, Optional
 
 try:
-    import psycopg  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
+    import psycopg
+except Exception:  # pragma: no cover - library optional
     psycopg = None
+
+import sqlite3
 
 
 class PostgresClient:
-    """Simple PostgreSQL client for user profiles and memory."""
-
     def __init__(
         self,
-        host: str | None = None,
-        port: int | None = None,
-        dbname: str | None = None,
-        user: str | None = None,
-        password: str | None = None,
+        dsn: str = "postgresql://localhost/kari",
+        use_sqlite: bool = False,
     ) -> None:
-        if psycopg is None:
-            raise ImportError("psycopg is required for PostgresClient")
-        self.conn_params = {
-            "host": host or os.getenv("POSTGRES_HOST", "localhost"),
-            "port": int(port or os.getenv("POSTGRES_PORT", "5432")),
-            "dbname": dbname or os.getenv("POSTGRES_DB", "postgres"),
-            "user": user or os.getenv("POSTGRES_USER", "postgres"),
-            "password": password or os.getenv("POSTGRES_PASSWORD", "postgres"),
-        }
+        self.dsn = dsn
+        self.use_sqlite = use_sqlite or dsn.startswith("sqlite://") or psycopg is None
         self._lock = threading.Lock()
+        self._connect()
         self._ensure_tables()
 
-    def _get_conn(self):
-        if psycopg is None:
-            raise ImportError("psycopg is required for PostgresClient")
-        return psycopg.connect(**self.conn_params)
+    # --- connection helpers -------------------------------------------------
+    def _connect(self) -> None:
+        if self.use_sqlite:
+            path = self.dsn.replace("sqlite://", "") if self.dsn else ":memory:"
+            self.conn = sqlite3.connect(path, check_same_thread=False)
+            self.placeholder = "?"
+        else:
+            self.conn = psycopg.connect(self.dsn)
+            self.placeholder = "%s"
+        if self.use_sqlite:
+            self.conn.execute("PRAGMA journal_mode=WAL")
+
+    def _execute(self, sql: str, params: Optional[List[Any]] = None, fetch: bool = False):
+        with self._lock:
+            cur = self.conn.cursor()
+            cur.execute(sql, params or [])
+            res = cur.fetchall() if fetch else None
+            self.conn.commit()
+            cur.close()
+        return res
 
     def _ensure_tables(self) -> None:
-        with self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS profiles (
-                        user_id VARCHAR PRIMARY KEY,
-                        profile_json TEXT,
-                        last_update TIMESTAMP
-                    );
-                    """
-                )
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS profile_history (
-                        id SERIAL PRIMARY KEY,
-                        user_id VARCHAR,
-                        timestamp DOUBLE PRECISION,
-                        field VARCHAR,
-                        old TEXT,
-                        new TEXT
-                    );
-                    """
-                )
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS long_term_memory (
-                        user_id VARCHAR,
-                        memory_json TEXT
-                    );
-                    """
-                )
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS user_roles (
-                        user_id VARCHAR,
-                        role VARCHAR
-                    );
-                    """
-                )
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS memory (
-                        user_id VARCHAR,
-                        query VARCHAR,
-                        result TEXT,
-                        timestamp BIGINT
-                    );
-                    """
-                )
-                conn.commit()
+        ph = self.placeholder
+        if self.use_sqlite:
+            sql = (
+                "CREATE TABLE IF NOT EXISTS memory ("
+                "vector_id INTEGER PRIMARY KEY,"
+                "user_id TEXT,"
+                "session_id TEXT,"
+                "query TEXT,"
+                "result TEXT,"
+                "timestamp INTEGER"
+                ")"
+            )
+        else:
+            sql = (
+                "CREATE TABLE IF NOT EXISTS memory ("
+                "vector_id INTEGER PRIMARY KEY,"
+                "user_id VARCHAR,"
+                "session_id VARCHAR,"
+                "query TEXT,"
+                "result TEXT,"
+                "timestamp BIGINT"
+                ")"
+            )
+        self._execute(sql)
 
-    # Profile CRUD
-    def get_profile(self, user_id: str):
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT profile_json FROM profiles WHERE user_id=%s", (user_id,))
-                res = cur.fetchone()
-                return json.loads(res[0]) if res else None
+    # --- CRUD ---------------------------------------------------------------
+    def upsert_memory(
+        self,
+        vector_id: int,
+        user_id: str,
+        session_id: Optional[str],
+        query: str,
+        result: Any,
+        timestamp: Optional[int] = None,
+    ) -> None:
+        timestamp = timestamp or int(time.time())
+        ph = self.placeholder
+        if self.use_sqlite:
+            sql = (
+                f"INSERT INTO memory (vector_id, user_id, session_id, query, result, timestamp)"
+                f" VALUES ({ph},{ph},{ph},{ph},{ph},{ph})"
+                f" ON CONFLICT(vector_id) DO UPDATE SET user_id=excluded.user_id,"
+                " session_id=excluded.session_id, query=excluded.query,"
+                " result=excluded.result, timestamp=excluded.timestamp"
+            )
+        else:
+            sql = (
+                f"INSERT INTO memory (vector_id, user_id, session_id, query, result, timestamp)"
+                f" VALUES ({ph},{ph},{ph},{ph},{ph},{ph})"
+                f" ON CONFLICT (vector_id) DO UPDATE SET user_id=EXCLUDED.user_id,"
+                " session_id=EXCLUDED.session_id, query=EXCLUDED.query,"
+                " result=EXCLUDED.result, timestamp=EXCLUDED.timestamp"
+            )
+        self._execute(sql, [vector_id, user_id, session_id, query, str(result), timestamp])
 
-    def update_profile(self, user_id: str, field: str, value):
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT profile_json FROM profiles WHERE user_id=%s", (user_id,))
-                res = cur.fetchone()
-                profile = json.loads(res[0]) if res else {}
-                profile[field] = value
-                profile["last_update"] = datetime.utcnow().timestamp()
-                profile_json = json.dumps(profile)
-                if res:
-                    cur.execute(
-                        "UPDATE profiles SET profile_json=%s, last_update=%s WHERE user_id=%s",
-                        (profile_json, datetime.utcnow(), user_id),
-                    )
-                else:
-                    cur.execute(
-                        "INSERT INTO profiles (user_id, profile_json, last_update) VALUES (%s, %s, %s)",
-                        (user_id, profile_json, datetime.utcnow()),
-                    )
-                conn.commit()
+    def recall_memory(
+        self, user_id: str, query: Optional[str] = None, limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        ph = self.placeholder
+        sql = (
+            f"SELECT vector_id, user_id, session_id, query, result, timestamp FROM memory"
+            f" WHERE user_id={ph}"
+        )
+        params = [user_id]
+        if query:
+            sql += f" AND query LIKE {ph}"
+            params.append(f"%{query}%")
+        sql += f" ORDER BY timestamp DESC LIMIT {ph}"
+        params.append(limit)
+        rows = self._execute(sql, params, fetch=True)
+        return [
+            {
+                "vector_id": r[0],
+                "user_id": r[1],
+                "session_id": r[2],
+                "query": r[3],
+                "result": r[4],
+                "timestamp": r[5],
+            }
+            for r in rows
+        ]
 
-    def create_profile(self, user_id: str, profile: dict) -> None:
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                profile["last_update"] = datetime.utcnow().timestamp()
-                cur.execute(
-                    "INSERT INTO profiles (user_id, profile_json, last_update) VALUES (%s, %s, %s)",
-                    (user_id, json.dumps(profile), datetime.utcnow()),
-                )
-                conn.commit()
+    def get_by_vector(self, vector_id: int) -> Optional[Dict[str, Any]]:
+        ph = self.placeholder
+        sql = f"SELECT vector_id, user_id, session_id, query, result, timestamp FROM memory WHERE vector_id={ph}"
+        rows = self._execute(sql, [vector_id], fetch=True)
+        if not rows:
+            return None
+        v_id, user_id, sess, q, res, ts = rows[0]
+        return {
+            "vector_id": v_id,
+            "user_id": user_id,
+            "session_id": sess,
+            "query": q,
+            "result": res,
+            "timestamp": ts,
+        }
 
-    def delete_profile(self, user_id: str) -> None:
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM profiles WHERE user_id=%s", (user_id,))
-                conn.commit()
+    def get_session_records(self, session_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+        ph = self.placeholder
+        sql = (
+            f"SELECT vector_id, user_id, session_id, query, result, timestamp FROM memory"
+            f" WHERE session_id={ph} ORDER BY timestamp DESC LIMIT {ph}"
+        )
+        rows = self._execute(sql, [session_id, limit], fetch=True)
+        return [
+            {
+                "vector_id": r[0],
+                "user_id": r[1],
+                "session_id": r[2],
+                "query": r[3],
+                "result": r[4],
+                "timestamp": r[5],
+            }
+            for r in rows
+        ]
 
-    # History
-    def append_profile_history(self, user_id: str, entry: dict) -> None:
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO profile_history (user_id, timestamp, field, old, new) VALUES (%s, %s, %s, %s, %s)",
-                    (
-                        user_id,
-                        entry.get("timestamp"),
-                        entry.get("field"),
-                        json.dumps(entry.get("old")),
-                        json.dumps(entry.get("new")),
-                    ),
-                )
-                conn.commit()
+    def delete(self, vector_id: int) -> None:
+        ph = self.placeholder
+        sql = f"DELETE FROM memory WHERE vector_id={ph}"
+        self._execute(sql, [vector_id])
 
-    def get_profile_history(self, user_id: str):
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT timestamp, field, old, new FROM profile_history WHERE user_id=%s ORDER BY timestamp DESC LIMIT 100",
-                    (user_id,),
-                )
-                rows = cur.fetchall()
-                return [
-                    {
-                        "timestamp": ts,
-                        "field": f,
-                        "old": json.loads(o) if o else None,
-                        "new": json.loads(n) if n else None,
-                    }
-                    for ts, f, o, n in rows
-                ]
-
-    def profile_edit_count(self, user_id: str) -> int:
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM profile_history WHERE user_id=%s", (user_id,))
-                res = cur.fetchone()
-                return int(res[0]) if res else 0
-
-    # Memory ops
-    def delete_long_term_memory(self, user_id: str) -> None:
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM long_term_memory WHERE user_id=%s", (user_id,))
-                conn.commit()
-
-    # Interactions
-    def total_interactions(self, user_id: str) -> int:
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM profile_history WHERE user_id=%s", (user_id,))
-                res = cur.fetchone()
-                return int(res[0]) if res else 0
-
-    def recent_interactions(self, user_id: str, window_days: int = 7) -> int:
-        cutoff = datetime.utcnow().timestamp() - window_days * 86400
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT COUNT(*) FROM profile_history WHERE user_id=%s AND timestamp >= %s",
-                    (user_id, cutoff),
-                )
-                res = cur.fetchone()
-                return int(res[0]) if res else 0
-
-    # Roles
-    def get_user_roles(self, user_id: str):
-        with self._lock, self._get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT role FROM user_roles WHERE user_id=%s", (user_id,))
-                res = cur.fetchall()
-                return [r[0] for r in res]
-
-    # Health
+    # --- Health -------------------------------------------------------------
     def health(self) -> bool:
         try:
-            with self._get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT 1")
+            self._execute("SELECT 1", fetch=True)
             return True
         except Exception:
             return False
