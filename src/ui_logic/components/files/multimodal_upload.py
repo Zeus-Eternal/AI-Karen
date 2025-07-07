@@ -5,7 +5,7 @@ Kari Multi-Modal Upload Logic
 - RBAC enforced
 """
 
-from typing import Dict, Any
+from typing import Dict
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import (
     save_file,

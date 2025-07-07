@@ -13,13 +13,11 @@ import hashlib
 import hmac
 import logging
 import os
-import secrets
-import sys
 import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict
 
 import duckdb
 

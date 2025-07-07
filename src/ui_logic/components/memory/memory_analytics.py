@@ -22,9 +22,16 @@ logger = logging.getLogger("kari.memory.analytics")
 logger.setLevel(logging.INFO)
 
 # --- Error Classes ---
-class MemoryAnalyticsError(Exception): pass
-class PermissionDeniedError(MemoryAnalyticsError): pass
-class DataFetchError(MemoryAnalyticsError): pass
+class MemoryAnalyticsError(Exception):
+    pass
+
+
+class PermissionDeniedError(MemoryAnalyticsError):
+    pass
+
+
+class DataFetchError(MemoryAnalyticsError):
+    pass
 
 def log_analytics_operation(func):
     """Decorator to log analytics operations."""

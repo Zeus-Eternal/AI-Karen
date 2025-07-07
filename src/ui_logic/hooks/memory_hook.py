@@ -8,7 +8,7 @@ Kari UI Memory Hook - Unified Memory/Context Interface
 
 import os
 import time
-from typing import Optional, Dict, Any, List, Generator
+from typing import Dict, Any, List
 
 import requests
 

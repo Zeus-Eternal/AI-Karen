@@ -135,7 +135,6 @@ class SecureLLMPool:
         def secured_call():
             set_worker_affinity(cpu_id)
             try:
-                start = time.time()
                 result = fn(*args, **kwargs)
                 self._record_success(model_id)
                 return result

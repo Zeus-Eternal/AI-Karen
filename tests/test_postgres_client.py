@@ -1,4 +1,3 @@
-import time
 from ai_karen_engine.clients.database.postgres_client import PostgresClient
 
 def test_upsert_and_recall():

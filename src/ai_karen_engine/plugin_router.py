@@ -7,7 +7,6 @@ Kari PluginRouter: Ruthless Prompt-First Plugin Orchestration
 
 import os
 import json
-import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Callable, Optional
 
@@ -128,7 +127,6 @@ class PluginRouter:
                     if not validate_manifest(manifest, self.schema):
                         raise ValueError("manifest schema invalid")
                     handler = load_handler(p)
-                    prompt = load_prompt(p)
                     ui = None
                     ui_path = p / "ui.py"
                     if ui_path.exists() and (os.getenv("ADVANCED_MODE") or manifest.get("trusted_ui")):

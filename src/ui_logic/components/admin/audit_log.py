@@ -126,7 +126,8 @@ def export_audit_logs(
     if format == "json":
         return json.dumps(logs, indent=2)
     elif format == "csv":
-        import io, csv
+        import io
+        import csv
         if not logs:
             return b""
         keys = list(logs[0].keys())

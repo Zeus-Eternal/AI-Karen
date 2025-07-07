@@ -14,8 +14,6 @@ Features:
 import streamlit as st
 from typing import List, Dict, Optional, Tuple
 import time
-import json
-from pathlib import Path
 import logging
 from functools import lru_cache
 import traceback
@@ -80,7 +78,7 @@ class ModelUI:
                     st.caption(f"Family: {model['family']}")
                 with cols[1]:
                     st.caption(f"Size: {model.get('size', 'N/A')}")
-                prompt = st.text_input(
+                _ = st.text_input(
                     "Quick Prompt",
                     key=f"prompt_{key_safe}",
                     placeholder="Ask this model something...",

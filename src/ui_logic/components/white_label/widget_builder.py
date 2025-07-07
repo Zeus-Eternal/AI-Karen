@@ -4,7 +4,7 @@ Kari Widget Builder Logic (Framework-Agnostic)
 - RBAC-secured (admin/developer only)
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import (
     list_widgets, 

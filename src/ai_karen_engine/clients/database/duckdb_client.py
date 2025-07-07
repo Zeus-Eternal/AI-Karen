@@ -6,7 +6,6 @@ Local file; thread-safe for multiple ops. Uses DuckDB SQL.
 import duckdb
 import threading
 import json
-import os
 from datetime import datetime
 
 class DuckDBClient:

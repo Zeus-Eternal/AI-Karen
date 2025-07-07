@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import os
 
-from ai_karen_engine.core.cortex.dispatch import dispatch, CortexDispatchError
+from ai_karen_engine.core.cortex.dispatch import dispatch
 from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
 from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 

@@ -4,7 +4,7 @@ Kari Voice Controls Logic
 - RBAC, audit, fallback
 """
 
-from typing import Dict, Any
+from typing import Dict
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import run_stt, run_tts, fetch_voice_logs
 

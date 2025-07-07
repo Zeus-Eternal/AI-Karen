@@ -10,7 +10,7 @@ GeminiClient: Enterprise-Grade Google Gemini API Client
 import os
 import logging
 import time
-from typing import Any, Dict, List, Optional, Generator, AsyncGenerator, Union
+from typing import Any, Dict, List, Optional, Generator, AsyncGenerator
 import httpx
 from pydantic import BaseModel, Field, validator, HttpUrl, AnyUrl
 from tenacity import (
@@ -261,7 +261,7 @@ class GeminiClient:
         """Standard headers for all requests"""
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": f"GeminiClient/1.0",
+            "User-Agent": "GeminiClient/1.0",
             "Accept": "application/json"
         }
         if self.config.api_key:
@@ -476,7 +476,7 @@ class GeminiClient:
 
         # Check API connectivity
         try:
-            ping_response = self.chat(
+            self.chat(
                 messages=[{"role": "user", "content": "ping"}],
                 max_output_tokens=1
             )
