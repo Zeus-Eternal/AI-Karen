@@ -7,7 +7,7 @@ import streamlit as st
 import pandas as pd
 import traceback
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from ui_logic.components.memory.session_core import (
     get_session_records,
@@ -54,7 +54,7 @@ def render_session_explorer(user_ctx: Dict[str, Any]):
                     end_date=datetime.combine(end_date, datetime.max.time()),
                     limit=limit
                 )
-            except PermissionError as e:
+            except PermissionError:
                 st.error("🔒 You don't have permission to view memory sessions.")
                 return
             except Exception as ex:
@@ -94,7 +94,7 @@ def render_session_explorer(user_ctx: Dict[str, Any]):
                     else:
                         st.info("No audit logs for this entry.")
 
-    except Exception as e:
+    except Exception:
         st.error("Critical error in Session Explorer.")
         st.code(traceback.format_exc())
 
