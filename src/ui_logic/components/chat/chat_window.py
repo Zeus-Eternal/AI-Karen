@@ -4,7 +4,7 @@ Kari Chat Window Logic
 - RBAC on chat retrieval, context shaping
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List
 from src.ui_logic.hooks.rbac import require_roles
 from src.ui_logic.utils.api import fetch_chat_history
 

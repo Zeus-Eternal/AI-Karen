@@ -5,7 +5,7 @@ Kari OCR Panel Logic
 - Every request audited
 """
 
-from typing import Dict, Any
+from typing import Dict
 from src.ui_logic.hooks.rbac import require_roles
 from src.ui_logic.utils.api import run_ocr, fetch_audit_logs
 

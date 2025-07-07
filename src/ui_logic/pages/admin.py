@@ -12,7 +12,6 @@ from src.ui_logic.components.admin.audit_log import (
     audit_log_summary,
     search_audit_logs,
     export_audit_logs,
-    AuditLogAccessError,
 )
 from src.ui_logic.components.admin.diagnostics import (
     get_system_diagnostics,

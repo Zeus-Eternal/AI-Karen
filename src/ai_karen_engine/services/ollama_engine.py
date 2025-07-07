@@ -13,7 +13,7 @@ from pathlib import Path
 import threading
 
 try:
-    from llama_cpp import Llama, LlamaGrammar
+    from llama_cpp import Llama
 except ImportError as e:
     raise ImportError("llama-cpp-python is required. Install with: pip install llama-cpp-python") from e
 
@@ -96,8 +96,10 @@ class OllamaEngine:
         """Hot-swap to a new model in the model dir"""
         model_path = str(Path(MODEL_DIR) / model_name)
         self._load_model(model_path)
-        if ctx_size: self.ctx_size = ctx_size
-        if n_threads: self.n_threads = n_threads
+        if ctx_size:
+            self.ctx_size = ctx_size
+        if n_threads:
+            self.n_threads = n_threads
         log.info(f"[ollama_inprocess] Switched to model: {model_name}")
 
     def chat(self, messages: List[Dict[str, str]], stream: bool = False, **kwargs) -> Union[str, Generator[str, None, None]]:
@@ -116,7 +118,7 @@ class OllamaEngine:
                     log.debug("Standard inference")
                     result = self.model.create_completion(prompt, **kwargs)
                     return result["choices"][0]["text"]
-        except Exception as e:
+        except Exception:
             ERR_COUNT.labels(error_type="inference", method=method).inc()
             log.exception("Ollama in-process LLM error")
             raise
@@ -142,7 +144,7 @@ class OllamaEngine:
             IN_FLIGHT.labels(method="embedding").inc()
             with REQ_LATENCY.labels(model=self.model_name, method="embedding").time():
                 return self.model.embed(text)
-        except Exception as e:
+        except Exception:
             ERR_COUNT.labels(error_type="embedding", method="embedding").inc()
             log.exception("Ollama in-process embedding error")
             raise

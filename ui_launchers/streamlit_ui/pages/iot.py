@@ -57,7 +57,6 @@ def render(user_ctx=None):
 
 # Streamlit expects a callable for page loading
 if __name__ == "__main__":
-    import json
     # Evil fallback: Dev stub user context for direct run/testing
     user_ctx = {
         "user_id": "evil_admin",

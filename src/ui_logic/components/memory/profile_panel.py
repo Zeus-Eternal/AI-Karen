@@ -10,8 +10,7 @@ import streamlit as st
 import pandas as pd
 import logging
 import traceback
-from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 from functools import wraps
 
 from src.ui_logic.hooks.rbac import require_roles
@@ -33,7 +32,6 @@ try:
         flush_short_term,
         flush_long_term
     )
-    from ai_karen_engine.config.config_manager import load_config
     HAS_LOCAL = True
 except ImportError:
     HAS_LOCAL = False
@@ -41,7 +39,8 @@ except ImportError:
 logger = logging.getLogger("kari.ui.profile_panel")
 logger.setLevel(logging.INFO)
 
-class ProfilePanelError(Exception): pass
+class ProfilePanelError(Exception):
+    pass
 
 def log_profile_op(func):
     @wraps(func)
@@ -143,7 +142,6 @@ def render_profile_panel(user_ctx: Dict[str, Any]):
     try:
         user_id = user_ctx.get("user_id")
         roles = user_ctx.get("roles", [])
-        org = user_ctx.get("org_id", None)
 
         # --- RBAC check: user (self), admin (all), analyst (read-only) ---
         try:
@@ -191,7 +189,6 @@ def render_profile_panel(user_ctx: Dict[str, Any]):
 
         # --- Save Handler ---
         if submit and not readonly and can_edit:
-            import json
             try:
                 prefs_dict = parse_preferences(preferences)
             except Exception:

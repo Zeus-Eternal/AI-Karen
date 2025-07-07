@@ -8,7 +8,7 @@ Kari Task Dashboard – Enterprise Evil Twin Edition
 """
 
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from src.ui_logic.hooks.rbac import require_roles
 from src.ui_logic.utils.api import (
     fetch_audit_logs,
@@ -40,7 +40,7 @@ def get_user_tasks(user_ctx: Dict, include_history: bool = False) -> List[Dict[s
     try:
         tasks = api_get("tasks/list", params=params, token=user_ctx.get("token"), org=user_ctx.get("org_id"))
         return tasks if isinstance(tasks, list) else []
-    except Exception as ex:
+    except Exception:
         # Optionally: log this event
         return []
 

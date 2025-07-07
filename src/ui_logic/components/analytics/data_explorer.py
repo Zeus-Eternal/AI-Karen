@@ -8,7 +8,7 @@ Kari Data Explorer - Enterprise Production
 
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 import pandas as pd
 
 logger = logging.getLogger("kari.analytics.data_explorer")
@@ -16,13 +16,14 @@ logger = logging.getLogger("kari.analytics.data_explorer")
 # === Dependency Injection: Require actual implementations ===
 try:
     from src.ui_logic.utils.api import semantic_search_df, summarize_dataframe
-except ImportError as ex:
+except ImportError:
     def semantic_search_df(*_, **__): raise NotImplementedError("semantic_search_df not available.")
     def summarize_dataframe(*_, **__): raise NotImplementedError("summarize_dataframe not available.")
 
 # ===== RBAC ====
 def check_rbac(user_roles: List[str], required: Union[str, List[str]]) -> bool:
-    if isinstance(required, str): required = [required]
+    if isinstance(required, str):
+        required = [required]
     return any(role in user_roles for role in required)
 
 # ===== Data Explorer Core =====
