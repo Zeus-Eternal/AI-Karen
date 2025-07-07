@@ -5,8 +5,8 @@ Kari Widget Builder Logic (Framework-Agnostic)
 """
 
 from typing import Dict, List, Optional
-from ui_logic.hooks.rbac import require_roles
-from ui_logic.utils.api import (
+from src.ui_logic.hooks.rbac import require_roles
+from src.ui_logic.utils.api import (
     list_widgets, 
     save_widget, 
     delete_widget, 

@@ -12,9 +12,9 @@ import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from ui_logic.config.feature_flags import is_feature_enabled
-from ui_logic.hooks.rbac import check_rbac
-from ui_logic.hooks.auth import get_current_user
+from src.ui_logic.config.feature_flags import is_feature_enabled
+from src.ui_logic.hooks.rbac import check_rbac
+from src.ui_logic.hooks.auth import get_current_user
 import logging
 
 PLUGIN_DIR = Path(os.getenv("KARI_PLUGIN_DIR", "src/ai_karen_engine/plugins"))

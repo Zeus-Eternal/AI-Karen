@@ -7,8 +7,8 @@ Kari Audit Log Logic (Pure Backend)
 """
 
 from typing import List, Dict, Any, Optional, Union
-from ui_logic.utils.api import fetch_audit_logs
-from ui_logic.hooks.rbac import require_roles
+from src.ui_logic.utils.api import fetch_audit_logs
+from src.ui_logic.hooks.rbac import require_roles
 
 
 class AuditLogAccessError(PermissionError):

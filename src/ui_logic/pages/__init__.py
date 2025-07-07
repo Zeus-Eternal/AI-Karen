@@ -4,14 +4,14 @@ Kari UI Page Loader
 - All page modules imported and registered for central routing
 """
 
-from ui_logic.pages.admin import admin_page
-from ui_logic.pages.analytics import analytics_page
-from ui_logic.pages.chat import chat_logic, get_chat_page
-from ui_logic.pages.home import home_page
-from ui_logic.pages.iot import iot_page
-from ui_logic.pages.memory import memory_page
-from ui_logic.pages.plugins import plugins_page
-from ui_logic.pages.settings import settings_page
+from src.ui_logic.pages.admin import admin_page
+from src.ui_logic.pages.analytics import analytics_page
+from src.ui_logic.pages.chat import chat_logic, get_chat_page
+from src.ui_logic.pages.home import home_page
+from src.ui_logic.pages.iot import iot_page
+from src.ui_logic.pages.memory import memory_page
+from src.ui_logic.pages.plugins import plugins_page
+from src.ui_logic.pages.settings import settings_page
 
 # Registry for dynamic UI routers
 PAGES = {

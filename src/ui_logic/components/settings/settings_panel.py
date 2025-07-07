@@ -5,8 +5,8 @@ Kari Settings Panel Logic (Framework-Agnostic)
 - To be used by any UI skin (Streamlit, Gradio, CLI, etc)
 """
 
-from ui_logic.hooks.rbac import require_roles
-from ui_logic.config.ui_config import get_settings, update_settings, get_feature_flags
+from src.ui_logic.hooks.rbac import require_roles
+from src.ui_logic.config.ui_config import get_settings, update_settings, get_feature_flags
 
 def fetch_settings(user_ctx):
     """Retrieve all settings for the given user context."""

@@ -1,8 +1,8 @@
 """In-browser code lab page stub for experimentation."""
 
-from ui_logic.config.feature_flags import get_flag
-from ui_logic.hooks.auth import get_current_user
-from ui_logic.hooks.rbac import check_rbac
+from src.ui_logic.config.feature_flags import get_flag
+from src.ui_logic.hooks.auth import get_current_user
+from src.ui_logic.hooks.rbac import check_rbac
 
 REQUIRED_ROLES = ["dev", "admin"]
 FEATURE_FLAG = "show_experimental"

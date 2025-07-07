@@ -3,7 +3,7 @@ Kari Home Page
 - Orchestrates: Onboarding, activity, branding, news/announcements
 """
 
-from ui_logic.components.white_label.branding_center import \
+from src.ui_logic.components.white_label.branding_center import \
     render_branding_center
 
 
