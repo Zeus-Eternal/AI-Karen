@@ -50,3 +50,19 @@ tauri build
 | Tauri Dev     | `tauri dev`                         | Desktop shell with live reload      |
 | Build         | `tauri build`                       | Create installable binaries         |
 
+## Environment Variables
+
+Several modules require secrets to be present in the environment before the
+application or test suite will run. When developing locally you can use any
+string values, but they must be set:
+
+| Variable | Purpose | Example value |
+| -------- | ------- | ------------- |
+| `KARI_MODEL_SIGNING_KEY` | Cryptographic key used by the LLM orchestrator to verify local models. **Required.** | `export KARI_MODEL_SIGNING_KEY=test-signing-key` |
+| `KARI_DUCKDB_PASSWORD` | Encryption password for the automation DuckDB database. **Required.** | `export KARI_DUCKDB_PASSWORD=test-duckdb` |
+| `KARI_JOB_SIGNING_KEY` | Signs automation tasks for integrity checks. **Required.** | `export KARI_JOB_SIGNING_KEY=test-job-key` |
+
+Other variables such as `KARI_MODEL_DIR` or UI branding options have sensible
+defaults and are optional. The above keys must be exported in your shell (or CI
+job) before running the API, Control Room, or `pytest`.
+
