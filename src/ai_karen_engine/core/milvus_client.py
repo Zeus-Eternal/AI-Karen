@@ -106,8 +106,10 @@ def recall_vectors(user_id: str, query: str, top_k: int = 5) -> List[Dict[str, A
     """
     from ai_karen_engine.core.embedding_manager import embed_text
     vec = embed_text(query)
-    results = _vector_store.search(vec, top_k=top_k, metadata_filter={"user_id": user_id})
-    # Extract relevant context info
-    return [r["payload"] for r in results]
+    results = _vector_store.search(
+        vec, top_k=top_k, metadata_filter={"user_id": user_id}
+    )
+    # Include vector id so external stores can reference metadata
+    return [{"id": r["id"], **r["payload"]} for r in results]
 
 __all__ = ["store_vector", "recall_vectors", "MilvusClient"]

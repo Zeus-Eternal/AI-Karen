@@ -1,7 +1,6 @@
 """
-Kari AI Memory Manager (CORTEX)
 - Unified API for context recall and memory update
-- Local-first: uses Milvus, DuckDB, Redis (as available)
+- Local-first: uses Milvus, Postgres, Redis (as available)
 - Handles both short-term and long-term context
 - Pluggable backend adapters for future-proofing
 """
@@ -16,40 +15,36 @@ except ImportError:
     recall_vectors = store_vector = None
 
 try:
-    import duckdb
-except ImportError:
-    duckdb = None
+    from ai_karen_engine.clients.database.postgres_client import PostgresClient
+except Exception:  # pragma: no cover - optional dependency
+    PostgresClient = None
 
 try:
     import redis
 except ImportError:
     redis = None
 
+postgres = PostgresClient(use_sqlite=True) if PostgresClient else None
+
 def recall_context(user_ctx: Dict[str, Any], query: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
     """
     Recall recent or most relevant context for the user/query.
-    Tries Milvus first, then DuckDB, then Redis, else returns None.
+    Tries Milvus with Postgres metadata first, then Redis, else returns None.
     """
     user_id = user_ctx.get("user_id") or "anonymous"
-    # 1. Milvus
+    results = None
+    # 1. Milvus + Postgres metadata
     if recall_vectors:
         try:
-            results = recall_vectors(user_id, query, top_k=limit)
-            if results:
+            vec_results = recall_vectors(user_id, query, top_k=limit)
+            if vec_results:
+                results = []
+                for r in vec_results:
+                    meta = postgres.get_by_vector(r.get("id")) if postgres else None
+                    results.append(meta or r)
                 return results
-        except Exception as ex:
+        except Exception as ex:  # pragma: no cover - optional backend
             print(f"[MemoryManager] Milvus recall failed: {ex}")
-
-    # 2. DuckDB
-    if duckdb:
-        try:
-            db_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
-            con = duckdb.connect(db_path, read_only=True)
-            query_sql = "SELECT * FROM memory WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?"
-            res = con.execute(query_sql, [user_id, limit]).fetchdf()
-            return res.to_dict("records")
-        except Exception as ex:
-            print(f"[MemoryManager] DuckDB recall failed: {ex}")
 
     # 3. Redis
     if redis:
@@ -77,28 +72,28 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     ok = False
 
     # 1. Milvus
+    vector_id = None
     if store_vector:
         try:
-            store_vector(user_id, query, result)
+            vector_id = store_vector(user_id, query, result)
             ok = True
         except Exception as ex:
             print(f"[MemoryManager] Milvus store failed: {ex}")
 
-    # 2. DuckDB
-    if duckdb:
+    # 2. Postgres metadata store
+    if postgres:
         try:
-            db_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
-            con = duckdb.connect(db_path)
-            con.execute(
-                "CREATE TABLE IF NOT EXISTS memory (user_id VARCHAR, query VARCHAR, result VARCHAR, timestamp BIGINT)"
-            )
-            con.execute(
-                "INSERT INTO memory VALUES (?, ?, ?, ?)",
-                [user_id, query, str(result), entry["timestamp"]],
+            postgres.upsert_memory(
+                vector_id or -1,
+                user_id,
+                user_ctx.get("session_id"),
+                query,
+                result,
+                entry["timestamp"],
             )
             ok = True
-        except Exception as ex:
-            print(f"[MemoryManager] DuckDB store failed: {ex}")
+        except Exception as ex:  # pragma: no cover - optional backend
+            print(f"[MemoryManager] Postgres store failed: {ex}")
 
     # 3. Redis
     if redis:

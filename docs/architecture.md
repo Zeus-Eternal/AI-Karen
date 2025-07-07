@@ -1,12 +1,12 @@
 # Kari Architecture
 
-Kari is a local-first conversational platform composed of modular layers. FastAPI exposes chat and plugin endpoints while the Control Room (Tauri) surfaces dashboards and plugin UIs. Plugins declare intents and optional UI panels in a manifest. The PromptRouter injects requests into templates and dispatches to plugins. Context is stored in Milvus and Redis with DuckDB for structured logs. The SelfRefactor engine periodically tests and merges patches.
+Kari is a local-first conversational platform composed of modular layers. FastAPI exposes chat and plugin endpoints while the Control Room (Tauri) surfaces dashboards and plugin UIs. Plugins declare intents and optional UI panels in a manifest. The PromptRouter injects requests into templates and dispatches to plugins. Context is stored in Milvus and Redis with Postgres for structured logs. The SelfRefactor engine periodically tests and merges patches.
 
 Key components:
 
 - **FastAPI Gateway** – REST and WebSocket interface with RBAC.
 - **PromptRouter** – parses user text and hands off to plugins.
-- **Memory Layer** – Milvus, Redis and DuckDB with exponential decay.
+- **Memory Layer** – Milvus, Redis and Postgres with exponential decay.
 - **Hydra-Ops Mesh** – capsules executed via the event bus with guardrails.
 - **SelfRefactor Engine** – runs tests in a sandbox and records sanitized logs.
 - **Control Room** – Tauri desktop app streaming metrics and plugin UIs.
