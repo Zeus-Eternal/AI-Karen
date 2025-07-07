@@ -78,17 +78,17 @@ def get_default_model(provider: str) -> str:
 def get_api_keys(user_ctx):
     """Fetch masked API keys for user (from secure store)."""
     # Should integrate with encrypted DB or keyvault, not local config
-    from src.ui_logic.utils.api import fetch_api_keys
+    from ui_logic.utils.api import fetch_api_keys
     return fetch_api_keys(user_ctx)
 
 def save_api_key(user_ctx, api_name, api_value):
     """Persist encrypted API key (NEVER in plaintext config)."""
-    from src.ui_logic.utils.api import store_api_key
+    from ui_logic.utils.api import store_api_key
     return store_api_key(user_ctx, api_name, api_value)
 
 def delete_api_key(user_ctx, api_name):
     """Delete stored API key."""
-    from src.ui_logic.utils.api import remove_api_key
+    from ui_logic.utils.api import remove_api_key
     return remove_api_key(user_ctx, api_name)
 
 # === Onboarding/Welcome UX ===
@@ -104,11 +104,11 @@ ONBOARDING = {
 
 # === Branding/White-label (configurable at runtime) ===
 def get_branding():
-    from src.ui_logic.config.branding import get_branding_config
+    from ui_logic.config.branding import get_branding_config
     return get_branding_config()
 
 def save_branding(config, user_id=None):
-    from src.ui_logic.config.branding import save_branding_config
+    from ui_logic.config.branding import save_branding_config
     return save_branding_config(config, user_id)
 
 # === Panel Registry for Extensible UI ===

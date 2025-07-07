@@ -6,13 +6,13 @@ Kari Home Page - Role-Aware, Self-Updating, Ultra-Responsive
 """
 
 import streamlit as st
-from src.ui_logic.hooks.auth import get_user_context
-from src.ui_logic.hooks.rbac import user_has_role
-from src.ui_logic.config.branding import get_branding_config
-from src.ui_logic.utils.api import fetch_announcements
-from src.ui_logic.components.memory.profile_panel import render_profile_panel
-from src.ui_logic.components.analytics.chart_builder import render_quick_charts
-from src.ui_logic.components.admin.system_status import render_system_status
+from ui_logic.hooks.auth import get_user_context
+from ui_logic.hooks.rbac import user_has_role
+from ui_logic.config.branding import get_branding_config
+from ui_logic.utils.api import fetch_announcements
+from ui_logic.components.memory.profile_panel import render_profile_panel
+from ui_logic.components.analytics.chart_builder import render_quick_charts
+from ui_logic.components.admin.system_status import render_system_status
 
 def render_welcome(user_ctx, branding):
     st.markdown(
@@ -41,7 +41,7 @@ def render_announcements():
 def render_onboarding(user_ctx):
     # Show onboarding only if flagged as needed in user_ctx/profile
     if user_ctx.get("needs_onboarding"):
-        from src.ui_logic.components.memory.profile_panel import render_onboarding_wizard
+        from ui_logic.components.memory.profile_panel import render_onboarding_wizard
         render_onboarding_wizard(user_ctx=user_ctx)
 
 def render_shortcuts(user_ctx):

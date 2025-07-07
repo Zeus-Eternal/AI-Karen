@@ -13,8 +13,8 @@ import traceback
 from typing import Dict, Any
 from functools import wraps
 
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import (
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import (
     fetch_user_profile,
     save_user_profile,
     fetch_audit_logs
@@ -22,7 +22,7 @@ from src.ui_logic.utils.api import (
 
 # Optional: For local-first ops—try/catch if logic.* not present
 try:
-    from src.ui_logic.components.memory.memory_manager import (
+    from ui_logic.components.memory.memory_manager import (
         get_active_profile,
         update_profile_field,
         get_profile_history,

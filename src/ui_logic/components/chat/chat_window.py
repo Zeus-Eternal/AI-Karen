@@ -5,8 +5,8 @@ Kari Chat Window Logic
 """
 
 from typing import Dict, List
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import fetch_chat_history
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_chat_history
 
 def get_chat_history(user_ctx: Dict, limit: int = 50) -> List[Dict]:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin"]):

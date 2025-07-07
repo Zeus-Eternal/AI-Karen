@@ -7,8 +7,8 @@ Kari API Tokens Management Logic (Framework-Agnostic)
 import uuid
 import datetime
 from typing import List, Dict, Optional
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import get_api_token_store, save_api_token, revoke_api_token, fetch_audit_logs
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import get_api_token_store, save_api_token, revoke_api_token, fetch_audit_logs
 
 def list_api_tokens(user_ctx: Dict) -> List[Dict]:
     """Return all API tokens for the user (RBAC: admin/developer only)."""

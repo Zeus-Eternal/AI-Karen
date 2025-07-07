@@ -12,9 +12,9 @@ Security notes:
 from importlib import import_module
 from typing import Any, Callable, Dict, List, Optional
 
-from src.ui_logic.config import pages_manifest
-from src.ui_logic.config.feature_flags import get_flag
-from src.ui_logic.hooks.rbac import check_rbac
+from ui_logic.config import pages_manifest
+from ui_logic.config.feature_flags import get_flag
+from ui_logic.hooks.rbac import check_rbac
 
 
 def get_page_manifest(user_ctx: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:

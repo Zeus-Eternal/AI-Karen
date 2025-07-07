@@ -6,8 +6,8 @@ Kari Persona: Emotion & Style Panel Logic
 """
 
 from typing import Dict, List
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import fetch_emotion_styles, save_emotion_style, fetch_audit_logs
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_emotion_styles, save_emotion_style, fetch_audit_logs
 
 def get_emotion_styles(user_ctx: Dict) -> List[Dict]:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin", "branding"]):

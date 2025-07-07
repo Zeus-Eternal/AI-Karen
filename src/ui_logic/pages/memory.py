@@ -22,11 +22,11 @@ logger.setLevel(logging.INFO)
 
 # --- Import all panel components with error handling ---
 try:
-    from src.ui_logic.components.memory.knowledge_graph import render_knowledge_graph
-    from src.ui_logic.components.memory.memory_analytics import render_memory_analytics
-    from src.ui_logic.components.memory.profile_panel import render_profile_panel
-    from src.ui_logic.components.memory.session_explorer import render_session_explorer
-    from src.ui_logic.components.memory.memory_manager import render_memory_manager
+    from ui_logic.components.memory.knowledge_graph import render_knowledge_graph
+    from ui_logic.components.memory.memory_analytics import render_memory_analytics
+    from ui_logic.components.memory.profile_panel import render_profile_panel
+    from ui_logic.components.memory.session_explorer import render_session_explorer
+    from ui_logic.components.memory.memory_manager import render_memory_manager
 except ImportError as e:
     logger.error(f"Component import failed: {str(e)}")
     raise

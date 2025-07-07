@@ -11,7 +11,7 @@ import socket
 import time
 from typing import Dict, Any, Optional
 
-from src.ui_logic.utils.api import ping_services
+from ui_logic.utils.api import ping_services
 
 def get_system_diagnostics() -> Dict[str, Any]:
     """

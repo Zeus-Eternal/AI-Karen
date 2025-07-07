@@ -6,8 +6,8 @@ Kari Multi-Modal Upload Logic
 """
 
 from typing import Dict
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import (
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import (
     save_file,
     run_ocr,
     run_transcription,

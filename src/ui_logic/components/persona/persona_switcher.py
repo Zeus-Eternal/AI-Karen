@@ -5,8 +5,8 @@ Kari Persona Switcher Logic
 """
 
 from typing import Dict, List
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import fetch_personas, switch_persona, fetch_audit_logs
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_personas, switch_persona, fetch_audit_logs
 
 def get_available_personas(user_ctx: Dict) -> List[Dict]:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin", "branding"]):

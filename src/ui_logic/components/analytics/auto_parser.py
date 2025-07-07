@@ -18,7 +18,7 @@ import pandas as pd
 from pandas.api.types import is_datetime64_any_dtype
 import warnings
 
-from src.ui_logic.utils.file_utils import secure_read_file
+from ui_logic.utils.file_utils import secure_read_file
 
 # Configure logging
 logger = logging.getLogger("kari.analytics.auto_parser")

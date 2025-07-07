@@ -4,8 +4,8 @@ Kari API Vault Logic (Framework-Agnostic)
 - RBAC logic only (no UI)
 """
 
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.config.ui_config import get_api_keys, save_api_key, delete_api_key
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.config.ui_config import get_api_keys, save_api_key, delete_api_key
 
 def list_api_keys(user_ctx):
     if not user_ctx or not require_roles(user_ctx, ["user", "admin"]):

@@ -4,8 +4,8 @@ Kari Theme Switcher Logic (Framework-Agnostic)
 - Never renders UI (import in UI skin only)
 """
 
-from src.ui_logic.config.branding import get_available_themes, set_theme_for_user
-from src.ui_logic.hooks.rbac import require_roles
+from ui_logic.config.branding import get_available_themes, set_theme_for_user
+from ui_logic.hooks.rbac import require_roles
 
 def fetch_available_themes(user_ctx):
     if not user_ctx or not require_roles(user_ctx, ["user", "admin"]):

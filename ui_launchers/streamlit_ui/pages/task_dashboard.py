@@ -9,8 +9,8 @@ Kari Task Dashboard – Enterprise Evil Twin Edition
 
 import time
 from typing import List, Dict, Any
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import (
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import (
     fetch_audit_logs,
     fetch_user_profile,
     api_get,

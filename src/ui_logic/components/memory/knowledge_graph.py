@@ -9,8 +9,8 @@ from typing import Any, Dict
 import streamlit as st
 import pandas as pd
 
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import fetch_audit_logs
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_audit_logs
 
 # --- RBAC User Context (stub—replace with actual session/user context retrieval) ---
 def get_user_ctx():

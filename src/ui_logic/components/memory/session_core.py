@@ -2,8 +2,8 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import fetch_session_memory, fetch_audit_logs
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_session_memory, fetch_audit_logs
 
 logger = logging.getLogger("kari.memory.session_core")
 logger.setLevel(logging.INFO)

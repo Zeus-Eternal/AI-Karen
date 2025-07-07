@@ -6,8 +6,8 @@ Streamlit IoT Device/Config Page
 """
 
 import streamlit as st
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import fetch_org_settings, update_org_settings, fetch_announcements
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_org_settings, update_org_settings, fetch_announcements
 
 def render_iot_dashboard(user_ctx):
     st.title("IoT Device Management")

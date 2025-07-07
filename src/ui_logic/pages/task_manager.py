@@ -1,8 +1,8 @@
 """Task Manager UI page stub with RBAC and feature gating."""
 
-from src.ui_logic.config.feature_flags import get_flag
-from src.ui_logic.hooks.auth import get_current_user
-from src.ui_logic.hooks.rbac import check_rbac
+from ui_logic.config.feature_flags import get_flag
+from ui_logic.hooks.auth import get_current_user
+from ui_logic.hooks.rbac import check_rbac
 
 REQUIRED_ROLES = ["user", "dev"]
 FEATURE_FLAG = "enable_workflows"

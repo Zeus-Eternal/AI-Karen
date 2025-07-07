@@ -15,7 +15,7 @@ logger = logging.getLogger("kari.analytics.data_explorer")
 
 # === Dependency Injection: Require actual implementations ===
 try:
-    from src.ui_logic.utils.api import semantic_search_df, summarize_dataframe
+    from ui_logic.utils.api import semantic_search_df, summarize_dataframe
 except ImportError:
     def semantic_search_df(*_, **__): raise NotImplementedError("semantic_search_df not available.")
     def summarize_dataframe(*_, **__): raise NotImplementedError("summarize_dataframe not available.")

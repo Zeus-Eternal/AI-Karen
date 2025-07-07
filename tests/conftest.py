@@ -7,8 +7,8 @@ import ai_karen_engine.clients.database.postgres_client as pg_mod
 
 
 # Alias installed-style packages for tests
-sys.modules.setdefault("ai_karen_engine", importlib.import_module("src.ai_karen_engine"))
-sys.modules.setdefault("ui_logic", importlib.import_module("src.ui_logic"))
+sys.modules.setdefault("ai_karen_engine", importlib.import_module("ai_karen_engine"))
+sys.modules.setdefault("ui_logic", importlib.import_module("ui_logic"))
 sys.modules.setdefault("services", importlib.import_module("ai_karen_engine.services"))
 sys.modules.setdefault("integrations", importlib.import_module("ai_karen_engine.integrations"))
 sys.modules.setdefault("integrations.llm_registry", importlib.import_module("ai_karen_engine.integrations.llm_registry"))

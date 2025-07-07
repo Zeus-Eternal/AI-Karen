@@ -13,7 +13,7 @@ The engine reads prompts from `self_refactor/prompts/` and uses a local or remot
 `SREScheduler` periodically launches the engine. The default interval is weekly, but you can trigger a run manually:
 
 ```bash
-python -m src.self_refactor.engine --run
+python -m self_refactor.engine --run
 ```
 
 ### Logs

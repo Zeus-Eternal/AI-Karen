@@ -14,8 +14,8 @@ import logging
 import traceback
 from functools import wraps
 
-from src.ui_logic.hooks.rbac import require_roles
-from src.ui_logic.utils.api import fetch_memory_metrics, fetch_audit_logs, fetch_memory_analytics
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import fetch_memory_metrics, fetch_audit_logs, fetch_memory_analytics
 
 # Configure logging
 logger = logging.getLogger("kari.memory.analytics")
