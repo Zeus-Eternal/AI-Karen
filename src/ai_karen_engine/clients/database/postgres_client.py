@@ -39,7 +39,8 @@ class PostgresClient:
         else:
             self.conn = psycopg.connect(self.dsn)
             self.placeholder = "%s"
-        self.conn.execute("PRAGMA journal_mode=WAL" if self.use_sqlite else "")
+        if self.use_sqlite:
+            self.conn.execute("PRAGMA journal_mode=WAL")
 
     def _execute(self, sql: str, params: Optional[List[Any]] = None, fetch: bool = False):
         with self._lock:
@@ -105,6 +106,33 @@ class PostgresClient:
                 " result=EXCLUDED.result, timestamp=EXCLUDED.timestamp"
             )
         self._execute(sql, [vector_id, user_id, session_id, query, str(result), timestamp])
+
+    def recall_memory(
+        self, user_id: str, query: Optional[str] = None, limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        ph = self.placeholder
+        sql = (
+            f"SELECT vector_id, user_id, session_id, query, result, timestamp FROM memory"
+            f" WHERE user_id={ph}"
+        )
+        params = [user_id]
+        if query:
+            sql += f" AND query LIKE {ph}"
+            params.append(f"%{query}%")
+        sql += f" ORDER BY timestamp DESC LIMIT {ph}"
+        params.append(limit)
+        rows = self._execute(sql, params, fetch=True)
+        return [
+            {
+                "vector_id": r[0],
+                "user_id": r[1],
+                "session_id": r[2],
+                "query": r[3],
+                "result": r[4],
+                "timestamp": r[5],
+            }
+            for r in rows
+        ]
 
     def get_by_vector(self, vector_id: int) -> Optional[Dict[str, Any]]:
         ph = self.placeholder
