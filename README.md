@@ -132,6 +132,12 @@ cd ui_launchers/desktop_ui && npm install
 # 4 · Launch backend API + dependencies (ensure Postgres & Elasticsearch are running)
 ./scripts/start.sh
 
+# 4.1 · Initialize databases
+docker compose exec postgres \
+  psql -U $POSTGRES_USER -d $POSTGRES_DB \
+  -f data/migrations/postgres/001_create_tables.sql
+curl -X PUT "http://localhost:9200/$ELASTIC_INDEX"
+
 # 5 · Run desktop Control Room (dev mode)
 cd ui_launchers/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 ```
