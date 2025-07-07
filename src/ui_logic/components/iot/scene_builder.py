@@ -5,8 +5,8 @@ Kari IoT Logs Panel
 """
 
 from typing import Dict, List, Any
-from ui_logic.hooks.rbac import require_roles
-from ui_logic.utils.api import fetch_iot_logs, fetch_audit_logs
+from src.ui_logic.hooks.rbac import require_roles
+from src.ui_logic.utils.api import fetch_iot_logs, fetch_audit_logs
 
 def get_iot_logs(user_ctx: Dict, device_id: str = None, search: str = "") -> List[Dict]:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin", "devops"]):

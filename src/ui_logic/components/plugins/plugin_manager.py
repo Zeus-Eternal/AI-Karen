@@ -4,8 +4,8 @@ Kari Plugin Manager Logic
 """
 
 from typing import Dict, List
-from ui_logic.hooks.rbac import require_roles
-from ui_logic.utils.api import (
+from src.ui_logic.hooks.rbac import require_roles
+from src.ui_logic.utils.api import (
     list_plugins,
     install_plugin,
     uninstall_plugin,

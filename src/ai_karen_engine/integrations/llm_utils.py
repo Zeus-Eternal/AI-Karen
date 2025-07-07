@@ -9,22 +9,85 @@ Kari LLM Utils - Production Enterprise Version
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Callable, Union
+from typing import Any, Dict, List, Optional, Union
+
+try:
+    from prometheus_client import Counter, Histogram, CollectorRegistry
+    PROM_REGISTRY = CollectorRegistry()
+    _LLM_COUNT = Counter(
+        "llm_requests_total",
+        "Total LLM requests",
+        ["event", "provider", "success"],
+        registry=PROM_REGISTRY,
+    )
+    _LLM_LATENCY = Histogram(
+        "llm_request_latency_seconds",
+        "LLM request latency",
+        ["event", "provider", "success"],
+        registry=PROM_REGISTRY,
+    )
+    METRICS_ENABLED = True
+except Exception:  # pragma: no cover - optional dep
+    class _DummyMetric:
+        def labels(self, **kwargs):
+            return self
+
+        def inc(self, n: int = 1) -> None:
+            pass
+
+        def observe(self, v: float) -> None:
+            pass
+
+    METRICS_ENABLED = False
+    PROM_REGISTRY = None  # type: ignore
+    _LLM_COUNT = _LLM_LATENCY = _DummyMetric()
 
 logger = logging.getLogger("kari.llm_utils")
 
 # ========== Exceptions ==========
-class LLMError(Exception): pass
-class ProviderNotAvailable(LLMError): pass
-class GenerationFailed(LLMError): pass
-class EmbeddingFailed(LLMError): pass
+class LLMError(Exception):
+    pass
+
+
+class ProviderNotAvailable(LLMError):
+    pass
+
+
+class GenerationFailed(LLMError):
+    pass
+
+
+class EmbeddingFailed(LLMError):
+    pass
 
 # ========== Metrics/Observability (Stub for Prometheus) ==========
-def record_llm_metric(event: str, duration: float, success: bool, provider: str, **extra):
+def record_llm_metric(event: str, duration: float, success: bool, provider: str, **extra) -> None:
+    """Record a metric for an LLM event.
+
+    Parameters
+    ----------
+    event:
+        Event name such as ``generate_text`` or ``embed``.
+    duration:
+        Duration of the call in seconds.
+    success:
+        ``True`` if the call succeeded.
+    provider:
+        Name of the LLM provider.
+    extra:
+        Additional metadata ignored by the metrics layer.
+    """
+
     logger.info(
         f"[METRIC] event={event} duration={duration:.3f}s success={success} provider={provider} extra={extra}"
     )
-    # TODO: Integrate with Prometheus or system metrics
+
+    label_success = "true" if success else "false"
+    try:
+        _LLM_COUNT.labels(event=event, provider=provider, success=label_success).inc()
+        _LLM_LATENCY.labels(event=event, provider=provider, success=label_success).observe(duration)
+    except Exception:  # pragma: no cover - safety guard
+        logger.debug("Prometheus metrics disabled or failed")
 
 def trace_llm_event(event: str, correlation_id: str, meta: Dict[str, Any]):
     logger.info(f"[TRACE] event={event} correlation_id={correlation_id} meta={meta}")
@@ -173,6 +236,7 @@ __all__ = [
     "ProviderNotAvailable",
     "GenerationFailed",
     "EmbeddingFailed",
+    "PROM_REGISTRY",
     "LLMProviderBase",
     "OllamaProvider",
     "LLMUtils",

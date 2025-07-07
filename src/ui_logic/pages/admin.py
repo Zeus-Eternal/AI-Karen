@@ -7,24 +7,24 @@ Kari Admin Page Logic (Backend/Core)
 
 from typing import Dict, Any, Optional
 
-from ui_logic.components.admin.audit_log import (
+from src.ui_logic.components.admin.audit_log import (
     get_audit_log,
     audit_log_summary,
     search_audit_logs,
     export_audit_logs,
     AuditLogAccessError,
 )
-from ui_logic.components.admin.diagnostics import (
+from src.ui_logic.components.admin.diagnostics import (
     get_system_diagnostics,
     run_diagnostics_check,
 )
-from ui_logic.components.admin.rbac_panel import (
+from src.ui_logic.components.admin.rbac_panel import (
     get_user_roles,
     set_user_roles,
     get_role_policies,
     set_role_policies,
 )
-from ui_logic.components.admin.org_admin import (
+from src.ui_logic.components.admin.org_admin import (
     get_org_users,
     create_org_user,
     update_user,

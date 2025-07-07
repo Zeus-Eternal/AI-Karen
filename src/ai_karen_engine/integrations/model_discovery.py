@@ -7,7 +7,9 @@ Kari Model Discovery Engine (Enterprise)
 
 import os
 import glob
+import json
 import logging
+from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable
 
 logger = logging.getLogger("kari.model_discovery")
@@ -206,6 +208,16 @@ def list_models() -> List[Dict[str, Any]]:
 def get_model_info(model_name: str) -> Optional[Dict[str, Any]]:
     engine = ModelDiscoveryEngine()
     return engine.find_model(model_name)
+
+# === Simplified registry sync used in tests ===
+REGISTRY_PATH = Path(os.getenv("KARI_MODEL_REGISTRY", "model_registry.json"))
+
+
+def sync_registry(path: str | Path = REGISTRY_PATH) -> List[Dict[str, Any]]:
+    """Write a trivial registry file and return model list."""
+    models = list_models()
+    Path(path).write_text(json.dumps(models), encoding="utf-8")
+    return models
 
 # ======== Exports =========
 __all__ = [
