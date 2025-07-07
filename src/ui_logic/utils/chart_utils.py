@@ -6,7 +6,6 @@ Kari UI Chart Utility - Production Version
 
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
-import warnings
 
 import pandas as pd
 import numpy as np
@@ -18,7 +17,6 @@ logger.setLevel(logging.INFO)
 # Visualization engine imports with fallbacks
 try:
     import plotly.express as px
-    import plotly.graph_objects as go
     from plotly.subplots import make_subplots
     PLOTLY_AVAILABLE = True
 except ImportError:
@@ -27,7 +25,6 @@ except ImportError:
 
 try:
     import matplotlib.pyplot as plt
-    import seaborn as sns
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
@@ -41,9 +38,16 @@ except ImportError:
     logger.warning("Altair not available - install with pip install altair")
 
 # ======= Exception Hierarchy =======
-class ChartError(Exception): pass
-class UnsupportedChartType(ChartError): pass
-class DataValidationError(ChartError): pass
+class ChartError(Exception):
+    pass
+
+
+class UnsupportedChartType(ChartError):
+    pass
+
+
+class DataValidationError(ChartError):
+    pass
 
 # ======= Constants & Engine Priority =======
 DEFAULT_PALETTE = [
@@ -62,9 +66,12 @@ def get_supported_chart_types() -> List[str]:
 
 def get_available_engines() -> List[str]:
     engines = []
-    if PLOTLY_AVAILABLE: engines.append("plotly")
-    if ALTAIR_AVAILABLE: engines.append("altair")
-    if MATPLOTLIB_AVAILABLE: engines.append("matplotlib")
+    if PLOTLY_AVAILABLE:
+        engines.append("plotly")
+    if ALTAIR_AVAILABLE:
+        engines.append("altair")
+    if MATPLOTLIB_AVAILABLE:
+        engines.append("matplotlib")
     return engines
 
 # ======= Data Prep =======
@@ -76,10 +83,14 @@ def sanitize_data(
     Cleanse, validate, and type-correct input for charting
     """
     try:
-        if isinstance(data, pd.DataFrame): df = data.copy()
-        elif isinstance(data, list): df = pd.DataFrame(data)
-        elif isinstance(data, dict): df = pd.DataFrame.from_dict(data)
-        else: raise ValueError("Unsupported data format")
+        if isinstance(data, pd.DataFrame):
+            df = data.copy()
+        elif isinstance(data, list):
+            df = pd.DataFrame(data)
+        elif isinstance(data, dict):
+            df = pd.DataFrame.from_dict(data)
+        else:
+            raise ValueError("Unsupported data format")
         if len(df) > max_rows:
             raise DataValidationError(f"Too many rows: {len(df)} (limit {max_rows})")
         if len(df.columns) > max_cols:
@@ -87,8 +98,10 @@ def sanitize_data(
         df = df.replace([np.inf, -np.inf], np.nan)
         for col in df.columns:
             if not is_datetime64_any_dtype(df[col]):
-                try: df[col] = pd.to_datetime(df[col], errors="ignore")
-                except: pass
+                try:
+                    df[col] = pd.to_datetime(df[col], errors="ignore")
+                except Exception:
+                    pass
         return df
     except Exception as ex:
         logger.error(f"Data sanitization failed: {ex}")
@@ -96,10 +109,14 @@ def sanitize_data(
 
 def auto_detect_chart_type(df: pd.DataFrame, x: Optional[str] = None, y: Optional[str] = None) -> str:
     """Suggest a chart type based on data (for UI auto-viz)"""
-    if not x or not y: return "bar"
-    if is_datetime64_any_dtype(df[x]): return "line"
-    if df[x].nunique() < 8 and is_numeric_dtype(df[y]): return "bar"
-    if df[x].nunique() > 20: return "scatter"
+    if not x or not y:
+        return "bar"
+    if is_datetime64_any_dtype(df[x]):
+        return "line"
+    if df[x].nunique() < 8 and is_numeric_dtype(df[y]):
+        return "bar"
+    if df[x].nunique() > 20:
+        return "scatter"
     return "bar"
 
 # ======= Main Chart Factory =======
@@ -128,11 +145,15 @@ def create_chart(
         df = sanitize_data(data)
         palette = theme.get("palette", DEFAULT_PALETTE)
         # Call correct engine
-        if engine == "plotly":   return _create_plotly_chart(df, chart_type, config, palette)
-        if engine == "altair":   return _create_altair_chart(df, chart_type, config, palette)
-        if engine == "matplotlib": return _create_matplotlib_chart(df, chart_type, config, palette)
+        if engine == "plotly":
+            return _create_plotly_chart(df, chart_type, config, palette)
+        if engine == "altair":
+            return _create_altair_chart(df, chart_type, config, palette)
+        if engine == "matplotlib":
+            return _create_matplotlib_chart(df, chart_type, config, palette)
         raise ChartError(f"Engine {engine} not implemented")
-    except UnsupportedChartType: raise
+    except UnsupportedChartType:
+        raise
     except Exception as ex:
         logger.error(f"Chart creation failed: {ex}")
         raise ChartError(str(ex)) from ex
@@ -144,10 +165,14 @@ def _create_plotly_chart(df, chart_type, config, palette) -> Any:
     color = config.get("color")
     title = config.get("title", "")
     try:
-        if chart_type == "line": return px.line(df, x=x, y=y, color=color, title=title, color_discrete_sequence=palette)
-        if chart_type == "bar":  return px.bar(df, x=x, y=y, color=color, title=title, color_discrete_sequence=palette)
-        if chart_type == "scatter": return px.scatter(df, x=x, y=y, color=color, title=title, color_discrete_sequence=palette)
-        if chart_type == "pie": return px.pie(df, names=x, values=y, color=color, title=title, color_discrete_sequence=palette)
+        if chart_type == "line":
+            return px.line(df, x=x, y=y, color=color, title=title, color_discrete_sequence=palette)
+        if chart_type == "bar":
+            return px.bar(df, x=x, y=y, color=color, title=title, color_discrete_sequence=palette)
+        if chart_type == "scatter":
+            return px.scatter(df, x=x, y=y, color=color, title=title, color_discrete_sequence=palette)
+        if chart_type == "pie":
+            return px.pie(df, names=x, values=y, color=color, title=title, color_discrete_sequence=palette)
         if chart_type == "heatmap":
             idx = config.get("index", x)
             cols = config.get("columns", y)
@@ -160,25 +185,38 @@ def _create_plotly_chart(df, chart_type, config, palette) -> Any:
         raise
 
 def _create_altair_chart(df, chart_type, config, palette) -> Any:
-    x = config.get("x"); y = config.get("y"); color = config.get("color"); title = config.get("title", "")
+    x = config.get("x")
+    y = config.get("y")
+    color = config.get("color")
+    title = config.get("title", "")
     try:
-        if chart_type == "line": return alt.Chart(df).mark_line().encode(x=x, y=y, color=color).properties(title=title)
-        if chart_type == "bar":  return alt.Chart(df).mark_bar().encode(x=x, y=y, color=color).properties(title=title)
-        if chart_type == "scatter": return alt.Chart(df).mark_point().encode(x=x, y=y, color=color).properties(title=title)
+        if chart_type == "line":
+            return alt.Chart(df).mark_line().encode(x=x, y=y, color=color).properties(title=title)
+        if chart_type == "bar":
+            return alt.Chart(df).mark_bar().encode(x=x, y=y, color=color).properties(title=title)
+        if chart_type == "scatter":
+            return alt.Chart(df).mark_point().encode(x=x, y=y, color=color).properties(title=title)
         raise UnsupportedChartType(f"Altair: {chart_type} not implemented")
     except Exception as ex:
         logger.error(f"Altair chart error: {ex}")
         raise
 
 def _create_matplotlib_chart(df, chart_type, config, palette) -> Any:
-    x = config.get("x"); y = config.get("y"); title = config.get("title", "")
+    x = config.get("x")
+    y = config.get("y")
+    title = config.get("title", "")
     fig, ax = plt.subplots(figsize=config.get("figsize", (8, 6)))
     try:
-        if chart_type == "line": df.plot.line(x=x, y=y, ax=ax, color=palette[0])
-        elif chart_type == "bar": df.plot.bar(x=x, y=y, ax=ax, color=palette)
-        elif chart_type == "scatter": df.plot.scatter(x=x, y=y, ax=ax, color=palette[0])
-        elif chart_type == "histogram": df[y].plot.hist(ax=ax, bins=config.get("bins", 20), color=palette[0])
-        else: raise UnsupportedChartType(f"Matplotlib: {chart_type} not implemented")
+        if chart_type == "line":
+            df.plot.line(x=x, y=y, ax=ax, color=palette[0])
+        elif chart_type == "bar":
+            df.plot.bar(x=x, y=y, ax=ax, color=palette)
+        elif chart_type == "scatter":
+            df.plot.scatter(x=x, y=y, ax=ax, color=palette[0])
+        elif chart_type == "histogram":
+            df[y].plot.hist(ax=ax, bins=config.get("bins", 20), color=palette[0])
+        else:
+            raise UnsupportedChartType(f"Matplotlib: {chart_type} not implemented")
         ax.set_title(title)
         plt.tight_layout()
         return fig
@@ -188,10 +226,14 @@ def _create_matplotlib_chart(df, chart_type, config, palette) -> Any:
 
 def save_chart(chart: Any, file_path: str, format: str = "png", width: int = 800, height: int = 600, **kwargs) -> None:
     try:
-        if hasattr(chart, "write_image"): chart.write_image(file_path, width=width, height=height, **kwargs)
-        elif hasattr(chart, "savefig"): chart.savefig(file_path, dpi=kwargs.get("dpi", 300), bbox_inches="tight")
-        elif hasattr(chart, "save"): chart.save(file_path)
-        else: raise ChartError("Chart cannot be saved by supported engines")
+        if hasattr(chart, "write_image"):
+            chart.write_image(file_path, width=width, height=height, **kwargs)
+        elif hasattr(chart, "savefig"):
+            chart.savefig(file_path, dpi=kwargs.get("dpi", 300), bbox_inches="tight")
+        elif hasattr(chart, "save"):
+            chart.save(file_path)
+        else:
+            raise ChartError("Chart cannot be saved by supported engines")
         logger.info(f"Chart saved: {file_path}")
     except Exception as ex:
         logger.error(f"Save failed: {ex}")

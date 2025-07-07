@@ -6,7 +6,7 @@ Kari Streamlit UI Entrypoint
 
 import streamlit as st
 from helpers.session import get_user_context
-from config.routing import PAGE_MAP, DEFAULT_PAGE
+from config.routing import PAGE_MAP
 
 # Theme injection (uses streamlit's built-in/theming with CSS from the repo)
 def inject_theme():

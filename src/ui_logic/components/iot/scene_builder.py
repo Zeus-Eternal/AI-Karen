@@ -4,7 +4,7 @@ Kari IoT Logs Panel
 - RBAC: user (own), admin/devops (all)
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import fetch_iot_logs, fetch_audit_logs
 

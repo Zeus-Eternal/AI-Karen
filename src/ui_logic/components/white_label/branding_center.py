@@ -4,7 +4,7 @@ Kari Branding Center Logic (Framework-Agnostic)
 - RBAC-secured (enterprise/admin only)
 """
 
-from typing import Dict, Optional
+from typing import Dict
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import (
     fetch_branding_config,

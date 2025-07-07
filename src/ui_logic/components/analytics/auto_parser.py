@@ -12,14 +12,13 @@ Kari Analytics Auto-Parser - Production Version
 """
 
 import logging
-import io
 import chardet
-from typing import Any, Dict, List, Optional, Tuple, Union, BinaryIO, TextIO
+from typing import Any, Dict, List, Optional, Union, BinaryIO, TextIO
 import pandas as pd
 from pandas.api.types import is_datetime64_any_dtype
 import warnings
 
-from ui_logic.utils.file_utils import secure_read_file, parse_csv_excel
+from ui_logic.utils.file_utils import secure_read_file
 
 # Configure logging
 logger = logging.getLogger("kari.analytics.auto_parser")

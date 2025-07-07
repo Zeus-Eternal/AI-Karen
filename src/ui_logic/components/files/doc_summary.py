@@ -4,7 +4,7 @@ Kari Doc Summary Logic
 - RBAC: user/admin, all actions audited
 """
 
-from typing import Dict, Any
+from typing import Dict
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import (
     extract_doc_content,

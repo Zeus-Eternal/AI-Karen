@@ -9,15 +9,25 @@ Kari LLM Utils - Production Enterprise Version
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Callable, Union
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger("kari.llm_utils")
 
 # ========== Exceptions ==========
-class LLMError(Exception): pass
-class ProviderNotAvailable(LLMError): pass
-class GenerationFailed(LLMError): pass
-class EmbeddingFailed(LLMError): pass
+class LLMError(Exception):
+    pass
+
+
+class ProviderNotAvailable(LLMError):
+    pass
+
+
+class GenerationFailed(LLMError):
+    pass
+
+
+class EmbeddingFailed(LLMError):
+    pass
 
 # ========== Metrics/Observability (Stub for Prometheus) ==========
 def record_llm_metric(event: str, duration: float, success: bool, provider: str, **extra):
