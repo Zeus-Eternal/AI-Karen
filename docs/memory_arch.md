@@ -43,3 +43,15 @@ Results are ranked by cosine similarity and recency using an exponential decay c
 - **Surprise score** prevents storing data too similar to existing vectors.
 
 This system keeps the memory footprint small while allowing high recall accuracy. See [docs/observability.md](observability.md) for metrics exposed during upsert and search operations.
+
+## ElasticSearch Integration
+
+When ElasticSearch is available the memory manager uses it as the first lookup layer. Configure the connection via environment variables:
+
+- `ELASTIC_HOST` – host of the Elastic cluster (default `localhost`)
+- `ELASTIC_PORT` – port of the cluster (default `9200`)
+- `ELASTIC_USER` – basic auth user (optional)
+- `ELASTIC_PASSWORD` – password for the user (optional)
+- `ELASTIC_INDEX` – index name for Kari memory (default `kari_memory`)
+
+If these variables are unset the client falls back to its in-memory stub.

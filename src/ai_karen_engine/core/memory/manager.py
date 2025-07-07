@@ -1,6 +1,6 @@
 """
 Unified MemoryManager: context recall and update
-- Local-first: Milvus, Postgres, Redis, DuckDB, Elastic (auto-detect)
+- Local-first: Elastic, Milvus, Postgres, Redis, DuckDB
 - Handles short/long-term, hot-pluggable
 - All ops logged/audited for observability
 """
@@ -13,7 +13,10 @@ import json
 
 # ========== Backend Imports ==========
 try:
-    from ai_karen_engine.clients.database.milvus_client import recall_vectors, store_vector
+    from ai_karen_engine.clients.database.milvus_client import (
+        recall_vectors,
+        store_vector,
+    )
 except ImportError:
     recall_vectors = store_vector = None
 
@@ -33,9 +36,9 @@ except ImportError:
     duckdb = None
 
 try:
-    from elasticsearch import Elasticsearch
-except ImportError:
-    Elasticsearch = None
+    from ai_karen_engine.clients.database.elastic_client import ElasticClient
+except Exception:
+    ElasticClient = None
 
 # ========== Logging ==========
 logger = logging.getLogger("kari.memory.manager")
@@ -44,16 +47,35 @@ logger.setLevel(logging.INFO)
 # ========== Backend Init ==========
 postgres = PostgresClient(use_sqlite=True) if PostgresClient else None
 
-def recall_context(user_ctx: Dict[str, Any], query: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+
+def recall_context(
+    user_ctx: Dict[str, Any], query: str, limit: int = 10
+) -> Optional[List[Dict[str, Any]]]:
     """
     Recall the most relevant context for user/query from the memory stack.
-    Priority: Milvus > Postgres > Redis > DuckDB > Elastic
+    Priority: Elastic > Milvus > Postgres > Redis > DuckDB
     """
     user_id = user_ctx.get("user_id") or "anonymous"
-    session_id = user_ctx.get("session_id")
-    results = None
 
-    # ==== 1. Milvus ====
+    # ==== 1. ElasticSearch (optional, semantic/keyword) ====
+    if ElasticClient:
+        try:
+            es_host = os.getenv("ELASTIC_HOST", "localhost")
+            es_port = int(os.getenv("ELASTIC_PORT", "9200"))
+            es_index = os.getenv("ELASTIC_INDEX", "kari_memory")
+            es_user = os.getenv("ELASTIC_USER")
+            es_password = os.getenv("ELASTIC_PASSWORD")
+            es = ElasticClient(es_host, es_port, es_index, es_user, es_password)
+            records = es.search(user_id, query, limit=limit)
+            if records:
+                logger.info(
+                    f"[MemoryManager] Elastic recall: {len(records)} results for user {user_id}"
+                )
+                return records
+        except Exception as ex:
+            logger.warning(f"[MemoryManager] Elastic recall failed: {ex}")
+
+    # ==== 2. Milvus ====
     if recall_vectors:
         try:
             vec_results = recall_vectors(user_id, query, top_k=limit)
@@ -62,7 +84,9 @@ def recall_context(user_ctx: Dict[str, Any], query: str, limit: int = 10) -> Opt
                 meta = postgres.get_by_vector(r.get("id")) if postgres else None
                 records.append(meta or r)
             if records:
-                logger.info(f"[MemoryManager] Milvus recall: {len(records)} results for user {user_id}")
+                logger.info(
+                    f"[MemoryManager] Milvus recall: {len(records)} results for user {user_id}"
+                )
                 return records
         except Exception as ex:
             logger.warning(f"[MemoryManager] Milvus recall failed: {ex}")
@@ -70,9 +94,13 @@ def recall_context(user_ctx: Dict[str, Any], query: str, limit: int = 10) -> Opt
     # ==== 2. Postgres ====
     if postgres:
         try:
-            db_results = postgres.recall_memory(user_id=user_id, query=query, limit=limit)
+            db_results = postgres.recall_memory(
+                user_id=user_id, query=query, limit=limit
+            )
             if db_results:
-                logger.info(f"[MemoryManager] Postgres recall: {len(db_results)} results for user {user_id}")
+                logger.info(
+                    f"[MemoryManager] Postgres recall: {len(db_results)} results for user {user_id}"
+                )
                 return db_results
         except Exception as ex:
             logger.warning(f"[MemoryManager] Postgres recall failed: {ex}")
@@ -89,7 +117,9 @@ def recall_context(user_ctx: Dict[str, Any], query: str, limit: int = 10) -> Opt
                 except Exception as jex:
                     logger.warning(f"[MemoryManager] Redis decode error: {jex}")
             if records:
-                logger.info(f"[MemoryManager] Redis recall: {len(records)} results for user {user_id}")
+                logger.info(
+                    f"[MemoryManager] Redis recall: {len(records)} results for user {user_id}"
+                )
                 return records
         except Exception as ex:
             logger.warning(f"[MemoryManager] Redis recall failed: {ex}")
@@ -108,40 +138,18 @@ def recall_context(user_ctx: Dict[str, Any], query: str, limit: int = 10) -> Opt
             res = con.execute(query_sql, [user_id, limit]).fetchdf()
             records = res.to_dict("records")
             if records:
-                logger.info(f"[MemoryManager] DuckDB recall: {len(records)} results for user {user_id}")
+                logger.info(
+                    f"[MemoryManager] DuckDB recall: {len(records)} results for user {user_id}"
+                )
                 return records
         except Exception as ex:
             logger.warning(f"[MemoryManager] DuckDB recall failed: {ex}")
 
-    # ==== 5. ElasticSearch (optional, semantic/keyword) ====
-    if Elasticsearch:
-        try:
-            es_host = os.getenv("ELASTIC_HOST", "localhost")
-            es_port = int(os.getenv("ELASTIC_PORT", "9200"))
-            es_index = os.getenv("ELASTIC_INDEX", "kari_memory")
-            es = Elasticsearch([{"host": es_host, "port": es_port, "scheme": "http"}])
-            query_body = {
-                "size": limit,
-                "query": {
-                    "bool": {
-                        "must": [
-                            {"match": {"user_id": user_id}},
-                            {"match": {"query": query}}
-                        ]
-                    }
-                }
-            }
-            resp = es.search(index=es_index, body=query_body)
-            hits = resp.get("hits", {}).get("hits", [])
-            records = [h["_source"] for h in hits]
-            if records:
-                logger.info(f"[MemoryManager] Elastic recall: {len(records)} results for user {user_id}")
-                return records
-        except Exception as ex:
-            logger.warning(f"[MemoryManager] Elastic recall failed: {ex}")
-
-    logger.info(f"[MemoryManager] No recall results for user {user_id} (all backends empty)")
+    logger.info(
+        f"[MemoryManager] No recall results for user {user_id} (all backends empty)"
+    )
     return None
+
 
 def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     """
@@ -200,7 +208,8 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
         try:
             db_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
             con = duckdb.connect(db_path, read_only=False)
-            con.execute("""
+            con.execute(
+                """
                 CREATE TABLE IF NOT EXISTS memory (
                     user_id VARCHAR,
                     session_id VARCHAR,
@@ -208,10 +217,11 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
                     result VARCHAR,
                     timestamp BIGINT
                 )
-            """)
+            """
+            )
             con.execute(
                 "INSERT INTO memory (user_id, session_id, query, result, timestamp) VALUES (?, ?, ?, ?, ?)",
-                [user_id, session_id, query, json.dumps(result), entry["timestamp"]]
+                [user_id, session_id, query, json.dumps(result), entry["timestamp"]],
             )
             ok = True
             logger.info(f"[MemoryManager] DuckDB stored memory for user {user_id}")
@@ -219,20 +229,25 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
             logger.warning(f"[MemoryManager] DuckDB store failed: {ex}")
 
     # ==== 5. ElasticSearch (optional, document index) ====
-    if Elasticsearch:
+    if ElasticClient:
         try:
             es_host = os.getenv("ELASTIC_HOST", "localhost")
             es_port = int(os.getenv("ELASTIC_PORT", "9200"))
             es_index = os.getenv("ELASTIC_INDEX", "kari_memory")
-            es = Elasticsearch([{"host": es_host, "port": es_port, "scheme": "http"}])
-            es.index(index=es_index, document=entry)
+            es_user = os.getenv("ELASTIC_USER")
+            es_password = os.getenv("ELASTIC_PASSWORD")
+            es = ElasticClient(es_host, es_port, es_index, es_user, es_password)
+            es.index_entry(entry)
             ok = True
             logger.info(f"[MemoryManager] Elastic indexed memory for user {user_id}")
         except Exception as ex:
             logger.warning(f"[MemoryManager] Elastic store failed: {ex}")
 
     if not ok:
-        logger.error(f"[MemoryManager] FAILED to store memory for user {user_id} on all backends")
+        logger.error(
+            f"[MemoryManager] FAILED to store memory for user {user_id} on all backends"
+        )
     return ok
+
 
 __all__ = ["recall_context", "update_memory"]
