@@ -19,7 +19,8 @@ PID_FILE = Path("server.pid")
 
 def run_server(host: str, port: int, reload: bool = False) -> None:
     """Run the FastAPI server with graceful shutdown."""
-    
+
+    # -- Shadowing protection --
     local_pkg = Path("fastapi")
     if local_pkg.exists() and local_pkg.is_dir():
         print(
@@ -29,7 +30,7 @@ def run_server(host: str, port: int, reload: bool = False) -> None:
         )
         sys.exit(1)
 
-    config = uvicorn.Config("main:app", host=host, port=port, reload=reload)
+    config = uvicorn.Config("ai_karen_engine.fastapi:app", host=host, port=port, reload=reload)
     server = uvicorn.Server(config)
 
     def handle_sig(_sig, _frame):
