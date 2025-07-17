@@ -73,11 +73,16 @@ async def dispatch(
                     f"No plugin registered for intent '{intent}'"
                 )
             try:
-                result = await get_plugin_manager().run_plugin(
+                plugin_result, out, err = await get_plugin_manager().run_plugin(
                     intent,
                     {"prompt": query, "context": context or memory_ctx},
                     user_ctx,
                 )
+                result = plugin_result
+                if out:
+                    trace.append({"stage": "plugin_stdout", "data": out.strip()})
+                if err:
+                    trace.append({"stage": "plugin_stderr", "data": err.strip()})
                 trace.append({"stage": "plugin_executed", "plugin": intent})
                 success = True
             except Exception as ex:  # pragma: no cover - plugin error path

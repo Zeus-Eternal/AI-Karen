@@ -107,8 +107,11 @@ def load_prompt(plugin_dir: Path) -> str:
         return f.read()
 
 # --- Helper: Import Plugin Handler Dynamically ---
-def load_handler(plugin_dir: Path, module_path: str | None = None) -> Callable:
-    """Load plugin handler either from module path or handler.py."""
+def load_handler(plugin_dir: Path, module_path: str | None = None) -> tuple[Callable, str]:
+    """Load plugin handler either from module path or handler.py.
+
+    Returns a tuple of ``(handler_callable, module_name)`` for sandbox execution.
+    """
     import importlib
     import importlib.util
 
@@ -134,16 +137,17 @@ def load_handler(plugin_dir: Path, module_path: str | None = None) -> Callable:
         raise AttributeError(
             f"Plugin {plugin_dir.name} handler must export a 'run(params)' function"
         )
-    return module.run
+    return module.run, module.__name__
 
 # --- Jinja2 Environment for Prompt Rendering ---
 jinja_env = Environment(loader=FileSystemLoader(str(PLUGIN_ROOT)), autoescape=select_autoescape(['txt']))
 
 # --- PluginRouter Class ---
 class PluginRecord:
-    def __init__(self, manifest: Dict[str, Any], handler: Callable, ui: Optional[Callable], dir_path: Path):
+    def __init__(self, manifest: Dict[str, Any], handler: Callable, module: str, ui: Optional[Callable], dir_path: Path):
         self.manifest = manifest
         self.handler = handler
+        self.module = module
         self.ui = ui
         self.dir = dir_path
 
@@ -165,7 +169,7 @@ class PluginRouter:
                         raise ValueError("manifest schema invalid")
                     module_path = manifest.get("module")
                     try:
-                        handler = load_handler(p, module_path)
+                        handler, mod_name = load_handler(p, module_path)
                     except Exception as e:  # pragma: no cover - dynamic import
                         PLUGIN_IMPORT_ERRORS.labels(
                             plugin=p.name,
@@ -187,7 +191,7 @@ class PluginRouter:
                     if isinstance(intents, str):
                         intents = [intents]
                     for intent in intents or []:
-                        plugins[intent] = PluginRecord(manifest, handler, ui, p)
+                        plugins[intent] = PluginRecord(manifest, handler, mod_name, ui, p)
                 except Exception as e:
                     print(f"Plugin discovery failed in {p}: {e}")
         return plugins
@@ -217,7 +221,12 @@ class PluginRouter:
 
         prompt_template = jinja_env.from_string(rec.manifest.get("prompt", "{{prompt}}"))
         rendered_prompt = prompt_template.render(params)
-        return await rec.handler({"prompt": rendered_prompt, **params})
+        from ai_karen_engine.plugins.sandbox import run_in_sandbox
+
+        result, out, err = await run_in_sandbox(
+            rec.module, {"prompt": rendered_prompt, **params}
+        )
+        return result, out, err
 
 # --- Lazy Accessor for Singleton Instance ---
 _plugin_router: Optional[PluginRouter] = None
