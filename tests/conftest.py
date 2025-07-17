@@ -15,6 +15,7 @@ sys.modules.setdefault("numpy", importlib.import_module("tests.stubs.numpy"))
 sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
 sys.modules.setdefault("cryptography", importlib.import_module("tests.stubs.cryptography"))
 sys.modules.setdefault("ollama", importlib.import_module("tests.stubs.ollama"))
+sys.modules.setdefault("jwt", importlib.import_module("tests.stubs.jwt"))
 sys.modules.setdefault(
     "streamlit_autorefresh", importlib.import_module("tests.stubs.streamlit_autorefresh")
 )
@@ -57,7 +58,7 @@ cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 
 class CortexDispatcher:
-    async def dispatch(self, query: str, role: str = "user", **_):
+    async def dispatch(self, user_ctx, query: str, role: str = "user", **_):
         text = query.lower()
         if "hello" in text:
             return {

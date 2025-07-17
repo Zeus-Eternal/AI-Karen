@@ -53,10 +53,12 @@ def test_dispatch_with_rbac():
     for dep in ["pyautogui", "urwid", "jinja2", "integrations", "integrations.llm_registry"]:
         ensure_optional_dependency(dep)
     router = PluginRouter()
-    result = asyncio.run(router.dispatch("greet", {}, roles=["user"]))
+    result, out, err = asyncio.run(router.dispatch("greet", {}, roles=["user"]))
     assert result == (
         "Hey there! I'm Kari—your AI co-pilot. What can I help with today?"
     )
+    assert out
+    assert err == ""
 
 
 def test_dispatch_denied():

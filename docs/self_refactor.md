@@ -1,6 +1,6 @@
 # SelfRefactor Engine
 
-Kari can improve its own code using the built-in SelfRefactor engine. This component generates patches, runs tests, and merges the changes automatically when they pass.
+Kari can improve its own code using the built-in SelfRefactor engine. This component generates patches, runs tests, and stores the results for review. Patches are only merged automatically when the `ENABLE_SELF_REFACTOR_AUTO_MERGE` flag is enabled; otherwise they await manual approval.
 
 The OSIRIS Knowledge Engine feeds the SelfRefactor pipeline. As new information is ingested through multi-hop queries, the engine refreshes its knowledge base and schedules refactor runs, forming a continuous self-updating loop.
 
@@ -15,6 +15,14 @@ The engine reads prompts from `self_refactor/prompts/` and uses a local or remot
 ```bash
 python -m self_refactor.engine --run
 ```
+
+### Review Directory
+
+Every run saves proposed patches and their test results under
+`self_refactor/reviews/` using a timestamped folder. Review the `report.json`
+and patch files before manually applying them. Set
+`ENABLE_SELF_REFACTOR_AUTO_MERGE=true` to allow the engine to write changes
+directly after tests pass.
 
 ### Logs
 

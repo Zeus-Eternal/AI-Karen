@@ -33,17 +33,11 @@ class PostgresClient:
             "timestamp": row[5],
         }
 
-    def get_session_records(self, session_id, tenant_id=None):
-        if tenant_id is None:
-            rows = self.conn.execute(
-                "SELECT vector_id,tenant_id,user_id,session_id,query,result,timestamp FROM memory WHERE session_id=?",
-                (session_id,),
-            ).fetchall()
-        else:
-            rows = self.conn.execute(
-                "SELECT vector_id,tenant_id,user_id,session_id,query,result,timestamp FROM memory WHERE session_id=? AND tenant_id=?",
-                (session_id, tenant_id),
-            ).fetchall()
+    def get_session_records(self, session_id, tenant_id):
+        rows = self.conn.execute(
+            "SELECT vector_id,tenant_id,user_id,session_id,query,result,timestamp FROM memory WHERE session_id=? AND tenant_id=?",
+            (session_id, tenant_id),
+        ).fetchall()
         return [
             {
                 "vector_id": r[0],
@@ -57,17 +51,11 @@ class PostgresClient:
             for r in rows
         ]
 
-    def recall_memory(self, user_id, query=None, limit=5, tenant_id=None):
-        if tenant_id is None:
-            rows = self.conn.execute(
-                "SELECT vector_id,tenant_id,user_id,session_id,query,result,timestamp FROM memory WHERE user_id=? ORDER BY timestamp DESC LIMIT ?",
-                (user_id, limit),
-            ).fetchall()
-        else:
-            rows = self.conn.execute(
-                "SELECT vector_id,tenant_id,user_id,session_id,query,result,timestamp FROM memory WHERE user_id=? AND tenant_id=? ORDER BY timestamp DESC LIMIT ?",
-                (user_id, tenant_id, limit),
-            ).fetchall()
+    def recall_memory(self, user_id, query=None, limit=5, tenant_id=""):
+        rows = self.conn.execute(
+            "SELECT vector_id,tenant_id,user_id,session_id,query,result,timestamp FROM memory WHERE user_id=? AND tenant_id=? ORDER BY timestamp DESC LIMIT ?",
+            (user_id, tenant_id, limit),
+        ).fetchall()
         return [
             {
                 "vector_id": r[0],

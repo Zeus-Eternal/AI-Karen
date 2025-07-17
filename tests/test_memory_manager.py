@@ -101,7 +101,7 @@ class RecordingPostgres:
             raise RuntimeError("db down")
         self.upserts.append((vector_id, tenant_id, user_id, session_id, query, result, timestamp))
 
-    def recall_memory(self, user_id, query, limit, tenant_id=None):
+    def recall_memory(self, user_id, query, limit, tenant_id=""):
         self.recalls.append((user_id, query, limit, tenant_id))
         return [{"source": "postgres"}]
 

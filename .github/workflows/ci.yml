@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff mypy pytest coverage
+      - name: Ruff
+        run: ruff .
+      - name: Type check
+        run: mypy --strict .
+      - name: Test
+        run: pytest --cov=./ --cov-report=xml --cov-report=term --cov-fail-under=85 -q

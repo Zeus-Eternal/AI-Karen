@@ -120,13 +120,11 @@ class PostgresClient:
             "timestamp": row[5],
         }
 
-    def get_session_records(self, session_id: str, tenant_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_session_records(self, session_id: str, tenant_id: str) -> List[Dict[str, Any]]:
         sql = "SELECT vector_id, tenant_id, user_id, session_id, query, result, timestamp FROM memory WHERE session_id = "
         sql += "?" if self.use_sqlite else "%s"
-        params = [session_id]
-        if tenant_id is not None:
-            sql += " AND tenant_id = " + ("?" if self.use_sqlite else "%s")
-            params.append(tenant_id)
+        sql += " AND tenant_id = " + ("?" if self.use_sqlite else "%s")
+        params = [session_id, tenant_id]
         rows = self._execute(sql, params, fetch=True)
         return [
             {
@@ -142,17 +140,15 @@ class PostgresClient:
         ]
 
     def recall_memory(
-        self, user_id: str, query: Optional[str] = None, limit: int = 5, tenant_id: Optional[str] = None
+        self, user_id: str, query: Optional[str] = None, limit: int = 5, tenant_id: str = ""
     ) -> List[Dict[str, Any]]:
         sql = (
             "SELECT vector_id, tenant_id, user_id, session_id, query, result, timestamp FROM memory "
             "WHERE user_id = "
         )
         sql += "?" if self.use_sqlite else "%s"
-        params = [user_id]
-        if tenant_id is not None:
-            sql += " AND tenant_id = " + ("?" if self.use_sqlite else "%s")
-            params.append(tenant_id)
+        sql += " AND tenant_id = " + ("?" if self.use_sqlite else "%s")
+        params = [user_id, tenant_id]
         sql += " ORDER BY timestamp DESC LIMIT "
         sql += "?" if self.use_sqlite else "%s"
         params.append(limit)
