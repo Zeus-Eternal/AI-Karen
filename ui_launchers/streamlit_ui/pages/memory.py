@@ -20,9 +20,15 @@ try:
         ElasticClient,
         logger as memory_logger,
     )
+    from ai_karen_engine.clients.database.milvus_client import MilvusClient
 except ImportError:
     st.error("MemoryManager not found; install Kari backend.")
     st.stop()
+
+try:
+    milvus_client = MilvusClient()
+except Exception:
+    milvus_client = None
 
 # --- Evil Glory: Config ---
 MEMORY_LIMIT = 100
@@ -42,7 +48,7 @@ def backend_status(name: str, backend) -> str:
 def get_status_legend():
     return {
         "Elastic": backend_status("Elastic", ElasticClient),
-        "Milvus": backend_status("Milvus", None),  # TODO: import if implemented
+        "Milvus": backend_status("Milvus", milvus_client),
         "Postgres": backend_status("Postgres", postgres),
         "Redis": backend_status("Redis", redis),
         "DuckDB": backend_status("DuckDB", duckdb),
