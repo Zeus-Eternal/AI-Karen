@@ -12,7 +12,21 @@ except Exception:
 sys.modules.setdefault("requests", importlib.import_module("tests.stubs.requests"))
 sys.modules.setdefault("tenacity", importlib.import_module("tests.stubs.tenacity"))
 pg_mod = importlib.import_module("tests.stubs.ai_karen_engine.clients.database.postgres_client")
-sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
+
+try:  # Optional dependency
+    import duckdb  # type: ignore
+except Exception:
+    sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
+
+try:  # Optional dependency
+    import numpy  # type: ignore
+except Exception:
+    sys.modules.setdefault("numpy", importlib.import_module("tests.stubs.numpy"))
+
+try:  # Optional dependency
+    import pyautogui  # type: ignore
+except Exception:
+    sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
 
 
 # Alias installed-style packages for tests
