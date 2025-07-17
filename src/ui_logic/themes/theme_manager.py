@@ -18,6 +18,13 @@ from .design_tokens import COLORS
 
 from ui_logic.hooks.telemetry import telemetry_event
 
+def _theme_config_path() -> Path:
+    """Return the directory where theme CSS files reside."""
+    return Path(os.getenv("KARI_THEME_CONFIG", "src/ui/themes/"))
+
+def _audit_log_path() -> Path:
+    """Return the audit log file path."""
+    return Path(os.getenv("KARI_THEME_AUDIT_LOG", "/secure/logs/kari/theme_audit.log"))
 THEME_SIGNING_KEY = os.getenv("KARI_THEME_SIGNING_KEY", "change-me-to-secure-key")
 
 
@@ -34,7 +41,8 @@ def _audit_log_path() -> str:
 _theme_lock = threading.Lock()
 
 def _audit_theme_event(event: Dict[str, Any]):
-    os.makedirs(os.path.dirname(_audit_log_path()), exist_ok=True)
+    path = _audit_log_path()
+    os.makedirs(path.parent, exist_ok=True)
     timestamp = int(time.time())
     payload = str(event) + str(timestamp)
     signature = hmac.new(THEME_SIGNING_KEY.encode(), payload.encode(), hashlib.sha512).hexdigest()
@@ -44,7 +52,7 @@ def _audit_theme_event(event: Dict[str, Any]):
         "signature": signature
     }
     with _theme_lock:
-        with open(_audit_log_path(), "a") as f:
+        with open(path, "a") as f:
             f.write(str(line) + "\n")
 
 def load_theme_css(theme_name: str) -> str:
@@ -87,9 +95,11 @@ def set_theme(theme_name: str, user_ctx: Dict[str, Any]):
     # You may also want to persist session theme choice in user_ctx/session, etc.
 
 def get_current_theme(user_ctx: Dict[str, Any]) -> str:
-    """Return current theme for the user/session (fallback to default)"""
-    # You could tie this to a user/session DB, but here use a cookie/session var
+    """Return the current theme for the user/session (fallback to default)."""
     import streamlit as st
+    params = st.experimental_get_query_params()
+    if params.get("theme"):
+        return params["theme"][0]
     if "kari_theme" in st.session_state:
         return st.session_state["kari_theme"]
     return "light"
@@ -103,8 +113,13 @@ def render_theme_switcher(user_ctx: Dict[str, Any]):
         st.info("No themes available.")
         return
     st.subheader("Theme")
-    selected = st.selectbox("Choose Theme", list(themes.keys()), index=list(themes.keys()).index(current) if current in themes else 0)
+    selected = st.selectbox(
+        "Choose Theme",
+        list(themes.keys()),
+        index=list(themes.keys()).index(current) if current in themes else 0,
+    )
     if st.button("Apply Theme"):
+        st.experimental_set_query_params(theme=selected)
         set_theme(selected, user_ctx)
         st.session_state["kari_theme"] = selected
         st.success(f"Theme changed to '{selected}'")
@@ -117,10 +132,16 @@ def render_theme_switcher(user_ctx: Dict[str, Any]):
     })
     telemetry_event("view_theme_switcher", {"current": current}, user_id=user_ctx.get("user_id"))
 
+def apply_default_theme(user_ctx: Dict[str, Any]) -> None:
+    """Apply the theme resolved from :func:`get_current_theme`."""
+    theme = get_current_theme(user_ctx)
+    set_theme(theme, user_ctx)
+
 __all__ = [
     "get_available_themes",
     "load_theme_css",
     "set_theme",
     "get_current_theme",
-    "render_theme_switcher"
+    "render_theme_switcher",
+    "apply_default_theme",
 ]
