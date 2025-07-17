@@ -60,6 +60,8 @@ Plugins extend Kari with new intents, memory hooks, and optional UI.
 ```bash
 curl -X POST http://localhost:8000/plugins/reload
 ```
+3. Programmatically manage plugins using `create_plugin_manager()` from
+   `ai_karen_engine.plugin_manager`.
 
 > 🔐 Note: Plugins with UI components only render if `ADVANCED_MODE=true`.
 
