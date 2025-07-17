@@ -28,7 +28,7 @@ def test_flush_after_reconnect(tmp_path, monkeypatch):
     mm.pg_syncer = mm.PostgresSyncer(fake, str(db_path), interval=0.01)
     mm.pg_syncer.postgres_available = False
 
-    mm.update_memory({"user_id": "u1", "session_id": "s1"}, "q1", "r1")
+    mm.update_memory({"user_id": "u1", "session_id": "s1", "tenant_id": "t1"}, "q1", "r1")
     with duckdb.connect(str(db_path)) as con:
         count = con.execute("SELECT COUNT(*) FROM memory WHERE synced=FALSE").fetchone()[0]
     assert count == 1

@@ -155,6 +155,7 @@ def flush_duckdb_to_postgres(client: PostgresClient, db_path: str) -> None:
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS memory (
+                tenant_id VARCHAR,
                 user_id VARCHAR,
                 session_id VARCHAR,
                 query VARCHAR,
@@ -165,11 +166,19 @@ def flush_duckdb_to_postgres(client: PostgresClient, db_path: str) -> None:
             """
         )
         rows = con.execute(
-            "SELECT rowid, user_id, session_id, query, result, timestamp FROM memory WHERE synced=FALSE"
+            "SELECT rowid, tenant_id, user_id, session_id, query, result, timestamp FROM memory WHERE synced=FALSE"
         ).fetchall()
-        for rowid, user_id, session_id, query, result, ts in rows:
+        for rowid, tenant_id, user_id, session_id, query, result, ts in rows:
             try:
-                client.upsert_memory(-1, user_id, session_id, query, result, ts)
+                client.upsert_memory(
+                    -1,
+                    tenant_id or "",
+                    user_id,
+                    session_id,
+                    query,
+                    result,
+                    ts,
+                )
                 con.execute("UPDATE memory SET synced=TRUE WHERE rowid=?", [rowid])
                 logger.info(f"[MemoryManager] Flushed record {rowid} to Postgres")
             except Exception as ex:
@@ -191,7 +200,7 @@ neuro_vault = NeuroVault()
 
 # ====== Context Recall ======
 def recall_context(
-    user_ctx: Dict[str, Any], query: str, limit: int = 10
+    user_ctx: Dict[str, Any], query: str, limit: int = 10, tenant_id: Optional[str] = None
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Recall the most relevant context for user/query from the memory stack.
@@ -199,6 +208,7 @@ def recall_context(
     """
     _inc("memory_recall_total")
     MEM_RECALL_COUNT.inc()
+    tenant_id = tenant_id or user_ctx.get("tenant_id")
     user_id = user_ctx.get("user_id") or "anonymous"
 
     # 0. NeuroVault vector recall
@@ -233,7 +243,7 @@ def recall_context(
     # 2. Milvus
     if recall_vectors:
         try:
-            vec_results = recall_vectors(user_id, query, top_k=limit)
+            vec_results = recall_vectors(user_id, query, top_k=limit, tenant_id=tenant_id)
             records = []
             for r in vec_results:
                 meta = postgres.get_by_vector(r.get("id")) if postgres else None
@@ -250,7 +260,7 @@ def recall_context(
     if postgres and pg_syncer and pg_syncer.postgres_available:
         try:
             db_results = postgres.recall_memory(
-                user_id=user_id, query=query, limit=limit
+                user_id=user_id, query=query, limit=limit, tenant_id=tenant_id
             )
             if db_results:
                 logger.info(
@@ -264,7 +274,8 @@ def recall_context(
     if redis:
         try:
             r = redis.Redis()
-            raw = r.lrange(f"kari:mem:{user_id}", 0, limit - 1)
+            key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
+            raw = r.lrange(key, 0, limit - 1)
             records = []
             for b in raw:
                 try:
@@ -284,12 +295,20 @@ def recall_context(
         try:
             con = duckdb.connect(duckdb_path, read_only=True)
             query_sql = """
-                SELECT * FROM memory 
-                WHERE user_id = ? 
-                ORDER BY timestamp DESC 
+                SELECT * FROM memory
+                WHERE user_id = ?
+                """
+            if tenant_id:
+                query_sql += " AND tenant_id = ?"
+            query_sql += """
+                ORDER BY timestamp DESC
                 LIMIT ?
             """
-            res = con.execute(query_sql, [user_id, limit]).fetchdf()
+            params = [user_id]
+            if tenant_id:
+                params.append(tenant_id)
+            params.append(limit)
+            res = con.execute(query_sql, params).fetchdf()
             records = res.to_dict("records")
             if records:
                 logger.info(
@@ -305,16 +324,20 @@ def recall_context(
     return None
 
 # ====== Context Write ======
-def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
+def update_memory(
+    user_ctx: Dict[str, Any], query: str, result: Any, tenant_id: Optional[str] = None
+) -> bool:
     """
     Store context/result to all available memory backends.
     Returns True if at least one backend succeeds.
     """
     _inc("memory_store_total")
     MEM_STORE_COUNT.inc()
+    tenant_id = tenant_id or user_ctx.get("tenant_id")
     user_id = user_ctx.get("user_id") or "anonymous"
     session_id = user_ctx.get("session_id")
     entry = {
+        "tenant_id": tenant_id,
         "user_id": user_id,
         "session_id": session_id,
         "query": query,
@@ -334,7 +357,7 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     # 1. Milvus
     if store_vector:
         try:
-            vector_id = store_vector(user_id, query, result)
+            vector_id = store_vector(user_id, query, result, tenant_id=tenant_id)
             ok = True
             logger.info(f"[MemoryManager] Milvus stored vector for user {user_id}")
         except Exception as ex:
@@ -345,6 +368,7 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
         try:
             postgres.upsert_memory(
                 vector_id or -1,
+                tenant_id or "",
                 user_id,
                 session_id,
                 query,
@@ -362,7 +386,8 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     if redis:
         try:
             r = redis.Redis()
-            r.lpush(f"kari:mem:{user_id}", json.dumps(entry))
+            key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
+            r.lpush(key, json.dumps(entry))
             ok = True
             logger.info(f"[MemoryManager] Redis pushed memory for user {user_id}")
         except Exception as ex:
@@ -375,6 +400,7 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS memory (
+                    tenant_id VARCHAR,
                     user_id VARCHAR,
                     session_id VARCHAR,
                     query VARCHAR,
@@ -385,8 +411,8 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
                 """
             )
             con.execute(
-                "INSERT INTO memory (user_id, session_id, query, result, timestamp, synced) VALUES (?, ?, ?, ?, ?, ?)",
-                [user_id, session_id, query, json.dumps(result), entry["timestamp"], postgres_ok],
+                "INSERT INTO memory (tenant_id, user_id, session_id, query, result, timestamp, synced) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [tenant_id, user_id, session_id, query, json.dumps(result), entry["timestamp"], postgres_ok],
             )
             ok = True
             logger.info(f"[MemoryManager] DuckDB stored memory for user {user_id}")
