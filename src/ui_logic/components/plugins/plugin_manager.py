@@ -225,6 +225,5 @@ __all__ = [
     "PluginManifestError",
     "PluginValidationError",
     "PluginRBACError",
-    "create_plugin_manager",
     "render_plugin_manager",
 ]

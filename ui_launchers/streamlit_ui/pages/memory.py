@@ -147,20 +147,11 @@ else:
 # --- Metrics Dashboard ---
 if show_metrics:
     st.subheader("Memory Metrics (live)")
-    # Demo version: mockup stats (implement real metrics from memory_manager.get_metrics() if wired)
-    metrics = {
-        "reads_success": 123,
-        "reads_failure": 4,
-        "writes_success": 76,
-        "writes_failure": 2,
-        "current_time": time.strftime("%Y-%m-%d %H:%M:%S"),
-    }
     try:
-        from ai_karen_engine.core.memory import memory_manager
-        real_metrics = memory_manager.get_metrics()
-        metrics.update(real_metrics)
+        from ai_karen_engine.core.memory.manager import get_metrics
+        metrics = get_metrics()
     except Exception:
-        pass
+        metrics = {}
     st.json(metrics)
 
 # --- Backend Error Logs ---
