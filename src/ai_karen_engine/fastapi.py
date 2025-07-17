@@ -20,6 +20,8 @@ import logging
 import uuid
 from typing import Optional
 
+from ai_karen_engine.core.memory.manager import init_memory
+
 try:
     from fastapi import FastAPI, APIRouter, Request, Response, status
     from fastapi.responses import JSONResponse, RedirectResponse, PlainTextResponse
@@ -51,6 +53,10 @@ app = FastAPI(
     openapi_url="/openapi.json",
     root_path=os.getenv("KARI_API_ROOT", ""),
 )
+
+@app.on_event("startup")
+async def _init_memory() -> None:
+    init_memory()
 
 # -- Prometheus Metrics (optional) --
 try:

@@ -23,7 +23,8 @@ def test_flush_after_reconnect(tmp_path, monkeypatch):
     importlib.reload(mm)
     fake = FakePostgres()
     monkeypatch.setattr(mm, "postgres", fake)
-    mm.pg_syncer.stop()
+    if getattr(mm, "pg_syncer", None):
+        mm.pg_syncer.stop()
     mm.pg_syncer = mm.PostgresSyncer(fake, str(db_path), interval=0.01)
     mm.pg_syncer.postgres_available = False
 

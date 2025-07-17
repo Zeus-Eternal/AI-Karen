@@ -114,6 +114,11 @@ def test_recall_priority_order(monkeypatch):
 
     pg.recall_memory = recall_memory
     monkeypatch.setattr(mm, "postgres", pg)
+    monkeypatch.setattr(
+        mm,
+        "pg_syncer",
+        types.SimpleNamespace(postgres_available=True, mark_unavailable=lambda: None),
+    )
 
     fake_redis = FakeRedisModule()
 
@@ -148,6 +153,11 @@ def test_recall_returns_first_available(monkeypatch):
 
     monkeypatch.setattr(mm, "recall_vectors", mv)
     monkeypatch.setattr(mm, "postgres", RecordingPostgres())
+    monkeypatch.setattr(
+        mm,
+        "pg_syncer",
+        types.SimpleNamespace(postgres_available=True, mark_unavailable=lambda: None),
+    )
     monkeypatch.setattr(mm, "redis", FakeRedisModule())
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
 
@@ -163,6 +173,11 @@ def test_update_memory_success(monkeypatch):
     fake_redis = FakeRedisModule()
 
     monkeypatch.setattr(mm, "postgres", pg)
+    monkeypatch.setattr(
+        mm,
+        "pg_syncer",
+        types.SimpleNamespace(postgres_available=True, mark_unavailable=lambda: None),
+    )
     monkeypatch.setattr(mm, "redis", fake_redis)
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
     monkeypatch.setattr(mm, "store_vector", lambda u, q, r: 1)
@@ -181,6 +196,11 @@ def test_update_memory_postgres_failure(monkeypatch):
     fake_redis = FakeRedisModule()
 
     monkeypatch.setattr(mm, "postgres", pg)
+    monkeypatch.setattr(
+        mm,
+        "pg_syncer",
+        types.SimpleNamespace(postgres_available=True, mark_unavailable=lambda: None),
+    )
     monkeypatch.setattr(mm, "redis", fake_redis)
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
     monkeypatch.setattr(mm, "store_vector", lambda u, q, r: 1)

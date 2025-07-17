@@ -53,6 +53,7 @@ logger.setLevel(logging.INFO)
 # ========== Backend Init ==========
 postgres = PostgresClient(use_sqlite=True) if PostgresClient else None
 duckdb_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
+pg_syncer: "PostgresSyncer | None" = None
 
 # ---- Postgres Hybrid Flush Logic ----
 class PostgresSyncer:
@@ -140,9 +141,13 @@ def flush_duckdb_to_postgres(client: PostgresClient, db_path: str) -> None:
     except Exception as ex:
         logger.warning(f"[MemoryManager] DuckDB flush error: {ex}")
 
-pg_syncer = PostgresSyncer(postgres, duckdb_path) if postgres else None
-if pg_syncer:
-    pg_syncer.start()
+
+def init_memory() -> None:
+    """Initialize memory backends and start background syncer."""
+    global pg_syncer
+    if postgres and pg_syncer is None:
+        pg_syncer = PostgresSyncer(postgres, duckdb_path)
+        pg_syncer.start()
 
 # ====== Context Recall ======
 def recall_context(
@@ -350,4 +355,9 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
         )
     return ok
 
-__all__ = ["recall_context", "update_memory", "flush_duckdb_to_postgres"]
+__all__ = [
+    "init_memory",
+    "recall_context",
+    "update_memory",
+    "flush_duckdb_to_postgres",
+]
