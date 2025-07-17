@@ -9,6 +9,7 @@ Kari uses a multi-tier memory system to balance speed and recall quality.
 4. **SessionBuffer** – a DuckDB-backed queue that holds chat logs until they can be flushed to Postgres. Flushes occur on session end or when the buffer reaches a configurable size.
 5. **Postgres** – relational store for structured logs and plugin state. Used when the engine needs ACID compliance or joins across metadata.
 6. **Elasticsearch** – optional full-text index for transcripts and document archives. Provides rich keyword search alongside dense vector recall.
+7. **DocumentStore** – ingests PDF and Word files, chunked by heading via spaCy. Embeddings live in Milvus while chunk metadata is kept in Postgres.
 
 ### Storage Responsibilities
 

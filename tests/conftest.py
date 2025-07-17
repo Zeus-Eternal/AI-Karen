@@ -77,3 +77,21 @@ class IntentEngine:
         return "greet" if "hello" in text else "hf_generate"
 
 intent_stub.IntentEngine = IntentEngine
+sys.modules.setdefault("ai_karen_engine.core.intent_engine", intent_stub)
+
+# Lightweight spaCy stub for document tests
+spacy_stub = types.ModuleType("spacy")
+
+class DummyDoc:
+    def __init__(self, text: str):
+        self.text = text
+        self.sents = [types.SimpleNamespace(text=t) for t in text.split("\n")]
+
+def blank(lang: str = "en"):
+    def nlp(text: str):
+        return DummyDoc(text)
+    nlp.add_pipe = lambda name: None
+    return nlp
+
+spacy_stub.blank = blank
+sys.modules.setdefault("spacy", spacy_stub)
