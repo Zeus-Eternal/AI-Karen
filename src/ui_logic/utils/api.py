@@ -487,23 +487,52 @@ def fetch_knowledge_graph(user_id: str = None, query: str = "") -> dict:
 
 # ====== PLUGINS ======
 
-def fetch_store_plugins(limit: int = 50, token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
+def fetch_store_plugins(token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
     """Return plugin metadata from the store API or an empty list on error."""
     try:
-        return api_get("plugins/store", params={"limit": limit}, token=token, org=org)
+        return api_get("plugins/store", token=token, org=org)
     except Exception:
         return []
 
 
-def search_plugins(query: str, limit: int = 50, token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
+def search_plugins(query: str, token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
     """Search public plugin marketplace."""
     try:
-        params = {"q": query, "limit": limit}
-        return api_get("plugins/search", params=params, token=token, org=org)
+        return api_get("plugins/search", params={"q": query}, token=token, org=org)
     except Exception:
         return []
 
+def create_workflow(user_id: str, workflow: Dict[str, Any], token: Optional[str] = None, org: Optional[str] = None) -> bool:
+    """Create a new workflow for ``user_id``."""
+    try:
+        api_post(f"plugins/user_workflows/{user_id}", data=workflow, token=token, org=org)
+        return True
+    except Exception:
+        return False
 
+
+def delete_workflow(user_id: str, workflow_id: str, token: Optional[str] = None, org: Optional[str] = None) -> bool:
+    """Delete a workflow by id."""
+    try:
+        api_delete(f"plugins/user_workflows/{user_id}/{workflow_id}", token=token, org=org)
+        return True
+    except Exception:
+        return False
+
+
+def update_workflow(user_id: str, workflow_id: str, updates: Dict[str, Any], token: Optional[str] = None, org: Optional[str] = None) -> bool:
+    """Update an existing workflow."""
+    try:
+        api_put(
+            f"plugins/user_workflows/{user_id}/{workflow_id}",
+            data=updates,
+            token=token,
+            org=org,
+        )
+        return True
+    except Exception:
+        return False
+      
 def fetch_user_workflows(token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
     """Return workflows for the current user or an empty list on error."""
     try:
@@ -673,8 +702,12 @@ __all__ = [
     "save_user_profile",
     "fetch_knowledge_graph",
     # Plugins
+    "fetch_user_workflows",
     "fetch_store_plugins",
     "search_plugins",
+    "create_workflow",
+    "delete_workflow",
+    "update_workflow",
     "list_plugins",
     "install_plugin",
     "uninstall_plugin",

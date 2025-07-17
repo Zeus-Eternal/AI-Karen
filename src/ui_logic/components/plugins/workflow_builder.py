@@ -39,7 +39,6 @@ def get_workflow_audit_trail(user_ctx: Dict, limit: int = 25):
         raise PermissionError("Insufficient privileges for workflow audit.")
     return fetch_audit_logs(category="workflow", user_id=user_ctx["user_id"])[-limit:][::-1]
 
-
 def render_workflow_builder(user_ctx: Dict) -> None:
     """Placeholder UI for workflow building."""
     st.subheader("Workflow Builder")

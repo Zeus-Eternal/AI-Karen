@@ -64,9 +64,25 @@ def inject_theme(user_ctx):
 def main():
     user_ctx = get_user_context()
     inject_theme(user_ctx)
+    st.sidebar.title("Kari AI")
+    st.sidebar.markdown("---")
+
+    primary = ["Home", "Chat", "Memory", "Analytics"]
+    page = st.sidebar.radio("Navigate", primary, index=0)
+
+    with st.sidebar.expander("More Options"):
+        secondary = st.radio(
+            "", ["Plugins", "Models", "Admin"], key="nav_secondary"
+        )
+        if secondary:
+            page = secondary
+
+    st.sidebar.markdown("---")
+    
     current_page = st.experimental_get_query_params().get("page", ["Home"])[0]
     page = render_sidebar(current_page, user_ctx)
     st.experimental_set_query_params(page=page)
+    
     PAGE_MAP[page](user_ctx=user_ctx)
 
 if __name__ == "__main__":
