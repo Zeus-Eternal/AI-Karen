@@ -92,13 +92,13 @@ def reset_profile(user_id: str):
     duckdb.delete_profile_history(user_id)
     if milvus is not None:
         milvus.delete_persona_embedding(user_id)
-    redis.flush_short_term(user_id)
-    redis.flush_long_term(user_id)
+    redis.flush_short_term("default", user_id)
+    redis.flush_long_term("default", user_id)
 
 def flush_short_term(user_id: str):
     """Flush only Redis-based short-term memory for this user."""
     require_user(user_id)
-    redis.flush_short_term(user_id)
+    redis.flush_short_term("default", user_id)
 
 def flush_long_term(user_id: str):
     """Flush Milvus/DuckDB-backed long-term memory for this user."""

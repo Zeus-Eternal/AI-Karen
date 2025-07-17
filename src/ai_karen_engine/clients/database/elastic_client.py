@@ -71,6 +71,7 @@ class ElasticClient:
             mapping = {
                 "mappings": {
                     "properties": {
+                        "tenant_id": {"type": "keyword"},
                         "user_id": {"type": "keyword"},
                         "session_id": {"type": "keyword"},
                         "query": {"type": "text"},
@@ -92,13 +93,16 @@ class ElasticClient:
         DOC_INDEX_COUNT.inc()
 
     # ------------------------------------------------------------------
-    def search(self, user_id: str, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def search(
+        self, user_id: str, query: str, limit: int = 10, tenant_id: str = ""
+    ) -> List[Dict[str, Any]]:
         self.ensure_index()
         if self.use_memory:
             hits = [
                 d
                 for d in self._docs
                 if d.get("user_id") == user_id
+                and d.get("tenant_id") == tenant_id
                 and query.lower() in d.get("query", "").lower()
             ]
             result = hits[:limit]
@@ -111,6 +115,7 @@ class ElasticClient:
                 "bool": {
                     "must": [
                         {"match": {"user_id": user_id}},
+                        {"match": {"tenant_id": tenant_id}},
                         {"match": {"query": query}},
                     ]
                 }
