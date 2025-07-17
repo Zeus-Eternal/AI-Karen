@@ -10,6 +10,31 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Callable, Optional
 
+try:
+    from prometheus_client import Counter
+    METRICS_ENABLED = True
+except Exception:  # pragma: no cover - optional dependency
+    METRICS_ENABLED = False
+
+    class _DummyMetric:
+        def labels(self, **kwargs):
+            return self
+
+        def inc(self, n: int = 1) -> None:  # noqa: D401 - simple increment
+            """No-op increment."""
+
+    Counter = _DummyMetric  # type: ignore
+
+PLUGIN_IMPORT_ERRORS = (
+    Counter(
+        "plugin_import_error_total",
+        "Plugin import failures",
+        ["plugin", "module", "error"],
+    )
+    if METRICS_ENABLED
+    else Counter()
+)
+
 
 class AccessDenied(Exception):
     """Raised when a user lacks required roles for a plugin."""
@@ -82,20 +107,30 @@ def load_prompt(plugin_dir: Path) -> str:
         return f.read()
 
 # --- Helper: Import Plugin Handler Dynamically ---
-def load_handler(plugin_dir: Path) -> Callable:
+def load_handler(plugin_dir: Path, module_path: str | None = None) -> Callable:
+    """Load plugin handler either from module path or handler.py."""
+    import importlib
     import importlib.util
-    handler_path = plugin_dir / HANDLER_FILE
-    if not handler_path.exists():
-        raise FileNotFoundError(f"Missing handler.py: {handler_path}")
-    spec = importlib.util.spec_from_file_location(
-        f"plugin_{plugin_dir.name}_handler",
-        str(handler_path),
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+
+    if module_path:
+        try:
+            module = importlib.import_module(module_path)
+        except Exception as exc:  # pragma: no cover - dynamic import
+            raise ImportError(module_path) from exc
+    else:
+        handler_path = plugin_dir / HANDLER_FILE
+        if not handler_path.exists():
+            raise FileNotFoundError(f"Missing handler.py: {handler_path}")
+        spec = importlib.util.spec_from_file_location(
+            f"plugin_{plugin_dir.name}_handler",
+            str(handler_path),
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
     if not hasattr(module, "run"):
         raise AttributeError(
-            f"Plugin {plugin_dir.name} handler.py must export a 'run(params)' function"
+            f"Plugin {plugin_dir.name} handler must export a 'run(params)' function"
         )
     return module.run
 
@@ -126,7 +161,16 @@ class PluginRouter:
                     manifest = load_manifest(p)
                     if not validate_manifest(manifest, self.schema):
                         raise ValueError("manifest schema invalid")
-                    handler = load_handler(p)
+                    module_path = manifest.get("module")
+                    try:
+                        handler = load_handler(p, module_path)
+                    except Exception as e:  # pragma: no cover - dynamic import
+                        PLUGIN_IMPORT_ERRORS.labels(
+                            plugin=p.name,
+                            module=module_path or "handler.py",
+                            error=type(e).__name__,
+                        ).inc()
+                        raise
                     ui = None
                     ui_path = p / "ui.py"
                     if ui_path.exists() and (os.getenv("ADVANCED_MODE") or manifest.get("trusted_ui")):
@@ -184,5 +228,11 @@ def get_plugin_router() -> PluginRouter:
         _plugin_router = PluginRouter()
     return _plugin_router
 
-__all__ = ["PluginRouter", "get_plugin_router", "AccessDenied", "PluginRecord"]
+__all__ = [
+    "PluginRouter",
+    "get_plugin_router",
+    "AccessDenied",
+    "PluginRecord",
+    "PLUGIN_IMPORT_ERRORS",
+]
 

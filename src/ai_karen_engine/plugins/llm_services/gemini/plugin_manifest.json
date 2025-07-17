@@ -2,6 +2,9 @@
   "plugin_api_version": "1.0",
   "intent": "gemini_chat",
   "enable_external_workflow": false,
-  "required_roles": ["admin"],
-  "trusted_ui": false
+  "required_roles": [
+    "admin"
+  ],
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.llm_services.gemini.handler"
 }
