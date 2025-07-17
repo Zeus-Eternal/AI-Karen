@@ -67,6 +67,14 @@ def test_dispatch_denied():
         asyncio.run(router.dispatch("desktop_action", {}, roles=["user"]))
 
 
+def test_dispatch_missing_roles_denied():
+    for dep in ["pyautogui", "urwid", "jinja2", "integrations", "integrations.llm_registry"]:
+        ensure_optional_dependency(dep)
+    router = PluginRouter()
+    with pytest.raises(AccessDenied):
+        asyncio.run(router.dispatch("desktop_action", {}))
+
+
 def test_list_intents():
     for dep in ["pyautogui", "urwid", "jinja2", "integrations", "integrations.llm_registry"]:
         ensure_optional_dependency(dep)
