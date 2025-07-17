@@ -125,17 +125,24 @@ class OllamaEngine:
         finally:
             IN_FLIGHT.labels(method=method).dec()
 
-    async def achat(self, messages: List[Dict[str, str]], stream: bool = False, **kwargs) -> Union[str, AsyncGenerator[str, None]]:
-        """Async chat via thread pool"""
+    async def achat(
+        self, messages: List[Dict[str, str]], stream: bool = False, **kwargs
+    ) -> AsyncGenerator[str, None]:
+        """Async chat via thread pool yielding chunks."""
         import asyncio
+
         loop = asyncio.get_event_loop()
         if stream:
             def _streamer():
                 yield from self.chat(messages, stream=True, **kwargs)
+
             for chunk in await loop.run_in_executor(None, lambda: list(_streamer())):
                 yield chunk
         else:
-            return await loop.run_in_executor(None, lambda: self.chat(messages, stream=False, **kwargs))
+            result = await loop.run_in_executor(
+                None, lambda: self.chat(messages, stream=False, **kwargs)
+            )
+            yield result
 
     def embedding(self, text: Union[str, List[str]], **kwargs) -> Union[List[float], List[List[float]]]:
         """Get embedding(s) for text(s), single or batch"""
