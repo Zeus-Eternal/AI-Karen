@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from .base import BaseMCPClient
+from ai_karen_engine.mcp.base import BaseMCPClient
 
 
 class GRPCClient(BaseMCPClient):
