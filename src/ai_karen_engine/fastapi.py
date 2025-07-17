@@ -152,12 +152,12 @@ async def auth_placeholder(request: Request, call_next):
 
 # -- Uptime/health probes for orchestration/infra --
 @app.get("/health", response_class=JSONResponse)
-async def health():
+async def health(request: Request):
     return {
         "status": "ok",
         "version": app.version,
         "env": os.getenv("KARI_ENV", "local"),
-        "trace_id": getattr(Request.state, 'trace_id', None)
+        "trace_id": getattr(request.state, "trace_id", None),
     }
 
 @app.get("/livez", response_class=PlainTextResponse)
