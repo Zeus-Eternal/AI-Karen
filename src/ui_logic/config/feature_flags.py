@@ -81,7 +81,7 @@ def register_plugin_flag(flag: str, default: bool = False):
 
 def is_feature_enabled(key: str, custom_path: str | None = None) -> bool:
     """Return ``True`` if the feature flag ``key`` is enabled."""
-    return bool(get_flag(key, custom_path))
+    return bool(get_flag(key))
 
 # === Public API ===
 __all__ = [

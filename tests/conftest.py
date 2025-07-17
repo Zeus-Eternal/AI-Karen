@@ -3,7 +3,9 @@ import importlib
 import os
 import sys
 import types
-import ai_karen_engine.clients.database.postgres_client as pg_mod
+sys.modules.setdefault("requests", importlib.import_module("tests.stubs.requests"))
+sys.modules.setdefault("tenacity", importlib.import_module("tests.stubs.tenacity"))
+pg_mod = importlib.import_module("tests.stubs.ai_karen_engine.clients.database.postgres_client")
 
 
 # Alias installed-style packages for tests
