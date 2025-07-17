@@ -1,4 +1,9 @@
 {
+  "plugin_api_version": "1.0",
+  "intent": "llama_chat",
+  "enable_external_workflow": false,
+  "required_roles": ["admin"],
+  "trusted_ui": false,
   "name": "LlamaCppLocal",
   "provider_id": "llama_cpp",
   "type": "llm_provider",
