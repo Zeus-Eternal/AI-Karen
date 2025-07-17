@@ -1,16 +1,72 @@
-"""In-memory fallback Postgres client."""
+"""Postgres client with optional SQLite fallback."""
 from __future__ import annotations
 
-from typing import Any, Dict, List
+import json
+import os
+import sqlite3
+from typing import Any, Dict, List, Optional
+
+try:
+    import psycopg
+    _PSYCOPG_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dependency
+    psycopg = None
+    _PSYCOPG_AVAILABLE = False
 
 
 class PostgresClient:
-    """Simple in-memory Postgres replacement used for tests and fallback."""
+    """Lightweight Postgres client used for memory persistence."""
 
-    def __init__(self, dsn: str = "", use_sqlite: bool = True) -> None:
-        self._store: Dict[int, Dict[str, Any]] = {}
+    def __init__(self, dsn: str = "", use_sqlite: bool = False) -> None:
         self.dsn = dsn
-        self.use_sqlite = use_sqlite
+        self.use_sqlite = use_sqlite or not _PSYCOPG_AVAILABLE
+        if self.use_sqlite:
+            path = dsn.replace("sqlite://", "") or ":memory:"
+            self.conn = sqlite3.connect(path, check_same_thread=False)
+        else:
+            pg_dsn = dsn or (
+                "dbname=%s user=%s password=%s host=%s port=%s"
+                % (
+                    os.getenv("POSTGRES_DB", "postgres"),
+                    os.getenv("POSTGRES_USER", "postgres"),
+                    os.getenv("POSTGRES_PASSWORD", "postgres"),
+                    os.getenv("POSTGRES_HOST", "localhost"),
+                    os.getenv("POSTGRES_PORT", "5432"),
+                )
+            )
+            self.conn = psycopg.connect(pg_dsn, autocommit=True)
+        self._ensure_table()
+
+    @property
+    def placeholder(self) -> str:
+        """Return SQL placeholder appropriate for the backend."""
+        return "?" if self.use_sqlite else "%s"
+
+    # ------------------------------------------------------------------
+    def _ensure_table(self) -> None:
+        create_sql = (
+            "CREATE TABLE IF NOT EXISTS memory ("
+            "vector_id BIGINT PRIMARY KEY,"
+            "user_id VARCHAR,"
+            "session_id VARCHAR,"
+            "query TEXT,"
+            "result TEXT,"
+            "timestamp BIGINT"
+            ")"
+        )
+        cur = self.conn.cursor()
+        cur.execute(create_sql)
+        self.conn.commit()
+        cur.close()
+
+    # ------------------------------------------------------------------
+    def _execute(self, sql: str, params: Optional[List[Any]] = None, fetch: bool = False) -> List[tuple]:
+        cur = self.conn.cursor()
+        cur.execute(sql, params or [])
+        rows = cur.fetchall() if fetch else []
+        self.conn.commit()
+        cur.close()
+        return rows
 
     # ------------------------------------------------------------------
     def upsert_memory(
@@ -22,30 +78,89 @@ class PostgresClient:
         result: Any,
         timestamp: int = 0,
     ) -> None:
-        self._store[vector_id] = {
-            "user_id": user_id,
-            "session_id": session_id,
-            "query": query,
-            "result": result,
-            "timestamp": timestamp,
+        data_json = json.dumps(result)
+        if self.use_sqlite:
+            sql = (
+                "INSERT INTO memory (vector_id, user_id, session_id, query, result, timestamp) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(vector_id) DO UPDATE SET "
+                "user_id=excluded.user_id, session_id=excluded.session_id, "
+                "query=excluded.query, result=excluded.result, timestamp=excluded.timestamp"
+            )
+            self._execute(sql, [vector_id, user_id, session_id, query, data_json, timestamp])
+        else:
+            sql = (
+                "INSERT INTO memory (vector_id, user_id, session_id, query, result, timestamp) "
+                "VALUES (%s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (vector_id) DO UPDATE SET "
+                "user_id=EXCLUDED.user_id, session_id=EXCLUDED.session_id, "
+                "query=EXCLUDED.query, result=EXCLUDED.result, timestamp=EXCLUDED.timestamp"
+            )
+            self._execute(sql, [vector_id, user_id, session_id, query, data_json, timestamp])
+
+    def get_by_vector(self, vector_id: int) -> Optional[Dict[str, Any]]:
+        sql = "SELECT user_id, session_id, query, result, timestamp FROM memory WHERE vector_id = "
+        sql += "?" if self.use_sqlite else "%s"
+        rows = self._execute(sql, [vector_id], fetch=True)
+        if not rows:
+            return None
+        row = rows[0]
+        return {
+            "user_id": row[0],
+            "session_id": row[1],
+            "query": row[2],
+            "result": json.loads(row[3]),
+            "timestamp": row[4],
         }
 
-    def get_by_vector(self, vector_id: int) -> Dict[str, Any] | None:
-        return self._store.get(vector_id)
-
     def get_session_records(self, session_id: str) -> List[Dict[str, Any]]:
-        return [v for v in self._store.values() if v["session_id"] == session_id]
+        sql = "SELECT vector_id, user_id, session_id, query, result, timestamp FROM memory WHERE session_id = "
+        sql += "?" if self.use_sqlite else "%s"
+        rows = self._execute(sql, [session_id], fetch=True)
+        return [
+            {
+                "vector_id": r[0],
+                "user_id": r[1],
+                "session_id": r[2],
+                "query": r[3],
+                "result": json.loads(r[4]),
+                "timestamp": r[5],
+            }
+            for r in rows
+        ]
 
     def recall_memory(self, user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
-        recs = [v for v in self._store.values() if v["user_id"] == user_id]
-        recs.sort(key=lambda r: r["timestamp"], reverse=True)
-        return recs[:limit]
+        sql = (
+            "SELECT vector_id, user_id, session_id, query, result, timestamp FROM memory "
+            "WHERE user_id = "
+        )
+        sql += "?" if self.use_sqlite else "%s"
+        sql += " ORDER BY timestamp DESC LIMIT "
+        sql += "?" if self.use_sqlite else "%s"
+        rows = self._execute(sql, [user_id, limit], fetch=True)
+        return [
+            {
+                "vector_id": r[0],
+                "user_id": r[1],
+                "session_id": r[2],
+                "query": r[3],
+                "result": json.loads(r[4]),
+                "timestamp": r[5],
+            }
+            for r in rows
+        ]
 
     def delete(self, vector_id: int) -> None:
-        self._store.pop(vector_id, None)
+        sql = "DELETE FROM memory WHERE vector_id = "
+        sql += "?" if self.use_sqlite else "%s"
+        self._execute(sql, [vector_id])
 
     def health(self) -> bool:
-        return True
+        try:
+            self._execute("SELECT 1", fetch=True)
+            return True
+        except Exception:
+            return False
 
 
 __all__ = ["PostgresClient"]

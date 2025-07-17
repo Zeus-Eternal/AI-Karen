@@ -28,6 +28,11 @@ try:  # Optional dependency
 except Exception:
     sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
 
+try:  # Optional dependency
+    import cryptography  # type: ignore
+except Exception:
+    sys.modules.setdefault("cryptography", importlib.import_module("tests.stubs.cryptography"))
+
 
 # Alias installed-style packages for tests
 sys.modules.setdefault("ai_karen_engine", importlib.import_module("ai_karen_engine"))
