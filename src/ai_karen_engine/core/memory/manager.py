@@ -12,6 +12,9 @@ import logging
 import json
 import threading
 
+from ai_karen_engine.core.neuro_vault import NeuroVault
+from ai_karen_engine.core.embedding_manager import record_metric
+
 # ========== Backend Imports ==========
 try:
     from ai_karen_engine.clients.database.milvus_client import (
@@ -49,6 +52,36 @@ except ImportError:
 # ========== Logging ==========
 logger = logging.getLogger("kari.memory.manager")
 logger.setLevel(logging.INFO)
+
+# ========== Metrics ==========
+_METRICS: Dict[str, int] = {
+    "memory_store_total": 0,
+    "memory_recall_total": 0,
+}
+
+try:
+    from prometheus_client import Counter
+    from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
+
+    MEM_STORE_COUNT = Counter(
+        "memory_store_total",
+        "Total memory store operations",
+        registry=PROM_REGISTRY,
+    )
+    MEM_RECALL_COUNT = Counter(
+        "memory_recall_total",
+        "Total memory recall operations",
+        registry=PROM_REGISTRY,
+    )
+except Exception:  # pragma: no cover - optional dependency
+    class _DummyCounter:
+        def inc(self, amount: int = 1) -> None:
+            pass
+
+    MEM_STORE_COUNT = MEM_RECALL_COUNT = _DummyCounter()
+
+def _inc(name: str, amount: int = 1) -> None:
+    _METRICS[name] = _METRICS.get(name, 0) + amount
 
 # ========== Backend Init ==========
 postgres = PostgresClient(use_sqlite=True) if PostgresClient else None
@@ -149,15 +182,31 @@ def init_memory() -> None:
         pg_syncer = PostgresSyncer(postgres, duckdb_path)
         pg_syncer.start()
 
+# NeuroVault vector index
+neuro_vault = NeuroVault()
+
 # ====== Context Recall ======
 def recall_context(
     user_ctx: Dict[str, Any], query: str, limit: int = 10
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Recall the most relevant context for user/query from the memory stack.
-    Priority: Elastic > Milvus > Postgres > Redis > DuckDB
+    Priority: NeuroVault > Elastic > Milvus > Postgres > Redis > DuckDB
     """
+    _inc("memory_recall_total")
+    MEM_RECALL_COUNT.inc()
     user_id = user_ctx.get("user_id") or "anonymous"
+
+    # 0. NeuroVault vector recall
+    try:
+        records = neuro_vault.query(user_id, query, top_k=limit)
+        if records:
+            logger.info(
+                f"[MemoryManager] NeuroVault recall: {len(records)} results for user {user_id}"
+            )
+            return records
+    except Exception as ex:
+        logger.warning(f"[MemoryManager] NeuroVault recall failed: {ex}")
 
     # 1. ElasticSearch (optional, semantic/keyword)
     if ElasticClient:
@@ -257,6 +306,8 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     Store context/result to all available memory backends.
     Returns True if at least one backend succeeds.
     """
+    _inc("memory_store_total")
+    MEM_STORE_COUNT.inc()
     user_id = user_ctx.get("user_id") or "anonymous"
     session_id = user_ctx.get("session_id")
     entry = {
@@ -269,6 +320,12 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     ok = False
     vector_id = None
     postgres_ok = False
+
+    # 0. NeuroVault index
+    try:
+        neuro_vault.index_text(user_id, query, {"result": result})
+    except Exception as ex:
+        logger.warning(f"[MemoryManager] NeuroVault index failed: {ex}")
 
     # 1. Milvus
     if store_vector:
@@ -354,10 +411,4 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
             f"[MemoryManager] FAILED to store memory for user {user_id} on all backends"
         )
     return ok
-
-__all__ = [
-    "init_memory",
-    "recall_context",
-    "update_memory",
-    "flush_duckdb_to_postgres",
-]
+__all__ = ["recall_context", "update_memory", "flush_duckdb_to_postgres", "_METRICS"]
