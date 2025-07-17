@@ -32,3 +32,16 @@ def put(*args, **kwargs):
 
 def delete(*args, **kwargs):
     return Response()
+
+
+def request(method, *args, **kwargs):
+    method = method.lower()
+    if method == "get":
+        return get(*args, **kwargs)
+    if method == "post":
+        return post(*args, **kwargs)
+    if method == "put":
+        return put(*args, **kwargs)
+    if method == "delete":
+        return delete(*args, **kwargs)
+    return Response()
