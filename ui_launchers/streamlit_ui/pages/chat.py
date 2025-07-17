@@ -7,6 +7,14 @@ Kari Chat Panel (Evil Twin Enterprise Version)
 import streamlit as st
 import time
 import uuid
+
+def _auto_refresh(interval: int = 1000, key: str = "chat_refresh") -> None:
+    """Lightweight auto-refresh using experimental_rerun."""
+    now = int(time.time() * 1000)
+    last = st.session_state.get(key, now)
+    if now - last >= interval:
+        st.session_state[key] = now
+        st.experimental_rerun()
 from ui_logic.hooks.rbac import user_has_role
 from ui_logic.utils.api import (
     fetch_user_profile, 
@@ -95,6 +103,7 @@ def sys_announce_panel():
 # ========== Main Chat Logic ==========
 def chat_panel(user_ctx):
     st.title("💬 Kari Chat")
+    _auto_refresh()
     get_context_state()
     sys_announce_panel()
     st.sidebar.header("Session Controls")
@@ -161,6 +170,7 @@ def chat_panel(user_ctx):
                 st.session_state["chat_history"].append({"role": "kari", "text": err, "ts": time.time()})
                 evil_toast("LLM error. Check backend.", "💀")
                 st.error(err)
+            st.experimental_rerun()
 
     st.caption("Twin Mode: All interactions are audit-logged. All glory to Kari.")
 

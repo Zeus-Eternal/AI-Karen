@@ -504,6 +504,14 @@ def search_plugins(query: str, limit: int = 50, token: Optional[str] = None, org
         return []
 
 
+def fetch_user_workflows(token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return workflows for the current user or an empty list on error."""
+    try:
+        return api_get("plugins/user_workflows", token=token, org=org)
+    except Exception:
+        return []
+
+
 def list_plugins() -> list:
     """Return available plugins."""
     return ["evil_plugin", "super_plugin"]
@@ -529,20 +537,6 @@ def disable_plugin(plugin_name: str) -> bool:
     return True
 
 
-def fetch_store_plugins() -> List[Dict[str, Any]]:
-    """Return a list of plugins available from the store."""
-    try:
-        return api_get("plugin-store")
-    except Exception:
-        return []
-
-
-def search_plugins(query: str) -> List[Dict[str, Any]]:
-    """Search the plugin store."""
-    try:
-        return api_get("plugin-store/search", params={"q": query})
-    except Exception:
-        return []
 
 
 # ========================= MEMORY ANALYTICS =========================
@@ -686,6 +680,7 @@ __all__ = [
     "uninstall_plugin",
     "enable_plugin",
     "disable_plugin",
+    "fetch_user_workflows",
     "fetch_store_plugins",
     "search_plugins",
     "fetch_memory_metrics",
