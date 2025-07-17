@@ -16,6 +16,9 @@ Example metrics:
 - `plugin_exec_total`
 - `document_index_total`
 - `document_search_total`
+- `doc_chunks_indexed`
+- `doc_search_latency`
+- `metadata_hit_rate`
 
 Use `docker compose up` to start a Prometheus container that scrapes `http://localhost:8000/metrics`.
 

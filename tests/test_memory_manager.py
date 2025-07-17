@@ -104,6 +104,13 @@ def test_recall_priority_order(monkeypatch):
     calls = []
     store = []
 
+    class FakeVault:
+        def query(self, user_id, q, top_k=10):
+            calls.append("neuro")
+            return []
+
+    monkeypatch.setattr(mm, "neuro_vault", FakeVault())
+
     monkeypatch.setattr(mm, "ElasticClient", type("FakeElastic", (), {"__init__": lambda self,*a,**k: None, "search": lambda self, u, q, limit: (calls.append("elastic"), [])[-1]}))
     monkeypatch.setattr(mm, "recall_vectors", lambda u, q, top_k: (calls.append("milvus"), [])[-1])
     pg = RecordingPostgres()
@@ -132,13 +139,20 @@ def test_recall_priority_order(monkeypatch):
 
     result = mm.recall_context({"user_id": "u"}, "q")
     assert result is None
-    assert calls == ["elastic", "milvus", "postgres", "redis", "duckdb"]
+    assert calls == ["neuro", "elastic", "milvus", "postgres", "redis", "duckdb"]
 
 
 def test_recall_returns_first_available(monkeypatch):
     mm = load_manager(monkeypatch)
     store = []
     calls = []
+
+    class FakeVault:
+        def query(self, u, q, top_k=10):
+            calls.append("neuro")
+            return [{"source": "vault"}]
+
+    monkeypatch.setattr(mm, "neuro_vault", FakeVault())
 
     monkeypatch.setattr(mm, "ElasticClient", None)
 
@@ -152,8 +166,8 @@ def test_recall_returns_first_available(monkeypatch):
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
 
     result = mm.recall_context({"user_id": "u"}, "q")
-    assert result[0]["source"] == "milvus"
-    assert calls == ["milvus"]
+    assert result[0]["source"] == "vault"
+    assert calls == ["neuro"]
 
 
 def test_update_memory_success(monkeypatch):
@@ -161,6 +175,12 @@ def test_update_memory_success(monkeypatch):
     store = []
     pg = RecordingPostgres()
     fake_redis = FakeRedisModule()
+
+    class FakeVault:
+        def index_text(self, *a, **k):
+            pass
+
+    monkeypatch.setattr(mm, "neuro_vault", FakeVault())
 
     monkeypatch.setattr(mm, "postgres", pg)
     monkeypatch.setattr(mm, "redis", fake_redis)
@@ -179,6 +199,12 @@ def test_update_memory_postgres_failure(monkeypatch):
     store = []
     pg = RecordingPostgres(raise_on_upsert=True)
     fake_redis = FakeRedisModule()
+
+    class FakeVault:
+        def index_text(self, *a, **k):
+            pass
+
+    monkeypatch.setattr(mm, "neuro_vault", FakeVault())
 
     monkeypatch.setattr(mm, "postgres", pg)
     monkeypatch.setattr(mm, "redis", fake_redis)
