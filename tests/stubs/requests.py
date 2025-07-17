@@ -17,6 +17,10 @@ class HTTPError(Exception):
         self.response = response
 
 
+class RequestException(Exception):
+    pass
+
+
 def get(*args, **kwargs):
     return Response()
 

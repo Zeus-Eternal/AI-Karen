@@ -85,16 +85,21 @@ class OllamaModelSource(ModelSourceBase):
     def list_models(self) -> List[Dict[str, Any]]:
         try:
             info = self.ollama.list()
-            models = [
-                {
-                    "name": m["name"],
-                    "size": m.get("size"),
-                    "digest": m.get("digest"),
-                    "source": "ollama",
-                    "details": m,
-                }
-                for m in info.get("models", [])
-            ]
+            models = []
+            for m in info.get("models", []):
+                name = m.get("name")
+                if not name:
+                    logger.warning(f"Unexpected model entry: {m}")
+                    continue
+                models.append(
+                    {
+                        "name": name,
+                        "size": m.get("size"),
+                        "digest": m.get("digest"),
+                        "source": "ollama",
+                        "details": m,
+                    }
+                )
             return models
         except Exception as ex:
             logger.error(f"Ollama model listing failed: {ex}")
