@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from distutils.util import strtobool
 
 
 def get_data_dir() -> str:
@@ -15,4 +16,31 @@ def get_setting(name: str, default: str | None = None) -> str | None:
     return os.getenv(name, default)
 
 
-__all__ = ["get_data_dir", "get_setting"]
+def get_bool_setting(name: str, default: bool = False) -> bool:
+    """Return a boolean env var, accepting common truthy values."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return bool(strtobool(value))
+    except ValueError:
+        return default
+
+
+def get_int_setting(name: str, default: int | None = None) -> int | None:
+    """Return an integer env var if set and valid."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+__all__ = [
+    "get_data_dir",
+    "get_setting",
+    "get_bool_setting",
+    "get_int_setting",
+]
