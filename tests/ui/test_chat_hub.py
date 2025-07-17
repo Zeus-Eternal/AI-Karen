@@ -1,6 +1,6 @@
 import asyncio
 
-from ui_launchers.backend.chat_hub import ChatHub
+from ai_karen_engine.chat import ChatHub
 
 class DummyRouter:
     def __init__(self):
