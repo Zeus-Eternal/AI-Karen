@@ -1,6 +1,6 @@
 import os
-import sys
 import importlib
+import importlib.util
 import logging
 import traceback
 import json
@@ -103,10 +103,13 @@ class PluginManager:
                     raise PluginRBACError(f"{manifest['name']}: RBAC check failed.")
                 handler_file = pdir / manifest["handler_file"]
                 if handler_file.exists():
-                    sys.path.insert(0, str(pdir))
-                    plugin_module = importlib.import_module(handler_file.stem)
-                    sys.path.pop(0)
-                    plugin["handler"] = plugin_module
+                    spec = importlib.util.spec_from_file_location(
+                        f"plugin_{pdir.name}_handler", str(handler_file)
+                    )
+                    if spec and spec.loader:
+                        plugin_module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(plugin_module)
+                        plugin["handler"] = plugin_module
                 self.plugins[manifest["name"]] = plugin
                 if plugin["enabled"]:
                     self.enabled_plugins[manifest["name"]] = plugin
