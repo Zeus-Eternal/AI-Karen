@@ -209,8 +209,8 @@ class PluginRouter:
         rec = self.get_plugin(intent)
         if not rec:
             raise RuntimeError(f"Plugin '{intent}' not found or failed validation.")
-        allowed = rec.manifest.get("required_roles", [])
-        if roles is not None and not set(roles).intersection(allowed):
+        allowed = rec.manifest.get("required_roles") or []
+        if allowed and roles is not None and not set(roles).intersection(allowed):
             raise AccessDenied(intent)
 
         prompt_template = jinja_env.from_string(rec.manifest.get("prompt", "{{prompt}}"))
