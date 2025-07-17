@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from distutils.util import strtobool
 
 
 def get_data_dir() -> str:
@@ -16,18 +17,22 @@ def get_setting(name: str, default: str | None = None) -> str | None:
 
 
 def get_bool_setting(name: str, default: bool = False) -> bool:
-    """Return a boolean env var value supporting common truthy strings."""
-    val = os.getenv(name)
-    if val is None:
+    value = os.getenv(name)
+    if value is None:
         return default
-    return str(val).lower() in {"1", "true", "yes", "y", "on"}
-
-
-def get_int_setting(name: str, default: int = 0) -> int:
-    """Return an integer env var value with fallback on parse error."""
-    val = os.getenv(name)
     try:
-        return int(val) if val is not None else default
+        return bool(strtobool(value))
+    except ValueError:
+        return default
+
+
+def get_int_setting(name: str, default: int | None = None) -> int | None:
+    """Return an integer env var if set and valid."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
     except (TypeError, ValueError):
         return default
 
