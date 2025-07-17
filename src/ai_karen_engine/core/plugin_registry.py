@@ -10,6 +10,32 @@ import pkgutil
 
 from types import ModuleType
 
+_METRICS: dict[str, int] = {
+    "plugins_loaded": 0,
+    "plugin_exec_total": 0,
+}
+
+try:
+    from prometheus_client import Counter
+    from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
+
+    PLUGIN_EXEC_COUNT = Counter(
+        "plugin_exec_total",
+        "Total plugin execution calls",
+        registry=PROM_REGISTRY,
+    )
+    PLUGIN_LOADED_COUNT = Counter(
+        "plugins_loaded",
+        "Plugins discovered at startup",
+        registry=PROM_REGISTRY,
+    )
+except Exception:  # pragma: no cover - optional dep
+    class _Dummy:
+        def inc(self, n: int = 1) -> None:
+            pass
+
+    PLUGIN_EXEC_COUNT = PLUGIN_LOADED_COUNT = _Dummy()
+
 PLUGIN_REGISTRY: dict[str, dict[str, ModuleType]] = {}
 
 
@@ -26,6 +52,8 @@ def _discover_plugins(base_pkg: str, type_label: str) -> dict[str, dict[str, Mod
         try:
             mod = importlib.import_module(f"{base_pkg}.{name}.handler")
             plugins[name] = {"handler": mod, "type": type_label}
+            _METRICS["plugins_loaded"] += 1
+            PLUGIN_LOADED_COUNT.inc()
         except Exception as ex:  # pragma: no cover - safety net
             print(f"Plugin load failed: {name} ({type_label}): {ex}")
     return plugins
@@ -48,6 +76,8 @@ def execute_plugin(plugin_entry, user_ctx, query, context=None):
     Executes the main entry point for a plugin.
     """
     handler = plugin_entry["handler"]
+    _METRICS["plugin_exec_total"] += 1
+    PLUGIN_EXEC_COUNT.inc()
     if hasattr(handler, "run"):
         return handler.run(user_ctx, query, context)
     elif hasattr(handler, "main"):
@@ -60,4 +90,4 @@ load_plugins()
 
 plugin_registry = PLUGIN_REGISTRY
 
-__all__ = ["plugin_registry", "execute_plugin", "load_plugins"]
+__all__ = ["plugin_registry", "execute_plugin", "load_plugins", "_METRICS"]

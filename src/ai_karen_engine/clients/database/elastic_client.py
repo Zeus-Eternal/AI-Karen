@@ -4,6 +4,32 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+_METRICS: Dict[str, int] = {
+    "document_index_total": 0,
+    "document_search_total": 0,
+}
+
+try:
+    from prometheus_client import Counter
+    from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
+
+    DOC_INDEX_COUNT = Counter(
+        "document_index_total",
+        "Documents indexed",
+        registry=PROM_REGISTRY,
+    )
+    DOC_SEARCH_COUNT = Counter(
+        "document_search_total",
+        "Document search operations",
+        registry=PROM_REGISTRY,
+    )
+except Exception:  # pragma: no cover - optional dep
+    class _Dummy:
+        def inc(self, n: int = 1) -> None:
+            pass
+
+    DOC_INDEX_COUNT = DOC_SEARCH_COUNT = _Dummy()
+
 try:
     from elasticsearch import Elasticsearch
 except Exception:  # pragma: no cover - optional dependency
@@ -62,6 +88,8 @@ class ElasticClient:
             self._docs.append(entry)
         else:
             self.es.index(index=self.index, document=entry)  # type: ignore[union-attr]
+        _METRICS["document_index_total"] += 1
+        DOC_INDEX_COUNT.inc()
 
     # ------------------------------------------------------------------
     def search(self, user_id: str, query: str, limit: int = 10) -> List[Dict[str, Any]]:
@@ -73,7 +101,10 @@ class ElasticClient:
                 if d.get("user_id") == user_id
                 and query.lower() in d.get("query", "").lower()
             ]
-            return hits[:limit]
+            result = hits[:limit]
+            _METRICS["document_search_total"] += 1
+            DOC_SEARCH_COUNT.inc()
+            return result
         body = {
             "size": limit,
             "query": {
@@ -87,6 +118,8 @@ class ElasticClient:
         }
         resp = self.es.search(index=self.index, body=body)  # type: ignore[union-attr]
         hits = resp.get("hits", {}).get("hits", [])
+        _METRICS["document_search_total"] += 1
+        DOC_SEARCH_COUNT.inc()
         return [h["_source"] for h in hits]
 
     # ------------------------------------------------------------------
@@ -98,4 +131,4 @@ class ElasticClient:
                 self.es.indices.delete(index=self.index)  # type: ignore[union-attr]
 
 
-__all__ = ["ElasticClient"]
+__all__ = ["ElasticClient", "_METRICS"]

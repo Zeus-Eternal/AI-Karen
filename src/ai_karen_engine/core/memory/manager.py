@@ -50,6 +50,36 @@ except ImportError:
 logger = logging.getLogger("kari.memory.manager")
 logger.setLevel(logging.INFO)
 
+# ========== Metrics ==========
+_METRICS: Dict[str, int] = {
+    "memory_store_total": 0,
+    "memory_recall_total": 0,
+}
+
+try:
+    from prometheus_client import Counter
+    from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
+
+    MEM_STORE_COUNT = Counter(
+        "memory_store_total",
+        "Total memory store operations",
+        registry=PROM_REGISTRY,
+    )
+    MEM_RECALL_COUNT = Counter(
+        "memory_recall_total",
+        "Total memory recall operations",
+        registry=PROM_REGISTRY,
+    )
+except Exception:  # pragma: no cover - optional dependency
+    class _DummyCounter:
+        def inc(self, amount: int = 1) -> None:
+            pass
+
+    MEM_STORE_COUNT = MEM_RECALL_COUNT = _DummyCounter()
+
+def _inc(name: str, amount: int = 1) -> None:
+    _METRICS[name] = _METRICS.get(name, 0) + amount
+
 # ========== Backend Init ==========
 postgres = PostgresClient(use_sqlite=True) if PostgresClient else None
 duckdb_path = os.getenv("DUCKDB_PATH", "kari_mem.duckdb")
@@ -152,6 +182,8 @@ def recall_context(
     Recall the most relevant context for user/query from the memory stack.
     Priority: Elastic > Milvus > Postgres > Redis > DuckDB
     """
+    _inc("memory_recall_total")
+    MEM_RECALL_COUNT.inc()
     user_id = user_ctx.get("user_id") or "anonymous"
 
     # 1. ElasticSearch (optional, semantic/keyword)
@@ -252,6 +284,8 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     Store context/result to all available memory backends.
     Returns True if at least one backend succeeds.
     """
+    _inc("memory_store_total")
+    MEM_STORE_COUNT.inc()
     user_id = user_ctx.get("user_id") or "anonymous"
     session_id = user_ctx.get("session_id")
     entry = {
@@ -350,4 +384,4 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
         )
     return ok
 
-__all__ = ["recall_context", "update_memory", "flush_duckdb_to_postgres"]
+__all__ = ["recall_context", "update_memory", "flush_duckdb_to_postgres", "_METRICS"]
