@@ -10,6 +10,10 @@ from typing import Any, Dict, Optional, List
 from ai_karen_engine.core.cortex.intent import resolve_intent
 from ai_karen_engine.core.plugin_registry import plugin_registry, execute_plugin
 from ai_karen_engine.core.memory.manager import recall_context, update_memory
+from ai_karen_engine.core.plugin_metrics import (
+    record_plugin_call,
+    record_memory_write,
+)
 from ai_karen_engine.core.cortex.errors import CortexDispatchError, UnsupportedIntentError
 from ai_karen_engine.core.predictors import predictor_registry, run_predictor
 
@@ -59,8 +63,19 @@ def dispatch(
         if mode == "plugin" or (plugin_enabled and intent in plugin_registry):
             handler = plugin_registry.get(intent)
             if handler is None:
-                raise UnsupportedIntentError(f"No plugin registered for intent '{intent}'")
-            result = execute_plugin(handler, user_ctx, query, context or memory_ctx)
+                raise UnsupportedIntentError(
+                    f"No plugin registered for intent '{intent}'"
+                )
+            try:
+                result = execute_plugin(
+                    handler, user_ctx, query, context or memory_ctx
+                )
+                success = True
+            except Exception as ex:  # pragma: no cover - plugin error path
+                result = {"error": str(ex)}
+                trace.append({"stage": "plugin_error", "error": str(ex)})
+                success = False
+            record_plugin_call(intent, success)
             trace.append({"stage": "plugin_executed", "plugin": intent})
 
         elif mode == "predictor" or (predictor_enabled and intent in predictor_registry):
@@ -84,7 +99,8 @@ def dispatch(
 
         # 4. Optionally update memory
         if memory_enabled and result:
-            update_memory(user_ctx, query, result)
+            mem_ok = update_memory(user_ctx, query, result)
+            record_memory_write(intent, mem_ok)
             trace.append({"stage": "memory_updated"})
 
         return {
