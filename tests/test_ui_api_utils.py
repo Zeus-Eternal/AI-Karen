@@ -76,3 +76,11 @@ def test_safe_request_failure(monkeypatch):
 
     with pytest.raises(requests.RequestException):
         api._safe_request("get", "http://x")
+
+
+def test_plugin_store_helpers(monkeypatch):
+    import ai_karen_engine.services.plugin_store_client as store
+
+    monkeypatch.setattr(store, "api_get", lambda *a, **k: [{"name": "demo"}])
+    assert store.fetch_store_plugins(limit=1) == [{"name": "demo"}]
+    assert store.search_plugins("demo") == [{"name": "demo"}]
