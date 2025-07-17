@@ -492,7 +492,7 @@ def fetch_knowledge_graph(user_id: str = None, query: str = "") -> dict:
 def fetch_user_workflows(
     token: Optional[str] = None, org: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    """Return workflows for the authenticated user or ``[]`` on error."""
+    """Return workflows for the authenticated user or ``[]`` by default."""
     try:
         return api_get("plugins/user_workflows", token=token, org=org)
     except Exception:
@@ -521,26 +521,51 @@ def search_plugins(
     except Exception:
         return []
 
-def create_workflow(user_id: str, workflow: Dict[str, Any], token: Optional[str] = None, org: Optional[str] = None) -> bool:
-    """Create a new workflow for ``user_id``."""
+def create_workflow(
+    user_id: str,
+    workflow: Dict[str, Any],
+    token: Optional[str] = None,
+    org: Optional[str] = None,
+) -> bool:
+    """Create a new workflow for ``user_id`` or ``False`` if unavailable."""
     try:
-        api_post(f"plugins/user_workflows/{user_id}", data=workflow, token=token, org=org)
+        api_post(
+            f"plugins/user_workflows/{user_id}",
+            data=workflow,
+            token=token,
+            org=org,
+        )
         return True
     except Exception:
         return False
 
 
-def delete_workflow(user_id: str, workflow_id: str, token: Optional[str] = None, org: Optional[str] = None) -> bool:
-    """Delete a workflow by id."""
+def delete_workflow(
+    user_id: str,
+    workflow_id: str,
+    token: Optional[str] = None,
+    org: Optional[str] = None,
+) -> bool:
+    """Delete a workflow by id or return ``False`` if unavailable."""
     try:
-        api_delete(f"plugins/user_workflows/{user_id}/{workflow_id}", token=token, org=org)
+        api_delete(
+            f"plugins/user_workflows/{user_id}/{workflow_id}",
+            token=token,
+            org=org,
+        )
         return True
     except Exception:
         return False
 
 
-def update_workflow(user_id: str, workflow_id: str, updates: Dict[str, Any], token: Optional[str] = None, org: Optional[str] = None) -> bool:
-    """Update an existing workflow."""
+def update_workflow(
+    user_id: str,
+    workflow_id: str,
+    updates: Dict[str, Any],
+    token: Optional[str] = None,
+    org: Optional[str] = None,
+) -> bool:
+    """Update an existing workflow or ``False`` if unavailable."""
     try:
         api_put(
             f"plugins/user_workflows/{user_id}/{workflow_id}",
