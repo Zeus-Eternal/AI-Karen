@@ -19,8 +19,8 @@ def rerun() -> None:
 
 def _auto_refresh(interval: int = 2000, key: str = "chat_refresh") -> None:
     """Refresh the page at the given interval only on the chat page."""
-    params = st.experimental_get_query_params()
-    current_page = params.get("page", [""])[0]
+    params = st.query_params
+    current_page = params.get("page", "")
     if current_page == "chat":
         st_autorefresh(interval=interval, key=key)
 from ui_logic.hooks.rbac import user_has_role
