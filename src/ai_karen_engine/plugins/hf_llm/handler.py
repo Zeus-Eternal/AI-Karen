@@ -1,4 +1,4 @@
-from integrations.llm_utils import LLMUtils
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 llm = LLMUtils()
 
