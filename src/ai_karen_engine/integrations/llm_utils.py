@@ -111,14 +111,23 @@ class OllamaProvider(LLMProviderBase):
         self.model = model
 
     def generate_text(self, prompt: str, **kwargs) -> str:
+        """Generate text from Ollama.
+
+        If ``model`` is supplied in ``kwargs`` use it, otherwise fall back to
+        ``self.model``. This avoids passing duplicate ``model`` arguments to the
+        underlying client which expects only one.
+        """
         t0 = time.time()
         try:
-            result = self.ollama.generate(model=self.model, prompt=prompt, **kwargs)
+            model = kwargs.pop("model", self.model)
+            result = self.ollama.generate(model=model, prompt=prompt, **kwargs)
             text = result.get("response") or result.get("text") or ""
             record_llm_metric("generate_text", time.time() - t0, True, "ollama")
             return text
         except Exception as ex:
-            record_llm_metric("generate_text", time.time() - t0, False, "ollama", error=str(ex))
+            record_llm_metric(
+                "generate_text", time.time() - t0, False, "ollama", error=str(ex)
+            )
             raise GenerationFailed(f"Ollama error: {ex}")
 
     def embed(self, text: Union[str, List[str]], **kwargs) -> List[float]:
