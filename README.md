@@ -95,6 +95,8 @@ src/integrations/  # NANDA client, RPA helpers, external bridges
  src/ai_karen_engine/plugins/       # drop-in plugins (manifest + handler + ui)
 ui_launchers/desktop_ui/ # Tauri Control Room (Rust + React)
 ui_launchers/streamlit_ui/config/config_ui.py # Streamlit UI settings (ConfigUI class)
+ui_launchers/streamlit_ui/config/env.py      # environment defaults for the Streamlit UI
+ui_launchers/streamlit_ui/config/routing.py  # page routing map for Streamlit
 src/fastapi_stub/  # API entrypoints, chat & metrics
 src/pydantic_stub/ # DTOs & schemas
 tests/         # pytest suite

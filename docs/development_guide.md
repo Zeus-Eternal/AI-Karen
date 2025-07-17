@@ -18,9 +18,12 @@ xdg-open http://localhost:8000/docs
 # run the Streamlit UI
 streamlit run ui_launchers/streamlit_ui/app.py
 ```
-The Streamlit UI reads environment variables via
-`ui_launchers/streamlit_ui/config/config_ui.py`.
-If you previously imported `config/config_ui.py`, switch to this new path.
+The Streamlit UI configuration now lives under
+`ui_launchers/streamlit_ui/config/` with:
+`config_ui.py` for the settings model,
+`env.py` for environment defaults and
+`routing.py` for the page map.
+If you previously imported `config/config_ui.py`, switch to these new paths.
 
 ## Build Mode (Tauri App)
 
