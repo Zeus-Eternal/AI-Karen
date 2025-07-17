@@ -17,7 +17,6 @@ from tenacity import (
 )
 from typing import Any, Dict, List, Optional, Set, Union
 
-import requests
 
 from cachetools import TTLCache, cached
 
