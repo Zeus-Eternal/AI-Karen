@@ -132,12 +132,23 @@ def render_model_catalog() -> None:
 
 
 def render_settings() -> None:
-    try:
-        render_model_catalog()
-    except Exception as e:
-        logger.critical(f"Catalog page crashed: {e}")
-        st.error("The model catalog encountered a critical error")
-        st.code(traceback.format_exc())
+    st.title("\U00002699 Settings")
+    tabs = st.tabs(["Profile", "Theme", "Integrations", "Notifications"])
+    with tabs[0]:
+        st.info("Profile settings coming soon.")
+    with tabs[1]:
+        st.info("Theme options below.")
+        from ui_logic.themes.theme_manager import render_theme_switcher
+        render_theme_switcher({})
+    with tabs[2]:
+        try:
+            render_model_catalog()
+        except Exception as e:
+            logger.critical(f"Catalog page crashed: {e}")
+            st.error("The model catalog encountered a critical error")
+            st.code(traceback.format_exc())
+    with tabs[3]:
+        st.warning("Notification settings under construction.")
 
 
 if __name__ == "__main__":
