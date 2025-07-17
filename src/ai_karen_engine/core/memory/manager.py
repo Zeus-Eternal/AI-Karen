@@ -13,7 +13,6 @@ import json
 import threading
 
 from ai_karen_engine.core.neuro_vault import NeuroVault
-from ai_karen_engine.core.embedding_manager import record_metric
 
 # ========== Backend Imports ==========
 try:
