@@ -15,4 +15,26 @@ def get_setting(name: str, default: str | None = None) -> str | None:
     return os.getenv(name, default)
 
 
-__all__ = ["get_data_dir", "get_setting"]
+def get_bool_setting(name: str, default: bool = False) -> bool:
+    """Return a boolean env var value supporting common truthy strings."""
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return str(val).lower() in {"1", "true", "yes", "y", "on"}
+
+
+def get_int_setting(name: str, default: int = 0) -> int:
+    """Return an integer env var value with fallback on parse error."""
+    val = os.getenv(name)
+    try:
+        return int(val) if val is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
+__all__ = [
+    "get_data_dir",
+    "get_setting",
+    "get_bool_setting",
+    "get_int_setting",
+]
