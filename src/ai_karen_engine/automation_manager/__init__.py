@@ -37,12 +37,27 @@ if not SIGNING_KEY:
     raise RuntimeError("KARI_JOB_SIGNING_KEY must be set in the environment!")
 
 # === Secure Logging ===
-Path("/var/log/kari").mkdir(parents=True, exist_ok=True)
+def _resolve_log_dir() -> Path:
+    env_dir = os.getenv("KARI_LOG_DIR")
+    if env_dir:
+        p = Path(env_dir)
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            with open(p / "automation.log", "a"):
+                pass
+            return p
+        except Exception:
+            pass
+    fallback = Path.home() / ".kari" / "logs"
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+LOG_DIR = _resolve_log_dir()
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("/var/log/kari/automation.log"),
+        logging.FileHandler(LOG_DIR / "automation.log"),
         logging.StreamHandler(),
     ],
 )
