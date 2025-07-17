@@ -1,17 +1,9 @@
 """Kari Streamlit UI Entrypoint."""
 
-import os
-import sys
-
-# ==== DEBUGGER BOT NOTE: ensure ui_launchers and helpers are on PYTHONPATH ====
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
-
 import streamlit as st
-from helpers.session import get_user_context
-from config.routing import PAGE_MAP
-from helpers.icons import ICONS
+from ui_launchers.streamlit_ui.helpers.session import get_user_context
+from ui_launchers.streamlit_ui.config.routing import PAGE_MAP
+from ui_launchers.streamlit_ui.helpers.icons import ICONS
 from ui_logic.themes.theme_manager import (
     apply_default_theme,
     render_theme_switcher,

@@ -68,7 +68,12 @@ cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 class CortexDispatcher:
     async def dispatch(self, query: str, **kwargs):
         if "hello" in query:
-            return {"intent": "greet", "response": "greet"}
+            return {
+                "intent": "greet",
+                "response": "Hey there! I'm Kari—your AI co-pilot. What can I help with today?",
+            }
+        if "why" in query:
+            return {"intent": "deep_reasoning", "response": "Because of entropy"}
         if "time" in query:
             return {"intent": "time_query", "response": "UTC"}
         return {"intent": "hf_generate", "response": query}
