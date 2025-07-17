@@ -34,12 +34,19 @@ REGISTRY = {
     "gemini": load_gemini_service,
 }
 
-def get_active():
-    """Get the current default LLM provider (env or hardcoded fallback)."""
-    provider = os.getenv("KARI_DEFAULT_PROVIDER", "ollama")
+_ACTIVE_PROVIDER = os.getenv("KARI_DEFAULT_PROVIDER", "ollama")
+
+def set_active(provider: str) -> None:
     if provider not in REGISTRY:
-        raise RuntimeError(f"Provider '{provider}' not available.")
-    return REGISTRY[provider]()
+        raise KeyError(provider)
+    global _ACTIVE_PROVIDER
+    _ACTIVE_PROVIDER = provider
+
+def get_active():
+    """Get the current active LLM provider."""
+    if _ACTIVE_PROVIDER not in REGISTRY:
+        raise RuntimeError(f"Provider '{_ACTIVE_PROVIDER}' not available.")
+    return REGISTRY[_ACTIVE_PROVIDER]()
 
 def get_llm(provider: str):
     """Explicitly get a named provider (raises if not found)."""
@@ -51,9 +58,19 @@ def list_llms():
     """List available LLM provider names."""
     return list(REGISTRY.keys())
 
-# Optionally, if you want to expose a single global:
-registry = type("KariLLMRegistry", (), {
-    "get_active": staticmethod(get_active),
-    "get_llm": staticmethod(get_llm),
-    "list_llms": staticmethod(list_llms),
-})()
+def active() -> str:
+    return _ACTIVE_PROVIDER
+
+registry = type(
+    "KariLLMRegistry",
+    (),
+    {
+        "get_active": staticmethod(get_active),
+        "get_llm": staticmethod(get_llm),
+        "list_llms": staticmethod(list_llms),
+        "set_active": staticmethod(set_active),
+        "active": property(lambda self: _ACTIVE_PROVIDER),
+    },
+)()
+
+__all__ = ["registry", "get_llm", "get_active", "list_llms", "set_active", "active"]

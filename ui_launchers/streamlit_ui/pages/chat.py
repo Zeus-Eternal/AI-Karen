@@ -9,7 +9,15 @@ from streamlit_autorefresh import st_autorefresh
 import time
 import uuid
 
-def _auto_refresh(interval: int = 1000, key: str = "chat_refresh") -> None:
+
+class RerunException(Exception):
+    pass
+
+
+def rerun() -> None:
+    raise RerunException()
+
+def _auto_refresh(interval: int = 2000, key: str = "chat_refresh") -> None:
     """Refresh the page at the given interval only on the chat page."""
     params = st.experimental_get_query_params()
     current_page = params.get("page", [""])[0]
@@ -157,7 +165,7 @@ def chat_panel(user_ctx):
                 st.session_state["chat_history"].append({"role": "kari", "text": err, "ts": time.time()})
                 evil_toast("LLM error. Check backend.", "💀")
                 st.error(err)
-            st.experimental_rerun()
+            rerun()
 
     st.caption("Twin Mode: All interactions are audit-logged. All glory to Kari.")
 
