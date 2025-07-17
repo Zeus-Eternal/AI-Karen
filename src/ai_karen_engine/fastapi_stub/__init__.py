@@ -23,10 +23,20 @@ class _Route:
         self.func = func
 
 class FastAPI:
-    def __init__(self):
+    def __init__(self, *_, **__):
         self.routes = []
         self._startup = []
         self.prefix = ""
+        self._middlewares = []
+
+    def add_middleware(self, *_, **__):
+        pass
+
+    def middleware(self, _type):
+        def decorator(func):
+            self._middlewares.append(func)
+            return func
+        return decorator
 
     async def _handle_request(self, method, path, json=None):
         query = {}
@@ -116,8 +126,8 @@ class FastAPI:
             return func
         return decorator
 
-    def include_router(self, router):
-        prefix = getattr(router, "prefix", "")
+    def include_router(self, router, prefix: str = ""):
+        prefix = prefix or getattr(router, "prefix", "")
         for route in router.routes:
             route.pattern = re.compile(f"^{prefix}{route.pattern.pattern.lstrip('^')}")
             self.routes.append(route)
@@ -130,13 +140,13 @@ class APIRouter(FastAPI):
 
     def get(self, path, **_kw):
         def decorator(func):
-            self.routes.append(_Route("GET", self.prefix + path, func))
+            self.routes.append(_Route("GET", path, func))
             return func
         return decorator
 
     def post(self, path, **_kw):
         def decorator(func):
-            self.routes.append(_Route("POST", self.prefix + path, func))
+            self.routes.append(_Route("POST", path, func))
             return func
         return decorator
 
@@ -162,6 +172,12 @@ class JSONResponse(Response):
 
 responses = SimpleNamespace(JSONResponse=JSONResponse)
 sys.modules["fastapi.responses"] = responses  # type: ignore[assignment]
+
+# Middleware stubs
+cors_stub = SimpleNamespace(CORSMiddleware=object)
+gzip_stub = SimpleNamespace(GZipMiddleware=object)
+sys.modules.setdefault("fastapi.middleware.cors", cors_stub)
+sys.modules.setdefault("fastapi.middleware.gzip", gzip_stub)
 
 
 class status:
