@@ -17,6 +17,8 @@ from ui_launchers.streamlit_ui.config.routing import PAGE_MAP
 __all__ = [
     "get_data_dir",
     "get_setting",
+    "get_bool_setting",
+    "get_int_setting",
     "load_css",
     "apply_theme",
     "available_themes",

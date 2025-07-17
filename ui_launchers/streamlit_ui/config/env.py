@@ -17,7 +17,6 @@ def get_setting(name: str, default: str | None = None) -> str | None:
 
 
 def get_bool_setting(name: str, default: bool = False) -> bool:
-    """Return a boolean env var, accepting common truthy values."""
     value = os.getenv(name)
     if value is None:
         return default
