@@ -26,7 +26,6 @@ class _DocPostgres(PostgresClient):
     """Postgres table for document chunks."""
 
     def _ensure_tables(self) -> None:  # type: ignore[override]
-        ph = self.placeholder
         if self.use_sqlite:
             sql = (
                 "CREATE TABLE IF NOT EXISTS doc_chunks ("

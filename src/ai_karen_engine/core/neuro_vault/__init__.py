@@ -70,8 +70,12 @@ class NeuroVault:
         start = time.time()
         vec = self.embedder.embed(text)
         if faiss is not None:
-            D, I = self.index.search(np.array([vec]), top_k)
-            metas = [self._metas.get(i) for i in I[0] if self._metas.get(i) and self._metas[i]["user_id"] == user_id]
+            distances, indices = self.index.search(np.array([vec]), top_k)
+            metas = [
+                self._metas.get(i)
+                for i in indices[0]
+                if self._metas.get(i) and self._metas[i]["user_id"] == user_id
+            ]
             recall_time = time.time() - start
         else:
             results = self.index.search(vec.tolist(), top_k=top_k, metadata_filter={"user_id": user_id})

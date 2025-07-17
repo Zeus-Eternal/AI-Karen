@@ -18,7 +18,6 @@ Features:
 import os
 import logging
 import uuid
-from typing import Optional
 
 from ai_karen_engine.core.memory.manager import init_memory
 
