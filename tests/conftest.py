@@ -15,6 +15,7 @@ sys.modules.setdefault("numpy", importlib.import_module("tests.stubs.numpy"))
 sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
 sys.modules.setdefault("cryptography", importlib.import_module("tests.stubs.cryptography"))
 sys.modules.setdefault("ollama", importlib.import_module("tests.stubs.ollama"))
+sys.modules.setdefault("jwt", importlib.import_module("tests.stubs.jwt"))
 sys.modules.setdefault(
     "streamlit_autorefresh", importlib.import_module("tests.stubs.streamlit_autorefresh")
 )
