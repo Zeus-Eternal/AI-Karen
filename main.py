@@ -5,6 +5,9 @@ import os
 
 from ai_karen_engine.core.cortex.dispatch import dispatch
 from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
+from ai_karen_engine.core.memory import manager as memory_manager
+from ai_karen_engine.core.plugin_registry import _METRICS as PLUGIN_METRICS
+from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS
 from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
@@ -63,9 +66,21 @@ async def _refresh_registry_on_start() -> None:
                 sync_registry()
         asyncio.create_task(_scheduled())
 
-REQUEST_COUNT = Counter("kari_http_requests_total", "Total HTTP requests")
-REQUEST_LATENCY = Histogram("kari_http_request_seconds", "Latency of HTTP requests")
-LNM_ERROR_COUNT = Counter("lnm_runtime_errors_total", "Total LNM pipeline failures")
+REQUEST_COUNT = Counter(
+    "kari_http_requests_total",
+    "Total HTTP requests",
+    registry=PROM_REGISTRY,
+)
+REQUEST_LATENCY = Histogram(
+    "kari_http_request_seconds",
+    "Latency of HTTP requests",
+    registry=PROM_REGISTRY,
+)
+LNM_ERROR_COUNT = Counter(
+    "lnm_runtime_errors_total",
+    "Total LNM pipeline failures",
+    registry=PROM_REGISTRY,
+)
 
 _sre_scheduler: SREScheduler | None = None
 
@@ -185,7 +200,20 @@ async def search(req: SearchRequest) -> List[SearchResult]:
 
 @app.get("/metrics")
 def metrics() -> MetricsResponse:
-    agg = {k: sum(v) / len(v) if v else 0 for k, v in METRICS.items()}
+    def _norm(d: Dict[str, Any]) -> Dict[str, float]:
+        out: Dict[str, float] = {}
+        for k, v in d.items():
+            if isinstance(v, list):
+                out[k] = sum(v) / len(v) if v else 0.0
+            else:
+                out[k] = float(v)
+        return out
+
+    agg = {}
+    agg.update(_norm(METRICS))
+    agg.update(_norm(memory_manager._METRICS))
+    agg.update(_norm(PLUGIN_METRICS))
+    agg.update(_norm(DOC_METRICS))
     return MetricsResponse(metrics=agg)
 
 @app.get("/metrics/prometheus")

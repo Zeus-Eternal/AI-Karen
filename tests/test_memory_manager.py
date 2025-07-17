@@ -216,3 +216,17 @@ def test_update_memory_postgres_failure(monkeypatch):
     assert not pg.upserts
     assert store
 
+
+def test_memory_metrics(monkeypatch):
+    mm = load_manager(monkeypatch)
+    store = []
+    monkeypatch.setattr(mm, "postgres", None)
+    monkeypatch.setattr(mm, "redis", FakeRedisModule())
+    monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
+    monkeypatch.setattr(mm, "store_vector", lambda u, q, r: 1)
+
+    mm.update_memory({"user_id": "u", "session_id": "s"}, "q", "r")
+    mm.recall_context({"user_id": "u"}, "q")
+    assert mm._METRICS["memory_store_total"] > 0
+    assert mm._METRICS["memory_recall_total"] > 0
+
