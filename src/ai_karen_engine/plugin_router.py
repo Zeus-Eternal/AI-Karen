@@ -125,6 +125,8 @@ def load_handler(plugin_dir: Path, module_path: str | None = None) -> Callable:
             f"plugin_{plugin_dir.name}_handler",
             str(handler_path),
         )
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Failed loading spec for {handler_path}")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
