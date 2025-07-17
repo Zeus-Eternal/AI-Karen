@@ -24,6 +24,7 @@ def render_sidebar(user_ctx) -> str:
         "Home": "home",
         "Memory": "memory",
         "Analytics": "analytics",
+        "Presence": "presence",
     }
     secondary = {
         "Plugins": "plugins",

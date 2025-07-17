@@ -3,6 +3,7 @@
 from ui_logic.config.feature_flags import get_flag
 from ui_logic.hooks.auth import get_current_user
 from ui_logic.hooks.rbac import check_rbac
+from ai_karen_engine.event_bus import get_event_bus
 
 REQUIRED_ROLES = ["admin", "user"]
 FEATURE_FLAG = "enable_presence"
@@ -18,7 +19,7 @@ def page(user_ctx: dict, **kwargs) -> None:
     Raises:
         PermissionError: If access is denied by RBAC.
         RuntimeError: If the presence feature is disabled.
-        NotImplementedError: Always raised as this is a placeholder.
+        Returns: List of consumed events.
     """
 
     user = user_ctx or get_current_user()
@@ -26,11 +27,18 @@ def page(user_ctx: dict, **kwargs) -> None:
         raise PermissionError("Presence page access denied")
     if not get_flag(FEATURE_FLAG):
         raise RuntimeError("Presence feature disabled")
-    raise NotImplementedError("Coming soon!")
+    bus = get_event_bus()
+    return [
+        {
+            "id": e.id,
+            "capsule": e.capsule,
+            "type": e.event_type,
+            "payload": e.payload,
+            "risk": e.risk,
+        }
+        for e in bus.consume()
+    ]
 
 
 if __name__ == "__main__":
-    try:
-        page({})
-    except NotImplementedError:
-        print("Presence page stub")
+    print(page({"roles": ["admin"]}))

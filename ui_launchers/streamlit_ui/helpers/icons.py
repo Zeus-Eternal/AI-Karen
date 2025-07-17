@@ -5,6 +5,7 @@ ICONS = {
     "memory": "🧠",
     "analytics": "📊",
     "plugins": "🧩",
+    "presence": "👥",
     "iot": "📡",
     "task_manager": "✅",
     "admin": "🛡️",
