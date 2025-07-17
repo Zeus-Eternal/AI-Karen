@@ -9,6 +9,7 @@ import os
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Callable, Optional
+from ai_karen_engine.utils.sandbox import run_in_sandbox
 
 try:
     from prometheus_client import Counter
@@ -217,7 +218,7 @@ class PluginRouter:
 
         prompt_template = jinja_env.from_string(rec.manifest.get("prompt", "{{prompt}}"))
         rendered_prompt = prompt_template.render(params)
-        return await rec.handler({"prompt": rendered_prompt, **params})
+        return await run_in_sandbox(rec.handler, {"prompt": rendered_prompt, **params}) if rec.manifest.get("sandbox", True) else await rec.handler({"prompt": rendered_prompt, **params})
 
 # --- Lazy Accessor for Singleton Instance ---
 _plugin_router: Optional[PluginRouter] = None
