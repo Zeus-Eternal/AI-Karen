@@ -7,7 +7,17 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
 
-import streamlit as st
+try:
+    import streamlit as st
+except Exception:  # pragma: no cover - optional dependency
+    class _Dummy:
+        def __getattr__(self, name):
+            return self
+
+        def __call__(self, *args, **kwargs):
+            return None
+
+    st = _Dummy()
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import (
     list_plugins,

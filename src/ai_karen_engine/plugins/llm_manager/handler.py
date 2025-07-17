@@ -1,5 +1,4 @@
 """Manage available language models for Kari."""
-
 from ai_karen_engine.integrations.llm_registry import registry
 from ai_karen_engine.integrations import model_discovery
 
