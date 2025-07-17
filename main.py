@@ -9,6 +9,7 @@ from ai_karen_engine.core.memory import manager as memory_manager
 from ai_karen_engine.core.plugin_registry import _METRICS as PLUGIN_METRICS
 from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS
 from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
+from ai_karen_engine.core.memory.manager import init_memory
 
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.stderr.write(
@@ -57,6 +58,7 @@ logger = logging.getLogger("kari")
 
 @app.on_event("startup")
 async def _refresh_registry_on_start() -> None:
+    init_memory()
     sync_registry()
     interval = int(os.getenv("LLM_REFRESH_INTERVAL", "0"))
     if interval > 0:
