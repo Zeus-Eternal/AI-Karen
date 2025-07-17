@@ -116,8 +116,8 @@ class FastAPI:
         await send({"type": "http.response.body", "body": content})
 
 class Response:
-    def __init__(self, data, status_code=200, media_type=None, headers=None):
-        self._data = data
+    def __init__(self, data=None, *, content=None, status_code=200, media_type=None, headers=None):
+        self._data = data if data is not None else content
         self.status_code = status_code
         self.headers = {"content-type": media_type or "application/json"}
         if headers:

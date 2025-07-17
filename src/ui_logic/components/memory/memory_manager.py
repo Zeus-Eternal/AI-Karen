@@ -22,6 +22,10 @@ try:
     milvus = MilvusClient(collection="persona_embeddings")
 except Exception:
     milvus = None
+
+if milvus:
+    # DEBUGGER BOT NOTE: ensure all clients initialize, even if no-op
+    pass
 duckdb = DuckDBClient()
 redis = RedisClient()
 

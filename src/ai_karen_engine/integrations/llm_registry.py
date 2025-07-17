@@ -34,12 +34,20 @@ REGISTRY = {
     "gemini": load_gemini_service,
 }
 
+_ACTIVE_PROVIDER = os.getenv("KARI_DEFAULT_PROVIDER", "ollama")
+
 def get_active():
-    """Get the current default LLM provider (env or hardcoded fallback)."""
-    provider = os.getenv("KARI_DEFAULT_PROVIDER", "ollama")
+    """Get the current default LLM provider."""
+    if _ACTIVE_PROVIDER not in REGISTRY:
+        raise RuntimeError(f"Provider '{_ACTIVE_PROVIDER}' not available.")
+    return REGISTRY[_ACTIVE_PROVIDER]()
+
+def set_active(provider: str) -> None:
+    """Set the active provider name."""
+    global _ACTIVE_PROVIDER
     if provider not in REGISTRY:
-        raise RuntimeError(f"Provider '{provider}' not available.")
-    return REGISTRY[provider]()
+        raise RuntimeError(f"Provider '{provider}' not registered.")
+    _ACTIVE_PROVIDER = provider
 
 def get_llm(provider: str):
     """Explicitly get a named provider (raises if not found)."""
@@ -56,4 +64,6 @@ registry = type("KariLLMRegistry", (), {
     "get_active": staticmethod(get_active),
     "get_llm": staticmethod(get_llm),
     "list_llms": staticmethod(list_llms),
+    "set_active": staticmethod(set_active),
+    "active": property(lambda self: _ACTIVE_PROVIDER),
 })()

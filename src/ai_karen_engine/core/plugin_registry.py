@@ -39,7 +39,10 @@ try:
 except Exception:  # pragma: no cover - optional dep
     class _Dummy:
         def inc(self, n: int = 1) -> None:
-            pass
+            return None
+
+        def labels(self, *_, **__):
+            return self
 
     PLUGIN_EXEC_COUNT = PLUGIN_LOADED_COUNT = PLUGIN_IMPORT_ERROR_COUNT = _Dummy()
 
