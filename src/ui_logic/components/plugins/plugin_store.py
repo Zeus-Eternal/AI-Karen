@@ -34,7 +34,7 @@ def get_plugin_store_audit(user_ctx: Dict, limit: int = 25):
 def render_plugin_store(user_ctx: Dict):
     """Placeholder UI for plugin marketplace."""
     st.subheader("Plugin Store")
-    st.info("Plugin store not available.")
+    st.info("Plugin store coming soon.")
 
 
 __all__ = [

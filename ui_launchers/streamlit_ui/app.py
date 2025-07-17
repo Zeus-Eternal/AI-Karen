@@ -21,10 +21,18 @@ def main():
     inject_theme(user_ctx)
     st.sidebar.title("Kari AI")
     st.sidebar.markdown("---")
-    # Page Routing
-    page = st.sidebar.radio("Navigate", list(PAGE_MAP.keys()), index=0)
+
+    primary = ["Home", "Chat", "Memory", "Analytics"]
+    page = st.sidebar.radio("Navigate", primary, index=0)
+
+    with st.sidebar.expander("More Options"):
+        secondary = st.radio(
+            "", ["Plugins", "Models", "Admin"], key="nav_secondary"
+        )
+        if secondary:
+            page = secondary
+
     st.sidebar.markdown("---")
-    # Launch page
     PAGE_MAP[page](user_ctx=user_ctx)
 
 if __name__ == "__main__":

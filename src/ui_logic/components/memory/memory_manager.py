@@ -104,7 +104,6 @@ def flush_long_term(user_id: str):
     """Flush Milvus/DuckDB-backed long-term memory for this user."""
     require_user(user_id)
     if milvus is not None:
-    if milvus:
         milvus.delete_persona_embedding(user_id)
     duckdb.delete_long_term_memory(user_id)
 
