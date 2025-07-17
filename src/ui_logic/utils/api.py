@@ -182,8 +182,16 @@ def fetch_audit_logs(
         params["search"] = search
     return api_get("audit/logs", params=params, token=token, org=org)
 
-def fetch_announcements(limit: int = 10, token: Optional[str] = None, org: Optional[str] = None) -> Any:
-    return api_get("announcements", params={"limit": limit}, token=token, org=org)
+def fetch_announcements(
+    limit: int = 10, token: Optional[str] = None, org: Optional[str] = None
+) -> Any:
+    """Return a list of announcements or an empty list if the endpoint is missing."""
+    try:
+        return api_get("announcements", params={"limit": limit}, token=token, org=org)
+    except RuntimeError as e:  # 404 when endpoint isn't implemented
+        if "404" in str(e):
+            return []
+        raise
 
 def api_plugin_action(plugin: str, action: str, payload: Optional[dict] = None, token: Optional[str] = None, org: Optional[str] = None) -> Any:
     return api_post(f"plugins/{plugin}/{action}", data=payload, token=token, org=org)
