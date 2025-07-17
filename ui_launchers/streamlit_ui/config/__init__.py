@@ -9,8 +9,11 @@ from ui_launchers.streamlit_ui.config.env import (
 from ui_launchers.streamlit_ui.config.theme import (
     load_css,
     apply_theme,
+    get_current_theme,
+    set_theme_param,
     available_themes,
     get_default_theme,
+    apply_default_theme,
 )
 from ui_launchers.streamlit_ui.config.routing import PAGE_MAP
 
@@ -21,9 +24,10 @@ __all__ = [
     "get_int_setting",
     "load_css",
     "apply_theme",
+    "get_current_theme",
+    "set_theme_param",
     "available_themes",
     "get_default_theme",
-    "get_bool_setting",
-    "get_int_setting",
+    "apply_default_theme",
     "PAGE_MAP",
 ]
