@@ -89,14 +89,7 @@ def gpu_optimized_train(*_, **__):
 gpu_stub.gpu_optimized_train = gpu_optimized_train
 sys.modules.setdefault("ai_karen_engine.core.gpu_training", gpu_stub)
 
-intent_stub = types.ModuleType("ai_karen_engine.core.intent_engine")
-
-class IntentEngine:
-    def detect(self, text: str) -> str:
-        return "greet" if "hello" in text else "hf_generate"
-
-intent_stub.IntentEngine = IntentEngine
-sys.modules.setdefault("ai_karen_engine.core.intent_engine", intent_stub)
+# Use real IntentEngine implementation for tests
 
 # Lightweight spaCy stub for document tests
 spacy_stub = types.ModuleType("spacy")

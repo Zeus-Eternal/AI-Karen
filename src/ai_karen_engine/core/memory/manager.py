@@ -43,6 +43,26 @@ try:
 except ImportError:
     redis = None
 
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+
+def get_redis_client():
+    if redis is None:
+        return None
+    try:
+        return redis.Redis(
+            host=REDIS_HOST,
+            port=REDIS_PORT,
+            db=REDIS_DB,
+            password=REDIS_PASSWORD,
+            socket_connect_timeout=2,
+        )
+    except Exception as ex:  # pragma: no cover - connection issues
+        logger.warning(f"[MemoryManager] Redis connection failed: {ex}")
+        return None
+
 try:
     import duckdb
 except ImportError:
@@ -273,7 +293,9 @@ def recall_context(
     # 4. Redis
     if redis:
         try:
-            r = redis.Redis()
+            r = get_redis_client()
+            if r is None:
+                raise RuntimeError("redis unavailable")
             key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
             raw = r.lrange(key, 0, limit - 1)
             records = []
@@ -385,7 +407,9 @@ def update_memory(
     # 3. Redis
     if redis:
         try:
-            r = redis.Redis()
+            r = get_redis_client()
+            if r is None:
+                raise RuntimeError("redis unavailable")
             key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
             r.lpush(key, json.dumps(entry))
             ok = True

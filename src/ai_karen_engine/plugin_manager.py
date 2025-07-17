@@ -91,7 +91,12 @@ class PluginManager:
             logger.debug("Embedding failed for plugin %s", name)
 
         try:
-            update_memory(user_ctx, name, {"params": params, "result": result})
+            update_memory(
+                user_ctx,
+                name,
+                {"params": params, "result": result},
+                tenant_id=user_ctx.get("tenant_id"),
+            )
             MEMORY_WRITES.inc()
         except Exception:  # pragma: no cover - safety
             logger.warning("Memory update failed for plugin %s", name)

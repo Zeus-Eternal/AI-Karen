@@ -20,6 +20,7 @@ production workloads.
 * Dual vector memory (Milvus + Redis) with Postgres metadata and optional Elasticsearch index
 * Thread-safe Milvus client supporting TTL and metadata filters
 * Recency-weighted memory store with automatic TTL pruning and async queries
+* Requires a running **Redis** service for caching (set `REDIS_HOST`/`REDIS_PORT`)
 * Local-first LLM orchestration (LNM + OSIRIS)
 * HuggingFace-powered generation for SelfRefactor and automation
 * HuggingFace LLM plugin with auto-download helper

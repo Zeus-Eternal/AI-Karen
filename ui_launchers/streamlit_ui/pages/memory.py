@@ -125,6 +125,7 @@ with st.spinner("Recalling context..."):
             user_ctx,
             query,
             limit=limit,
+            tenant_id=user_ctx.get("tenant_id"),
             # Optionally inject more params (time_range, backends) if supported in your backend
         )
     except Exception as ex:
