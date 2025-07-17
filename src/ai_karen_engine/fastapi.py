@@ -146,8 +146,29 @@ async def add_trace_and_audit(request: Request, call_next):
 # -- RBAC/Auth Placeholder (Production: integrate OAuth/JWT here) --
 @app.middleware("http")
 async def auth_placeholder(request: Request, call_next):
-    # TODO: Replace with real auth (JWT/OAuth2/SSO/Role check)
-    # Example: check request.headers for 'Authorization', validate token, set user/role context
+    """Simple token-based auth placeholder.
+
+    Checks the ``Authorization`` header for ``Bearer <token>`` and compares it
+    to ``KARI_API_TOKEN`` environment variable. If the variable is not set or
+    the path is one of the public endpoints, the request is allowed. This is a
+    lightweight guard primarily used for tests and local development until a
+    full OAuth/JWT solution is implemented.
+    """
+
+    public_paths = {"/health", "/livez", "/readyz", "/", "/docs", "/openapi.json"}
+    if request.url.path in public_paths:
+        return await call_next(request)
+
+    expected = os.getenv("KARI_API_TOKEN")
+    if expected:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.removeprefix("Bearer ").strip()
+            if token == expected:
+                return await call_next(request)
+        return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Unauthorized"})
+
+    # If no token configured, fall through (no auth enabled)
     return await call_next(request)
 
 # -- Uptime/health probes for orchestration/infra --
