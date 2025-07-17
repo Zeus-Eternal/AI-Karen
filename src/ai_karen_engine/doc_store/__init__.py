@@ -1,5 +1,5 @@
 """Document ingestion and search utilities."""
 
-from .document_store import DocumentStore
+from ai_karen_engine.doc_store.document_store import DocumentStore
 
 __all__ = ["DocumentStore"]

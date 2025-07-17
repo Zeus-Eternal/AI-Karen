@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from .registry import ServiceRegistry
-from .base import AuthorizationError
+from ai_karen_engine.mcp.registry import ServiceRegistry
+from ai_karen_engine.mcp.base import AuthorizationError
 from ai_karen_engine.services.knowledge_graph_client import KnowledgeGraphClient
 from ai_karen_engine.integrations.llm_utils import LLMUtils
 

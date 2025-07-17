@@ -11,7 +11,7 @@ try:
 except Exception:  # pragma: no cover - optional dep
     httpx = None
 
-from .base import BaseMCPClient
+from ai_karen_engine.mcp.base import BaseMCPClient
 
 
 class JSONRPCClient(BaseMCPClient):
