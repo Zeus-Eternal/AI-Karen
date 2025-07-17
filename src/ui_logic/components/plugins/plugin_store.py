@@ -14,7 +14,6 @@ from ui_logic.utils.api import (
     fetch_audit_logs,
 )
 
-import streamlit as st
 
 def list_store_plugins(user_ctx: Dict) -> List[Dict]:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin", "developer"]):
