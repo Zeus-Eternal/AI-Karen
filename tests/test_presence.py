@@ -12,7 +12,7 @@ page = presence.page
 
 def test_presence_page_consumes_events():
     bus = get_event_bus()
-    bus.publish("caps", "ping", {"ts": time.time()}, risk=0.1)
-    result = page({"roles": ["admin", "user"]})
+    bus.publish("caps", "ping", {"ts": time.time()}, risk=0.1, roles=["admin"], tenant_id="t1")
+    result = page({"roles": ["admin", "user"], "tenant_id": "t1"})
     assert isinstance(result, list)
     assert result and result[0]["capsule"] == "caps"

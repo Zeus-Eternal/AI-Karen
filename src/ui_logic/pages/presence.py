@@ -36,7 +36,7 @@ def page(user_ctx: dict, **kwargs) -> None:
             "payload": e.payload,
             "risk": e.risk,
         }
-        for e in bus.consume()
+        for e in bus.consume(roles=user.get("roles"), tenant_id=user.get("tenant_id"))
     ]
 
 
