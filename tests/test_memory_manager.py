@@ -33,16 +33,17 @@ class DuckCon:
         if sql.startswith("INSERT"):
             self.store.append(
                 {
-                    "user_id": params[0],
-                    "session_id": params[1],
-                    "query": params[2],
-                    "result": params[3],
-                    "timestamp": params[4],
+                    "tenant_id": params[0],
+                    "user_id": params[1],
+                    "session_id": params[2],
+                    "query": params[3],
+                    "result": params[4],
+                    "timestamp": params[5],
                 }
             )
             return self
         if sql.startswith("SELECT"):
-            limit = params[1]
+            limit = params[-1]
             self._df = DataFrame(self.store[:limit])
             return self
         return self
@@ -81,18 +82,27 @@ class FakeRedisModule:
 
 
 class RecordingPostgres:
-    def __init__(self, raise_on_upsert=False):
+    def __init__(self, raise_on_upsert: bool = False) -> None:
         self.raise_on_upsert = raise_on_upsert
         self.upserts = []
         self.recalls = []
 
-    def upsert_memory(self, vector_id, user_id, session_id, query, result, timestamp):
+    def upsert_memory(
+        self,
+        vector_id,
+        tenant_id,
+        user_id,
+        session_id,
+        query,
+        result,
+        timestamp,
+    ):
         if self.raise_on_upsert:
             raise RuntimeError("db down")
-        self.upserts.append((vector_id, user_id, session_id, query, result, timestamp))
+        self.upserts.append((vector_id, tenant_id, user_id, session_id, query, result, timestamp))
 
-    def recall_memory(self, user_id, query, limit):
-        self.recalls.append((user_id, query, limit))
+    def recall_memory(self, user_id, query, limit, tenant_id=None):
+        self.recalls.append((user_id, query, limit, tenant_id))
         return [{"source": "postgres"}]
 
     def get_by_vector(self, vid):
@@ -142,7 +152,7 @@ def test_recall_priority_order(monkeypatch):
 
     monkeypatch.setattr(mm, "duckdb", types.SimpleNamespace(connect=connect))
 
-    result = mm.recall_context({"user_id": "u"}, "q")
+    result = mm.recall_context({"user_id": "u", "tenant_id": "t"}, "q")
     assert result is None
     assert calls == ["neuro", "elastic", "milvus", "postgres", "redis", "duckdb"]
 
@@ -175,7 +185,7 @@ def test_recall_returns_first_available(monkeypatch):
     monkeypatch.setattr(mm, "redis", FakeRedisModule())
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
 
-    result = mm.recall_context({"user_id": "u"}, "q")
+    result = mm.recall_context({"user_id": "u", "tenant_id": "t"}, "q")
     assert result[0]["source"] == "vault"
     assert calls == ["neuro"]
 
@@ -200,9 +210,9 @@ def test_update_memory_success(monkeypatch):
     )
     monkeypatch.setattr(mm, "redis", fake_redis)
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
-    monkeypatch.setattr(mm, "store_vector", lambda u, q, r: 1)
+    monkeypatch.setattr(mm, "store_vector", lambda u, q, r, tenant_id=None: 1)
 
-    ok = mm.update_memory({"user_id": "u", "session_id": "s"}, "q", "r")
+    ok = mm.update_memory({"user_id": "u", "session_id": "s", "tenant_id": "t"}, "q", "r")
     assert ok
     assert pg.upserts
     assert fake_redis.instance.data
@@ -229,9 +239,9 @@ def test_update_memory_postgres_failure(monkeypatch):
     )
     monkeypatch.setattr(mm, "redis", fake_redis)
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
-    monkeypatch.setattr(mm, "store_vector", lambda u, q, r: 1)
+    monkeypatch.setattr(mm, "store_vector", lambda u, q, r, tenant_id=None: 1)
 
-    ok = mm.update_memory({"user_id": "u", "session_id": "s"}, "q", "r")
+    ok = mm.update_memory({"user_id": "u", "session_id": "s", "tenant_id": "t"}, "q", "r")
     assert ok
     assert not pg.upserts
     assert store
@@ -243,10 +253,25 @@ def test_memory_metrics(monkeypatch):
     monkeypatch.setattr(mm, "postgres", None)
     monkeypatch.setattr(mm, "redis", FakeRedisModule())
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
-    monkeypatch.setattr(mm, "store_vector", lambda u, q, r: 1)
+    monkeypatch.setattr(mm, "store_vector", lambda u, q, r, tenant_id=None: 1)
 
-    mm.update_memory({"user_id": "u", "session_id": "s"}, "q", "r")
-    mm.recall_context({"user_id": "u"}, "q")
+    mm.update_memory({"user_id": "u", "session_id": "s", "tenant_id": "t"}, "q", "r")
+    mm.recall_context({"user_id": "u", "tenant_id": "t"}, "q")
     assert mm._METRICS["memory_store_total"] > 0
     assert mm._METRICS["memory_recall_total"] > 0
+
+
+def test_tenant_isolation(monkeypatch):
+    mm = load_manager(monkeypatch)
+    store = []
+    pg = RecordingPostgres()
+    monkeypatch.setattr(mm, "postgres", pg)
+    monkeypatch.setattr(mm, "pg_syncer", types.SimpleNamespace(postgres_available=True, mark_unavailable=lambda: None))
+    monkeypatch.setattr(mm, "redis", FakeRedisModule())
+    monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
+    monkeypatch.setattr(mm, "store_vector", lambda u, q, r, tenant_id=None: 1)
+
+    mm.update_memory({"user_id": "u", "session_id": "s", "tenant_id": "A"}, "q", "r")
+    res = mm.recall_context({"user_id": "u", "tenant_id": "B"}, "q")
+    assert res is None
 

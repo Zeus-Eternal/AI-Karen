@@ -31,6 +31,7 @@ class SessionBuffer:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS session_buffer (
+                    tenant_id VARCHAR,
                     user_id VARCHAR,
                     session_id VARCHAR,
                     query VARCHAR,
@@ -44,6 +45,7 @@ class SessionBuffer:
     def add_entry(
         self,
         user_id: str,
+        tenant_id: Optional[str],
         session_id: Optional[str],
         query: str,
         result: Any,
@@ -52,6 +54,7 @@ class SessionBuffer:
     ) -> None:
         ts = timestamp or int(time.time())
         entry = {
+            "tenant_id": tenant_id,
             "user_id": user_id,
             "session_id": session_id,
             "query": query,
@@ -61,8 +64,8 @@ class SessionBuffer:
         }
         with self.duckdb._get_conn() as conn:
             conn.execute(
-                "INSERT INTO session_buffer (user_id, session_id, query, result, timestamp, vector_id) VALUES (?, ?, ?, ?, ?, ?)",
-                [user_id, session_id, query, json.dumps(result), ts, entry["vector_id"]],
+                "INSERT INTO session_buffer (tenant_id, user_id, session_id, query, result, timestamp, vector_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [tenant_id, user_id, session_id, query, json.dumps(result), ts, entry["vector_id"]],
             )
 
         sid = session_id or "default"
@@ -76,17 +79,18 @@ class SessionBuffer:
     def _load_entries(self, sid: str) -> List[Dict[str, Any]]:
         with self.duckdb._get_conn() as conn:
             rows = conn.execute(
-                "SELECT user_id, session_id, query, result, timestamp, vector_id FROM session_buffer WHERE session_id = ?",
+                "SELECT tenant_id, user_id, session_id, query, result, timestamp, vector_id FROM session_buffer WHERE session_id = ?",
                 [sid],
             ).fetchall()
         return [
             {
-                "user_id": r[0],
-                "session_id": r[1],
-                "query": r[2],
-                "result": json.loads(r[3]),
-                "timestamp": r[4],
-                "vector_id": r[5],
+                "tenant_id": r[0],
+                "user_id": r[1],
+                "session_id": r[2],
+                "query": r[3],
+                "result": json.loads(r[4]),
+                "timestamp": r[5],
+                "vector_id": r[6],
             }
             for r in rows
         ]
@@ -103,6 +107,7 @@ class SessionBuffer:
                 for e in entries:
                     self.postgres.upsert_memory(
                         e.get("vector_id", -1),
+                        e.get("tenant_id", ""),
                         e["user_id"],
                         e["session_id"],
                         e["query"],
