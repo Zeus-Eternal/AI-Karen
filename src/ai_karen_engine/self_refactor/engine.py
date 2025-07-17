@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import json
 import os
 import pathlib
 import shutil
@@ -40,14 +41,20 @@ class SelfRefactorEngine:
         deepseek=None,
         nanda=None,
         test_cmd=None,
+        auto_merge: bool | None = None,
+        review_dir: pathlib.Path | None = None,
     ) -> None:
         self.repo_root = pathlib.Path(repo_root)
- 
+
         self.llm = llm or llm_registry.get_active()
         self.deepseek = deepseek or llm_registry.get_active()
- 
+
         self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
         self.test_cmd = test_cmd or ["pytest", "-q"]
+
+        env_merge = os.getenv("ENABLE_SELF_REFACTOR_AUTO_MERGE", "false").lower() == "true"
+        self.auto_merge = env_merge if auto_merge is None else auto_merge
+        self.review_dir = review_dir or (self.repo_root / "self_refactor" / "reviews")
 
     def _generate(self, prompt: str) -> str:
         if hasattr(self.llm, "generate_text"):
@@ -121,9 +128,25 @@ class SelfRefactorEngine:
         return report
 
     def reinforce(self, report: PatchReport) -> None:
-        """Promote successful patches to the main repository."""
+        """Save results and optionally merge successful patches."""
         if report.reward <= 0:
             return
+
+        self.review_dir.mkdir(parents=True, exist_ok=True)
+        ts = str(int(time.time()))
+        review_path = self.review_dir / ts
+        review_path.mkdir()
+        for file_str, patch in report.patches.items():
+            rel_path = pathlib.Path(file_str)
+            dest = review_path / rel_path.name
+            dest.write_text(patch)
+        (review_path / "report.json").write_text(
+            json.dumps(report, indent=2)
+        )
+
+        if not self.auto_merge:
+            return
+
         for file_str, patch in report.patches.items():
             target = self.repo_root / file_str
             target.write_text(patch)
