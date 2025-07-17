@@ -26,30 +26,7 @@ class FastAPI:
     def __init__(self):
         self.routes = []
         self._startup = []
-
-    def get(self, path):
-        def decorator(func):
-            self.routes.append(_Route("GET", path, func))
-            return func
-        return decorator
-
-    def post(self, path):
-        def decorator(func):
-            self.routes.append(_Route("POST", path, func))
-            return func
-        return decorator
-
-    def on_event(self, event: str):
-        def decorator(func):
-            if event == "startup":
-                self._startup.append(func)
-            return func
-        return decorator
-
-    def exception_handler(self, exc):
-        def decorator(func):
-            return func
-        return decorator
+        self.prefix = ""
 
     async def _handle_request(self, method, path, json=None):
         query = {}
@@ -115,6 +92,54 @@ class FastAPI:
         await send({"type": "http.response.start", "status": resp.status_code, "headers": headers})
         await send({"type": "http.response.body", "body": content})
 
+    def get(self, path, **_kw):
+        def decorator(func):
+            self.routes.append(_Route("GET", path, func))
+            return func
+        return decorator
+
+    def post(self, path, **_kw):
+        def decorator(func):
+            self.routes.append(_Route("POST", path, func))
+            return func
+        return decorator
+
+    def on_event(self, event: str):
+        def decorator(func):
+            if event == "startup":
+                self._startup.append(func)
+            return func
+        return decorator
+
+    def exception_handler(self, exc):
+        def decorator(func):
+            return func
+        return decorator
+
+    def include_router(self, router):
+        prefix = getattr(router, "prefix", "")
+        for route in router.routes:
+            route.pattern = re.compile(f"^{prefix}{route.pattern.pattern.lstrip('^')}")
+            self.routes.append(route)
+
+
+class APIRouter(FastAPI):
+    def __init__(self, prefix: str = ""):
+        super().__init__()
+        self.prefix = prefix
+
+    def get(self, path, **_kw):
+        def decorator(func):
+            self.routes.append(_Route("GET", self.prefix + path, func))
+            return func
+        return decorator
+
+    def post(self, path, **_kw):
+        def decorator(func):
+            self.routes.append(_Route("POST", self.prefix + path, func))
+            return func
+        return decorator
+
 class Response:
     def __init__(self, content=None, status_code=200, media_type=None, headers=None):
         self._data = content
@@ -136,7 +161,12 @@ class JSONResponse(Response):
 
 
 responses = SimpleNamespace(JSONResponse=JSONResponse)
-sys.modules["fastapi.responses"] = responses
+sys.modules["fastapi.responses"] = responses  # type: ignore[assignment]
+
+
+class status:
+    HTTP_401_UNAUTHORIZED = 401
+
 
 
 class Request:
