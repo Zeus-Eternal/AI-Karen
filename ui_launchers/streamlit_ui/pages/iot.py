@@ -7,7 +7,7 @@ Streamlit IoT Device/Config Page
 
 import streamlit as st
 from ui_logic.hooks.rbac import require_roles
-from ui_logic.utils.api import fetch_org_settings, update_org_settings, fetch_announcements
+from ui_logic.utils.api import fetch_org_settings, update_org_settings
 
 def render_iot_dashboard(user_ctx):
     st.title("IoT Device Management")
@@ -42,12 +42,6 @@ def render_iot_dashboard(user_ctx):
             except Exception as ex:
                 st.error(f"Failed to update: {ex}")
 
-    # Show announcements (IoT-related)
-    st.subheader("IoT Announcements & Logs")
-    announcements = fetch_announcements(limit=10)
-    for a in announcements:
-        if "iot" in str(a).lower():
-            st.markdown(f"**[{a.get('timestamp', 'N/A')}]** {a.get('message', '')}")
 
 def render(user_ctx=None):
     if user_ctx is None:

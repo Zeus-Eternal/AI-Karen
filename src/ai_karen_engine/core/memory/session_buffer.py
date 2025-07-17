@@ -66,10 +66,12 @@ class SessionBuffer:
             )
 
         sid = session_id or "default"
+        needs_flush = False
         with self._lock:
             self._pending.setdefault(sid, []).append(entry)
-            if len(self._pending[sid]) >= self.flush_size:
-                self.flush_to_postgres(sid)
+            needs_flush = len(self._pending[sid]) >= self.flush_size
+        if needs_flush:
+            self.flush_to_postgres(sid)
 
     def _load_entries(self, sid: str) -> List[Dict[str, Any]]:
         with self.duckdb._get_conn() as conn:

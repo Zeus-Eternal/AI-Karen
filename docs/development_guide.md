@@ -69,6 +69,16 @@ Other variables such as `KARI_MODEL_DIR` or UI branding options have sensible
 defaults and are optional. The above keys must be exported in your shell (or CI
 job) before running the API, Control Room, or `pytest`.
 
+When running tests locally, prepend `PYTHONPATH=src` so the modules resolve
+correctly:
+
+```bash
+PYTHONPATH=src pytest
+```
+
+The built-in `PostgresClient` now provides an in-memory fallback, so the test
+suite runs without external services.
+
 
 ## Accessibility Guidelines
 

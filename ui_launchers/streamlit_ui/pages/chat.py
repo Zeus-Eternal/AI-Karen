@@ -17,8 +17,7 @@ def _auto_refresh(interval: int = 1000, key: str = "chat_refresh") -> None:
         st.experimental_rerun()
 from ui_logic.hooks.rbac import user_has_role
 from ui_logic.utils.api import (
-    fetch_user_profile, 
-    fetch_announcements,
+    fetch_user_profile,
     ping_services,
 )
 from ui_logic.components.analytics.chart_builder import render_quick_charts
@@ -92,20 +91,12 @@ def provider_model_select():
     evil_toast(f"Provider: {provider} | Model: {model}", "🧠")
 
 # ========== Announcements/Observability Panel ==========
-def sys_announce_panel():
-    st.markdown("#### Announcements & System Status")
-    announcements = fetch_announcements(limit=5)
-    for a in announcements:
-        st.info(f"[{a.get('timestamp','')}] {a.get('message','')}")
-    st.write("##### Service Health")
-    st.write(ping_services())
 
 # ========== Main Chat Logic ==========
 def chat_panel(user_ctx):
     st.title("💬 Kari Chat")
     _auto_refresh()
     get_context_state()
-    sys_announce_panel()
     st.sidebar.header("Session Controls")
     provider_model_select()
     role_switcher(user_ctx)

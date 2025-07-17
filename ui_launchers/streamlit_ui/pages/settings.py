@@ -135,7 +135,10 @@ def render_settings() -> None:
     st.title("\U00002699 Settings")
     tabs = st.tabs(["Profile", "Theme", "Integrations", "Notifications"])
     with tabs[0]:
-        st.info("Profile settings coming soon.")
+        st.text_input("Display Name", key="profile_name", value="")
+        st.text_input("Email", key="profile_email", value="")
+        if st.button("Save Profile"):
+            st.success("Profile updated")
     with tabs[1]:
         st.info("Theme options below.")
         from ui_logic.themes.theme_manager import render_theme_switcher
