@@ -16,10 +16,7 @@ def _auto_refresh(interval: int = 1000, key: str = "chat_refresh") -> None:
         st.session_state[key] = now
         st.experimental_rerun()
 from ui_logic.hooks.rbac import user_has_role
-from ui_logic.utils.api import (
-    fetch_user_profile,
-    ping_services,
-)
+from ui_logic.utils.api import fetch_user_profile
 from ui_logic.components.analytics.chart_builder import render_quick_charts
 from ui_logic.components.memory.session_explorer import render_session_explorer
 from ui_logic.components.plugins.plugin_manager import render_plugin_manager
@@ -88,9 +85,8 @@ def provider_model_select():
     }
     model = st.selectbox("Model", model_map[provider], index=0)
     st.session_state["model"] = model
+# Announcement panel removed
     evil_toast(f"Provider: {provider} | Model: {model}", "🧠")
-
-# ========== Announcements/Observability Panel ==========
 
 # ========== Main Chat Logic ==========
 def chat_panel(user_ctx):
