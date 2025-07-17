@@ -43,6 +43,9 @@ try:
 except ImportError:
     redis = None
 
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
 try:
     import duckdb
 except ImportError:
@@ -273,7 +276,7 @@ def recall_context(
     # 4. Redis
     if redis:
         try:
-            r = redis.Redis()
+            r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
             key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
             raw = r.lrange(key, 0, limit - 1)
             records = []
@@ -385,7 +388,7 @@ def update_memory(
     # 3. Redis
     if redis:
         try:
-            r = redis.Redis()
+            r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
             key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
             r.lpush(key, json.dumps(entry))
             ok = True

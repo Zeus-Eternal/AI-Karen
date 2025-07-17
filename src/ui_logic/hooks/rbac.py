@@ -7,6 +7,7 @@ Kari UI RBAC Hooks - Zero Trust, Audit, and API Compatibility
 import uuid
 import time
 from typing import List, Dict, Any, Optional
+from .auth import validate_session
 
 RBAC_LOG_PATH = "/secure/logs/kari/rbac_audit.log"
 
@@ -67,9 +68,16 @@ def require_role(required_roles: List[str]):
         return wrapped
     return decorator
 
+
+def token_has_role(token: str, required_roles: List[str], user_agent: str, ip: str) -> bool:
+    """Validate session token and check roles."""
+    ctx = validate_session(token, user_agent, ip)
+    return user_has_role(ctx, required_roles) if ctx else False
+
 __all__ = [
     "user_has_role",
     "check_rbac",
     "require_role",
     "require_roles",
+    "token_has_role",
 ]

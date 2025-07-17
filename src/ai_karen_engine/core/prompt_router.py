@@ -1,3 +1,3 @@
-from ai_karen_engine.core.prompt_router import PluginWrapper, PromptRouter
+from ai_karen_engine.plugin_router import PluginRouter, PluginRecord
 
-__all__ = ["PluginWrapper", "PromptRouter"]
+__all__ = ["PluginRouter", "PluginRecord"]

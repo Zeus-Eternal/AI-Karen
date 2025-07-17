@@ -18,6 +18,7 @@ production workloads.
 * Intent detection engine with runtime-configurable regex rules
 * Robust plugin router with manifest validation and RBAC dispatch
 * Dual vector memory (Milvus + Redis) with Postgres metadata and optional Elasticsearch index
+* Requires a running **Redis** service (`REDIS_URL` or `REDIS_HOST`/`REDIS_PORT`)
 * Thread-safe Milvus client supporting TTL and metadata filters
 * Recency-weighted memory store with automatic TTL pruning and async queries
 * Local-first LLM orchestration (LNM + OSIRIS)
