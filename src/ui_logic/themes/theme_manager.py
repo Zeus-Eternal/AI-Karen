@@ -14,7 +14,7 @@ import hashlib
 from pathlib import Path
 from typing import Dict, Any
 
-from .design_tokens import COLORS
+from ui_logic.themes.design_tokens import COLORS
 
 from ui_logic.hooks.telemetry import telemetry_event
 
