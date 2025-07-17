@@ -14,6 +14,7 @@ import hashlib
 from pathlib import Path
 from typing import Dict, Any
 
+# Use absolute import for design tokens to comply with Kari's import rules
 from ui_logic.themes.design_tokens import COLORS
 
 from ui_logic.hooks.telemetry import telemetry_event
