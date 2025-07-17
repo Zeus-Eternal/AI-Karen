@@ -8,7 +8,7 @@ Kari CORTEX Dispatch Core
 
 from typing import Any, Dict, Optional, List
 from ai_karen_engine.core.cortex.intent import resolve_intent
-from ai_karen_engine.core.plugin_registry import plugin_registry, execute_plugin
+from ai_karen_engine.core.plugin_registry import plugin_registry
 from ai_karen_engine.core.memory.manager import recall_context, update_memory
 from ai_karen_engine.core.plugin_metrics import (
     record_plugin_call,
@@ -17,7 +17,7 @@ from ai_karen_engine.core.plugin_metrics import (
 from ai_karen_engine.core.cortex.errors import CortexDispatchError, UnsupportedIntentError
 from ai_karen_engine.core.predictors import predictor_registry, run_predictor
 
-def dispatch(
+async def dispatch(
     user_ctx: Dict[str, Any],
     query: str,
     mode: str = "auto",
@@ -63,6 +63,12 @@ def dispatch(
         if mode == "plugin" or (plugin_enabled and intent in plugin_registry):
             handler = plugin_registry.get(intent)
             if handler is None:
+                raise UnsupportedIntentError(f"No plugin registered for intent '{intent}'")
+            result = await get_plugin_manager().run_plugin(
+                intent,
+                {"prompt": query, "context": context or memory_ctx},
+                user_ctx,
+            )
                 raise UnsupportedIntentError(
                     f"No plugin registered for intent '{intent}'"
                 )
@@ -97,6 +103,11 @@ def dispatch(
         else:
             raise UnsupportedIntentError(f"No handler for intent: {intent}")
 
+        # 4. Optionally update memory for non-plugin paths
+        if memory_enabled and result and not (
+            mode == "plugin" or (plugin_enabled and intent in plugin_registry)
+        ):
+            update_memory(user_ctx, query, result)
         # 4. Optionally update memory
         if memory_enabled and result:
             mem_ok = update_memory(user_ctx, query, result)
