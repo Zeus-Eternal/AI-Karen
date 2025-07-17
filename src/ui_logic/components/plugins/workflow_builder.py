@@ -41,6 +41,7 @@ def get_workflow_audit_trail(user_ctx: Dict, limit: int = 25):
 
 def render_workflow_builder(user_ctx: Dict) -> None:
     """Placeholder UI for workflow building."""
+    
     st.subheader("Workflow Builder")
     st.info("Workflow builder under construction.")
 

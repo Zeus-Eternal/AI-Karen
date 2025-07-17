@@ -487,6 +487,13 @@ def fetch_knowledge_graph(user_id: str = None, query: str = "") -> dict:
 
 # ====== PLUGINS ======
 
+def fetch_user_workflows(token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return workflows for the authenticated user or ``[]`` on error."""
+    try:
+        return api_get("plugins/user_workflows", token=token, org=org)
+    except Exception:
+        return []
+      
 def fetch_store_plugins(token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
     """Return plugin metadata from the store API or an empty list on error."""
     try:
@@ -499,6 +506,7 @@ def search_plugins(query: str, token: Optional[str] = None, org: Optional[str] =
     """Search public plugin marketplace."""
     try:
         return api_get("plugins/search", params={"q": query}, token=token, org=org)
+      
     except Exception:
         return []
 
@@ -537,8 +545,41 @@ def fetch_user_workflows(token: Optional[str] = None, org: Optional[str] = None)
     """Return workflows for the current user or an empty list on error."""
     try:
         return api_get("plugins/user_workflows", token=token, org=org)
+      
     except Exception:
         return []
+
+
+def create_workflow(user_id: str, workflow: Dict[str, Any], token: Optional[str] = None, org: Optional[str] = None) -> bool:
+    """Create a new workflow for ``user_id``."""
+    try:
+        api_post(f"plugins/user_workflows/{user_id}", data=workflow, token=token, org=org)
+        return True
+    except Exception:
+        return False
+
+
+def delete_workflow(user_id: str, workflow_id: str, token: Optional[str] = None, org: Optional[str] = None) -> bool:
+    """Delete a workflow by id."""
+    try:
+        api_delete(f"plugins/user_workflows/{user_id}/{workflow_id}", token=token, org=org)
+        return True
+    except Exception:
+        return False
+
+
+def update_workflow(user_id: str, workflow_id: str, updates: Dict[str, Any], token: Optional[str] = None, org: Optional[str] = None) -> bool:
+    """Update an existing workflow."""
+    try:
+        api_put(
+            f"plugins/user_workflows/{user_id}/{workflow_id}",
+            data=updates,
+            token=token,
+            org=org,
+        )
+        return True
+    except Exception:
+        return False
 
 
 def list_plugins() -> list:
