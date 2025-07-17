@@ -57,7 +57,7 @@ cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 
 class CortexDispatcher:
-    async def dispatch(self, query: str, role: str = "user", **_):
+    async def dispatch(self, user_ctx, query: str, role: str = "user", **_):
         text = query.lower()
         if "hello" in text:
             return {
