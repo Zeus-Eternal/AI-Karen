@@ -1,0 +1,11 @@
+/* Basic dark theme */
+:root {
+    --background: #161622;
+    --surface: #212134;
+    --accent: #bb00ff;
+    --text: #e6e7fb;
+}
+body {
+    background: var(--surface);
+    color: var(--text);
+}
