@@ -55,6 +55,7 @@ from ai_karen_engine.integrations.model_discovery import sync_registry
 from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
 from ai_karen_engine.plugin_router import get_plugin_router
 from ai_karen_engine.api_routes.auth import router as auth_router
+from ai_karen_engine.utils.auth import validate_session
 
 app = FastAPI()
 app.include_router(auth_router)
@@ -137,7 +138,6 @@ else:
 
 class ChatRequest(BaseModel):
     text: str
-    role: str = "user"
 
 class ChatResponse(BaseModel):
     intent: str
@@ -218,12 +218,18 @@ def reload_plugins():
     return {"reloaded": True}
 
 @app.post("/chat")
-async def chat(req: ChatRequest) -> ChatResponse:
-    role = getattr(req, "role", "user")
-    if role not in {"user", "admin"}:
-        raise HTTPException(status_code=403, detail="invalid role")
+async def chat(req: ChatRequest, request: Request) -> ChatResponse:
+    auth = request.headers.get("authorization")
+    if not auth or not auth.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing token")
+    token = auth.split(None, 1)[1]
+    ctx = validate_session(token, request.headers.get("user-agent", ""), request.client.host)
+    if not ctx:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    role = "admin" if "admin" in ctx.get("roles", []) else "user"
+    user_ctx = {"user_id": ctx["sub"], "roles": ctx.get("roles", []), "tenant_id": ctx.get("tenant_id")}
     try:
-        data = await dispatch(req.text, role=role)
+        data = await dispatch(user_ctx, req.text, role=role)
     except Exception as exc:
         import traceback
         traceback.print_exc()

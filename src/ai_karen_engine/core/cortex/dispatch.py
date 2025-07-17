@@ -53,7 +53,12 @@ async def dispatch(
         # 2. Recall recent context (if enabled)
         memory_ctx = None
         if memory_enabled:
-            memory_ctx = recall_context(user_ctx, query, limit=10)
+            memory_ctx = recall_context(
+                user_ctx,
+                query,
+                limit=10,
+                tenant_id=user_ctx.get("tenant_id"),
+            )
             trace.append({"stage": "memory_recalled", "context_len": len(memory_ctx or [])})
 
         # 3. Dispatch by mode or plugin/predictor logic
@@ -102,7 +107,12 @@ async def dispatch(
 
         # 4. Optionally update memory
         if memory_enabled and result:
-            mem_ok = update_memory(user_ctx, query, result)
+            mem_ok = update_memory(
+                user_ctx,
+                query,
+                result,
+                tenant_id=user_ctx.get("tenant_id"),
+            )
             record_memory_write(intent, mem_ok)
             trace.append({"stage": "memory_updated"})
 

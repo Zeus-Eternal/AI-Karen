@@ -10,7 +10,7 @@ from ai_karen_engine.core.memory.manager import update_memory
 from ai_karen_engine.integrations.llm_utils import embed_text
 
 try:
-from prometheus_client import Counter, REGISTRY
+    from prometheus_client import Counter, REGISTRY
     METRICS_ENABLED = True
 except Exception:  # pragma: no cover - optional dependency
     METRICS_ENABLED = False
@@ -91,7 +91,12 @@ class PluginManager:
             logger.debug("Embedding failed for plugin %s", name)
 
         try:
-            update_memory(user_ctx, name, {"params": params, "result": result})
+            update_memory(
+                user_ctx,
+                name,
+                {"params": params, "result": result},
+                tenant_id=user_ctx.get("tenant_id"),
+            )
             MEMORY_WRITES.inc()
         except Exception:  # pragma: no cover - safety
             logger.warning("Memory update failed for plugin %s", name)
