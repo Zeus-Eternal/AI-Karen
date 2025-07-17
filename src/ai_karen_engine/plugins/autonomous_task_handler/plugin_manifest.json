@@ -7,5 +7,6 @@
     "admin",
     "power_user"
   ],
-  "trusted_ui": false
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.autonomous_task_handler.handler"
 }

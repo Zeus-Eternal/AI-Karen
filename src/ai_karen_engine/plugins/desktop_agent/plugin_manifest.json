@@ -7,5 +7,6 @@
   "intent": [
     "desktop_action"
   ],
-  "trusted_ui": false
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.desktop_agent.handler"
 }

@@ -1,7 +1,11 @@
 {
   "plugin_api_version": "1.0",
   "enable_external_workflow": false,
-  "required_roles": ["admin", "dev"],
+  "required_roles": [
+    "admin",
+    "dev"
+  ],
   "intent": "fine_tune_lnm",
-  "trusted_ui": false
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.fine_tune_lnm.handler"
 }

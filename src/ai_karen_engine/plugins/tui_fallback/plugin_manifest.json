@@ -7,5 +7,6 @@
   "intent": [
     "tui_diagnostics"
   ],
-  "trusted_ui": false
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.tui_fallback.handler"
 }
