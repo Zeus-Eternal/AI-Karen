@@ -8,11 +8,11 @@ from typing import Dict, List
 import streamlit as st
 
 from ui_logic.hooks.rbac import require_roles
-from ui_logic.utils.api import (
+from ai_karen_engine.services.plugin_store_client import (
     fetch_store_plugins,
     search_plugins,
-    fetch_audit_logs,
 )
+from ui_logic.utils.api import fetch_audit_logs
 
 
 def list_store_plugins(user_ctx: Dict) -> List[Dict]:
