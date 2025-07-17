@@ -26,6 +26,9 @@ def __getattr__(name):
     if name == "SpaCyClient":
         from ai_karen_engine.clients.nlp.spacy_client import SpaCyClient as _SC
         return _SC
+    if name == "AutomationManager":
+        from ai_karen_engine.automation_manager import AutomationManager as _AM
+        return _AM
     if name == "PluginRouter":
         from ai_karen_engine.plugin_router import PluginRouter as _PR
         return _PR
