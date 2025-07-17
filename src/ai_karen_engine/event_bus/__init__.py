@@ -31,4 +31,16 @@ class EventBus:
         self._queue.clear()
         return events
 
-__all__ = ["Event", "EventBus"]
+
+_global_bus: EventBus | None = None
+
+
+def get_event_bus() -> EventBus:
+    """Return a module-level :class:`EventBus` singleton."""
+    global _global_bus
+    if _global_bus is None:
+        _global_bus = EventBus()
+    return _global_bus
+
+
+__all__ = ["Event", "EventBus", "get_event_bus"]
