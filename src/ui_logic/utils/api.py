@@ -5,27 +5,35 @@ Kari UI Universal API Utility
 - Enterprise-grade: supports multi-tenant, plugin, and fallback local APIs
 """
 
-import os
-import time
 import datetime
+import os
 import threading
-import requests
+import time
 from typing import Any, Dict, List, Optional, Set, Union
+
+import requests
+
+from cachetools import TTLCache, cached
 
 # ======= UI/API CONFIG =======
 API_BASE = os.getenv("KARI_API_BASE", "http://localhost:8000/api")
 TIMEOUT = float(os.getenv("KARI_API_TIMEOUT", "30"))
+
+# ======= Announcement Cache =======
+_ann_cache = TTLCache(maxsize=100, ttl=60)
 
 # ======= In-Memory RBAC for Admin Panel (thread-safe, hot-swap DB later) =======
 _USERS_ROLES: Dict[str, Set[str]] = {}
 _ROLE_POLICIES: Dict[str, Set[str]] = {}
 _LOCK = threading.RLock()
 
+
 def fetch_user_roles(user_id: Optional[str] = None) -> Dict[str, List[str]]:
     with _LOCK:
         if user_id:
             return {user_id: list(_USERS_ROLES.get(user_id, set()))}
         return {uid: list(roles) for uid, roles in _USERS_ROLES.items()}
+
 
 def update_user_roles(user_id: str, roles: List[str]) -> bool:
     if not user_id or not isinstance(roles, list):
@@ -34,11 +42,13 @@ def update_user_roles(user_id: str, roles: List[str]) -> bool:
         _USERS_ROLES[user_id] = set(roles)
     return True
 
+
 def fetch_role_policies(role: Optional[str] = None) -> Dict[str, List[str]]:
     with _LOCK:
         if role:
             return {role: list(_ROLE_POLICIES.get(role, set()))}
         return {r: list(policies) for r, policies in _ROLE_POLICIES.items()}
+
 
 def update_role_policies(role: str, policies: List[str]) -> bool:
     if not role or not isinstance(policies, list):
@@ -47,12 +57,14 @@ def update_role_policies(role: str, policies: List[str]) -> bool:
         _ROLE_POLICIES[role] = set(policies)
     return True
 
+
 def add_role_to_user(user_id: str, role: str) -> bool:
     if not user_id or not role:
         raise ValueError("user_id and role are required")
     with _LOCK:
         _USERS_ROLES.setdefault(user_id, set()).add(role)
     return True
+
 
 def remove_role_from_user(user_id: str, role: str) -> bool:
     with _LOCK:
@@ -63,12 +75,14 @@ def remove_role_from_user(user_id: str, role: str) -> bool:
                 del _USERS_ROLES[user_id]
     return True
 
+
 def add_policy_to_role(role: str, policy: str) -> bool:
     if not role or not policy:
         raise ValueError("role and policy are required")
     with _LOCK:
         _ROLE_POLICIES.setdefault(role, set()).add(policy)
     return True
+
 
 def remove_policy_from_role(role: str, policy: str) -> bool:
     with _LOCK:
@@ -79,22 +93,28 @@ def remove_policy_from_role(role: str, policy: str) -> bool:
                 del _ROLE_POLICIES[role]
     return True
 
+
 def list_all_roles() -> List[str]:
     with _LOCK:
         return list(_ROLE_POLICIES.keys())
+
 
 def list_all_users() -> List[str]:
     with _LOCK:
         return list(_USERS_ROLES.keys())
 
+
 # ======= HTTP API UNIVERSAL UTILS =======
-def get_auth_headers(token: Optional[str] = None, org: Optional[str] = None) -> Dict[str, str]:
+def get_auth_headers(
+    token: Optional[str] = None, org: Optional[str] = None
+) -> Dict[str, str]:
     headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     if org:
         headers["X-Org-ID"] = org
     return headers
+
 
 def handle_response(resp: requests.Response) -> Any:
     try:
@@ -105,17 +125,19 @@ def handle_response(resp: requests.Response) -> Any:
     except requests.HTTPError as e:
         raise RuntimeError(f"API error: {e.response.status_code} {e.response.text}")
 
+
 def api_get(
     path: str,
     params: Optional[Dict[str, Any]] = None,
     token: Optional[str] = None,
     org: Optional[str] = None,
-    timeout: Optional[float] = None
+    timeout: Optional[float] = None,
 ) -> Any:
     url = f"{API_BASE.rstrip('/')}/{path.lstrip('/')}"
     headers = get_auth_headers(token, org)
     resp = requests.get(url, headers=headers, params=params, timeout=timeout or TIMEOUT)
     return handle_response(resp)
+
 
 def api_post(
     path: str,
@@ -124,18 +146,25 @@ def api_post(
     org: Optional[str] = None,
     timeout: Optional[float] = None,
     json: bool = True,
-    files: Optional[Dict] = None
+    files: Optional[Dict] = None,
 ) -> Any:
     url = f"{API_BASE.rstrip('/')}/{path.lstrip('/')}"
     headers = get_auth_headers(token, org)
     if files:
-        resp = requests.post(url, headers=headers, files=files, data=data, timeout=timeout or TIMEOUT)
+        resp = requests.post(
+            url, headers=headers, files=files, data=data, timeout=timeout or TIMEOUT
+        )
     else:
         if json:
-            resp = requests.post(url, headers=headers, json=data, timeout=timeout or TIMEOUT)
+            resp = requests.post(
+                url, headers=headers, json=data, timeout=timeout or TIMEOUT
+            )
         else:
-            resp = requests.post(url, headers=headers, data=data, timeout=timeout or TIMEOUT)
+            resp = requests.post(
+                url, headers=headers, data=data, timeout=timeout or TIMEOUT
+            )
     return handle_response(resp)
+
 
 def api_put(
     path: str,
@@ -143,7 +172,7 @@ def api_put(
     token: Optional[str] = None,
     org: Optional[str] = None,
     timeout: Optional[float] = None,
-    json: bool = True
+    json: bool = True,
 ) -> Any:
     url = f"{API_BASE.rstrip('/')}/{path.lstrip('/')}"
     headers = get_auth_headers(token, org)
@@ -153,16 +182,18 @@ def api_put(
         resp = requests.put(url, headers=headers, data=data, timeout=timeout or TIMEOUT)
     return handle_response(resp)
 
+
 def api_delete(
     path: str,
     token: Optional[str] = None,
     org: Optional[str] = None,
-    timeout: Optional[float] = None
+    timeout: Optional[float] = None,
 ) -> Any:
     url = f"{API_BASE.rstrip('/')}/{path.lstrip('/')}"
     headers = get_auth_headers(token, org)
     resp = requests.delete(url, headers=headers, timeout=timeout or TIMEOUT)
     return handle_response(resp)
+
 
 # ======= HIGH-LEVEL UI LOGIC (AUDIT, PLUGIN, HEALTH, PING, ANNOUNCEMENTS) =======
 def fetch_audit_logs(
@@ -171,7 +202,7 @@ def fetch_audit_logs(
     search: Optional[str] = None,
     limit: int = 100,
     token: Optional[str] = None,
-    org: Optional[str] = None
+    org: Optional[str] = None,
 ) -> Any:
     params = {"limit": limit}
     if category:
@@ -182,6 +213,8 @@ def fetch_audit_logs(
         params["search"] = search
     return api_get("audit/logs", params=params, token=token, org=org)
 
+
+@cached(_ann_cache)
 def fetch_announcements(
     limit: int = 10, token: Optional[str] = None, org: Optional[str] = None
 ) -> Any:
@@ -193,19 +226,32 @@ def fetch_announcements(
             return []
         raise
 
-def api_plugin_action(plugin: str, action: str, payload: Optional[dict] = None, token: Optional[str] = None, org: Optional[str] = None) -> Any:
+
+def api_plugin_action(
+    plugin: str,
+    action: str,
+    payload: Optional[dict] = None,
+    token: Optional[str] = None,
+    org: Optional[str] = None,
+) -> Any:
     return api_post(f"plugins/{plugin}/{action}", data=payload, token=token, org=org)
+
 
 def api_health(token: Optional[str] = None) -> Any:
     return api_get("health", token=token)
 
+
 def api_list_plugins(token: Optional[str] = None, org: Optional[str] = None) -> Any:
     return api_get("plugins", token=token, org=org)
 
-def api_upload_file(path: str, file_path: str, token: Optional[str] = None, org: Optional[str] = None) -> Any:
+
+def api_upload_file(
+    path: str, file_path: str, token: Optional[str] = None, org: Optional[str] = None
+) -> Any:
     with open(file_path, "rb") as f:
         files = {"file": f}
         return api_post(path, files=files, token=token, org=org, json=False)
+
 
 def ping_services(timeout: float = 2.0) -> dict:
     status = {}
@@ -216,6 +262,7 @@ def ping_services(timeout: float = 2.0) -> dict:
         status["api"] = f"error: {ex}"
     try:
         from pymilvus import connections
+
         t0 = time.time()
         connections.connect(alias="default")
         s = connections.has_connection("default")
@@ -225,6 +272,7 @@ def ping_services(timeout: float = 2.0) -> dict:
         status["milvus"] = f"error: {ex}"
     try:
         import redis
+
         r = redis.Redis()
         pong = r.ping()
         status["redis"] = "ok" if pong else "down"
@@ -232,6 +280,7 @@ def ping_services(timeout: float = 2.0) -> dict:
         status["redis"] = f"error: {ex}"
     try:
         import duckdb
+
         db = duckdb.connect(database=":memory:", read_only=False)
         db.execute("SELECT 1;")
         status["duckdb"] = "ok"
@@ -239,13 +288,14 @@ def ping_services(timeout: float = 2.0) -> dict:
         status["duckdb"] = f"error: {ex}"
     try:
         import psycopg
+
         with psycopg.connect(
             dbname=os.getenv("POSTGRES_DB", "postgres"),
             user=os.getenv("POSTGRES_USER", "postgres"),
             password=os.getenv("POSTGRES_PASSWORD", "postgres"),
             host=os.getenv("POSTGRES_HOST", "localhost"),
             port=int(os.getenv("POSTGRES_PORT", "5432")),
-            connect_timeout=timeout
+            connect_timeout=timeout,
         ) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT 1;")
@@ -256,21 +306,26 @@ def ping_services(timeout: float = 2.0) -> dict:
     if llm_url:
         try:
             resp = requests.get(f"{llm_url.rstrip('/')}/health", timeout=timeout)
-            status["llm"] = "ok" if resp.status_code == 200 else f"error: {resp.status_code}"
+            status["llm"] = (
+                "ok" if resp.status_code == 200 else f"error: {resp.status_code}"
+            )
         except Exception as ex:
             status["llm"] = f"error: {ex}"
     return status
+
 
 # ========================= ORG ADMIN (Multi-Org, Multi-Tenant) =========================
 
 _ORG_USERS: Dict[str, Set[str]] = {}
 _ORG_SETTINGS: Dict[str, Dict[str, Any]] = {}
 
+
 def fetch_org_users(org_id: str) -> List[str]:
     if not org_id:
         raise ValueError("org_id required")
     with _LOCK:
         return list(_ORG_USERS.get(org_id, set()))
+
 
 def add_org_user(org_id: str, user_id: str) -> bool:
     if not org_id or not user_id:
@@ -279,7 +334,10 @@ def add_org_user(org_id: str, user_id: str) -> bool:
         _ORG_USERS.setdefault(org_id, set()).add(user_id)
     return True
 
-def update_org_user(org_id: str, user_id: str, roles: Optional[List[str]] = None) -> bool:
+
+def update_org_user(
+    org_id: str, user_id: str, roles: Optional[List[str]] = None
+) -> bool:
     if not org_id or not user_id:
         raise ValueError("org_id and user_id required")
     with _LOCK:
@@ -287,6 +345,7 @@ def update_org_user(org_id: str, user_id: str, roles: Optional[List[str]] = None
         if roles is not None:
             _USERS_ROLES[user_id] = set(roles)
     return True
+
 
 def remove_org_user(org_id: str, user_id: str) -> bool:
     if not org_id or not user_id:
@@ -299,11 +358,13 @@ def remove_org_user(org_id: str, user_id: str) -> bool:
                 del _ORG_USERS[org_id]
     return True
 
+
 def fetch_org_settings(org_id: str) -> Dict[str, Any]:
     if not org_id:
         raise ValueError("org_id required")
     with _LOCK:
         return dict(_ORG_SETTINGS.get(org_id, {}))
+
 
 def update_org_settings(org_id: str, settings: Dict[str, Any]) -> bool:
     if not org_id or not isinstance(settings, dict):
@@ -312,9 +373,11 @@ def update_org_settings(org_id: str, settings: Dict[str, Any]) -> bool:
         _ORG_SETTINGS[org_id] = dict(settings)
     return True
 
+
 # ========== SEMANTIC SEARCH: Evil Placeholder ==========
 def semantic_search_df(df, query: str, top_k: int = 5, model=None) -> list:
     raise NotImplementedError("semantic_search_df is not implemented yet.")
+
 
 # ========== DATAFRAME SUMMARY: Evil Placeholder ==========
 def summarize_dataframe(df) -> tuple:
@@ -322,16 +385,15 @@ def summarize_dataframe(df) -> tuple:
         "shape": df.shape,
         "columns": list(df.columns),
         "dtypes": df.dtypes.astype(str).to_dict(),
-        "memory_MB": round(df.memory_usage(deep=True).sum() / (1024 ** 2), 2),
+        "memory_MB": round(df.memory_usage(deep=True).sum() / (1024**2), 2),
         "describe": df.describe(include="all").to_dict(),
     }
     return df, summary
 
+
 # ========== USER PROFILE FETCH/SAVE ==========
 def fetch_user_profile(
-    user_id: str,
-    token: Optional[str] = None,
-    org: Optional[str] = None
+    user_id: str, token: Optional[str] = None, org: Optional[str] = None
 ) -> Dict[str, Any]:
     if not user_id:
         raise ValueError("user_id required")
@@ -340,11 +402,12 @@ def fetch_user_profile(
     except Exception as ex:
         return {"error": str(ex), "success": False, "result": None}
 
+
 def save_user_profile(
     user_id: str,
     profile: Dict[str, Any],
     token: Optional[str] = None,
-    org: Optional[str] = None
+    org: Optional[str] = None,
 ) -> Dict[str, Any]:
     if not user_id or not isinstance(profile, dict):
         raise ValueError("user_id and profile dict required")
@@ -352,6 +415,7 @@ def save_user_profile(
         return api_put(f"users/{user_id}/profile", data=profile, token=token, org=org)
     except Exception as ex:
         return {"error": str(ex), "success": False, "result": None}
+
 
 # ====== KNOWLEDGE GRAPH ======
 def fetch_knowledge_graph(user_id: str = None, query: str = "") -> dict:
@@ -361,28 +425,35 @@ def fetch_knowledge_graph(user_id: str = None, query: str = "") -> dict:
         "query": query,
     }
 
+
 # ====== PLUGINS ======
 def list_plugins() -> list:
     """Return available plugins."""
     return ["evil_plugin", "super_plugin"]
 
+
 def install_plugin(plugin_name: str) -> bool:
     """Install a plugin."""
     return True
+
 
 def uninstall_plugin(plugin_name: str) -> bool:
     """Uninstall a plugin."""
     return True
 
+
 def enable_plugin(plugin_name: str) -> bool:
     """Enable a plugin."""
     return True
+
 
 def disable_plugin(plugin_name: str) -> bool:
     """Disable a plugin."""
     return True
 
+
 # ========================= MEMORY ANALYTICS =========================
+
 
 def fetch_memory_metrics(
     start_date: Optional[datetime.datetime] = None,
@@ -392,7 +463,7 @@ def fetch_memory_metrics(
     user_id: Optional[str] = None,
     limit: int = 500,
     token: Optional[str] = None,
-    org: Optional[str] = None
+    org: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Fetch memory metrics from the backend API for analytics.
@@ -418,11 +489,12 @@ def fetch_memory_metrics(
         params["user_id"] = user_id
     return api_get("memory/metrics", params=params, token=token, org=org)
 
+
 def fetch_memory_analytics(
     user_id: Optional[str] = None,
     limit: int = 100,
     token: Optional[str] = None,
-    org: Optional[str] = None
+    org: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Fetch memory analytics summary for a user.
@@ -437,6 +509,7 @@ def fetch_memory_analytics(
         params["user_id"] = user_id
     return api_get("memory/analytics", params=params, token=token, org=org)
 
+
 def fetch_session_memory(
     session_id: str = None,
     user_id: Optional[str] = None,
@@ -444,7 +517,7 @@ def fetch_session_memory(
     start_date: Optional[datetime.datetime] = None,
     end_date: Optional[datetime.datetime] = None,
     token: Optional[str] = None,
-    org: Optional[str] = None
+    org: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Fetch memory records for a specific session (or user) from the backend API.
@@ -474,6 +547,7 @@ def fetch_session_memory(
     except Exception:
         # Standardize the error structure for UI consumers
         return []
+
 
 __all__ = [
     # HTTP API
@@ -520,5 +594,4 @@ __all__ = [
     "fetch_memory_metrics",
     "fetch_memory_analytics",
     "fetch_session_memory",
-
 ]

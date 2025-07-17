@@ -18,3 +18,20 @@ def test_fetch_announcements_other_error(monkeypatch):
     monkeypatch.setattr(api, "api_get", fake_api_get)
     with pytest.raises(RuntimeError):
         api.fetch_announcements()
+
+
+def test_fetch_announcements_cached(monkeypatch):
+    calls = []
+
+    def fake_api_get(*args, **kwargs):
+        calls.append(1)
+        return ["a1"]
+
+    monkeypatch.setattr(api, "api_get", fake_api_get)
+    api._ann_cache.clear()
+
+    r1 = api.fetch_announcements(limit=5, token="t", org="o")
+    r2 = api.fetch_announcements(limit=5, token="t", org="o")
+
+    assert r1 == r2 == ["a1"]
+    assert len(calls) == 1
