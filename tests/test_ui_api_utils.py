@@ -20,8 +20,7 @@ def test_fetch_announcements_other_error(monkeypatch):
     monkeypatch.setattr(api, "api_get", fake_api_get)
     with pytest.raises(RuntimeError):
         api.fetch_announcements()
-
-
+        
 class DummyResponse:
     def __init__(self, status_code: int = 200, text: str = "ok"):
         self.status_code = status_code
