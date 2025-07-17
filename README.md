@@ -1,4 +1,5 @@
 # Kari AI
+[![CI](https://github.com/OWNER/AI-Karen/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/AI-Karen/actions/workflows/ci.yml)
 
 > **Local-first, plugin-driven, self-evolving.**
 > Kari turns a single FastAPI service and a desktop Control Room into an autonomous “Ops Mesh” that can route intents, run domain capsules, and refactor its own code—without leaving your machine.
@@ -67,7 +68,7 @@ Detailed usage instructions for each feature are in [docs/features_usage.md](doc
  
 ```
 core/          # dispatch, embeddings, reasoning
-ai_karen_engine/event_bus/     # in-memory event streams
+ai_karen_engine/event_bus/     # in-memory or Redis event streams
 guardrails/    # YAML validators
 capsules/      # domain-specific micro agents
 src/integrations/  # helper utilities (RPA, automation)
@@ -88,7 +89,7 @@ tests/         # pytest suite
 
 ```text
 core/          # dispatcher, embeddings, capsule planner
-ai_karen_engine/event_bus/     # Redis-Streams helpers
+ai_karen_engine/event_bus/     # Redis Streams or in-memory bus
 guardrails/    # YAML validators & rule engine
 capsules/      # domain-specific agents (DevOps, Finance, …)
 src/integrations/  # NANDA client, RPA helpers, external bridges

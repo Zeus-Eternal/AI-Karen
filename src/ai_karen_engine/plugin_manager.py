@@ -10,7 +10,7 @@ from ai_karen_engine.core.memory.manager import update_memory
 from ai_karen_engine.integrations.llm_utils import embed_text
 
 try:
-from prometheus_client import Counter, REGISTRY
+    from prometheus_client import Counter, REGISTRY
     METRICS_ENABLED = True
 except Exception:  # pragma: no cover - optional dependency
     METRICS_ENABLED = False
@@ -74,10 +74,14 @@ class PluginManager:
         PLUGIN_CALLS.labels(plugin=name).inc()
         logger.info("Running plugin %s with params=%s", name, params)
         try:
-            result = await self.router.dispatch(
+            result, out, err = await self.router.dispatch(
                 name, params, roles=user_ctx.get("roles")
             )
             logger.info("Plugin %s result: %s", name, result)
+            if out:
+                logger.debug("%s stdout: %s", name, out.strip())
+            if err:
+                logger.debug("%s stderr: %s", name, err.strip())
         except Exception as ex:  # pragma: no cover - runtime safeguard
             PLUGIN_FAILURES.labels(plugin=name).inc()
             logger.exception("Plugin %s failed: %s", name, ex)
@@ -91,12 +95,17 @@ class PluginManager:
             logger.debug("Embedding failed for plugin %s", name)
 
         try:
-            update_memory(user_ctx, name, {"params": params, "result": result})
+            update_memory(
+                user_ctx,
+                name,
+                {"params": params, "result": result},
+                tenant_id=user_ctx.get("tenant_id"),
+            )
             MEMORY_WRITES.inc()
         except Exception:  # pragma: no cover - safety
             logger.warning("Memory update failed for plugin %s", name)
 
-        return result
+        return result, out, err
 
 
 _plugin_manager: Optional[PluginManager] = None

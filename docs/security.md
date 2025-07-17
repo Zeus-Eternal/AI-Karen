@@ -32,3 +32,11 @@ gpg --verify kari-desktop.tar.gz.sig kari-desktop.tar.gz
 
 See `ui_launchers/desktop_ui/README.md` for secure UI practices and [docs/plugin_spec.md](plugin_spec.md) for plugin-level permissions.
 
+## Plugin Sandbox
+
+Plugins are executed in isolated Python subprocesses. The sandbox runner
+applies `RLIMIT_CPU` to cap CPU seconds and clears all environment variables
+before loading the handler. Standard output and error from the plugin process
+are captured and returned to the caller. If a plugin exceeds the configured
+timeout it is terminated and a `TimeoutError` is raised.
+

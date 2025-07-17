@@ -5,7 +5,7 @@ from ai_karen_engine.core.mesh_planner import MeshPlanner
 def test_load_and_route(tmp_path, monkeypatch):
     from pathlib import Path
     import shutil
-    src = Path('capsules/devops')
+    src = Path('src/ai_karen_engine/capsules/devops')
     dest = tmp_path / 'devops'
     shutil.copytree(src, dest)
 
@@ -19,7 +19,7 @@ def test_load_and_route(tmp_path, monkeypatch):
 def test_devops_capsule_invokes_plugins(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        'capsules.devops.handler.router.dispatch',
+        'ai_karen_engine.capsules.devops.handler.router.dispatch',
         lambda intent, params, roles=None: calls.append(intent) or asyncio.sleep(0),
     )
     planner = MeshPlanner()

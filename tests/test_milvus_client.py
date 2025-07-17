@@ -1,6 +1,15 @@
 import time
 import pytest
-from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.core.milvus_client import (
+    MilvusClient,
+    store_vector,
+    recall_vectors,
+    _vector_stores,
+)
+
+
+def setup_function(func):
+    _vector_stores.clear()
 
 
 def test_upsert_and_search():
@@ -52,3 +61,11 @@ def test_delete_nonexistent_id_no_error():
     kept = client.upsert([1.0, 0.0], {"text": "keep"})
     client.delete([9999])
     assert kept in client._data
+
+
+def test_tenant_isolation_store_funcs():
+    id_a = store_vector("u", "hello", "ra", tenant_id="A")
+    id_b = store_vector("u", "hello", "rb", tenant_id="B")
+    res_a = recall_vectors("u", "hello", tenant_id="A")
+    ids = {r["id"] for r in res_a}
+    assert id_a in ids and id_b not in ids
