@@ -33,3 +33,4 @@ redis
 psycopg
 chardet
 httpx
+tenacity

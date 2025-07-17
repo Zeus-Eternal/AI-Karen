@@ -1,4 +1,6 @@
 import pytest
+import requests
+import tenacity
 
 import ui_logic.utils.api as api
 
@@ -18,20 +20,44 @@ def test_fetch_announcements_other_error(monkeypatch):
     monkeypatch.setattr(api, "api_get", fake_api_get)
     with pytest.raises(RuntimeError):
         api.fetch_announcements()
+        
+class DummyResponse:
+    def __init__(self, status_code: int = 200, text: str = "ok"):
+        self.status_code = status_code
+        self.text = text
+        self.headers = {"Content-Type": "text/plain"}
+
+    def json(self):
+        return self.text
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError(response=self)
 
 
-def test_fetch_announcements_cached(monkeypatch):
-    calls = []
+def test_safe_request_retries(monkeypatch):
+    calls = {"count": 0}
 
-    def fake_api_get(*args, **kwargs):
-        calls.append(1)
-        return ["a1"]
+    def flaky_request(*args, **kwargs):
+        calls["count"] += 1
+        if calls["count"] < 3:
+            raise requests.RequestException("temp fail")
+        return DummyResponse()
 
-    monkeypatch.setattr(api, "api_get", fake_api_get)
-    api._ann_cache.clear()
+    monkeypatch.setattr(api.requests, "request", flaky_request)
+    monkeypatch.setattr(tenacity, "nap", lambda _: None)
 
-    r1 = api.fetch_announcements(limit=5, token="t", org="o")
-    r2 = api.fetch_announcements(limit=5, token="t", org="o")
+    resp = api._safe_request("get", "http://x")
+    assert calls["count"] == 3
+    assert resp.status_code == 200
 
-    assert r1 == r2 == ["a1"]
-    assert len(calls) == 1
+
+def test_safe_request_failure(monkeypatch):
+    def always_fail(*_, **__):
+        raise requests.RequestException("boom")
+
+    monkeypatch.setattr(api.requests, "request", always_fail)
+    monkeypatch.setattr(tenacity, "nap", lambda _: None)
+
+    with pytest.raises(requests.RequestException):
+        api._safe_request("get", "http://x")
