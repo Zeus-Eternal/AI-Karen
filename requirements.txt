@@ -11,6 +11,7 @@ huggingface_hub
 openai
 requests
 streamlit
+streamlit-autorefresh
 llama-cpp-python
 scikit-learn==1.5.*
 spacy==3.7.*

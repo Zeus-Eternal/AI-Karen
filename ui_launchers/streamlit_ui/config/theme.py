@@ -65,13 +65,13 @@ def apply_theme(theme: str = "light") -> None:
 
 def get_current_theme() -> str:
     """Return theme from query params or the default theme."""
-    params = st.experimental_get_query_params()
-    return params.get("theme", [get_default_theme()])[0]
+    params = st.query_params
+    return params.get("theme", get_default_theme())
 
 
 def set_theme_param(theme: str) -> None:
     """Persist the chosen theme in query params."""
-    params = st.experimental_get_query_params()
+    params = st.query_params
     params["theme"] = theme
     st.experimental_set_query_params(**params)
 

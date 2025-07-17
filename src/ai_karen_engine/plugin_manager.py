@@ -10,7 +10,7 @@ from ai_karen_engine.core.memory.manager import update_memory
 from ai_karen_engine.integrations.llm_utils import embed_text
 
 try:
-    from prometheus_client import Counter
+from prometheus_client import Counter, REGISTRY
     METRICS_ENABLED = True
 except Exception:  # pragma: no cover - optional dependency
     METRICS_ENABLED = False
@@ -24,20 +24,36 @@ except Exception:  # pragma: no cover - optional dependency
 
     Counter = _DummyMetric  # type: ignore
 
-PLUGIN_CALLS = Counter(
-    "plugin_calls_total",
-    "Total plugin calls",
-    ["plugin"],
-) if METRICS_ENABLED else Counter()
-PLUGIN_FAILURES = Counter(
-    "plugin_failure_rate",
-    "Plugin failures",
-    ["plugin"],
-) if METRICS_ENABLED else Counter()
-MEMORY_WRITES = Counter(
-    "memory_writes_total",
-    "Memory writes from plugins",
-) if METRICS_ENABLED else Counter()
+if METRICS_ENABLED:
+    if "plugin_calls_total" not in REGISTRY._names_to_collectors:
+        PLUGIN_CALLS = Counter(
+            "plugin_calls_total",
+            "Total plugin calls",
+            ["plugin"],
+        )
+    else:  # pragma: no cover - reuse collector under reload
+        PLUGIN_CALLS = REGISTRY._names_to_collectors["plugin_calls_total"]
+
+    if "plugin_failure_rate" not in REGISTRY._names_to_collectors:
+        PLUGIN_FAILURES = Counter(
+            "plugin_failure_rate",
+            "Plugin failures",
+            ["plugin"],
+        )
+    else:  # pragma: no cover - reuse collector
+        PLUGIN_FAILURES = REGISTRY._names_to_collectors["plugin_failure_rate"]
+
+    if "memory_writes_total" not in REGISTRY._names_to_collectors:
+        MEMORY_WRITES = Counter(
+            "memory_writes_total",
+            "Memory writes from plugins",
+        )
+    else:  # pragma: no cover - reuse collector
+        MEMORY_WRITES = REGISTRY._names_to_collectors["memory_writes_total"]
+else:  # pragma: no cover - metrics disabled
+    PLUGIN_CALLS = Counter()
+    PLUGIN_FAILURES = Counter()
+    MEMORY_WRITES = Counter()
 
 logger = logging.getLogger("kari.plugin_manager")
 
