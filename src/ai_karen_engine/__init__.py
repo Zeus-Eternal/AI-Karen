@@ -32,6 +32,9 @@ def __getattr__(name):
     if name == "AccessDenied":
         from ai_karen_engine.plugin_router import AccessDenied as _AD
         return _AD
+    if name == "DocumentStore":
+        from ai_karen_engine.doc_store import DocumentStore as _DS
+        return _DS
     raise AttributeError(name)
 
 __all__ = [
@@ -46,4 +49,5 @@ __all__ = [
     "LNMClient",
     "BasicClassifier",
     "SpaCyClient",
+    "DocumentStore",
 ]

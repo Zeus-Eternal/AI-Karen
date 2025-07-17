@@ -11,6 +11,9 @@ Example metrics:
 - `embedding_time_seconds`
 - `vector_upsert_seconds`
 - `vector_search_latency_seconds`
+- `doc_chunks_indexed`
+- `doc_search_latency`
+- `metadata_hit_rate`
 
 Use `docker compose up` to start a Prometheus container that scrapes `http://localhost:8000/metrics`.
 
