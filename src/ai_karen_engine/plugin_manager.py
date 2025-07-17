@@ -86,6 +86,11 @@ class PluginManager:
 _plugin_manager: Optional[PluginManager] = None
 
 
+def create_plugin_manager(router: Optional[PluginRouter] = None) -> PluginManager:
+    """Return a new :class:`PluginManager` instance."""
+    return PluginManager(router=router)
+
+
 def get_plugin_manager() -> PluginManager:
     """Return cached PluginManager instance."""
     global _plugin_manager
@@ -97,6 +102,7 @@ def get_plugin_manager() -> PluginManager:
 __all__ = [
     "PluginManager",
     "get_plugin_manager",
+    "create_plugin_manager",
     "PLUGIN_CALLS",
     "PLUGIN_FAILURES",
     "MEMORY_WRITES",
