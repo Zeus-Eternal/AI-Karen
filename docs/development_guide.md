@@ -69,3 +69,17 @@ Other variables such as `KARI_MODEL_DIR` or UI branding options have sensible
 defaults and are optional. The above keys must be exported in your shell (or CI
 job) before running the API, Control Room, or `pytest`.
 
+
+## Accessibility Guidelines
+
+To meet WCAG AA requirements, ensure all text maintains a contrast ratio of at least **4.5:1** (or **3:1** for large headings). Interactive widgets must be reachable with the keyboard and provide visible focus outlines.
+
+### Keyboard Shortcuts
+
+| Action | Shortcut |
+| ------ | -------- |
+| Focus search | `/` |
+| Toggle dark mode | `Ctrl+Shift+D` |
+| Open help | `?` |
+
+These shortcuts should be implemented in custom components where possible.

@@ -13,6 +13,7 @@ from ui_logic.utils.api import fetch_announcements
 from ui_logic.components.memory.profile_panel import render_profile_panel
 from ui_logic.components.analytics.chart_builder import render_quick_charts
 from ui_logic.components.admin.system_status import render_system_status
+from helpers.icons import ICONS
 
 def render_welcome(user_ctx, branding):
     st.markdown(
@@ -48,14 +49,14 @@ def render_shortcuts(user_ctx):
     st.markdown("### Quick Access")
     cols = st.columns(4)
     pages = [
-        {"label": "Chat", "icon": "💬", "page": "chat", "roles": ["user", "admin", "dev"]},
-        {"label": "Memory", "icon": "🧠", "page": "memory", "roles": ["user", "admin"]},
-        {"label": "Analytics", "icon": "📊", "page": "analytics", "roles": ["admin", "dev"]},
-        {"label": "Plugins", "icon": "🧩", "page": "plugins", "roles": ["dev", "admin"]},
-        {"label": "IoT", "icon": "📡", "page": "iot", "roles": ["dev", "admin"]},
-        {"label": "Task Manager", "icon": "✅", "page": "task_manager", "roles": ["admin", "dev"]},
-        {"label": "Admin", "icon": "🛡️", "page": "admin", "roles": ["admin"]},
-        {"label": "Settings", "icon": "⚙️", "page": "settings", "roles": ["user", "admin", "dev"]},
+        {"label": "Chat", "icon": ICONS["chat"], "page": "chat", "roles": ["user", "admin", "dev"]},
+        {"label": "Memory", "icon": ICONS["memory"], "page": "memory", "roles": ["user", "admin"]},
+        {"label": "Analytics", "icon": ICONS["analytics"], "page": "analytics", "roles": ["admin", "dev"]},
+        {"label": "Plugins", "icon": ICONS["plugins"], "page": "plugins", "roles": ["dev", "admin"]},
+        {"label": "IoT", "icon": ICONS["iot"], "page": "iot", "roles": ["dev", "admin"]},
+        {"label": "Task Manager", "icon": ICONS["task_manager"], "page": "task_manager", "roles": ["admin", "dev"]},
+        {"label": "Admin", "icon": ICONS["admin"], "page": "admin", "roles": ["admin"]},
+        {"label": "Settings", "icon": ICONS["settings"], "page": "settings", "roles": ["user", "admin", "dev"]},
     ]
     idx = 0
     for p in pages:

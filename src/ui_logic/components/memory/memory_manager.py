@@ -18,7 +18,10 @@ def require_user(user_id):
     return user_id
 
 # ---- Clients ----
-milvus = MilvusClient(collection="persona_embeddings")
+try:
+    milvus = MilvusClient(collection="persona_embeddings")
+except Exception:
+    milvus = None
 duckdb = DuckDBClient()
 redis = RedisClient()
 
@@ -56,6 +59,8 @@ def get_embedding_score(user_id: str) -> float:
     profile = duckdb.get_profile(user_id)
     if not profile:
         return 0.0
+    if milvus is None:
+        return 0.0
     current_vec = milvus.embed_persona(profile)
     ref_vec = milvus.get_reference_embedding(user_id)
     if not current_vec or not ref_vec:
@@ -85,7 +90,8 @@ def reset_profile(user_id: str):
     require_user(user_id)
     duckdb.delete_profile(user_id)
     duckdb.delete_profile_history(user_id)
-    milvus.delete_persona_embedding(user_id)
+    if milvus is not None:
+        milvus.delete_persona_embedding(user_id)
     redis.flush_short_term(user_id)
     redis.flush_long_term(user_id)
 
@@ -97,7 +103,8 @@ def flush_short_term(user_id: str):
 def flush_long_term(user_id: str):
     """Flush Milvus/DuckDB-backed long-term memory for this user."""
     require_user(user_id)
-    milvus.delete_persona_embedding(user_id)
+    if milvus is not None:
+        milvus.delete_persona_embedding(user_id)
     duckdb.delete_long_term_memory(user_id)
 
 # ---- Internal: Reindex, Decay, Context ----
@@ -105,7 +112,7 @@ def flush_long_term(user_id: str):
 def _reindex_persona_embedding(user_id: str):
     """Re-embed and reindex persona after profile update."""
     profile = duckdb.get_profile(user_id)
-    if profile:
+    if profile and milvus is not None:
         vec = milvus.embed_persona(profile)
         milvus.upsert_persona_embedding(user_id, vec)
 
