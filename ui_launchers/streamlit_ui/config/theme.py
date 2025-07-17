@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.resources
 from pathlib import Path
 
+import os
 import streamlit as st
 
 THEME_DIR = Path(__file__).resolve().parents[1] / "styles"
@@ -31,4 +32,19 @@ def apply_theme(theme: str = "light") -> None:
         st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
-__all__ = ["load_css", "apply_theme"]
+def available_themes() -> list[str]:
+    """Return a list of theme names available in the style directory."""
+    return [p.stem for p in THEME_DIR.glob("*.css")]
+
+
+def get_default_theme() -> str:
+    """Return the default theme name from env or 'light'."""
+    return os.getenv("KARI_DEFAULT_THEME", "light")
+
+
+__all__ = [
+    "load_css",
+    "apply_theme",
+    "available_themes",
+    "get_default_theme",
+]
