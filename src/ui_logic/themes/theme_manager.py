@@ -14,9 +14,14 @@ import hashlib
 from pathlib import Path
 from typing import Dict, Any
 
+from .design_tokens import COLORS
+
+from ui_logic.hooks.telemetry import telemetry_event
+
 THEME_CONFIG_PATH = os.getenv("KARI_THEME_CONFIG", "src/ui/themes/")
 THEME_AUDIT_PATH = os.getenv("KARI_THEME_AUDIT_LOG", "/secure/logs/kari/theme_audit.log")
 THEME_SIGNING_KEY = os.getenv("KARI_THEME_SIGNING_KEY", "change-me-to-secure-key")
+
 
 _theme_lock = threading.Lock()
 
@@ -34,12 +39,23 @@ def _audit_theme_event(event: Dict[str, Any]):
         with open(THEME_AUDIT_PATH, "a") as f:
             f.write(str(line) + "\n")
 
-def _load_theme_file(theme_name: str) -> str:
+def load_theme_css(theme_name: str) -> str:
+    """Return raw CSS string for the given theme name."""
     theme_file = Path(THEME_CONFIG_PATH) / f"{theme_name}.css"
-    if not theme_file.exists():
+    if theme_file.exists():
+        with open(theme_file, "r") as f:
+            return f.read()
+    # fallback: build simple CSS from design tokens
+    colors = COLORS.get(theme_name)
+    if not colors:
         raise FileNotFoundError(f"Theme file not found: {theme_file}")
-    with open(theme_file, "r") as f:
-        return f.read()
+    return "\n".join([
+        ":root {",
+        f"    --background: {colors['background']};",
+        f"    --surface: {colors['surface']};",
+        f"    --accent: {colors['accent']};",
+        "}",
+    ])
 
 def get_available_themes() -> Dict[str, str]:
     """Discover all .css theme files in config dir"""
@@ -49,8 +65,8 @@ def get_available_themes() -> Dict[str, str]:
     return {f.stem: str(f) for f in theme_dir.glob("*.css")}
 
 def set_theme(theme_name: str, user_ctx: Dict[str, Any]):
-    """Apply a new theme for the session and log the event."""
-    css = _load_theme_file(theme_name)
+    """Apply a new theme for the session, log, and emit telemetry."""
+    css = load_theme_css(theme_name)
     _audit_theme_event({
         "action": "set_theme",
         "user": user_ctx.get("user_id", "guest"),
@@ -59,6 +75,7 @@ def set_theme(theme_name: str, user_ctx: Dict[str, Any]):
     # Streamlit: inject CSS
     import streamlit as st
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    telemetry_event("theme_change", {"theme": theme_name}, user_id=user_ctx.get("user_id"))
     # You may also want to persist session theme choice in user_ctx/session, etc.
 
 def get_current_theme(user_ctx: Dict[str, Any]) -> str:
@@ -83,15 +100,18 @@ def render_theme_switcher(user_ctx: Dict[str, Any]):
         set_theme(selected, user_ctx)
         st.session_state["kari_theme"] = selected
         st.success(f"Theme changed to '{selected}'")
+        telemetry_event("theme_change", {"theme": selected}, user_id=user_ctx.get("user_id"))
     # Audit even view
     _audit_theme_event({
         "action": "view_theme_switcher",
         "user": user_ctx.get("user_id", "guest"),
         "current": current
     })
+    telemetry_event("view_theme_switcher", {"current": current}, user_id=user_ctx.get("user_id"))
 
 __all__ = [
     "get_available_themes",
+    "load_theme_css",
     "set_theme",
     "get_current_theme",
     "render_theme_switcher"

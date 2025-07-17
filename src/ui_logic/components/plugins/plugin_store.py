@@ -4,6 +4,9 @@ Kari Plugin Store Logic
 """
 
 from typing import Dict, List
+
+import streamlit as st
+
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import (
     fetch_store_plugins,
@@ -27,7 +30,6 @@ def get_plugin_store_audit(user_ctx: Dict, limit: int = 25):
     if not user_ctx or not require_roles(user_ctx, ["admin", "developer"]):
         raise PermissionError("Insufficient privileges for plugin store audit.")
     return fetch_audit_logs(category="plugin_store", user_id=user_ctx["user_id"])[-limit:][::-1]
-
 
 def render_plugin_store(user_ctx: Dict):
     """Placeholder UI for plugin marketplace."""

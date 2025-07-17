@@ -529,6 +529,22 @@ def disable_plugin(plugin_name: str) -> bool:
     return True
 
 
+def fetch_store_plugins() -> List[Dict[str, Any]]:
+    """Return a list of plugins available from the store."""
+    try:
+        return api_get("plugin-store")
+    except Exception:
+        return []
+
+
+def search_plugins(query: str) -> List[Dict[str, Any]]:
+    """Search the plugin store."""
+    try:
+        return api_get("plugin-store/search", params={"q": query})
+    except Exception:
+        return []
+
+
 # ========================= MEMORY ANALYTICS =========================
 
 
@@ -670,6 +686,8 @@ __all__ = [
     "uninstall_plugin",
     "enable_plugin",
     "disable_plugin",
+    "fetch_store_plugins",
+    "search_plugins",
     "fetch_memory_metrics",
     "fetch_memory_analytics",
     "fetch_session_memory",
