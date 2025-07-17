@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import json
 import os
 import pathlib
 import shutil
@@ -40,14 +41,37 @@ class SelfRefactorEngine:
         deepseek=None,
         nanda=None,
         test_cmd=None,
+        auto_apply: bool | None = None,
+        review_path: pathlib.Path | None = None,
     ) -> None:
         self.repo_root = pathlib.Path(repo_root)
- 
+
         self.llm = llm or llm_registry.get_active()
         self.deepseek = deepseek or llm_registry.get_active()
- 
+
         self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
         self.test_cmd = test_cmd or ["pytest", "-q"]
+
+        env_auto = os.getenv("SRE_AUTO_APPLY", "false").lower() == "true"
+        self.auto_apply = auto_apply if auto_apply is not None else env_auto
+
+        env_review = os.getenv("SRE_REVIEW_PATH")
+        self.review_path = (
+            pathlib.Path(env_review)
+            if env_review
+            else self.repo_root / "self_refactor_review"
+        )
+
+    def _store_review(self, report: PatchReport) -> None:
+        """Persist patches and test results for manual review."""
+        ts = time.strftime("%Y%m%d%H%M%S")
+        review_dir = self.review_path / ts
+        review_dir.mkdir(parents=True, exist_ok=True)
+        for file_str, patch in report.patches.items():
+            (review_dir / pathlib.Path(file_str).name).write_text(patch)
+        (review_dir / "report.json").write_text(
+            json.dumps(dict(report), indent=2)
+        )
 
     def _generate(self, prompt: str) -> str:
         if hasattr(self.llm, "generate_text"):
@@ -118,11 +142,17 @@ class SelfRefactorEngine:
             log_utils.record_report(report)
         except Exception:
             pass
+        try:
+            self._store_review(report)
+        except Exception:
+            pass
         return report
 
     def reinforce(self, report: PatchReport) -> None:
         """Promote successful patches to the main repository."""
         if report.reward <= 0:
+            return
+        if not self.auto_apply:
             return
         for file_str, patch in report.patches.items():
             target = self.repo_root / file_str
