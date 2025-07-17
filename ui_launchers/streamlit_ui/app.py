@@ -6,12 +6,13 @@ Kari Streamlit UI Entrypoint
 
 import streamlit as st
 from helpers.session import get_user_context
-from config.routing import PAGE_MAP
+from config.routing import DEFAULT_PAGE, PAGE_MAP
 from helpers.icons import ICONS
 from ui_logic.themes.theme_manager import (
     apply_default_theme,
     render_theme_switcher,
 )
+
 
 def render_sidebar(page: str, user_ctx) -> str:
     """Render primary and secondary navigation sidebar."""
@@ -65,11 +66,12 @@ def main():
     user_ctx = get_user_context()
     inject_theme(user_ctx)
 
-    current_page = st.experimental_get_query_params().get("page", ["Home"])[0]
+    current_page = st.experimental_get_query_params().get("page", [DEFAULT_PAGE])[0]
     page = render_sidebar(current_page, user_ctx)
     st.experimental_set_query_params(page=page)
 
     PAGE_MAP[page](user_ctx=user_ctx)
+
 
 if __name__ == "__main__":
     main()
