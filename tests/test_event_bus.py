@@ -1,53 +1,70 @@
 import types
+import importlib
+import pytest
 
 import ai_karen_engine.event_bus as eb
-
+from ai_karen_engine.config.config_manager import config_manager
 
 class FakeRedisClient:
     def __init__(self):
-        self.stream = []
+        self.storage = []
 
-    def xadd(self, stream, data):
-        eid = f"{len(self.stream)+1}-0"
-        self.stream.append((eid, data))
-        return eid
+    def rpush(self, key, val):
+        self.storage.append(val)
 
-    def xrange(self, stream, min='-', max='+'):
-        return list(self.stream)
+    def lrange(self, key, start, end):
+        if end == -1:
+            end = len(self.storage) - 1
+        return self.storage[start:end+1]
 
-    def delete(self, stream):
-        self.stream = []
-
-
-def reset(bus_module):
-    bus_module._global_bus = None
+    def delete(self, key):
+        self.storage.clear()
 
 
-def test_memory_bus(monkeypatch):
-    monkeypatch.setattr(eb.config_manager, "get_config_value", lambda k, default=None: "memory")
-    reset(eb)
+def reset_bus():
+    eb._global_bus = None
+
+
+def test_in_memory_bus(monkeypatch):
+    # force memory backend
+    monkeypatch.setattr(config_manager, "get_config_value", lambda section, key, default=None: "memory")
+    reset_bus()
     bus = eb.get_event_bus()
     assert isinstance(bus, eb.EventBus)
-    eid = bus.publish("caps", "ping", {"a": 1})
+
+    eid = bus.publish("caps", "test", {"a": 1})
     events = bus.consume()
-    assert events and events[0].id == eid
+    assert len(events) == 1
+    assert events[0].id == eid
+    assert events[0].capsule == "caps"
+    assert events[0].payload == {"a": 1}
 
 
 def test_redis_bus(monkeypatch):
-    monkeypatch.setattr(eb.config_manager, "get_config_value", lambda k, default=None: "redis")
-    fake_mod = types.SimpleNamespace(Redis=lambda: FakeRedisClient())
-    monkeypatch.setattr(eb, "redis", fake_mod)
-    reset(eb)
+    # force redis backend
+    monkeypatch.setattr(config_manager, "get_config_value", lambda section, key, default=None: "redis")
+    # stub redis module
+    fake_client = FakeRedisClient()
+    fake_redis_module = types.SimpleNamespace(from_url=lambda url: fake_client, Redis=lambda: fake_client)
+    monkeypatch.setattr(eb, "redis", fake_redis_module)
+
+    reset_bus()
     bus = eb.get_event_bus()
     assert isinstance(bus, eb.RedisEventBus)
-    bus.publish("c", "t", {"x": 2})
+
+    eid = bus.publish("caps", "ping", {"x": 2})
     events = bus.consume()
-    assert events and events[0].capsule == "c"
+    assert len(events) == 1
+    assert events[0].id == eid
+    assert events[0].capsule == "caps"
+    assert events[0].payload == {"x": 2}
 
 
-def test_redis_fallback(monkeypatch):
-    monkeypatch.setattr(eb.config_manager, "get_config_value", lambda k, default=None: "redis")
+def test_redis_fallback_to_memory(monkeypatch):
+    # force redis backend but remove redis dependency
+    monkeypatch.setattr(config_manager, "get_config_value", lambda section, key, default=None: "redis")
     monkeypatch.setattr(eb, "redis", None)
-    reset(eb)
+
+    reset_bus()
     bus = eb.get_event_bus()
     assert isinstance(bus, eb.EventBus)
