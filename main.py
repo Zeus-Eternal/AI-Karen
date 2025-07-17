@@ -11,6 +11,7 @@ from ai_karen_engine.core.plugin_registry import _METRICS as PLUGIN_METRICS
 from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS
 from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 from ai_karen_engine.core.memory.manager import init_memory
+from ai_karen_engine.utils.auth import validate_session
 
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.stderr.write(
@@ -55,6 +56,7 @@ from ai_karen_engine.integrations.model_discovery import sync_registry
 from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
 from ai_karen_engine.plugin_router import get_plugin_router
 from ai_karen_engine.api_routes.auth import router as auth_router
+from ai_karen_engine.utils.auth import validate_session
 
 app = FastAPI()
 app.include_router(auth_router)
@@ -135,9 +137,30 @@ else:
     async def record_metrics(request: Request, call_next):
         return await call_next(request)
 
+TENANT_HEADER = "X-Tenant-ID"
+PUBLIC_PATHS = {"/ping", "/health", "/ready", "/metrics", "/metrics/prometheus", "/"}
+
+if hasattr(app, "middleware"):
+    @app.middleware("http")
+    async def require_tenant(request: Request, call_next):
+        if request.url.path not in PUBLIC_PATHS:
+            tenant = request.headers.get(TENANT_HEADER)
+            if not tenant:
+                auth = request.headers.get("authorization")
+                if auth and auth.lower().startswith("bearer "):
+                    token = auth.split(None, 1)[1]
+                    ctx = validate_session(token, request.headers.get("user-agent", ""), request.client.host)
+                    tenant = ctx.get("tenant_id") if ctx else None
+            if not tenant:
+                return JSONResponse(status_code=400, content={"detail": "tenant_id required"})
+            request.state.tenant_id = tenant
+        return await call_next(request)
+else:
+    async def require_tenant(request: Request, call_next):
+        return await call_next(request)
+
 class ChatRequest(BaseModel):
     text: str
-    role: str = "user"
 
 class ChatResponse(BaseModel):
     intent: str
@@ -218,12 +241,18 @@ def reload_plugins():
     return {"reloaded": True}
 
 @app.post("/chat")
-async def chat(req: ChatRequest) -> ChatResponse:
-    role = getattr(req, "role", "user")
-    if role not in {"user", "admin"}:
-        raise HTTPException(status_code=403, detail="invalid role")
+async def chat(req: ChatRequest, request: Request) -> ChatResponse:
+    auth = request.headers.get("authorization")
+    if not auth or not auth.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing token")
+    token = auth.split(None, 1)[1]
+    ctx = validate_session(token, request.headers.get("user-agent", ""), request.client.host)
+    if not ctx:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    role = "admin" if "admin" in ctx.get("roles", []) else "user"
+    user_ctx = {"user_id": ctx["sub"], "roles": ctx.get("roles", []), "tenant_id": ctx.get("tenant_id")}
     try:
-        data = await dispatch(req.text, role=role)
+        data = await dispatch(user_ctx, req.text, role=role)
     except Exception as exc:
         import traceback
         traceback.print_exc()
