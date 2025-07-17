@@ -5,16 +5,16 @@ Kari Chat Panel (Evil Twin Enterprise Version)
 """
 
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 import time
 import uuid
 
 def _auto_refresh(interval: int = 1000, key: str = "chat_refresh") -> None:
-    """Lightweight auto-refresh using experimental_rerun."""
-    now = int(time.time() * 1000)
-    last = st.session_state.get(key, now)
-    if now - last >= interval:
-        st.session_state[key] = now
-        st.experimental_rerun()
+    """Refresh the page at the given interval only on the chat page."""
+    params = st.experimental_get_query_params()
+    current_page = params.get("page", [""])[0]
+    if current_page == "chat":
+        st_autorefresh(interval=interval, key=key)
 from ui_logic.hooks.rbac import user_has_role
 from ui_logic.utils.api import fetch_user_profile
 from ui_logic.components.analytics.chart_builder import render_quick_charts
