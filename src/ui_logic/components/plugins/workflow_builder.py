@@ -17,7 +17,7 @@ from ui_logic.utils.api import (
 def get_workflows(user_ctx: Dict) -> List[Dict]:
     if not user_ctx or not require_roles(user_ctx, ["user", "admin", "developer"]):
         raise PermissionError("Insufficient privileges to view workflows.")
-    return fetch_user_workflows(user_ctx["user_id"])
+    return fetch_user_workflows()
 
 def create_new_workflow(user_ctx: Dict, workflow: Dict) -> bool:
     if not user_ctx or not require_roles(user_ctx, ["admin", "developer"]):

@@ -32,3 +32,11 @@ def put(*args, **kwargs):
 
 def delete(*args, **kwargs):
     return Response()
+
+
+def request(method, *args, **kwargs):
+    method = method.lower()
+    func = globals().get(method)
+    if func:
+        return func(*args, **kwargs)
+    return Response()

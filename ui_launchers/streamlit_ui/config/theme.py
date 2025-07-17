@@ -5,7 +5,6 @@ import importlib.resources
 import os
 from pathlib import Path
 
-import os
 import streamlit as st
 
 THEME_DIR = Path(__file__).resolve().parents[1] / "styles"
@@ -62,6 +61,23 @@ def apply_theme(theme: str = "light") -> None:
     if css:
         st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
+def get_current_theme() -> str:
+    """Return theme from query params or the default theme."""
+    params = st.experimental_get_query_params()
+    return params.get("theme", [get_default_theme()])[0]
+
+
+def set_theme_param(theme: str) -> None:
+    """Persist the chosen theme in query params."""
+    params = st.experimental_get_query_params()
+    params["theme"] = theme
+    st.experimental_set_query_params(**params)
+
+
+def apply_default_theme() -> None:
+    """Apply the theme resolved from :func:`get_current_theme`."""
+    apply_theme(get_current_theme())
+
 def available_themes() -> list[str]:
     """Return a list of theme names available in the style directory."""
     return [p.stem for p in THEME_DIR.glob("*.css")]
@@ -75,6 +91,8 @@ def get_default_theme() -> str:
 __all__ = [
     "load_css",
     "apply_theme",
+    "get_current_theme",
+    "set_theme_param",
     "available_themes",
     "theme_exists",
     "get_default_theme",

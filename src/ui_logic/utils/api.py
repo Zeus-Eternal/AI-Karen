@@ -10,12 +10,7 @@ import os
 import threading
 import time
 import requests
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 from typing import Any, Dict, List, Optional, Set, Union
 
 
@@ -134,14 +129,17 @@ def handle_response(resp: requests.Response) -> Any:
         raise RuntimeError(f"API error: {e.response.status_code} {e.response.text}")
 
         
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=0.5),
-    retry=retry_if_exception_type(requests.RequestException),
-)
 def _safe_request(method: str, url: str, **kwargs) -> requests.Response:
-    """Wrapper around ``requests`` with retry semantics."""
-    return requests.request(method, url, **kwargs)
+    """Wrapper around ``requests`` with simple retry semantics."""
+    attempts = 0
+    while True:
+        try:
+            return requests.request(method, url, **kwargs)
+        except requests.RequestException:
+            attempts += 1
+            if attempts >= 3:
+                raise
+            time.sleep(0.5 * attempts)
 def api_get(
     path: str,
     params: Optional[Dict[str, Any]] = None,
@@ -458,6 +456,10 @@ def fetch_user_profile(
         raise ValueError("user_id required")
     try:
         return api_get(f"users/{user_id}/profile", token=token, org=org)
+    except RuntimeError as ex:
+        if "404" in str(ex):
+            return {}
+        return {"error": str(ex), "success": False, "result": None}
     except Exception as ex:
         return {"error": str(ex), "success": False, "result": None}
 

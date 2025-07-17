@@ -19,23 +19,16 @@ from .design_tokens import COLORS
 from ui_logic.hooks.telemetry import telemetry_event
 
 def _theme_config_path() -> Path:
-    """Return the directory where theme CSS files reside."""
-    return Path(os.getenv("KARI_THEME_CONFIG", "src/ui/themes/"))
-
-def _audit_log_path() -> Path:
-    """Return the audit log file path."""
-    return Path(os.getenv("KARI_THEME_AUDIT_LOG", "/secure/logs/kari/theme_audit.log"))
-THEME_SIGNING_KEY = os.getenv("KARI_THEME_SIGNING_KEY", "change-me-to-secure-key")
-
-
-def _theme_config_path() -> Path:
     """Return directory containing theme CSS files."""
     default_dir = Path(__file__).parent
     return Path(os.getenv("KARI_THEME_CONFIG", str(default_dir)))
 
 
-def _audit_log_path() -> str:
-    return os.getenv("KARI_THEME_AUDIT_LOG", "/secure/logs/kari/theme_audit.log")
+def _audit_log_path() -> Path:
+    """Return the audit log file path."""
+    return Path(os.getenv("KARI_THEME_AUDIT_LOG", "/secure/logs/kari/theme_audit.log"))
+
+THEME_SIGNING_KEY = os.getenv("KARI_THEME_SIGNING_KEY", "change-me-to-secure-key")
 
 
 _theme_lock = threading.Lock()
