@@ -29,7 +29,7 @@ class DummySidebar:
 
 MODULE_PATH = (
     Path(__file__).resolve().parents[1]
-    / "ui/mobile_ui/mobile_components/persona_controls.py"
+    / "ui_launchers/streamlit_ui/components/persona_controls.py"
 )
 
 

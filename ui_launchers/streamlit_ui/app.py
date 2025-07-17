@@ -4,16 +4,16 @@ Kari Streamlit UI Entrypoint
 - Only UI layout, page router, session mgmt, and theme injection
 """
 
+import importlib.resources
 import streamlit as st
 from helpers.session import get_user_context
 from config.routing import PAGE_MAP
 
 # Theme injection (uses streamlit's built-in/theming with CSS from the repo)
 def inject_theme():
-    from pathlib import Path
-    # Resolve theme path relative to repo root to avoid missing file issues
-    theme_css = Path(__file__).resolve().parents[2] / "src" / "ui_logic" / "themes" / "light.css"
-    st.markdown(f"<style>{theme_css.read_text()}</style>", unsafe_allow_html=True)
+    """Inject the default theme CSS bundled with ``ui_logic``."""
+    css_path = importlib.resources.files("ui_logic.themes").joinpath("light.css")
+    st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
 
 def main():
     inject_theme()
