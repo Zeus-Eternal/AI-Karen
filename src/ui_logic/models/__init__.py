@@ -1,3 +1,3 @@
 __all__ = ["Announcement"]
 
-from .announcement import Announcement
+from ui_logic.models.announcement import Announcement

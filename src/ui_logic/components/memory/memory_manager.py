@@ -90,7 +90,7 @@ def reset_profile(user_id: str):
     require_user(user_id)
     duckdb.delete_profile(user_id)
     duckdb.delete_profile_history(user_id)
-    if milvus is not None:
+    if milvus:
         milvus.delete_persona_embedding(user_id)
     redis.flush_short_term(user_id)
     redis.flush_long_term(user_id)
@@ -104,6 +104,7 @@ def flush_long_term(user_id: str):
     """Flush Milvus/DuckDB-backed long-term memory for this user."""
     require_user(user_id)
     if milvus is not None:
+    if milvus:
         milvus.delete_persona_embedding(user_id)
     duckdb.delete_long_term_memory(user_id)
 
@@ -112,7 +113,7 @@ def flush_long_term(user_id: str):
 def _reindex_persona_embedding(user_id: str):
     """Re-embed and reindex persona after profile update."""
     profile = duckdb.get_profile(user_id)
-    if profile and milvus is not None:
+    if profile and milvus:
         vec = milvus.embed_persona(profile)
         milvus.upsert_persona_embedding(user_id, vec)
 
