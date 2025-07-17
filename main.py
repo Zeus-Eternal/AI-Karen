@@ -6,7 +6,10 @@ import os
 from ai_karen_engine.core.cortex.dispatch import dispatch
 from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
 from ai_karen_engine.core.memory import manager as memory_manager
-from ai_karen_engine.core.plugin_registry import _METRICS as PLUGIN_METRICS
+from ai_karen_engine.core.plugin_registry import (
+    _METRICS as PLUGIN_METRICS,
+    load_plugins as reload_registry,
+)
 from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS
 from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 from ai_karen_engine.core.memory.manager import init_memory
@@ -53,6 +56,29 @@ from ai_karen_engine.integrations.llm_registry import registry as llm_registry
 from ai_karen_engine.integrations.model_discovery import sync_registry
 from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
 
+import json
+PLUGIN_DIR = Path(__file__).resolve().parent / "src" / "ai_karen_engine" / "plugins"
+PLUGIN_MAP: Dict[str, Path] = {}
+ENABLED_PLUGINS: set[str] = set()
+
+def _load_plugins() -> None:
+    PLUGIN_MAP.clear()
+    ENABLED_PLUGINS.clear()
+    for p in PLUGIN_DIR.iterdir():
+        mf = p / "plugin_manifest.json"
+        if mf.exists():
+            with open(mf, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            intents = data.get("intent")
+            if not intents:
+                continue
+            if isinstance(intents, str):
+                intents = [intents]
+            for intent in intents:
+                PLUGIN_MAP[intent] = p
+                ENABLED_PLUGINS.add(intent)
+    reload_registry()
+
 app = FastAPI()
 logger = logging.getLogger("kari")
 
@@ -60,6 +86,7 @@ logger = logging.getLogger("kari")
 async def _refresh_registry_on_start() -> None:
     init_memory()
     sync_registry()
+    _load_plugins()
     interval = int(os.getenv("LLM_REFRESH_INTERVAL", "0"))
     if interval > 0:
         async def _scheduled():
@@ -152,7 +179,7 @@ def ping():
 
 @app.get("/health")
 def health() -> Dict[str, Any]:
-    return {"status": "healthy"}
+    return {"status": "healthy", "plugins": list(ENABLED_PLUGINS)}
 
 @app.get("/ready")
 def ready() -> Dict[str, Any]:
@@ -162,8 +189,10 @@ def ready() -> Dict[str, Any]:
 async def chat(req: ChatRequest) -> ChatResponse:
     role = getattr(req, "role", "user")
     user_ctx = {"role": role}  # Expand as needed
+    if role not in {"user", "admin"}:
+        raise HTTPException(status_code=403, detail="forbidden")
     try:
-        data = dispatch(user_ctx, req.text)
+        data = await dispatch(req.text, role=role)
     except Exception as exc:
         import traceback
         traceback.print_exc()
@@ -228,6 +257,35 @@ def metrics_prometheus() -> Response:
         resp.media_type = CONTENT_TYPE_LATEST
         return resp
 
+@app.get("/plugins")
+def list_plugins() -> List[str]:
+    return [p for p in ENABLED_PLUGINS]
+
+@app.get("/plugins/{intent}")
+def get_plugin_manifest(intent: str):
+    path = PLUGIN_MAP.get(intent)
+    if not path:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+    with open(path / "plugin_manifest.json", "r", encoding="utf-8") as f:
+        return json.load(f)
+
+@app.post("/plugins/{intent}/disable")
+def disable_plugin(intent: str):
+    ENABLED_PLUGINS.discard(intent)
+    return {"status": "disabled"}
+
+@app.post("/plugins/{intent}/enable")
+def enable_plugin(intent: str):
+    if intent not in PLUGIN_MAP:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+    ENABLED_PLUGINS.add(intent)
+    return {"status": "enabled"}
+
+@app.post("/plugins/reload")
+def reload_plugins() -> Dict[str, Any]:
+    _load_plugins()
+    return {"status": "reloaded"}
+
 @app.get("/models")
 def list_models() -> ModelListResponse:
     models = list(llm_registry.list_models())
@@ -237,7 +295,7 @@ def list_models() -> ModelListResponse:
 def select_model(req: ModelSelectRequest) -> ModelListResponse:
     try:
         llm_registry.set_active(req.model)
-    except KeyError as exc:
+    except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     models = list(llm_registry.list_models())
     return ModelListResponse(models=models, active=llm_registry.active)

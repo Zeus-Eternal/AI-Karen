@@ -5,22 +5,16 @@ Kari Chat Panel (Evil Twin Enterprise Version)
 """
 
 import streamlit as st
+from streamlit.runtime.scriptrunner import RerunException
+from streamlit_autorefresh import st_autorefresh
 import time
 import uuid
 
-def _auto_refresh(interval: int = 1000, key: str = "chat_refresh") -> None:
-    """Lightweight auto-refresh using experimental_rerun."""
-    now = int(time.time() * 1000)
-    last = st.session_state.get(key, now)
-    if now - last >= interval:
-        st.session_state[key] = now
-        st.experimental_rerun()
+def rerun():
+    """DEBUGGER BOT NOTE: replace deprecated st.experimental_rerun."""
+    raise RerunException()
 from ui_logic.hooks.rbac import user_has_role
-from ui_logic.utils.api import (
-    fetch_user_profile, 
-    fetch_announcements,
-    ping_services,
-)
+from ui_logic.utils.api import fetch_user_profile
 from ui_logic.components.analytics.chart_builder import render_quick_charts
 from ui_logic.components.memory.session_explorer import render_session_explorer
 from ui_logic.components.plugins.plugin_manager import render_plugin_manager
@@ -92,20 +86,12 @@ def provider_model_select():
     evil_toast(f"Provider: {provider} | Model: {model}", "🧠")
 
 # ========== Announcements/Observability Panel ==========
-def sys_announce_panel():
-    st.markdown("#### Announcements & System Status")
-    announcements = fetch_announcements(limit=5)
-    for a in announcements:
-        st.info(f"[{a.get('timestamp','')}] {a.get('message','')}")
-    st.write("##### Service Health")
-    st.write(ping_services())
 
 # ========== Main Chat Logic ==========
 def chat_panel(user_ctx):
     st.title("💬 Kari Chat")
-    _auto_refresh()
+    count = st_autorefresh(interval=2000, limit=100, key="chat_refresh")
     get_context_state()
-    sys_announce_panel()
     st.sidebar.header("Session Controls")
     provider_model_select()
     role_switcher(user_ctx)
@@ -170,7 +156,7 @@ def chat_panel(user_ctx):
                 st.session_state["chat_history"].append({"role": "kari", "text": err, "ts": time.time()})
                 evil_toast("LLM error. Check backend.", "💀")
                 st.error(err)
-            st.experimental_rerun()
+            rerun()
 
     st.caption("Twin Mode: All interactions are audit-logged. All glory to Kari.")
 

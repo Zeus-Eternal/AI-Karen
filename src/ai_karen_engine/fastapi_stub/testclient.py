@@ -7,6 +7,11 @@ class TestClient:
 
     def __init__(self, app):
         self.app = app
+        for fn in getattr(app, "_startup", []):
+            if asyncio.iscoroutinefunction(fn):
+                asyncio.run(fn())
+            else:
+                fn()
 
     def post(self, path, json=None):
         data = asyncio.run(self.app("POST", path, json))

@@ -3,8 +3,23 @@ import importlib
 import os
 import sys
 import types
+from pathlib import Path
+
+# Ensure repo src directory is on the Python path for tests
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_PATH = REPO_ROOT / "src"
+for p in (str(SRC_PATH), str(REPO_ROOT)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 sys.modules.setdefault("requests", importlib.import_module("tests.stubs.requests"))
 sys.modules.setdefault("tenacity", importlib.import_module("tests.stubs.tenacity"))
+sys.modules.setdefault("numpy", importlib.import_module("tests.stubs.numpy"))
+sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
+sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
+sys.modules.setdefault("cryptography", importlib.import_module("tests.stubs.cryptography"))
+sys.modules.setdefault("cryptography.fernet", importlib.import_module("tests.stubs.cryptography.fernet"))
+sys.modules.setdefault("ollama", importlib.import_module("tests.stubs.ollama"))
+sys.modules.setdefault("streamlit_autorefresh", importlib.import_module("tests.stubs.streamlit_autorefresh"))
 pg_mod = importlib.import_module("tests.stubs.ai_karen_engine.clients.database.postgres_client")
 
 
@@ -53,7 +68,12 @@ cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 class CortexDispatcher:
     async def dispatch(self, query: str, **kwargs):
         if "hello" in query:
-            return {"intent": "greet", "response": "greet"}
+            return {
+                "intent": "greet",
+                "response": "Hey there! I'm Kari—your AI co-pilot. What can I help with today?",
+            }
+        if "why" in query:
+            return {"intent": "deep_reasoning", "response": "Because of entropy"}
         if "time" in query:
             return {"intent": "time_query", "response": "UTC"}
         return {"intent": "hf_generate", "response": query}

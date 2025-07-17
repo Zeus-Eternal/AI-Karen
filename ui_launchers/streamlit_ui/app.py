@@ -1,59 +1,32 @@
-"""
-Kari Streamlit UI Entrypoint
-- No business logic
-- Only UI layout, page router, session mgmt, and theme injection
-"""
+"""Kari Streamlit UI Entrypoint."""
 
 import streamlit as st
-from helpers.session import get_user_context
-from config.routing import PAGE_MAP
-from helpers.icons import ICONS
+from ui_launchers.streamlit_ui.helpers.session import get_user_context
+from ui_launchers.streamlit_ui.config.routing import PAGE_MAP
+from ui_launchers.streamlit_ui.helpers.icons import ICONS
 from ui_logic.themes.theme_manager import (
     apply_default_theme,
     render_theme_switcher,
 )
 
-def render_sidebar(page: str, user_ctx) -> str:
-    """Render primary and secondary navigation sidebar."""
-    st.sidebar.title("Kari AI")
-    st.sidebar.markdown("---")
+def render_sidebar(user_ctx) -> None:
+    """Primary and secondary navigation sidebar."""
+    st.sidebar.title("Navigation")
 
-    primary = {
-        "Chat": "chat",
-        "Home": "home",
-        "Memory": "memory",
-        "Analytics": "analytics",
-    }
-    secondary = {
-        "Plugins": "plugins",
-        "Settings": "settings",
-        "Admin": "admin",
-    }
+    primary = ["Home", "Chat", "Settings"]
+    secondary = ["Plugins", "Analytics", "Automation", "Admin"]
 
-    def label(name):
-        key = primary.get(name) or secondary.get(name)
-        return f"{ICONS.get(key, '')} {name}"
+    for p in primary:
+        if st.sidebar.button(p):
+            st.session_state["page"] = p
 
-    choice = st.sidebar.radio(
-        "Navigate",
-        list(primary.keys()),
-        index=list(primary.keys()).index(page) if page in primary else 0,
-        format_func=label,
-    )
     with st.sidebar.expander("More"):
-        more = st.radio(
-            "More",
-            list(secondary.keys()),
-            index=list(secondary.keys()).index(page) if page in secondary else 0,
-            format_func=label,
-            label_visibility="collapsed",
-        )
-        if more:
-            choice = more
+        for p in secondary:
+            if st.sidebar.button(p):
+                st.session_state["page"] = p
 
     st.sidebar.markdown("---")
     render_theme_switcher(user_ctx)
-    return choice
 
 
 def inject_theme(user_ctx):
@@ -64,26 +37,12 @@ def inject_theme(user_ctx):
 def main():
     user_ctx = get_user_context()
     inject_theme(user_ctx)
-    st.sidebar.title("Kari AI")
-    st.sidebar.markdown("---")
-
-    primary = ["Home", "Chat", "Memory", "Analytics"]
-    page = st.sidebar.radio("Navigate", primary, index=0)
-
-    with st.sidebar.expander("More Options"):
-        secondary = st.radio(
-            "", ["Plugins", "Models", "Admin"], key="nav_secondary"
-        )
-        if secondary:
-            page = secondary
-
-    st.sidebar.markdown("---")
-    
-    current_page = st.experimental_get_query_params().get("page", ["Home"])[0]
-    page = render_sidebar(current_page, user_ctx)
-    st.experimental_set_query_params(page=page)
-    
-    PAGE_MAP[page](user_ctx=user_ctx)
+    page = st.experimental_get_query_params().get("page", ["Home"])[0]
+    page = st.session_state.get("page", page)
+    render_sidebar(user_ctx)
+    st.experimental_set_query_params(page=st.session_state.get("page", page))
+    page = st.session_state.get("page", page)
+    PAGE_MAP.get(page, PAGE_MAP["Home"])(user_ctx=user_ctx)
 
 if __name__ == "__main__":
     main()

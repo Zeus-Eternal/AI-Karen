@@ -371,6 +371,14 @@ def ping_services(timeout: float = 2.0) -> dict:
     return status
 
 
+def fetch_system_status(token: Optional[str] = None, org: Optional[str] = None) -> Dict[str, Any]:
+    """DEBUGGER BOT NOTE: stub for system_status panel; queries /health or returns placeholder"""
+    try:
+        return api_get("health", token=token, org=org)
+    except Exception:
+        return {"status": "unknown", "detail": "health endpoint not available"}
+
+
 # ========================= ORG ADMIN (Multi-Org, Multi-Tenant) =========================
 
 _ORG_USERS: Dict[str, Set[str]] = {}
@@ -494,7 +502,7 @@ def fetch_user_workflows(
 ) -> List[Dict[str, Any]]:
     """Return workflows for the authenticated user or ``[]`` on error."""
     try:
-        return api_get("plugins/user_workflows", token=token, org=org)
+        return api_get("workflows", token=token, org=org)
     except Exception:
         return []
 
@@ -691,6 +699,7 @@ __all__ = [
     "api_list_plugins",
     "api_upload_file",
     "ping_services",
+    "fetch_system_status",
     # RBAC/Admin
     "fetch_user_roles",
     "update_user_roles",

@@ -116,7 +116,9 @@ class FastAPI:
         await send({"type": "http.response.body", "body": content})
 
 class Response:
-    def __init__(self, data, status_code=200, media_type=None, headers=None):
+    def __init__(self, data=None, status_code=200, media_type=None, headers=None, *, content=None):
+        if data is None and content is not None:
+            data = content
         self._data = data
         self.status_code = status_code
         self.headers = {"content-type": media_type or "application/json"}
@@ -145,6 +147,11 @@ class Request:
 class TestClient:
     def __init__(self, app):
         self.app = app
+        for fn in getattr(app, "_startup", []):
+            if asyncio.iscoroutinefunction(fn):
+                asyncio.run(fn())
+            else:
+                fn()
 
     def post(self, path, json=None):
         data = asyncio.run(self.app("POST", path, json))
