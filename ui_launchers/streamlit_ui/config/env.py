@@ -3,7 +3,16 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from distutils.util import strtobool
+try:
+    from distutils.util import strtobool  # deprecated on Python 3.12
+except Exception:  # pragma: no cover - fallback for environments without distutils
+    def strtobool(val: str) -> int:
+        val = val.lower()
+        if val in {"y", "yes", "t", "true", "on", "1"}:
+            return 1
+        if val in {"n", "no", "f", "false", "off", "0"}:
+            return 0
+        raise ValueError(f"invalid truth value {val!r}")
 
 
 def get_data_dir() -> str:
