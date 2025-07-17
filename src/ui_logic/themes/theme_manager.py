@@ -18,15 +18,23 @@ from .design_tokens import COLORS
 
 from ui_logic.hooks.telemetry import telemetry_event
 
-THEME_CONFIG_PATH = os.getenv("KARI_THEME_CONFIG", "src/ui/themes/")
-THEME_AUDIT_PATH = os.getenv("KARI_THEME_AUDIT_LOG", "/secure/logs/kari/theme_audit.log")
 THEME_SIGNING_KEY = os.getenv("KARI_THEME_SIGNING_KEY", "change-me-to-secure-key")
+
+
+def _theme_config_path() -> Path:
+    """Return directory containing theme CSS files."""
+    default_dir = Path(__file__).parent
+    return Path(os.getenv("KARI_THEME_CONFIG", str(default_dir)))
+
+
+def _audit_log_path() -> str:
+    return os.getenv("KARI_THEME_AUDIT_LOG", "/secure/logs/kari/theme_audit.log")
 
 
 _theme_lock = threading.Lock()
 
 def _audit_theme_event(event: Dict[str, Any]):
-    os.makedirs(os.path.dirname(THEME_AUDIT_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(_audit_log_path()), exist_ok=True)
     timestamp = int(time.time())
     payload = str(event) + str(timestamp)
     signature = hmac.new(THEME_SIGNING_KEY.encode(), payload.encode(), hashlib.sha512).hexdigest()
@@ -36,12 +44,12 @@ def _audit_theme_event(event: Dict[str, Any]):
         "signature": signature
     }
     with _theme_lock:
-        with open(THEME_AUDIT_PATH, "a") as f:
+        with open(_audit_log_path(), "a") as f:
             f.write(str(line) + "\n")
 
 def load_theme_css(theme_name: str) -> str:
     """Return raw CSS string for the given theme name."""
-    theme_file = Path(THEME_CONFIG_PATH) / f"{theme_name}.css"
+    theme_file = _theme_config_path() / f"{theme_name}.css"
     if theme_file.exists():
         with open(theme_file, "r") as f:
             return f.read()
@@ -59,7 +67,7 @@ def load_theme_css(theme_name: str) -> str:
 
 def get_available_themes() -> Dict[str, str]:
     """Discover all .css theme files in config dir"""
-    theme_dir = Path(THEME_CONFIG_PATH)
+    theme_dir = _theme_config_path()
     if not theme_dir.exists():
         raise FileNotFoundError("Theme config directory not found")
     return {f.stem: str(f) for f in theme_dir.glob("*.css")}

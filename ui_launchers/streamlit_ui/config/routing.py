@@ -10,16 +10,16 @@ from ui_logic.pages.iot import iot_page
 from ui_logic.pages.memory import memory_page
 from ui_logic.pages.admin import admin_page
 from ui_logic.pages.settings import settings_page
+from ui_logic.pages.settings import settings_page as models_page
 
 PAGE_MAP = {
     "Home": home_page,
     "Chat": chat_page,
+    "Memory": memory_page,
     "Analytics": analytics_page,
     "Plugins": plugins_page,
-    "IoT": iot_page,
-    "Memory": memory_page,
+    "Models": models_page,
     "Admin": admin_page,
-    "Settings": settings_page,
 }
 
 DEFAULT_PAGE = "Home"

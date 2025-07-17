@@ -37,3 +37,20 @@ def get_workflow_audit_trail(user_ctx: Dict, limit: int = 25):
     if not user_ctx or not require_roles(user_ctx, ["admin", "developer"]):
         raise PermissionError("Insufficient privileges for workflow audit.")
     return fetch_audit_logs(category="workflow", user_id=user_ctx["user_id"])[-limit:][::-1]
+
+
+def render_workflow_builder(user_ctx: Dict):
+    """Placeholder UI for the workflow builder."""
+    import streamlit as st
+    st.subheader("Workflow Builder")
+    st.info("Workflow builder under construction.")
+
+
+__all__ = [
+    "get_workflows",
+    "create_new_workflow",
+    "delete_existing_workflow",
+    "update_existing_workflow",
+    "get_workflow_audit_trail",
+    "render_workflow_builder",
+]
