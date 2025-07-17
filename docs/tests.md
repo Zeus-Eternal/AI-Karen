@@ -9,10 +9,11 @@ Kari includes a pytest suite that covers the core API, plugin router and SelfRef
 - **End-to-End** – store text and retrieve it via search to ensure the memory layer works.
 - **SaaS Tests** – validate tenant isolation and license enforcement.
 
-Run all tests:
+Run all tests (the `ai_karen_engine` sources live under `src/` so add it to
+`PYTHONPATH` when invoking pytest):
 
 ```bash
-pytest -q
+PYTHONPATH=src pytest -q
 ```
 
 Coverage should remain above 85% for core modules.
