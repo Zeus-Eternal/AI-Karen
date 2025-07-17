@@ -8,12 +8,13 @@ Kari CORTEX Dispatch Core
 
 from typing import Any, Dict, Optional, List
 from ai_karen_engine.core.cortex.intent import resolve_intent
-from ai_karen_engine.core.plugin_registry import plugin_registry, execute_plugin
+from ai_karen_engine.core.plugin_registry import plugin_registry
 from ai_karen_engine.core.memory.manager import recall_context, update_memory
+from ai_karen_engine.plugin_manager import get_plugin_manager
 from ai_karen_engine.core.cortex.errors import CortexDispatchError, UnsupportedIntentError
 from ai_karen_engine.core.predictors import predictor_registry, run_predictor
 
-def dispatch(
+async def dispatch(
     user_ctx: Dict[str, Any],
     query: str,
     mode: str = "auto",
@@ -60,7 +61,11 @@ def dispatch(
             handler = plugin_registry.get(intent)
             if handler is None:
                 raise UnsupportedIntentError(f"No plugin registered for intent '{intent}'")
-            result = execute_plugin(handler, user_ctx, query, context or memory_ctx)
+            result = await get_plugin_manager().run_plugin(
+                intent,
+                {"prompt": query, "context": context or memory_ctx},
+                user_ctx,
+            )
             trace.append({"stage": "plugin_executed", "plugin": intent})
 
         elif mode == "predictor" or (predictor_enabled and intent in predictor_registry):
@@ -82,8 +87,10 @@ def dispatch(
         else:
             raise UnsupportedIntentError(f"No handler for intent: {intent}")
 
-        # 4. Optionally update memory
-        if memory_enabled and result:
+        # 4. Optionally update memory for non-plugin paths
+        if memory_enabled and result and not (
+            mode == "plugin" or (plugin_enabled and intent in plugin_registry)
+        ):
             update_memory(user_ctx, query, result)
             trace.append({"stage": "memory_updated"})
 
