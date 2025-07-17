@@ -13,6 +13,7 @@ from types import ModuleType
 _METRICS: dict[str, int] = {
     "plugins_loaded": 0,
     "plugin_exec_total": 0,
+    "plugin_import_errors": 0,
 }
 
 try:
@@ -29,12 +30,18 @@ try:
         "Plugins discovered at startup",
         registry=PROM_REGISTRY,
     )
+    PLUGIN_IMPORT_ERROR_COUNT = Counter(
+        "plugin_import_errors",
+        "Plugin import failures",
+        ["plugin"],
+        registry=PROM_REGISTRY,
+    )
 except Exception:  # pragma: no cover - optional dep
     class _Dummy:
         def inc(self, n: int = 1) -> None:
             pass
 
-    PLUGIN_EXEC_COUNT = PLUGIN_LOADED_COUNT = _Dummy()
+    PLUGIN_EXEC_COUNT = PLUGIN_LOADED_COUNT = PLUGIN_IMPORT_ERROR_COUNT = _Dummy()
 
 PLUGIN_REGISTRY: dict[str, dict[str, ModuleType]] = {}
 
@@ -56,6 +63,8 @@ def _discover_plugins(base_pkg: str, type_label: str) -> dict[str, dict[str, Mod
             PLUGIN_LOADED_COUNT.inc()
         except Exception as ex:  # pragma: no cover - safety net
             print(f"Plugin load failed: {name} ({type_label}): {ex}")
+            _METRICS["plugin_import_errors"] += 1
+            PLUGIN_IMPORT_ERROR_COUNT.labels(plugin=name).inc()
     return plugins
 
 def load_plugins() -> dict[str, dict[str, ModuleType]]:
@@ -90,4 +99,10 @@ load_plugins()
 
 plugin_registry = PLUGIN_REGISTRY
 
-__all__ = ["plugin_registry", "execute_plugin", "load_plugins", "_METRICS"]
+__all__ = [
+    "plugin_registry",
+    "execute_plugin",
+    "load_plugins",
+    "_METRICS",
+    "PLUGIN_IMPORT_ERROR_COUNT",
+]
