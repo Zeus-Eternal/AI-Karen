@@ -487,14 +487,6 @@ def fetch_knowledge_graph(user_id: str = None, query: str = "") -> dict:
 
 # ====== PLUGINS ======
 
-def fetch_user_workflows(token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Return workflows for the authenticated user or ``[]`` on error."""
-    try:
-        return api_get("plugins/user_workflows", token=token, org=org)
-    except Exception:
-        return []
-
-
 def fetch_store_plugins(token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
     """Return plugin metadata from the store API or an empty list on error."""
     try:
@@ -509,7 +501,6 @@ def search_plugins(query: str, token: Optional[str] = None, org: Optional[str] =
         return api_get("plugins/search", params={"q": query}, token=token, org=org)
     except Exception:
         return []
-
 
 def create_workflow(user_id: str, workflow: Dict[str, Any], token: Optional[str] = None, org: Optional[str] = None) -> bool:
     """Create a new workflow for ``user_id``."""
@@ -541,6 +532,13 @@ def update_workflow(user_id: str, workflow_id: str, updates: Dict[str, Any], tok
         return True
     except Exception:
         return False
+      
+def fetch_user_workflows(token: Optional[str] = None, org: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return workflows for the current user or an empty list on error."""
+    try:
+        return api_get("plugins/user_workflows", token=token, org=org)
+    except Exception:
+        return []
 
 
 def list_plugins() -> list:
@@ -568,20 +566,6 @@ def disable_plugin(plugin_name: str) -> bool:
     return True
 
 
-def fetch_store_plugins() -> List[Dict[str, Any]]:
-    """Return a list of plugins available from the store."""
-    try:
-        return api_get("plugin-store")
-    except Exception:
-        return []
-
-
-def search_plugins(query: str) -> List[Dict[str, Any]]:
-    """Search the plugin store."""
-    try:
-        return api_get("plugin-store/search", params={"q": query})
-    except Exception:
-        return []
 
 
 # ========================= MEMORY ANALYTICS =========================
@@ -729,6 +713,9 @@ __all__ = [
     "uninstall_plugin",
     "enable_plugin",
     "disable_plugin",
+    "fetch_user_workflows",
+    "fetch_store_plugins",
+    "search_plugins",
     "fetch_memory_metrics",
     "fetch_memory_analytics",
     "fetch_session_memory",
