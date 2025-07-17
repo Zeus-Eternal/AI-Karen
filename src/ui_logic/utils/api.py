@@ -21,6 +21,8 @@ import requests
 
 from cachetools import TTLCache, cached
 
+from ui_logic.models.announcement import Announcement
+
 # ======= UI/API CONFIG =======
 API_BASE = os.getenv("KARI_API_BASE", "http://localhost:8000/api")
 TIMEOUT = float(os.getenv("KARI_API_TIMEOUT", "30"))
@@ -268,10 +270,13 @@ def fetch_audit_logs(
 @cached(_ann_cache)
 def fetch_announcements(
     limit: int = 10, token: Optional[str] = None, org: Optional[str] = None
-) -> Any:
-    """Return a list of announcements or an empty list if the endpoint is missing."""
+) -> List[Announcement]:
+    """Return a list of ``Announcement`` objects or an empty list if the endpoint is missing."""
     try:
-        return api_get("announcements", params={"limit": limit}, token=token, org=org)
+        data = api_get("announcements", params={"limit": limit}, token=token, org=org)
+        if not isinstance(data, list):
+            return []
+        return [Announcement.from_api(a) for a in data]
     except RuntimeError as e:  # 404 when endpoint isn't implemented
         if "404" in str(e):
             return []
