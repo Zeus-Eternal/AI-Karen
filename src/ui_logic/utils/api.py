@@ -10,6 +10,12 @@ import time
 import datetime
 import threading
 import requests
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 from typing import Any, Dict, List, Optional, Set, Union
 
 # ======= UI/API CONFIG =======
@@ -105,6 +111,16 @@ def handle_response(resp: requests.Response) -> Any:
     except requests.HTTPError as e:
         raise RuntimeError(f"API error: {e.response.status_code} {e.response.text}")
 
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=0.5),
+    retry=retry_if_exception_type(requests.RequestException),
+)
+def _safe_request(method: str, url: str, **kwargs) -> requests.Response:
+    """Wrapper around ``requests`` with retry semantics."""
+    return requests.request(method, url, **kwargs)
+
 def api_get(
     path: str,
     params: Optional[Dict[str, Any]] = None,
@@ -114,7 +130,13 @@ def api_get(
 ) -> Any:
     url = f"{API_BASE.rstrip('/')}/{path.lstrip('/')}"
     headers = get_auth_headers(token, org)
-    resp = requests.get(url, headers=headers, params=params, timeout=timeout or TIMEOUT)
+    resp = _safe_request(
+        "get",
+        url,
+        headers=headers,
+        params=params,
+        timeout=timeout or TIMEOUT,
+    )
     return handle_response(resp)
 
 def api_post(
@@ -129,12 +151,31 @@ def api_post(
     url = f"{API_BASE.rstrip('/')}/{path.lstrip('/')}"
     headers = get_auth_headers(token, org)
     if files:
-        resp = requests.post(url, headers=headers, files=files, data=data, timeout=timeout or TIMEOUT)
+        resp = _safe_request(
+            "post",
+            url,
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=timeout or TIMEOUT,
+        )
     else:
         if json:
-            resp = requests.post(url, headers=headers, json=data, timeout=timeout or TIMEOUT)
+            resp = _safe_request(
+                "post",
+                url,
+                headers=headers,
+                json=data,
+                timeout=timeout or TIMEOUT,
+            )
         else:
-            resp = requests.post(url, headers=headers, data=data, timeout=timeout or TIMEOUT)
+            resp = _safe_request(
+                "post",
+                url,
+                headers=headers,
+                data=data,
+                timeout=timeout or TIMEOUT,
+            )
     return handle_response(resp)
 
 def api_put(
@@ -148,9 +189,21 @@ def api_put(
     url = f"{API_BASE.rstrip('/')}/{path.lstrip('/')}"
     headers = get_auth_headers(token, org)
     if json:
-        resp = requests.put(url, headers=headers, json=data, timeout=timeout or TIMEOUT)
+        resp = _safe_request(
+            "put",
+            url,
+            headers=headers,
+            json=data,
+            timeout=timeout or TIMEOUT,
+        )
     else:
-        resp = requests.put(url, headers=headers, data=data, timeout=timeout or TIMEOUT)
+        resp = _safe_request(
+            "put",
+            url,
+            headers=headers,
+            data=data,
+            timeout=timeout or TIMEOUT,
+        )
     return handle_response(resp)
 
 def api_delete(
@@ -161,7 +214,12 @@ def api_delete(
 ) -> Any:
     url = f"{API_BASE.rstrip('/')}/{path.lstrip('/')}"
     headers = get_auth_headers(token, org)
-    resp = requests.delete(url, headers=headers, timeout=timeout or TIMEOUT)
+    resp = _safe_request(
+        "delete",
+        url,
+        headers=headers,
+        timeout=timeout or TIMEOUT,
+    )
     return handle_response(resp)
 
 # ======= HIGH-LEVEL UI LOGIC (AUDIT, PLUGIN, HEALTH, PING, ANNOUNCEMENTS) =======
@@ -255,7 +313,11 @@ def ping_services(timeout: float = 2.0) -> dict:
     llm_url = os.getenv("KARI_LLM_URL")
     if llm_url:
         try:
-            resp = requests.get(f"{llm_url.rstrip('/')}/health", timeout=timeout)
+            resp = _safe_request(
+                "get",
+                f"{llm_url.rstrip('/')}/health",
+                timeout=timeout,
+            )
             status["llm"] = "ok" if resp.status_code == 200 else f"error: {resp.status_code}"
         except Exception as ex:
             status["llm"] = f"error: {ex}"
