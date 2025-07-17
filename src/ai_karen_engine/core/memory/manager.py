@@ -12,6 +12,9 @@ import logging
 import json
 import threading
 
+from ai_karen_engine.core.neuro_vault import NeuroVault
+from ai_karen_engine.core.embedding_manager import record_metric
+
 # ========== Backend Imports ==========
 try:
     from ai_karen_engine.clients.database.milvus_client import (
@@ -144,15 +147,29 @@ pg_syncer = PostgresSyncer(postgres, duckdb_path) if postgres else None
 if pg_syncer:
     pg_syncer.start()
 
+# NeuroVault vector index
+neuro_vault = NeuroVault()
+
 # ====== Context Recall ======
 def recall_context(
     user_ctx: Dict[str, Any], query: str, limit: int = 10
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Recall the most relevant context for user/query from the memory stack.
-    Priority: Elastic > Milvus > Postgres > Redis > DuckDB
+    Priority: NeuroVault > Elastic > Milvus > Postgres > Redis > DuckDB
     """
     user_id = user_ctx.get("user_id") or "anonymous"
+
+    # 0. NeuroVault vector recall
+    try:
+        records = neuro_vault.query(user_id, query, top_k=limit)
+        if records:
+            logger.info(
+                f"[MemoryManager] NeuroVault recall: {len(records)} results for user {user_id}"
+            )
+            return records
+    except Exception as ex:
+        logger.warning(f"[MemoryManager] NeuroVault recall failed: {ex}")
 
     # 1. ElasticSearch (optional, semantic/keyword)
     if ElasticClient:
@@ -264,6 +281,12 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
     ok = False
     vector_id = None
     postgres_ok = False
+
+    # 0. NeuroVault index
+    try:
+        neuro_vault.index_text(user_id, query, {"result": result})
+    except Exception as ex:
+        logger.warning(f"[MemoryManager] NeuroVault index failed: {ex}")
 
     # 1. Milvus
     if store_vector:
