@@ -64,10 +64,11 @@ string values, but they must be set:
 | `KARI_MODEL_SIGNING_KEY` | Cryptographic key used by the LLM orchestrator to verify local models. **Required.** | `export KARI_MODEL_SIGNING_KEY=test-signing-key` |
 | `KARI_DUCKDB_PASSWORD` | Encryption password for the automation DuckDB database. **Required.** | `export KARI_DUCKDB_PASSWORD=test-duckdb` |
 | `KARI_JOB_SIGNING_KEY` | Signs automation tasks for integrity checks. **Required.** | `export KARI_JOB_SIGNING_KEY=test-job-key` |
+| `KARI_LOG_DIR` | Directory for Kari log files. Defaults to `$HOME/.kari/logs`. | `export KARI_LOG_DIR=$HOME/.kari/logs` |
 
-Other variables such as `KARI_MODEL_DIR` or UI branding options have sensible
-defaults and are optional. The above keys must be exported in your shell (or CI
-job) before running the API, Control Room, or `pytest`.
+Other variables such as `KARI_MODEL_DIR`, `KARI_LOG_DIR` or UI branding options
+have sensible defaults and are optional. The above keys must be exported in your
+shell (or CI job) before running the API, Control Room, or `pytest`.
 
 When running tests locally, prepend `PYTHONPATH=src` so the modules resolve
 correctly:

@@ -22,6 +22,18 @@ import traceback
 
 # === LOGGING: One Ring to Rule Them All ===
 def _resolve_log_path() -> Path:
+    env_dir = os.getenv("KARI_LOG_DIR")
+    if env_dir:
+        p = Path(env_dir)
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            log_file = p / "llm_orchestrator.log"
+            with open(log_file, "a"):
+                pass
+            return log_file
+        except Exception:
+            pass
+
     var_log = Path("/var/log/kari")
     try:
         var_log.mkdir(parents=True, exist_ok=True)
@@ -30,18 +42,11 @@ def _resolve_log_path() -> Path:
             pass
         return log_file
     except (PermissionError, OSError):
-        xdg_state = os.getenv("XDG_STATE_HOME")
-        if xdg_state:
-            user_log_dir = Path(xdg_state) / "kari"
-        else:
-            user_log_dir = Path.home() / ".kari" / "logs"
+        user_log_dir = Path.home() / ".kari" / "logs"
         user_log_dir.mkdir(parents=True, exist_ok=True)
         log_file = user_log_dir / "llm_orchestrator.log"
-        try:
-            with open(log_file, "a"):
-                pass
-        except Exception:
-            log_file = Path.cwd() / "llm_orchestrator.log"
+        with open(log_file, "a"):
+            pass
         return log_file
 
 LOG_FILE = _resolve_log_path()
