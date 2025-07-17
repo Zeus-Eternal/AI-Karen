@@ -59,6 +59,11 @@ _METRICS: Dict[str, int] = {
     "memory_recall_total": 0,
 }
 
+
+def get_metrics() -> Dict[str, int]:
+    """Return a copy of the current memory metrics."""
+    return dict(_METRICS)
+
 try:
     from prometheus_client import Counter
     from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
@@ -411,4 +416,10 @@ def update_memory(user_ctx: Dict[str, Any], query: str, result: Any) -> bool:
             f"[MemoryManager] FAILED to store memory for user {user_id} on all backends"
         )
     return ok
-__all__ = ["recall_context", "update_memory", "flush_duckdb_to_postgres", "_METRICS"]
+__all__ = [
+    "recall_context",
+    "update_memory",
+    "flush_duckdb_to_postgres",
+    "get_metrics",
+    "_METRICS",
+]
