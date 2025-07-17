@@ -6,6 +6,7 @@ import types
 sys.modules.setdefault("requests", importlib.import_module("tests.stubs.requests"))
 sys.modules.setdefault("tenacity", importlib.import_module("tests.stubs.tenacity"))
 pg_mod = importlib.import_module("tests.stubs.ai_karen_engine.clients.database.postgres_client")
+sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
 
 
 # Alias installed-style packages for tests
