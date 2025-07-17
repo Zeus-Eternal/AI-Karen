@@ -487,6 +487,13 @@ def fetch_knowledge_graph(user_id: str = None, query: str = "") -> dict:
     }
 
 
+def fetch_system_status() -> Dict[str, Any]:
+    """Return backend health data or a fallback."""
+    try:
+        return api_get("health")
+    except Exception:
+        return {"status": "unknown", "plugins": []}
+
 # ====== PLUGINS ======
 
 def fetch_user_workflows(
@@ -494,7 +501,7 @@ def fetch_user_workflows(
 ) -> List[Dict[str, Any]]:
     """Return workflows for the authenticated user or ``[]`` by default."""
     try:
-        return api_get("plugins/user_workflows", token=token, org=org)
+        return api_get("workflows", token=token, org=org)
     except Exception:
         return []
 
@@ -717,6 +724,7 @@ __all__ = [
     "fetch_user_profile",
     "save_user_profile",
     "fetch_knowledge_graph",
+    "fetch_system_status",
     # Plugins
     "fetch_user_workflows",
     "create_workflow",

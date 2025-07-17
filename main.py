@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 from pathlib import Path
 import sys
 import os
+import json
 
 from ai_karen_engine.core.cortex.dispatch import dispatch
 from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
@@ -52,6 +53,7 @@ import logging
 from ai_karen_engine.integrations.llm_registry import registry as llm_registry
 from ai_karen_engine.integrations.model_discovery import sync_registry
 from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
+from ai_karen_engine.plugin_router import get_plugin_router
 
 app = FastAPI()
 logger = logging.getLogger("kari")
@@ -59,6 +61,7 @@ logger = logging.getLogger("kari")
 @app.on_event("startup")
 async def _refresh_registry_on_start() -> None:
     init_memory()
+    _load_plugins()
     sync_registry()
     interval = int(os.getenv("LLM_REFRESH_INTERVAL", "0"))
     if interval > 0:
@@ -92,6 +95,32 @@ async def handle_unexpected(request: Request, exc: Exception):
     return JSONResponse({"detail": str(exc)}, status_code=500)
 
 engine = SoftReasoningEngine()
+
+PLUGIN_DIR = Path(__file__).resolve().parent / "src" / "ai_karen_engine" / "plugins"
+PLUGIN_MAP: Dict[str, Dict[str, Any]] = {}
+ENABLED_PLUGINS: set[str] = set()
+
+def _load_plugins() -> None:
+    PLUGIN_MAP.clear()
+    ENABLED_PLUGINS.clear()
+    if not PLUGIN_DIR.is_dir():
+        return
+    for p in PLUGIN_DIR.iterdir():
+        manifest_path = p / "plugin_manifest.json"
+        if not manifest_path.exists():
+            continue
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            intents = manifest.get("intent")
+            if isinstance(intents, str):
+                intents = [intents]
+            for intent in intents or []:
+                PLUGIN_MAP[intent] = manifest
+                ENABLED_PLUGINS.add(intent)
+        except Exception:
+            continue
+    get_plugin_router().reload()
 
 if hasattr(app, "middleware"):
     @app.middleware("http")
@@ -152,18 +181,47 @@ def ping():
 
 @app.get("/health")
 def health() -> Dict[str, Any]:
-    return {"status": "healthy"}
+    return {"status": "healthy", "plugins": sorted(ENABLED_PLUGINS)}
 
 @app.get("/ready")
 def ready() -> Dict[str, Any]:
     return {"ready": True}
 
+@app.get("/plugins")
+def list_plugins() -> List[str]:
+    return sorted(ENABLED_PLUGINS)
+
+@app.get("/plugins/{intent}")
+def get_plugin(intent: str):
+    manifest = PLUGIN_MAP.get(intent)
+    if not manifest:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+    return manifest
+
+@app.post("/plugins/{intent}/disable")
+def disable_plugin(intent: str):
+    ENABLED_PLUGINS.discard(intent)
+    return {"status": "disabled"}
+
+@app.post("/plugins/{intent}/enable")
+def enable_plugin(intent: str):
+    if intent in PLUGIN_MAP:
+        ENABLED_PLUGINS.add(intent)
+        return {"status": "enabled"}
+    raise HTTPException(status_code=404, detail="Plugin not found")
+
+@app.post("/plugins/reload")
+def reload_plugins():
+    _load_plugins()
+    return {"reloaded": True}
+
 @app.post("/chat")
 async def chat(req: ChatRequest) -> ChatResponse:
     role = getattr(req, "role", "user")
-    user_ctx = {"role": role}  # Expand as needed
+    if role not in {"user", "admin"}:
+        raise HTTPException(status_code=403, detail="invalid role")
     try:
-        data = dispatch(user_ctx, req.text)
+        data = await dispatch(req.text, role=role)
     except Exception as exc:
         import traceback
         traceback.print_exc()

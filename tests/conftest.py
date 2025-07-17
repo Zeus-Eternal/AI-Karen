@@ -5,33 +5,19 @@ import sys
 import types
 from pathlib import Path
 
-try:
-    import ai_karen_engine  # noqa: F401
-except Exception:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.modules.setdefault("requests", importlib.import_module("tests.stubs.requests"))
 sys.modules.setdefault("tenacity", importlib.import_module("tests.stubs.tenacity"))
 pg_mod = importlib.import_module("tests.stubs.ai_karen_engine.clients.database.postgres_client")
 
-try:  # Optional dependency
-    import duckdb  # type: ignore
-except Exception:
-    sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
-
-try:  # Optional dependency
-    import numpy  # type: ignore
-except Exception:
-    sys.modules.setdefault("numpy", importlib.import_module("tests.stubs.numpy"))
-
-try:  # Optional dependency
-    import pyautogui  # type: ignore
-except Exception:
-    sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
-
-try:  # Optional dependency
-    import cryptography  # type: ignore
-except Exception:
-    sys.modules.setdefault("cryptography", importlib.import_module("tests.stubs.cryptography"))
+sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
+sys.modules.setdefault("numpy", importlib.import_module("tests.stubs.numpy"))
+sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
+sys.modules.setdefault("cryptography", importlib.import_module("tests.stubs.cryptography"))
+sys.modules.setdefault("ollama", importlib.import_module("tests.stubs.ollama"))
+sys.modules.setdefault(
+    "streamlit_autorefresh", importlib.import_module("tests.stubs.streamlit_autorefresh")
+)
 
 
 # Alias installed-style packages for tests
@@ -65,24 +51,29 @@ class LLMOrchestrator:
 llm_stub.LLMOrchestrator = LLMOrchestrator
 sys.modules.setdefault("ai_karen_engine.llm_orchestrator", llm_stub)
 
-class TestPostgresClient(pg_mod.PostgresClient):
-    def __init__(self, dsn: str = "sqlite:///:memory:", use_sqlite: bool = True) -> None:
-        super().__init__(dsn=dsn, use_sqlite=use_sqlite)
-
-pg_mod.PostgresClient = TestPostgresClient  # type: ignore
-
 # Provide lightweight stubs for modules missing in the test environment
 cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 
 cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
 
 class CortexDispatcher:
-    async def dispatch(self, query: str, **kwargs):
-        if "hello" in query:
-            return {"intent": "greet", "response": "greet"}
-        if "time" in query:
-            return {"intent": "time_query", "response": "UTC"}
-        return {"intent": "hf_generate", "response": query}
+    async def dispatch(self, query: str, role: str = "user", **_):
+        text = query.lower()
+        if "hello" in text:
+            return {
+                "intent": "greet",
+                "confidence": 0.9,
+                "response": "Hey there! I'm Kari—your AI co-pilot. What can I help with today?",
+            }
+        if text.startswith("why") or "why" in text:
+            return {
+                "intent": "deep_reasoning",
+                "confidence": 0.8,
+                "response": "Because of entropy and other mysterious forces.",
+            }
+        if "time" in text:
+            return {"intent": "time_query", "confidence": 0.8, "response": "UTC"}
+        return {"intent": "hf_generate", "confidence": 0.5, "response": query}
 
 cortex_stub.CortexDispatcher = CortexDispatcher
 cortex_stub.dispatch = lambda *a, **k: CortexDispatcher().dispatch(*a, **k)
