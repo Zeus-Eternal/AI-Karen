@@ -69,7 +69,9 @@ def _verify_token(token: str) -> Optional[dict]:
         return None
 
 
-def create_session(user_id: str, roles: List[str], user_agent: str, ip: str) -> str:
+def create_session(
+    user_id: str, roles: List[str], user_agent: str, ip: str, tenant_id: str
+) -> str:
     """Create a session JWT token (device-bound, time-limited)."""
     now = int(time.time())
     payload = {
@@ -78,6 +80,7 @@ def create_session(user_id: str, roles: List[str], user_agent: str, ip: str) -> 
         "exp": now + SESSION_DURATION,
         "iat": now,
         "device": _device_fingerprint(user_agent, ip),
+        "tenant_id": tenant_id,
     }
     return _sign_token(payload)
 

@@ -11,6 +11,7 @@ from ai_karen_engine.core.plugin_registry import _METRICS as PLUGIN_METRICS
 from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS
 from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 from ai_karen_engine.core.memory.manager import init_memory
+from ai_karen_engine.utils.auth import validate_session
 
 if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.stderr.write(
@@ -134,6 +135,28 @@ if hasattr(app, "middleware"):
         return response
 else:
     async def record_metrics(request: Request, call_next):
+        return await call_next(request)
+
+TENANT_HEADER = "X-Tenant-ID"
+PUBLIC_PATHS = {"/ping", "/health", "/ready", "/metrics", "/metrics/prometheus", "/"}
+
+if hasattr(app, "middleware"):
+    @app.middleware("http")
+    async def require_tenant(request: Request, call_next):
+        if request.url.path not in PUBLIC_PATHS:
+            tenant = request.headers.get(TENANT_HEADER)
+            if not tenant:
+                auth = request.headers.get("authorization")
+                if auth and auth.lower().startswith("bearer "):
+                    token = auth.split(None, 1)[1]
+                    ctx = validate_session(token, request.headers.get("user-agent", ""), request.client.host)
+                    tenant = ctx.get("tenant_id") if ctx else None
+            if not tenant:
+                return JSONResponse(status_code=400, content={"detail": "tenant_id required"})
+            request.state.tenant_id = tenant
+        return await call_next(request)
+else:
+    async def require_tenant(request: Request, call_next):
         return await call_next(request)
 
 class ChatRequest(BaseModel):

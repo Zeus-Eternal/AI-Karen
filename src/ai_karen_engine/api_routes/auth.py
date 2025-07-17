@@ -37,7 +37,14 @@ async def login(req: LoginRequest, request: Request) -> LoginResponse:
     user = _USERS.get(req.username)
     if not user or user["password"] != req.password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    token = create_session(req.username, user["roles"], request.headers.get("user-agent", ""), request.client.host)
+    tenant_id = request.headers.get("X-Tenant-ID", "default")
+    token = create_session(
+        req.username,
+        user["roles"],
+        request.headers.get("user-agent", ""),
+        request.client.host,
+        tenant_id,
+    )
     return LoginResponse(token=token, user_id=req.username, roles=user["roles"])
 
 
