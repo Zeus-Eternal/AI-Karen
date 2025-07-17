@@ -4,7 +4,18 @@ class RetryError(Exception):
 
 def retry(*dargs, **dkwargs):
     def decorator(fn):
-        return fn
+        def wrapped(*args, **kwargs):
+            attempts = 0
+            max_attempts = 3
+            while True:
+                try:
+                    return fn(*args, **kwargs)
+                except Exception:
+                    attempts += 1
+                    if attempts >= max_attempts:
+                        raise
+                    nap(0)
+        return wrapped
     return decorator
 
 

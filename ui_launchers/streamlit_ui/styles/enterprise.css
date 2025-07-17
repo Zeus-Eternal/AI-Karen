@@ -1,9 +1,15 @@
+/* Basic enterprise theme */
+:root {
+    --background: #0b0c10;
+    --surface: #101215;
+    --accent: #5cdb95;
+    --text: #f8f8f2;
+}
 body {
-    background-color: #0b0c10;
-    color: #f8f8f2;
+    background: var(--surface);
+    color: var(--text);
 }
 .stButton>button {
-    background-color: #5cdb95;
+    background-color: var(--accent);
     color: black;
 }
-

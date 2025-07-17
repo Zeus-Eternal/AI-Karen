@@ -60,7 +60,7 @@ def apply_theme(theme: str = "light") -> None:
     css = load_css(theme)
     if css:
         st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-
+        
 def get_current_theme() -> str:
     """Return theme from query params or the default theme."""
     params = st.experimental_get_query_params()
@@ -82,10 +82,9 @@ def available_themes() -> list[str]:
     """Return a list of theme names available in the style directory."""
     return [p.stem for p in THEME_DIR.glob("*.css")]
 
-
-def get_default_theme() -> str:
-    """Return the default theme name from env or 'light'."""
-    return os.getenv("KARI_DEFAULT_THEME", "light")
+def apply_default_theme() -> None:
+    """Apply the UI theme configured in ``KARI_UI_THEME``."""
+    apply_theme(get_default_theme())
 
 
 __all__ = [

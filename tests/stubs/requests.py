@@ -36,7 +36,12 @@ def delete(*args, **kwargs):
 
 def request(method, *args, **kwargs):
     method = method.lower()
-    func = globals().get(method)
-    if func:
-        return func(*args, **kwargs)
+    if method == "get":
+        return get(*args, **kwargs)
+    if method == "post":
+        return post(*args, **kwargs)
+    if method == "put":
+        return put(*args, **kwargs)
+    if method == "delete":
+        return delete(*args, **kwargs)
     return Response()
