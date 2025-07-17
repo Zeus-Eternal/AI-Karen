@@ -69,7 +69,7 @@ async def dispatch(
                 {"prompt": query, "context": context or memory_ctx},
                 user_ctx,
             )
-                raise UnsupportedIntentError(
+            raise UnsupportedIntentError(
                     f"No plugin registered for intent '{intent}'"
                 )
             try:

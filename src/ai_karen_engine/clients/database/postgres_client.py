@@ -1,184 +1,230 @@
-"""PostgresClient: persistent store for user and session metadata.
+import os
+import sys
+import importlib
+import logging
+import traceback
+import json
+from pathlib import Path
+from typing import Dict, Any, List, Optional, Callable
 
-This client wraps psycopg for real Postgres usage but can fall back to
-an in-memory SQLite database for tests or local development.
-"""
+import streamlit as st
+from ui_logic.hooks.rbac import require_roles
+from ui_logic.utils.api import (
+    list_plugins,
+    install_plugin,
+    uninstall_plugin,
+    enable_plugin,
+    disable_plugin,
+    fetch_audit_logs,
+)
 
-from __future__ import annotations
+PLUGIN_DIR = Path(__file__).resolve().parent.parent / "plugins"
 
-import threading
-import time
-from typing import Any, Dict, List, Optional
+DEFAULT_PLUGIN_SCHEMA = {
+    "name": str,
+    "description": str,
+    "version": str,
+    "prompt_file": str,
+    "handler_file": str,
+    "enabled": bool,
+    "rbac": dict,
+}
 
-try:
-    import psycopg
-except Exception:  # pragma: no cover - library optional
-    psycopg = None
+class PluginManagerError(Exception):
+    pass
 
-import sqlite3
+class PluginManifestError(PluginManagerError):
+    pass
 
+class PluginValidationError(PluginManagerError):
+    pass
 
-class PostgresClient:
+class PluginRBACError(PluginManagerError):
+    pass
+
+class PluginAuditLogger(logging.LoggerAdapter):
+    """Plugin-level audit logger with auto-correlation ID."""
+    def process(self, msg, kwargs):
+        cid = kwargs.pop("correlation_id", None)
+        prefix = f"[cid={cid}] " if cid else ""
+        return prefix + msg, kwargs
+
+class PluginManager:
     def __init__(
         self,
-        dsn: str = "postgresql://localhost/kari",
-        use_sqlite: bool = False,
-    ) -> None:
-        self.dsn = dsn
-        self.use_sqlite = use_sqlite or dsn.startswith("sqlite://") or psycopg is None
-        self._lock = threading.Lock()
-        self._connect()
-        self._ensure_tables()
-
-    # --- connection helpers -------------------------------------------------
-    def _connect(self) -> None:
-        if self.use_sqlite:
-            path = self.dsn.replace("sqlite://", "") if self.dsn else ":memory:"
-            self.conn = sqlite3.connect(path, check_same_thread=False)
-            self.placeholder = "?"
-        else:
-            self.conn = psycopg.connect(self.dsn)
-            self.placeholder = "%s"
-        if self.use_sqlite:
-            self.conn.execute("PRAGMA journal_mode=WAL")
-
-    def _execute(self, sql: str, params: Optional[List[Any]] = None, fetch: bool = False):
-        with self._lock:
-            cur = self.conn.cursor()
-            cur.execute(sql, params or [])
-            res = cur.fetchall() if fetch else None
-            self.conn.commit()
-            cur.close()
-        return res
-
-    def _ensure_tables(self) -> None:
-        if self.use_sqlite:
-            sql = (
-                "CREATE TABLE IF NOT EXISTS memory ("
-                "vector_id INTEGER PRIMARY KEY,"
-                "user_id TEXT,"
-                "session_id TEXT,"
-                "query TEXT,"
-                "result TEXT,"
-                "timestamp INTEGER"
-                ")"
-            )
-        else:
-            sql = (
-                "CREATE TABLE IF NOT EXISTS memory ("
-                "vector_id INTEGER PRIMARY KEY,"
-                "user_id VARCHAR,"
-                "session_id VARCHAR,"
-                "query TEXT,"
-                "result TEXT,"
-                "timestamp BIGINT"
-                ")"
-            )
-        self._execute(sql)
-
-    # --- CRUD ---------------------------------------------------------------
-    def upsert_memory(
-        self,
-        vector_id: int,
-        user_id: str,
-        session_id: Optional[str],
-        query: str,
-        result: Any,
-        timestamp: Optional[int] = None,
-    ) -> None:
-        timestamp = timestamp or int(time.time())
-        ph = self.placeholder
-        if self.use_sqlite:
-            sql = (
-                f"INSERT INTO memory (vector_id, user_id, session_id, query, result, timestamp)"
-                f" VALUES ({ph},{ph},{ph},{ph},{ph},{ph})"
-                f" ON CONFLICT(vector_id) DO UPDATE SET user_id=excluded.user_id,"
-                " session_id=excluded.session_id, query=excluded.query,"
-                " result=excluded.result, timestamp=excluded.timestamp"
-            )
-        else:
-            sql = (
-                f"INSERT INTO memory (vector_id, user_id, session_id, query, result, timestamp)"
-                f" VALUES ({ph},{ph},{ph},{ph},{ph},{ph})"
-                f" ON CONFLICT (vector_id) DO UPDATE SET user_id=EXCLUDED.user_id,"
-                " session_id=EXCLUDED.session_id, query=EXCLUDED.query,"
-                " result=EXCLUDED.result, timestamp=EXCLUDED.timestamp"
-            )
-        self._execute(sql, [vector_id, user_id, session_id, query, str(result), timestamp])
-
-    def recall_memory(
-        self, user_id: str, query: Optional[str] = None, limit: int = 10
-    ) -> List[Dict[str, Any]]:
-        ph = self.placeholder
-        sql = (
-            f"SELECT vector_id, user_id, session_id, query, result, timestamp FROM memory"
-            f" WHERE user_id={ph}"
+        plugin_dir: Optional[Path] = None,
+        logger: Optional[logging.Logger] = None,
+        metrics_collector: Optional[Callable[[str, dict], None]] = None,
+    ):
+        self.plugin_dir = Path(plugin_dir or PLUGIN_DIR)
+        self.logger = PluginAuditLogger(
+            logger or logging.getLogger("kari.plugins"),
+            extra={}
         )
-        params = [user_id]
-        if query:
-            sql += f" AND query LIKE {ph}"
-            params.append(f"%{query}%")
-        sql += f" ORDER BY timestamp DESC LIMIT {ph}"
-        params.append(limit)
-        rows = self._execute(sql, params, fetch=True)
+        self.metrics = metrics_collector or (lambda event, meta: None)
+        self.plugins: Dict[str, dict] = {}
+        self.enabled_plugins: Dict[str, dict] = {}
+        self._load_plugins()
+
+    def _validate_manifest(self, manifest: dict, plugin_path: Path) -> dict:
+        for key, typ in DEFAULT_PLUGIN_SCHEMA.items():
+            if key not in manifest:
+                raise PluginManifestError(f"{plugin_path}: Missing manifest key: {key}")
+            if not isinstance(manifest[key], typ):
+                raise PluginManifestError(f"{plugin_path}: Manifest key '{key}' wrong type: expected {typ.__name__}")
+        return manifest
+
+    def _discover_plugins(self) -> List[Path]:
+        if not self.plugin_dir.exists():
+            self.logger.warning(f"Plugin directory {self.plugin_dir} does not exist")
+            return []
         return [
-            {
-                "vector_id": r[0],
-                "user_id": r[1],
-                "session_id": r[2],
-                "query": r[3],
-                "result": r[4],
-                "timestamp": r[5],
-            }
-            for r in rows
+            d for d in self.plugin_dir.iterdir()
+            if d.is_dir() and (d / "plugin_manifest.json").exists()
         ]
 
-    def get_by_vector(self, vector_id: int) -> Optional[Dict[str, Any]]:
-        ph = self.placeholder
-        sql = f"SELECT vector_id, user_id, session_id, query, result, timestamp FROM memory WHERE vector_id={ph}"
-        rows = self._execute(sql, [vector_id], fetch=True)
-        if not rows:
-            return None
-        v_id, user_id, sess, q, res, ts = rows[0]
-        return {
-            "vector_id": v_id,
-            "user_id": user_id,
-            "session_id": sess,
-            "query": q,
-            "result": res,
-            "timestamp": ts,
-        }
+    def _load_plugins(self):
+        self.plugins.clear()
+        self.enabled_plugins.clear()
+        for pdir in self._discover_plugins():
+            manifest = {}
+            try:
+                with open(pdir / "plugin_manifest.json", "r") as f:
+                    manifest = json.load(f)
+                self._validate_manifest(manifest, pdir)
+                plugin = {
+                    "manifest": manifest,
+                    "path": pdir,
+                    "prompt": (pdir / manifest["prompt_file"]).read_text(encoding="utf-8"),
+                    "handler": None,
+                    "enabled": manifest.get("enabled", True)
+                }
+                if not self._validate_rbac(plugin):
+                    raise PluginRBACError(f"{manifest['name']}: RBAC check failed.")
+                handler_file = pdir / manifest["handler_file"]
+                if handler_file.exists():
+                    sys.path.insert(0, str(pdir))
+                    plugin_module = importlib.import_module(handler_file.stem)
+                    sys.path.pop(0)
+                    plugin["handler"] = plugin_module
+                self.plugins[manifest["name"]] = plugin
+                if plugin["enabled"]:
+                    self.enabled_plugins[manifest["name"]] = plugin
+                self.logger.info(f"Loaded plugin: {manifest['name']}")
+            except Exception as ex:
+                self.logger.error(
+                    f"Plugin load failed in {pdir}: {ex}\n{traceback.format_exc()}",
+                    extra={"correlation_id": manifest.get("name", str(pdir))}
+                )
+                self.metrics("plugin_load_failed", {"plugin": str(pdir), "error": str(ex)})
 
-    def get_session_records(self, session_id: str, limit: int = 100) -> List[Dict[str, Any]]:
-        ph = self.placeholder
-        sql = (
-            f"SELECT vector_id, user_id, session_id, query, result, timestamp FROM memory"
-            f" WHERE session_id={ph} ORDER BY timestamp DESC LIMIT {ph}"
-        )
-        rows = self._execute(sql, [session_id, limit], fetch=True)
-        return [
-            {
-                "vector_id": r[0],
-                "user_id": r[1],
-                "session_id": r[2],
-                "query": r[3],
-                "result": r[4],
-                "timestamp": r[5],
-            }
-            for r in rows
-        ]
+    def _validate_rbac(self, plugin: dict) -> bool:
+        return True
 
-    def delete(self, vector_id: int) -> None:
-        ph = self.placeholder
-        sql = f"DELETE FROM memory WHERE vector_id={ph}"
-        self._execute(sql, [vector_id])
+    def reload_plugins(self):
+        self.logger.info("Reloading plugins (hot-reload)")
+        self._load_plugins()
 
-    # --- Health -------------------------------------------------------------
-    def health(self) -> bool:
+    def get_enabled_plugins(self) -> List[str]:
+        return list(self.enabled_plugins.keys())
+
+    def get_plugin(self, name: str) -> dict:
+        if name not in self.plugins:
+            raise PluginManagerError(f"Plugin '{name}' not found")
+        return self.plugins[name]
+
+    def execute_plugin(self, name: str, input_data: dict, context: Optional[dict] = None) -> Any:
+        if name not in self.enabled_plugins:
+            raise PluginManagerError(f"Plugin '{name}' is not enabled or missing")
+        plugin = self.enabled_plugins[name]
+        handler = plugin.get("handler")
+        prompt = plugin["prompt"]
         try:
-            self._execute("SELECT 1", fetch=True)
-            return True
-        except Exception:
-            return False
+            if handler and hasattr(handler, "run"):
+                result = handler.run(prompt=prompt, input_data=input_data, context=context or {})
+                self.metrics("plugin_exec_success", {"plugin": name})
+                return result
+            filled = prompt.format(**input_data)
+            self.metrics("plugin_exec_prompt", {"plugin": name})
+            return filled
+        except Exception as ex:
+            self.logger.error(
+                f"Plugin execution failed [{name}]: {ex}\n{traceback.format_exc()}",
+                extra={"correlation_id": name}
+            )
+            self.metrics("plugin_exec_failed", {"plugin": name, "error": str(ex)})
+            raise PluginManagerError(f"Plugin execution failed: {ex}")
 
-__all__ = ["PostgresClient"]
+    def enable_plugin(self, name: str):
+        if name not in self.plugins:
+            raise PluginManagerError(f"Plugin '{name}' not found")
+        self.plugins[name]["enabled"] = True
+        self.enabled_plugins[name] = self.plugins[name]
+        self.logger.info(f"Plugin enabled: {name}")
+        self.metrics("plugin_enabled", {"plugin": name})
+
+    def disable_plugin(self, name: str):
+        if name not in self.plugins:
+            raise PluginManagerError(f"Plugin '{name}' not found")
+        self.plugins[name]["enabled"] = False
+        self.enabled_plugins.pop(name, None)
+        self.logger.info(f"Plugin disabled: {name}")
+        self.metrics("plugin_disabled", {"plugin": name})
+
+    def list_all_plugins(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "name": meta["manifest"]["name"],
+                "description": meta["manifest"].get("description"),
+                "version": meta["manifest"].get("version"),
+                "enabled": meta.get("enabled"),
+                "rbac": meta["manifest"].get("rbac", {}),
+                "path": str(meta["path"])
+            }
+            for meta in self.plugins.values()
+        ]
+
+    def audit_log(self, event: str, data: dict):
+        self.logger.info(f"[audit] {event} | {data}")
+
+# ---- UI Component ----
+def render_plugin_manager(user_ctx: dict):
+    """Render the Streamlit UI for plugin management."""
+    if not require_roles(user_ctx, ["admin", "developer"]):
+        st.error("Insufficient privileges to view plugin manager.")
+        return
+
+    st.header("Kari Plugin Manager")
+    st.sidebar.button("Reload Plugins", on_click=lambda: st.experimental_rerun())
+
+    plugins = list_plugins(user_ctx["user_id"])
+    for plugin in plugins:
+        name = plugin["name"]
+        enabled = plugin.get("enabled", False)
+        st.subheader(name)
+        st.write(plugin.get("description", "No description"))
+        col1, col2 = st.columns([1, 1])
+        if col1.checkbox("Enabled", enabled, key=f"en_{name}") != enabled:
+            set_plugin_enabled = enable_plugin if not enabled else disable_plugin
+            success = set_plugin_enabled(user_ctx["user_id"], name)
+            if success:
+                st.success(f"Plugin '{name}' {'enabled' if not enabled else 'disabled'}.")
+        if col2.button("Uninstall", key=f"un_{name}"):
+            if uninstall_plugin(user_ctx["user_id"], name):
+                st.warning(f"Plugin '{name}' uninstalled.")
+    
+    st.markdown("---")
+    st.subheader("Audit Trail")
+    logs = fetch_audit_logs(category="plugin", user_id=user_ctx["user_id"])[-25:][::-1]
+    for entry in logs:
+        st.text(f"{entry['timestamp']} - {entry['event']} - {entry['data']}")
+
+__all__ = [
+    "PluginManager",
+    "PluginManagerError",
+    "PluginManifestError",
+    "PluginValidationError",
+    "PluginRBACError",
+    "create_plugin_manager",
+    "render_plugin_manager",
+]

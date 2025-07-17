@@ -18,10 +18,8 @@ from pandas.api.types import is_numeric_dtype, is_datetime64_any_dtype
 class ChartBuilderError(Exception):
     pass
 
-
 class InvalidChartConfig(ChartBuilderError):
     pass
-
 
 class DataValidationError(ChartBuilderError):
     pass
@@ -59,9 +57,6 @@ class ChartBuilder:
         return list(self.supported_chart_types)
 
     def infer_data_fields(self, df: pd.DataFrame) -> Dict[str, List[str]]:
-        """
-        Infer columns by type (numeric, categorical, datetime, all).
-        """
         try:
             if df is None or df.empty:
                 return {"numeric": [], "categorical": [], "datetime": [], "all": []}
@@ -90,9 +85,6 @@ class ChartBuilder:
     def validate_chart_config(
         self, chart_type: str, config: Dict[str, Any], fields: Dict[str, List[str]]
     ) -> Dict[str, Any]:
-        """
-        Validate chart type/fields, auto-fill where possible, error if unsatisfiable.
-        """
         try:
             ctype = chart_type.lower()
             if ctype not in self.supported_chart_types:
@@ -127,9 +119,6 @@ class ChartBuilder:
         config: Optional[Dict[str, Any]] = None,
         fail_safe: bool = True,
     ) -> Union[Any, Dict[str, Any]]:
-        """
-        Main method: Convert input data/config to a visualization or error payload.
-        """
         try:
             df = pd.DataFrame(data) if not isinstance(data, pd.DataFrame) else data.copy()
             fields = self.infer_data_fields(df)
@@ -179,7 +168,6 @@ def _plotly_chart_creator(df: pd.DataFrame, chart_type: str, config: Dict[str, A
     import plotly.express as px
     ctype = chart_type.lower()
     opts = config.copy()
-    # Map config keys to plotly params as needed
     if ctype == "bar":
         return px.bar(df, x=opts["x"], y=opts["y"], color=opts.get("color"))
     if ctype == "line":
@@ -230,6 +218,47 @@ def get_chart_schema(df: pd.DataFrame) -> Dict[str, List[str]]:
         **builder.infer_data_fields(df),
     }
 
+# ==== QUICK CHART RENDER (Streamlit demo/prod bridge) ====
+def render_quick_charts(
+    df: pd.DataFrame,
+    chart_types: Optional[List[str]] = None,
+    title: Optional[str] = "Quick Charts",
+    engine: str = "plotly",
+    container=None,
+):
+    """
+    Render quick chart preview panel, for dashboards or EDA.
+    """
+    import streamlit as st
+    chart_types = chart_types or DEFAULT_CHART_TYPES
+    builder = create_chart_builder(engine)
+    st_container = container if container is not None else st
+
+    st_container.subheader(title or "Quick Charts")
+    fields = builder.infer_data_fields(df)
+    choices = [c for c in chart_types if c in builder.get_supported_chart_types()]
+
+    chart_type = st_container.selectbox("Chart type", choices)
+    cfg = {}
+
+    # x/y auto-select
+    if chart_type == "pie":
+        cfg["x"] = st_container.selectbox("Labels (x)", fields["categorical"] or fields["all"])
+        if fields["numeric"]:
+            cfg["y"] = st_container.selectbox("Values (y/size)", fields["numeric"])
+    else:
+        cfg["x"] = st_container.selectbox("X axis", fields["datetime"] or fields["categorical"] or fields["all"])
+        cfg["y"] = st_container.selectbox("Y axis", fields["numeric"] or fields["all"])
+
+    # Build chart
+    result = builder.build_chart(df, chart_type, cfg)
+    if isinstance(result, dict) and not result.get("success", True):
+        st_container.error(result.get("message", "Chart error"))
+        st_container.code(result.get("traceback", ""), language="python")
+    else:
+        import plotly.graph_objects as go
+        st_container.plotly_chart(result, use_container_width=True)
+
 CHART_TYPES = DEFAULT_CHART_TYPES
 
 __all__ = [
@@ -238,6 +267,7 @@ __all__ = [
     "render_chart_builder",
     "infer_chart_fields",
     "get_chart_schema",
+    "render_quick_charts",
     "CHART_TYPES",
     "ChartBuilderError",
     "InvalidChartConfig",

@@ -1,0 +1,1 @@
+[{"name": "", "path": "./models/", "type": "transformers", "source": "local"}, {"name": "bert-base-uncased", "source": "hf_hub", "type": "transformers"}, {"name": "sentence-transformers/all-MiniLM-L6-v2", "source": "hf_hub", "type": "transformers"}]
