@@ -8,8 +8,15 @@ Kari ships with an in-memory `EventBus` and an optional `RedisEventBus` that use
 from ai_karen_engine.event_bus import EventBus
 
 bus = EventBus()
-msg_id = bus.publish("devops", "deploy", {"status": "ok"}, risk=0.2)
-for event in bus.consume():
+msg_id = bus.publish(
+    "devops",
+    "deploy",
+    {"status": "ok"},
+    risk=0.2,
+    roles=["admin"],
+    tenant_id="acme",
+)
+for event in bus.consume(["admin"], tenant_id="acme"):
     print(event.capsule, event.payload)
 ```
 

@@ -193,6 +193,8 @@ pip install -e .
 
 Alternatively, set `PYTHONPATH=src` in your environment.
 
+Ensure a running Redis instance is accessible. Configure host and port via `REDIS_HOST` and `REDIS_PORT` (defaults `localhost:6379`). The memory manager will disable Redis features if the connection fails.
+
 ### 2. Start FastAPI
 
 Make sure the project has been installed in editable mode (`pip install -e .` or

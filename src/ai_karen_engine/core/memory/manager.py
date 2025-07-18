@@ -43,6 +43,19 @@ try:
 except ImportError:
     redis = None
 
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+
+redis_client = None
+if redis:
+    try:
+        redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
+        redis_client.ping()
+    except Exception as ex:  # pragma: no cover - network may be down
+        logger.warning(f"[MemoryManager] Redis connection failed: {ex}")
+        redis_client = None
+
 try:
     import duckdb
 except ImportError:
@@ -271,9 +284,9 @@ def recall_context(
             logger.warning(f"[MemoryManager] Postgres recall failed: {ex}")
 
     # 4. Redis
-    if redis:
+    if redis_client:
         try:
-            r = redis.Redis()
+            r = redis_client
             key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
             raw = r.lrange(key, 0, limit - 1)
             records = []
@@ -383,9 +396,9 @@ def update_memory(
             logger.warning(f"[MemoryManager] Postgres store failed: {ex}")
 
     # 3. Redis
-    if redis:
+    if redis_client:
         try:
-            r = redis.Redis()
+            r = redis_client
             key = f"kari:mem:{tenant_id}:{user_id}" if tenant_id else f"kari:mem:{user_id}"
             r.lpush(key, json.dumps(entry))
             ok = True

@@ -5,7 +5,7 @@ Kari uses a multi-tier memory system to balance speed and recall quality.
 
 1. **NeuroVault** – an in-memory buffer used by `ChatHub` for short-term context. Records decay with `v(t)=v₀ e^{-0.05t}` (days) and can be purged via slash command.
 2. **MilvusClient** – an in-process vector store with TTL pruning. It stores embeddings along with metadata such as `timestamp`, `tag` and optional `ttl_override`.
-3. **Redis Cache** – a lightweight cache for hot items and recent events. This is currently a stub implementation in memory; the API mirrors Redis commands.
+3. **Redis Cache** – a lightweight cache for hot items and recent events. A running Redis server is required (configure via `REDIS_HOST`/`REDIS_PORT`). If the connection fails the cache layer is skipped.
 4. **SessionBuffer** – a DuckDB-backed queue that holds chat logs until they can be flushed to Postgres. Flushes occur on session end or when the buffer reaches a configurable size.
 5. **Postgres** – relational store for structured logs and plugin state. Used when the engine needs ACID compliance or joins across metadata.
 6. **Elasticsearch** – optional full-text index for transcripts and document archives. Provides rich keyword search alongside dense vector recall.
@@ -56,7 +56,7 @@ When ElasticSearch is available the memory manager uses it as the first lookup l
 - `ELASTIC_PASSWORD` – password for the user (optional)
 - `ELASTIC_INDEX` – index name for Kari memory (default `kari_memory`)
 
-If these variables are unset the client falls back to its in-memory stub.
+If these variables are unset the Elastic search backend is disabled.
 
 ## Session Buffering
 

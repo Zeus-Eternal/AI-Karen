@@ -18,6 +18,8 @@ def render(user_ctx=None):
             capsule="demo",
             event_type="heartbeat",
             payload={"ts": time.time()},
+            roles=user_ctx.get("roles", []),
+            tenant_id=user_ctx.get("tenant_id"),
         )
 
     events = presence_logic(user_ctx=user_ctx)
