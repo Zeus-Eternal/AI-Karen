@@ -1,3 +1,5 @@
-from ai_karen_engine.core.prompt_router import PluginWrapper, PromptRouter
+"""Compatibility re-exports for the plugin router."""
 
-__all__ = ["PluginWrapper", "PromptRouter"]
+from ai_karen_engine.plugin_router import PluginRouter, PluginRecord
+
+__all__ = ["PluginRouter", "PluginRecord"]

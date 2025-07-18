@@ -12,3 +12,9 @@ def test_import_automation_manager(monkeypatch):
     from ai_karen_engine import AutomationManager
 
     assert AutomationManager is DummyAM
+
+
+def test_core_prompt_router_reexport():
+    from ai_karen_engine.core.prompt_router import PluginRouter as PR1
+    from ai_karen_engine.plugin_router import PluginRouter as PR2
+    assert PR1 is PR2

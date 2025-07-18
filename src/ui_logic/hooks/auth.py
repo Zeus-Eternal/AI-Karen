@@ -92,6 +92,14 @@ def validate_session(token: str, user_agent: str, ip: str) -> Optional[dict]:
     return decoded
 
 
+def token_has_role(token: str, required: List[str], user_agent: str, ip: str) -> bool:
+    """Check roles embedded in a session token."""
+    ctx = validate_session(token, user_agent, ip)
+    if not ctx:
+        return False
+    return bool(set(ctx.get("roles", [])) & set(required))
+
+
 # === RBAC Fast Check ===
 def has_role(user_ctx: dict, role: str) -> bool:
     """Check if user_ctx has at least one matching role."""
@@ -197,4 +205,5 @@ __all__ = [
     "register_current_user_callback",
     "set_session_cookie",
     "clear_session_cookie",
+    "token_has_role",
 ]

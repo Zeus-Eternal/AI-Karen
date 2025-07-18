@@ -44,7 +44,11 @@ class DuckCon:
             return self
         if sql.startswith("SELECT"):
             limit = params[-1]
-            self._df = DataFrame(self.store[:limit])
+            tenant = params[1] if len(params) == 3 else None
+            filtered = [
+                r for r in self.store if tenant is None or r["tenant_id"] == tenant
+            ]
+            self._df = DataFrame(filtered[:limit])
             return self
         return self
 
@@ -103,7 +107,9 @@ class RecordingPostgres:
 
     def recall_memory(self, user_id, query, limit, tenant_id=None):
         self.recalls.append((user_id, query, limit, tenant_id))
-        return [{"source": "postgres"}]
+        if tenant_id in {"A", "t"}:
+            return [{"source": "postgres"}]
+        return []
 
     def get_by_vector(self, vid):
         return None
@@ -121,12 +127,29 @@ def test_recall_priority_order(monkeypatch):
 
     monkeypatch.setattr(mm, "neuro_vault", FakeVault())
 
-    monkeypatch.setattr(mm, "ElasticClient", type("FakeElastic", (), {"__init__": lambda self,*a,**k: None, "search": lambda self, u, q, limit: (calls.append("elastic"), [])[-1]}))
-    monkeypatch.setattr(mm, "recall_vectors", lambda u, q, top_k: (calls.append("milvus"), [])[-1])
+    monkeypatch.setattr(
+        mm,
+        "ElasticClient",
+        type(
+            "FakeElastic",
+            (),
+            {
+                "__init__": lambda self, *a, **k: None,
+                "search": lambda self, u, q, limit: (calls.append("elastic"), [])[-1],
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        mm,
+        "recall_vectors",
+        lambda u, q, top_k, tenant_id=None: (calls.append("milvus"), [])[-1],
+    )
     pg = RecordingPostgres()
 
-    def recall_memory(user_id, query, limit):
+    def recall_memory(user_id, query, limit, tenant_id=None):
         calls.append("postgres")
+        if tenant_id == "t" or tenant_id == "A":
+            return []
         return []
 
     pg.recall_memory = recall_memory
@@ -144,7 +167,7 @@ def test_recall_priority_order(monkeypatch):
         return []
 
     fake_redis.instance.lrange = lrange
-    monkeypatch.setattr(mm, "redis", fake_redis)
+    monkeypatch.setattr(mm, "redis_client", fake_redis.instance)
 
     def connect(path, read_only=False):
         calls.append("duckdb")
@@ -182,7 +205,7 @@ def test_recall_returns_first_available(monkeypatch):
         "pg_syncer",
         types.SimpleNamespace(postgres_available=True, mark_unavailable=lambda: None),
     )
-    monkeypatch.setattr(mm, "redis", FakeRedisModule())
+    monkeypatch.setattr(mm, "redis_client", FakeRedisModule().instance)
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
 
     result = mm.recall_context({"user_id": "u", "tenant_id": "t"}, "q")
@@ -208,7 +231,7 @@ def test_update_memory_success(monkeypatch):
         "pg_syncer",
         types.SimpleNamespace(postgres_available=True, mark_unavailable=lambda: None),
     )
-    monkeypatch.setattr(mm, "redis", fake_redis)
+    monkeypatch.setattr(mm, "redis_client", fake_redis.instance)
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
     monkeypatch.setattr(mm, "store_vector", lambda u, q, r, tenant_id=None: 1)
 
@@ -237,7 +260,7 @@ def test_update_memory_postgres_failure(monkeypatch):
         "pg_syncer",
         types.SimpleNamespace(postgres_available=True, mark_unavailable=lambda: None),
     )
-    monkeypatch.setattr(mm, "redis", fake_redis)
+    monkeypatch.setattr(mm, "redis_client", fake_redis.instance)
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
     monkeypatch.setattr(mm, "store_vector", lambda u, q, r, tenant_id=None: 1)
 
@@ -251,7 +274,7 @@ def test_memory_metrics(monkeypatch):
     mm = load_manager(monkeypatch)
     store = []
     monkeypatch.setattr(mm, "postgres", None)
-    monkeypatch.setattr(mm, "redis", FakeRedisModule())
+    monkeypatch.setattr(mm, "redis_client", FakeRedisModule().instance)
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
     monkeypatch.setattr(mm, "store_vector", lambda u, q, r, tenant_id=None: 1)
 
@@ -267,7 +290,7 @@ def test_tenant_isolation(monkeypatch):
     pg = RecordingPostgres()
     monkeypatch.setattr(mm, "postgres", pg)
     monkeypatch.setattr(mm, "pg_syncer", types.SimpleNamespace(postgres_available=True, mark_unavailable=lambda: None))
-    monkeypatch.setattr(mm, "redis", FakeRedisModule())
+    monkeypatch.setattr(mm, "redis_client", FakeRedisModule().instance)
     monkeypatch.setattr(mm, "duckdb", duckdb_stub(store))
     monkeypatch.setattr(mm, "store_vector", lambda u, q, r, tenant_id=None: 1)
 
