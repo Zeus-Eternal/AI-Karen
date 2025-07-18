@@ -17,7 +17,9 @@ def _device_fingerprint(user_agent: str, ip: str) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def create_session(user_id: str, roles: List[str], user_agent: str, ip: str) -> str:
+def create_session(
+    user_id: str, roles: List[str], user_agent: str, ip: str, tenant_id: str
+) -> str:
     now = int(time.time())
     payload = {
         "sub": user_id,
@@ -25,6 +27,7 @@ def create_session(user_id: str, roles: List[str], user_agent: str, ip: str) -> 
         "exp": now + SESSION_DURATION,
         "iat": now,
         "device": _device_fingerprint(user_agent, ip),
+        "tenant_id": tenant_id,
     }
     return jwt.encode(payload, AUTH_SIGNING_KEY, algorithm=JWT_ALGORITHM)
 

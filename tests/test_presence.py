@@ -1,5 +1,6 @@
 import time
 import importlib.util
+import os
 from ai_karen_engine.event_bus import get_event_bus
 
 spec = importlib.util.spec_from_file_location(
@@ -11,6 +12,7 @@ page = presence.page
 
 
 def test_presence_page_consumes_events():
+    os.environ["KARI_FEATURE_ENABLE_PRESENCE"] = "true"
     bus = get_event_bus()
     bus.publish(
         "caps",

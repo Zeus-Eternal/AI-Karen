@@ -1,33 +1,18 @@
 AI-Karen
-    ├── ai_karen_engine
-    │   ├── core
-    │   │   ├── __init__.py
-    │   │   └── model_manager.py
-    │   └── __init__.py
-    ├── capsules
-    │   └── devops
-    │       ├── handler.py
-    │       └── manifest.yaml
-    ├── charts
-    │   └── kari
-    │       ├── templates
-    │       │   ├── deployment.yaml
-    │       │   └── service.yaml
-    │       ├── Chart.yaml
-    │       └── values.yaml
     ├── config
-    │   ├── __init__.py
-    │   ├── plugin_schema.json
-    │   └── settings.json
+    │   └── llm_profiles.yml
     ├── contracts
     │   ├── LICENSE_REQUEST_TEMPLATE.md
     │   └── license.json
     ├── data
-    │   └── bootstrap
-    │       └── classifier_seed.json
+    │   ├── bootstrap
+    │   │   └── classifier_seed.json
+    │   ├── migrations
+    │   │   └── postgres
+    │   │       └── 001_create_tables.sql
+    │   └── announcements.json
     ├── docs
     │   ├── api_reference.md
-    │   ├── api_usage.md
     │   ├── architecture.md
     │   ├── automation_features.md
     │   ├── chat_interface.md
@@ -36,22 +21,20 @@ AI-Karen
     │   ├── event_bus.md
     │   ├── features_usage.md
     │   ├── ice_wrapper.md
-    │   ├── install_dev.md
     │   ├── llm_guide.md
     │   ├── memory_arch.md
     │   ├── mesh_arch.md
     │   ├── n8n_integration.md
     │   ├── observability.md
+    │   ├── one-liner-launch.md
     │   ├── openai_customer_service.md
+    │   ├── operation_mirrorsnap.md
     │   ├── plugin_spec.md
     │   ├── security.md
     │   ├── self_refactor.md
     │   ├── side_by_side_openai_kari.md
     │   ├── tests.md
     │   └── ui_blueprint.md
-    ├── guardrails
-    │   ├── __init__.py
-    │   └── validator.py
     ├── headers
     │   └── LICENSE_HEADER.txt
     ├── models
@@ -65,19 +48,67 @@ AI-Karen
     │   └── stop.sh
     ├── self_refactor
     │   └── prompts
+    │       ├── accessibility_audit.txt
+    │       ├── admin_panel_audit.txt
+    │       ├── feature_flags.json
+    │       ├── legacy_migration_notes.txt
+    │       ├── nav_tree_map.txt
+    │       ├── onboarding_wizard.txt
+    │       ├── plugin_ui_injection.txt
+    │       ├── README.md
     │       └── ux_update.txt
     ├── src
     │   ├── ai_karen_engine
+    │   │   ├── api_routes
+    │   │   │   ├── __init__.py
+    │   │   │   ├── announcements.py
+    │   │   │   ├── health.py
+    │   │   │   ├── system.py
+    │   │   │   └── users.py
+    │   │   ├── automation_manager
+    │   │   │   ├── __init__.py
+    │   │   │   └── encryption_utils.py
     │   │   ├── clients
+    │   │   │   ├── database
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── duckdb_client.py
+    │   │   │   │   ├── elastic_client.py
+    │   │   │   │   ├── milvus_client.py
+    │   │   │   │   ├── neo4j_client.py
+    │   │   │   │   ├── postgres_client.py
+    │   │   │   │   └── redis_client.py
     │   │   │   ├── embedding
     │   │   │   │   ├── __init__.py
     │   │   │   │   └── embedding_client.py
+    │   │   │   ├── nlp
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── basic_classifier.py
+    │   │   │   │   └── spacy_client.py
+    │   │   │   ├── transformers
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   └── lnm_client.py
     │   │   │   ├── __init__.py
     │   │   │   └── slm_pool.py
+    │   │   ├── community_plugins
+    │   │   │   └── __init__.py
+    │   │   ├── config
+    │   │   │   ├── __init__.py
+    │   │   │   ├── config_manager.py
+    │   │   │   ├── model_registry.py
+    │   │   │   ├── plugin_schema.json
+    │   │   │   └── settings.json
     │   │   ├── core
     │   │   │   ├── cortex
     │   │   │   │   ├── __init__.py
-    │   │   │   │   └── dispatch.py
+    │   │   │   │   ├── dispatch.py
+    │   │   │   │   ├── errors.py
+    │   │   │   │   └── intent.py
+    │   │   │   ├── memory
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── manager.py
+    │   │   │   │   └── session_buffer.py
+    │   │   │   ├── neuro_vault
+    │   │   │   │   └── __init__.py
     │   │   │   ├── reasoning
     │   │   │   │   ├── __init__.py
     │   │   │   │   ├── graph.py
@@ -90,18 +121,27 @@ AI-Karen
     │   │   │   ├── mesh_planner.py
     │   │   │   ├── milvus_client.py
     │   │   │   ├── model_manager.py
+    │   │   │   ├── plugin_metrics.py
+    │   │   │   ├── plugin_registry.py
+    │   │   │   ├── predictors.py
     │   │   │   ├── prompt_router.py
     │   │   │   ├── self_refactor_loop.py
     │   │   │   ├── soft_reasoning_engine.py
     │   │   │   ├── tokenizer_manager.py
     │   │   │   └── workflow_engine_client.py
+    │   │   ├── doc_store
+    │   │   │   ├── __init__.py
+    │   │   │   └── document_store.py
     │   │   ├── echocore
     │   │   │   ├── __init__.py
     │   │   │   ├── dark_tracker.py
     │   │   │   ├── echo_vault.py
     │   │   │   └── fine_tuner.py
-    │   │   ├── fastapi_stub
+    │   │   ├── event_bus
     │   │   │   └── __init__.py
+    │   │   ├── fastapi_stub
+    │   │   │   ├── __init__.py
+    │   │   │   └── testclient.py
     │   │   ├── guardrails
     │   │   │   ├── __init__.py
     │   │   │   └── validator.py
@@ -109,150 +149,307 @@ AI-Karen
     │   │   │   ├── __init__.py
     │   │   │   ├── automation_manager.py
     │   │   │   ├── llm_registry.py
+    │   │   │   ├── llm_router.py
     │   │   │   ├── llm_utils.py
     │   │   │   ├── local_rpa_client.py
-    │   │   │   └── model_discovery.py
+    │   │   │   ├── model_discovery.py
+    │   │   │   └── nanda_client.py
+    │   │   ├── mcp
+    │   │   │   ├── __init__.py
+    │   │   │   ├── base.py
+    │   │   │   ├── grpc_client.py
+    │   │   │   ├── json_rpc_client.py
+    │   │   │   ├── registry.py
+    │   │   │   └── services.py
+    │   │   ├── plugins
+    │   │   │   ├── __meta
+    │   │   │   │   └── command_manifest.json
+    │   │   │   ├── autonomous_task_handler
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   ├── prompt.txt
+    │   │   │   │   └── README.md
+    │   │   │   ├── desktop_agent
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── agent.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   ├── prompt.txt
+    │   │   │   │   └── README.md
+    │   │   │   ├── fine_tune_lnm
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   ├── prompt.txt
+    │   │   │   │   └── README.md
+    │   │   │   ├── git_merge_safe
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   └── README.md
+    │   │   │   ├── hello_world
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   ├── prompt.txt
+    │   │   │   │   └── README.md
+    │   │   │   ├── hf_llm
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   └── README.md
+    │   │   │   ├── k8s_scale
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   └── README.md
+    │   │   │   ├── llm_manager
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   └── README.md
+    │   │   │   ├── llm_services
+    │   │   │   │   ├── deepseek
+    │   │   │   │   │   ├── __init__.py
+    │   │   │   │   │   ├── handler.py
+    │   │   │   │   │   └── plugin_manifest.json
+    │   │   │   │   ├── gemini
+    │   │   │   │   │   ├── __init__.py
+    │   │   │   │   │   ├── handler.py
+    │   │   │   │   │   └── plugin_manifest.json
+    │   │   │   │   ├── llama
+    │   │   │   │   │   ├── __init__.py
+    │   │   │   │   │   ├── handler.py
+    │   │   │   │   │   ├── llama_client.py
+    │   │   │   │   │   ├── llama_plugin.py
+    │   │   │   │   │   └── plugin_manifest.json
+    │   │   │   │   ├── openai
+    │   │   │   │   │   ├── __init__.py
+    │   │   │   │   │   ├── handler.py
+    │   │   │   │   │   └── plugin_manifest.json
+    │   │   │   │   └── __init__.py
+    │   │   │   ├── time_query
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   └── README.md
+    │   │   │   ├── tui_fallback
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   ├── prompt.txt
+    │   │   │   │   ├── README.md
+    │   │   │   │   └── tui.py
+    │   │   │   └── __init__.py
+    │   │   ├── pydantic_stub
+    │   │   │   └── __init__.py
     │   │   ├── self_refactor
     │   │   │   ├── __init__.py
-    │   │   │   └── log_utils.py
+    │   │   │   ├── engine.py
+    │   │   │   ├── log_utils.py
+    │   │   │   └── scheduler.py
     │   │   ├── services
     │   │   │   ├── __init__.py
-    │   │   │   ├── deepseek.py
-    │   │   │   ├── gemini.py
-    │   │   │   ├── ollama_engine.py
-    │   │   │   └── openai.py
+    │   │   │   ├── health_checker.py
+    │   │   │   └── knowledge_graph_client.py
     │   │   ├── __init__.py
-    │   │   ├── automation_manager.py
+    │   │   ├── fastapi.py
     │   │   ├── llm_orchestrator.py
+    │   │   ├── plugin_manager.py
     │   │   └── plugin_router.py
-    │   ├── clients
-    │   │   ├── nlp
-    │   │   │   ├── __init__.py
-    │   │   │   ├── basic_classifier.py
-    │   │   │   └── spacy_client.py
-    │   │   ├── transformers
-    │   │   │   ├── __init__.py
-    │   │   │   └── lnm_client.py
+    │   ├── ai_karen.egg-info
+    │   │   ├── dependency_links.txt
+    │   │   ├── PKG-INFO
+    │   │   ├── SOURCES.txt
+    │   │   └── top_level.txt
+    │   ├── cachetools
     │   │   └── __init__.py
-    │   ├── config
+    │   ├── capsules
+    │   │   └── devops
+    │   │       ├── handler.py
+    │   │       ├── manifest.yaml
+    │   │       ├── prompt.txt
+    │   │       └── README.md
+    │   ├── charts
+    │   │   └── kari
+    │   │       ├── templates
+    │   │       │   ├── deployment.yaml
+    │   │       │   └── service.yaml
+    │   │       ├── Chart.yaml
+    │   │       └── values.yaml
+    │   ├── ui_logic
+    │   │   ├── components
+    │   │   │   ├── admin
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── audit_log.py
+    │   │   │   │   ├── diagnostics.py
+    │   │   │   │   ├── org_admin.py
+    │   │   │   │   ├── rbac_panel.py
+    │   │   │   │   └── system_status.py
+    │   │   │   ├── analytics
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── auto_parser.py
+    │   │   │   │   ├── chart_builder.py
+    │   │   │   │   └── data_explorer.py
+    │   │   │   ├── chat
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── chat_input.py
+    │   │   │   │   ├── chat_window.py
+    │   │   │   │   ├── context_panel.py
+    │   │   │   │   ├── markdown_renderer.py
+    │   │   │   │   ├── multimodal_upload.py
+    │   │   │   │   └── voice_controls.py
+    │   │   │   ├── files
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── code_sandbox.py
+    │   │   │   │   ├── doc_summary.py
+    │   │   │   │   ├── file_dropper.py
+    │   │   │   │   ├── multimodal_upload.py
+    │   │   │   │   └── ocr_panel.py
+    │   │   │   ├── iot
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── device_manager.py
+    │   │   │   │   ├── iot_logs.py
+    │   │   │   │   └── scene_builder.py
+    │   │   │   ├── memory
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── knowledge_graph.py
+    │   │   │   │   ├── memory_analytics.py
+    │   │   │   │   ├── memory_manager.py
+    │   │   │   │   ├── profile_panel.py
+    │   │   │   │   ├── session_core.py
+    │   │   │   │   └── session_explorer.py
+    │   │   │   ├── model
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── benchmark_panel.py
+    │   │   │   │   ├── model_selector.py
+    │   │   │   │   └── provider_selector.py
+    │   │   │   ├── persona
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── emotion_style_panel.py
+    │   │   │   │   ├── persona_analytics.py
+    │   │   │   │   └── persona_switcher.py
+    │   │   │   ├── plugins
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── plugin_manager.py
+    │   │   │   │   ├── plugin_store.py
+    │   │   │   │   └── workflow_builder.py
+    │   │   │   ├── scheduling
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── calendar_panel.py
+    │   │   │   │   ├── follow_up.py
+    │   │   │   │   └── reminders_panel.py
+    │   │   │   ├── settings
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── api_vault.py
+    │   │   │   │   ├── privacy_console.py
+    │   │   │   │   ├── settings_panel.py
+    │   │   │   │   └── theme_switcher.py
+    │   │   │   ├── white_label
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── api_tokens_panel.py
+    │   │   │   │   ├── branding_center.py
+    │   │   │   │   └── widget_builder.py
+    │   │   │   └── __init__.py
+    │   │   ├── config
+    │   │   │   ├── __init__.py
+    │   │   │   ├── branding.py
+    │   │   │   ├── feature_flags.py
+    │   │   │   ├── pages_manifest.py
+    │   │   │   └── ui_config.py
+    │   │   ├── hooks
+    │   │   │   ├── __init__.py
+    │   │   │   ├── auth.py
+    │   │   │   ├── memory_hook.py
+    │   │   │   ├── plugin_loader.py
+    │   │   │   ├── rbac.py
+    │   │   │   └── telemetry.py
+    │   │   ├── models
+    │   │   │   ├── __init__.py
+    │   │   │   └── announcement.py
+    │   │   ├── pages
+    │   │   │   ├── __init__.py
+    │   │   │   ├── admin.py
+    │   │   │   ├── analytics.py
+    │   │   │   ├── automation.py
+    │   │   │   ├── autonomous.py
+    │   │   │   ├── chat.py
+    │   │   │   ├── code_lab.py
+    │   │   │   ├── context.py
+    │   │   │   ├── diagnostics.py
+    │   │   │   ├── echo_core.py
+    │   │   │   ├── files.py
+    │   │   │   ├── home.py
+    │   │   │   ├── integrations.py
+    │   │   │   ├── iot.py
+    │   │   │   ├── labs.py
+    │   │   │   ├── memory.py
+    │   │   │   ├── personas.py
+    │   │   │   ├── plugins.py
+    │   │   │   ├── presence.py
+    │   │   │   ├── security.py
+    │   │   │   ├── settings.py
+    │   │   │   ├── task_manager.py
+    │   │   │   ├── vision.py
+    │   │   │   ├── voice.py
+    │   │   │   ├── white_label.py
+    │   │   │   └── workflows.py
+    │   │   ├── themes
+    │   │   │   ├── __init__.py
+    │   │   │   ├── dark.css
+    │   │   │   ├── enterprise.css
+    │   │   │   ├── light.css
+    │   │   │   └── theme_manager.py
+    │   │   ├── utils
+    │   │   │   ├── __init__.py
+    │   │   │   ├── api.py
+    │   │   │   ├── chart_utils.py
+    │   │   │   ├── file_utils.py
+    │   │   │   └── llm_utils.py
     │   │   ├── __init__.py
-    │   │   └── model_registry.py
-    │   ├── core
-    │   │   ├── cortex
-    │   │   │   ├── __init__.py
-    │   │   │   └── dispatch.py
-    │   │   ├── orchestration
-    │   │   │   └── model_router.py
-    │   │   ├── reasoning
-    │   │   │   ├── __init__.py
-    │   │   │   └── ice_integration.py
-    │   │   ├── __init__.py
-    │   │   ├── automation_manager.py
-    │   │   ├── autonomous_agent.py
-    │   │   ├── echo_core.py
-    │   │   ├── embedding_manager.py
-    │   │   ├── gpu_training.py
-    │   │   ├── intent_engine.py
-    │   │   ├── kari_runner.py
-    │   │   ├── mesh_planner.py
-    │   │   ├── milvus_client.py
-    │   │   ├── model_manager.py
-    │   │   ├── plugin_router.py
-    │   │   ├── prompt_router.py
-    │   │   ├── soft_reasoning_engine.py
-    │   │   └── workflow_engine_client.py
-    │   ├── event_bus
-    │   │   └── __init__.py
-    │   ├── fastapi_stub
-    │   │   ├── __init__.py
-    │   │   └── testclient.py
-    │   ├── integrations
-    │   │   ├── __init__.py
-    │   │   ├── automation_manager.py
-    │   │   ├── llm_registry.py
-    │   │   ├── llm_utils.py
-    │   │   ├── local_rpa_client.py
-    │   │   ├── model_discovery.py
-    │   │   └── nanda_client.py
-    │   ├── plugins
-    │   │   ├── __meta
-    │   │   │   └── command_manifest.json
-    │   │   ├── autonomous_task_handler
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   ├── plugin_manifest.json
-    │   │   │   └── prompt.txt
-    │   │   ├── desktop_agent
-    │   │   │   ├── __init__.py
-    │   │   │   ├── agent.py
-    │   │   │   ├── handler.py
-    │   │   │   ├── plugin_manifest.json
-    │   │   │   └── prompt.txt
-    │   │   ├── fine_tune_lnm
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   ├── plugin_manifest.json
-    │   │   │   └── prompt.txt
-    │   │   ├── git_merge_safe
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   └── plugin_manifest.json
-    │   │   ├── hello_world
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   ├── plugin_manifest.json
-    │   │   │   └── prompt.txt
-    │   │   ├── hf_llm
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   └── plugin_manifest.json
-    │   │   ├── k8s_scale
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   └── plugin_manifest.json
-    │   │   ├── llm_manager
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   └── plugin_manifest.json
-    │   │   ├── openai_llm
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   └── plugin_manifest.json
-    │   │   ├── time_query
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   └── plugin_manifest.json
-    │   │   ├── tui_fallback
-    │   │   │   ├── __init__.py
-    │   │   │   ├── handler.py
-    │   │   │   ├── plugin_manifest.json
-    │   │   │   ├── prompt.txt
-    │   │   │   └── tui.py
-    │   │   └── __init__.py
-    │   ├── pydantic_stub
-    │   │   └── __init__.py
-    │   ├── self_refactor
-    │   │   ├── __init__.py
-    │   │   ├── engine.py
-    │   │   ├── log_utils.py
-    │   │   └── scheduler.py
-    │   ├── services
-    │   │   ├── __init__.py
-    │   │   ├── deepseek_client.py
-    │   │   └── ollama_inprocess.py
+    │   │   ├── ui_core_logic.py
+    │   │   └── ui_core.py
     │   ├── __init__.py
-    │   ├── fastapi.py
     │   └── pydantic.py
     ├── tests
+    │   ├── stubs
+    │   │   ├── ai_karen_engine
+    │   │   │   ├── clients
+    │   │   │   │   ├── database
+    │   │   │   │   │   ├── __init__.py
+    │   │   │   │   │   └── postgres_client.py
+    │   │   │   │   └── __init__.py
+    │   │   │   ├── integrations
+    │   │   │   │   ├── llm_registry
+    │   │   │   │   │   └── __init__.py
+    │   │   │   │   ├── llm_utils
+    │   │   │   │   │   └── __init__.py
+    │   │   │   │   ├── model_discovery
+    │   │   │   │   │   └── __init__.py
+    │   │   │   │   └── __init__.py
+    │   │   │   ├── services
+    │   │   │   │   └── __init__.py
+    │   │   │   └── __init__.py
+    │   │   ├── __init__.py
+    │   │   ├── requests.py
+    │   │   ├── streamlit.py
+    │   │   └── tenacity.py
     │   ├── ui
+    │   │   ├── __init__.py
     │   │   └── test_chat_hub.py
+    │   ├── __init__.py
     │   ├── conftest.py
     │   ├── test_advanced_ui.py
     │   ├── test_api.py
+    │   ├── test_automation_job_encryption.py
     │   ├── test_autonomous_agent.py
     │   ├── test_cli.py
     │   ├── test_dispatch.py
+    │   ├── test_doc_store.py
     │   ├── test_echocore_modules.py
+    │   ├── test_elastic_client.py
+    │   ├── test_elastic_metrics.py
     │   ├── test_embedding_client.py
     │   ├── test_embedding.py
     │   ├── test_gpu_training.py
@@ -263,35 +460,33 @@ AI-Karen
     │   ├── test_llm_orchestrator.py
     │   ├── test_llm_utils.py
     │   ├── test_log_utils.py
+    │   ├── test_mcp.py
+    │   ├── test_memory_manager.py
+    │   ├── test_memory_sync.py
     │   ├── test_mesh_planner.py
     │   ├── test_mesh_reasoning.py
     │   ├── test_milvus_client.py
     │   ├── test_model_registry.py
     │   ├── test_nanda_client.py
+    │   ├── test_neuro_vault.py
+    │   ├── test_persona_controls.py
+    │   ├── test_plugin_metrics.py
     │   ├── test_plugin_router.py
     │   ├── test_plugins.py
+    │   ├── test_postgres_client.py
     │   ├── test_self_heal.py
     │   ├── test_self_refactor_loop.py
     │   ├── test_self_refactor.py
+    │   ├── test_session_buffer.py
     │   ├── test_slm_pool.py
     │   ├── test_soft_reasoning.py
     │   ├── test_sre_scheduler.py
     │   ├── test_tenant_model_manager.py
     │   ├── test_tokenizer_manager.py
+    │   ├── test_ui_api_utils.py
     │   └── test_workflow_rpa.py
-    ├── ui
-    │   ├── admin_ui
-    │   │   ├── pages
-    │   │   │   ├── diagnostics.py
-    │   │   │   ├── mesh_panel.py
-    │   │   │   └── plugin_dashboard.py
-    │   │   └── __init__.py
+    ├── ui_launchers
     │   ├── backend
-    │   │   ├── widgets
-    │   │   │   ├── __init__.py
-    │   │   │   ├── chart_viewer.py
-    │   │   │   ├── file_picker.py
-    │   │   │   └── form_builder.py
     │   │   ├── __init__.py
     │   │   └── chat_hub.py
     │   ├── common
@@ -335,58 +530,59 @@ AI-Karen
     │   │   ├── .env
     │   │   ├── README.md
     │   │   └── vite.config.ts
-    │   ├── mobile_ui
+    │   ├── streamlit_ui
     │   │   ├── config
     │   │   │   ├── __init__.py
     │   │   │   ├── .gitkeep
-    │   │   │   ├── config_manager.py
-    │   │   │   └── config_ui.py
+    │   │   │   ├── env.py
+    │   │   │   ├── routing.py
+    │   │   │   └── theme.py
     │   │   ├── data
     │   │   │   └── vault.key
-    │   │   ├── mobile_components
+    │   │   ├── helpers
     │   │   │   ├── __init__.py
-    │   │   │   ├── chat.py
-    │   │   │   ├── configuration.py
-    │   │   │   ├── diagnostics.py
-    │   │   │   ├── key_manager.py
-    │   │   │   ├── memory_settings.py
-    │   │   │   ├── memory.py
-    │   │   │   ├── model_selector.py
-    │   │   │   ├── models.py
-    │   │   │   ├── persona_controls.py
-    │   │   │   ├── provider_selector.py
-    │   │   │   ├── provider.py
-    │   │   │   ├── settings_panel.py
-    │   │   │   ├── settings.py
-    │   │   │   └── sidebar.py
+    │   │   │   ├── api_handler.py
+    │   │   │   ├── context.py
+    │   │   │   ├── model_loader.py
+    │   │   │   ├── rbac.py
+    │   │   │   └── session.py
     │   │   ├── pages
     │   │   │   ├── __init__.py
-    │   │   │   ├── chat_interface.py
+    │   │   │   ├── admin.py
+    │   │   │   ├── analytics.py
+    │   │   │   ├── automation.py
+    │   │   │   ├── autonomous.py
     │   │   │   ├── chat.py
-    │   │   │   ├── config.py
+    │   │   │   ├── code_lab.py
+    │   │   │   ├── context.py
+    │   │   │   ├── diagnostics.py
+    │   │   │   ├── echo_core.py
+    │   │   │   ├── files.py
+    │   │   │   ├── home.py
+    │   │   │   ├── integrations.py
+    │   │   │   ├── iot.py
+    │   │   │   ├── memory.py
+    │   │   │   ├── personas.py
+    │   │   │   ├── plugins.py
+    │   │   │   ├── presence.py
+    │   │   │   ├── security.py
     │   │   │   ├── settings.py
-    │   │   │   └── task_dashboard.py
-    │   │   ├── services
-    │   │   │   ├── __init__.py
-    │   │   │   ├── config_manager.py
-    │   │   │   ├── health_checker.py
-    │   │   │   ├── memory_controller.py
-    │   │   │   ├── model_registry.py
-    │   │   │   ├── runtime_dispatcher.py
-    │   │   │   └── vault.py
+    │   │   │   ├── task_dashboard.py
+    │   │   │   ├── vision.py
+    │   │   │   ├── voice.py
+    │   │   │   ├── white_label.py
+    │   │   │   └── workflows.py
     │   │   ├── styles
-    │   │   │   └── styles.css
-    │   │   ├── utils
-    │   │   │   ├── __init__.py
-    │   │   │   ├── api_client.py
-    │   │   │   └── model_loader.py
+    │   │   │   ├── dark.css
+    │   │   │   ├── enterprise.css
+    │   │   │   └── light.css
     │   │   ├── __init__.py
     │   │   ├── app.py
-    │   │   ├── bootstrap.py
     │   │   ├── README.md
     │   │   └── requirements.txt
     │   ├── __init__.py
     │   └── README.md
+    ├── .env.example
     ├── .gitignore
     ├── .pre-commit-config.yaml
     ├── AGENTS.md
@@ -399,6 +595,7 @@ AI-Karen
     ├── LICENSE-commercial.txt
     ├── LICENSE.md
     ├── main.py
+    ├── model_registry.json
     ├── pyproject.toml
     ├── README.md
     ├── requirements.txt

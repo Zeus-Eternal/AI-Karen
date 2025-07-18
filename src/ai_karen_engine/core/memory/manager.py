@@ -244,7 +244,7 @@ def recall_context(
             es_user = os.getenv("ELASTIC_USER")
             es_password = os.getenv("ELASTIC_PASSWORD")
             es = ElasticClient(es_host, es_port, es_index, es_user, es_password)
-            records = es.search(user_id, query, limit=limit)
+            records = es.search(user_id, query, limit=limit, tenant_id=tenant_id or "")
             if records:
                 logger.info(
                     f"[MemoryManager] Elastic recall: {len(records)} results for user {user_id}"

@@ -11,33 +11,33 @@ class RedisClient:
         self.r = redis.StrictRedis(host=host, port=port, db=db, decode_responses=True)
         self.prefix = prefix
 
-    def _k(self, user_id, kind):
-        return f"{self.prefix}:{user_id}:{kind}"
+    def _k(self, tenant_id, user_id, kind):
+        return f"{self.prefix}:{tenant_id}:{user_id}:{kind}"
 
-    def flush_short_term(self, user_id):
+    def flush_short_term(self, tenant_id, user_id):
         """Flush all short-term cache for user."""
-        keys = self.r.keys(self._k(user_id, "short_term*"))
+        keys = self.r.keys(self._k(tenant_id, user_id, "short_term*"))
         for k in keys:
             self.r.delete(k)
 
-    def flush_long_term(self, user_id):
+    def flush_long_term(self, tenant_id, user_id):
         """Flush all long-term cache for user."""
-        keys = self.r.keys(self._k(user_id, "long_term*"))
+        keys = self.r.keys(self._k(tenant_id, user_id, "long_term*"))
         for k in keys:
             self.r.delete(k)
 
-    def set_short_term(self, user_id, data):
-        self.r.set(self._k(user_id, "short_term"), json.dumps(data))
+    def set_short_term(self, tenant_id, user_id, data):
+        self.r.set(self._k(tenant_id, user_id, "short_term"), json.dumps(data))
 
-    def get_short_term(self, user_id):
-        val = self.r.get(self._k(user_id, "short_term"))
+    def get_short_term(self, tenant_id, user_id):
+        val = self.r.get(self._k(tenant_id, user_id, "short_term"))
         return json.loads(val) if val else None
 
-    def set_session(self, user_id, sess_data):
-        self.r.set(self._k(user_id, "session"), json.dumps(sess_data))
+    def set_session(self, tenant_id, user_id, sess_data):
+        self.r.set(self._k(tenant_id, user_id, "session"), json.dumps(sess_data))
 
-    def get_session(self, user_id):
-        val = self.r.get(self._k(user_id, "session"))
+    def get_session(self, tenant_id, user_id):
+        val = self.r.get(self._k(tenant_id, user_id, "session"))
         return json.loads(val) if val else None
 
     # Health

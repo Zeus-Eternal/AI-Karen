@@ -83,7 +83,13 @@ class MilvusClient:
 
 # === KARI AI ADAPTERS: PLUG FOR MEMORY MANAGER ===
 # ⚡ This is what you import elsewhere!
-_vector_store = MilvusClient()
+_vector_stores: Dict[str, MilvusClient] = {}
+
+
+def _get_store(tenant_id: str) -> MilvusClient:
+    if tenant_id not in _vector_stores:
+        _vector_stores[tenant_id] = MilvusClient()
+    return _vector_stores[tenant_id]
 
 def store_vector(
     user_id: str, query: str, result: Any, tenant_id: Optional[str] = None
@@ -94,14 +100,16 @@ def store_vector(
     """
     from ai_karen_engine.core.embedding_manager import embed_text
     vec = embed_text(query)
+    tenant = tenant_id or "default"
+    store = _get_store(tenant)
     payload = {
-        "tenant_id": tenant_id,
+        "tenant_id": tenant,
         "user_id": user_id,
         "query": query,
         "result": result,
         "timestamp": int(time.time()),
     }
-    return _vector_store.upsert(vec, payload)
+    return store.upsert(vec, payload)
 
 def recall_vectors(
     user_id: str, query: str, top_k: int = 5, tenant_id: Optional[str] = None
@@ -111,10 +119,10 @@ def recall_vectors(
     """
     from ai_karen_engine.core.embedding_manager import embed_text
     vec = embed_text(query)
-    metadata = {"user_id": user_id}
-    if tenant_id is not None:
-        metadata["tenant_id"] = tenant_id
-    results = _vector_store.search(vec, top_k=top_k, metadata_filter=metadata)
+    tenant = tenant_id or "default"
+    store = _get_store(tenant)
+    metadata = {"user_id": user_id, "tenant_id": tenant}
+    results = store.search(vec, top_k=top_k, metadata_filter=metadata)
     # Include vector id so external stores can reference metadata
     return [{"id": r["id"], **r["payload"]} for r in results]
 

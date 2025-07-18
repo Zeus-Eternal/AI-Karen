@@ -12,3 +12,4 @@ server.pid
 mobile_ui/config/secrets.json
 *.duckdb
 *.duckdb
+*.db

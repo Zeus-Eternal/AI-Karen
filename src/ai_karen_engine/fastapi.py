@@ -20,6 +20,7 @@ import logging
 import uuid
 
 from ai_karen_engine.core.memory.manager import init_memory
+from ai_karen_engine.utils.auth import validate_session
 
 try:
     from fastapi import FastAPI, APIRouter, Request, Response, status
@@ -143,32 +144,38 @@ async def add_trace_and_audit(request: Request, call_next):
             content={"error": "Internal Server Error", "trace_id": trace_id, "detail": str(e)},
         )
 
-# -- RBAC/Auth Placeholder (Production: integrate OAuth/JWT here) --
+# -- OAuth2 Bearer Token Validation --
 @app.middleware("http")
-async def auth_placeholder(request: Request, call_next):
-    """Simple token-based auth placeholder.
+async def auth_middleware(request: Request, call_next):
+    """Validate Bearer JWT tokens and attach user context."""
 
-    Checks the ``Authorization`` header for ``Bearer <token>`` and compares it
-    to ``KARI_API_TOKEN`` environment variable. If the variable is not set or
-    the path is one of the public endpoints, the request is allowed. This is a
-    lightweight guard primarily used for tests and local development until a
-    full OAuth/JWT solution is implemented.
-    """
+    public_paths = {
+        "/health",
+        "/livez",
+        "/readyz",
+        "/",
+        "/docs",
+        "/openapi.json",
+        "/api/auth/login",
+        "/api/auth/token",
+    }
 
-    public_paths = {"/health", "/livez", "/readyz", "/", "/docs", "/openapi.json"}
     if request.url.path in public_paths:
         return await call_next(request)
 
-    expected = os.getenv("KARI_API_TOKEN")
-    if expected:
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header.removeprefix("Bearer ").strip()
-            if token == expected:
-                return await call_next(request)
-        return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Unauthorized"})
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.lower().startswith("bearer "):
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
 
-    # If no token configured, fall through (no auth enabled)
+    token = auth_header.split(None, 1)[1]
+    ctx = validate_session(token, request.headers.get("user-agent", ""), request.client.host)
+    if not ctx:
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+
+    request.state.user = ctx.get("sub")
+    request.state.roles = list(ctx.get("roles", []))
+    request.state.tenant = ctx.get("tenant")
+
     return await call_next(request)
 
 # -- Uptime/health probes for orchestration/infra --

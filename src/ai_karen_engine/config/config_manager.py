@@ -28,6 +28,7 @@ DEFAULT_CONFIG = {
         "embedding_dim": 768,
         "decay_lambda": 0.1,
     },
+    "event_bus": "memory",
     "ui": {
         "show_debug_info": False,
     },

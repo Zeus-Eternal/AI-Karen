@@ -1,6 +1,6 @@
 # Event Bus
 
-Kari ships with a simple in-memory EventBus that mirrors Redis Streams. Capsules publish events which can be consumed by the Control Room and observability stack.
+Kari ships with an in-memory `EventBus` and an optional `RedisEventBus` that uses Redis Streams. Capsules publish events which can be consumed by the Control Room and observability stack.
 
 ## API
 
@@ -27,6 +27,13 @@ Each `Event` has:
 - `event_type`: short string
 - `payload`: arbitrary JSON data
 - `risk`: float used by the mesh planner to prioritize actions
+
+## Configuration
+
+`get_event_bus()` chooses the backend based on the `event_bus` key in
+`config.json`. Set it to `"redis"` to enable the Redis-backed bus or
+`"memory"` for the default in-memory implementation. If Redis is unavailable,
+the system automatically falls back to the in-memory bus.
 
 ## Hydra-Ops Integration
 
