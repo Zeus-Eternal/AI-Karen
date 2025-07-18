@@ -248,6 +248,11 @@ Kari's FastAPI backend exposes a small set of endpoints for headless deployments
 See [docs/api_usage.md](docs/api_usage.md) for the full list and example `curl`
 commands.
 
+Common service endpoints:
+
+- `GET /health` – quick liveness check used by the Docker healthcheck
+- `GET /metrics/prometheus` – Prometheus scrape endpoint
+
 ---
 
 ## 5 · Development Cheatsheet
