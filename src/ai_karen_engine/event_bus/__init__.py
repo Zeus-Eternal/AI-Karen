@@ -8,7 +8,7 @@ import uuid
 from dataclasses import asdict, dataclass
 from typing import Any, Deque, Dict, List, Optional, Union
 
-from ai_karen_engine.config.config_manager import config_manager
+from ai_karen_engine.config import config_manager
 
 # Optional Redis dependency
 try:

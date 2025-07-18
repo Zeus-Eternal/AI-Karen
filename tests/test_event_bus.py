@@ -3,7 +3,7 @@ import importlib
 import pytest
 
 import ai_karen_engine.event_bus as eb
-from ai_karen_engine.config.config_manager import config_manager
+from ai_karen_engine.config import config_manager
 
 class FakeRedisClient:
     def __init__(self):
