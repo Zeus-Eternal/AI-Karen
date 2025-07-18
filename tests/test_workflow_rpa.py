@@ -12,7 +12,7 @@ sys.modules.setdefault("pyautogui", dummy)
 from ai_karen_engine.core.workflow_engine_client import WorkflowEngineClient  # noqa: E402
 from ai_karen_engine.integrations.automation_manager import AutomationManager  # noqa: E402
 from ai_karen_engine.integrations.local_rpa_client import LocalRPAClient  # noqa: E402
-from ai_karen_engine.plugin_router import PluginRouter  # noqa: E402
+from ai_karen_engine.plugins.router import PluginRouter  # noqa: E402
 
 def test_workflow_engine_trigger(capfd):
     wf = WorkflowEngineClient()

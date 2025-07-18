@@ -1,0 +1,10 @@
+{
+  "plugin_api_version": "1.0",
+  "intent": "time_query",
+  "enable_external_workflow": false,
+  "required_roles": [
+    "user"
+  ],
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.time_query.handler"
+}

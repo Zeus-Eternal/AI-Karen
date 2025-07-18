@@ -1,0 +1,87 @@
+{
+  "name": "analytics-dashboard",
+  "version": "1.0.0",
+  "display_name": "Analytics Dashboard",
+  "description": "Comprehensive analytics and reporting dashboard with real-time metrics",
+  "author": "Kari AI Team",
+  "license": "MIT",
+  "category": "analytics",
+  "tags": ["analytics", "dashboard", "metrics", "reporting"],
+  
+  "api_version": "1.0",
+  "kari_min_version": "0.4.0",
+  
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "provides_background_tasks": true,
+    "provides_webhooks": false
+  },
+  
+  "dependencies": {
+    "plugins": ["time_query"],
+    "extensions": [],
+    "system_services": ["postgres", "elasticsearch"]
+  },
+  
+  "permissions": {
+    "data_access": ["read", "write"],
+    "plugin_access": ["execute"],
+    "system_access": ["metrics", "logs"],
+    "network_access": []
+  },
+  
+  "resources": {
+    "max_memory_mb": 256,
+    "max_cpu_percent": 15,
+    "max_disk_mb": 512
+  },
+  
+  "ui": {
+    "control_room_pages": [
+      {
+        "name": "Analytics Dashboard",
+        "path": "/analytics",
+        "icon": "📊",
+        "permissions": ["user", "admin"]
+      }
+    ],
+    "streamlit_pages": [
+      {
+        "name": "Reports",
+        "module": "ui.reports",
+        "permissions": ["admin"]
+      }
+    ]
+  },
+  
+  "api": {
+    "endpoints": [
+      {
+        "path": "/analytics/metrics",
+        "methods": ["GET"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/analytics/reports",
+        "methods": ["GET", "POST"],
+        "permissions": ["user"]
+      }
+    ]
+  },
+  
+  "background_tasks": [
+    {
+      "name": "collect_metrics",
+      "schedule": "*/1 * * * *",
+      "function": "tasks.collect_system_metrics"
+    }
+  ],
+  
+  "marketplace": {
+    "price": "free",
+    "support_url": "https://github.com/kari-ai/extensions",
+    "documentation_url": "https://docs.kari.ai/extensions/analytics-dashboard",
+    "screenshots": ["dashboard-1.png", "dashboard-2.png"]
+  }
+}

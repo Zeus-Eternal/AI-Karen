@@ -8,7 +8,7 @@ import pytest
 if "jinja2" not in sys.modules:
     sys.modules["jinja2"] = ModuleType("jinja2")
 
-from ai_karen_engine.plugin_router import AccessDenied, PluginRouter
+from ai_karen_engine.plugins.router import AccessDenied, PluginRouter
 
 def ensure_optional_dependency(name: str):
     if name not in sys.modules:

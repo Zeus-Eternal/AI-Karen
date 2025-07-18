@@ -29,7 +29,7 @@ from ai_karen_engine.self_refactor import SelfRefactorEngine, SREScheduler
 from ai_karen_engine.integrations.llm_registry import registry as llm_registry
 from ai_karen_engine.integrations.model_discovery import sync_registry
 from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
-from ai_karen_engine.plugin_router import get_plugin_router
+from ai_karen_engine.plugins.router import get_plugin_router
 from ai_karen_engine.api_routes.auth import router as auth_router
 from ai_karen_engine.api_routes.events import router as events_router
 

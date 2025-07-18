@@ -30,13 +30,13 @@ def __getattr__(name):
         from ai_karen_engine.automation_manager import AutomationManager as _AM
         return _AM
     if name == "PluginRouter":
-        from ai_karen_engine.plugin_router import PluginRouter as _PR
+        from ai_karen_engine.plugins.router import PluginRouter as _PR
         return _PR
     if name == "PluginManager":
-        from ai_karen_engine.plugin_manager import PluginManager as _PM
+        from ai_karen_engine.plugins.manager import PluginManager as _PM
         return _PM
     if name == "AccessDenied":
-        from ai_karen_engine.plugin_router import AccessDenied as _AD
+        from ai_karen_engine.plugins.router import AccessDenied as _AD
         return _AD
     if name == "DocumentStore":
         from ai_karen_engine.doc_store import DocumentStore as _DS

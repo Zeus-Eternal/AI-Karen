@@ -21,6 +21,8 @@ import uuid
 
 from ai_karen_engine.core.memory.manager import init_memory
 from ai_karen_engine.utils.auth import validate_session
+from ai_karen_engine.extensions import initialize_extension_manager, get_extension_manager
+from ai_karen_engine.plugins.router import get_plugin_router
 
 try:
     from fastapi import FastAPI, APIRouter, Request, Response, status
@@ -57,6 +59,39 @@ app = FastAPI(
 @app.on_event("startup")
 async def _init_memory() -> None:
     init_memory()
+
+@app.on_event("startup")
+async def _init_extensions() -> None:
+    """Initialize the extension system."""
+    from pathlib import Path
+    
+    # Initialize extension manager
+    extension_root = Path("extensions")
+    plugin_router = get_plugin_router()
+    
+    extension_manager = initialize_extension_manager(
+        extension_root=extension_root,
+        plugin_router=plugin_router,
+        db_session=None,  # TODO: Pass actual DB session
+        app_instance=app
+    )
+    
+    # Load all available extensions
+    try:
+        loaded_extensions = await extension_manager.load_all_extensions()
+        logger.info(f"Loaded {len(loaded_extensions)} extensions")
+        
+        # Mount extension API routes
+        for name, record in loaded_extensions.items():
+            if record.instance and hasattr(record.instance, 'get_api_router'):
+                router = record.instance.get_api_router()
+                if router:
+                    app.include_router(router, tags=[f"extension-{name}"])
+                    logger.info(f"Mounted API routes for extension: {name}")
+                    
+    except Exception as e:
+        logger.error(f"Failed to load extensions: {e}")
+        # Don't fail startup if extensions fail to load
 
 # -- Prometheus Metrics (optional) --
 try:

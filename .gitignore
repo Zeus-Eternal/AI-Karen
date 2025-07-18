@@ -13,3 +13,12 @@ mobile_ui/config/secrets.json
 *.duckdb
 *.duckdb
 *.db
+.kiro/specs/modular-extensions-system/tasks.md
+.kiro/specs/modular-extensions-system/requirements.md
+.kiro/specs/modular-extensions-system/design.md
+.kiro/specs/directory-structure-reorganization/tasks.md
+.kiro/specs/directory-structure-reorganization/requirements.md
+.kiro/specs/directory-structure-reorganization/migration-plan.md
+.kiro/specs/directory-structure-reorganization/design.md
+.kiro/specs/directory-structure-reorganization/completion-summary.md
+.kiro/specs/directory-structure-reorganization/analysis.md

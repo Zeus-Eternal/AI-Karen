@@ -16,7 +16,7 @@ from ai_karen_engine.core.plugin_metrics import (
 )
 from ai_karen_engine.core.cortex.errors import CortexDispatchError, UnsupportedIntentError
 from ai_karen_engine.core.predictors import predictor_registry, run_predictor
-from ai_karen_engine.plugin_manager import get_plugin_manager
+from ai_karen_engine.plugins.manager import get_plugin_manager
 
 async def dispatch(
     user_ctx: Dict[str, Any],

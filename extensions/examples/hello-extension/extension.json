@@ -1,0 +1,70 @@
+{
+  "name": "hello-extension",
+  "version": "1.0.0",
+  "display_name": "Hello Extension",
+  "description": "A simple example extension that demonstrates the extension system",
+  "author": "Kari AI Team",
+  "license": "MIT",
+  "category": "example",
+  "tags": ["example", "demo", "hello"],
+  
+  "api_version": "1.0",
+  "kari_min_version": "0.4.0",
+  
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "provides_background_tasks": false,
+    "provides_webhooks": false
+  },
+  
+  "dependencies": {
+    "plugins": ["hello_world"],
+    "extensions": [],
+    "system_services": []
+  },
+  
+  "permissions": {
+    "data_access": ["read"],
+    "plugin_access": ["execute"],
+    "system_access": [],
+    "network_access": []
+  },
+  
+  "resources": {
+    "max_memory_mb": 64,
+    "max_cpu_percent": 5,
+    "max_disk_mb": 10
+  },
+  
+  "ui": {
+    "control_room_pages": [
+      {
+        "name": "Hello Dashboard",
+        "path": "/hello",
+        "icon": "👋",
+        "permissions": ["user", "admin"]
+      }
+    ],
+    "streamlit_pages": []
+  },
+  
+  "api": {
+    "endpoints": [
+      {
+        "path": "/hello",
+        "methods": ["GET"],
+        "permissions": ["user"]
+      }
+    ]
+  },
+  
+  "background_tasks": [],
+  
+  "marketplace": {
+    "price": "free",
+    "support_url": "https://github.com/kari-ai/extensions",
+    "documentation_url": "https://docs.kari.ai/extensions/hello",
+    "screenshots": []
+  }
+}

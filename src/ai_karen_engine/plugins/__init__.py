@@ -1,16 +1,20 @@
-"""Plugin collection for Kari AI."""
+"""
+Plugin system for Kari AI.
+
+This module provides the core plugin system functionality including
+plugin discovery, routing, execution, and management.
+"""
+
+from .manager import PluginManager, get_plugin_manager
+from .router import PluginRouter, PluginRecord, AccessDenied, get_plugin_router
+from .sandbox_system import run_in_sandbox
 
 __all__ = [
-    "autonomous_task_handler",
-    "desktop_agent",
-    "git_merge_safe",
-    "hello_world",
-    "hf_llm",
-    "k8s_scale",
-    "llm_manager",
-    "openai_llm",
-    "time_query",
-    "tui_fallback",
-    "fine_tune_lnm",
+    "PluginManager",
+    "PluginRouter",
+    "PluginRecord", 
+    "AccessDenied",
+    "get_plugin_manager",
+    "get_plugin_router",
+    "run_in_sandbox",
 ]
-

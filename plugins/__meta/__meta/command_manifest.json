@@ -1,0 +1,5 @@
+[
+  {"keyword": "help", "description": "List commands", "required_roles": ["user"]},
+  {"keyword": "memory", "description": "Show recent memory", "required_roles": ["user"]},
+  {"keyword": "purge", "description": "Clear memory", "required_roles": ["dev"]}
+]

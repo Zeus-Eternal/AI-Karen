@@ -14,6 +14,10 @@ import threading
 
 from ai_karen_engine.core.neuro_vault import NeuroVault
 
+# ========== Logging ==========
+logger = logging.getLogger("kari.memory.manager")
+logger.setLevel(logging.INFO)
+
 # ========== Backend Imports ==========
 try:
     from ai_karen_engine.clients.database.milvus_client import (
@@ -60,10 +64,6 @@ try:
     import duckdb
 except ImportError:
     duckdb = None
-
-# ========== Logging ==========
-logger = logging.getLogger("kari.memory.manager")
-logger.setLevel(logging.INFO)
 
 # ========== Metrics ==========
 _METRICS: Dict[str, int] = {

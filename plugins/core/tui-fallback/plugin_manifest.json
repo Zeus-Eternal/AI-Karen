@@ -1,0 +1,12 @@
+{
+  "plugin_api_version": "1.0",
+  "enable_external_workflow": false,
+  "required_roles": [
+    "admin"
+  ],
+  "intent": [
+    "tui_diagnostics"
+  ],
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.tui_fallback.handler"
+}

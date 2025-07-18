@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from ai_karen_engine import LLMOrchestrator
-from ai_karen_engine.plugin_router import get_plugin_router
+from ai_karen_engine.plugins.router import get_plugin_router
 
 
 CONFIG_PATH = Path("config") / "settings.json"

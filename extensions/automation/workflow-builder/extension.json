@@ -1,0 +1,87 @@
+{
+  "name": "workflow-builder",
+  "version": "1.0.0",
+  "display_name": "Workflow Builder",
+  "description": "AI-powered workflow automation builder - the foundation for prompt-driven automation",
+  "author": "Kari AI Team",
+  "license": "MIT",
+  "category": "automation",
+  "tags": ["automation", "workflow", "ai", "n8n-alternative"],
+  
+  "api_version": "1.0",
+  "kari_min_version": "0.4.0",
+  
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "provides_background_tasks": true,
+    "provides_webhooks": true
+  },
+  
+  "dependencies": {
+    "plugins": ["time_query", "hf_llm"],
+    "extensions": [],
+    "system_services": ["postgres", "redis"]
+  },
+  
+  "permissions": {
+    "data_access": ["read", "write"],
+    "plugin_access": ["execute"],
+    "system_access": ["metrics"],
+    "network_access": ["outbound_http", "webhook"]
+  },
+  
+  "resources": {
+    "max_memory_mb": 512,
+    "max_cpu_percent": 25,
+    "max_disk_mb": 1024
+  },
+  
+  "ui": {
+    "control_room_pages": [
+      {
+        "name": "Workflow Builder",
+        "path": "/workflows",
+        "icon": "⚡",
+        "permissions": ["user", "admin"]
+      }
+    ],
+    "streamlit_pages": [
+      {
+        "name": "Workflow Dashboard",
+        "module": "ui.dashboard",
+        "permissions": ["user", "admin"]
+      }
+    ]
+  },
+  
+  "api": {
+    "endpoints": [
+      {
+        "path": "/workflows",
+        "methods": ["GET", "POST"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/workflows/{workflow_id}/execute",
+        "methods": ["POST"],
+        "permissions": ["user"]
+      }
+    ]
+  },
+  
+  "background_tasks": [
+    {
+      "name": "workflow_scheduler",
+      "schedule": "*/5 * * * *",
+      "function": "tasks.schedule_workflows"
+    }
+  ],
+  
+  "marketplace": {
+    "price": "free",
+    "support_url": "https://github.com/kari-ai/extensions",
+    "documentation_url": "https://docs.kari.ai/extensions/workflow-builder",
+    "screenshots": ["workflow-builder-1.png", "workflow-builder-2.png"]
+  }
+}
