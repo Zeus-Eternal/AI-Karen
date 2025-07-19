@@ -22,6 +22,7 @@ class _Route:
         self.pattern = re.compile(f"^{regex}$")
         self.func = func
 
+
 class FastAPI:
     def __init__(self, *_, **__):
         self.routes = []
@@ -36,6 +37,7 @@ class FastAPI:
         def decorator(func):
             self._middlewares.append(func)
             return func
+
         return decorator
 
     async def _handle_request(self, method, path, json=None):
@@ -99,19 +101,27 @@ class FastAPI:
         resp = Response(data)
         content = json.dumps(resp.json()).encode()
         headers = [(b"content-type", b"application/json")]
-        await send({"type": "http.response.start", "status": resp.status_code, "headers": headers})
+        await send(
+            {
+                "type": "http.response.start",
+                "status": resp.status_code,
+                "headers": headers,
+            }
+        )
         await send({"type": "http.response.body", "body": content})
 
     def get(self, path, **_kw):
         def decorator(func):
             self.routes.append(_Route("GET", path, func))
             return func
+
         return decorator
 
     def post(self, path, **_kw):
         def decorator(func):
             self.routes.append(_Route("POST", path, func))
             return func
+
         return decorator
 
     def on_event(self, event: str):
@@ -119,11 +129,13 @@ class FastAPI:
             if event == "startup":
                 self._startup.append(func)
             return func
+
         return decorator
 
     def exception_handler(self, exc):
         def decorator(func):
             return func
+
         return decorator
 
     def include_router(self, router, prefix: str = ""):
@@ -142,13 +154,16 @@ class APIRouter(FastAPI):
         def decorator(func):
             self.routes.append(_Route("GET", path, func))
             return func
+
         return decorator
 
     def post(self, path, **_kw):
         def decorator(func):
             self.routes.append(_Route("POST", path, func))
             return func
+
         return decorator
+
 
 class Response:
     def __init__(self, content=None, status_code=200, media_type=None, headers=None):
@@ -180,13 +195,18 @@ sys.modules.setdefault("fastapi.middleware.cors", cors_stub)
 sys.modules.setdefault("fastapi.middleware.gzip", gzip_stub)
 
 
+# FastAPI Depends stub for compatibility
+def Depends(dep):
+    return dep
+
+
 class status:
     HTTP_401_UNAUTHORIZED = 401
 
 
-
 class Request:
     pass
+
 
 class TestClient:
     def __init__(self, app):
@@ -203,7 +223,9 @@ class TestClient:
         resp = Response(
             getattr(data, "_data", data),
             status,
-            media_type=data.headers.get("content-type") if hasattr(data, "headers") else None,
+            media_type=(
+                data.headers.get("content-type") if hasattr(data, "headers") else None
+            ),
         )
         resp.headers.update(getattr(data, "headers", {}))
         return resp
@@ -214,7 +236,9 @@ class TestClient:
         resp = Response(
             getattr(data, "_data", data),
             status,
-            media_type=data.headers.get("content-type") if hasattr(data, "headers") else None,
+            media_type=(
+                data.headers.get("content-type") if hasattr(data, "headers") else None
+            ),
         )
         resp.headers.update(getattr(data, "headers", {}))
         return resp

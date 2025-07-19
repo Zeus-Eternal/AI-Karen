@@ -5,21 +5,22 @@ This module provides temporary compatibility imports to ensure
 existing code continues to work during the migration period.
 """
 
-import warnings
-from typing import Any, Dict, Optional
 import sys
+import warnings
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 
 def deprecated_import(old_path: str, new_path: str, removal_version: str = "0.5.0"):
     """
     Decorator to mark imports as deprecated.
-    
+
     Args:
         old_path: The old import path being deprecated
         new_path: The new import path to use instead
         removal_version: Version when the compatibility will be removed
     """
+
     def decorator(func_or_class):
         def wrapper(*args, **kwargs):
             warnings.warn(
@@ -27,28 +28,28 @@ def deprecated_import(old_path: str, new_path: str, removal_version: str = "0.5.
                 f"Use '{new_path}' instead. "
                 f"This compatibility layer will be removed in version {removal_version}.",
                 DeprecationWarning,
-                stacklevel=3
+                stacklevel=3,
             )
             return func_or_class(*args, **kwargs)
-        
+
         # Preserve original attributes
-        wrapper.__name__ = getattr(func_or_class, '__name__', 'unknown')
-        wrapper.__doc__ = getattr(func_or_class, '__doc__', None)
-        wrapper.__module__ = getattr(func_or_class, '__module__', None)
-        
+        wrapper.__name__ = getattr(func_or_class, "__name__", "unknown")
+        wrapper.__doc__ = getattr(func_or_class, "__doc__", None)
+        wrapper.__module__ = getattr(func_or_class, "__module__", None)
+
         return wrapper
+
     return decorator
 
 
 class CompatibilityImportManager:
     """Manages compatibility imports during migration."""
-    
+
     def __init__(self):
         self.import_mappings = {
             # Plugin system mappings
             "ai_karen_engine.plugin_manager": "ai_karen_engine.plugins.manager",
             "ai_karen_engine.plugin_router": "ai_karen_engine.plugins.router",
-            
             # Individual plugin mappings (examples)
             "ai_karen_engine.plugins.hello_world": "plugins.examples.hello_world",
             "ai_karen_engine.plugins.time_query": "plugins.core.time_query",
@@ -63,27 +64,33 @@ class CompatibilityImportManager:
             "ai_karen_engine.plugins.sandbox_fail": "plugins.examples.sandbox_fail",
             "ai_karen_engine.plugins.tui_fallback": "plugins.core.tui_fallback",
         }
-        
+
         self.usage_tracking: Dict[str, int] = {}
-    
+
     def track_usage(self, old_path: str) -> None:
         """Track usage of deprecated import paths."""
         self.usage_tracking[old_path] = self.usage_tracking.get(old_path, 0) + 1
-    
+
     def get_usage_report(self) -> Dict[str, Any]:
         """Get report of deprecated import usage."""
         return {
             "total_deprecated_imports": len(self.usage_tracking),
             "usage_by_path": self.usage_tracking,
-            "most_used": max(self.usage_tracking.items(), key=lambda x: x[1]) if self.usage_tracking else None
+            "most_used": (
+                max(self.usage_tracking.items(), key=lambda x: x[1])
+                if self.usage_tracking
+                else None
+            ),
         }
-    
-    def create_compatibility_module(self, old_module_path: str, new_module_path: str) -> None:
+
+    def create_compatibility_module(
+        self, old_module_path: str, new_module_path: str
+    ) -> None:
         """Create a compatibility module that redirects to the new location."""
         try:
             # Import the new module
-            new_module = __import__(new_module_path, fromlist=[''])
-            
+            new_module = __import__(new_module_path, fromlist=[""])
+
             # Create compatibility wrapper
             class CompatibilityModule:
                 def __getattr__(self, name):
@@ -92,13 +99,13 @@ class CompatibilityImportManager:
                         f"Import from '{old_module_path}' is deprecated. "
                         f"Use '{new_module_path}' instead.",
                         DeprecationWarning,
-                        stacklevel=2
+                        stacklevel=2,
                     )
                     return getattr(new_module, name)
-            
+
             # Install compatibility module
             sys.modules[old_module_path] = CompatibilityModule()
-            
+
         except ImportError:
             # New module doesn't exist yet, skip compatibility
             pass
@@ -111,18 +118,24 @@ _compatibility_manager = CompatibilityImportManager()
 # Plugin System Compatibility Imports
 try:
     from ai_karen_engine.plugins.manager import PluginManager as _PluginManager
-    from ai_karen_engine.plugins.manager import get_plugin_manager as _get_plugin_manager
-    
-    @deprecated_import("ai_karen_engine.plugin_manager", "ai_karen_engine.plugins.manager")
+    from ai_karen_engine.plugins.manager import \
+        get_plugin_manager as _get_plugin_manager
+
+    @deprecated_import(
+        "ai_karen_engine.plugin_manager", "ai_karen_engine.plugins.manager"
+    )
     class PluginManager(_PluginManager):
         """Compatibility wrapper for PluginManager."""
+
         pass
-    
-    @deprecated_import("ai_karen_engine.plugin_manager", "ai_karen_engine.plugins.manager")
+
+    @deprecated_import(
+        "ai_karen_engine.plugin_manager", "ai_karen_engine.plugins.manager"
+    )
     def get_plugin_manager(*args, **kwargs):
         """Compatibility wrapper for get_plugin_manager."""
         return _get_plugin_manager(*args, **kwargs)
-    
+
 except ImportError:
     # New plugin system not available yet
     PluginManager = None
@@ -130,31 +143,43 @@ except ImportError:
 
 
 try:
-    from ai_karen_engine.plugins.router import PluginRouter as _PluginRouter
-    from ai_karen_engine.plugins.router import PluginRecord as _PluginRecord
     from ai_karen_engine.plugins.router import AccessDenied as _AccessDenied
-    from ai_karen_engine.plugins.router import get_plugin_router as _get_plugin_router
-    
-    @deprecated_import("ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router")
+    from ai_karen_engine.plugins.router import PluginRecord as _PluginRecord
+    from ai_karen_engine.plugins.router import PluginRouter as _PluginRouter
+    from ai_karen_engine.plugins.router import \
+        get_plugin_router as _get_plugin_router
+
+    @deprecated_import(
+        "ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router"
+    )
     class PluginRouter(_PluginRouter):
         """Compatibility wrapper for PluginRouter."""
+
         pass
-    
-    @deprecated_import("ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router")
+
+    @deprecated_import(
+        "ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router"
+    )
     class PluginRecord(_PluginRecord):
         """Compatibility wrapper for PluginRecord."""
+
         pass
-    
-    @deprecated_import("ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router")
+
+    @deprecated_import(
+        "ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router"
+    )
     class AccessDenied(_AccessDenied):
         """Compatibility wrapper for AccessDenied."""
+
         pass
-    
-    @deprecated_import("ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router")
+
+    @deprecated_import(
+        "ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router"
+    )
     def get_plugin_router(*args, **kwargs):
         """Compatibility wrapper for get_plugin_router."""
         return _get_plugin_router(*args, **kwargs)
-    
+
 except ImportError:
     # New plugin system not available yet
     PluginRouter = None
@@ -166,22 +191,24 @@ except ImportError:
 # Individual Plugin Compatibility
 # Note: These will be created dynamically as plugins are moved
 
+
 def create_plugin_compatibility_imports():
     """Create compatibility imports for individual plugins."""
     plugin_mappings = {
         "ai_karen_engine.plugins.hello_world": "plugins.examples.hello_world",
         "ai_karen_engine.plugins.time_query": "plugins.core.time_query",
+        "ai_karen_engine.plugins.llm_manager": "plugins.integrations.llm_manager",
         # Add more as needed during migration
     }
-    
+
     for old_path, new_path in plugin_mappings.items():
         try:
             # Try to import from new location
-            new_module = __import__(new_path, fromlist=[''])
-            
+            new_module = __import__(new_path, fromlist=[""])
+
             # Create compatibility module
             _compatibility_manager.create_compatibility_module(old_path, new_path)
-            
+
         except ImportError:
             # New location doesn't exist yet, skip
             continue
@@ -199,7 +226,7 @@ def warn_about_deprecated_import(old_path: str, new_path: str) -> None:
     warnings.warn(
         f"Import from '{old_path}' is deprecated. Use '{new_path}' instead.",
         DeprecationWarning,
-        stacklevel=3
+        stacklevel=3,
     )
 
 
@@ -208,6 +235,7 @@ def is_migration_complete() -> bool:
     try:
         # Test key new imports
         from ai_karen_engine.plugins import manager, router
+
         return True
     except ImportError:
         return False
@@ -221,7 +249,7 @@ if __name__ != "__main__":
 # Export compatibility components
 __all__ = [
     "PluginManager",
-    "PluginRouter", 
+    "PluginRouter",
     "PluginRecord",
     "AccessDenied",
     "get_plugin_manager",
