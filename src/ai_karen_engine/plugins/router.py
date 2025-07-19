@@ -60,8 +60,11 @@ except ImportError:
 
 
 # --- Paths & schema -----------------------------------------------------
-# Plugin root now points to the root plugins directory (marketplace structure)
-PLUGIN_ROOT       = Path(__file__).parent.parent.parent.parent / "plugins"
+# Plugin root defaults to this package's directory but may be overridden
+# via the ``KARI_PLUGIN_DIR`` environment variable. This keeps tests and
+# embedded deployments working even when no top-level ``plugins`` folder
+# exists.
+PLUGIN_ROOT       = Path(os.getenv("KARI_PLUGIN_DIR", Path(__file__).parent))
 PLUGIN_META       = "__meta"
 PLUGIN_MANIFEST   = "plugin_manifest.json"
 PROMPT_FILE       = "prompt.txt"
