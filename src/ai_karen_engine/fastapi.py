@@ -21,7 +21,7 @@ import uuid
 
 from ai_karen_engine.core.memory.manager import init_memory
 from ai_karen_engine.utils.auth import validate_session
-from ai_karen_engine.extensions import initialize_extension_manager, get_extension_manager
+from ai_karen_engine.extensions import initialize_extension_manager
 from ai_karen_engine.plugins.router import get_plugin_router
 
 try:

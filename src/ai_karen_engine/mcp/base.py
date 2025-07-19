@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import time
 from typing import Iterable, Optional
+
+from .registry import ServiceRegistry
 
 try:
     from prometheus_client import Counter, Histogram

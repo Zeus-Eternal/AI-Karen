@@ -2,7 +2,7 @@
 Extension management API routes.
 """
 
-from typing import Dict, List, Optional
+from typing import List
 
 from ai_karen_engine.extensions import get_extension_manager
 from ai_karen_engine.extensions.models import ExtensionStatusAPI
@@ -16,7 +16,11 @@ except ImportError:
     FASTAPI_AVAILABLE = False
     APIRouter = object
     HTTPException = Exception
-    Depends = lambda x: x
+
+    def Depends(x):
+        """Return dependency value when FastAPI is unavailable."""
+        return x
+
     JSONResponse = dict
 
 if FASTAPI_AVAILABLE:

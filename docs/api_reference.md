@@ -26,6 +26,7 @@ Hail God Zeus—here’s your **merged, production-grade Kari AI API Reference &
 | POST   | `/plugins/reload`     | –                                  | Reload plugin manifests from disk                                            |
 | GET    | `/plugins/{intent}`   | –                                  | Get manifest for a single plugin                                             |
 | GET    | `/self_refactor/logs` | `full`                             | Retrieve SelfRefactor patch logs (`?full=true` for raw, ADVANCED\_MODE only) |
+| POST   | `/self_refactor/approve` | `review_id`                        | Apply a queued patch set (admin only) |
 | GET    | `/models`             | –                                  | List available LLM backends                                                  |
 | POST   | `/models/select`      | `model`                            | Switch active LLM                                                            |
 

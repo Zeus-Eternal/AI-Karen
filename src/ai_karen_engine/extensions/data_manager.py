@@ -8,19 +8,17 @@ with proper tenant isolation, user access controls, and configuration management
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
-import hashlib
 
 try:
     from sqlalchemy import (
-        create_engine, MetaData, Table, Column, String, Integer, 
+        create_engine, MetaData, Table, Column, String, Integer,
         DateTime, Text, Boolean, JSON, select, insert, update, delete,
-        and_, or_, func
+        and_, func
     )
     from sqlalchemy.engine import Engine
-    from sqlalchemy.exc import SQLAlchemyError
     SQLALCHEMY_AVAILABLE = True
 except ImportError:
     SQLALCHEMY_AVAILABLE = False
@@ -743,7 +741,7 @@ class ExtensionDataManager:
                             )
                             result = conn.execute(count_query)
                             record_count = result.scalar()
-                    except:
+                    except Exception:
                         record_count = 0
                 else:
                     # Get total count
@@ -752,7 +750,7 @@ class ExtensionDataManager:
                             count_query = select(func.count()).select_from(table)
                             result = conn.execute(count_query)
                             record_count = result.scalar()
-                    except:
+                    except Exception:
                         record_count = 0
                 
                 info['tables'].append({

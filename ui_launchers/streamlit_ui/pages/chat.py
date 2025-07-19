@@ -7,6 +7,11 @@ import json
 import numpy as np
 from datetime import datetime
 from services.chat_service import chat_service
+from ui_launchers.streamlit_ui.helpers.chat_ui import (
+    render_message,
+    render_typing_indicator,
+    render_export_modal,
+)
 
 
 def render_enhanced_chat_interface(user_ctx=None):
@@ -57,81 +62,11 @@ def render_enhanced_chat_interface(user_ctx=None):
     
     with chat_container:
         # Display chat messages with rich formatting
-        for i, message in enumerate(st.session_state.chat_messages):
-            timestamp = message.get('timestamp', datetime.now()).strftime('%H:%M')
-            
-            if message["role"] == "user":
-                # User message (right-aligned)
-                st.markdown(f"""
-                <div style="display: flex; justify-content: flex-end; margin: 1rem 0;">
-                    <div style="
-                        background: #2563eb;
-                        color: white;
-                        padding: 1rem;
-                        border-radius: 18px 18px 4px 18px;
-                        max-width: 70%;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    ">
-                        <div style="font-size: 0.9rem; margin-bottom: 0.5rem;">
-                            {message["content"]}
-                        </div>
-                        <div style="font-size: 0.7rem; opacity: 0.8; text-align: right;">
-                            👤 You • {timestamp}
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                # Assistant message (left-aligned)
-                st.markdown(f"""
-                <div style="display: flex; justify-content: flex-start; margin: 1rem 0;">
-                    <div style="
-                        background: #f1f5f9;
-                        color: #1e293b;
-                        padding: 1rem;
-                        border-radius: 18px 18px 18px 4px;
-                        max-width: 70%;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        border-left: 3px solid #10b981;
-                    ">
-                        <div style="font-size: 0.9rem; margin-bottom: 0.5rem;">
-                            {message["content"]}
-                        </div>
-                        <div style="font-size: 0.7rem; opacity: 0.6; text-align: left;">
-                            🤖 AI Karen • {timestamp}
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Show attachments if any
-            if message.get('attachments'):
-                for attachment in message['attachments']:
-                    st.markdown(f"📎 {attachment['name']} ({attachment['size']})")
+        for message in st.session_state.chat_messages:
+            render_message(message)
     
     # Typing indicator
-    if show_typing and st.session_state.get('ai_typing', False):
-        st.markdown("""
-        <div style="display: flex; justify-content: flex-start; margin: 1rem 0;">
-            <div style="
-                background: #f1f5f9;
-                color: #64748b;
-                padding: 1rem;
-                border-radius: 18px;
-                font-style: italic;
-                animation: pulse 1.5s infinite;
-            ">
-                🤖 AI Karen is typing...
-            </div>
-        </div>
-        <style>
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-        }
-        </style>
-        """, unsafe_allow_html=True)
+    render_typing_indicator(show_typing and st.session_state.get('ai_typing', False))
     
     # Message input area
     st.markdown("---")
@@ -266,55 +201,4 @@ def render_enhanced_chat_interface(user_ctx=None):
     
     # Export modal
     if st.session_state.get('show_export_modal', False):
-        with st.expander("📤 Export Conversation", expanded=True):
-            st.markdown("**Export Options:**")
-            
-            export_col1, export_col2, export_col3 = st.columns(3)
-            
-            with export_col1:
-                if st.button("📄 Export as Text"):
-                    # Generate text export
-                    export_text = "AI Karen Conversation Export\n" + "="*40 + "\n\n"
-                    for msg in st.session_state.chat_messages:
-                        role = "You" if msg["role"] == "user" else "AI Karen"
-                        timestamp = msg.get('timestamp', datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
-                        export_text += f"[{timestamp}] {role}: {msg['content']}\n\n"
-                    
-                    st.download_button(
-                        label="💾 Download Text File",
-                        data=export_text,
-                        file_name=f"ai_karen_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                        mime="text/plain"
-                    )
-            
-            with export_col2:
-                if st.button("📊 Export as JSON"):
-                    # Generate JSON export
-                    export_data = {
-                        "export_timestamp": datetime.now().isoformat(),
-                        "conversation_length": len(st.session_state.chat_messages),
-                        "messages": [
-                            {
-                                "role": msg["role"],
-                                "content": msg["content"],
-                                "timestamp": msg.get('timestamp', datetime.now()).isoformat(),
-                                "attachments": msg.get('attachments', [])
-                            }
-                            for msg in st.session_state.chat_messages
-                        ]
-                    }
-                    
-                    st.download_button(
-                        label="💾 Download JSON File",
-                        data=json.dumps(export_data, indent=2),
-                        file_name=f"ai_karen_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                        mime="application/json"
-                    )
-            
-            with export_col3:
-                if st.button("📋 Copy to Clipboard"):
-                    st.info("📋 Copy functionality would be implemented with JavaScript in a full deployment")
-            
-            if st.button("❌ Close Export"):
-                st.session_state.show_export_modal = False
-                st.rerun()
+        render_export_modal()

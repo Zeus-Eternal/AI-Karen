@@ -6,14 +6,15 @@ the directory structure reorganization safely.
 """
 
 import ast
-import os
-import re
-import shutil
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Tuple
+import importlib
 import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class MigrationStatus(Enum):
@@ -354,7 +355,8 @@ class MigrationValidator:
             sys.path.insert(0, str(self.root_path / "src"))
             
             # Test plugin system imports
-            from ai_karen_engine.plugins import manager, router
+            importlib.import_module("ai_karen_engine.plugins.manager")
+            importlib.import_module("ai_karen_engine.plugins.router")
             self.logger.info("Plugin system imports successful")
             
         except ImportError as e:
@@ -458,14 +460,14 @@ def main():
     
     if args.action == "analyze":
         analyzer = DirectoryAnalyzer(args.root)
-        
-        print("Analyzing current directory structure...")
+
+        logger.info("Analyzing current directory structure...")
         file_moves = analyzer.identify_plugin_files()
-        print(f"Found {len(file_moves)} files to move")
-        
+        logger.info("Found %d files to move", len(file_moves))
+
         import_updates = analyzer.scan_imports()
         total_updates = sum(len(updates) for updates in import_updates.values())
-        print(f"Found {total_updates} import statements to update")
+        logger.info("Found %d import statements to update", total_updates)
         
     elif args.action == "plan":
         planner = MigrationPlanner(args.root)
@@ -475,18 +477,18 @@ def main():
         if args.output:
             reporter.save_plan_report(plan, args.output)
         else:
-            print(reporter.generate_plan_report(plan))
+            logger.info(reporter.generate_plan_report(plan))
     
     elif args.action == "validate":
         validator = MigrationValidator(args.root)
         is_valid, errors = validator.validate_post_migration()
         
         if is_valid:
-            print("✅ Migration validation passed")
+            logger.info("✅ Migration validation passed")
         else:
-            print("❌ Migration validation failed:")
+            logger.warning("❌ Migration validation failed:")
             for error in errors:
-                print(f"  - {error}")
+                logger.warning("  - %s", error)
 
 
 if __name__ == "__main__":

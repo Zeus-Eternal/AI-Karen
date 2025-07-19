@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import List, Tuple
+import logging
 
 try:
     import joblib
@@ -11,6 +12,9 @@ try:
 except Exception:  # pragma: no cover - optional dep
     joblib = np = LogisticRegression = TfidfVectorizer = None
 import json
+
+
+logger = logging.getLogger(__name__)
 
 
 class BasicClassifier:
@@ -27,7 +31,7 @@ class BasicClassifier:
             self.clf = joblib.load(self.model_path)
             self.vectorizer = joblib.load(self.vector_path)
         else:
-            print(
+            logger.warning(
                 "[BasicClassifier] ⚠️ No model found. Attempting to train from default data."
             )
             default_data = self._load_bootstrap_data()
@@ -57,5 +61,5 @@ class BasicClassifier:
             with open("data/bootstrap/classifier_seed.json") as f:
                 return json.load(f)
         except Exception:
-            print("[BasicClassifier] ❌ No bootstrap data found.")
+            logger.warning("[BasicClassifier] ❌ No bootstrap data found.")
             return []

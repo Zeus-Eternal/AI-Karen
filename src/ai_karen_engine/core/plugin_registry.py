@@ -7,6 +7,7 @@ Unified Plugin Registry for Kari AI
 
 import importlib
 import pkgutil
+import logging
 
 from types import ModuleType
 
@@ -48,6 +49,8 @@ except Exception:  # pragma: no cover - optional dep
 
 PLUGIN_REGISTRY: dict[str, dict[str, ModuleType]] = {}
 
+logger = logging.getLogger(__name__)
+
 
 def _discover_plugins(base_pkg: str, type_label: str) -> dict[str, dict[str, ModuleType]]:
     """Discover and import plugins under ``base_pkg``."""
@@ -65,7 +68,9 @@ def _discover_plugins(base_pkg: str, type_label: str) -> dict[str, dict[str, Mod
             _METRICS["plugins_loaded"] += 1
             PLUGIN_LOADED_COUNT.inc()
         except Exception as ex:  # pragma: no cover - safety net
-            print(f"Plugin load failed: {name} ({type_label}): {ex}")
+            logger.warning(
+                "Plugin load failed: %s (%s): %s", name, type_label, ex
+            )
             _METRICS["plugin_import_errors"] += 1
             PLUGIN_IMPORT_ERROR_COUNT.labels(plugin=name).inc()
     return plugins

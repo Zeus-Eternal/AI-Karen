@@ -8,6 +8,7 @@ Kari PluginRouter: Ruthless Prompt‐First Plugin Orchestration
 import os
 import json
 import inspect
+import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -32,7 +33,11 @@ except ImportError:
 
 
 # --- Sandboxing helper --------------------------------------------------
-from ai_karen_engine.utils.sandbox import run_in_sandbox  # your existing sandbox runner
+from ai_karen_engine.utils.sandbox import (
+    run_in_sandbox,  # your existing sandbox runner
+)
+
+logger = logging.getLogger(__name__)
 
 
 # --- Jinja2 environment (optional) -------------------------------------
@@ -105,7 +110,8 @@ def load_handler(plugin_dir: Path, module_path: Optional[str] = None) -> Tuple[C
     Return (handler_callable, module_name).
     Handler must expose `async def run(params)` or `def run(params)`.
     """
-    import importlib, importlib.util
+    import importlib
+    import importlib.util
 
     if module_path:
         module = importlib.import_module(module_path)
@@ -185,7 +191,7 @@ class PluginRouter:
                     module=manifest.get("module", HANDLER_FILE) if 'manifest' in locals() else HANDLER_FILE,
                     error=type(e).__name__
                 ).inc()
-                print(f"Plugin discovery failed in {p}: {e}")
+                logger.warning("Plugin discovery failed in %s: %s", p, e)
 
         return out
 
