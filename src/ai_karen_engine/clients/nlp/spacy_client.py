@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from typing import Dict, List
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 try:
     import spacy
@@ -22,8 +26,9 @@ class SpaCyClient:
         try:
             self.nlp = spacy.load(model_name)
         except Exception:
-            print(
-                f"[SpaCyClient] ⚠️ Failed to load {model_name}. Falling back to en_core_web_sm."
+            logger.warning(
+                "[SpaCyClient] ⚠️ Failed to load %s. Falling back to en_core_web_sm.",
+                model_name,
             )
             self.nlp = spacy.load("en_core_web_sm")
 

@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 import logging
+
+
+logger = logging.getLogger(__name__)
 import json
 from datetime import datetime
 
@@ -372,7 +375,7 @@ def main():
     
     # Load migration plan
     if not args.plan.exists():
-        print(f"❌ Migration plan file not found: {args.plan}")
+        logger.warning("❌ Migration plan file not found: %s", args.plan)
         return 1
     
     # For now, we'll create a plan programmatically
@@ -383,13 +386,15 @@ def main():
     
     # Confirm execution
     if not args.force and not args.dry_run:
-        print(f"⚠️  This will reorganize the directory structure of {args.root}")
-        print(f"   - {len(plan.file_moves)} files will be moved")
-        print(f"   - {len(plan.import_updates)} import statements will be updated")
+        logger.warning(
+            "⚠️  This will reorganize the directory structure of %s", args.root
+        )
+        logger.info("   - %d files will be moved", len(plan.file_moves))
+        logger.info("   - %d import statements will be updated", len(plan.import_updates))
         
         response = input("Continue? (y/N): ")
         if response.lower() != 'y':
-            print("Migration cancelled")
+            logger.info("Migration cancelled")
             return 0
     
     # Execute migration
@@ -398,12 +403,12 @@ def main():
     
     # Report results
     if state.status == MigrationStatus.COMPLETED:
-        print("✅ Migration completed successfully")
-        print(f"   - Moved {len(state.completed_moves)} files")
-        print(f"   - Updated {len(state.completed_imports)} import statements")
+        logger.info("✅ Migration completed successfully")
+        logger.info("   - Moved %d files", len(state.completed_moves))
+        logger.info("   - Updated %d import statements", len(state.completed_imports))
         
         if state.backup_path:
-            print(f"   - Backup created at {state.backup_path}")
+            logger.info("   - Backup created at %s", state.backup_path)
             
             # Ask about cleanup
             if not args.force:
@@ -412,12 +417,12 @@ def main():
                     executor.cleanup_backup(state.backup_path)
     
     elif state.status == MigrationStatus.FAILED:
-        print("❌ Migration failed")
+        logger.error("❌ Migration failed")
         for error in state.errors:
-            print(f"   - {error}")
+            logger.error("   - %s", error)
         
         if state.status == MigrationStatus.ROLLED_BACK:
-            print("🔄 Migration was rolled back")
+            logger.warning("🔄 Migration was rolled back")
         
         return 1
     
