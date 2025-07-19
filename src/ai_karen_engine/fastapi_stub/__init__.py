@@ -170,7 +170,7 @@ class JSONResponse(Response):
     pass
 
 
-responses = SimpleNamespace(JSONResponse=JSONResponse)
+responses = SimpleNamespace(JSONResponse=JSONResponse, Response=Response)
 sys.modules["fastapi.responses"] = responses  # type: ignore[assignment]
 
 # Middleware stubs

@@ -94,3 +94,17 @@ To meet WCAG AA requirements, ensure all text maintains a contrast ratio of at l
 | Open help | `?` |
 
 These shortcuts should be implemented in custom components where possible.
+
+## Continuous Integration
+
+All pull requests trigger the workflow defined in `.github/workflows/ci.yml`.
+The job installs dependencies and then runs the following checks:
+
+1. `ruff` for linting
+2. `black --check` for formatting
+3. `mypy --strict` for type safety
+4. `pytest` with coverage
+
+If the tests pass, the workflow builds a Docker image from the repository's
+`Dockerfile` and pushes it to the GitHub Container Registry under the commit
+SHA tag.
