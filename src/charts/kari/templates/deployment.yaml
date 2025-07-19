@@ -12,6 +12,8 @@ spec:
       labels:
         app: kari
     spec:
+      serviceAccountName: kari
+      automountServiceAccountToken: false
       containers:
         - name: kari
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
