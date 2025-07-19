@@ -25,3 +25,4 @@ mobile_ui/config/secrets.json
 .kiro/specs/directory-structure-reorganization/design.md
 .kiro/specs/directory-structure-reorganization/completion-summary.md
 .kiro/specs/directory-structure-reorganization/analysis.md
+/models

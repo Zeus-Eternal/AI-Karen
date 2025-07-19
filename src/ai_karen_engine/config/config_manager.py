@@ -152,6 +152,54 @@ def register(cb: Callable[[Dict[str, Any]], None]): register_observer(cb)
 __all__ = [
     "load_config", "save_config", "update_config", "get_config_value", "set_config_value",
     "reset_config", "backup_config", "restore_config", "register_observer",
-    "get", "set", "load", "save", "update", "reset", "backup", "restore", "register"
+    "get", "set", "load", "save", "update", "reset", "backup", "restore", "register",
+    "config_manager"
 ]
+
+# Create a simple config manager instance for backward compatibility
+class ConfigManager:
+    """Simple config manager wrapper for backward compatibility"""
+    
+    def __init__(self):
+        self.config = load_config()
+    
+    def get_config(self):
+        return load_config()
+    
+    def get_config_value(self, section: str, key: str = None, default=None):
+        """Get a config value from a section, with optional key and default"""
+        config = load_config()
+        if key is None:
+            return config.get(section, default)
+        section_data = config.get(section, {})
+        if isinstance(section_data, dict):
+            return section_data.get(key, default)
+        return default
+    
+    def get_app_config(self):
+        return load_config()
+    
+    def get_api_config(self):
+        return load_config()
+    
+    def get_database_config(self):
+        return load_config()
+    
+    def get_redis_config(self):
+        return load_config()
+    
+    def get_logging_config(self):
+        return load_config()
+    
+    def get_security_config(self):
+        return load_config()
+    
+    def get_llm_config(self):
+        return load_config()
+    
+    def get_plugins_config(self):
+        return load_config()
+
+# Create a singleton instance of ConfigManager
+config_manager = ConfigManager()
 

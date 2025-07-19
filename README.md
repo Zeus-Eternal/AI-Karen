@@ -32,7 +32,7 @@ production workloads.
 * **Hydra-Ops Mesh** with capsule planner, event bus and guardrails
 * Example plugins: hello world, desktop agent, TUI fallback, hf_llm, openai_llm
 * Tauri desktop Control Room for chat, dashboard and memory matrix
-* Streamlit mobile UI for API demo
+* **Premium Streamlit UI** with modern interface, role-based navigation, and real-time analytics
 * Prometheus metrics, tracing and EchoCore logging
 
 Kari is a **modular, headless-first AI system** designed for on-prem or air-gapped environments.
@@ -242,6 +242,20 @@ npx tauri dev
 
 📦 Ensure `tauri.config.json` is under `ui_launchers/desktop_ui/src-tauri/`
 
+### 5. Start Premium Streamlit UI
+
+```bash
+cd ui_launchers/streamlit_ui
+streamlit run app.py
+```
+
+🎨 **New Premium Features:**
+- Modern interface with role-based navigation
+- Executive dashboard with real-time analytics
+- Advanced theming system (Executive, Developer Dark, Minimal, Premium Gold)
+- Interactive charts and KPI widgets
+- Professional styling with smooth animations
+
 ### API Usage
 
 Kari's FastAPI backend exposes a small set of endpoints for headless deployments.
@@ -402,7 +416,7 @@ This project contains the production-ready Kari AI stack. It includes:
 - FastAPI service exposing chat, memory store, metadata-aware search, metrics,
   plugin management and health checks.
 - Tauri Control Room for chat, dashboard and memory matrix.
-- Streamlit mobile UI for API demo.
+- **Premium Streamlit UI** with executive dashboard, advanced analytics, and modern interface.
 
 Released under a dual license: the Mozilla Public License 2.0 with an optional commercial license. See `LICENSE-commercial.txt` for commercial terms.
  

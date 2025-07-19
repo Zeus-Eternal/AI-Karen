@@ -27,10 +27,17 @@ def _load_token() -> str | None:
     """Load token from ``session_state`` or query params."""
     token = st.session_state.get("token")
     if not token:
-        params = st.experimental_get_query_params()
-        if params.get("token"):
-            token = params["token"][0]
-            st.session_state["token"] = token
+        try:
+            params = st.query_params
+            if params.get("token"):
+                token = params["token"]
+                st.session_state["token"] = token
+        except AttributeError:
+            # Fallback for older Streamlit versions
+            params = st.experimental_get_query_params()
+            if params.get("token"):
+                token = params["token"][0]
+                st.session_state["token"] = token
     return token
 
 
@@ -53,4 +60,8 @@ def store_token(token: str) -> None:
     """Persist ``token`` in session and browser query params."""
 
     st.session_state["token"] = token
-    st.experimental_set_query_params(token=token)
+    try:
+        st.query_params["token"] = token
+    except AttributeError:
+        # Fallback for older Streamlit versions
+        st.experimental_set_query_params(token=token)
