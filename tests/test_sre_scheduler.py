@@ -1,12 +1,16 @@
+from __future__ import annotations
+
+import pathlib
+
 from ai_karen_engine.self_refactor import SREScheduler, SelfRefactorEngine
 
 class DummyEngine(SelfRefactorEngine):
     def __init__(self):
         # bypass parent __init__
-        pass
+        self.auto_merge = False
 
     def static_analysis(self):
-        return []
+        return ["issue"]
 
     def propose_patches(self, issues):
         return {}
@@ -15,7 +19,7 @@ class DummyEngine(SelfRefactorEngine):
         return {}
 
     def reinforce(self, report):
-        pass
+        return pathlib.Path("queued")
 
 
 def test_default_interval(monkeypatch):
@@ -30,3 +34,11 @@ def test_interval_override(monkeypatch):
     assert sched.interval == 42.0
     sched.set_interval(10)
     assert sched.interval == 10
+
+
+def test_queue_append(monkeypatch):
+    sched = SREScheduler(DummyEngine())
+    sched.start = lambda: None
+    sched._running = True
+    sched._loop()
+    assert sched.review_queue == [pathlib.Path("queued")]

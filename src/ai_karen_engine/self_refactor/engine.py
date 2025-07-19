@@ -127,10 +127,13 @@ class SelfRefactorEngine:
             pass
         return report
 
-    def reinforce(self, report: PatchReport) -> None:
-        """Save results and optionally merge successful patches."""
+    def reinforce(self, report: PatchReport) -> pathlib.Path | None:
+        """Save results and optionally merge successful patches.
+
+        Returns the path of the review directory if a patch was queued.
+        """
         if report.reward <= 0:
-            return
+            return None
 
         self.review_dir.mkdir(parents=True, exist_ok=True)
         ts = str(int(time.time()))
@@ -145,11 +148,13 @@ class SelfRefactorEngine:
         )
 
         if not self.auto_merge:
-            return
+            return review_path
 
         for file_str, patch in report.patches.items():
             target = self.repo_root / file_str
             target.write_text(patch)
+
+        return review_path
 
     # Convenience -----------------------------------------------------------
     def self_heal(self) -> PatchReport | None:
@@ -161,3 +166,15 @@ class SelfRefactorEngine:
         report = self.test_patches(patches)
         self.reinforce(report)
         return report
+
+    def apply_review(self, review_id: str) -> None:
+        """Apply patches from a saved review directory."""
+        review_path = self.review_dir / review_id
+        if not review_path.exists():
+            raise FileNotFoundError(str(review_path))
+        for file in review_path.iterdir():
+            if file.name == "report.json":
+                continue
+            target = self.repo_root / file.name
+            target.write_text(file.read_text())
+        shutil.rmtree(review_path)
