@@ -8,12 +8,10 @@ enabling them to expose tools and consume external MCP services.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from typing import Any, Dict, List, Optional, Callable
 
 from ai_karen_engine.mcp.registry import ServiceRegistry
-from ai_karen_engine.mcp.base import BaseMCPClient
 from .models import ExtensionManifest
 
 

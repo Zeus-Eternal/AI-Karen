@@ -5,20 +5,18 @@ This module provides safe execution of directory structure migrations
 with rollback capabilities and validation.
 """
 
-import os
-import re
 import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import List, Optional
 import logging
 import json
 from datetime import datetime
 
 from .migration_tools import (
     MigrationPlan, FileMove, ImportUpdate, MigrationStatus,
-    MigrationValidator, DirectoryAnalyzer
+    MigrationValidator
 )
 
 

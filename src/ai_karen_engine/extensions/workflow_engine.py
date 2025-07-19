@@ -995,9 +995,24 @@ class WorkflowEngine:
             raise ValueError("unsupported expression")
 
         try:
-            tree = ast.parse(resolved_condition, mode="eval")
-            return bool(eval_node(tree))
+            # Handle simple comparisons
+            if " == " in resolved_condition:
+                left, right = resolved_condition.split(" == ", 1)
+                return left.strip().strip('"\'') == right.strip().strip('"\'')
+            elif " != " in resolved_condition:
+                left, right = resolved_condition.split(" != ", 1)
+                return left.strip().strip('"\'') != right.strip().strip('"\'')
+            elif " > " in resolved_condition:
+                left, right = resolved_condition.split(" > ", 1)
+                return float(left.strip()) > float(right.strip())
+            elif " < " in resolved_condition:
+                left, right = resolved_condition.split(" < ", 1)
+                return float(left.strip()) < float(right.strip())
+            else:
+                # Try to evaluate as boolean
+                return bool(eval(resolved_condition))
         except Exception:
+            # Default to False if evaluation fails
             return False
 
 
