@@ -24,7 +24,7 @@ from ai_karen_engine.core.plugin_registry import _METRICS as PLUGIN_METRICS
 from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS
 from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 from ai_karen_engine.core.memory.manager import init_memory
-from ai_karen_engine.utils.auth import validate_session
+import ai_karen_engine.utils.auth as auth_utils
 from ai_karen_engine.self_refactor import SelfRefactorEngine, SREScheduler
 from ai_karen_engine.integrations.llm_registry import registry as llm_registry
 from ai_karen_engine.integrations.model_discovery import sync_registry
@@ -143,7 +143,11 @@ async def require_tenant(request: Request, call_next):
             auth = request.headers.get("authorization", "")
             if auth.lower().startswith("bearer "):
                 token = auth.split(maxsplit=1)[1]
-                ctx = validate_session(token, request.headers.get("user-agent", ""), request.client.host)
+                ctx = auth_utils.validate_session(
+                    token,
+                    request.headers.get("user-agent", ""),
+                    request.client.host,
+                )
                 tenant = ctx.get("tenant_id") if ctx else None
         if not tenant:
             return JSONResponse(status_code=400, content={"detail": "tenant_id required"})
@@ -253,7 +257,11 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     if not auth.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing token")
     token = auth.split(maxsplit=1)[1]
-    ctx = validate_session(token, request.headers.get("user-agent", ""), request.client.host)
+    ctx = auth_utils.validate_session(
+        token,
+        request.headers.get("user-agent", ""),
+        request.client.host,
+    )
     if not ctx:
         raise HTTPException(status_code=401, detail="Invalid token")
     role = "admin" if "admin" in ctx.get("roles", []) else "user"

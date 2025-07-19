@@ -18,7 +18,11 @@ def _device_fingerprint(user_agent: str, ip: str) -> str:
 
 
 def create_session(
-    user_id: str, roles: List[str], user_agent: str, ip: str, tenant_id: str
+    user_id: str,
+    roles: List[str],
+    user_agent: str,
+    ip: str,
+    tenant_id: str | None = None,
 ) -> str:
     now = int(time.time())
     payload = {
@@ -27,7 +31,7 @@ def create_session(
         "exp": now + SESSION_DURATION,
         "iat": now,
         "device": _device_fingerprint(user_agent, ip),
-        "tenant_id": tenant_id,
+        "tenant_id": tenant_id or "default",
     }
     return jwt.encode(payload, AUTH_SIGNING_KEY, algorithm=JWT_ALGORITHM)
 
