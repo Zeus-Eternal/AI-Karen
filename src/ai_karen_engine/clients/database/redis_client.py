@@ -3,13 +3,38 @@ RedisClient: Handles volatile short-term memory, cache, session, fast flush.
 Production: Use redis-py, thread-safe, supports multiple namespaces.
 """
 
+import os
+import logging
 import redis
 import json
 
+from typing import Optional
+
+
 class RedisClient:
-    def __init__(self, host="localhost", port=6379, db=0, prefix="kari"):
-        self.r = redis.StrictRedis(host=host, port=port, db=db, decode_responses=True)
+    def __init__(self, url: Optional[str] = None, prefix: str = "kari"):
+        """Initialize the Redis client.
+
+        Parameters
+        ----------
+        url: optional str
+            Redis connection URL. Defaults to ``os.getenv("REDIS_URL")``.
+        prefix: str
+            Key prefix for all operations.
+        """
+
         self.prefix = prefix
+        conn_url = url or os.getenv("REDIS_URL")
+        self.r = None
+        if conn_url:
+            try:
+                self.r = redis.Redis.from_url(conn_url)
+                self.r.ping()
+            except Exception as ex:  # pragma: no cover - network may be down
+                logging.getLogger(__name__).warning(
+                    "[RedisClient] connection failed: %s", ex
+                )
+                self.r = None
 
     def _k(self, tenant_id, user_id, kind):
         return f"{self.prefix}:{tenant_id}:{user_id}:{kind}"

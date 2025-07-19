@@ -327,8 +327,9 @@ def ping_services(timeout: float = 2.0) -> dict:
     try:
         import redis
 
-        r = redis.Redis()
-        pong = r.ping()
+        redis_url = os.getenv("REDIS_URL")
+        client = redis.Redis.from_url(redis_url) if redis_url else redis.Redis()
+        pong = client.ping()
         status["redis"] = "ok" if pong else "down"
     except Exception as ex:
         status["redis"] = f"error: {ex}"
