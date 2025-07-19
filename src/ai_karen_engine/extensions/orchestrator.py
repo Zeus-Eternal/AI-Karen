@@ -14,7 +14,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional, Callable
 
 from ai_karen_engine.plugins.router import PluginRouter
 from .workflow_engine import WorkflowEngine, WorkflowDefinition, WorkflowStep as AdvancedWorkflowStep, StepType as AdvancedStepType

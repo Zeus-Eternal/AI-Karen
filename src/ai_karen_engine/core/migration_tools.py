@@ -6,13 +6,11 @@ the directory structure reorganization safely.
 """
 
 import ast
-import os
-import re
-import shutil
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Tuple
+import importlib
 import logging
 
 
@@ -354,7 +352,8 @@ class MigrationValidator:
             sys.path.insert(0, str(self.root_path / "src"))
             
             # Test plugin system imports
-            from ai_karen_engine.plugins import manager, router
+            importlib.import_module("ai_karen_engine.plugins.manager")
+            importlib.import_module("ai_karen_engine.plugins.router")
             self.logger.info("Plugin system imports successful")
             
         except ImportError as e:

@@ -103,7 +103,8 @@ def load_handler(plugin_dir: Path, module_path: Optional[str] = None) -> Tuple[C
     Return (handler_callable, module_name).
     Handler must expose `async def run(params)` or `def run(params)`.
     """
-    import importlib, importlib.util
+    import importlib
+    import importlib.util
 
     if module_path:
         module = importlib.import_module(module_path)
