@@ -56,7 +56,10 @@ def get_llm(provider: str):
 
 def list_llms():
     """List available LLM provider names."""
-    return list(REGISTRY.keys())
+    models = list(REGISTRY.keys())
+    if "local" not in models:
+        models.append("local")
+    return models
 
 def active() -> str:
     return _ACTIVE_PROVIDER
