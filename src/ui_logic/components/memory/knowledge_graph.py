@@ -6,11 +6,15 @@ Kari Knowledge Graph Panel Logic (Production)
 """
 
 from typing import Any, Dict
+import logging
 import streamlit as st
 import pandas as pd
 
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import fetch_audit_logs
+
+# Logger for permission denials and diagnostics
+logger = logging.getLogger("kari.ui.knowledge_graph")
 
 # --- RBAC User Context (stub—replace with actual session/user context retrieval) ---
 def get_user_ctx():
@@ -66,8 +70,9 @@ def render_knowledge_graph_panel(user_ctx: Dict[str, Any]):
                 st.dataframe(df, use_container_width=True)
             else:
                 st.info("No recent audit logs.")
-    except PermissionError:
-        pass
+    except PermissionError as err:
+        logger.info("Audit trail access denied: %s", err)
+        st.info("You do not have permission to view audit logs.")
 
     # --- Health Status ---
     st.markdown("---")
