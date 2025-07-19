@@ -1,0 +1,53 @@
+{
+  "index_patterns": ["ai_karen_metrics-*", "ai_karen_events-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index": {
+        "refresh_interval": "30s",
+        "lifecycle": {
+          "name": "ai_karen_logs_policy"
+        }
+      }
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "event_type": {
+          "type": "keyword"
+        },
+        "source": {
+          "type": "keyword"
+        },
+        "tenant_id": {
+          "type": "keyword"
+        },
+        "user_id": {
+          "type": "keyword"
+        },
+        "value": {
+          "type": "double"
+        },
+        "unit": {
+          "type": "keyword"
+        },
+        "tags": {
+          "type": "object",
+          "dynamic": true
+        },
+        "metadata": {
+          "type": "object",
+          "dynamic": true
+        }
+      }
+    }
+  },
+  "priority": 100,
+  "version": 1,
+  "_meta": {
+    "description": "Template for AI Karen time-series data"
+  }
+}

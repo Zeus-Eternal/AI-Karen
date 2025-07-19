@@ -1,0 +1,74 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "index": {
+      "refresh_interval": "30s"
+    }
+  },
+  "mappings": {
+    "properties": {
+      "metric_id": {
+        "type": "keyword"
+      },
+      "metric_name": {
+        "type": "keyword"
+      },
+      "metric_type": {
+        "type": "keyword"
+      },
+      "value": {
+        "type": "double"
+      },
+      "unit": {
+        "type": "keyword"
+      },
+      "tenant_id": {
+        "type": "keyword"
+      },
+      "user_id": {
+        "type": "keyword"
+      },
+      "service": {
+        "type": "keyword"
+      },
+      "component": {
+        "type": "keyword"
+      },
+      "timestamp": {
+        "type": "date"
+      },
+      "tags": {
+        "type": "object",
+        "dynamic": true
+      },
+      "dimensions": {
+        "type": "object",
+        "properties": {
+          "environment": {
+            "type": "keyword"
+          },
+          "version": {
+            "type": "keyword"
+          },
+          "region": {
+            "type": "keyword"
+          },
+          "instance": {
+            "type": "keyword"
+          }
+        }
+      },
+      "metadata": {
+        "type": "object",
+        "dynamic": true
+      },
+      "aggregation_period": {
+        "type": "keyword"
+      },
+      "sample_rate": {
+        "type": "float"
+      }
+    }
+  }
+}

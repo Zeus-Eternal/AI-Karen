@@ -4,6 +4,9 @@ desktop_ui/node_modules/
 server.pid
 /.env
 .DS_Store
+.github
+.pytest_cache
+.vscode
 # Ignore local environment files
 .env.local
 .envrc

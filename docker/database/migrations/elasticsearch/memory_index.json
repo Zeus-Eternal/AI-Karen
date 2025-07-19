@@ -1,0 +1,92 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "ai_karen_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "stop",
+            "snowball"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "tenant_id": {
+        "type": "keyword",
+        "index": true
+      },
+      "user_id": {
+        "type": "keyword",
+        "index": true
+      },
+      "session_id": {
+        "type": "keyword",
+        "index": true
+      },
+      "query": {
+        "type": "text",
+        "analyzer": "ai_karen_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "result": {
+        "type": "text",
+        "analyzer": "ai_karen_analyzer"
+      },
+      "timestamp": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_second"
+      },
+      "vector_id": {
+        "type": "long"
+      },
+      "metadata": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "keyword"
+          },
+          "provider": {
+            "type": "keyword"
+          },
+          "tokens": {
+            "type": "integer"
+          },
+          "confidence": {
+            "type": "float"
+          },
+          "tags": {
+            "type": "keyword"
+          }
+        }
+      },
+      "embedding": {
+        "type": "dense_vector",
+        "dims": 384,
+        "index": true,
+        "similarity": "cosine"
+      },
+      "importance_score": {
+        "type": "float",
+        "index": true
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
+      }
+    }
+  }
+}

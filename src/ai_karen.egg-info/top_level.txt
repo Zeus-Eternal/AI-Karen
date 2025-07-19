@@ -1,4 +1,1 @@
 ai_karen_engine
-config
-event_bus
-ui_logic

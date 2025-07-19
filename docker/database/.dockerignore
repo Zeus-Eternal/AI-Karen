@@ -1,0 +1,10 @@
+# Docker ignore file for database infrastructure
+.env
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+.git/
+.gitignore
+README.md
+*.md

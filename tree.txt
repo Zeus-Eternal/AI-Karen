@@ -9,7 +9,8 @@ AI-Karen
     │   │   └── classifier_seed.json
     │   ├── migrations
     │   │   └── postgres
-    │   │       └── 001_create_tables.sql
+    │   │       ├── 001_create_tables.sql
+    │   │       └── 002_create_extension_tables.sql
     │   └── announcements.json
     ├── docs
     │   ├── api_reference.md
@@ -35,10 +36,123 @@ AI-Karen
     │   ├── side_by_side_openai_kari.md
     │   ├── tests.md
     │   └── ui_blueprint.md
+    ├── extensions
+    │   ├── __meta
+    │   │   └── README.md
+    │   ├── analytics
+    │   │   └── dashboard
+    │   │       └── extension.json
+    │   ├── automation
+    │   │   └── workflow-builder
+    │   │       ├── __init__.py
+    │   │       └── extension.json
+    │   └── examples
+    │       ├── hello-extension
+    │       │   ├── __init__.py
+    │       │   └── extension.json
+    │       └── README.md
     ├── headers
     │   └── LICENSE_HEADER.txt
     ├── models
     │   └── llm_registry.json
+    ├── plugins
+    │   ├── __meta
+    │   │   └── __meta
+    │   │       └── command_manifest.json
+    │   ├── ai
+    │   │   ├── fine-tune-lnm
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   ├── prompt.txt
+    │   │   │   └── README.md
+    │   │   ├── hf-llm
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   └── README.md
+    │   │   ├── llm-services
+    │   │   │   ├── deepseek
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   └── plugin_manifest.json
+    │   │   │   ├── gemini
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   └── plugin_manifest.json
+    │   │   │   ├── llama
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── llama_client.py
+    │   │   │   │   ├── llama_plugin.py
+    │   │   │   │   └── plugin_manifest.json
+    │   │   │   ├── openai
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   └── plugin_manifest.json
+    │   │   │   └── __init__.py
+    │   │   └── __init__.py
+    │   ├── automation
+    │   │   ├── autonomous-task-handler
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   ├── prompt.txt
+    │   │   │   └── README.md
+    │   │   ├── git-merge-safe
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   └── README.md
+    │   │   └── __init__.py
+    │   ├── core
+    │   │   ├── time-query
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   └── README.md
+    │   │   ├── tui-fallback
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   ├── prompt.txt
+    │   │   │   ├── README.md
+    │   │   │   └── tui.py
+    │   │   └── __init__.py
+    │   ├── examples
+    │   │   ├── hello-world
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   ├── prompt.txt
+    │   │   │   └── README.md
+    │   │   ├── sandbox-fail
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   ├── prompt.txt
+    │   │   │   └── README.md
+    │   │   └── __init__.py
+    │   ├── integrations
+    │   │   ├── desktop-agent
+    │   │   │   ├── __init__.py
+    │   │   │   ├── agent.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   ├── prompt.txt
+    │   │   │   └── README.md
+    │   │   ├── k8s-scale
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   └── README.md
+    │   │   ├── llm-manager
+    │   │   │   ├── __init__.py
+    │   │   │   ├── handler.py
+    │   │   │   ├── plugin_manifest.json
+    │   │   │   └── README.md
+    │   │   └── __init__.py
+    │   └── README.md
     ├── scripts
     │   ├── bootstrap_ui.sh
     │   ├── install_models.py
@@ -62,12 +176,25 @@ AI-Karen
     │   │   ├── api_routes
     │   │   │   ├── __init__.py
     │   │   │   ├── announcements.py
+    │   │   │   ├── auth.py
+    │   │   │   ├── events.py
+    │   │   │   ├── extensions.py
     │   │   │   ├── health.py
     │   │   │   ├── system.py
     │   │   │   └── users.py
     │   │   ├── automation_manager
     │   │   │   ├── __init__.py
     │   │   │   └── encryption_utils.py
+    │   │   ├── capsules
+    │   │   │   ├── devops
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── manifest.yaml
+    │   │   │   │   ├── prompt.txt
+    │   │   │   │   └── README.md
+    │   │   │   └── __init__.py
+    │   │   ├── chat
+    │   │   │   ├── __init__.py
+    │   │   │   └── chat_hub.py
     │   │   ├── clients
     │   │   │   ├── database
     │   │   │   │   ├── __init__.py
@@ -119,6 +246,8 @@ AI-Karen
     │   │   │   ├── embedding_manager.py
     │   │   │   ├── intent_engine.py
     │   │   │   ├── mesh_planner.py
+    │   │   │   ├── migration_executor.py
+    │   │   │   ├── migration_tools.py
     │   │   │   ├── milvus_client.py
     │   │   │   ├── model_manager.py
     │   │   │   ├── plugin_metrics.py
@@ -139,6 +268,19 @@ AI-Karen
     │   │   │   └── fine_tuner.py
     │   │   ├── event_bus
     │   │   │   └── __init__.py
+    │   │   ├── extensions
+    │   │   │   ├── __init__.py
+    │   │   │   ├── base.py
+    │   │   │   ├── data_manager.py
+    │   │   │   ├── dependency_resolver.py
+    │   │   │   ├── manager.py
+    │   │   │   ├── mcp_integration.py
+    │   │   │   ├── models.py
+    │   │   │   ├── orchestrator.py
+    │   │   │   ├── registry.py
+    │   │   │   ├── resource_monitor.py
+    │   │   │   ├── validator.py
+    │   │   │   └── workflow_engine.py
     │   │   ├── fastapi_stub
     │   │   │   ├── __init__.py
     │   │   │   └── testclient.py
@@ -164,51 +306,6 @@ AI-Karen
     │   │   ├── plugins
     │   │   │   ├── __meta
     │   │   │   │   └── command_manifest.json
-    │   │   │   ├── autonomous_task_handler
-    │   │   │   │   ├── __init__.py
-    │   │   │   │   ├── handler.py
-    │   │   │   │   ├── plugin_manifest.json
-    │   │   │   │   ├── prompt.txt
-    │   │   │   │   └── README.md
-    │   │   │   ├── desktop_agent
-    │   │   │   │   ├── __init__.py
-    │   │   │   │   ├── agent.py
-    │   │   │   │   ├── handler.py
-    │   │   │   │   ├── plugin_manifest.json
-    │   │   │   │   ├── prompt.txt
-    │   │   │   │   └── README.md
-    │   │   │   ├── fine_tune_lnm
-    │   │   │   │   ├── __init__.py
-    │   │   │   │   ├── handler.py
-    │   │   │   │   ├── plugin_manifest.json
-    │   │   │   │   ├── prompt.txt
-    │   │   │   │   └── README.md
-    │   │   │   ├── git_merge_safe
-    │   │   │   │   ├── __init__.py
-    │   │   │   │   ├── handler.py
-    │   │   │   │   ├── plugin_manifest.json
-    │   │   │   │   └── README.md
-    │   │   │   ├── hello_world
-    │   │   │   │   ├── __init__.py
-    │   │   │   │   ├── handler.py
-    │   │   │   │   ├── plugin_manifest.json
-    │   │   │   │   ├── prompt.txt
-    │   │   │   │   └── README.md
-    │   │   │   ├── hf_llm
-    │   │   │   │   ├── __init__.py
-    │   │   │   │   ├── handler.py
-    │   │   │   │   ├── plugin_manifest.json
-    │   │   │   │   └── README.md
-    │   │   │   ├── k8s_scale
-    │   │   │   │   ├── __init__.py
-    │   │   │   │   ├── handler.py
-    │   │   │   │   ├── plugin_manifest.json
-    │   │   │   │   └── README.md
-    │   │   │   ├── llm_manager
-    │   │   │   │   ├── __init__.py
-    │   │   │   │   ├── handler.py
-    │   │   │   │   ├── plugin_manifest.json
-    │   │   │   │   └── README.md
     │   │   │   ├── llm_services
     │   │   │   │   ├── deepseek
     │   │   │   │   │   ├── __init__.py
@@ -229,6 +326,12 @@ AI-Karen
     │   │   │   │   │   ├── handler.py
     │   │   │   │   │   └── plugin_manifest.json
     │   │   │   │   └── __init__.py
+    │   │   │   ├── sandbox_fail
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   ├── prompt.txt
+    │   │   │   │   └── README.md
     │   │   │   ├── time_query
     │   │   │   │   ├── __init__.py
     │   │   │   │   ├── handler.py
@@ -241,7 +344,13 @@ AI-Karen
     │   │   │   │   ├── prompt.txt
     │   │   │   │   ├── README.md
     │   │   │   │   └── tui.py
-    │   │   │   └── __init__.py
+    │   │   │   ├── __init__.py
+    │   │   │   ├── manager.py
+    │   │   │   ├── router.py
+    │   │   │   ├── sandbox_runner_system.py
+    │   │   │   ├── sandbox_runner.py
+    │   │   │   ├── sandbox_system.py
+    │   │   │   └── sandbox.py
     │   │   ├── pydantic_stub
     │   │   │   └── __init__.py
     │   │   ├── self_refactor
@@ -252,8 +361,14 @@ AI-Karen
     │   │   ├── services
     │   │   │   ├── __init__.py
     │   │   │   ├── health_checker.py
-    │   │   │   └── knowledge_graph_client.py
+    │   │   │   ├── knowledge_graph_client.py
+    │   │   │   └── plugin_store_client.py
+    │   │   ├── utils
+    │   │   │   ├── __init__.py
+    │   │   │   ├── auth.py
+    │   │   │   └── sandbox.py
     │   │   ├── __init__.py
+    │   │   ├── compatibility.py
     │   │   ├── fastapi.py
     │   │   ├── llm_orchestrator.py
     │   │   ├── plugin_manager.py
@@ -265,18 +380,13 @@ AI-Karen
     │   │   └── top_level.txt
     │   ├── cachetools
     │   │   └── __init__.py
-    │   ├── capsules
-    │   │   └── devops
-    │   │       ├── handler.py
-    │   │       ├── manifest.yaml
-    │   │       ├── prompt.txt
-    │   │       └── README.md
     │   ├── charts
     │   │   └── kari
     │   │       ├── templates
     │   │       │   ├── deployment.yaml
     │   │       │   └── service.yaml
     │   │       ├── Chart.yaml
+    │   │       ├── README.md
     │   │       └── values.yaml
     │   ├── ui_logic
     │   │   ├── components
@@ -329,6 +439,7 @@ AI-Karen
     │   │   │   │   ├── __init__.py
     │   │   │   │   ├── emotion_style_panel.py
     │   │   │   │   ├── persona_analytics.py
+    │   │   │   │   ├── persona_controls.py
     │   │   │   │   └── persona_switcher.py
     │   │   │   ├── plugins
     │   │   │   │   ├── __init__.py
@@ -398,6 +509,7 @@ AI-Karen
     │   │   ├── themes
     │   │   │   ├── __init__.py
     │   │   │   ├── dark.css
+    │   │   │   ├── design_tokens.py
     │   │   │   ├── enterprise.css
     │   │   │   ├── light.css
     │   │   │   └── theme_manager.py
@@ -411,7 +523,7 @@ AI-Karen
     │   │   ├── ui_core_logic.py
     │   │   └── ui_core.py
     │   ├── __init__.py
-    │   └── pydantic.py
+    │   └── dotenv.py
     ├── tests
     │   ├── stubs
     │   │   ├── ai_karen_engine
@@ -431,19 +543,32 @@ AI-Karen
     │   │   │   ├── services
     │   │   │   │   └── __init__.py
     │   │   │   └── __init__.py
+    │   │   ├── cryptography
+    │   │   │   ├── __init__.py
+    │   │   │   └── fernet.py
     │   │   ├── __init__.py
+    │   │   ├── duckdb.py
+    │   │   ├── jwt.py
+    │   │   ├── numpy.py
+    │   │   ├── ollama.py
+    │   │   ├── pyautogui.py
     │   │   ├── requests.py
+    │   │   ├── streamlit_autorefresh.py
     │   │   ├── streamlit.py
     │   │   └── tenacity.py
     │   ├── ui
     │   │   ├── __init__.py
-    │   │   └── test_chat_hub.py
+    │   │   ├── test_chat_hub.py
+    │   │   ├── test_env_theme_config.py
+    │   │   └── test_rbac_token.py
     │   ├── __init__.py
     │   ├── conftest.py
     │   ├── test_advanced_ui.py
     │   ├── test_api.py
+    │   ├── test_auth_middleware.py
     │   ├── test_automation_job_encryption.py
     │   ├── test_autonomous_agent.py
+    │   ├── test_basic_orchestration.py
     │   ├── test_cli.py
     │   ├── test_dispatch.py
     │   ├── test_doc_store.py
@@ -452,10 +577,17 @@ AI-Karen
     │   ├── test_elastic_metrics.py
     │   ├── test_embedding_client.py
     │   ├── test_embedding.py
+    │   ├── test_event_bus.py
+    │   ├── test_extension_plugin_integration.py
+    │   ├── test_extension_system_validation.py
+    │   ├── test_extensions.py
+    │   ├── test_feature_flags.py
     │   ├── test_gpu_training.py
     │   ├── test_ice_integration.py
     │   ├── test_ice_multi_hop.py
+    │   ├── test_imports.py
     │   ├── test_intent_engine.py
+    │   ├── test_llama_client.py
     │   ├── test_llm_manager.py
     │   ├── test_llm_orchestrator.py
     │   ├── test_llm_utils.py
@@ -463,17 +595,22 @@ AI-Karen
     │   ├── test_mcp.py
     │   ├── test_memory_manager.py
     │   ├── test_memory_sync.py
+    │   ├── test_memory_tenant_api.py
     │   ├── test_mesh_planner.py
     │   ├── test_mesh_reasoning.py
     │   ├── test_milvus_client.py
     │   ├── test_model_registry.py
     │   ├── test_nanda_client.py
     │   ├── test_neuro_vault.py
+    │   ├── test_pages_announcement_usage.py
     │   ├── test_persona_controls.py
     │   ├── test_plugin_metrics.py
+    │   ├── test_plugin_orchestration.py
     │   ├── test_plugin_router.py
     │   ├── test_plugins.py
     │   ├── test_postgres_client.py
+    │   ├── test_presence.py
+    │   ├── test_sandbox.py
     │   ├── test_self_heal.py
     │   ├── test_self_refactor_loop.py
     │   ├── test_self_refactor.py
@@ -482,13 +619,14 @@ AI-Karen
     │   ├── test_soft_reasoning.py
     │   ├── test_sre_scheduler.py
     │   ├── test_tenant_model_manager.py
+    │   ├── test_theme_manager.py
     │   ├── test_tokenizer_manager.py
     │   ├── test_ui_api_utils.py
+    │   ├── test_ui_plugin_manager.py
     │   └── test_workflow_rpa.py
     ├── ui_launchers
     │   ├── backend
-    │   │   ├── __init__.py
-    │   │   └── chat_hub.py
+    │   │   └── __init__.py
     │   ├── common
     │   │   ├── assets
     │   │   │   └── __init__.py
@@ -542,7 +680,9 @@ AI-Karen
     │   │   ├── helpers
     │   │   │   ├── __init__.py
     │   │   │   ├── api_handler.py
+    │   │   │   ├── auth.py
     │   │   │   ├── context.py
+    │   │   │   ├── icons.py
     │   │   │   ├── model_loader.py
     │   │   │   ├── rbac.py
     │   │   │   └── session.py
@@ -571,6 +711,7 @@ AI-Karen
     │   │   │   ├── vision.py
     │   │   │   ├── voice.py
     │   │   │   ├── white_label.py
+    │   │   │   ├── workflow_builder.py
     │   │   │   └── workflows.py
     │   │   ├── styles
     │   │   │   ├── dark.css
@@ -599,4 +740,6 @@ AI-Karen
     ├── pyproject.toml
     ├── README.md
     ├── requirements.txt
+    ├── test_extension_discovery.py
+    ├── test_extension_loading.py
     └── tree.txt

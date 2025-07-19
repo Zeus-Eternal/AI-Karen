@@ -385,6 +385,7 @@ License-File: LICENSE.md
 Dynamic: license-file
 
 # Kari AI
+[![CI](https://github.com/OWNER/AI-Karen/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/AI-Karen/actions/workflows/ci.yml)
 
 > **Local-first, plugin-driven, self-evolving.**
 > Kari turns a single FastAPI service and a desktop Control Room into an autonomous “Ops Mesh” that can route intents, run domain capsules, and refactor its own code—without leaving your machine.
@@ -403,7 +404,7 @@ production workloads.
  
 * Intent detection engine with runtime-configurable regex rules
 * Robust plugin router with manifest validation and RBAC dispatch
-* Dual vector memory (Milvus + Redis) with surprise weighting
+* Dual vector memory (Milvus + Redis) with Postgres metadata and optional Elasticsearch index
 * Thread-safe Milvus client supporting TTL and metadata filters
 * Recency-weighted memory store with automatic TTL pruning and async queries
 * Local-first LLM orchestration (LNM + OSIRIS)
@@ -425,7 +426,7 @@ The stack ships with:
 
 * an intent engine and role-based plugin router
 * a **SelfRefactor Engine** that patches its own code every hour
-* dual-tier vector memory (Milvus + Redis) with surprise & recency weighting
+* dual-tier vector memory (Milvus + Redis + Postgres metadata) with optional Elasticsearch search and surprise & recency weighting
 * a **Tauri** desktop Control Room (React+Rust) for ops, metrics, and logs
 
 Everything runs locally by default; cloud APIs are optional, opt-in plugins.
@@ -439,7 +440,7 @@ Everything runs locally by default; cloud APIs are optional, opt-in plugins.
 | -------------------- | ----------------------------------------------------------------------------- |
 | **Intent & Routing** | Regex intent matcher → Prompt-First Router → Capsule Planner                  |
 | **Plugins**          | Drop a folder with `manifest.json` & `handler.py`; UI auto-appears            |
-| **Memory**           | Milvus (dense vectors) + Redis (hot cache) + TTL pruning                      |
+| **Memory**           | Milvus (dense vectors) + Redis (hot cache) + Postgres metadata + optional Elasticsearch + TTL pruning |
 | **LLMs**             | Local LNM & OSIRIS models (ggml / llama.cpp); HF and OpenAI plugins optional  |
 | **Self-Improvement** | DeepSeek-powered **SRE** runs in sandbox, merges patches after tests          |
 | **Ops Mesh**         | *Hydra-Ops* capsules (DevOps, Finance, Growth, …) with guardrails & event bus |
@@ -453,11 +454,11 @@ Detailed usage instructions for each feature are in [docs/features_usage.md](doc
  
 ```
 core/          # dispatch, embeddings, reasoning
-event_bus/     # in-memory event streams
+ai_karen_engine/event_bus/     # in-memory or Redis event streams
 guardrails/    # YAML validators
 capsules/      # domain-specific micro agents
 src/integrations/  # helper utilities (RPA, automation)
-src/plugins/       # drop-in plugins (manifest + handler)
+ src/ai_karen_engine/plugins/       # drop-in plugins (manifest + handler)
 ui_launchers/  # Frontend UIs (desktop, mobile, admin)
 src/fastapi_stub/  # lightweight stubs for tests
 src/pydantic_stub/ # lightweight stubs for tests
@@ -474,13 +475,15 @@ tests/         # pytest suite
 
 ```text
 core/          # dispatcher, embeddings, capsule planner
-event_bus/     # Redis-Streams helpers
+ai_karen_engine/event_bus/     # Redis Streams or in-memory bus
 guardrails/    # YAML validators & rule engine
 capsules/      # domain-specific agents (DevOps, Finance, …)
 src/integrations/  # NANDA client, RPA helpers, external bridges
-src/plugins/       # drop-in plugins (manifest + handler + ui)
+ src/ai_karen_engine/plugins/       # drop-in plugins (manifest + handler + ui)
 ui_launchers/desktop_ui/ # Tauri Control Room (Rust + React)
 ui_launchers/streamlit_ui/config/config_ui.py # Streamlit UI settings (ConfigUI class)
+ui_launchers/streamlit_ui/config/env.py      # environment defaults for the Streamlit UI
+ui_launchers/streamlit_ui/config/routing.py  # page routing map for Streamlit
 src/fastapi_stub/  # API entrypoints, chat & metrics
 src/pydantic_stub/ # DTOs & schemas
 tests/         # pytest suite
@@ -491,6 +494,7 @@ Each UI directory also contains a `README.md` with build notes and setup tips.
 * Docker and Docker Compose
 * Node.js 18+ with npm
 * Rust toolchain (`cargo`) for Tauri builds
+* Running instances of **Postgres** and **Elasticsearch** (Docker images are fine)
 
 
 ---
@@ -514,8 +518,14 @@ cd ui_launchers/desktop_ui && npm install
 # The Tauri configuration lives in `ui_launchers/desktop_ui/src-tauri/tauri.config.json`.
 # Make sure this file exists before running desktop commands.
 
-# 4 · Launch backend API + dependencies
+# 4 · Launch backend API + dependencies (ensure Postgres & Elasticsearch are running)
 ./scripts/start.sh
+
+# 4.1 · Initialize databases
+docker compose exec postgres \
+  psql -U $POSTGRES_USER -d $POSTGRES_DB \
+  -f data/migrations/postgres/001_create_tables.sql
+curl -X PUT "http://localhost:9200/$ELASTIC_INDEX"
 
 # 5 · Run desktop Control Room (dev mode)
 cd ui_launchers/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
@@ -526,7 +536,7 @@ cd ui_launchers/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 # Optional: run everything with one command
 ./scripts/bootstrap_ui.sh
 
-**Full stack (API + Milvus + Redis + Prometheus):**
+**Full stack (API + Milvus + Redis + Postgres + Elasticsearch + Prometheus):**
 
 ```bash
 # after use
@@ -568,6 +578,8 @@ pip install -e .
 ```
 
 Alternatively, set `PYTHONPATH=src` in your environment.
+
+Ensure a running Redis instance is accessible. Configure host and port via `REDIS_HOST` and `REDIS_PORT` (defaults `localhost:6379`). The memory manager will disable Redis features if the connection fails.
 
 ### 2. Start FastAPI
 
@@ -622,6 +634,11 @@ Kari's FastAPI backend exposes a small set of endpoints for headless deployments
 See [docs/api_usage.md](docs/api_usage.md) for the full list and example `curl`
 commands.
 
+Common service endpoints:
+
+- `GET /health` – quick liveness check used by the Docker healthcheck
+- `GET /metrics/prometheus` – Prometheus scrape endpoint
+
 ---
 
 ## 5 · Development Cheatsheet
@@ -659,7 +676,7 @@ Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs m
 
 ## 6 · Writing a Plugin
 
-1. `mkdir plugins/my_plugin`
+1. `mkdir src/ai_karen_engine/plugins/my_plugin`
 2. Add **manifest.json**
 
 ```json

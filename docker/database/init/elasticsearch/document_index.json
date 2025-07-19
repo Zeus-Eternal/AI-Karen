@@ -1,0 +1,111 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "document_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "stop",
+            "snowball",
+            "word_delimiter"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "document_id": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "document_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "document_analyzer"
+      },
+      "document_type": {
+        "type": "keyword"
+      },
+      "file_extension": {
+        "type": "keyword"
+      },
+      "file_size": {
+        "type": "long"
+      },
+      "tenant_id": {
+        "type": "keyword"
+      },
+      "user_id": {
+        "type": "keyword"
+      },
+      "tags": {
+        "type": "keyword"
+      },
+      "categories": {
+        "type": "keyword"
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
+      },
+      "indexed_at": {
+        "type": "date"
+      },
+      "metadata": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "language": {
+            "type": "keyword"
+          },
+          "encoding": {
+            "type": "keyword"
+          },
+          "checksum": {
+            "type": "keyword"
+          }
+        }
+      },
+      "permissions": {
+        "type": "object",
+        "properties": {
+          "read": {
+            "type": "keyword"
+          },
+          "write": {
+            "type": "keyword"
+          },
+          "delete": {
+            "type": "keyword"
+          }
+        }
+      },
+      "search_vector": {
+        "type": "dense_vector",
+        "dims": 384,
+        "index": true,
+        "similarity": "cosine"
+      }
+    }
+  }
+}

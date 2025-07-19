@@ -1,0 +1,303 @@
+# Production Environment Configuration
+# This extends the base docker-compose.yml with production-specific settings
+
+version: '3.8'
+
+services:
+  postgres:
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-ai_karen_prod}
+      - POSTGRES_USER=${POSTGRES_USER:-karen_prod}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}  # Must be set in .env
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"  # Bind to localhost only
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./init/postgres:/docker-entrypoint-initdb.d
+      - ./migrations/postgres:/migrations/postgres:ro
+      - ./backups/postgres:/backups:rw
+    command: >
+      postgres
+      -c max_connections=${POSTGRES_MAX_CONNECTIONS:-200}
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c log_min_duration_statement=1000
+      -c log_checkpoints=on
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_lock_waits=on
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  elasticsearch:
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      - "ES_JAVA_OPTS=-Xms${ELASTICSEARCH_HEAP_SIZE:-2g} -Xmx${ELASTICSEARCH_HEAP_SIZE:-2g}"
+      - cluster.name=ai-karen-prod
+      - node.name=ai-karen-prod-node
+      - bootstrap.memory_lock=true
+      - indices.memory.index_buffer_size=30%
+      - indices.memory.min_index_buffer_size=96mb
+    ports:
+      - "127.0.0.1:${ELASTICSEARCH_PORT:-9200}:9200"
+    volumes:
+      - elasticsearch_prod_data:/usr/share/elasticsearch/data
+      - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./backups/elasticsearch:/backups:rw
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  milvus:
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+      MILVUS_CONFIG_PATH: /milvus/configs/milvus_prod.yaml
+    ports:
+      - "127.0.0.1:${MILVUS_PORT:-19530}:19530"
+    volumes:
+      - milvus_prod_data:/var/lib/milvus
+      - ./config/milvus_prod.yaml:/milvus/configs/milvus_prod.yaml:ro
+      - ./backups/milvus:/backups:rw
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 4G
+          cpus: '2.0'
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  redis:
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory ${REDIS_MEMORY_LIMIT:-2g}
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --stop-writes-on-bgsave-error yes
+      --rdbcompression yes
+      --rdbchecksum yes
+      --appendonly yes
+      --appendfsync everysec
+      --auto-aof-rewrite-percentage 100
+      --auto-aof-rewrite-min-size 64mb
+      --loglevel notice
+      --syslog-enabled no
+      --tcp-keepalive 300
+      --timeout 0
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_prod_data:/data
+      - ./config/redis_prod.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./backups/redis:/backups:rw
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '1.0'
+        reservations:
+          memory: 2G
+          cpus: '0.5'
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  milvus-etcd:
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+      - ETCD_HEARTBEAT_INTERVAL=100
+      - ETCD_ELECTION_TIMEOUT=1000
+      - ETCD_LOG_LEVEL=warn
+    volumes:
+      - etcd_prod_data:/etcd
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  milvus-minio:
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_REGION_NAME: us-east-1
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_prod_data:/data
+      - ./backups/minio:/backups:rw
+    command: minio server /data --console-address ":9001"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  duckdb-manager:
+    volumes:
+      - duckdb_prod_data:/data/duckdb
+      - ./init/duckdb:/init:ro
+      - ./backups/duckdb:/backups:rw
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    restart: always
+
+  # Production monitoring and backup services
+  backup-scheduler:
+    image: alpine:latest
+    container_name: ai-karen-backup-scheduler
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/backups:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}  # Daily at 2 AM
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+    command: >
+      sh -c "
+        apk add --no-cache docker-cli dcron &&
+        echo '${BACKUP_SCHEDULE:-0 2 * * *} /scripts/backup.sh --name scheduled_$(date +%Y%m%d_%H%M%S)' > /etc/crontabs/root &&
+        crond -f -l 2
+      "
+    depends_on:
+      - postgres
+      - elasticsearch
+      - milvus
+      - redis
+    networks:
+      - ai-karen-db
+    restart: always
+
+volumes:
+  postgres_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/opt/ai-karen/data}/postgres
+  elasticsearch_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/opt/ai-karen/data}/elasticsearch
+  milvus_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/opt/ai-karen/data}/milvus
+  etcd_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/opt/ai-karen/data}/etcd
+  minio_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/opt/ai-karen/data}/minio
+  redis_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/opt/ai-karen/data}/redis
+  duckdb_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/opt/ai-karen/data}/duckdb
+
+networks:
+  ai-karen-db:
+    driver: bridge
+    name: ai-karen-database-prod-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
