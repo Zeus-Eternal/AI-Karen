@@ -47,14 +47,12 @@ try:
 except ImportError:
     redis = None
 
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+REDIS_URL = os.getenv("REDIS_URL")
 
 redis_client = None
-if redis:
+if redis and REDIS_URL:
     try:
-        redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
+        redis_client = redis.Redis.from_url(REDIS_URL)
         redis_client.ping()
     except Exception as ex:  # pragma: no cover - network may be down
         logger.warning(f"[MemoryManager] Redis connection failed: {ex}")
