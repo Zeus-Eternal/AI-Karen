@@ -14,6 +14,9 @@ import importlib
 import logging
 
 
+logger = logging.getLogger(__name__)
+
+
 class MigrationStatus(Enum):
     """Status of a migration operation."""
     PENDING = "pending"
@@ -457,14 +460,14 @@ def main():
     
     if args.action == "analyze":
         analyzer = DirectoryAnalyzer(args.root)
-        
-        print("Analyzing current directory structure...")
+
+        logger.info("Analyzing current directory structure...")
         file_moves = analyzer.identify_plugin_files()
-        print(f"Found {len(file_moves)} files to move")
-        
+        logger.info("Found %d files to move", len(file_moves))
+
         import_updates = analyzer.scan_imports()
         total_updates = sum(len(updates) for updates in import_updates.values())
-        print(f"Found {total_updates} import statements to update")
+        logger.info("Found %d import statements to update", total_updates)
         
     elif args.action == "plan":
         planner = MigrationPlanner(args.root)
@@ -474,18 +477,18 @@ def main():
         if args.output:
             reporter.save_plan_report(plan, args.output)
         else:
-            print(reporter.generate_plan_report(plan))
+            logger.info(reporter.generate_plan_report(plan))
     
     elif args.action == "validate":
         validator = MigrationValidator(args.root)
         is_valid, errors = validator.validate_post_migration()
         
         if is_valid:
-            print("✅ Migration validation passed")
+            logger.info("✅ Migration validation passed")
         else:
-            print("❌ Migration validation failed:")
+            logger.warning("❌ Migration validation failed:")
             for error in errors:
-                print(f"  - {error}")
+                logger.warning("  - %s", error)
 
 
 if __name__ == "__main__":

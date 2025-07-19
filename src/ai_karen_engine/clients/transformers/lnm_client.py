@@ -2,6 +2,10 @@
 
 from pathlib import Path
 from typing import Any, List
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 try:
     from transformers.pipelines.base import Pipeline
@@ -23,8 +27,10 @@ def _safe_pipeline_call(pipe: Pipeline, text: str, **kwargs: Any):
     clean = {k: v for k, v in kwargs.items() if k in valid}
     dropped = {k: v for k, v in kwargs.items() if k not in valid}
     if dropped:
-        print(
-            f"[LNM] \u26a0\ufe0f Dropped unsupported args for {task}: {', '.join(dropped.keys())}"
+        logger.warning(
+            "[LNM] \u26a0\ufe0f Dropped unsupported args for %s: %s",
+            task,
+            ", ".join(dropped.keys()),
         )
     return pipe(text, **clean)
 
@@ -53,7 +59,7 @@ class LNMClient:
 
         self.model_dir = model_dir
         if not model_dir.exists() or not (model_dir / "pytorch_model.bin").exists():
-            print(f"[LNM] ⚠️ Model not found, downloading base: {model_name}")
+            logger.warning("[LNM] ⚠️ Model not found, downloading base: %s", model_name)
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
             model_dir.mkdir(parents=True, exist_ok=True)
