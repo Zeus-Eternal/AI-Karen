@@ -10,7 +10,7 @@ The engine reads prompts from `self_refactor/prompts/` and uses a local or remot
 
 ### Scheduler
 
-`SREScheduler` periodically launches the engine. The default interval is weekly, but you can trigger a run manually:
+`SREScheduler` periodically launches the engine. Set `ENABLE_SELF_REFACTOR=true` to enable the scheduler (disabled in production configs). The default interval is weekly, but you can trigger a run manually:
 
 ```bash
 python -m self_refactor.engine --run
@@ -23,6 +23,9 @@ Every run saves proposed patches and their test results under
 and patch files before manually applying them. Set
 `ENABLE_SELF_REFACTOR_AUTO_MERGE=true` to allow the engine to write changes
 directly after tests pass.
+
+Approve queued patches via the `/self_refactor/approve` API endpoint. Provide a
+`review_id` (the folder name) and ensure your request is made as an admin.
 
 ### Logs
 
