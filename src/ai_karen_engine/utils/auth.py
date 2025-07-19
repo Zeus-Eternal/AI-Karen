@@ -18,7 +18,11 @@ def _device_fingerprint(user_agent: str, ip: str) -> str:
 
 
 def create_session(
-    user_id: str, roles: List[str], user_agent: str, ip: str, tenant_id: str
+    user_id: str,
+    roles: List[str],
+    user_agent: str,
+    ip: str,
+    tenant_id: str = "default",
 ) -> str:
     now = int(time.time())
     payload = {

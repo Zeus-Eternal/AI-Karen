@@ -55,7 +55,9 @@ except ImportError:
 
 
 # --- Paths & schema -----------------------------------------------------
-PLUGIN_ROOT       = Path(__file__).parent / "plugins"
+# Allow overriding plugin directory via ``KARI_PLUGIN_DIR`` to support
+# tests and custom deployments.
+PLUGIN_ROOT       = Path(os.getenv("KARI_PLUGIN_DIR", Path(__file__).parent / "plugins"))
 PLUGIN_META       = "__meta"
 PLUGIN_MANIFEST   = "plugin_manifest.json"
 PROMPT_FILE       = "prompt.txt"

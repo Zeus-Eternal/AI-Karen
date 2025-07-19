@@ -136,7 +136,7 @@ def auto_discover_routers(app):
         for loader, name, is_pkg in pkgutil.iter_modules(package.__path__):
             mod = importlib.import_module(f"ai_karen_engine.api_routes.{name}")
             router = getattr(mod, "router", None)
-            if isinstance(router, APIRouter):
+            if isinstance(router, APIRouter) and hasattr(router, "routes"):
                 app.include_router(router, prefix=prefix)
                 logger.info(f"Mounted router: /api/{name}")
 
@@ -153,7 +153,7 @@ def auto_discover_routers(app):
                     mod = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(mod)
                     router = getattr(mod, "router", None)
-                    if isinstance(router, APIRouter):
+                    if isinstance(router, APIRouter) and hasattr(router, "routes"):
                         app.include_router(router, prefix=f"/plugins/{mod_name}")
                         logger.info(f"Mounted plugin: /plugins/{mod_name}")
                 except Exception as e:
