@@ -8,7 +8,7 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 try:
     from pydantic import BaseModel, Field, validator
@@ -17,8 +17,17 @@ except ImportError:
     # Fallback for environments without pydantic
     PYDANTIC_AVAILABLE = False
     BaseModel = object
-    Field = lambda **kwargs: None
-    validator = lambda *args, **kwargs: lambda f: f
+
+    def Field(**kwargs):
+        """Return a no-op field placeholder when pydantic is unavailable."""
+        return None
+
+    def validator(*args, **kwargs):
+        """Return a decorator that leaves the function unchanged."""
+        def decorator(func):
+            return func
+
+        return decorator
 
 
 class ExtensionStatus(Enum):

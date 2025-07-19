@@ -9,12 +9,11 @@ parallel execution.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional, Callable
 
 # Import will be done at runtime to avoid circular imports
 
@@ -898,7 +897,7 @@ class WorkflowEngine:
             else:
                 # Try to evaluate as boolean
                 return bool(eval(resolved_condition))
-        except:
+        except Exception:
             # Default to False if evaluation fails
             return False
 

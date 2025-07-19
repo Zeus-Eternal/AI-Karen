@@ -5,7 +5,7 @@ Extension manifest validation and schema checking.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Tuple
 
 from .models import ExtensionManifest
 
