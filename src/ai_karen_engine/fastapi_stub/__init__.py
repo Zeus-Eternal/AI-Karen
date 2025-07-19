@@ -180,6 +180,11 @@ sys.modules.setdefault("fastapi.middleware.cors", cors_stub)
 sys.modules.setdefault("fastapi.middleware.gzip", gzip_stub)
 
 
+def Depends(func):
+    """Simplistic dependency injection stub."""
+    return func
+
+
 class status:
     HTTP_401_UNAUTHORIZED = 401
 
