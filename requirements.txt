@@ -32,6 +32,7 @@ plotly
 seaborn
 redis 
 psycopg
+psycopg2-binary
 asyncpg
 sqlalchemy
 alembic

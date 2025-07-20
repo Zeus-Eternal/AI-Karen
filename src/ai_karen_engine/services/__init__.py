@@ -5,6 +5,11 @@ __all__ = [
     "get_deepseek_client",
     "get_openai_service",
     "get_gemini_service",
+    "AIOrchestrator",
+    "FlowManager",
+    "DecisionEngine",
+    "ContextManager",
+    "PromptManager",
 ]
 
 def get_ollama_engine():
@@ -22,6 +27,15 @@ def get_openai_service():
 def get_gemini_service():
     from ai_karen_engine.services import gemini
     return gemini
+
+# Import AI Orchestrator components
+from .ai_orchestrator import (
+    AIOrchestrator,
+    FlowManager,
+    DecisionEngine,
+    ContextManager,
+    PromptManager
+)
 
 # Optional: registry pattern for dynamic dispatch
 SERVICES_REGISTRY = {

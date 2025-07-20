@@ -1,0 +1,313 @@
+# Security Configuration for AI Karen Production Platform
+# This file contains security settings, thresholds, and policies
+
+# Threat Detection Configuration
+threat_detection:
+  # Enable/disable threat detection
+  enabled: true
+  
+  # Rate limiting thresholds
+  rate_limits:
+    requests_per_minute: 100
+    requests_per_hour: 1000
+    failed_logins_per_hour: 10
+    
+  # IP blocking configuration
+  ip_blocking:
+    auto_block_enabled: true
+    block_duration_hours: 24
+    whitelist:
+      - "127.0.0.1"
+      - "::1"
+    
+  # Behavioral analysis thresholds
+  behavioral_analysis:
+    anomaly_threshold: 3.0
+    baseline_update_rate: 0.1
+    metrics:
+      - requests_per_hour
+      - unique_endpoints
+      - error_rate
+      - session_duration
+      - data_volume
+
+# Incident Response Configuration
+incident_response:
+  # Auto-response settings
+  auto_response:
+    enabled: true
+    critical_threshold: 1  # Auto-respond to 1+ critical threats
+    high_threshold: 3      # Auto-respond to 3+ high threats
+    
+  # Escalation settings
+  escalation:
+    critical_escalation_minutes: 15
+    high_escalation_minutes: 60
+    medium_escalation_minutes: 240
+    
+  # Notification channels
+  notifications:
+    email:
+      enabled: true
+      recipients:
+        - "security@company.com"
+        - "admin@company.com"
+    slack:
+      enabled: false
+      webhook_url: ""
+      channel: "#security-alerts"
+    pagerduty:
+      enabled: false
+      integration_key: ""
+    sms:
+      enabled: false
+      phone_numbers: []
+
+# Compliance Configuration
+compliance:
+  # Frameworks to monitor
+  frameworks:
+    soc2:
+      enabled: true
+      assessment_frequency_days: 90
+      auto_assessment: true
+    gdpr:
+      enabled: true
+      assessment_frequency_days: 365
+      auto_assessment: true
+    hipaa:
+      enabled: false
+      assessment_frequency_days: 365
+      auto_assessment: false
+    pci_dss:
+      enabled: false
+      assessment_frequency_days: 365
+      auto_assessment: false
+      
+  # Evidence collection
+  evidence_collection:
+    enabled: true
+    retention_days: 2555  # 7 years
+    automated_collection: true
+
+# Penetration Testing Configuration
+penetration_testing:
+  # Automated testing schedule
+  automated_testing:
+    enabled: true
+    frequency_days: 30
+    endpoints_file: "config/test_endpoints.json"
+    
+  # Test categories to run
+  test_categories:
+    sql_injection: true
+    xss: true
+    authentication_bypass: true
+    authorization: true
+    session_management: true
+    csrf: true
+    directory_traversal: true
+    command_injection: true
+    api_security: true
+    
+  # Reporting
+  reporting:
+    auto_generate_reports: true
+    executive_summary: true
+    detailed_findings: true
+    remediation_guidance: true
+
+# Security Monitoring
+monitoring:
+  # Metrics collection
+  metrics:
+    enabled: true
+    retention_days: 90
+    export_prometheus: true
+    
+  # Logging
+  logging:
+    security_events: true
+    audit_trail: true
+    structured_logging: true
+    log_level: "INFO"
+    
+  # Alerting thresholds
+  alerts:
+    critical_vulnerabilities: 1
+    high_vulnerabilities: 5
+    failed_compliance_controls: 3
+    incident_response_time_minutes: 30
+
+# Authentication & Authorization
+auth:
+  # Multi-factor authentication
+  mfa:
+    required: true
+    methods:
+      - "totp"
+      - "sms"
+      - "email"
+      
+  # Session management
+  session:
+    timeout_minutes: 30
+    absolute_timeout_hours: 8
+    secure_cookies: true
+    httponly_cookies: true
+    
+  # Password policy
+  password_policy:
+    min_length: 12
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_symbols: true
+    history_count: 12
+    max_age_days: 90
+
+# Data Protection
+data_protection:
+  # Encryption
+  encryption:
+    at_rest: true
+    in_transit: true
+    key_rotation_days: 90
+    
+  # Data classification
+  classification:
+    enabled: true
+    levels:
+      - "public"
+      - "internal"
+      - "confidential"
+      - "restricted"
+      
+  # Data retention
+  retention:
+    default_days: 2555  # 7 years
+    audit_logs_days: 2555
+    security_events_days: 365
+    
+  # Backup and recovery
+  backup:
+    enabled: true
+    frequency_hours: 24
+    retention_days: 90
+    encryption: true
+    offsite_backup: true
+
+# Network Security
+network:
+  # Firewall rules
+  firewall:
+    enabled: true
+    default_deny: true
+    allowed_ports:
+      - 80   # HTTP
+      - 443  # HTTPS
+      - 22   # SSH (admin only)
+      
+  # DDoS protection
+  ddos_protection:
+    enabled: true
+    rate_limit_per_ip: 1000
+    burst_limit: 100
+    
+  # SSL/TLS configuration
+  tls:
+    min_version: "1.2"
+    cipher_suites:
+      - "ECDHE-RSA-AES256-GCM-SHA384"
+      - "ECDHE-RSA-AES128-GCM-SHA256"
+      - "ECDHE-RSA-AES256-SHA384"
+    hsts_enabled: true
+    hsts_max_age: 31536000
+
+# Vulnerability Management
+vulnerability_management:
+  # Scanning
+  scanning:
+    enabled: true
+    frequency_days: 7
+    auto_remediation: false
+    
+  # Patch management
+  patching:
+    auto_security_patches: true
+    maintenance_window: "Sunday 02:00-04:00 UTC"
+    rollback_enabled: true
+    
+  # Third-party dependencies
+  dependencies:
+    scan_enabled: true
+    auto_update_minor: true
+    auto_update_security: true
+    vulnerability_threshold: "medium"
+
+# Business Continuity
+business_continuity:
+  # Disaster recovery
+  disaster_recovery:
+    rto_hours: 4   # Recovery Time Objective
+    rpo_hours: 1   # Recovery Point Objective
+    backup_sites: 2
+    
+  # High availability
+  high_availability:
+    enabled: true
+    min_replicas: 3
+    auto_scaling: true
+    health_checks: true
+    
+  # Communication plan
+  communication:
+    status_page: true
+    customer_notifications: true
+    stakeholder_alerts: true
+
+# Regulatory Compliance
+regulatory:
+  # Geographic considerations
+  data_residency:
+    enforce: true
+    allowed_regions:
+      - "US"
+      - "EU"
+      - "CA"
+      
+  # Privacy rights
+  privacy_rights:
+    right_to_access: true
+    right_to_rectification: true
+    right_to_erasure: true
+    right_to_portability: true
+    right_to_restrict: true
+    
+  # Audit requirements
+  audit:
+    external_audits: true
+    frequency_months: 12
+    scope: "full"
+    
+# Security Training
+training:
+  # Staff training
+  security_awareness:
+    required: true
+    frequency_months: 6
+    topics:
+      - "phishing"
+      - "social_engineering"
+      - "data_protection"
+      - "incident_response"
+      
+  # Developer training
+  secure_development:
+    required: true
+    frequency_months: 12
+    topics:
+      - "secure_coding"
+      - "threat_modeling"
+      - "security_testing"
+      - "vulnerability_assessment"
