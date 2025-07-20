@@ -59,3 +59,4 @@ server.pid
 *.duckdb
 *.db
 /models
+.kiro/specs/web-ui-karen-integration/biome
