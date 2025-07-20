@@ -9,8 +9,6 @@ AI-Karen
     │   │   └── classifier_seed.json
     │   ├── migrations
     │   │   └── postgres
-    │   │       ├── 001_create_tables.sql
-    │   │       └── 002_create_extension_tables.sql
     │   └── announcements.json
     ├── docs
     │   ├── api_reference.md
