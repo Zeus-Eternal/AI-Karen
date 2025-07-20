@@ -1,10 +1,12 @@
-"""Postgres client with optional SQLite fallback."""
+"""Enhanced Postgres client with multi-tenant support and optional SQLite fallback."""
 from __future__ import annotations
 
 import json
 import os
 import sqlite3
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any, Dict, List, Optional, Union
+import uuid
 
 try:
     import psycopg
@@ -13,13 +15,37 @@ except Exception:  # pragma: no cover - optional dependency
     psycopg = None
     _PSYCOPG_AVAILABLE = False
 
+# Import the new multi-tenant client
+try:
+    from ...database.client import MultiTenantPostgresClient
+    _MULTITENANT_AVAILABLE = True
+except ImportError:
+    MultiTenantPostgresClient = None
+    _MULTITENANT_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
+
 
 class PostgresClient:
-    """Lightweight Postgres client used for memory persistence."""
+    """Enhanced Postgres client with multi-tenant support and memory persistence."""
 
-    def __init__(self, dsn: str = "", use_sqlite: bool = False) -> None:
+    def __init__(self, dsn: str = "", use_sqlite: bool = False, enable_multitenant: bool = True) -> None:
         self.dsn = dsn
         self.use_sqlite = use_sqlite or not _PSYCOPG_AVAILABLE
+        self.enable_multitenant = enable_multitenant and _MULTITENANT_AVAILABLE and not use_sqlite
+        
+        # Initialize multi-tenant client if available
+        self.multitenant_client = None
+        if self.enable_multitenant:
+            try:
+                database_url = self._build_database_url(dsn)
+                self.multitenant_client = MultiTenantPostgresClient(database_url)
+                logger.info("Multi-tenant PostgreSQL client initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize multi-tenant client: {e}")
+                self.enable_multitenant = False
+        
+        # Initialize legacy connection for backward compatibility
         if self.use_sqlite:
             path = dsn.replace("sqlite://", "") or ":memory:"
             self.conn = sqlite3.connect(path, check_same_thread=False)
@@ -36,6 +62,19 @@ class PostgresClient:
             )
             self.conn = psycopg.connect(pg_dsn, autocommit=True)
         self._ensure_table()
+    
+    def _build_database_url(self, dsn: str = "") -> str:
+        """Build database URL for multi-tenant client."""
+        if dsn and dsn.startswith("postgresql://"):
+            return dsn
+        
+        host = os.getenv("POSTGRES_HOST", "localhost")
+        port = os.getenv("POSTGRES_PORT", "5432")
+        user = os.getenv("POSTGRES_USER", "postgres")
+        password = os.getenv("POSTGRES_PASSWORD", "postgres")
+        database = os.getenv("POSTGRES_DB", "ai_karen")
+        
+        return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
     @property
     def placeholder(self) -> str:
@@ -177,6 +216,157 @@ class PostgresClient:
             return True
         except Exception:
             return False
+    
+    # Multi-tenant methods (new functionality)
+    def setup_tenant(self, tenant_id: str, tenant_name: str, tenant_slug: str) -> bool:
+        """Set up a new tenant with isolated schema.
+        
+        Args:
+            tenant_id: Tenant UUID
+            tenant_name: Tenant name
+            tenant_slug: Tenant slug
+            
+        Returns:
+            True if setup was successful
+        """
+        if not self.enable_multitenant:
+            logger.warning("Multi-tenant support not available")
+            return False
+        
+        try:
+            return self.multitenant_client.create_tenant_schema(tenant_id)
+        except Exception as e:
+            logger.error(f"Failed to setup tenant {tenant_id}: {e}")
+            return False
+    
+    def teardown_tenant(self, tenant_id: str) -> bool:
+        """Teardown a tenant and remove all data.
+        
+        Args:
+            tenant_id: Tenant UUID
+            
+        Returns:
+            True if teardown was successful
+        """
+        if not self.enable_multitenant:
+            logger.warning("Multi-tenant support not available")
+            return False
+        
+        try:
+            return self.multitenant_client.drop_tenant_schema(tenant_id)
+        except Exception as e:
+            logger.error(f"Failed to teardown tenant {tenant_id}: {e}")
+            return False
+    
+    def tenant_exists(self, tenant_id: str) -> bool:
+        """Check if tenant schema exists.
+        
+        Args:
+            tenant_id: Tenant UUID
+            
+        Returns:
+            True if tenant exists
+        """
+        if not self.enable_multitenant:
+            return False
+        
+        try:
+            return self.multitenant_client.tenant_schema_exists(tenant_id)
+        except Exception as e:
+            logger.error(f"Failed to check tenant {tenant_id}: {e}")
+            return False
+    
+    def get_tenant_stats(self, tenant_id: str) -> Dict[str, Any]:
+        """Get statistics for a tenant.
+        
+        Args:
+            tenant_id: Tenant UUID
+            
+        Returns:
+            Tenant statistics
+        """
+        if not self.enable_multitenant:
+            return {"error": "Multi-tenant support not available"}
+        
+        try:
+            return self.multitenant_client.get_tenant_stats(tenant_id)
+        except Exception as e:
+            logger.error(f"Failed to get tenant stats for {tenant_id}: {e}")
+            return {"error": str(e)}
+    
+    def execute_tenant_query(
+        self,
+        query: str,
+        tenant_id: str,
+        params: Optional[Dict[str, Any]] = None
+    ) -> Any:
+        """Execute a query in tenant context.
+        
+        Args:
+            query: SQL query
+            tenant_id: Tenant UUID
+            params: Query parameters
+            
+        Returns:
+            Query result
+        """
+        if not self.enable_multitenant:
+            raise RuntimeError("Multi-tenant support not available")
+        
+        return self.multitenant_client.execute_tenant_query(query, tenant_id, params)
+    
+    def upsert_tenant_memory(
+        self,
+        vector_id: int,
+        tenant_id: str,
+        user_id: str,
+        session_id: str,
+        query: str,
+        result: Any,
+        timestamp: int = 0,
+    ) -> None:
+        """Upsert memory entry in tenant-specific schema.
+        
+        This method uses the new multi-tenant architecture when available,
+        otherwise falls back to the legacy method.
+        """
+        if self.enable_multitenant:
+            try:
+                # Use tenant-specific schema
+                data_json = json.dumps(result)
+                sql = """
+                    INSERT INTO memory_entries (vector_id, user_id, session_id, content, query, result, timestamp)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (vector_id) DO UPDATE SET
+                    user_id=EXCLUDED.user_id, session_id=EXCLUDED.session_id,
+                    content=EXCLUDED.content, query=EXCLUDED.query, result=EXCLUDED.result, timestamp=EXCLUDED.timestamp
+                """
+                self.multitenant_client.execute_tenant_query(
+                    sql, tenant_id, 
+                    [str(vector_id), user_id, session_id, query, query, data_json, timestamp]
+                )
+                return
+            except Exception as e:
+                logger.warning(f"Failed to use tenant-specific memory storage: {e}, falling back to legacy")
+        
+        # Fall back to legacy method
+        self.upsert_memory(vector_id, tenant_id, user_id, session_id, query, result, timestamp)
+    
+    def get_multitenant_client(self) -> Optional[MultiTenantPostgresClient]:
+        """Get the underlying multi-tenant client.
+        
+        Returns:
+            MultiTenantPostgresClient instance or None if not available
+        """
+        return self.multitenant_client
+    
+    def is_multitenant_enabled(self) -> bool:
+        """Check if multi-tenant support is enabled.
+        
+        Returns:
+            True if multi-tenant support is available and enabled
+        """
+        return self.enable_multitenant and self.multitenant_client is not None
 
 
 __all__ = ["PostgresClient"]

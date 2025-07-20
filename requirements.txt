@@ -32,6 +32,9 @@ plotly
 seaborn
 redis 
 psycopg
+asyncpg
+sqlalchemy
+alembic
 chardet
 httpx
 tenacity
