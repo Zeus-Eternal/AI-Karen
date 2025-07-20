@@ -1,9 +1,13 @@
 import asyncio
 import importlib
 import json
+import logging
 import os
 import resource
 import sys
+
+
+logger = logging.getLogger(__name__)
 
 
 def _set_limits(cpu_seconds: int) -> None:
@@ -20,7 +24,7 @@ async def _run(module_name: str, params: dict) -> None:
         result = await run(params)
     else:
         result = run(params)
-    print(json.dumps(result))
+    logger.info(json.dumps(result))
 
 
 def main() -> None:

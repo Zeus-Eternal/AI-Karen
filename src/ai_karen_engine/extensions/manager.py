@@ -4,12 +4,9 @@ Extension manager for discovery, loading, and lifecycle management.
 
 from __future__ import annotations
 
-import asyncio
 import importlib
 import importlib.util
-import json
 import logging
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -23,7 +20,7 @@ from .models import (
     ExtensionStatus
 )
 from .registry import ExtensionRegistry
-from .validator import ExtensionValidator, ValidationError
+from .validator import ExtensionValidator
 from .dependency_resolver import DependencyResolver, DependencyError
 from .resource_monitor import ResourceMonitor, ExtensionHealthChecker
 
@@ -195,11 +192,11 @@ class ExtensionManager:
             # Register extension
             record = self.registry.register_extension(manifest, extension_instance, str(extension_dir))
             
-            # Create extension context
-            context = ExtensionContext(
+            # Create extension context (currently unused)
+            ExtensionContext(
                 plugin_router=self.plugin_router,
                 db_session=self.db_session,
-                app_instance=self.app_instance
+                app_instance=self.app_instance,
             )
             
             # Initialize extension

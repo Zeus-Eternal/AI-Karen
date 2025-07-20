@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Iterable
+import logging
 
 
 class NightlyFineTuner:
@@ -10,6 +11,8 @@ class NightlyFineTuner:
 
     def __init__(self, logs_path: Path) -> None:
         self.logs_path = Path(logs_path)
+
+        self.logger = logging.getLogger(__name__)
 
     def _load_logs(self) -> Iterable[str]:
         if not self.logs_path.exists():
@@ -25,4 +28,9 @@ class NightlyFineTuner:
         """Collect logs and (conceptually) fine-tune the given model."""
         dataset = list(self._load_logs())
         # Placeholder for the actual training procedure
-        print(f"Fine-tuning {model_path} on {len(dataset)} samples from {self.logs_path}")
+        self.logger.info(
+            "Fine-tuning %s on %d samples from %s",
+            model_path,
+            len(dataset),
+            self.logs_path,
+        )

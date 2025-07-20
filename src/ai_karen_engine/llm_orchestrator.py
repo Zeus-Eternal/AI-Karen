@@ -11,7 +11,7 @@ import logging
 import time
 import hashlib
 import hmac
-from typing import Optional, Dict, Any, List, Tuple, Callable, Union
+from typing import Optional, Dict, Any, List, Tuple, Callable
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, Future
 import threading

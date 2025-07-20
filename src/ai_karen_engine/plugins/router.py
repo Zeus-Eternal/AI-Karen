@@ -8,6 +8,7 @@ Kari PluginRouter: Ruthless Prompt‐First Plugin Orchestration
 import os
 import json
 import inspect
+import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -32,7 +33,11 @@ except ImportError:
 
 
 # --- Sandboxing helper --------------------------------------------------
-from ai_karen_engine.utils.sandbox import run_in_sandbox  # your existing sandbox runner
+from ai_karen_engine.utils.sandbox import (
+    run_in_sandbox,  # your existing sandbox runner
+)
+
+logger = logging.getLogger(__name__)
 
 
 # --- Jinja2 environment (optional) -------------------------------------
@@ -55,8 +60,11 @@ except ImportError:
 
 
 # --- Paths & schema -----------------------------------------------------
-# Plugin root now points to the root plugins directory (marketplace structure)
-PLUGIN_ROOT       = Path(__file__).parent.parent.parent.parent / "plugins"
+# Plugin root defaults to this package's directory but may be overridden
+# via the ``KARI_PLUGIN_DIR`` environment variable. This keeps tests and
+# embedded deployments working even when no top-level ``plugins`` folder
+# exists.
+PLUGIN_ROOT       = Path(os.getenv("KARI_PLUGIN_DIR", Path(__file__).parent))
 PLUGIN_META       = "__meta"
 PLUGIN_MANIFEST   = "plugin_manifest.json"
 PROMPT_FILE       = "prompt.txt"
@@ -104,7 +112,8 @@ def load_handler(plugin_dir: Path, module_path: Optional[str] = None) -> Tuple[C
     Return (handler_callable, module_name).
     Handler must expose `async def run(params)` or `def run(params)`.
     """
-    import importlib, importlib.util
+    import importlib
+    import importlib.util
 
     if module_path:
         module = importlib.import_module(module_path)
@@ -198,7 +207,7 @@ class PluginRouter:
                         module=manifest.get("module", HANDLER_FILE) if 'manifest' in locals() else HANDLER_FILE,
                         error=type(e).__name__
                     ).inc()
-                    print(f"Plugin discovery failed in {p}: {e}")
+                    logger.warning("Plugin discovery failed in %s: %s", p, e)
             else:
                 # No manifest here, scan subdirectories (for category structure)
                 self._scan_directory_for_plugins(p, out)

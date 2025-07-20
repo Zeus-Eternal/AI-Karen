@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .models import ExtensionManifest, ExtensionRecord, ExtensionStatus
 
@@ -193,10 +193,9 @@ class ExtensionRegistry:
         for dep in manifest.dependencies.extensions:
             # Parse version requirement if present (e.g., "extension@^1.0.0")
             if "@" in dep:
-                dep_name, version_req = dep.split("@", 1)
+                dep_name = dep.split("@", 1)[0]
             else:
                 dep_name = dep
-                version_req = None
             
             # Check if dependency is available
             dep_extension = self.get_extension(dep_name)

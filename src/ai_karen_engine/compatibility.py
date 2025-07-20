@@ -6,9 +6,9 @@ existing code continues to work during the migration period.
 """
 
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 import sys
-from pathlib import Path
+import importlib
 
 
 def deprecated_import(old_path: str, new_path: str, removal_version: str = "0.5.0"):
@@ -177,8 +177,8 @@ def create_plugin_compatibility_imports():
     for old_path, new_path in plugin_mappings.items():
         try:
             # Try to import from new location
-            new_module = __import__(new_path, fromlist=[''])
-            
+            __import__(new_path, fromlist=[""])
+
             # Create compatibility module
             _compatibility_manager.create_compatibility_module(old_path, new_path)
             
@@ -206,8 +206,9 @@ def warn_about_deprecated_import(old_path: str, new_path: str) -> None:
 def is_migration_complete() -> bool:
     """Check if migration is complete by testing new import paths."""
     try:
-        # Test key new imports
-        from ai_karen_engine.plugins import manager, router
+        # Test key new imports without exposing them
+        importlib.import_module("ai_karen_engine.plugins.manager")
+        importlib.import_module("ai_karen_engine.plugins.router")
         return True
     except ImportError:
         return False

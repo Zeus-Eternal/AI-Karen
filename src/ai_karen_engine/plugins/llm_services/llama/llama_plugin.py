@@ -6,8 +6,9 @@ Ollama In-Process LLM Plugin for Kari AI
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Body, status
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import APIRouter, HTTPException, Body, Request
+from fastapi.responses import StreamingResponse
+from starlette.concurrency import iterate_in_threadpool
 from typing import List, Dict, Optional, Any
 
 from ai_karen_engine.plugins.llm_services.ollama.ollama_service import ollama_inprocess_client
@@ -100,8 +101,6 @@ def chat(
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- Async Chat (for advanced clients or mobile UX)
-from fastapi import Request
-from starlette.concurrency import iterate_in_threadpool
 
 @router.post("/achat")
 async def achat(
@@ -122,7 +121,6 @@ async def achat(
             return StreamingResponse(iterate_in_threadpool(streamer()), media_type="text/plain")
         else:
             # Non-streaming: run in executor for non-blocking I/O
-            import asyncio
             response = await ollama_inprocess_client.achat(messages, stream=False, max_tokens=max_tokens)
             return {"response": response}
     except Exception as e:

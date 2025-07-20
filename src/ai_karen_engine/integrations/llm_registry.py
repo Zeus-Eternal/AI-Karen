@@ -28,6 +28,7 @@ def load_gemini_service():
 # --- Main Registry (priority order; can override with ENV) ---
 
 REGISTRY = {
+    "local": load_ollama_engine,
     "ollama": load_ollama_engine,
     "deepseek": load_deepseek_client,
     "openai": load_openai_service,
@@ -61,6 +62,10 @@ def list_llms():
         models.append("local")
     return models
 
+def list_models() -> list[str]:
+    """Alias for backward compatibility."""
+    return list_llms()
+
 def active() -> str:
     return _ACTIVE_PROVIDER
 
@@ -71,9 +76,18 @@ registry = type(
         "get_active": staticmethod(get_active),
         "get_llm": staticmethod(get_llm),
         "list_llms": staticmethod(list_llms),
+        "list_models": staticmethod(list_models),
         "set_active": staticmethod(set_active),
         "active": property(lambda self: _ACTIVE_PROVIDER),
     },
 )()
 
-__all__ = ["registry", "get_llm", "get_active", "list_llms", "set_active", "active"]
+__all__ = [
+    "registry",
+    "get_llm",
+    "get_active",
+    "list_llms",
+    "list_models",
+    "set_active",
+    "active",
+]
