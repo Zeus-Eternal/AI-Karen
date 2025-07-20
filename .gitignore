@@ -1,6 +1,5 @@
 __pycache__/
 logs/
-desktop_ui/node_modules/
 server.pid
 /.env
 .DS_Store
@@ -11,8 +10,6 @@ server.pid
 .env.local
 .envrc
 .venv/
-/desktop_ui/frontend/node_modules
-mobile_ui/config/secrets.json
 *.duckdb
 *.duckdb
 *.db
