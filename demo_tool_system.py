@@ -9,12 +9,9 @@ tool registration, discovery, validation, and execution.
 import asyncio
 import json
 import logging
-import sys
 import os
+import sys
 from datetime import datetime
-
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

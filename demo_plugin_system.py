@@ -10,8 +10,6 @@ import asyncio
 import json
 from pathlib import Path
 
-import sys
-sys.path.append('src')
 
 from ai_karen_engine.services.plugin_service import (
     PluginService, ExecutionMode

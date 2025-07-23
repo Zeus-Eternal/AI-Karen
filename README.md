@@ -197,6 +197,16 @@ export MILVUS_URL=localhost:19530
 | Build web UI | `cd ui_launchers/web_ui && npm run build` |
 | Build desktop | `cd ui_launchers/desktop_ui && npm run tauri build` |
 
+### Demo Scripts
+
+When running the example demo scripts directly from the repository, set
+`PYTHONPATH=src` so the `ai_karen_engine` package can be imported without
+modifying `sys.path` inside the scripts:
+
+```bash
+PYTHONPATH=src python demo_plugin_system.py
+```
+
 ### Plugin Development
 
 Create a new plugin in `src/ai_karen_engine/plugins/`:
