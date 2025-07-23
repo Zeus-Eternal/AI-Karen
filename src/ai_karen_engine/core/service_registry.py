@@ -19,7 +19,6 @@ from ..services.plugin_service import PluginService
 from ..services.tool_service import ToolService
 from ..services.analytics_service import AnalyticsService
 from ..database.conversation_manager import ConversationManager
-from ..core.embedding_manager import EmbeddingManager
 
 logger = logging.getLogger(__name__)
 
@@ -164,18 +163,18 @@ class ServiceRegistry:
                 instance = WebUIMemoryService(memory_manager)
             elif service_info.service_type == WebUIConversationService:
                 # WebUIConversationService needs memory_service dependency
-                memory_service = dependency_instances.get('memory_service')
+                memory_service = dependency_instances.get("memory_service")
                 if not memory_service:
-                    raise ValueError("WebUIConversationService requires memory_service dependency")
+                    raise ValueError(
+                        "WebUIConversationService requires memory_service dependency"
+                    )
 
-                # Instantiate ConversationManager with fresh dependencies
-                from ai_karen_engine.database.client import MultiTenantPostgresClient
-
+                # Build ConversationManager using the existing memory service components
                 memory_manager = memory_service.base_manager
                 conversation_manager = ConversationManager(
-                    db_client=MultiTenantPostgresClient(),
+                    db_client=memory_manager.db_client,
                     memory_manager=memory_manager,
-                    embedding_manager=EmbeddingManager(),
+                    embedding_manager=memory_manager.embedding_manager,
                 )
 
                 instance = WebUIConversationService(conversation_manager, memory_service)
