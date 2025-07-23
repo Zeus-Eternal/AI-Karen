@@ -284,6 +284,9 @@ helm install ai-karen ./charts/kari/ \
 | `GET` | `/plugins` | List plugins |
 | `GET` | `/models` | List AI models |
 
+The memory query endpoint (`/api/memory/query`) returns at most **100 results** by default.
+You can override this cap by providing the `result_limit` parameter in your request.
+
 ### Authentication
 
 ```bash

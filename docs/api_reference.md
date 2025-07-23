@@ -63,6 +63,11 @@ curl -X POST -H "Content-Type: application/json" \
 curl -X POST -H "Content-Type: application/json" \
   -d '{"text": "retrieve", "top_k": 3}' \
   http://localhost:8000/search
+
+# Limit results (default 100)
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"text": "retrieve", "result_limit": 200}' \
+  http://localhost:8000/api/memory/query
 ```
 
 ### 5. List and Reload Plugins
