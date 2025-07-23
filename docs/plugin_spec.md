@@ -12,15 +12,46 @@ Plugins live under the `src/ai_karen_engine/plugins/` folder and must contain at
 | `version` | string | Semantic version of the plugin. |
 | `description` | string | Short summary shown in the UI. |
 | `author` | string | Plugin author or maintainer. |
-| `plugin_api_version` | string | Currently must be `"1.0"`. Plugins with other versions are ignored. |
+| `license` | string | License string, defaults to `"MIT"`. |
+| `plugin_api_version` | string | Plugin API version, must be `"1.0"` or `"1.1"`. |
+| `plugin_type` | string | Plugin type such as `custom` or `integration`. |
 | `module` | string | Python module path to the plugin handler. |
-| `intent` | string or list | Intent names that this plugin handles. |
+| `entry_point` | string | Function inside `module` used to run the plugin. |
 | `required_roles` | list of strings | Roles allowed to invoke the plugin. |
-| `enable_external_workflow` | bool | If `true` the plugin may call an external n8n workflow. |
-| `workflow_slug` | string | Optional slug passed to the workflow engine. |
-| `trusted_ui` | bool | If `true`, the Control Room will render `ui.py` without requiring `ADVANCED_MODE`. |
+| `trusted_ui` | bool | Load `ui.py` without ADVANCED_MODE when `true`. |
+| `enable_external_workflow` | bool | Allow calls to external workflows. |
+| `sandbox_required` | bool | Run the plugin in a sandbox if `true`. |
+| `dependencies` | list | Dependency specifications for other plugins. |
+| `compatibility` | object | Version and platform compatibility info. |
+| `tags` | list of strings | Extra search tags. |
+| `category` | string | Plugin category grouping. |
+| `intent` | string | Intent handled by this plugin. |
 
-The manifest is validated against `ai_karen_engine/config/plugin_schema.json` when `PluginRouter.load_plugins()` scans the directory. Plugins missing required fields are skipped.
+Plugin discovery reads this file into `PluginManifest`. Extra keys are allowed, but omitting a required field like `name` or `module` will cause discovery errors.
+
+Example `plugin_manifest.json`:
+
+```json
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "description": "Simple example plugin",
+  "author": "ACME",
+  "plugin_type": "custom",
+  "module": "ai_karen_engine.plugins.hello_world.handler",
+  "entry_point": "run",
+  "plugin_api_version": "1.0",
+  "intent": "hello_world",
+  "required_roles": ["user"],
+  "trusted_ui": false,
+  "enable_external_workflow": false,
+  "sandbox_required": true,
+  "tags": ["example"],
+  "category": "utility",
+  "dependencies": [],
+  "compatibility": {}
+}
+```
 
 ## Handler Interface
 
