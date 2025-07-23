@@ -9,11 +9,13 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
 from ..services.memory_service import (
-    WebUIMemoryService, 
-    WebUIMemoryQuery, 
-    MemoryType, 
-    UISource
+    WebUIMemoryService,
+    WebUIMemoryQuery,
+    MemoryType,
+    UISource,
 )
+from ..core.config_manager import AIKarenConfig
+from ..core.dependencies import get_memory_service, get_current_config
 # from ..database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
 
@@ -130,8 +132,7 @@ class AnalyticsResponse(BaseModel):
     web_ui_metrics: Dict[str, Any]
 
 
-# Import dependency injection
-from ..core.dependencies import get_memory_service
+
 
 
 @router.post("/store", response_model=StoreMemoryResponse)
