@@ -62,6 +62,9 @@ def _discover_plugins(base_pkg: str, type_label: str) -> dict[str, dict[str, Mod
     for _, name, ispkg in pkgutil.iter_modules(package.__path__):
         if not ispkg:
             continue
+        # Skip metadata or private packages
+        if name.startswith("_"):
+            continue
         try:
             mod = importlib.import_module(f"{base_pkg}.{name}.handler")
             plugins[name] = {"handler": mod, "type": type_label}
