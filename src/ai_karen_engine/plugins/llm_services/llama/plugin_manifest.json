@@ -9,7 +9,6 @@
   "name": "LlamaCppLocal",
   "provider_id": "llama_cpp",
   "type": "llm_provider",
-  "entrypoint": "llama.handler:router",
   "description": "Pure in-process LLM using llama-cpp-python. No REST, no server. Hot-reload, async, and streaming.",
   "runtimes": [
     "python3.10+",
@@ -30,5 +29,8 @@
   },
   "module": "ai_karen_engine.plugins.llm_services.llama.handler",
   "version": "0.1.0",
-  "author": "Kari Team"
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "llama.handler:router",
+  "plugin_type": "core"
 }
