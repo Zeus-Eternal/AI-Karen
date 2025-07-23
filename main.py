@@ -162,7 +162,15 @@ def _load_plugins() -> None:
 
 # ─── Middleware: Metrics & Multi-Tenant ───────────────────────────────────────
 
-PUBLIC_PATHS = {"/", "/ping", "/health", "/ready", "/metrics", "/metrics/prometheus"}
+PUBLIC_PATHS = {
+    "/",
+    "/ping",
+    "/health",
+    "/ready",
+    "/metrics",
+    "/metrics/prometheus",
+    "/api/ai/generate-starter",
+}
 
 @app.middleware("http")
 async def record_metrics(request: Request, call_next):
