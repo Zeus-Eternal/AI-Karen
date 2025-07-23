@@ -6,5 +6,9 @@
     "admin"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.llm_services.gemini.handler"
+  "module": "ai_karen_engine.plugins.llm_services.gemini.handler",
+  "name": "gemini",
+  "version": "0.1.0",
+  "description": "Gemini plugin",
+  "author": "Kari AI"
 }

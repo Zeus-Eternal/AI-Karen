@@ -6,5 +6,9 @@
     "dev"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.llm_manager.handler"
+  "module": "ai_karen_engine.plugins.llm_manager.handler",
+  "name": "llm-manager",
+  "version": "0.1.0",
+  "description": "Llm Manager plugin",
+  "author": "Kari AI"
 }

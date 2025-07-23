@@ -6,5 +6,9 @@
     "devops"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.git_merge_safe.handler"
+  "module": "ai_karen_engine.plugins.git_merge_safe.handler",
+  "name": "git-merge-safe",
+  "version": "0.1.0",
+  "description": "Git Merge Safe plugin",
+  "author": "Kari AI"
 }

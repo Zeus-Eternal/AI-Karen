@@ -6,5 +6,9 @@
     "admin"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.llm_services.openai.handler"
+  "module": "ai_karen_engine.plugins.llm_services.openai.handler",
+  "name": "openai",
+  "version": "0.1.0",
+  "description": "Openai plugin",
+  "author": "Kari AI"
 }

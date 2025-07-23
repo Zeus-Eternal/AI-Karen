@@ -6,5 +6,9 @@
     "admin"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.llm_services.deepseek.handler"
+  "module": "ai_karen_engine.plugins.llm_services.deepseek.handler",
+  "name": "deepseek",
+  "version": "0.1.0",
+  "description": "Deepseek plugin",
+  "author": "Kari AI"
 }

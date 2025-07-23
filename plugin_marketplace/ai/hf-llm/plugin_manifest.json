@@ -6,5 +6,9 @@
     "user"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.hf_llm.handler"
+  "module": "ai_karen_engine.plugins.hf_llm.handler",
+  "name": "hf-llm",
+  "version": "0.1.0",
+  "description": "Hf Llm plugin",
+  "author": "Kari AI"
 }

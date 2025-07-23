@@ -3,8 +3,13 @@
   "version": "0.1.0",
   "plugin_api_version": "1.0",
   "enable_external_workflow": false,
-  "required_roles": ["user"],
+  "required_roles": [
+    "user"
+  ],
   "intent": "sandbox_fail",
   "trusted_ui": false,
-  "sandbox": true
+  "sandbox": true,
+  "description": "Sandbox Fail plugin",
+  "author": "Kari AI",
+  "module": "plugin_marketplace.examples.sandbox_fail.handler"
 }
