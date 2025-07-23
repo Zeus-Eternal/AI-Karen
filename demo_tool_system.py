@@ -9,10 +9,9 @@ tool registration, discovery, validation, and execution.
 import asyncio
 import json
 import logging
+import os
+import sys
 from datetime import datetime
-
-# Run with: PYTHONPATH=src python demo_tool_system.py
-
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

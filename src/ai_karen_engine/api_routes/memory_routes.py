@@ -9,11 +9,13 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
 from ..services.memory_service import (
-    WebUIMemoryService, 
-    WebUIMemoryQuery, 
-    MemoryType, 
-    UISource
+    WebUIMemoryService,
+    WebUIMemoryQuery,
+    MemoryType,
+    UISource,
 )
+from ..core.config_manager import AIKarenConfig
+from ..core.dependencies import get_memory_service, get_current_config
 # from ..database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
 
@@ -48,7 +50,8 @@ class QueryMemoryRequest(BaseModel):
     only_ai_generated: bool = Field(False, description="Only AI generated memories")
     time_range_start: Optional[datetime] = Field(None, description="Start of time range")
     time_range_end: Optional[datetime] = Field(None, description="End of time range")
-    top_k: int = Field(10, ge=1, le=100, description="Maximum results")
+    top_k: int = Field(10, ge=1, le=100, description="Maximum results from the vector search")
+    result_limit: Optional[int] = Field(None, ge=1, description="Override default result cap")
     similarity_threshold: float = Field(0.7, ge=0.0, le=1.0, description="Similarity threshold")
     include_embeddings: bool = Field(False, description="Include embeddings in response")
 
@@ -129,8 +132,7 @@ class AnalyticsResponse(BaseModel):
     web_ui_metrics: Dict[str, Any]
 
 
-# Import dependency injection
-from ..core.dependencies import get_memory_service
+
 
 
 @router.post("/store", response_model=StoreMemoryResponse)
@@ -170,8 +172,7 @@ async def store_memory(
 @router.post("/query", response_model=QueryMemoryResponse)
 async def query_memories(
     request: QueryMemoryRequest,
-    
-    
+    config: AIKarenConfig = Depends(get_current_config),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """Query memories with advanced filtering."""
@@ -181,6 +182,9 @@ async def query_memories(
         if request.time_range_start and request.time_range_end:
             time_range = (request.time_range_start, request.time_range_end)
         
+        # Determine the maximum number of results
+        limit = request.result_limit or config.memory.get("query_limit", 100)
+
         # Create query object
         query = WebUIMemoryQuery(
             text=request.text,
@@ -194,12 +198,15 @@ async def query_memories(
             only_user_confirmed=request.only_user_confirmed,
             only_ai_generated=request.only_ai_generated,
             time_range=time_range,
-            top_k=request.top_k,
+            top_k=min(request.top_k, limit),
             similarity_threshold=request.similarity_threshold,
             include_embeddings=request.include_embeddings
         )
-        
+
         memories = await memory_service.query_memories("default", query)
+
+        # Enforce final limit on returned results
+        memories = memories[:limit]
         
         # Convert to response format
         memory_responses = []
@@ -239,6 +246,7 @@ async def query_memories(
                 },
                 "search_params": {
                     "top_k": request.top_k,
+                    "result_limit": limit,
                     "similarity_threshold": request.similarity_threshold
                 }
             }
