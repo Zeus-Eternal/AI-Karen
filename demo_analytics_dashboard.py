@@ -12,10 +12,6 @@ import time
 import random
 from datetime import datetime, timedelta
 
-# Import directly to avoid dependency issues
-import sys
-sys.path.append('src')
-
 from ai_karen_engine.services.analytics_service import (
     AnalyticsService,
     MetricType,
