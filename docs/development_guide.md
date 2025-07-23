@@ -48,6 +48,8 @@ Set these required environment variables before development:
 - `DEEPSEEK_API_KEY` - For DeepSeek model integration
 - `KARI_MAX_LLM_CONCURRENT` - Maximum concurrent LLM requests (default: 8)
 - `KARI_LLM_TIMEOUT` - LLM request timeout in seconds (default: 60)
+- `KARI_ENV` - Selects the runtime environment. Use `local` (the default) to
+  run entirely on your machine without relying on external services.
 
 ### Local Development Setup
 
