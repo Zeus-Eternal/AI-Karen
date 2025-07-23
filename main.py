@@ -32,6 +32,11 @@ from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
 from ai_karen_engine.plugins.router import get_plugin_router
 from ai_karen_engine.api_routes.auth import router as auth_router
 from ai_karen_engine.api_routes.events import router as events_router
+from ai_karen_engine.api_routes.ai_orchestrator_routes import router as ai_router
+from ai_karen_engine.api_routes.memory_routes import router as memory_router
+from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
+from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
+from ai_karen_engine.api_routes.tool_routes import router as tool_router
 
 # ─── Prometheus metrics (with graceful fallback) ─────────────────────────────
 
@@ -78,15 +83,48 @@ if (Path(__file__).resolve().parent / "fastapi").is_dir():
 app = FastAPI()
 app.include_router(auth_router)
 app.include_router(events_router)
+app.include_router(ai_router)
+app.include_router(memory_router)
+app.include_router(conversation_router)
+app.include_router(plugin_router)
+app.include_router(tool_router)
 logger = logging.getLogger("kari")
 
 # ─── Startup: memory, plugins, LLM registry refresh ───────────────────────────
 
 @app.on_event("startup")
 async def on_startup() -> None:
+    # Initialize legacy components
     init_memory()
     _load_plugins()
     sync_registry()
+    
+    # Initialize AI Karen integration services
+    try:
+        from ai_karen_engine.core.config_manager import get_config_manager
+        from ai_karen_engine.core.service_registry import initialize_services
+        from ai_karen_engine.core.health_monitor import setup_default_health_checks, get_health_monitor
+        
+        # Load configuration
+        config_manager = get_config_manager()
+        config = config_manager.load_config()
+        logger.info(f"AI Karen configuration loaded for environment: {config.environment}")
+        
+        # Initialize services
+        await initialize_services()
+        logger.info("AI Karen integration services initialized")
+        
+        # Set up health monitoring
+        await setup_default_health_checks()
+        health_monitor = get_health_monitor()
+        health_monitor.start_monitoring()
+        logger.info("Health monitoring started")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize AI Karen integration: {e}")
+        # Continue with legacy startup even if integration fails
+    
+    # Legacy LLM refresh interval
     interval = int(os.getenv("LLM_REFRESH_INTERVAL", "0"))
     if interval > 0:
         async def _periodic_refresh():

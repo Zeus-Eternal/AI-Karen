@@ -61,6 +61,33 @@ async def _init_memory() -> None:
     init_memory()
 
 @app.on_event("startup")
+async def _init_ai_karen_integration() -> None:
+    """Initialize AI Karen engine integration services."""
+    try:
+        # Initialize configuration management
+        from .core.config_manager import get_config_manager
+        config_manager = get_config_manager()
+        config = config_manager.load_config()
+        logger.info(f"Configuration loaded for environment: {config.environment}")
+        
+        # Initialize service registry and core services
+        from .core.service_registry import initialize_services
+        await initialize_services()
+        logger.info("AI Karen integration services initialized")
+        
+        # Set up health monitoring
+        from .core.health_monitor import setup_default_health_checks, get_health_monitor
+        await setup_default_health_checks()
+        health_monitor = get_health_monitor()
+        health_monitor.start_monitoring()
+        logger.info("Health monitoring started")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize AI Karen integration: {e}")
+        # Don't fail startup completely, but log the error
+        raise
+
+@app.on_event("startup")
 async def _init_extensions() -> None:
     """Initialize the extension system."""
     from pathlib import Path
@@ -128,17 +155,20 @@ def auto_discover_routers(app):
     try:
         from ai_karen_engine import api_routes
         package = api_routes
-        prefix = "/api"
+        prefix = ""  # Routes already have their own prefixes
     except ImportError:
         package = None
 
     if package:
         for loader, name, is_pkg in pkgutil.iter_modules(package.__path__):
-            mod = importlib.import_module(f"ai_karen_engine.api_routes.{name}")
-            router = getattr(mod, "router", None)
-            if isinstance(router, APIRouter) and hasattr(router, "routes"):
-                app.include_router(router, prefix=prefix)
-                logger.info(f"Mounted router: /api/{name}")
+            try:
+                mod = importlib.import_module(f"ai_karen_engine.api_routes.{name}")
+                router = getattr(mod, "router", None)
+                if isinstance(router, APIRouter) and hasattr(router, "routes"):
+                    app.include_router(router)
+                    logger.info(f"Mounted router: {name}")
+            except Exception as e:
+                logger.error(f"Failed to mount router {name}: {e}")
 
     # Plugins (plugins/*.py)
     plugin_dir = os.path.join(os.path.dirname(__file__), "..", "plugins")
@@ -216,12 +246,35 @@ async def auth_middleware(request: Request, call_next):
 # -- Uptime/health probes for orchestration/infra --
 @app.get("/health", response_class=JSONResponse)
 async def health(request: Request):
-    return {
-        "status": "ok",
-        "version": app.version,
-        "env": os.getenv("KARI_ENV", "local"),
-        "trace_id": getattr(request.state, "trace_id", None),
-    }
+    try:
+        # Get comprehensive health status from health monitor
+        from .core.health_monitor import get_health_monitor
+        health_monitor = get_health_monitor()
+        health_summary = health_monitor.get_health_summary()
+        
+        return {
+            "status": health_summary["overall_status"],
+            "version": app.version,
+            "env": os.getenv("KARI_ENV", "local"),
+            "trace_id": getattr(request.state, "trace_id", None),
+            "services": {
+                "total": health_summary["total_services"],
+                "healthy": health_summary["healthy_services"],
+                "degraded": health_summary["degraded_services"],
+                "unhealthy": health_summary["unhealthy_services"]
+            },
+            "last_check": health_summary["last_check"],
+            "average_uptime": health_summary["average_uptime"]
+        }
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        return {
+            "status": "unknown",
+            "version": app.version,
+            "env": os.getenv("KARI_ENV", "local"),
+            "trace_id": getattr(request.state, "trace_id", None),
+            "error": str(e)
+        }
 
 @app.get("/livez", response_class=PlainTextResponse)
 async def livez():
@@ -230,6 +283,155 @@ async def livez():
 @app.get("/readyz", response_class=PlainTextResponse)
 async def readyz():
     return "ready"
+
+# -- Service Discovery and Health Monitoring Endpoints --
+@app.get("/api/services", response_class=JSONResponse)
+async def list_services():
+    """List all registered services and their status."""
+    try:
+        from .core.service_registry import get_service_registry
+        registry = get_service_registry()
+        return {
+            "services": registry.list_services(),
+            "metrics": registry.get_metrics()
+        }
+    except Exception as e:
+        logger.error(f"Service discovery error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Service discovery failed", "detail": str(e)}
+        )
+
+@app.get("/api/services/{service_name}/health", response_class=JSONResponse)
+async def get_service_health(service_name: str):
+    """Get detailed health information for a specific service."""
+    try:
+        from .core.health_monitor import get_health_monitor
+        health_monitor = get_health_monitor()
+        service_health = health_monitor.get_service_health(service_name)
+        
+        if not service_health:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Service not found", "service": service_name}
+            )
+        
+        return {
+            "service_name": service_health.service_name,
+            "status": service_health.status.value,
+            "last_check": service_health.last_check.isoformat(),
+            "uptime": service_health.uptime,
+            "error_count": service_health.error_count,
+            "success_count": service_health.success_count,
+            "recent_checks": [
+                {
+                    "status": check.status.value,
+                    "message": check.message,
+                    "timestamp": check.timestamp.isoformat(),
+                    "response_time": check.response_time,
+                    "error": check.error
+                }
+                for check in service_health.checks[-10:]  # Last 10 checks
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Service health check error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Health check failed", "detail": str(e)}
+        )
+
+@app.get("/api/health/summary", response_class=JSONResponse)
+async def get_health_summary():
+    """Get comprehensive health summary for all services."""
+    try:
+        from .core.health_monitor import get_health_monitor
+        health_monitor = get_health_monitor()
+        return health_monitor.get_health_summary()
+    except Exception as e:
+        logger.error(f"Health summary error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Health summary failed", "detail": str(e)}
+        )
+
+@app.post("/api/health/check", response_class=JSONResponse)
+async def trigger_health_check():
+    """Trigger immediate health check for all services."""
+    try:
+        from .core.health_monitor import get_health_monitor
+        health_monitor = get_health_monitor()
+        results = await health_monitor.check_all_services()
+        
+        return {
+            "message": "Health check completed",
+            "results": {
+                name: {
+                    "status": result.status.value,
+                    "message": result.message,
+                    "response_time": result.response_time,
+                    "timestamp": result.timestamp.isoformat()
+                }
+                for name, result in results.items()
+            }
+        }
+    except Exception as e:
+        logger.error(f"Health check trigger error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Health check failed", "detail": str(e)}
+        )
+
+@app.get("/api/config", response_class=JSONResponse)
+async def get_configuration():
+    """Get current system configuration (sanitized)."""
+    try:
+        from .core.config_manager import get_config
+        config = get_config()
+        
+        # Return sanitized configuration (remove sensitive data)
+        return {
+            "environment": config.environment.value,
+            "debug": config.debug,
+            "database": {
+                "host": config.database.host,
+                "port": config.database.port,
+                "database": config.database.database,
+                "pool_size": config.database.pool_size
+            },
+            "redis": {
+                "host": config.redis.host,
+                "port": config.redis.port,
+                "database": config.redis.database
+            },
+            "vector_db": {
+                "provider": config.vector_db.provider,
+                "host": config.vector_db.host,
+                "port": config.vector_db.port
+            },
+            "llm": {
+                "provider": config.llm.provider,
+                "model": config.llm.model,
+                "temperature": config.llm.temperature,
+                "max_tokens": config.llm.max_tokens
+            },
+            "web_ui": {
+                "enable_web_ui_features": config.web_ui.enable_web_ui_features,
+                "session_timeout": config.web_ui.session_timeout,
+                "ui_sources": config.web_ui.ui_sources
+            },
+            "monitoring": {
+                "enable_metrics": config.monitoring.enable_metrics,
+                "enable_logging": config.monitoring.enable_logging,
+                "log_level": config.monitoring.log_level
+            }
+        }
+    except Exception as e:
+        logger.error(f"Configuration retrieval error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Configuration retrieval failed", "detail": str(e)}
+        )
 
 # -- Human/Index --
 @app.get("/", response_class=JSONResponse)

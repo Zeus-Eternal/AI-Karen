@@ -1,8 +1,0 @@
-{
-  "plugin_api_version": "1.0",
-  "enable_external_workflow": false,
-  "required_roles": ["user"],
-  "intent": "sandbox_fail",
-  "trusted_ui": false,
-  "sandbox": true
-}

@@ -377,35 +377,37 @@ export async function mockComposeGmail(input: {
 }
 
 
-// Enhanced AI Karen Backend Integration Tools
+// Note: Enhanced AI Karen backend integration functions have been moved to dedicated services
+// These functions are now available through:
+// - getPluginService().executePlugin() for plugin execution
+// - getMemoryService().queryMemories() and storeMemory() for memory operations
+// - getKarenBackend().healthCheck() and getSystemMetrics() for system status
+// - getKarenBackend().getUsageAnalytics() for analytics
+
+// Legacy functions kept for backward compatibility - these now delegate to services
 export async function executeKarenPlugin(
   pluginName: string,
   parameters: Record<string, any> = {},
   userId?: string
 ): Promise<string> {
-  console.log(`executeKarenPlugin: Called for plugin="${pluginName}" with params:`, parameters);
+  console.warn('executeKarenPlugin: This function is deprecated. Use getPluginService().executePlugin() instead.');
   
   try {
-    const backend = getKarenBackend();
-    const result = await backend.executePlugin(pluginName, parameters, userId);
+    // Import here to avoid circular dependencies
+    const { getPluginService } = await import('@/services/pluginService');
+    const pluginService = getPluginService();
+    const result = await pluginService.executePlugin(pluginName, parameters, { userId });
     
-    if (result.success) {
-      return JSON.stringify({
-        success: true,
-        plugin: pluginName,
-        result: result.result,
-        message: `Successfully executed ${pluginName} plugin.`,
-        timestamp: result.timestamp
-      });
-    } else {
-      return JSON.stringify({
-        success: false,
-        plugin: pluginName,
-        error: result.error,
-        message: `Failed to execute ${pluginName} plugin: ${result.error}`,
-        timestamp: result.timestamp
-      });
-    }
+    return JSON.stringify({
+      success: result.success,
+      plugin: pluginName,
+      result: result.result,
+      error: result.error,
+      message: result.success 
+        ? `Successfully executed ${pluginName} plugin.`
+        : `Failed to execute ${pluginName} plugin: ${result.error}`,
+      timestamp: result.timestamp
+    });
   } catch (error) {
     console.error(`executeKarenPlugin: Error executing ${pluginName}:`, error);
     return JSON.stringify({
@@ -428,18 +430,19 @@ export async function queryKarenMemory(
     timeRange?: [Date, Date];
   } = {}
 ): Promise<string> {
-  console.log(`queryKarenMemory: Called with query="${queryText}" for user="${userId}"`);
+  console.warn('queryKarenMemory: This function is deprecated. Use getMemoryService().queryMemories() instead.');
   
   try {
-    const backend = getKarenBackend();
-    const memories = await backend.queryMemories({
-      text: queryText,
-      user_id: userId,
-      session_id: sessionId,
-      top_k: options.topK || 5,
-      similarity_threshold: options.similarityThreshold || 0.7,
+    // Import here to avoid circular dependencies
+    const { getMemoryService } = await import('@/services/memoryService');
+    const memoryService = getMemoryService();
+    const memories = await memoryService.queryMemories(queryText, {
+      userId,
+      sessionId,
+      topK: options.topK || 5,
+      similarityThreshold: options.similarityThreshold || 0.7,
       tags: options.tags,
-      time_range: options.timeRange,
+      timeRange: options.timeRange,
     });
     
     if (memories.length > 0) {
@@ -486,17 +489,18 @@ export async function storeKarenMemory(
     metadata?: Record<string, any>;
   } = {}
 ): Promise<string> {
-  console.log(`storeKarenMemory: Called to store content for user="${userId}"`);
+  console.warn('storeKarenMemory: This function is deprecated. Use getMemoryService().storeMemory() instead.');
   
   try {
-    const backend = getKarenBackend();
-    const memoryId = await backend.storeMemory(
-      content,
-      options.metadata || {},
-      options.tags || [],
+    // Import here to avoid circular dependencies
+    const { getMemoryService } = await import('@/services/memoryService');
+    const memoryService = getMemoryService();
+    const memoryId = await memoryService.storeMemory(content, {
+      tags: options.tags,
+      metadata: options.metadata,
       userId,
-      sessionId
-    );
+      sessionId,
+    });
     
     if (memoryId) {
       return JSON.stringify({
@@ -523,7 +527,7 @@ export async function storeKarenMemory(
 }
 
 export async function getKarenSystemStatus(): Promise<string> {
-  console.log('getKarenSystemStatus: Called');
+  console.warn('getKarenSystemStatus: This function is deprecated. Use getKarenBackend().healthCheck() instead.');
   
   try {
     const backend = getKarenBackend();
@@ -559,7 +563,7 @@ export async function getKarenSystemStatus(): Promise<string> {
 }
 
 export async function getKarenAnalytics(timeRange: string = '24h'): Promise<string> {
-  console.log(`getKarenAnalytics: Called with timeRange="${timeRange}"`);
+  console.warn('getKarenAnalytics: This function is deprecated. Use getKarenBackend().getUsageAnalytics() instead.');
   
   try {
     const backend = getKarenBackend();

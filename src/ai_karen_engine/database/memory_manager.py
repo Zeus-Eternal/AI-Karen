@@ -153,7 +153,7 @@ class MemoryManager:
         try:
             # Generate embedding
             embedding_start = time.time()
-            embedding = await self.embedding_manager.get_embedding(content)
+            embedding = self.embedding_manager.embed(content)
             embedding_time = time.time() - embedding_start
             
             # Check for surprise (novelty)

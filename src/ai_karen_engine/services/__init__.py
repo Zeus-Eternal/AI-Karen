@@ -10,6 +10,43 @@ __all__ = [
     "DecisionEngine",
     "ContextManager",
     "PromptManager",
+    # Plugin services
+    "PluginService",
+    "PluginRegistry",
+    "PluginExecutionEngine",
+    "get_plugin_service",
+    "initialize_plugin_service",
+    "discover_and_register_all_plugins",
+    "execute_plugin_simple",
+    "get_plugin_marketplace_info",
+    # Memory service
+    "WebUIMemoryService",
+    # Tool services
+    "ToolService",
+    "ToolRegistry",
+    "BaseTool",
+    "ToolMetadata",
+    "ToolInput",
+    "ToolOutput",
+    "ToolCategory",
+    "ToolStatus",
+    "get_tool_service",
+    "initialize_tool_service",
+    # Tool registry functions
+    "register_core_tools",
+    "unregister_core_tools",
+    "get_core_tool_names",
+    "initialize_core_tools",
+    # Analytics service
+    "AnalyticsService",
+    "get_analytics_service",
+    "initialize_analytics_service",
+    "PerformanceTimer",
+    "track_performance",
+    # Analytics dashboard
+    "AnalyticsDashboard",
+    "get_analytics_dashboard",
+    "initialize_analytics_dashboard",
 ]
 
 def get_ollama_engine():
@@ -35,6 +72,59 @@ from .ai_orchestrator import (
     DecisionEngine,
     ContextManager,
     PromptManager
+)
+
+# Import Plugin services
+from .plugin_service import (
+    PluginService,
+    get_plugin_service,
+    initialize_plugin_service,
+    discover_and_register_all_plugins,
+    execute_plugin_simple,
+    get_plugin_marketplace_info
+)
+from .plugin_registry import PluginRegistry
+from .plugin_execution import PluginExecutionEngine
+
+# Import Memory service
+from .memory_service import WebUIMemoryService
+
+# Import Tool services
+from .tool_service import (
+    ToolService,
+    ToolRegistry,
+    BaseTool,
+    ToolMetadata,
+    ToolInput,
+    ToolOutput,
+    ToolCategory,
+    ToolStatus,
+    get_tool_service,
+    initialize_tool_service
+)
+
+# Import Tool registry functions
+from .tools import (
+    register_core_tools,
+    unregister_core_tools,
+    get_core_tool_names,
+    initialize_core_tools
+)
+
+# Import Analytics service
+from .analytics_service import (
+    AnalyticsService,
+    get_analytics_service,
+    initialize_analytics_service,
+    PerformanceTimer,
+    track_performance
+)
+
+# Import Analytics dashboard
+from .analytics_dashboard import (
+    AnalyticsDashboard,
+    get_analytics_dashboard,
+    initialize_analytics_dashboard
 )
 
 # Optional: registry pattern for dynamic dispatch

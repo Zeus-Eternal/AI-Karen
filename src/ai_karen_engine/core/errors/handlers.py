@@ -4,7 +4,7 @@ Error handlers and response formatting for AI Karen engine.
 
 from typing import Any, Dict, Optional
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 import logging
 import traceback
@@ -44,8 +44,7 @@ class ErrorResponse(BaseModel):
     timestamp: str
     trace_id: Optional[str] = None
     
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ErrorHandler:

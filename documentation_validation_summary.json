@@ -1,0 +1,12 @@
+{
+  "total_checks": 4,
+  "passed_checks": 1,
+  "failed_checks": 3,
+  "results": {
+    "System Analysis": true,
+    "Documentation Validation": false,
+    "Link Checking": false,
+    "Code Example Validation": false
+  },
+  "overall_status": "failed"
+}

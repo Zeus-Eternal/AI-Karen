@@ -579,7 +579,7 @@ pip install -e .
 
 Alternatively, set `PYTHONPATH=src` in your environment.
 
-Ensure a running Redis instance is accessible. Configure host and port via `REDIS_HOST` and `REDIS_PORT` (defaults `localhost:6379`). The memory manager will disable Redis features if the connection fails.
+Ensure a running Redis instance is accessible. Set the connection string using `REDIS_URL` (for example `redis://localhost:6379/0`). The memory manager will disable Redis features if the connection fails.
 
 ### 2. Start FastAPI
 
@@ -696,9 +696,13 @@ Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs m
 ```json
 {
   "name": "my_plugin",
+  "version": "0.1.0",
   "description": "Says hello",
-  "plugin_api_version": "0.1.0",
-  "required_roles": ["user"]
+  "author": "Your Name",
+  "plugin_api_version": "1.0.0",
+  "required_roles": ["user"],
+  "intent": "my_intent",
+  "module": "ai_karen_engine.plugins.my_plugin.handler"
 }
 ```
 

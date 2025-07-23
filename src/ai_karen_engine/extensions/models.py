@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 try:
-    from pydantic import BaseModel, Field, validator
+    from pydantic import BaseModel, Field, validator, ConfigDict
     PYDANTIC_AVAILABLE = True
 except ImportError:
     # Fallback for environments without pydantic
@@ -228,8 +228,7 @@ if PYDANTIC_AVAILABLE:
         api_version: str = "1.0"
         kari_min_version: str = "0.4.0"
         
-        class Config:
-            extra = "allow"
+        model_config = ConfigDict(extra="allow")
     
     class ExtensionStatusAPI(BaseModel):
         """Pydantic model for API serialization of extension status."""

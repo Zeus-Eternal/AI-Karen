@@ -1,0 +1,360 @@
+nohup: ignoring input
+[2025-07-23T01:33:36.886548] [WARNING] [kari.memory.manager] [MemoryManager] Redis connection failed: Authentication required.
+[2025-07-23T01:33:36.890460] [WARNING] [ai_karen_engine.core.plugin_registry] Plugin load failed: llm_services (core): No module named 'ai_karen_engine.plugins.llm_services.handler'
+[2025-07-23T01:33:36.963095] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+INFO:     Started server process [347059]
+INFO:     Waiting for application startup.
+[2025-07-23T01:33:37.051459] [INFO] [kari.model_discovery] Scanning for local models in ./models
+[2025-07-23T01:33:37.179587] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-23T01:33:37.179738] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-23T01:33:37.179783] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-23T01:33:37.179816] [INFO] [kari] AI Karen configuration loaded for environment: Environment.LOCAL
+[2025-07-23T01:33:37.179852] [INFO] [ai_karen_engine.core.service_registry] Registered service: ai_orchestrator
+[2025-07-23T01:33:37.179878] [INFO] [ai_karen_engine.core.service_registry] Registered service: memory_service
+[2025-07-23T01:33:37.179901] [INFO] [ai_karen_engine.core.service_registry] Registered service: conversation_service
+[2025-07-23T01:33:37.179924] [INFO] [ai_karen_engine.core.service_registry] Registered service: plugin_service
+[2025-07-23T01:33:37.179946] [INFO] [ai_karen_engine.core.service_registry] Registered service: tool_service
+[2025-07-23T01:33:37.179968] [INFO] [ai_karen_engine.core.service_registry] Registered service: analytics_service
+[2025-07-23T01:33:37.179991] [INFO] [ai_karen_engine.core.service_registry] Initializing all services...
+[2025-07-23T01:33:37.180016] [INFO] [ai_karen_engine.core.service_registry] Initializing service: ai_orchestrator
+[2025-07-23T01:33:37.180108] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: decide_action
+[2025-07-23T01:33:37.180140] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: conversation_processing
+[2025-07-23T01:33:37.180166] [INFO] [service.ai_orchestrator] Initializing AI Orchestrator Service
+[2025-07-23T01:33:37.180193] [INFO] [ai_orchestrator.flow_manager] Registered flow handler for FlowType.DECIDE_ACTION
+[2025-07-23T01:33:37.180217] [INFO] [ai_orchestrator.flow_manager] Registered flow handler for FlowType.CONVERSATION_PROCESSING
+[2025-07-23T01:33:37.180238] [INFO] [service.ai_orchestrator] Default flows registered
+[2025-07-23T01:33:37.180259] [INFO] [service.ai_orchestrator] AI Orchestrator Service initialized successfully
+[2025-07-23T01:33:37.180285] [INFO] [ai_karen_engine.core.service_registry] Service ai_orchestrator initialized successfully in 0.00s
+[2025-07-23T01:33:37.180310] [INFO] [ai_karen_engine.core.service_registry] Initializing service: memory_service
+[2025-07-23T01:33:37.190435] [INFO] [ai_karen_engine.core.service_registry] Service memory_service initialized successfully in 0.01s
+[2025-07-23T01:33:37.190503] [INFO] [ai_karen_engine.core.service_registry] Initializing service: conversation_service
+[2025-07-23T01:33:37.190558] [ERROR] [ai_karen_engine.core.service_registry] Failed to initialize service conversation_service: WebUIConversationService.__init__() missing 1 required positional argument: 'memory_service' [exception=Traceback (most recent call last):
+  File "/media/zeus/Development2/KIRO/AI-Karen/src/ai_karen_engine/core/service_registry.py", line 168, in _initialize_service
+    instance = WebUIConversationService(memory_service)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: WebUIConversationService.__init__() missing 1 required positional argument: 'memory_service']
+[2025-07-23T01:33:37.190928] [ERROR] [ai_karen_engine.core.service_registry] Failed to initialize service conversation_service: WebUIConversationService.__init__() missing 1 required positional argument: 'memory_service'
+[2025-07-23T01:33:37.190998] [INFO] [ai_karen_engine.core.service_registry] Initializing service: plugin_service
+[2025-07-23T01:33:37.191063] [INFO] [ai_karen_engine.services.plugin_service] Initializing plugin service...
+[2025-07-23T01:33:37.191100] [INFO] [ai_karen_engine.services.plugin_registry] Starting plugin discovery...
+[2025-07-23T01:33:37.191553] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/ai/fine-tune-lnm/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1....fine_tune_lnm.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1....fine_tune_lnm.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1....fine_tune_lnm.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1....fine_tune_lnm.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.191833] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/ai/hf-llm/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...plugins.hf_llm.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...plugins.hf_llm.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...plugins.hf_llm.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...plugins.hf_llm.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.192193] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/ai/llm-services/deepseek/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...vices.deepseek.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...vices.deepseek.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...vices.deepseek.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...vices.deepseek.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.192462] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/ai/llm-services/gemini/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...ervices.gemini.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...ervices.gemini.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...ervices.gemini.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...ervices.gemini.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.192750] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/ai/llm-services/llama/plugin_manifest.json: 2 validation errors for PluginManifest
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...services.llama.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...services.llama.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.192993] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/ai/llm-services/openai/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...ervices.openai.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...ervices.openai.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...ervices.openai.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...ervices.openai.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.193317] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/automation/autonomous-task-handler/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...s_task_handler.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...s_task_handler.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...s_task_handler.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...s_task_handler.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.193537] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/automation/git-merge-safe/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...git_merge_safe.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...git_merge_safe.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...git_merge_safe.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...git_merge_safe.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.193820] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/core/time-query/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...ins.time_query.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...ins.time_query.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...ins.time_query.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...ins.time_query.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.194072] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/core/tui-fallback/plugin_manifest.json: 5 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...s.tui_fallback.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...s.tui_fallback.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...s.tui_fallback.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...s.tui_fallback.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+intent
+  Input should be a valid string [type=string_type, input_value=['tui_diagnostics'], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+[2025-07-23T01:33:37.194361] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/examples/hello-world/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...ns.hello_world.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...ns.hello_world.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...ns.hello_world.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...ns.hello_world.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.194578] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/examples/sandbox-fail/plugin_manifest.json: 5 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1... False, 'sandbox': True}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1... False, 'sandbox': True}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1... False, 'sandbox': True}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1... False, 'sandbox': True}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+module
+  Field required [type=missing, input_value={'plugin_api_version': '1... False, 'sandbox': True}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.194960] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/integrations/desktop-agent/plugin_manifest.json: 5 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1....desktop_agent.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1....desktop_agent.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1....desktop_agent.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1....desktop_agent.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+intent
+  Input should be a valid string [type=string_type, input_value=['desktop_action'], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+[2025-07-23T01:33:37.195174] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/integrations/k8s-scale/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...gins.k8s_scale.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...gins.k8s_scale.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...gins.k8s_scale.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...gins.k8s_scale.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.195386] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from plugin_marketplace/integrations/llm-manager/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1...ns.llm_manager.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1...ns.llm_manager.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1...ns.llm_manager.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1...ns.llm_manager.handler'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.195889] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from src/ai_karen_engine/plugins/hello_world/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.196210] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from src/ai_karen_engine/plugins/llm_manager/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.196632] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from src/ai_karen_engine/plugins/llm_services/deepseek/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.196952] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from src/ai_karen_engine/plugins/llm_services/gemini/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.197289] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from src/ai_karen_engine/plugins/llm_services/llama/plugin_manifest.json: 2 validation errors for PluginManifest
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.197631] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from src/ai_karen_engine/plugins/llm_services/openai/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.198717] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from src/ai_karen_engine/plugins/sandbox_fail/plugin_manifest.json: 5 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+module
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.199126] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from src/ai_karen_engine/plugins/time_query/plugin_manifest.json: 4 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+[2025-07-23T01:33:37.199527] [ERROR] [ai_karen_engine.services.plugin_registry] Failed to load plugin metadata from src/ai_karen_engine/plugins/tui_fallback/plugin_manifest.json: 5 validation errors for PluginManifest
+name
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+version
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+description
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+author
+  Field required [type=missing, input_value={'plugin_api_version': '1..., 'plugin_type': 'core'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.11/v/missing
+intent
+  Input should be a valid string [type=string_type, input_value=['tui_diagnostics'], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_type
+[2025-07-23T01:33:37.200007] [INFO] [ai_karen_engine.services.plugin_registry] Discovered 0 plugins
+[2025-07-23T01:33:37.200319] [INFO] [ai_karen_engine.services.plugin_service] Plugin service initialized successfully
+[2025-07-23T01:33:37.200376] [INFO] [ai_karen_engine.core.service_registry] Service plugin_service initialized successfully in 0.01s
+[2025-07-23T01:33:37.200419] [INFO] [ai_karen_engine.core.service_registry] Initializing service: tool_service
+[2025-07-23T01:33:37.200480] [INFO] [ai_karen_engine.core.service_registry] Service tool_service initialized successfully in 0.00s
+[2025-07-23T01:33:37.200528] [INFO] [ai_karen_engine.core.service_registry] Initializing service: analytics_service
