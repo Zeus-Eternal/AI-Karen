@@ -8,5 +8,9 @@
     "desktop_action"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.desktop_agent.handler"
+  "module": "ai_karen_engine.plugins.desktop_agent.handler",
+  "name": "desktop-agent",
+  "version": "0.1.0",
+  "description": "desktop-agent plugin",
+  "author": "Kari Team"
 }

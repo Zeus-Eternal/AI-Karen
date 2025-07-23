@@ -7,5 +7,9 @@
   ],
   "intent": "fine_tune_lnm",
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.fine_tune_lnm.handler"
+  "module": "ai_karen_engine.plugins.fine_tune_lnm.handler",
+  "name": "fine-tune-lnm",
+  "version": "0.1.0",
+  "description": "fine-tune-lnm plugin",
+  "author": "Kari Team"
 }

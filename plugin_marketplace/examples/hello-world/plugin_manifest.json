@@ -6,5 +6,9 @@
   ],
   "intent": "greet",
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.hello_world.handler"
+  "module": "ai_karen_engine.plugins.hello_world.handler",
+  "name": "hello-world",
+  "version": "0.1.0",
+  "description": "hello-world plugin",
+  "author": "Kari Team"
 }

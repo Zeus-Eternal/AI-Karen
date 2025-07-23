@@ -2,7 +2,13 @@
   "plugin_api_version": "1.0",
   "intent": "greet",
   "enable_external_workflow": false,
-  "required_roles": ["user"],
+  "required_roles": [
+    "user"
+  ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.hello_world.handler"
+  "module": "ai_karen_engine.plugins.hello_world.handler",
+  "name": "hello-world",
+  "version": "0.1.0",
+  "description": "hello_world plugin",
+  "author": "Kari Team"
 }
