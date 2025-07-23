@@ -8,7 +8,12 @@ Plugins live under the `src/ai_karen_engine/plugins/` folder and must contain at
 
 | Field | Type | Description |
 | ----- | ---- | ----------- |
+| `name` | string | Human readable plugin name. |
+| `version` | string | Semantic version of the plugin. |
+| `description` | string | Short summary shown in the UI. |
+| `author` | string | Plugin author or maintainer. |
 | `plugin_api_version` | string | Currently must be `"1.0"`. Plugins with other versions are ignored. |
+| `module` | string | Python module path to the plugin handler. |
 | `intent` | string or list | Intent names that this plugin handles. |
 | `required_roles` | list of strings | Roles allowed to invoke the plugin. |
 | `enable_external_workflow` | bool | If `true` the plugin may call an external n8n workflow. |

@@ -8,5 +8,9 @@
     "power_user"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.autonomous_task_handler.handler"
+  "module": "ai_karen_engine.plugins.autonomous_task_handler.handler",
+  "name": "autonomous-task-handler",
+  "version": "0.1.0",
+  "description": "autonomous-task-handler plugin",
+  "author": "Kari Team"
 }

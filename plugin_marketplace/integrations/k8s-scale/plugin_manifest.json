@@ -6,5 +6,9 @@
     "devops"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.k8s_scale.handler"
+  "module": "ai_karen_engine.plugins.k8s_scale.handler",
+  "name": "k8s-scale",
+  "version": "0.1.0",
+  "description": "k8s-scale plugin",
+  "author": "Kari Team"
 }

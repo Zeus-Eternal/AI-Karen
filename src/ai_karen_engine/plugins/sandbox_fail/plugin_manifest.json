@@ -1,8 +1,15 @@
 {
   "plugin_api_version": "1.0",
   "enable_external_workflow": false,
-  "required_roles": ["user"],
+  "required_roles": [
+    "user"
+  ],
   "intent": "sandbox_fail",
   "trusted_ui": false,
-  "sandbox": true
+  "sandbox": true,
+  "name": "sandbox-fail",
+  "version": "0.1.0",
+  "description": "sandbox_fail plugin",
+  "author": "Kari Team",
+  "module": "ai_karen_engine.plugins.sandbox_fail.handler"
 }

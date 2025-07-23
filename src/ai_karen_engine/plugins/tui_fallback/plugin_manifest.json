@@ -8,5 +8,9 @@
     "tui_diagnostics"
   ],
   "trusted_ui": false,
-  "module": "ai_karen_engine.plugins.tui_fallback.handler"
+  "module": "ai_karen_engine.plugins.tui_fallback.handler",
+  "name": "tui-fallback",
+  "version": "0.1.0",
+  "description": "tui_fallback plugin",
+  "author": "Kari Team"
 }
