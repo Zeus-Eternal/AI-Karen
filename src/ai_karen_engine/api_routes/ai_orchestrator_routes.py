@@ -262,24 +262,39 @@ async def get_flow_metrics(
         raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
 
 
+async def _generate_starter_prompts(_: Optional[str] = None) -> Dict[str, Any]:
+    """Internal helper to build starter prompt payload."""
+    starter_prompts = [
+        "What's the weather like today?",
+        "Tell me about the latest news",
+        "Help me organize my tasks",
+        "What can you help me with?",
+        "Show me my recent conversations",
+    ]
+
+    return {
+        "prompts": starter_prompts,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
 @router.get("/generate-starter")
-async def generate_starter_prompts():
-    """Generate starter prompts for the web UI."""
+async def generate_starter_prompts_get():
+    """Generate starter prompts for the web UI (GET variant)."""
     try:
-        # Return some default starter prompts for now
-        starter_prompts = [
-            "What's the weather like today?",
-            "Tell me about the latest news",
-            "Help me organize my tasks",
-            "What can you help me with?",
-            "Show me my recent conversations"
-        ]
-        
-        return {
-            "prompts": starter_prompts,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
+        return await _generate_starter_prompts()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate starter prompts: {str(e)}")
+
+
+@router.post("/generate-starter")
+async def generate_starter_prompts_post(body: Optional[Dict[str, Any]] = None):
+    """Generate starter prompts for the web UI (POST variant)."""
+    try:
+        assistant_type = None
+        if body:
+            assistant_type = body.get("assistant_type") or body.get("assistantType")
+        return await _generate_starter_prompts(assistant_type)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate starter prompts: {str(e)}")
 

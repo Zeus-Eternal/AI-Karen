@@ -87,15 +87,15 @@ export async function handleUserMessage(
 export async function getSuggestedStarter(assistantType: string): Promise<string> {
   try {
     const backend = getKarenBackend();
-    // API contract: GET request, returns { prompts: string[], timestamp: ... }
+    // API contract: POST request, returns { prompts: string[], timestamp: ... }
     const url = `${backend['config'].baseUrl}/api/ai/generate-starter`;
     const response = await fetch(url, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(backend['config'].apiKey && { 'Authorization': `Bearer ${backend['config'].apiKey}` }),
       },
-      // GET requests never send a body!
+      body: JSON.stringify({ assistantType }),
     });
 
     if (response.ok) {
@@ -107,7 +107,9 @@ export async function getSuggestedStarter(assistantType: string): Promise<string
       }
       return "Tell me something interesting!";
     }
-    throw new Error(`Failed to get starter: ${response.statusText}`);
+
+    const errorText = await response.text();
+    throw new Error(`Failed to get starter: ${response.statusText} — ${errorText}`);
   } catch (error) {
     console.error('Error getting suggested starter:', error);
     return "I had trouble thinking of a starter prompt right now. How about you start with 'Tell me something interesting'?";
