@@ -7,7 +7,7 @@ for integrating the new Python backend services with the existing AI Karen engin
 
 import asyncio
 import logging
-from typing import Dict, Any, Optional, Type, TypeVar, Callable, Union
+from typing import Dict, Any, Optional, Type, TypeVar, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum
@@ -165,7 +165,18 @@ class ServiceRegistry:
                 memory_service = dependency_instances.get('memory_service')
                 if not memory_service:
                     raise ValueError("WebUIConversationService requires memory_service dependency")
-                instance = WebUIConversationService(memory_service)
+
+                # Build ConversationManager using the same components as memory_service
+                from ai_karen_engine.database.conversation_manager import ConversationManager
+
+                memory_manager = memory_service.base_manager
+                conversation_manager = ConversationManager(
+                    db_client=memory_manager.db_client,
+                    memory_manager=memory_manager,
+                    embedding_manager=memory_manager.embedding_manager,
+                )
+
+                instance = WebUIConversationService(conversation_manager, memory_service)
             elif service_info.service_type == PluginService:
                 from pathlib import Path
                 marketplace_path = Path("plugin_marketplace")
