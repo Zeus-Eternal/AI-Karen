@@ -164,6 +164,16 @@ pytest -v
 curl http://localhost:8000/api/health/summary
 ```
 
+### Running Demo Scripts
+
+Run the example demos with the project source on your `PYTHONPATH`:
+
+```bash
+PYTHONPATH=src python demo_plugin_system.py
+PYTHONPATH=src python demo_tool_system.py
+PYTHONPATH=src python demo_analytics_dashboard.py
+```
+
 ---
 
 ## Development Setup

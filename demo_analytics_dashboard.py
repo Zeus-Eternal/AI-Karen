@@ -12,6 +12,8 @@ import time
 import random
 from datetime import datetime, timedelta
 
+# Run with: PYTHONPATH=src python demo_analytics_dashboard.py
+
 from ai_karen_engine.services.analytics_service import (
     AnalyticsService,
     MetricType,
