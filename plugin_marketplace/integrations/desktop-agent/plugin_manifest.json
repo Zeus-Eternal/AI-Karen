@@ -4,9 +4,7 @@
   "required_roles": [
     "admin"
   ],
-  "intent": [
-    "desktop_action"
-  ],
+  "intent": "desktop_action",
   "trusted_ui": false,
   "module": "ai_karen_engine.plugins.desktop_agent.handler",
   "name": "desktop-agent",

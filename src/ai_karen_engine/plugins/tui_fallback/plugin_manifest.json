@@ -4,9 +4,7 @@
   "required_roles": [
     "admin"
   ],
-  "intent": [
-    "tui_diagnostics"
-  ],
+  "intent": "tui_diagnostics",
   "trusted_ui": false,
   "module": "ai_karen_engine.plugins.tui_fallback.handler",
   "name": "tui-fallback",
