@@ -147,7 +147,8 @@ class AIKarenConfig:
         "enabled": True,
         "provider": "local",
         "embedding_dim": 768,
-        "decay_lambda": 0.1
+        "decay_lambda": 0.1,
+        "query_limit": 100
     })
     event_bus: str = "memory"
     ui: Dict[str, Any] = field(default_factory=lambda: {
