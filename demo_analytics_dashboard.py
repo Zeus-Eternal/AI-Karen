@@ -12,9 +12,7 @@ import time
 import random
 from datetime import datetime, timedelta
 
-# Import directly to avoid dependency issues
-import sys
-sys.path.append('src')
+# Run with: PYTHONPATH=src python demo_analytics_dashboard.py
 
 from ai_karen_engine.services.analytics_service import (
     AnalyticsService,

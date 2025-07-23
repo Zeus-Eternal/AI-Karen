@@ -10,8 +10,7 @@ import asyncio
 import json
 from pathlib import Path
 
-import sys
-sys.path.append('src')
+# Run with: PYTHONPATH=src python demo_plugin_system.py
 
 from ai_karen_engine.services.plugin_service import (
     PluginService, ExecutionMode
