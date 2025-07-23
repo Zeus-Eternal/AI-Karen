@@ -9,7 +9,10 @@
   "sandbox": true,
   "name": "sandbox-fail",
   "version": "0.1.0",
-  "description": "sandbox_fail plugin",
+  "description": "Internal test plugin that fails in sandbox.",
   "author": "Kari Team",
-  "module": "ai_karen_engine.plugins.sandbox_fail.handler"
+  "license": "MPL-2.0",
+  "module": "ai_karen_engine.plugins.sandbox_fail.handler",
+  "entry_point": "run",
+  "plugin_type": "core"
 }

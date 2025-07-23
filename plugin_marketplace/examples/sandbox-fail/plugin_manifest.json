@@ -9,7 +9,10 @@
   "intent": "sandbox_fail",
   "trusted_ui": false,
   "sandbox": true,
-  "description": "sandbox-fail plugin",
+  "description": "Example plugin demonstrating sandbox failure.",
   "author": "Kari Team",
-  "module": "ai_karen_engine.plugins.sandbox_fail.handler"
+  "license": "MPL-2.0",
+  "module": "ai_karen_engine.plugins.sandbox_fail.handler",
+  "entry_point": "run",
+  "plugin_type": "example"
 }

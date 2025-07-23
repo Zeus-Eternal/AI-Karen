@@ -9,6 +9,9 @@
   "module": "ai_karen_engine.plugins.k8s_scale.handler",
   "name": "k8s-scale",
   "version": "0.1.0",
-  "description": "k8s-scale plugin",
-  "author": "Kari Team"
+  "description": "Scales Kubernetes deployments via API.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "integration"
 }

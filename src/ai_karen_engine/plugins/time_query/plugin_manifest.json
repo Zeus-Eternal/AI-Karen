@@ -9,6 +9,9 @@
   "module": "ai_karen_engine.plugins.time_query.handler",
   "name": "time-query",
   "version": "0.1.0",
-  "description": "time_query plugin",
-  "author": "Kari Team"
+  "description": "Responds with the current time.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "core"
 }

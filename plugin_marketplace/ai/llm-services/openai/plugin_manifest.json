@@ -9,6 +9,9 @@
   "module": "ai_karen_engine.plugins.llm_services.openai.handler",
   "name": "openai",
   "version": "0.1.0",
-  "description": "openai plugin",
-  "author": "Kari Team"
+  "description": "Generates text using OpenAI GPT models.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "ai"
 }

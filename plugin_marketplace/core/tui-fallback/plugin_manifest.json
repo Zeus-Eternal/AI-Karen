@@ -9,6 +9,9 @@
   "module": "ai_karen_engine.plugins.tui_fallback.handler",
   "name": "tui-fallback",
   "version": "0.1.0",
-  "description": "tui-fallback plugin",
-  "author": "Kari Team"
+  "description": "Provides a fallback terminal UI.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "core"
 }
