@@ -10,6 +10,50 @@ import type {
   AiData 
 } from './types';
 
+// Error handling types
+interface WebUIErrorResponse {
+  error: string;
+  message: string;
+  type: string;
+  details?: Record<string, any>;
+  request_id?: string;
+  timestamp: string;
+}
+
+// Custom error class for structured error handling
+class APIError extends Error {
+  public status: number;
+  public details?: WebUIErrorResponse;
+  public isRetryable: boolean;
+
+  constructor(
+    message: string,
+    status: number,
+    details?: WebUIErrorResponse,
+    isRetryable: boolean = false
+  ) {
+    super(message);
+    this.name = 'APIError';
+    this.status = status;
+    this.details = details;
+    this.isRetryable = isRetryable;
+  }
+
+  static isRetryableStatus(status: number): boolean {
+    return [408, 429, 500, 502, 503, 504].includes(status);
+  }
+
+  static fromResponse(response: Response, errorData?: any): APIError {
+    const isRetryable = APIError.isRetryableStatus(response.status);
+    return new APIError(
+      `HTTP ${response.status}: ${response.statusText}`,
+      response.status,
+      errorData,
+      isRetryable
+    );
+  }
+}
+
 // Backend service configuration
 interface BackendConfig {
   baseUrl: string;
@@ -102,7 +146,9 @@ class KarenBackendService {
     endpoint: string,
     options: RequestInit = {},
     useCache: boolean = false,
-    cacheTtl: number = 300000 // 5 minutes
+    cacheTtl: number = 300000, // 5 minutes
+    maxRetries: number = 3,
+    retryDelay: number = 1000
   ): Promise<T> {
     const url = `${this.config.baseUrl}${endpoint}`;
     const cacheKey = `${url}:${JSON.stringify(options)}`;
@@ -125,38 +171,108 @@ class KarenBackendService {
       headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+    let lastError: Error | null = null;
 
-      const response = await fetch(url, {
-        ...options,
-        headers,
-        signal: controller.signal,
-      });
+    // Retry logic for transient failures
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      // Cache successful responses
-      if (useCache) {
-        this.cache.set(cacheKey, {
-          data,
-          timestamp: Date.now(),
-          ttl: cacheTtl,
+        const response = await fetch(url, {
+          ...options,
+          headers,
+          signal: controller.signal,
         });
-      }
 
-      return data;
-    } catch (error) {
-      console.error(`Backend request failed for ${endpoint}:`, error);
-      throw error;
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          // Try to parse structured error response
+          let errorDetails: WebUIErrorResponse | undefined;
+          try {
+            const errorData = await response.json();
+            if (errorData && typeof errorData === 'object') {
+              errorDetails = errorData as WebUIErrorResponse;
+            }
+          } catch {
+            // If we can't parse the error response, create a basic one
+            errorDetails = {
+              error: response.statusText,
+              message: `HTTP ${response.status}: ${response.statusText}`,
+              type: 'HTTP_ERROR',
+              timestamp: new Date().toISOString(),
+            };
+          }
+
+          const apiError = APIError.fromResponse(response, errorDetails);
+
+          // Don't retry non-retryable errors
+          if (!apiError.isRetryable || attempt === maxRetries) {
+            throw apiError;
+          }
+
+          lastError = apiError;
+          console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, apiError.message);
+          
+          // Wait before retrying with exponential backoff
+          await this.sleep(retryDelay * Math.pow(2, attempt));
+          continue;
+        }
+
+        const data = await response.json();
+
+        // Cache successful responses
+        if (useCache) {
+          this.cache.set(cacheKey, {
+            data,
+            timestamp: Date.now(),
+            ttl: cacheTtl,
+          });
+        }
+
+        return data;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // Handle network errors and timeouts
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            lastError = new APIError('Request timeout', 408, {
+              error: 'Request timeout',
+              message: 'The request took too long to complete',
+              type: 'TIMEOUT_ERROR',
+              timestamp: new Date().toISOString(),
+            }, true);
+          } else if (error.message.includes('fetch')) {
+            lastError = new APIError('Network error', 0, {
+              error: 'Network error',
+              message: 'Unable to connect to the backend service',
+              type: 'NETWORK_ERROR',
+              timestamp: new Date().toISOString(),
+            }, true);
+          }
+        }
+
+        // Don't retry if it's not a retryable error or we've exhausted retries
+        if (!(lastError instanceof APIError && lastError.isRetryable) || attempt === maxRetries) {
+          console.error(`Backend request failed for ${endpoint} after ${attempt + 1} attempts:`, lastError);
+          throw lastError;
+        }
+
+        console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, lastError.message);
+        
+        // Wait before retrying with exponential backoff
+        await this.sleep(retryDelay * Math.pow(2, attempt));
+      }
     }
+
+    // This should never be reached, but just in case
+    throw lastError || new Error('Unknown error occurred');
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   // Memory Service Integration
@@ -180,6 +296,15 @@ class KarenBackendService {
       });
       return response.memory_id;
     } catch (error) {
+      if (error instanceof APIError) {
+        if (error.details?.type === 'SERVICE_UNAVAILABLE') {
+          console.warn('Memory service unavailable, memory not stored');
+          return null;
+        } else if (error.details?.type === 'VALIDATION_ERROR') {
+          console.warn('Memory validation failed:', error.details);
+          return null;
+        }
+      }
       console.error('Failed to store memory:', error);
       return null;
     }
@@ -193,9 +318,30 @@ class KarenBackendService {
       });
       return response.memories || [];
     } catch (error) {
+      if (error instanceof APIError) {
+        if (error.details?.type === 'MEMORY_ERROR') {
+          console.warn('Memory service error:', error.details);
+          return []; // Return empty array for graceful degradation
+        } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
+          console.warn('Memory service unavailable, using cache if available');
+          // Try to return cached results or empty array
+          return this.getCachedMemories(query) || [];
+        }
+      }
+      
       console.error('Failed to query memories:', error);
       return [];
     }
+  }
+
+  private getCachedMemories(query: MemoryQuery): MemoryEntry[] | null {
+    // Simple cache lookup for memory queries
+    const cacheKey = `memory:${JSON.stringify(query)}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < cached.ttl) {
+      return cached.data.memories || [];
+    }
+    return null;
   }
 
   async getMemoryStats(userId?: string): Promise<Record<string, any>> {
@@ -203,6 +349,12 @@ class KarenBackendService {
       const params = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
       return await this.makeRequest<Record<string, any>>(`/api/memory/stats${params}`, {}, true);
     } catch (error) {
+      if (error instanceof APIError) {
+        if (error.details?.type === 'SERVICE_UNAVAILABLE') {
+          console.warn('Memory service unavailable, returning empty stats');
+          return { total_memories: 0, last_updated: new Date().toISOString() };
+        }
+      }
       console.error('Failed to get memory stats:', error);
       return {};
     }
@@ -214,6 +366,16 @@ class KarenBackendService {
       const response = await this.makeRequest<{ plugins: PluginInfo[] }>('/api/plugins/list', {}, true);
       return response.plugins || [];
     } catch (error) {
+      if (error instanceof APIError) {
+        if (error.details?.type === 'SERVICE_UNAVAILABLE') {
+          console.warn('Plugin service unavailable, returning cached plugins if available');
+          // Try to return cached results or empty array
+          const cached = this.cache.get('/api/plugins/list:{}');
+          if (cached) {
+            return cached.data.plugins || [];
+          }
+        }
+      }
       console.error('Failed to get available plugins:', error);
       return [];
     }
@@ -234,10 +396,26 @@ class KarenBackendService {
         }),
       });
     } catch (error) {
+      let errorMessage = 'Unknown error';
+      
+      if (error instanceof APIError) {
+        if (error.details?.type === 'PLUGIN_ERROR') {
+          errorMessage = error.details.message || 'Plugin execution failed';
+        } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
+          errorMessage = 'Plugin service is temporarily unavailable';
+        } else if (error.details?.type === 'VALIDATION_ERROR') {
+          errorMessage = 'Invalid plugin parameters';
+        } else {
+          errorMessage = error.message;
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
       console.error(`Failed to execute plugin ${pluginName}:`, error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
         plugin_name: pluginName,
         timestamp: new Date().toISOString(),
       };
@@ -315,7 +493,17 @@ class KarenBackendService {
     userId?: string,
     sessionId?: string
   ): Promise<HandleUserMessageResult> {
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     try {
+      // Log request for debugging
+      console.log(`[${requestId}] Processing user message:`, {
+        message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
+        userId,
+        sessionId,
+        historyLength: conversationHistory.length,
+      });
+
       // First, query relevant memories
       const relevantMemories = await this.queryMemories({
         text: message,
@@ -325,7 +513,7 @@ class KarenBackendService {
         similarity_threshold: 0.7,
       });
 
-      // Prepare context for AI processing
+      // Prepare context for AI processing using the compatibility layer format
       const context = {
         message,
         conversation_history: conversationHistory.map(msg => ({
@@ -343,30 +531,85 @@ class KarenBackendService {
         session_id: sessionId,
       };
 
-      // Process with AI Karen backend
+      // Use the compatibility layer endpoint
+      const startTime = Date.now();
       const response = await this.makeRequest<HandleUserMessageResult>('/api/chat/process', {
         method: 'POST',
         body: JSON.stringify(context),
       });
+      const responseTime = Date.now() - startTime;
 
-      // Store the conversation in memory
-      const conversationText = `User: ${message}\nAssistant: ${response.finalResponse}`;
-      await this.storeMemory(
-        conversationText,
-        {
-          type: 'conversation',
-          user_message: message,
-          assistant_response: response.finalResponse,
-        },
-        ['conversation', 'chat'],
-        userId,
-        sessionId
-      );
+      // Log successful response for debugging
+      console.log(`[${requestId}] Chat processing successful:`, {
+        responseTime: `${responseTime}ms`,
+        responseLength: response.finalResponse?.length || 0,
+        hasAiData: !!response.ai_data_for_final_response,
+        hasSuggestions: !!response.suggested_new_facts,
+        hasProactiveSuggestion: !!response.proactive_suggestion,
+      });
+
+      // Store the conversation in memory if successful
+      if (response.finalResponse) {
+        const conversationText = `User: ${message}\nAssistant: ${response.finalResponse}`;
+        await this.storeMemory(
+          conversationText,
+          {
+            type: 'conversation',
+            user_message: message,
+            assistant_response: response.finalResponse,
+            request_id: requestId,
+          },
+          ['conversation', 'chat'],
+          userId,
+          sessionId
+        );
+      }
 
       return response;
     } catch (error) {
-      console.error('Failed to process user message:', error);
-      // Fallback to local processing or error response
+      console.error(`[${requestId}] Failed to process user message:`, error);
+      
+      // Handle different error types with specific fallback responses
+      if (error instanceof APIError) {
+        if (error.details?.type === 'CHAT_PROCESSING_ERROR') {
+          console.warn(`[${requestId}] Chat processing error:`, error.details);
+          return {
+            finalResponse: "I'm having trouble processing your message right now. Could you try rephrasing it or asking something else?",
+          };
+        } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
+          console.warn(`[${requestId}] AI service unavailable:`, error.details);
+          return {
+            finalResponse: "My AI services are temporarily unavailable. Please try again in a few minutes, and I'll be ready to help you.",
+          };
+        } else if (error.details?.type === 'VALIDATION_ERROR') {
+          console.warn(`[${requestId}] Validation error:`, error.details);
+          return {
+            finalResponse: "I noticed there might be an issue with your message format. Could you try asking your question in a different way?",
+          };
+        } else if (error.details?.type === 'TIMEOUT_ERROR') {
+          console.warn(`[${requestId}] Request timeout:`, error.details);
+          return {
+            finalResponse: "Your request is taking longer than expected to process. Please try again with a shorter message or try again in a moment.",
+          };
+        } else if (error.details?.type === 'NETWORK_ERROR') {
+          console.warn(`[${requestId}] Network error:`, error.details);
+          return {
+            finalResponse: "I'm having trouble connecting to my backend services. Please check your internet connection and try again.",
+          };
+        } else if (error.status === 429) {
+          console.warn(`[${requestId}] Rate limit exceeded:`, error.details);
+          return {
+            finalResponse: "I'm receiving a lot of requests right now. Please wait a moment before sending another message.",
+          };
+        } else if (error.status >= 500) {
+          console.warn(`[${requestId}] Server error:`, error.details);
+          return {
+            finalResponse: "I'm experiencing some technical difficulties. Please try again in a few minutes.",
+          };
+        }
+      }
+      
+      // Generic fallback response for unknown errors
       return {
         finalResponse: "I'm having trouble connecting to my backend services right now. Please try again in a moment.",
       };
@@ -385,6 +628,15 @@ class KarenBackendService {
     try {
       return await this.makeRequest(`/api/users/${encodeURIComponent(userId)}`, {}, true);
     } catch (error) {
+      if (error instanceof APIError) {
+        if (error.status === 404) {
+          console.warn(`User profile not found for user: ${userId}`);
+          return null;
+        } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
+          console.warn('User service unavailable');
+          return null;
+        }
+      }
       console.error('Failed to get user profile:', error);
       return null;
     }
@@ -401,6 +653,15 @@ class KarenBackendService {
       });
       return true;
     } catch (error) {
+      if (error instanceof APIError) {
+        if (error.details?.type === 'VALIDATION_ERROR') {
+          console.warn('Invalid user preferences:', error.details);
+          return false;
+        } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
+          console.warn('User service unavailable, preferences not updated');
+          return false;
+        }
+      }
       console.error('Failed to update user preferences:', error);
       return false;
     }
@@ -444,6 +705,7 @@ export type {
   PluginExecutionResult,
   SystemMetrics,
   UsageAnalytics,
+  WebUIErrorResponse,
 };
 
-export { KarenBackendService };
+export { KarenBackendService, APIError };

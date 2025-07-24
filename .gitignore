@@ -58,8 +58,9 @@ server.pid
 *.duckdb
 *.duckdb
 *.db
-/models
 .kiro/specs/web-ui-karen-integration/biome
 /ui_launchers/web_ui/.next
 /ui_launchers/web_ui/node_modules
 /.kiro
+/.github
+/models

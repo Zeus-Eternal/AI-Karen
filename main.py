@@ -37,6 +37,7 @@ from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
+from ai_karen_engine.api_routes.web_ui_compatibility import router as web_ui_router
 
 # ─── Prometheus metrics (with graceful fallback) ─────────────────────────────
 
@@ -83,6 +84,7 @@ if (Path(__file__).resolve().parent / "fastapi").is_dir():
 app = FastAPI()
 app.include_router(auth_router)
 app.include_router(events_router)
+app.include_router(web_ui_router)  # Web UI compatibility router first for precedence
 app.include_router(ai_router)
 app.include_router(memory_router)
 app.include_router(conversation_router)
@@ -170,6 +172,14 @@ PUBLIC_PATHS = {
     "/metrics",
     "/metrics/prometheus",
     "/api/ai/generate-starter",
+    "/api/chat/process",
+    "/api/memory/query",
+    "/api/memory/store",
+    "/api/plugins",
+    "/api/plugins/execute",
+    "/api/analytics/system",
+    "/api/analytics/usage",
+    "/api/health",
 }
 
 @app.middleware("http")
