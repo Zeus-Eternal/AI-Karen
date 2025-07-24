@@ -27,7 +27,12 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, TimeoutE
 
 from pydantic import BaseModel, ConfigDict, Field, validator
 
-from .plugin_registry import PluginRegistry, PluginMetadata, PluginStatus, get_plugin_registry
+from ai_karen_engine.services.plugin_registry import (
+    PluginRegistry,
+    PluginMetadata,
+    PluginStatus,
+    get_plugin_registry,
+)
 
 logger = logging.getLogger(__name__)
 

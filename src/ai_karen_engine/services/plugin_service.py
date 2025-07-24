@@ -11,14 +11,23 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from .plugin_registry import (
-    PluginRegistry, PluginMetadata, PluginStatus, PluginType,
-    get_plugin_registry, initialize_plugin_registry
+from ai_karen_engine.services.plugin_registry import (
+    PluginRegistry,
+    PluginMetadata,
+    PluginStatus,
+    PluginType,
+    get_plugin_registry,
+    initialize_plugin_registry,
 )
-from .plugin_execution import (
-    PluginExecutionEngine, ExecutionRequest, ExecutionResult, ExecutionMode,
-    ResourceLimits, SecurityPolicy, get_plugin_execution_engine,
-    initialize_plugin_execution_engine
+from ai_karen_engine.services.plugin_execution import (
+    PluginExecutionEngine,
+    ExecutionRequest,
+    ExecutionResult,
+    ExecutionMode,
+    ResourceLimits,
+    SecurityPolicy,
+    get_plugin_execution_engine,
+    initialize_plugin_execution_engine,
 )
 
 logger = logging.getLogger(__name__)
