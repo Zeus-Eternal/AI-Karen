@@ -10,11 +10,14 @@ import sys
 import json
 import asyncio
 import logging
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ai_karen_engine.core.cortex.dispatch import dispatch
@@ -37,7 +40,7 @@ from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
-from ai_karen_engine.api_routes.web_ui_compatibility import router as web_ui_router
+from ai_karen_engine.api_routes.web_ui_compatibility import router as web_api_router
 
 # ─── Prometheus metrics (with graceful fallback) ─────────────────────────────
 
@@ -82,9 +85,47 @@ if (Path(__file__).resolve().parent / "fastapi").is_dir():
     sys.exit(1)
 
 app = FastAPI()
+
+allowed_origins = os.getenv("KARI_CORS_ORIGINS", "*")
+origins_list = (
+    [origin.strip() for origin in allowed_origins.split(",")] if allowed_origins != "*" else ["*"]
+)
+if os.getenv("KARI_ENV", "local").lower() in ["local", "development", "dev"]:
+    dev_origins = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ]
+    if origins_list == ["*"]:
+        origins_list = dev_origins
+    else:
+        origins_list.extend(dev_origins)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins_list,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "X-Kari-Trace-Id",
+        "X-Web-UI-Compatible",
+    ],
+    expose_headers=["X-Kari-Trace-Id", "X-Web-UI-Compatible", "X-Response-Time-Ms", "Content-Length"],
+    max_age=86400,
+)
+
 app.include_router(auth_router)
 app.include_router(events_router)
-app.include_router(web_ui_router)  # Web UI compatibility router first for precedence
+app.include_router(web_api_router)  # Web API compatibility router first for precedence
 app.include_router(ai_router)
 app.include_router(memory_router)
 app.include_router(conversation_router)
@@ -209,6 +250,21 @@ async def require_tenant(request: Request, call_next):
             return JSONResponse(status_code=400, content={"detail": "tenant_id required"})
         request.state.tenant_id = tenant
     return await call_next(request)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log requests and response details with trace ID."""
+    trace_id = str(uuid.uuid4())
+    start = datetime.utcnow()
+    logger.info(f"[{trace_id}] {request.method} {request.url.path} from {request.client.host}")
+    response = await call_next(request)
+    duration = (datetime.utcnow() - start).total_seconds() * 1000
+    logger.info(
+        f"[{trace_id}] {request.method} {request.url.path} status={response.status_code} time={duration:.2f}ms"
+    )
+    response.headers["X-Kari-Trace-Id"] = trace_id
+    response.headers["X-Response-Time-Ms"] = str(int(duration))
+    return response
 
 # ─── Exception Handler ───────────────────────────────────────────────────────
 
