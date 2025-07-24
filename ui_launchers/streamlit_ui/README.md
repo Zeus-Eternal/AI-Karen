@@ -22,6 +22,7 @@ The AI Karen Streamlit interface provides a production-ready web application wit
 - **Context Awareness**: Persistent conversation history and context management
 - **Voice Integration**: Text-to-speech and speech recognition capabilities
 - **Message Threading**: Organized conversation threads with metadata
+- **Eco Mode**: Optional energy-saving mode using spaCy and DistilBERT
 
 ### System Management
 - **Plugin Manager**: Comprehensive plugin system with lifecycle management
@@ -100,6 +101,8 @@ pip install -r requirements.txt
 
 # Start the Streamlit interface
 streamlit run app.py
+
+# The first launch will automatically download small NLP models for Eco Mode
 ```
 
 The interface will be available at `http://localhost:8501`

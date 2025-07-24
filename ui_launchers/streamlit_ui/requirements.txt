@@ -9,3 +9,7 @@ watchdog
 aiofiles
 cryptography
 llama-cpp-python
+transformers
+scikit-learn==1.5.*
+spacy==3.7.*
+huggingface_hub
