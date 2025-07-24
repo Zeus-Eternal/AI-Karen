@@ -5,21 +5,28 @@ FastAPI routes for enhanced memory management with web UI integration.
 import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 
-from ..services.memory_service import (
+from ai_karen_engine.services.memory_service import (
     WebUIMemoryService,
     WebUIMemoryQuery,
     MemoryType,
     UISource,
 )
-from ..core.config_manager import AIKarenConfig
-from ..core.dependencies import get_memory_service, get_current_config
+from ai_karen_engine.core.config_manager import AIKarenConfig
+from ai_karen_engine.core.dependencies import get_memory_service, get_current_config
+from ai_karen_engine.core.logging import get_logger
+from ai_karen_engine.models.error_responses import (
+    WebAPIErrorCode,
+    create_error_response,
+)
 # from ..database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
 
 router = APIRouter(prefix="/api/memory", tags=["memory"])
+
+logger = get_logger(__name__)
 
 
 # Request/Response Models
@@ -166,7 +173,15 @@ async def store_memory(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to store memory: {str(e)}")
+        logger.exception("Failed to store memory", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.MEMORY_ERROR,
+                "Failed to store memory",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/query", response_model=QueryMemoryResponse)
@@ -253,7 +268,15 @@ async def query_memories(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to query memories: {str(e)}")
+        logger.exception("Failed to query memories", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.MEMORY_ERROR,
+                "Failed to query memories",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/context", response_model=ContextResponse)
@@ -276,7 +299,15 @@ async def build_context(
         return ContextResponse(**context)
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to build context: {str(e)}")
+        logger.exception("Failed to build context", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.MEMORY_ERROR,
+                "Failed to build context",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/{memory_id}/confirm")
@@ -296,7 +327,14 @@ async def confirm_memory(
         )
         
         if not success:
-            raise HTTPException(status_code=404, detail="Memory not found or update failed")
+            raise HTTPException(
+                status_code=404,
+                detail=create_error_response(
+                    WebAPIErrorCode.NOT_FOUND,
+                    "Memory not found",
+                    {"memory_id": memory_id},
+                ).dict(),
+            )
         
         return {
             "success": True,
@@ -306,7 +344,15 @@ async def confirm_memory(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to confirm memory: {str(e)}")
+        logger.exception("Failed to confirm memory", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.MEMORY_ERROR,
+                "Failed to confirm memory",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.put("/{memory_id}/importance")
@@ -326,7 +372,14 @@ async def update_importance(
         )
         
         if not success:
-            raise HTTPException(status_code=404, detail="Memory not found or update failed")
+            raise HTTPException(
+                status_code=404,
+                detail=create_error_response(
+                    WebAPIErrorCode.NOT_FOUND,
+                    "Memory not found",
+                    {"memory_id": memory_id},
+                ).dict(),
+            )
         
         return {
             "success": True,
@@ -336,9 +389,24 @@ async def update_importance(
     except HTTPException:
         raise
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("Invalid importance value", error=str(e))
+        raise HTTPException(
+            status_code=400,
+            detail=create_error_response(
+                WebAPIErrorCode.VALIDATION_ERROR,
+                str(e),
+            ).dict(),
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update importance: {str(e)}")
+        logger.exception("Failed to update importance", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.MEMORY_ERROR,
+                "Failed to update importance",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.delete("/{memory_id}")
@@ -356,7 +424,14 @@ async def delete_memory(
         )
         
         if not success:
-            raise HTTPException(status_code=404, detail="Memory not found or deletion failed")
+            raise HTTPException(
+                status_code=404,
+                detail=create_error_response(
+                    WebAPIErrorCode.NOT_FOUND,
+                    "Memory not found",
+                    {"memory_id": memory_id},
+                ).dict(),
+            )
         
         return {
             "success": True,
@@ -366,7 +441,15 @@ async def delete_memory(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete memory: {str(e)}")
+        logger.exception("Failed to delete memory", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.MEMORY_ERROR,
+                "Failed to delete memory",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.get("/analytics", response_model=AnalyticsResponse)
@@ -397,7 +480,15 @@ async def get_analytics(
         return AnalyticsResponse(**analytics)
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
+        logger.exception("Failed to get analytics", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.MEMORY_ERROR,
+                "Failed to get analytics",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.get("/stats")
@@ -418,7 +509,15 @@ async def get_memory_stats(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+        logger.exception("Failed to get stats", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.MEMORY_ERROR,
+                "Failed to get stats",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/prune-expired")
@@ -438,7 +537,15 @@ async def prune_expired_memories(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to prune memories: {str(e)}")
+        logger.exception("Failed to prune memories", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.MEMORY_ERROR,
+                "Failed to prune memories",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 # Health check endpoint

@@ -5,16 +5,23 @@ FastAPI routes for Plugin service integration.
 import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 
-from ..services.plugin_service import PluginService
+from ai_karen_engine.services.plugin_service import PluginService
 # Note: PluginInfo, PluginExecutionRequest, PluginExecutionResult, PluginStatus 
 # classes need to be implemented in the plugin service
-from ..core.dependencies import get_plugin_service
+from ai_karen_engine.core.dependencies import get_plugin_service
+from ai_karen_engine.core.logging import get_logger
+from ai_karen_engine.models.error_responses import (
+    WebAPIErrorCode,
+    create_error_response,
+)
 # Temporarily disable auth imports for web UI integration
 
 router = APIRouter(prefix="/api/plugins", tags=["plugins"])
+
+logger = get_logger(__name__)
 
 
 # Request/Response Models
@@ -130,7 +137,15 @@ async def list_plugins(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list plugins: {str(e)}")
+        logger.exception("Failed to list plugins", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.PLUGIN_ERROR,
+                "Failed to list plugins",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.get("/{plugin_name}", response_model=PluginInfoResponse)
@@ -143,7 +158,14 @@ async def get_plugin_info(
         plugin = await plugin_service.get_plugin_info(plugin_name)
         
         if not plugin:
-            raise HTTPException(status_code=404, detail=f"Plugin {plugin_name} not found")
+            raise HTTPException(
+                status_code=404,
+                detail=create_error_response(
+                    WebAPIErrorCode.NOT_FOUND,
+                    "Plugin not found",
+                    {"plugin_name": plugin_name},
+                ).dict(),
+            )
         
         return PluginInfoResponse(
             name=plugin.name,
@@ -164,7 +186,15 @@ async def get_plugin_info(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get plugin info: {str(e)}")
+        logger.exception("Failed to get plugin info", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.PLUGIN_ERROR,
+                "Failed to get plugin info",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/{plugin_name}/execute", response_model=PluginExecutionResponse)
@@ -202,7 +232,15 @@ async def execute_plugin(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to execute plugin: {str(e)}")
+        logger.exception("Failed to execute plugin", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.PLUGIN_ERROR,
+                "Failed to execute plugin",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/{plugin_name}/validate")
@@ -222,7 +260,15 @@ async def validate_plugin_parameters(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to validate plugin: {str(e)}")
+        logger.exception("Failed to validate plugin", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.PLUGIN_ERROR,
+                "Failed to validate plugin",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/{plugin_name}/enable")
@@ -235,12 +281,25 @@ async def enable_plugin(
     try:
         # Check if user has admin privileges
         if "admin" not in current_user.get("roles", []):
-            raise HTTPException(status_code=403, detail="Admin privileges required")
+            raise HTTPException(
+                status_code=403,
+                detail=create_error_response(
+                    WebAPIErrorCode.PERMISSION_DENIED,
+                    "Admin privileges required",
+                ).dict(),
+            )
         
         success = await plugin_service.enable_plugin(plugin_name)
         
         if not success:
-            raise HTTPException(status_code=404, detail=f"Plugin {plugin_name} not found")
+            raise HTTPException(
+                status_code=404,
+                detail=create_error_response(
+                    WebAPIErrorCode.NOT_FOUND,
+                    "Plugin not found",
+                    {"plugin_name": plugin_name},
+                ).dict(),
+            )
         
         return {
             "success": True,
@@ -250,7 +309,15 @@ async def enable_plugin(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to enable plugin: {str(e)}")
+        logger.exception("Failed to enable plugin", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.PLUGIN_ERROR,
+                "Failed to enable plugin",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/{plugin_name}/disable")
@@ -263,12 +330,25 @@ async def disable_plugin(
     try:
         # Check if user has admin privileges
         if "admin" not in current_user.get("roles", []):
-            raise HTTPException(status_code=403, detail="Admin privileges required")
+            raise HTTPException(
+                status_code=403,
+                detail=create_error_response(
+                    WebAPIErrorCode.PERMISSION_DENIED,
+                    "Admin privileges required",
+                ).dict(),
+            )
         
         success = await plugin_service.disable_plugin(plugin_name)
         
         if not success:
-            raise HTTPException(status_code=404, detail=f"Plugin {plugin_name} not found")
+            raise HTTPException(
+                status_code=404,
+                detail=create_error_response(
+                    WebAPIErrorCode.NOT_FOUND,
+                    "Plugin not found",
+                    {"plugin_name": plugin_name},
+                ).dict(),
+            )
         
         return {
             "success": True,
@@ -278,7 +358,15 @@ async def disable_plugin(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to disable plugin: {str(e)}")
+        logger.exception("Failed to disable plugin", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.PLUGIN_ERROR,
+                "Failed to disable plugin",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.get("/categories")
@@ -302,7 +390,15 @@ async def get_plugin_categories(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get categories: {str(e)}")
+        logger.exception("Failed to get categories", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.PLUGIN_ERROR,
+                "Failed to get categories",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.get("/metrics", response_model=PluginMetricsResponse)
@@ -326,7 +422,15 @@ async def get_plugin_metrics(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+        logger.exception("Failed to get metrics", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.PLUGIN_ERROR,
+                "Failed to get metrics",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/reload")
@@ -338,7 +442,13 @@ async def reload_plugins(
     try:
         # Check if user has admin privileges
         if "admin" not in current_user.get("roles", []):
-            raise HTTPException(status_code=403, detail="Admin privileges required")
+            raise HTTPException(
+                status_code=403,
+                detail=create_error_response(
+                    WebAPIErrorCode.PERMISSION_DENIED,
+                    "Admin privileges required",
+                ).dict(),
+            )
         
         count = await plugin_service.reload_plugins()
         
@@ -351,7 +461,15 @@ async def reload_plugins(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to reload plugins: {str(e)}")
+        logger.exception("Failed to reload plugins", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.PLUGIN_ERROR,
+                "Failed to reload plugins",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.get("/health")
