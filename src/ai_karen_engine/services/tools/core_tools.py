@@ -13,7 +13,13 @@ from typing import Any, Dict, List, Optional, Union
 import aiohttp
 import time
 
-from ..tool_service import BaseTool, ToolMetadata, ToolCategory, ToolParameter, ToolStatus
+from ai_karen_engine.services.tool_service import (
+    BaseTool,
+    ToolMetadata,
+    ToolCategory,
+    ToolParameter,
+    ToolStatus,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -108,10 +108,14 @@ docker compose up -d postgres redis elasticsearch milvus
 ### 3. Initialize Databases
 
 ```bash
+
 # Initialize PostgreSQL schema
 docker-compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/001_create_tables.sql
 # Create memory_entries table
 docker-compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/004_create_memory_entries_table.sql
+
+# Apply PostgreSQL migrations (creates all tables including `memory_entries`)
+./docker/database/scripts/migrate.sh --service postgres
 
 # Create Elasticsearch index
 curl -X PUT "http://localhost:9200/ai_karen_index"
@@ -308,6 +312,19 @@ helm install ai-karen ./charts/kari/ \
 
 The memory query endpoint (`/api/memory/query`) returns at most **100 results** by default.
 You can override this cap by providing the `result_limit` parameter in your request.
+
+### Tenant Header
+
+Most API endpoints are tenant-aware. Include an `X-Tenant-ID` header with your
+tenant name in requests that are not listed under the public paths. For local
+testing you can use `default`:
+
+```bash
+curl -H "X-Tenant-ID: default" \
+     -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "hello"}' http://localhost:8000/chat
+```
 
 ### Authentication
 
