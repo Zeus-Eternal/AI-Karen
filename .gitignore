@@ -56,7 +56,6 @@ server.pid
 .envrc
 .venv/
 *.duckdb
-*.duckdb
 *.db
 .kiro/specs/web-ui-karen-integration/biome
 /ui_launchers/web_ui/.next
