@@ -212,7 +212,7 @@ async def conversation_processing(
         context.update({
             "include_memories": request.include_memories,
             "include_insights": request.include_insights,
-            "tenant_id": "default"  # Use default tenant for web UI compatibility
+            "tenant_id": "default"  # Use default tenant for Web UI API
         })
         
         flow_input = FlowInput(

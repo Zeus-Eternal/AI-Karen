@@ -1,5 +1,5 @@
 """
-Memory service transformation utilities for web UI compatibility.
+Memory service transformation utilities for Web UI API.
 
 This module provides functions to transform memory requests and responses between
 the web UI format and the backend service format, with enhanced validation and

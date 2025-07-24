@@ -1,5 +1,5 @@
 """
-Web UI compatibility router for API endpoint mapping.
+Web UI API router for API endpoint mapping.
 
 This router provides compatibility endpoints that map web UI API calls
 to the correct backend services with proper request/response transformation.
@@ -37,7 +37,7 @@ from ..models.web_api_error_responses import (
     get_http_status_for_error_code
 )
 from ..database.schema_validator import validate_and_migrate_schema
-from ..services.web_ui_compatibility import WebUITransformationService
+from ..services.web_ui_api import WebUITransformationService
 from ..services.ai_orchestrator import AIOrchestrator
 from ..services.memory_service import WebUIMemoryService
 from ..core.dependencies import (
@@ -608,7 +608,7 @@ async def memory_store_compatibility(
         
         # Database schema validation - check if memory_entries table exists
         try:
-            from ..database.dependencies import get_postgres_session
+            from ..database import get_postgres_session
             async with get_postgres_session() as session:
                 schema_error = await validate_and_migrate_schema(session)
                 if schema_error:

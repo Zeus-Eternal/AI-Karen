@@ -294,9 +294,9 @@ class TestAbsoluteImportsCompliance:
         assert hasattr(ms, 'MemoryType')
         assert hasattr(ms, 'UISource')
     
-    def test_web_ui_compatibility_imports(self):
-        """Test that web_ui_compatibility uses absolute imports."""
-        import ai_karen_engine.services.web_ui_compatibility as wuc
+    def test_web_api_compatibility_imports(self):
+        """Test that web_api_compatibility uses absolute imports."""
+        import ai_karen_engine.services.web_api_compatibility as wuc
         
         # Check that the module can be imported with absolute path
         assert hasattr(wuc, 'WebUITransformationService')

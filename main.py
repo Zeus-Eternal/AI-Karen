@@ -40,7 +40,7 @@ from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
-from ai_karen_engine.api_routes.web_ui_compatibility import router as web_api_router
+from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
 
 # ─── Prometheus metrics (with graceful fallback) ─────────────────────────────
 

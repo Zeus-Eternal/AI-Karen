@@ -14,11 +14,11 @@ except ImportError:
     TestClient = None
     FastAPI = None
 
-from src.ai_karen_engine.api_routes.web_ui_compatibility import router
+from ai_karen_engine.api_routes.web_api_compatibility import router
 from src.ai_karen_engine.models.shared_types import FlowOutput, AiData
 
 
-# Create a test FastAPI app with just the web UI compatibility router
+# Create a test FastAPI app with just the Web UI API router
 if FASTAPI_AVAILABLE:
     test_app = FastAPI()
     test_app.include_router(router)
@@ -87,7 +87,7 @@ class TestWebUIAPIIntegration:
         assert "timestamp" in data
         assert "uptime" in data
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_ai_orchestrator_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_ai_orchestrator_service')
     def test_chat_process_endpoint(self, mock_get_orchestrator, client, mock_ai_orchestrator):
         """Test the chat process endpoint."""
         mock_get_orchestrator.return_value = mock_ai_orchestrator
@@ -130,7 +130,7 @@ class TestWebUIAPIIntegration:
         assert "type" in data
         assert data["type"] == "VALIDATION_ERROR"
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_memory_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_memory_service')
     def test_memory_query_endpoint(self, mock_get_memory, client, mock_memory_service):
         """Test the memory query endpoint."""
         mock_get_memory.return_value = mock_memory_service
@@ -152,7 +152,7 @@ class TestWebUIAPIIntegration:
         assert "query_time_ms" in data
         assert isinstance(data["memories"], list)
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_memory_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_memory_service')
     def test_memory_store_endpoint(self, mock_get_memory, client, mock_memory_service):
         """Test the memory store endpoint."""
         mock_get_memory.return_value = mock_memory_service
@@ -174,7 +174,7 @@ class TestWebUIAPIIntegration:
         assert "message" in data
         assert data["success"] is True
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_plugin_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_plugin_service')
     def test_list_plugins_endpoint(self, mock_get_plugin, client, mock_plugin_service):
         """Test the list plugins endpoint."""
         mock_get_plugin.return_value = mock_plugin_service
@@ -191,7 +191,7 @@ class TestWebUIAPIIntegration:
             assert "category" in plugin
             assert "enabled" in plugin
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_plugin_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_plugin_service')
     def test_execute_plugin_endpoint(self, mock_get_plugin, client, mock_plugin_service):
         """Test the execute plugin endpoint."""
         mock_get_plugin.return_value = mock_plugin_service

@@ -220,7 +220,7 @@ def auto_discover_routers(app):
 
     # First, explicitly mount web API compatibility router for proper precedence
     try:
-        from ai_karen_engine.api_routes.web_ui_compatibility import router as web_api_router
+        from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
         app.include_router(web_api_router)
         logger.info("Mounted web API compatibility router with priority")
     except ImportError as e:
@@ -228,7 +228,7 @@ def auto_discover_routers(app):
     except Exception as e:
         logger.error(f"Failed to mount web API compatibility router: {e}")
 
-    # Internal app routes (api_routes/*.py) - skip web_ui_compatibility as it's already mounted
+    # Internal app routes (api_routes/*.py) - skip web_api_compatibility as it's already mounted
     try:
         from ai_karen_engine import api_routes
         package = api_routes
@@ -238,8 +238,8 @@ def auto_discover_routers(app):
 
     if package:
         for loader, name, is_pkg in pkgutil.iter_modules(package.__path__):
-            # Skip web_ui_compatibility as it's already mounted with priority
-            if name == "web_ui_compatibility":
+            # Skip web_api_compatibility as it's already mounted with priority
+            if name == "web_api_compatibility":
                 continue
                 
             try:

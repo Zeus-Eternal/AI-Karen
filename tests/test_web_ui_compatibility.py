@@ -1,5 +1,5 @@
 """
-Tests for Web UI compatibility layer.
+Tests for Web UI API layer.
 """
 
 import pytest
@@ -15,7 +15,7 @@ from src.ai_karen_engine.models.web_ui_types import (
     WebUIErrorCode,
     create_web_ui_error_response
 )
-from src.ai_karen_engine.services.web_ui_compatibility import WebUITransformationService
+from src.ai_karen_engine.services.web_api_compatibility import WebUITransformationService
 from src.ai_karen_engine.models.shared_types import FlowOutput, AiData
 
 

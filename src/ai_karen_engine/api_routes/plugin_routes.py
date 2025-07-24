@@ -296,7 +296,7 @@ async def enable_plugin(
     """Enable a plugin."""
     try:
         # TODO: Check if user has admin privileges when auth is implemented
-        # For now, allow all operations for web UI compatibility
+        # For now, allow all operations for Web UI API
         # if "admin" not in current_user.get("roles", []):
         #     error_response = create_generic_error_response(
         #         error_code=WebAPIErrorCode.AUTHORIZATION_ERROR,
@@ -352,7 +352,7 @@ async def disable_plugin(
     """Disable a plugin."""
     try:
         # TODO: Check if user has admin privileges when auth is implemented
-        # For now, allow all operations for web UI compatibility
+        # For now, allow all operations for Web UI API
         # if "admin" not in current_user.get("roles", []):
         #     error_response = create_generic_error_response(
         #         error_code=WebAPIErrorCode.AUTHORIZATION_ERROR,
@@ -475,7 +475,7 @@ async def reload_plugins(
     """Reload all plugins from disk."""
     try:
         # TODO: Check if user has admin privileges when auth is implemented
-        # For now, allow all operations for web UI compatibility
+        # For now, allow all operations for Web UI API
         # if "admin" not in current_user.get("roles", []):
         #     error_response = create_generic_error_response(
         #         error_code=WebAPIErrorCode.AUTHORIZATION_ERROR,

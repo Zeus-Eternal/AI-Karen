@@ -16,12 +16,12 @@ except ImportError:
     TestClient = None
     FastAPI = None
 
-from src.ai_karen_engine.api_routes.web_ui_compatibility import router
+from ai_karen_engine.api_routes.web_api_compatibility import router
 from src.ai_karen_engine.models.web_ui_types import WebUIErrorCode
 from src.ai_karen_engine.models.shared_types import FlowOutput, AiData
 
 
-# Create a test FastAPI app with just the web UI compatibility router
+# Create a test FastAPI app with just the Web UI API router
 if FASTAPI_AVAILABLE:
     test_app = FastAPI()
     test_app.include_router(router)
@@ -141,7 +141,7 @@ class TestEnhancedChatErrorHandling:
         assert "validation_errors" in data["details"]
         assert any("user_settings" in error["field"] for error in data["details"]["validation_errors"])
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_ai_orchestrator_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_ai_orchestrator_service')
     def test_timeout_error_handling(self, mock_get_orchestrator, client):
         """Test timeout error handling with retries."""
         mock_orchestrator = AsyncMock()
@@ -163,7 +163,7 @@ class TestEnhancedChatErrorHandling:
         assert "timeout" in data["message"].lower()
         assert "retry_count" in data["details"]
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_ai_orchestrator_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_ai_orchestrator_service')
     def test_connection_error_handling(self, mock_get_orchestrator, client):
         """Test connection error handling with retries."""
         mock_orchestrator = AsyncMock()
@@ -185,7 +185,7 @@ class TestEnhancedChatErrorHandling:
         assert "connection_error" in data["details"]
         assert "retry_count" in data["details"]
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_ai_orchestrator_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_ai_orchestrator_service')
     def test_rate_limit_error_handling(self, mock_get_orchestrator, client):
         """Test rate limit error handling."""
         mock_orchestrator = AsyncMock()
@@ -206,7 +206,7 @@ class TestEnhancedChatErrorHandling:
         assert data["type"] == "SERVICE_UNAVAILABLE"
         assert "rate limit" in data["message"].lower()
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_ai_orchestrator_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_ai_orchestrator_service')
     def test_authentication_error_handling(self, mock_get_orchestrator, client):
         """Test authentication error handling."""
         mock_orchestrator = AsyncMock()
@@ -227,8 +227,8 @@ class TestEnhancedChatErrorHandling:
         assert data["type"] == "AUTHENTICATION_ERROR"
         assert "authentication" in data["message"].lower()
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_ai_orchestrator_service')
-    @patch('src.ai_karen_engine.services.web_ui_compatibility.WebUITransformationService.transform_chat_request_to_backend')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_ai_orchestrator_service')
+    @patch('src.ai_karen_engine.services.web_api_compatibility.WebUITransformationService.transform_chat_request_to_backend')
     def test_transformation_error_handling(self, mock_transform, mock_get_orchestrator, client):
         """Test request transformation error handling."""
         mock_transform.side_effect = ValueError("Invalid request format")
@@ -248,8 +248,8 @@ class TestEnhancedChatErrorHandling:
         assert data["type"] == "VALIDATION_ERROR"
         assert "transformation_error" in data["details"]
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_ai_orchestrator_service')
-    @patch('src.ai_karen_engine.services.web_ui_compatibility.WebUITransformationService.transform_backend_response_to_chat')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_ai_orchestrator_service')
+    @patch('src.ai_karen_engine.services.web_api_compatibility.WebUITransformationService.transform_backend_response_to_chat')
     def test_response_transformation_fallback(self, mock_transform_response, mock_get_orchestrator, client):
         """Test response transformation error with fallback."""
         mock_orchestrator = AsyncMock()
@@ -276,7 +276,7 @@ class TestEnhancedChatErrorHandling:
         assert "finalResponse" in data
         assert "trouble formatting" in data["finalResponse"]
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_ai_orchestrator_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_ai_orchestrator_service')
     def test_empty_response_fallback(self, mock_get_orchestrator, client):
         """Test fallback for empty AI response."""
         mock_orchestrator = AsyncMock()
@@ -300,7 +300,7 @@ class TestEnhancedChatErrorHandling:
         assert "finalResponse" in data
         assert "couldn't generate a proper response" in data["finalResponse"]
     
-    @patch('src.ai_karen_engine.api_routes.web_ui_compatibility.get_ai_orchestrator_service')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_ai_orchestrator_service')
     def test_successful_retry_after_failure(self, mock_get_orchestrator, client):
         """Test successful processing after initial failure."""
         mock_orchestrator = AsyncMock()

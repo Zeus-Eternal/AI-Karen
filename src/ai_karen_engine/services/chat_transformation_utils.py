@@ -1,5 +1,5 @@
 """
-Chat service transformation utilities for web UI compatibility.
+Chat service transformation utilities for Web UI API.
 
 This module provides functions to transform chat requests and responses between
 the web UI format and the backend AI orchestrator format, with enhanced validation
@@ -502,7 +502,7 @@ class ChatTransformationUtils:
             return merged
         
         def clean_ai_data_for_web_ui(ai_data: Dict[str, Any]) -> Dict[str, Any]:
-            """Clean AI data for web UI compatibility."""
+            """Clean AI data for Web UI API."""
             cleaned = {}
             
             # Only include safe fields

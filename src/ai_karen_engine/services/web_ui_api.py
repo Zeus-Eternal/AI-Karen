@@ -1,5 +1,5 @@
 """
-Web UI compatibility transformation utilities.
+Web UI API transformation utilities.
 
 This module provides functions to transform requests and responses between
 the web UI format and the backend service format.

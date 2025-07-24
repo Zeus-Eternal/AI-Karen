@@ -1,8 +1,8 @@
-# Web UI Compatibility Layer
+# Web UI API Layer
 
 ## Overview
 
-The Web UI Compatibility Layer provides API endpoint mapping and request/response transformation between the web UI frontend and the AI Karen backend services. This layer ensures seamless integration by handling format differences and providing structured error responses.
+The Web UI API Layer provides API endpoint mapping and request/response transformation between the web UI frontend and the AI Karen backend services. This layer ensures seamless integration by handling format differences and providing structured error responses.
 
 ## Components
 
@@ -33,7 +33,7 @@ Defines Pydantic models that match the TypeScript interfaces used in the web UI:
   - `WebUIUsageAnalytics`: Usage analytics format
   - `WebUIHealthCheck`: Health check response format
 
-### 2. Transformation Service (`src/ai_karen_engine/services/web_ui_compatibility.py`)
+### 2. Transformation Service (`src/ai_karen_engine/services/web_api_compatibility.py`)
 
 Provides utilities to transform data between web UI and backend formats:
 
@@ -49,7 +49,7 @@ Provides utilities to transform data between web UI and backend formats:
   - `convert_timestamp_to_js_compatible()`: Converts Python datetime to Unix timestamp
   - `sanitize_error_response()`: Removes sensitive information from error responses
 
-### 3. Compatibility Router (`src/ai_karen_engine/api_routes/web_ui_compatibility.py`)
+### 3. Compatibility Router (`src/ai_karen_engine/api_routes/web_api_compatibility.py`)
 
 FastAPI router that provides compatibility endpoints:
 
@@ -169,7 +169,7 @@ try {
 
 ## Testing
 
-### Unit Tests (`tests/test_web_ui_compatibility.py`)
+### Unit Tests (`tests/test_web_api_compatibility.py`)
 
 - Tests for all transformation functions
 - Error response creation and sanitization
