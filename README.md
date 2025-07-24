@@ -291,6 +291,7 @@ helm install ai-karen ./charts/kari/ \
 | `JWT_SECRET_KEY` | JWT signing key | `your-secret-key` |
 | `ENABLE_SELF_REFACTOR` | Enable self-refactoring | `false` |
 | `LOG_LEVEL` | Logging level | `INFO` |
+| `KARI_CORS_ORIGINS` | Comma-separated list of allowed CORS origins | `*` |
 
 ---
 

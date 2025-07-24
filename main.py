@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -75,6 +75,10 @@ LNM_ERROR_COUNT = Counter(
     registry=PROM_REGISTRY,
 )
 
+# Logger setup
+logger = logging.getLogger("kari")
+
+
 # ─── FastAPI Setup ───────────────────────────────────────────────────────────
 
 # guard against local “fastapi” folder shadowing the package
@@ -116,12 +120,164 @@ app.add_middleware(
         "Content-Type",
         "Authorization",
         "X-Requested-With",
+        "X-Web-UI-Compatible",
+        "X-Kari-Trace-Id",
+        "User-Agent",
+        "Cache-Control",
+        "Pragma",
+    ],
+    expose_headers=[
         "X-Kari-Trace-Id",
         "X-Web-UI-Compatible",
+        "X-Response-Time-Ms",
+        "Content-Length",
+        "Content-Type",
     ],
-    expose_headers=["X-Kari-Trace-Id", "X-Web-UI-Compatible", "X-Response-Time-Ms", "Content-Length"],
     max_age=86400,
 )
+
+logger.info(f"CORS configured for origins: {origins_list}")
+
+# ─── Middleware: Metrics & Multi-Tenant ─────────────────────────────────────
+PUBLIC_PATHS = {
+    "/",
+    "/ping",
+    "/health",
+    "/ready",
+    "/metrics",
+    "/metrics/prometheus",
+    "/api/ai/generate-starter",
+    "/api/chat/process",
+    "/api/memory/query",
+    "/api/memory/store",
+    "/api/plugins",
+    "/api/plugins/execute",
+    "/api/analytics/system",
+    "/api/analytics/usage",
+    "/api/health",
+}
+
+@app.middleware("http")
+async def record_metrics(request: Request, call_next):
+    with REQUEST_LATENCY.time():
+        response = await call_next(request)
+    REQUEST_COUNT.inc()
+    return response
+
+TENANT_HEADER = "X-Tenant-ID"
+
+@app.middleware("http")
+async def require_tenant(request: Request, call_next):
+    if request.url.path not in PUBLIC_PATHS:
+        tenant = request.headers.get(TENANT_HEADER)
+        if not tenant:
+            auth = request.headers.get("authorization", "")
+            if auth.lower().startswith("bearer "):
+                token = auth.split(maxsplit=1)[1]
+                ctx = auth_utils.validate_session(
+                    token,
+                    request.headers.get("user-agent", ""),
+                    request.client.host,
+                )
+                tenant = ctx.get("tenant_id") if ctx else None
+        if not tenant:
+            return JSONResponse(status_code=400, content={"detail": "tenant_id required"})
+        request.state.tenant_id = tenant
+    return await call_next(request)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log requests and response details with trace ID."""
+    trace_id = str(uuid.uuid4())
+    start = datetime.utcnow()
+    logger.info(f"[{trace_id}] {request.method} {request.url.path} from {request.client.host}")
+    response = await call_next(request)
+    duration = (datetime.utcnow() - start).total_seconds() * 1000
+    logger.info(
+        f"[{trace_id}] {request.method} {request.url.path} status={response.status_code} time={duration:.2f}ms"
+    )
+    response.headers["X-Kari-Trace-Id"] = trace_id
+    response.headers["X-Response-Time-Ms"] = str(int(duration))
+    return response
+
+@app.middleware("http")
+async def web_ui_api_logging(request: Request, call_next):
+    """Enhanced logging middleware for web UI API endpoints."""
+
+    is_web_ui_api = (
+        request.url.path.startswith("/api/chat/")
+        or request.url.path.startswith("/api/memory/")
+        or request.url.path.startswith("/api/plugins/")
+        or request.url.path.startswith("/api/analytics/")
+        or request.url.path.startswith("/api/health")
+    )
+
+    if not is_web_ui_api:
+        return await call_next(request)
+
+    trace_id = getattr(request.state, "trace_id", str(uuid.uuid4()))
+    start_time = datetime.utcnow()
+
+    user_agent = request.headers.get("user-agent", "unknown")
+    content_type = request.headers.get("content-type", "unknown")
+
+    logger.info(
+        f"[{trace_id}] WEB_UI_API {request.method} {request.url.path} "
+        f"from {request.client.host} UA: {user_agent[:50]} CT: {content_type}"
+    )
+
+    if request.method in ["POST", "PUT", "PATCH"] and os.getenv("KARI_LOG_REQUEST_BODY", "false").lower() == "true":
+        try:
+            body = await request.body()
+            if len(body) < 1000:
+                logger.debug(f"[{trace_id}] Request body: {body.decode('utf-8', errors='ignore')}")
+            else:
+                logger.debug(f"[{trace_id}] Request body size: {len(body)} bytes (too large to log)")
+        except Exception as e:
+            logger.debug(f"[{trace_id}] Could not read request body: {e}")
+
+    try:
+        response = await call_next(request)
+        end_time = datetime.utcnow()
+        response_time_ms = (end_time - start_time).total_seconds() * 1000
+
+        logger.info(
+            f"[{trace_id}] WEB_UI_API {request.method} {request.url.path} "
+            f"status={response.status_code} time={response_time_ms:.2f}ms"
+        )
+
+        response.headers["X-Web-UI-Compatible"] = "true"
+        response.headers["X-Response-Time-Ms"] = str(int(response_time_ms))
+
+        if response.status_code >= 400:
+            logger.warning(
+                f"[{trace_id}] WEB_UI_API Error {response.status_code} for {request.method} {request.url.path} "
+                f"time={response_time_ms:.2f}ms"
+            )
+
+        return response
+
+    except Exception as e:
+        end_time = datetime.utcnow()
+        response_time_ms = (end_time - start_time).total_seconds() * 1000
+
+        logger.error(
+            f"[{trace_id}] WEB_UI_API Exception in {request.method} {request.url.path} "
+            f"time={response_time_ms:.2f}ms: {e}",
+            exc_info=True,
+        )
+
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": "Internal Server Error",
+                "message": "An unexpected error occurred while processing your request",
+                "type": "INTERNAL_SERVER_ERROR",
+                "trace_id": trace_id,
+                "timestamp": datetime.utcnow().isoformat(),
+                "details": {"error_type": type(e).__name__} if os.getenv("KARI_DEBUG", "false").lower() == "true" else None,
+            },
+        )
 
 app.include_router(auth_router)
 app.include_router(events_router)
@@ -131,7 +287,6 @@ app.include_router(memory_router)
 app.include_router(conversation_router)
 app.include_router(plugin_router)
 app.include_router(tool_router)
-logger = logging.getLogger("kari")
 
 # ─── Startup: memory, plugins, LLM registry refresh ───────────────────────────
 
@@ -202,69 +357,6 @@ def _load_plugins() -> None:
         except Exception:
             logger.warning(f"Failed loading plugin manifest: {plugin_path}", exc_info=True)
     get_plugin_router().reload()
-
-# ─── Middleware: Metrics & Multi-Tenant ───────────────────────────────────────
-
-PUBLIC_PATHS = {
-    "/",
-    "/ping",
-    "/health",
-    "/ready",
-    "/metrics",
-    "/metrics/prometheus",
-    "/api/ai/generate-starter",
-    "/api/chat/process",
-    "/api/memory/query",
-    "/api/memory/store",
-    "/api/plugins",
-    "/api/plugins/execute",
-    "/api/analytics/system",
-    "/api/analytics/usage",
-    "/api/health",
-}
-
-@app.middleware("http")
-async def record_metrics(request: Request, call_next):
-    with REQUEST_LATENCY.time():
-        response = await call_next(request)
-    REQUEST_COUNT.inc()
-    return response
-
-TENANT_HEADER = "X-Tenant-ID"
-
-@app.middleware("http")
-async def require_tenant(request: Request, call_next):
-    if request.url.path not in PUBLIC_PATHS:
-        tenant = request.headers.get(TENANT_HEADER)
-        if not tenant:
-            auth = request.headers.get("authorization", "")
-            if auth.lower().startswith("bearer "):
-                token = auth.split(maxsplit=1)[1]
-                ctx = auth_utils.validate_session(
-                    token,
-                    request.headers.get("user-agent", ""),
-                    request.client.host,
-                )
-                tenant = ctx.get("tenant_id") if ctx else None
-        if not tenant:
-            return JSONResponse(status_code=400, content={"detail": "tenant_id required"})
-        request.state.tenant_id = tenant
-    return await call_next(request)
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log requests and response details with trace ID."""
-    trace_id = str(uuid.uuid4())
-    start = datetime.utcnow()
-    logger.info(f"[{trace_id}] {request.method} {request.url.path} from {request.client.host}")
-    response = await call_next(request)
-    duration = (datetime.utcnow() - start).total_seconds() * 1000
-    logger.info(
-        f"[{trace_id}] {request.method} {request.url.path} status={response.status_code} time={duration:.2f}ms"
-    )
-    response.headers["X-Kari-Trace-Id"] = trace_id
-    response.headers["X-Response-Time-Ms"] = str(int(duration))
-    return response
 
 # ─── Exception Handler ───────────────────────────────────────────────────────
 
