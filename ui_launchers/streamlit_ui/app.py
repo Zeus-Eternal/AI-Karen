@@ -28,6 +28,7 @@ from components.backend_components import (
 from helpers.session import get_user_context
 from helpers.icons import ICONS
 
+from helpers.model_loader import (ensure_spacy_models, ensure_sklearn_installed, ensure_distilbert, ensure_basic_classifier)
 # Import pages
 from pages.plugins import render_plugins_page
 from pages.settings import render_settings_page
@@ -64,8 +65,14 @@ except ImportError:
     
     def presence_page(user_ctx=None):
         st.write("👥 Presence page - Coming soon!")
-    
+
     BACKEND_AVAILABLE = False
+
+# Ensure lightweight models for eco mode
+ensure_spacy_models()
+ensure_sklearn_installed()
+ensure_distilbert()
+ensure_basic_classifier()
 
 # Configure page with enhanced settings
 st.set_page_config(

@@ -8,6 +8,8 @@ import os
 from typing import Dict, Any, Optional, List
 import streamlit as st
 
+from helpers.eco_mode import EcoModeResponder
+
 
 class ChatService:
     """Service for handling chat interactions with AI Karen backend"""
@@ -15,6 +17,12 @@ class ChatService:
     def __init__(self):
         self.api_url = os.getenv("KARI_API_URL", "http://localhost:8001")
         self.session = requests.Session()
+        self._eco_responder: EcoModeResponder | None = None
+
+    def _ensure_eco_responder(self) -> EcoModeResponder:
+        if self._eco_responder is None:
+            self._eco_responder = EcoModeResponder()
+        return self._eco_responder
         
     def get_available_models(self) -> List[Dict[str, Any]]:
         """Get list of available LLM models from backend"""
@@ -87,6 +95,10 @@ class ChatService:
     
     def generate_ai_response(self, user_message: str, context: Optional[List[Dict]] = None) -> str:
         """Generate AI response using the backend LLM"""
+        if st.session_state.get("eco_mode"):
+            responder = self._ensure_eco_responder()
+            return responder.respond(user_message)
+
         # Get user token from session
         user_token = st.session_state.get("token")
         

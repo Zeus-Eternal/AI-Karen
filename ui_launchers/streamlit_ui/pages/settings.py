@@ -244,6 +244,12 @@ def render_ai_model_settings():
             value=True,
             help="Automatically switch models if primary fails"
         )
+        eco_mode = st.checkbox(
+            "Eco Mode",
+            value=st.session_state.get("eco_mode", False),
+            help="Use lightweight local models (spaCy & DistilBERT)"
+        )
+        st.session_state["eco_mode"] = eco_mode
     
     with col2:
         st.markdown("### ⚙️ Generation Parameters")
