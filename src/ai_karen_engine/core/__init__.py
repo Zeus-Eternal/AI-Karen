@@ -65,3 +65,17 @@ __all__ = [
     "setup_middleware",
     "setup_routing"
 ]
+
+from .default_models import (
+    load_default_models,
+    get_embedding_manager,
+    get_spacy_client,
+    get_classifier,
+)
+
+__all__ += [
+    "load_default_models",
+    "get_embedding_manager",
+    "get_spacy_client",
+    "get_classifier",
+]
