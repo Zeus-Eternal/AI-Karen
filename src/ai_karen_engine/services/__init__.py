@@ -66,7 +66,7 @@ def get_gemini_service():
     return gemini
 
 # Import AI Orchestrator components
-from .ai_orchestrator import (
+from ai_karen_engine.services.ai_orchestrator import (
     AIOrchestrator,
     FlowManager,
     DecisionEngine,
@@ -75,7 +75,7 @@ from .ai_orchestrator import (
 )
 
 # Import Plugin services
-from .plugin_service import (
+from ai_karen_engine.services.plugin_service import (
     PluginService,
     get_plugin_service,
     initialize_plugin_service,
@@ -83,14 +83,14 @@ from .plugin_service import (
     execute_plugin_simple,
     get_plugin_marketplace_info
 )
-from .plugin_registry import PluginRegistry
-from .plugin_execution import PluginExecutionEngine
+from ai_karen_engine.services.plugin_registry import PluginRegistry
+from ai_karen_engine.services.plugin_execution import PluginExecutionEngine
 
 # Import Memory service
-from .memory_service import WebUIMemoryService
+from ai_karen_engine.services.memory_service import WebUIMemoryService
 
 # Import Tool services
-from .tool_service import (
+from ai_karen_engine.services.tool_service import (
     ToolService,
     ToolRegistry,
     BaseTool,
@@ -104,7 +104,7 @@ from .tool_service import (
 )
 
 # Import Tool registry functions
-from .tools import (
+from ai_karen_engine.services.tools import (
     register_core_tools,
     unregister_core_tools,
     get_core_tool_names,
@@ -112,7 +112,7 @@ from .tools import (
 )
 
 # Import Analytics service
-from .analytics_service import (
+from ai_karen_engine.services.analytics_service import (
     AnalyticsService,
     get_analytics_service,
     initialize_analytics_service,
@@ -121,7 +121,7 @@ from .analytics_service import (
 )
 
 # Import Analytics dashboard
-from .analytics_dashboard import (
+from ai_karen_engine.services.analytics_dashboard import (
     AnalyticsDashboard,
     get_analytics_dashboard,
     initialize_analytics_dashboard

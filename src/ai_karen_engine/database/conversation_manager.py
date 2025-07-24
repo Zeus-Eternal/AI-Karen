@@ -18,10 +18,10 @@ from sqlalchemy import text, select, insert, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from .client import MultiTenantPostgresClient
-from .models import TenantConversation, User
-from .memory_manager import MemoryManager, MemoryQuery
-from ..core.embedding_manager import EmbeddingManager
+from ai_karen_engine.database.client import MultiTenantPostgresClient
+from ai_karen_engine.database.models import TenantConversation, User
+from ai_karen_engine.database.memory_manager import MemoryManager, MemoryQuery
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
 
 logger = logging.getLogger(__name__)
 
