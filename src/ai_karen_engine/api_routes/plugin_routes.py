@@ -13,9 +13,15 @@ from ai_karen_engine.services.plugin_service import PluginService
 # classes need to be implemented in the plugin service
 from ai_karen_engine.core.dependencies import get_plugin_service
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.models.error_responses import (
+from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
-    create_error_response,
+    WebAPIErrorResponse,
+    ValidationErrorDetail,
+    create_service_error_response,
+    create_validation_error_response,
+    create_database_error_response,
+    create_generic_error_response,
+    get_http_status_for_error_code,
 )
 # Temporarily disable auth imports for web UI integration
 
@@ -138,13 +144,15 @@ async def list_plugins(
         
     except Exception as e:
         logger.exception("Failed to list plugins", error=str(e))
+        error_response = create_service_error_response(
+            service_name="plugin",
+            error=e,
+            error_code=WebAPIErrorCode.PLUGIN_ERROR,
+            user_message="Failed to list plugins. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.PLUGIN_ERROR,
-                "Failed to list plugins",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -158,13 +166,15 @@ async def get_plugin_info(
         plugin = await plugin_service.get_plugin_info(plugin_name)
         
         if not plugin:
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Plugin not found",
+                user_message="The requested plugin could not be found.",
+                details={"plugin_name": plugin_name}
+            )
             raise HTTPException(
-                status_code=404,
-                detail=create_error_response(
-                    WebAPIErrorCode.NOT_FOUND,
-                    "Plugin not found",
-                    {"plugin_name": plugin_name},
-                ).dict(),
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
             )
         
         return PluginInfoResponse(
@@ -187,13 +197,15 @@ async def get_plugin_info(
         raise
     except Exception as e:
         logger.exception("Failed to get plugin info", error=str(e))
+        error_response = create_service_error_response(
+            service_name="plugin",
+            error=e,
+            error_code=WebAPIErrorCode.PLUGIN_ERROR,
+            user_message="Failed to get plugin information. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.PLUGIN_ERROR,
-                "Failed to get plugin info",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -233,13 +245,15 @@ async def execute_plugin(
         
     except Exception as e:
         logger.exception("Failed to execute plugin", error=str(e))
+        error_response = create_service_error_response(
+            service_name="plugin",
+            error=e,
+            error_code=WebAPIErrorCode.PLUGIN_ERROR,
+            user_message="Failed to execute plugin. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.PLUGIN_ERROR,
-                "Failed to execute plugin",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -261,13 +275,15 @@ async def validate_plugin_parameters(
         
     except Exception as e:
         logger.exception("Failed to validate plugin", error=str(e))
+        error_response = create_service_error_response(
+            service_name="plugin",
+            error=e,
+            error_code=WebAPIErrorCode.PLUGIN_ERROR,
+            user_message="Failed to validate plugin parameters. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.PLUGIN_ERROR,
-                "Failed to validate plugin",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -279,26 +295,31 @@ async def enable_plugin(
 ):
     """Enable a plugin."""
     try:
-        # Check if user has admin privileges
-        if "admin" not in current_user.get("roles", []):
-            raise HTTPException(
-                status_code=403,
-                detail=create_error_response(
-                    WebAPIErrorCode.PERMISSION_DENIED,
-                    "Admin privileges required",
-                ).dict(),
-            )
+        # TODO: Check if user has admin privileges when auth is implemented
+        # For now, allow all operations for web UI compatibility
+        # if "admin" not in current_user.get("roles", []):
+        #     error_response = create_generic_error_response(
+        #         error_code=WebAPIErrorCode.AUTHORIZATION_ERROR,
+        #         message="Admin privileges required",
+        #         user_message="You need administrator privileges to perform this action."
+        #     )
+        #     raise HTTPException(
+        #         status_code=get_http_status_for_error_code(WebAPIErrorCode.AUTHORIZATION_ERROR),
+        #         detail=error_response.dict(),
+        #     )
         
         success = await plugin_service.enable_plugin(plugin_name)
         
         if not success:
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Plugin not found",
+                user_message="The requested plugin could not be found.",
+                details={"plugin_name": plugin_name}
+            )
             raise HTTPException(
-                status_code=404,
-                detail=create_error_response(
-                    WebAPIErrorCode.NOT_FOUND,
-                    "Plugin not found",
-                    {"plugin_name": plugin_name},
-                ).dict(),
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
             )
         
         return {
@@ -310,13 +331,15 @@ async def enable_plugin(
         raise
     except Exception as e:
         logger.exception("Failed to enable plugin", error=str(e))
+        error_response = create_service_error_response(
+            service_name="plugin",
+            error=e,
+            error_code=WebAPIErrorCode.PLUGIN_ERROR,
+            user_message="Failed to enable plugin. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.PLUGIN_ERROR,
-                "Failed to enable plugin",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -328,26 +351,31 @@ async def disable_plugin(
 ):
     """Disable a plugin."""
     try:
-        # Check if user has admin privileges
-        if "admin" not in current_user.get("roles", []):
-            raise HTTPException(
-                status_code=403,
-                detail=create_error_response(
-                    WebAPIErrorCode.PERMISSION_DENIED,
-                    "Admin privileges required",
-                ).dict(),
-            )
+        # TODO: Check if user has admin privileges when auth is implemented
+        # For now, allow all operations for web UI compatibility
+        # if "admin" not in current_user.get("roles", []):
+        #     error_response = create_generic_error_response(
+        #         error_code=WebAPIErrorCode.AUTHORIZATION_ERROR,
+        #         message="Admin privileges required",
+        #         user_message="You need administrator privileges to perform this action."
+        #     )
+        #     raise HTTPException(
+        #         status_code=get_http_status_for_error_code(WebAPIErrorCode.AUTHORIZATION_ERROR),
+        #         detail=error_response.dict(),
+        #     )
         
         success = await plugin_service.disable_plugin(plugin_name)
         
         if not success:
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Plugin not found",
+                user_message="The requested plugin could not be found.",
+                details={"plugin_name": plugin_name}
+            )
             raise HTTPException(
-                status_code=404,
-                detail=create_error_response(
-                    WebAPIErrorCode.NOT_FOUND,
-                    "Plugin not found",
-                    {"plugin_name": plugin_name},
-                ).dict(),
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
             )
         
         return {
@@ -359,13 +387,15 @@ async def disable_plugin(
         raise
     except Exception as e:
         logger.exception("Failed to disable plugin", error=str(e))
+        error_response = create_service_error_response(
+            service_name="plugin",
+            error=e,
+            error_code=WebAPIErrorCode.PLUGIN_ERROR,
+            user_message="Failed to disable plugin. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.PLUGIN_ERROR,
-                "Failed to disable plugin",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -391,13 +421,15 @@ async def get_plugin_categories(
         
     except Exception as e:
         logger.exception("Failed to get categories", error=str(e))
+        error_response = create_service_error_response(
+            service_name="plugin",
+            error=e,
+            error_code=WebAPIErrorCode.PLUGIN_ERROR,
+            user_message="Failed to get plugin categories. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.PLUGIN_ERROR,
-                "Failed to get categories",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -423,13 +455,15 @@ async def get_plugin_metrics(
         
     except Exception as e:
         logger.exception("Failed to get metrics", error=str(e))
+        error_response = create_service_error_response(
+            service_name="plugin",
+            error=e,
+            error_code=WebAPIErrorCode.PLUGIN_ERROR,
+            user_message="Failed to get plugin metrics. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.PLUGIN_ERROR,
-                "Failed to get metrics",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -440,15 +474,18 @@ async def reload_plugins(
 ):
     """Reload all plugins from disk."""
     try:
-        # Check if user has admin privileges
-        if "admin" not in current_user.get("roles", []):
-            raise HTTPException(
-                status_code=403,
-                detail=create_error_response(
-                    WebAPIErrorCode.PERMISSION_DENIED,
-                    "Admin privileges required",
-                ).dict(),
-            )
+        # TODO: Check if user has admin privileges when auth is implemented
+        # For now, allow all operations for web UI compatibility
+        # if "admin" not in current_user.get("roles", []):
+        #     error_response = create_generic_error_response(
+        #         error_code=WebAPIErrorCode.AUTHORIZATION_ERROR,
+        #         message="Admin privileges required",
+        #         user_message="You need administrator privileges to perform this action."
+        #     )
+        #     raise HTTPException(
+        #         status_code=get_http_status_for_error_code(WebAPIErrorCode.AUTHORIZATION_ERROR),
+        #         detail=error_response.dict(),
+        #     )
         
         count = await plugin_service.reload_plugins()
         
@@ -462,13 +499,15 @@ async def reload_plugins(
         raise
     except Exception as e:
         logger.exception("Failed to reload plugins", error=str(e))
+        error_response = create_service_error_response(
+            service_name="plugin",
+            error=e,
+            error_code=WebAPIErrorCode.PLUGIN_ERROR,
+            user_message="Failed to reload plugins. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.PLUGIN_ERROR,
-                "Failed to reload plugins",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
+            detail=error_response.dict(),
         )
 
 

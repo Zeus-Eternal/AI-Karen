@@ -16,9 +16,15 @@ from ai_karen_engine.services.ai_orchestrator import (
 )
 from ai_karen_engine.core.dependencies import get_ai_orchestrator_service
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.models.error_responses import (
+from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
-    create_error_response,
+    WebAPIErrorResponse,
+    ValidationErrorDetail,
+    create_service_error_response,
+    create_validation_error_response,
+    create_database_error_response,
+    create_generic_error_response,
+    get_http_status_for_error_code,
 )
 # Temporarily disable auth imports for web UI integration
 # from ..core.auth import get_current_user, get_tenant_id
@@ -128,13 +134,15 @@ async def process_flow(
         
     except Exception as e:
         logger.exception("Failed to process flow", error=str(e))
+        error_response = create_service_error_response(
+            service_name="ai_orchestrator",
+            error=e,
+            error_code=WebAPIErrorCode.AI_ORCHESTRATOR_ERROR,
+            user_message="Failed to process AI flow. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.AI_PROCESSING_ERROR,
-                "Failed to process flow",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -178,13 +186,15 @@ async def decide_action(
         
     except Exception as e:
         logger.exception("Failed to process decide action", error=str(e))
+        error_response = create_service_error_response(
+            service_name="ai_orchestrator",
+            error=e,
+            error_code=WebAPIErrorCode.AI_ORCHESTRATOR_ERROR,
+            user_message="Failed to process decision action. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.AI_PROCESSING_ERROR,
-                "Failed to process decide action",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -202,7 +212,7 @@ async def conversation_processing(
         context.update({
             "include_memories": request.include_memories,
             "include_insights": request.include_insights,
-            "tenant_id": tenant_id
+            "tenant_id": "default"  # Use default tenant for web UI compatibility
         })
         
         flow_input = FlowInput(
@@ -235,13 +245,15 @@ async def conversation_processing(
         
     except Exception as e:
         logger.exception("Failed to process conversation", error=str(e))
+        error_response = create_service_error_response(
+            service_name="ai_orchestrator",
+            error=e,
+            error_code=WebAPIErrorCode.AI_ORCHESTRATOR_ERROR,
+            user_message="Failed to process conversation. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.AI_PROCESSING_ERROR,
-                "Failed to process conversation",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -270,13 +282,15 @@ async def get_available_flows(
         
     except Exception as e:
         logger.exception("Failed to get available flows", error=str(e))
+        error_response = create_service_error_response(
+            service_name="ai_orchestrator",
+            error=e,
+            error_code=WebAPIErrorCode.AI_ORCHESTRATOR_ERROR,
+            user_message="Failed to get available AI flows. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.SERVICE_ERROR,
-                "Failed to get available flows",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -299,13 +313,15 @@ async def get_flow_metrics(
         
     except Exception as e:
         logger.exception("Failed to get metrics", error=str(e))
+        error_response = create_service_error_response(
+            service_name="ai_orchestrator",
+            error=e,
+            error_code=WebAPIErrorCode.AI_ORCHESTRATOR_ERROR,
+            user_message="Failed to get AI orchestrator metrics. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.SERVICE_ERROR,
-                "Failed to get metrics",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -332,13 +348,15 @@ async def generate_starter_prompts_get():
         return await _generate_starter_prompts()
     except Exception as e:
         logger.exception("Failed to generate starter prompts", error=str(e))
+        error_response = create_service_error_response(
+            service_name="ai_orchestrator",
+            error=e,
+            error_code=WebAPIErrorCode.AI_ORCHESTRATOR_ERROR,
+            user_message="Failed to generate starter prompts. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.SERVICE_ERROR,
-                "Failed to generate starter prompts",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -352,13 +370,15 @@ async def generate_starter_prompts_post(body: Optional[Dict[str, Any]] = None):
         return await _generate_starter_prompts(assistant_type)
     except Exception as e:
         logger.exception("Failed to generate starter prompts", error=str(e))
+        error_response = create_service_error_response(
+            service_name="ai_orchestrator",
+            error=e,
+            error_code=WebAPIErrorCode.AI_ORCHESTRATOR_ERROR,
+            user_message="Failed to generate starter prompts. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.SERVICE_ERROR,
-                "Failed to generate starter prompts",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
+            detail=error_response.dict(),
         )
 
 

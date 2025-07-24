@@ -17,9 +17,15 @@ from ai_karen_engine.services.memory_service import (
 from ai_karen_engine.core.config_manager import AIKarenConfig
 from ai_karen_engine.core.dependencies import get_memory_service, get_current_config
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.models.error_responses import (
+from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
-    create_error_response,
+    WebAPIErrorResponse,
+    ValidationErrorDetail,
+    create_service_error_response,
+    create_validation_error_response,
+    create_database_error_response,
+    create_generic_error_response,
+    get_http_status_for_error_code,
 )
 # from ..database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
@@ -174,13 +180,15 @@ async def store_memory(
         
     except Exception as e:
         logger.exception("Failed to store memory", error=str(e))
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Failed to store memory. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.MEMORY_ERROR,
-                "Failed to store memory",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -269,13 +277,15 @@ async def query_memories(
         
     except Exception as e:
         logger.exception("Failed to query memories", error=str(e))
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Failed to query memories. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.MEMORY_ERROR,
-                "Failed to query memories",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -300,13 +310,15 @@ async def build_context(
         
     except Exception as e:
         logger.exception("Failed to build context", error=str(e))
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Failed to build conversation context. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.MEMORY_ERROR,
-                "Failed to build context",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -327,13 +339,15 @@ async def confirm_memory(
         )
         
         if not success:
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Memory not found",
+                user_message="The requested memory could not be found.",
+                details={"memory_id": memory_id}
+            )
             raise HTTPException(
-                status_code=404,
-                detail=create_error_response(
-                    WebAPIErrorCode.NOT_FOUND,
-                    "Memory not found",
-                    {"memory_id": memory_id},
-                ).dict(),
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
             )
         
         return {
@@ -345,13 +359,15 @@ async def confirm_memory(
         raise
     except Exception as e:
         logger.exception("Failed to confirm memory", error=str(e))
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Failed to confirm memory. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.MEMORY_ERROR,
-                "Failed to confirm memory",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -372,13 +388,15 @@ async def update_importance(
         )
         
         if not success:
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Memory not found",
+                user_message="The requested memory could not be found.",
+                details={"memory_id": memory_id}
+            )
             raise HTTPException(
-                status_code=404,
-                detail=create_error_response(
-                    WebAPIErrorCode.NOT_FOUND,
-                    "Memory not found",
-                    {"memory_id": memory_id},
-                ).dict(),
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
             )
         
         return {
@@ -390,22 +408,30 @@ async def update_importance(
         raise
     except ValueError as e:
         logger.warning("Invalid importance value", error=str(e))
+        validation_errors = [ValidationErrorDetail(
+            field="importance_score",
+            message=str(e),
+            invalid_value=request.importance_score
+        )]
+        error_response = create_validation_error_response(
+            field_errors=validation_errors,
+            user_message="Invalid importance score value."
+        )
         raise HTTPException(
-            status_code=400,
-            detail=create_error_response(
-                WebAPIErrorCode.VALIDATION_ERROR,
-                str(e),
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.VALIDATION_ERROR),
+            detail=error_response.dict(),
         )
     except Exception as e:
         logger.exception("Failed to update importance", error=str(e))
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Failed to update memory importance. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.MEMORY_ERROR,
-                "Failed to update importance",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -424,13 +450,15 @@ async def delete_memory(
         )
         
         if not success:
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Memory not found",
+                user_message="The requested memory could not be found.",
+                details={"memory_id": memory_id}
+            )
             raise HTTPException(
-                status_code=404,
-                detail=create_error_response(
-                    WebAPIErrorCode.NOT_FOUND,
-                    "Memory not found",
-                    {"memory_id": memory_id},
-                ).dict(),
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
             )
         
         return {
@@ -442,13 +470,15 @@ async def delete_memory(
         raise
     except Exception as e:
         logger.exception("Failed to delete memory", error=str(e))
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Failed to delete memory. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.MEMORY_ERROR,
-                "Failed to delete memory",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -481,13 +511,15 @@ async def get_analytics(
         
     except Exception as e:
         logger.exception("Failed to get analytics", error=str(e))
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Failed to get memory analytics. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.MEMORY_ERROR,
-                "Failed to get analytics",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -510,13 +542,15 @@ async def get_memory_stats(
         
     except Exception as e:
         logger.exception("Failed to get stats", error=str(e))
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Failed to get memory statistics. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.MEMORY_ERROR,
-                "Failed to get stats",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
+            detail=error_response.dict(),
         )
 
 
@@ -538,13 +572,15 @@ async def prune_expired_memories(
         
     except Exception as e:
         logger.exception("Failed to prune memories", error=str(e))
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Failed to prune expired memories. Please try again."
+        )
         raise HTTPException(
-            status_code=500,
-            detail=create_error_response(
-                WebAPIErrorCode.MEMORY_ERROR,
-                "Failed to prune memories",
-                {"error": str(e)},
-            ).dict(),
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
+            detail=error_response.dict(),
         )
 
 

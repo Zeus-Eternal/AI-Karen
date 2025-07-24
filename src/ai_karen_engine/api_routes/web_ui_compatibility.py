@@ -24,11 +24,19 @@ from ..models.web_ui_types import (
     WebUIPluginExecuteResponse,
     WebUISystemMetrics,
     WebUIUsageAnalytics,
-    WebUIHealthCheck,
-    WebUIErrorCode,
-    create_web_ui_error_response,
-    create_validation_error_response
+    WebUIHealthCheck
 )
+from ..models.web_api_error_responses import (
+    WebAPIErrorCode,
+    WebAPIErrorResponse,
+    ValidationErrorDetail,
+    create_validation_error_response,
+    create_database_error_response,
+    create_service_error_response,
+    create_generic_error_response,
+    get_http_status_for_error_code
+)
+from ..database.schema_validator import validate_and_migrate_schema
 from ..services.web_ui_compatibility import WebUITransformationService
 from ..services.ai_orchestrator import AIOrchestrator
 from ..services.memory_service import WebUIMemoryService
@@ -50,40 +58,32 @@ def get_request_id(request: Request) -> str:
 
 def handle_service_error(
     error: Exception,
-    error_type: WebUIErrorCode,
+    error_code: WebAPIErrorCode,
     user_message: str,
     request_id: str,
     additional_details: Optional[Dict[str, Any]] = None
 ) -> HTTPException:
-    """Handle service errors and return appropriate HTTP exception."""
+    """Handle service errors and return appropriate HTTP exception using new WebAPI error models."""
     logger.error(f"[{request_id}] Service error: {error}", exc_info=True)
     
-    # Prepare error details
-    error_details = {
-        "error_type": type(error).__name__,
-        "error_message": str(error)
-    }
-    if additional_details:
-        error_details.update(additional_details)
-    
-    error_response = create_web_ui_error_response(
-        error_code=error_type,
-        message=str(error),
-        details=error_details,
+    # Create service error response using the new models
+    error_response = create_service_error_response(
+        service_name="web_api",
+        error=error,
+        error_code=error_code,
         user_message=user_message,
         request_id=request_id
     )
     
-    # Determine HTTP status code based on error type
-    status_code = 500
-    if error_type == WebUIErrorCode.VALIDATION_ERROR:
-        status_code = 400
-    elif error_type == WebUIErrorCode.SERVICE_UNAVAILABLE:
-        status_code = 503
-    elif error_type == WebUIErrorCode.AUTHENTICATION_ERROR:
-        status_code = 401
-    elif error_type == WebUIErrorCode.CHAT_PROCESSING_ERROR:
-        status_code = 500
+    # Add additional details if provided
+    if additional_details:
+        if error_response.details:
+            error_response.details.update(additional_details)
+        else:
+            error_response.details = additional_details
+    
+    # Get appropriate HTTP status code
+    status_code = get_http_status_for_error_code(error_code)
     
     return HTTPException(
         status_code=status_code,
@@ -541,15 +541,113 @@ async def memory_store_compatibility(
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """
-    Compatibility endpoint for storing memories with web UI format.
+    Compatibility endpoint for storing memories with web UI format and database schema validation.
     """
     request_id = get_request_id(http_request)
     
     try:
         logger.info(f"[{request_id}] Storing memory for user: {request.user_id}")
         
+        # Enhanced request validation
+        validation_errors = []
+        
+        # Validate content
+        if not request.content or not request.content.strip():
+            validation_errors.append(ValidationErrorDetail(
+                field="content",
+                message="Content cannot be empty or contain only whitespace",
+                invalid_value=request.content
+            ))
+        
+        # Validate content length
+        if request.content and len(request.content) > 50000:
+            validation_errors.append(ValidationErrorDetail(
+                field="content",
+                message="Content is too long (maximum 50,000 characters)",
+                invalid_value=f"Length: {len(request.content)}",
+                constraint="max_length: 50000"
+            ))
+        
+        # Validate tags format
+        if request.tags:
+            if not isinstance(request.tags, list):
+                validation_errors.append(ValidationErrorDetail(
+                    field="tags",
+                    message="Tags must be an array",
+                    invalid_value=type(request.tags).__name__,
+                    expected_type="array"
+                ))
+            else:
+                for i, tag in enumerate(request.tags):
+                    if not isinstance(tag, str):
+                        validation_errors.append(ValidationErrorDetail(
+                            field=f"tags[{i}]",
+                            message="Tag must be a string",
+                            invalid_value=type(tag).__name__,
+                            expected_type="string"
+                        ))
+                    elif len(tag.strip()) == 0:
+                        validation_errors.append(ValidationErrorDetail(
+                            field=f"tags[{i}]",
+                            message="Tag cannot be empty",
+                            invalid_value=tag
+                        ))
+        
+        # If validation errors exist, return them
+        if validation_errors:
+            logger.warning(f"[{request_id}] Memory store validation failed: {len(validation_errors)} errors")
+            error_response = create_validation_error_response(
+                validation_errors,
+                user_message="Please check your memory data and try again.",
+                request_id=request_id
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(error_response.type),
+                detail=error_response.dict()
+            )
+        
+        # Database schema validation - check if memory_entries table exists
+        try:
+            from ..database.dependencies import get_postgres_session
+            async with get_postgres_session() as session:
+                schema_error = await validate_and_migrate_schema(session)
+                if schema_error:
+                    logger.error(f"[{request_id}] Database schema validation failed: {schema_error.message}")
+                    raise HTTPException(
+                        status_code=get_http_status_for_error_code(schema_error.type),
+                        detail=schema_error.dict()
+                    )
+        except ImportError:
+            logger.warning(f"[{request_id}] Database session dependency not available, skipping schema validation")
+        except Exception as db_error:
+            logger.error(f"[{request_id}] Database schema validation error: {db_error}")
+            error_response = create_database_error_response(
+                error=db_error,
+                operation="schema_validation",
+                user_message="Database validation failed. Please try again.",
+                request_id=request_id
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(error_response.type),
+                detail=error_response.dict()
+            )
+        
         # Transform request to backend format
-        backend_request = WebUITransformationService.transform_web_ui_memory_store_request(request)
+        try:
+            backend_request = WebUITransformationService.transform_web_ui_memory_store_request(request)
+        except Exception as e:
+            logger.error(f"[{request_id}] Memory store request transformation failed: {e}")
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.VALIDATION_ERROR,
+                message=f"Request transformation failed: {str(e)}",
+                user_message="Invalid memory store request format",
+                details={"transformation_error": str(e)},
+                request_id=request_id
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(error_response.type),
+                detail=error_response.dict()
+            )
         
         # Validate user ID - store anonymously if not a valid UUID
         user_id = request.user_id
@@ -562,44 +660,141 @@ async def memory_store_compatibility(
                 )
                 user_id = None
 
-        # Store memory
-        memory_id = await memory_service.store_web_ui_memory(
-            tenant_id="default",
-            content=backend_request.content,
-            user_id=user_id,
-            ui_source=backend_request.ui_source,
-            session_id=backend_request.session_id,
-            memory_type=backend_request.memory_type,
-            tags=backend_request.tags,
-            metadata=backend_request.metadata,
-            ai_generated=backend_request.ai_generated,
-        )
+        # Store memory with enhanced error handling
+        start_time = datetime.utcnow()
+        memory_id = None
+        
+        try:
+            memory_id = await memory_service.store_web_ui_memory(
+                tenant_id="default",
+                content=backend_request.content,
+                user_id=user_id,
+                ui_source=backend_request.ui_source,
+                session_id=backend_request.session_id,
+                memory_type=backend_request.memory_type,
+                tags=backend_request.tags,
+                metadata=backend_request.metadata,
+                ai_generated=backend_request.ai_generated,
+            )
+        except Exception as e:
+            error_str = str(e).lower()
+            
+            # Handle specific database errors
+            if "relation" in error_str and "does not exist" in error_str:
+                logger.error(f"[{request_id}] Database table missing: {e}")
+                error_response = create_database_error_response(
+                    error=e,
+                    operation="memory_store",
+                    user_message="Database tables are missing. System needs initialization.",
+                    request_id=request_id
+                )
+            elif "connection" in error_str or "connect" in error_str:
+                logger.error(f"[{request_id}] Database connection error: {e}")
+                error_response = create_database_error_response(
+                    error=e,
+                    operation="memory_store",
+                    user_message="Database connection failed. Please try again later.",
+                    request_id=request_id
+                )
+            elif "constraint" in error_str or "violation" in error_str:
+                logger.error(f"[{request_id}] Database constraint violation: {e}")
+                error_response = create_database_error_response(
+                    error=e,
+                    operation="memory_store",
+                    user_message="Data validation failed. Please check your input.",
+                    request_id=request_id
+                )
+            else:
+                logger.error(f"[{request_id}] Memory service error: {e}")
+                error_response = create_service_error_response(
+                    service_name="memory",
+                    error=e,
+                    error_code=WebAPIErrorCode.MEMORY_ERROR,
+                    user_message="Memory storage failed. Please try again.",
+                    request_id=request_id
+                )
+            
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(error_response.type),
+                detail=error_response.dict()
+            )
+        
+        storage_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         
         # Transform response to web UI format
-        backend_response = {
-            "success": memory_id is not None,
-            "memory_id": memory_id,
-            "message": "Memory stored successfully" if memory_id else "Memory not stored (not surprising enough)"
-        }
+        try:
+            backend_response = {
+                "success": memory_id is not None,
+                "memory_id": memory_id,
+                "message": "Memory stored successfully" if memory_id else "Memory not stored (not surprising enough)"
+            }
+            
+            response = WebUITransformationService.transform_memory_store_response_to_web_ui(backend_response)
+        except Exception as e:
+            logger.error(f"[{request_id}] Memory store response transformation failed: {e}")
+            # Create a fallback response
+            response = WebUIMemoryStoreResponse(
+                success=memory_id is not None,
+                memory_id=memory_id,
+                message="Memory stored successfully" if memory_id else "Memory not stored"
+            )
         
-        response = WebUITransformationService.transform_memory_store_response_to_web_ui(backend_response)
-        
-        logger.info(f"[{request_id}] Memory storage completed: {response.success}")
+        logger.info(f"[{request_id}] Memory storage completed: {response.success} in {storage_time:.2f}ms")
         
         return response
         
+    except HTTPException:
+        # Re-raise HTTP exceptions (these are already properly formatted)
+        raise
+        
     except ValidationError as e:
-        logger.warning(f"[{request_id}] Validation error in memory store: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=create_validation_error_response(e.errors(), request_id).dict()
+        logger.warning(f"[{request_id}] Pydantic validation error in memory store: {e}")
+        validation_details = [
+            ValidationErrorDetail(
+                field=error.get("loc", ["unknown"])[-1],
+                message=error.get("msg", "Validation failed"),
+                invalid_value=error.get("input"),
+                expected_type=error.get("type")
+            )
+            for error in e.errors()
+        ]
+        error_response = create_validation_error_response(
+            validation_details,
+            user_message="Request validation failed. Please check your data format.",
+            request_id=request_id
         )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(error_response.type),
+            detail=error_response.dict()
+        )
+        
     except ValueError as e:
-        raise handle_service_error(e, WebUIErrorCode.VALIDATION_ERROR,
-                                 "Invalid memory store request format", request_id)
+        logger.error(f"[{request_id}] Value error in memory store: {e}")
+        error_response = create_generic_error_response(
+            error_code=WebAPIErrorCode.VALIDATION_ERROR,
+            message=str(e),
+            user_message="Invalid memory store request format",
+            details={"value_error": str(e)},
+            request_id=request_id
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(error_response.type),
+            detail=error_response.dict()
+        )
+        
     except Exception as e:
-        raise handle_service_error(e, WebUIErrorCode.MEMORY_ERROR,
-                                 "Memory storage failed. Please try again.", request_id)
+        logger.error(f"[{request_id}] Unexpected error in memory store: {e}", exc_info=True)
+        error_response = create_service_error_response(
+            service_name="memory",
+            error=e,
+            error_code=WebAPIErrorCode.MEMORY_ERROR,
+            user_message="Memory storage failed. Please try again.",
+            request_id=request_id
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(error_response.type),
+            detail=error_response.dict()
+        )
 
 
 @router.get("/plugins", response_model=List[Dict[str, Any]])

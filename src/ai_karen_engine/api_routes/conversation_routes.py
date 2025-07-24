@@ -15,8 +15,21 @@ from ..services.conversation_service import (
     UISource
 )
 from ..database.conversation_manager import MessageRole
+from ..models.web_api_error_responses import (
+    WebAPIErrorCode,
+    WebAPIErrorResponse,
+    ValidationErrorDetail,
+    create_service_error_response,
+    create_validation_error_response,
+    create_database_error_response,
+    create_generic_error_response,
+    get_http_status_for_error_code,
+)
+from ..core.logging import get_logger
 # from ..database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
@@ -238,7 +251,16 @@ async def create_conversation(
         )
         
         if not conversation:
-            raise HTTPException(status_code=500, detail="Failed to create conversation")
+            error_response = create_service_error_response(
+                service_name="conversation",
+                error=Exception("Failed to create conversation"),
+                error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+                user_message="Failed to create conversation. Please try again."
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+                detail=error_response.dict(),
+            )
         
         return CreateConversationResponse(
             conversation=_convert_conversation_to_response(conversation),
@@ -247,7 +269,17 @@ async def create_conversation(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create conversation: {str(e)}")
+        logger.exception("Failed to create conversation", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to create conversation. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.get("/{conversation_id}", response_model=ConversationResponse)
@@ -267,14 +299,33 @@ async def get_conversation(
         )
         
         if not conversation:
-            raise HTTPException(status_code=404, detail="Conversation not found")
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Conversation not found",
+                user_message="The requested conversation could not be found.",
+                details={"conversation_id": conversation_id}
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
+            )
         
         return _convert_conversation_to_response(conversation)
         
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get conversation: {str(e)}")
+        logger.exception("Failed to get conversation", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to get conversation. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.post("/{conversation_id}/messages", response_model=AddMessageResponse)
@@ -301,7 +352,16 @@ async def add_message(
         )
         
         if not message:
-            raise HTTPException(status_code=500, detail="Failed to add message")
+            error_response = create_service_error_response(
+                service_name="conversation",
+                error=Exception("Failed to add message"),
+                error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+                user_message="Failed to add message to conversation. Please try again."
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+                detail=error_response.dict(),
+            )
         
         message_dict = message.to_dict()
         message_response = MessageResponse(
@@ -330,7 +390,17 @@ async def add_message(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add message: {str(e)}")
+        logger.exception("Failed to add message", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to add message to conversation. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.post("/{conversation_id}/context", response_model=ContextResponse)
@@ -354,7 +424,17 @@ async def build_context(
         return ContextResponse(**context)
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to build context: {str(e)}")
+        logger.exception("Failed to build context", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to build conversation context. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.put("/{conversation_id}/ui-context")
@@ -374,7 +454,16 @@ async def update_ui_context(
         )
         
         if not success:
-            raise HTTPException(status_code=404, detail="Conversation not found or update failed")
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Conversation not found or update failed",
+                user_message="The requested conversation could not be found or updated.",
+                details={"conversation_id": conversation_id}
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
+            )
         
         return {
             "success": True,
@@ -384,7 +473,17 @@ async def update_ui_context(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update UI context: {str(e)}")
+        logger.exception("Failed to update UI context", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to update UI context. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.put("/{conversation_id}/ai-insights")
@@ -404,7 +503,16 @@ async def update_ai_insights(
         )
         
         if not success:
-            raise HTTPException(status_code=404, detail="Conversation not found or update failed")
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Conversation not found or update failed",
+                user_message="The requested conversation could not be found or updated.",
+                details={"conversation_id": conversation_id}
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
+            )
         
         return {
             "success": True,
@@ -414,7 +522,17 @@ async def update_ai_insights(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update AI insights: {str(e)}")
+        logger.exception("Failed to update AI insights", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to update AI insights. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.post("/{conversation_id}/tags")
@@ -434,7 +552,16 @@ async def add_tags(
         )
         
         if not success:
-            raise HTTPException(status_code=404, detail="Conversation not found or update failed")
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Conversation not found or update failed",
+                user_message="The requested conversation could not be found or updated.",
+                details={"conversation_id": conversation_id}
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
+            )
         
         return {
             "success": True,
@@ -444,7 +571,17 @@ async def add_tags(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add tags: {str(e)}")
+        logger.exception("Failed to add tags", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to add tags to conversation. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.get("/", response_model=ConversationListResponse)
@@ -494,7 +631,17 @@ async def list_conversations(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list conversations: {str(e)}")
+        logger.exception("Failed to list conversations", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to list conversations. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.put("/{conversation_id}")
@@ -516,7 +663,16 @@ async def update_conversation(
         )
         
         if not success:
-            raise HTTPException(status_code=404, detail="Conversation not found or update failed")
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Conversation not found or update failed",
+                user_message="The requested conversation could not be found or updated.",
+                details={"conversation_id": conversation_id}
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
+            )
         
         return {
             "success": True,
@@ -526,7 +682,17 @@ async def update_conversation(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update conversation: {str(e)}")
+        logger.exception("Failed to update conversation", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to update conversation. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.delete("/{conversation_id}")
@@ -544,7 +710,16 @@ async def delete_conversation(
         )
         
         if not success:
-            raise HTTPException(status_code=404, detail="Conversation not found or deletion failed")
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Conversation not found or deletion failed",
+                user_message="The requested conversation could not be found or deleted.",
+                details={"conversation_id": conversation_id}
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
+            )
         
         return {
             "success": True,
@@ -554,7 +729,17 @@ async def delete_conversation(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete conversation: {str(e)}")
+        logger.exception("Failed to delete conversation", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to delete conversation. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.get("/analytics", response_model=AnalyticsResponse)
@@ -585,7 +770,17 @@ async def get_analytics(
         return AnalyticsResponse(**analytics)
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
+        logger.exception("Failed to get analytics", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to get conversation analytics. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.get("/stats")
@@ -608,7 +803,17 @@ async def get_conversation_stats(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+        logger.exception("Failed to get stats", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to get conversation statistics. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 @router.post("/cleanup-inactive")
@@ -632,7 +837,17 @@ async def cleanup_inactive_conversations(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to cleanup conversations: {str(e)}")
+        logger.exception("Failed to cleanup conversations", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to cleanup conversations. Please try again."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            detail=error_response.dict(),
+        )
 
 
 # Health check endpoint

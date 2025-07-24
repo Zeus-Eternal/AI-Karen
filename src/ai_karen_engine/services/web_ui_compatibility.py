@@ -27,9 +27,13 @@ from ai_karen_engine.api_routes.ai_orchestrator_routes import ConversationProces
 from ai_karen_engine.api_routes.memory_routes import QueryMemoryRequest, StoreMemoryRequest, MemoryResponse
 from ai_karen_engine.services.memory_service import MemoryType, UISource, WebUIMemoryQuery as ServiceWebUIMemoryQuery
 
+# Import the new transformation utilities
+from ai_karen_engine.services.memory_transformation_utils import MemoryTransformationUtils
+from ai_karen_engine.services.chat_transformation_utils import ChatTransformationUtils
+
 logger = logging.getLogger(__name__)
 
-# Force reload - updated transformation service
+# Force reload - updated transformation service with new utilities
 
 
 class WebUITransformationService:
