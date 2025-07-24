@@ -8,13 +8,13 @@ from typing import List, Optional, Dict, Any, Tuple
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
-from ..services.memory_service import (
+from ai_karen_engine.services.memory_service import (
     WebUIMemoryService, 
     WebUIMemoryQuery, 
     MemoryType, 
     UISource
 )
-# from ..database.client import get_db_client  # Not needed with dependency injection
+# from ai_karen_engine.database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
 
 router = APIRouter(prefix="/api/memory", tags=["memory"])
@@ -130,7 +130,7 @@ class AnalyticsResponse(BaseModel):
 
 
 # Import dependency injection
-from ..core.dependencies import get_memory_service
+from ai_karen_engine.core.dependencies import get_memory_service
 
 
 @router.post("/store", response_model=StoreMemoryResponse)

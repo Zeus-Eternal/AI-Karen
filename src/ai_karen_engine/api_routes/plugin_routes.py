@@ -8,10 +8,10 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
-from ..services.plugin_service import PluginService
+from ai_karen_engine.services.plugin_service import PluginService
 # Note: PluginInfo, PluginExecutionRequest, PluginExecutionResult, PluginStatus 
 # classes need to be implemented in the plugin service
-from ..core.dependencies import get_plugin_service
+from ai_karen_engine.core.dependencies import get_plugin_service
 # Temporarily disable auth imports for web UI integration
 
 router = APIRouter(prefix="/api/plugins", tags=["plugins"])

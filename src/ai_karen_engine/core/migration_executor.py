@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 import json
 from datetime import datetime
 
-from .migration_tools import (
+from ai_karen_engine.core.migration_tools import (
     MigrationPlan, FileMove, ImportUpdate, MigrationStatus,
     MigrationValidator
 )
@@ -252,10 +252,10 @@ This module provides the core plugin system functionality including
 plugin discovery, routing, execution, and management.
 """
 
-from .manager import PluginManager, get_plugin_manager
-from .router import PluginRouter, PluginRecord, AccessDenied, get_plugin_router
-from .sandbox import PluginSandbox
-from .sandbox_runner import run_in_sandbox
+from ai_karen_engine.core.manager import PluginManager, get_plugin_manager
+from ai_karen_engine.core.router import PluginRouter, PluginRecord, AccessDenied, get_plugin_router
+from ai_karen_engine.core.sandbox import PluginSandbox
+from ai_karen_engine.core.sandbox_runner import run_in_sandbox
 
 __all__ = [
     "PluginManager",
@@ -378,7 +378,7 @@ def main():
     
     # For now, we'll create a plan programmatically
     # In a real implementation, you'd load from the plan file
-    from .migration_tools import MigrationPlanner
+    from ai_karen_engine.core.migration_tools import MigrationPlanner
     planner = MigrationPlanner(args.root)
     plan = planner.create_migration_plan()
     

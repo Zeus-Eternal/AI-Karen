@@ -13,8 +13,8 @@ from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import create_engine, text, MetaData, inspect
 
-from .models import Base, Tenant
-from .client import MultiTenantPostgresClient
+from ai_karen_engine.database.models import Base, Tenant
+from ai_karen_engine.database.client import MultiTenantPostgresClient
 
 
 logger = logging.getLogger(__name__)

@@ -12,12 +12,12 @@ from typing import Dict, List, Optional, Any, Union
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
-from .client import MultiTenantPostgresClient
-from .tenant_manager import TenantManager, TenantConfig
-from .memory_manager import MemoryManager, MemoryQuery
-from .conversation_manager import ConversationManager, MessageRole
-from ..core.milvus_client import MilvusClient
-from ..core.embedding_manager import EmbeddingManager
+from ai_karen_engine.database.client import MultiTenantPostgresClient
+from ai_karen_engine.database.tenant_manager import TenantManager, TenantConfig
+from ai_karen_engine.database.memory_manager import MemoryManager, MemoryQuery
+from ai_karen_engine.database.conversation_manager import ConversationManager, MessageRole
+from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
 
 logger = logging.getLogger(__name__)
 

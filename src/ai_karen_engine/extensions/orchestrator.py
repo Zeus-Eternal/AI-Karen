@@ -17,7 +17,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Callable
 
 from ai_karen_engine.plugins.router import PluginRouter
-from .workflow_engine import WorkflowEngine, WorkflowDefinition, WorkflowStep as AdvancedWorkflowStep, StepType as AdvancedStepType
+from ai_karen_engine.extensions.workflow_engine import WorkflowEngine, WorkflowDefinition, WorkflowStep as AdvancedWorkflowStep, StepType as AdvancedStepType
 
 
 class StepType(Enum):

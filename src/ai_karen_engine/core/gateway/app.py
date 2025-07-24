@@ -14,11 +14,11 @@ except ImportError:
     CORSMiddleware = object
     GZipMiddleware = object
 
-from ..services import ServiceContainer, get_container
-from ..errors import error_middleware
-from ..logging import logging_middleware, get_logger
-from .middleware import setup_middleware
-from .routing import setup_routing
+from ai_karen_engine.core.services import ServiceContainer, get_container
+from ai_karen_engine.core.errors import error_middleware
+from ai_karen_engine.core.logging import logging_middleware, get_logger
+from ai_karen_engine.core.gateway.middleware import setup_middleware
+from ai_karen_engine.core.gateway.routing import setup_routing
 
 logger = get_logger(__name__)
 

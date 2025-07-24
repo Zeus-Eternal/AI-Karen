@@ -4,7 +4,7 @@ Provides comprehensive security testing, threat protection, and compliance featu
 """
 
 # Always import basic penetration testing components
-from .penetration_testing import PenetrationTestSuite, SecurityScanner
+from ai_karen_engine.security.penetration_testing import PenetrationTestSuite, SecurityScanner
 
 # Initialize basic exports
 __all__ = [
@@ -14,19 +14,19 @@ __all__ = [
 
 # Try to import optional components that require additional dependencies
 try:
-    from .threat_protection import ThreatProtectionSystem, IntrusionDetectionSystem
+    from ai_karen_engine.security.threat_protection import ThreatProtectionSystem, IntrusionDetectionSystem
     __all__.extend(['ThreatProtectionSystem', 'IntrusionDetectionSystem'])
 except ImportError:
     pass
 
 try:
-    from .incident_response import SecurityIncidentManager, IncidentResponsePlan
+    from ai_karen_engine.security.incident_response import SecurityIncidentManager, IncidentResponsePlan
     __all__.extend(['SecurityIncidentManager', 'IncidentResponsePlan'])
 except ImportError:
     pass
 
 try:
-    from .compliance import ComplianceReporter, SOC2Reporter, GDPRReporter
+    from ai_karen_engine.security.compliance import ComplianceReporter, SOC2Reporter, GDPRReporter
     __all__.extend(['ComplianceReporter', 'SOC2Reporter', 'GDPRReporter'])
 except ImportError:
     pass

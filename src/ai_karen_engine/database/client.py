@@ -22,7 +22,7 @@ except ImportError:
     async_sessionmaker = None
     _ASYNC_AVAILABLE = False
 
-from .models import Base, Tenant, User, TenantConversation, TenantMemoryEntry, TenantPluginExecution, TenantAuditLog
+from ai_karen_engine.database.models import Base, Tenant, User, TenantConversation, TenantMemoryEntry, TenantPluginExecution, TenantAuditLog
 
 
 logger = logging.getLogger(__name__)

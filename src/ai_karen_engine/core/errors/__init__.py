@@ -2,7 +2,7 @@
 Unified error handling system for AI Karen engine.
 """
 
-from .exceptions import (
+from ai_karen_engine.core.errors.exceptions import (
     KarenError,
     ValidationError,
     AuthenticationError,
@@ -13,8 +13,8 @@ from .exceptions import (
     MemoryError,
     AIProcessingError
 )
-from .handlers import ErrorHandler, ErrorResponse, ErrorCode, get_error_handler
-from .middleware import error_middleware
+from ai_karen_engine.core.errors.handlers import ErrorHandler, ErrorResponse, ErrorCode, get_error_handler
+from ai_karen_engine.core.errors.middleware import error_middleware
 
 __all__ = [
     "KarenError",

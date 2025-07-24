@@ -23,6 +23,7 @@ from ai_karen_engine.core.memory.manager import init_memory
 from ai_karen_engine.utils.auth import validate_session
 from ai_karen_engine.extensions import initialize_extension_manager
 from ai_karen_engine.plugins.router import get_plugin_router
+from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_compat_router
 
 try:
     from fastapi import FastAPI, APIRouter, Request, Response, status
@@ -65,18 +66,18 @@ async def _init_ai_karen_integration() -> None:
     """Initialize AI Karen engine integration services."""
     try:
         # Initialize configuration management
-        from .core.config_manager import get_config_manager
+        from ai_karen_engine.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         config = config_manager.load_config()
         logger.info(f"Configuration loaded for environment: {config.environment}")
         
         # Initialize service registry and core services
-        from .core.service_registry import initialize_services
+        from ai_karen_engine.core.service_registry import initialize_services
         await initialize_services()
         logger.info("AI Karen integration services initialized")
         
         # Set up health monitoring
-        from .core.health_monitor import setup_default_health_checks, get_health_monitor
+        from ai_karen_engine.core.health_monitor import setup_default_health_checks, get_health_monitor
         await setup_default_health_checks()
         health_monitor = get_health_monitor()
         health_monitor.start_monitoring()
@@ -130,9 +131,17 @@ except ImportError:
 
 # -- CORS Config --
 allowed_origins = os.getenv("KARI_CORS_ORIGINS", "*")
+web_ui_origins = os.getenv("KARI_WEB_UI_ORIGINS", "")
+all_origins = [o for o in (
+    *(allowed_origins.split(",") if allowed_origins else []),
+    *(web_ui_origins.split(",") if web_ui_origins else []),
+) if o]
+if not all_origins:
+    all_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[allowed_origins] if allowed_origins != "*" else ["*"],
+    allow_origins=all_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -142,6 +151,9 @@ try:
     app.add_middleware(GZipMiddleware, minimum_size=512)
 except Exception:
     pass
+
+# -- Web API Compatibility Routes (mounted before auto discovery) --
+app.include_router(web_api_compat_router)
 
 # --- Plugin/Router Auto-Discovery (production-ready) ---
 def auto_discover_routers(app):
@@ -209,6 +221,14 @@ async def add_trace_and_audit(request: Request, call_next):
             content={"error": "Internal Server Error", "trace_id": trace_id, "detail": str(e)},
         )
 
+# -- Basic request/response logging --
+@app.middleware("http")
+async def request_response_logger(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code} for {request.url.path}")
+    return response
+
 # -- OAuth2 Bearer Token Validation --
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -248,7 +268,7 @@ async def auth_middleware(request: Request, call_next):
 async def health(request: Request):
     try:
         # Get comprehensive health status from health monitor
-        from .core.health_monitor import get_health_monitor
+        from ai_karen_engine.core.health_monitor import get_health_monitor
         health_monitor = get_health_monitor()
         health_summary = health_monitor.get_health_summary()
         
@@ -289,7 +309,7 @@ async def readyz():
 async def list_services():
     """List all registered services and their status."""
     try:
-        from .core.service_registry import get_service_registry
+        from ai_karen_engine.core.service_registry import get_service_registry
         registry = get_service_registry()
         return {
             "services": registry.list_services(),
@@ -306,7 +326,7 @@ async def list_services():
 async def get_service_health(service_name: str):
     """Get detailed health information for a specific service."""
     try:
-        from .core.health_monitor import get_health_monitor
+        from ai_karen_engine.core.health_monitor import get_health_monitor
         health_monitor = get_health_monitor()
         service_health = health_monitor.get_service_health(service_name)
         
@@ -345,7 +365,7 @@ async def get_service_health(service_name: str):
 async def get_health_summary():
     """Get comprehensive health summary for all services."""
     try:
-        from .core.health_monitor import get_health_monitor
+        from ai_karen_engine.core.health_monitor import get_health_monitor
         health_monitor = get_health_monitor()
         return health_monitor.get_health_summary()
     except Exception as e:
@@ -359,7 +379,7 @@ async def get_health_summary():
 async def trigger_health_check():
     """Trigger immediate health check for all services."""
     try:
-        from .core.health_monitor import get_health_monitor
+        from ai_karen_engine.core.health_monitor import get_health_monitor
         health_monitor = get_health_monitor()
         results = await health_monitor.check_all_services()
         
@@ -386,7 +406,7 @@ async def trigger_health_check():
 async def get_configuration():
     """Get current system configuration (sanitized)."""
     try:
-        from .core.config_manager import get_config
+        from ai_karen_engine.core.config_manager import get_config
         config = get_config()
         
         # Return sanitized configuration (remove sensitive data)

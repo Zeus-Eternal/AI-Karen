@@ -5,7 +5,7 @@ This package contains implementations of core tools converted from TypeScript
 and additional Python-specific tools.
 """
 
-from .core_tools import (
+from ai_karen_engine.services.tools.core_tools import (
     DateTool,
     TimeTool,
     WeatherTool,
@@ -19,7 +19,7 @@ from .core_tools import (
     KarenAnalyticsTool
 )
 
-from .registry import (
+from ai_karen_engine.services.tools.registry import (
     register_core_tools,
     unregister_core_tools,
     get_core_tool_names,

@@ -12,7 +12,7 @@ import logging
 from typing import Any, Dict, List, Optional, Callable
 
 from ai_karen_engine.mcp.registry import ServiceRegistry
-from .models import ExtensionManifest
+from ai_karen_engine.extensions.models import ExtensionManifest
 
 
 class ExtensionMCPServer:

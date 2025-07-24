@@ -11,8 +11,8 @@ from typing import Dict, List, Optional, Any, Union
 from fastapi import APIRouter, HTTPException, Depends, Query, Path, Body
 from pydantic import BaseModel, Field, validator
 
-from ..database.integration_manager import get_database_manager, DatabaseIntegrationManager
-from ..utils.auth import get_current_user, get_tenant_context
+from ai_karen_engine.database.integration_manager import get_database_manager, DatabaseIntegrationManager
+from ai_karen_engine.utils.auth import get_current_user, get_tenant_context
 
 logger = logging.getLogger(__name__)
 

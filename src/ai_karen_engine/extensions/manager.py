@@ -12,17 +12,17 @@ from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.plugins.router import PluginRouter
 
-from .base import BaseExtension
-from .models import (
+from ai_karen_engine.extensions.base import BaseExtension
+from ai_karen_engine.extensions.models import (
     ExtensionContext, 
     ExtensionManifest, 
     ExtensionRecord, 
     ExtensionStatus
 )
-from .registry import ExtensionRegistry
-from .validator import ExtensionValidator
-from .dependency_resolver import DependencyResolver, DependencyError
-from .resource_monitor import ResourceMonitor, ExtensionHealthChecker
+from ai_karen_engine.extensions.registry import ExtensionRegistry
+from ai_karen_engine.extensions.validator import ExtensionValidator
+from ai_karen_engine.extensions.dependency_resolver import DependencyResolver, DependencyError
+from ai_karen_engine.extensions.resource_monitor import ResourceMonitor, ExtensionHealthChecker
 
 
 class ExtensionManager:

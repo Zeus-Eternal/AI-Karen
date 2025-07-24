@@ -9,7 +9,7 @@ import logging
 from typing import Optional
 from fastapi import Depends, HTTPException
 
-from .service_registry import (
+from ai_karen_engine.core.service_registry import (
     get_service_registry,
     AIOrchestrator,
     WebUIMemoryService,
@@ -18,8 +18,8 @@ from .service_registry import (
     ToolService,
     AnalyticsService
 )
-from .config_manager import get_config, AIKarenConfig
-from .health_monitor import get_health_monitor, HealthMonitor
+from ai_karen_engine.core.config_manager import get_config, AIKarenConfig
+from ai_karen_engine.core.health_monitor import get_health_monitor, HealthMonitor
 
 logger = logging.getLogger(__name__)
 

@@ -12,14 +12,14 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 
-from ..services.ai_orchestrator import AIOrchestrator
-from ..services.memory_service import WebUIMemoryService
-from ..services.conversation_service import WebUIConversationService
-from ..services.plugin_service import PluginService
-from ..services.tool_service import ToolService
-from ..services.analytics_service import AnalyticsService
-from ..database.conversation_manager import ConversationManager
-from ..core.embedding_manager import EmbeddingManager
+from ai_karen_engine.services.ai_orchestrator import AIOrchestrator
+from ai_karen_engine.services.memory_service import WebUIMemoryService
+from ai_karen_engine.services.conversation_service import WebUIConversationService
+from ai_karen_engine.services.plugin_service import PluginService
+from ai_karen_engine.services.tool_service import ToolService
+from ai_karen_engine.services.analytics_service import AnalyticsService
+from ai_karen_engine.database.conversation_manager import ConversationManager
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ class ServiceRegistry:
             start_time = time.time()
             
             # Create service config
-            from .services.base import ServiceConfig
+            from ai_karen_engine.core.services.base import ServiceConfig
             service_config = ServiceConfig(
                 name=name,
                 enabled=True,

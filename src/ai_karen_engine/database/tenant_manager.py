@@ -15,10 +15,10 @@ from sqlalchemy import text, select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from .client import MultiTenantPostgresClient
-from .models import Tenant, User, TenantConversation, TenantMemoryEntry
-from ..core.milvus_client import MilvusClient
-from ..core.embedding_manager import EmbeddingManager
+from ai_karen_engine.database.client import MultiTenantPostgresClient
+from ai_karen_engine.database.models import Tenant, User, TenantConversation, TenantMemoryEntry
+from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
 
 logger = logging.getLogger(__name__)
 

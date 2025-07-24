@@ -8,13 +8,13 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
-from .models import ExtensionManifest, ExtensionContext
-from .orchestrator import PluginOrchestrator
-from .data_manager import ExtensionDataManager
+from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionContext
+from ai_karen_engine.extensions.orchestrator import PluginOrchestrator
+from ai_karen_engine.extensions.data_manager import ExtensionDataManager
 
 # MCP integration (optional)
 try:
-    from .mcp_integration import ExtensionMCPServer, ExtensionMCPClient
+    from ai_karen_engine.extensions.mcp_integration import ExtensionMCPServer, ExtensionMCPClient
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False

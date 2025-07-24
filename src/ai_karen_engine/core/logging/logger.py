@@ -10,7 +10,7 @@ from enum import Enum
 from datetime import datetime
 import json
 
-from .formatters import StructuredFormatter, JSONFormatter
+from ai_karen_engine.core.logging.formatters import StructuredFormatter, JSONFormatter
 
 
 class LogLevel(str, Enum):

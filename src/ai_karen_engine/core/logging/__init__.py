@@ -2,15 +2,15 @@
 Unified logging system for AI Karen engine.
 """
 
-from .logger import (
+from ai_karen_engine.core.logging.logger import (
     KarenLogger,
     get_logger,
     configure_logging,
     LogLevel,
     LogFormat
 )
-from .middleware import logging_middleware
-from .formatters import StructuredFormatter, JSONFormatter
+from ai_karen_engine.core.logging.middleware import logging_middleware
+from ai_karen_engine.core.logging.formatters import StructuredFormatter, JSONFormatter
 
 __all__ = [
     "KarenLogger",

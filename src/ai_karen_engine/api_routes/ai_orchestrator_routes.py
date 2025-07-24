@@ -8,15 +8,15 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
-from ..services.ai_orchestrator import (
+from ai_karen_engine.services.ai_orchestrator import (
     AIOrchestrator,
     FlowType,
     FlowInput,
     FlowOutput
 )
-from ..core.dependencies import get_ai_orchestrator_service
+from ai_karen_engine.core.dependencies import get_ai_orchestrator_service
 # Temporarily disable auth imports for web UI integration
-# from ..core.auth import get_current_user, get_tenant_id
+# from ai_karen_engine.core.auth import get_current_user, get_tenant_id
 
 router = APIRouter(prefix="/api/ai", tags=["ai-orchestrator"])
 
