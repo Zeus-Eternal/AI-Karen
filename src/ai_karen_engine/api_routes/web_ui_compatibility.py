@@ -551,17 +551,28 @@ async def memory_store_compatibility(
         # Transform request to backend format
         backend_request = WebUITransformationService.transform_web_ui_memory_store_request(request)
         
+        # Validate user ID - store anonymously if not a valid UUID
+        user_id = request.user_id
+        if user_id:
+            try:
+                uuid.UUID(str(user_id))
+            except (ValueError, AttributeError, TypeError):
+                logger.warning(
+                    f"[{request_id}] Invalid user ID '{user_id}' provided, storing anonymously"
+                )
+                user_id = None
+
         # Store memory
         memory_id = await memory_service.store_web_ui_memory(
             tenant_id="default",
             content=backend_request.content,
-            user_id=request.user_id or "anonymous",
+            user_id=user_id,
             ui_source=backend_request.ui_source,
             session_id=backend_request.session_id,
             memory_type=backend_request.memory_type,
             tags=backend_request.tags,
             metadata=backend_request.metadata,
-            ai_generated=backend_request.ai_generated
+            ai_generated=backend_request.ai_generated,
         )
         
         # Transform response to web UI format

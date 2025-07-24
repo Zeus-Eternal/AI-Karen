@@ -159,8 +159,20 @@ class MemoryManager:
             embedding = np.array(embedding_raw) if not isinstance(embedding_raw, np.ndarray) else embedding_raw
             embedding_time = time.time() - embedding_start
             
+            # Normalize user ID if provided
+            normalized_user_id = None
+            if user_id:
+                try:
+                    normalized_user_id = str(uuid.UUID(str(user_id)))
+                except (ValueError, AttributeError, TypeError):
+                    logger.warning(
+                        f"Invalid user_id '{user_id}' - storing memory without user reference"
+                    )
+
             # Check for surprise (novelty)
-            is_surprising = await self._check_surprise(tenant_id, embedding, user_id)
+            is_surprising = await self._check_surprise(
+                tenant_id, embedding, normalized_user_id
+            )
             if not is_surprising:
                 logger.debug(f"Content not surprising enough, skipping storage: {content[:50]}...")
                 return None
@@ -176,16 +188,16 @@ class MemoryManager:
                 metadata=metadata or {},
                 timestamp=time.time(),
                 ttl=ttl,
-                user_id=user_id,
+                user_id=normalized_user_id,
                 session_id=session_id,
-                tags=tags or []
+                tags=tags or [],
             )
             
             # Store in vector database
             collection_name = self._get_collection_name(tenant_id)
             vector_metadata = {
                 "memory_id": memory_id,
-                "user_id": user_id or "",
+                "user_id": normalized_user_id or "",
                 "session_id": session_id or "",
                 "timestamp": memory_entry.timestamp,
                 "ttl": int(ttl.timestamp()),
@@ -216,7 +228,9 @@ class MemoryManager:
                 memory_record = TenantMemoryEntry(
                     id=uuid.UUID(memory_id),
                     vector_id=memory_id,
-                    user_id=uuid.UUID(user_id) if user_id else None,
+                    user_id=uuid.UUID(normalized_user_id)
+                    if normalized_user_id
+                    else None,
                     session_id=session_id,
                     content=content,
                     embedding_id=memory_id,
