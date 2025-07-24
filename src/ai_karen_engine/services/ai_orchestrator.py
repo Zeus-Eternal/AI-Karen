@@ -11,8 +11,8 @@ import logging
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime
 
-from ..core.services.base import BaseService, ServiceConfig
-from ..models.shared_types import (
+from ai_karen_engine.core.services.base import BaseService, ServiceConfig
+from ai_karen_engine.models.shared_types import (
     FlowType, FlowInput, FlowOutput, DecideActionInput, DecideActionOutput,
     ToolType, ToolInput, MemoryDepth, PersonalityTone, PersonalityVerbosity,
     AiData, MemoryContext, PluginInfo

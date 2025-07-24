@@ -153,7 +153,7 @@ class MemoryManager:
         try:
             # Generate embedding
             embedding_start = time.time()
-            embedding_raw = self.embedding_manager.embed(content)
+            embedding_raw = await self.embedding_manager.get_embedding(content)
             # Ensure it's a numpy array for .tolist() compatibility
             import numpy as np
             embedding = np.array(embedding_raw) if not isinstance(embedding_raw, np.ndarray) else embedding_raw
