@@ -108,6 +108,12 @@ docker compose up -d postgres redis elasticsearch milvus
 ### 3. Initialize Databases
 
 ```bash
+
+# Initialize PostgreSQL schema
+docker-compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/001_create_tables.sql
+# Create memory_entries table
+docker-compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/004_create_memory_entries_table.sql
+
 # Apply PostgreSQL migrations (creates all tables including `memory_entries`)
 ./docker/database/scripts/migrate.sh --service postgres
 

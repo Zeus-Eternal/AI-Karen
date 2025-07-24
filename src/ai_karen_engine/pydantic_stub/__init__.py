@@ -54,3 +54,14 @@ class BaseModel:
     # Pydantic v2 compatible name
     def model_dump(self) -> dict[str, Any]:
         return self.dict()
+
+# Simple ConfigDict replacement
+class ConfigDict(dict):
+    """Pydantic ConfigDict stub."""
+    pass
+
+# Simple decorator for validators (no-op)
+def validator(*fields, **kwargs):
+    def decorator(func):
+        return func
+    return decorator
