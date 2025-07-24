@@ -110,6 +110,8 @@ docker compose up -d postgres redis elasticsearch milvus
 ```bash
 # Initialize PostgreSQL schema
 docker-compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/001_create_tables.sql
+# Create memory_entries table
+docker-compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/004_create_memory_entries_table.sql
 
 # Create Elasticsearch index
 curl -X PUT "http://localhost:9200/ai_karen_index"
