@@ -292,6 +292,7 @@ helm install ai-karen ./charts/kari/ \
 | `ENABLE_SELF_REFACTOR` | Enable self-refactoring | `false` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `KARI_CORS_ORIGINS` | Comma-separated list of allowed CORS origins | `*` |
+| `KARI_ECO_MODE` | Skip heavy NLP model loading | `false` |
 
 ---
 

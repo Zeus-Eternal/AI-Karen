@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 from ai_karen_engine.core.embedding_manager import EmbeddingManager
@@ -15,20 +16,31 @@ async def load_default_models() -> None:
     """Initialize default models if they haven't been loaded."""
     global embedding_manager, spacy_client, classifier
 
+    eco_mode = os.getenv("KARI_ECO_MODE", "false").lower() in {"1", "true", "yes"}
+
     if embedding_manager is None:
         embedding_manager = EmbeddingManager()
-        await embedding_manager.initialize()
-        logger.info("Default embedding model loaded: %s", embedding_manager.model_loaded)
+        if not eco_mode:
+            await embedding_manager.initialize()
+        logger.info(
+            "Default embedding model loaded: %s",
+            embedding_manager.model_loaded,
+        )
 
-    if spacy_client is None:
+    if not eco_mode and spacy_client is None:
         try:
             spacy_client = SpaCyClient()
-            logger.info("SpaCy model loaded: %s", SpaCyClient.DEFAULT_MODEL if hasattr(SpaCyClient, 'DEFAULT_MODEL') else 'default')
+            logger.info(
+                "SpaCy model loaded: %s",
+                SpaCyClient.DEFAULT_MODEL
+                if hasattr(SpaCyClient, "DEFAULT_MODEL")
+                else "default",
+            )
         except Exception as exc:  # pragma: no cover - runtime only
             logger.error("Failed to load spaCy model: %s", exc)
             spacy_client = None
 
-    if classifier is None:
+    if not eco_mode and classifier is None:
         try:
             classifier = BasicClassifier(Path("data/default_classifier"))
             logger.info("Basic classifier ready")
