@@ -307,6 +307,19 @@ helm install ai-karen ./charts/kari/ \
 The memory query endpoint (`/api/memory/query`) returns at most **100 results** by default.
 You can override this cap by providing the `result_limit` parameter in your request.
 
+### Tenant Header
+
+Most API endpoints are tenant-aware. Include an `X-Tenant-ID` header with your
+tenant name in requests that are not listed under the public paths. For local
+testing you can use `default`:
+
+```bash
+curl -H "X-Tenant-ID: default" \
+     -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "hello"}' http://localhost:8000/chat
+```
+
 ### Authentication
 
 ```bash

@@ -70,6 +70,17 @@ curl -X POST -H "Content-Type: application/json" \
   http://localhost:8000/api/memory/query
 ```
 
+### Tenant Header
+
+Most non-public endpoints require a tenant identifier. Include the header
+`X-Tenant-ID` with your tenant name when calling the API:
+
+```bash
+curl -H "X-Tenant-ID: default" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "hello"}' http://localhost:8000/chat
+```
+
 ### 5. List and Reload Plugins
 
 ```bash
