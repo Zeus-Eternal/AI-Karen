@@ -64,3 +64,4 @@ server.pid
 /.kiro
 /.github
 /models
+/data/default_classifier
