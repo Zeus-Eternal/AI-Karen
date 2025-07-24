@@ -121,6 +121,28 @@ async def _init_extensions() -> None:
         logger.error(f"Failed to load extensions: {e}")
         # Don't fail startup if extensions fail to load
 
+
+@app.on_event("startup")
+async def _bootstrap_memory_defaults() -> None:
+    """Ensure memory tables exist and default models are loaded."""
+    try:
+        from .core.service_registry import get_service_registry
+        from ai_karen_engine.core import default_models
+
+        registry = get_service_registry()
+        memory_service = await registry.get_service("memory_service")
+        base_manager = memory_service.base_manager
+        db_client = base_manager.db_client
+        db_client.create_shared_tables()
+        db_client.ensure_memory_table("default")
+
+        # Load default models
+        await default_models.load_default_models()
+        logger.info("Default models initialized")
+    except Exception as exc:
+        logger.error(f"Failed to bootstrap memory defaults: {exc}")
+        raise RuntimeError("Memory bootstrap failed") from exc
+
 # -- Prometheus Metrics (optional) --
 try:
     from prometheus_client import make_asgi_app
@@ -211,7 +233,6 @@ def auto_discover_routers(app):
     try:
         from ai_karen_engine import api_routes
         package = api_routes
-        prefix = ""  # Routes already have their own prefixes
     except ImportError:
         package = None
 

@@ -14,7 +14,7 @@ except Exception:  # pragma: no cover - optional dep
     spacy = None
 
 
-DEFAULT_MODEL = "en_core_web_trf"
+DEFAULT_MODEL = "en_core_web_sm"
 
 
 class SpaCyClient:

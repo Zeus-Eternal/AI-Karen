@@ -10,7 +10,7 @@ import uuid
 
 try:
     import asyncpg
-    from sqlalchemy import create_engine, text, MetaData
+    from sqlalchemy import create_engine, text, MetaData, inspect
     from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.exc import SQLAlchemyError
@@ -265,6 +265,27 @@ class MultiTenantPostgresClient:
             
         except Exception as e:
             logger.error(f"Failed to check tenant schema {schema_name}: {e}")
+            return False
+
+    def ensure_memory_table(self, tenant_id: Union[str, uuid.UUID]) -> bool:
+        """Ensure memory_entries table exists for the tenant."""
+        schema_name = self.get_tenant_schema_name(tenant_id)
+
+        try:
+            with self._sync_engine.connect() as conn:
+                inspector = inspect(conn)
+                if "memory_entries" not in inspector.get_table_names(schema=schema_name):
+                    logger.warning(
+                        f"[FATAL] memory_entries table missing for tenant {tenant_id}; creating"
+                    )
+                    self.create_tenant_schema(tenant_id)
+                else:
+                    logger.info(
+                        f"memory_entries table confirmed for tenant {tenant_id}"
+                    )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to ensure memory table for tenant {tenant_id}: {e}")
             return False
     
     def get_tenant_table_name(self, table_name: str, tenant_id: Union[str, uuid.UUID]) -> str:

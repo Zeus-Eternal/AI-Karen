@@ -146,12 +146,17 @@ class ServiceRegistry:
                 from ai_karen_engine.database.memory_manager import MemoryManager
                 from ai_karen_engine.database.client import MultiTenantPostgresClient
                 from ai_karen_engine.core.milvus_client import MilvusClient
-                from ai_karen_engine.core.embedding_manager import EmbeddingManager
+                from ai_karen_engine.core import default_models
                 
                 # Initialize required components
                 db_client = MultiTenantPostgresClient()
                 milvus_client = MilvusClient()
-                embedding_manager = EmbeddingManager()
+                await default_models.load_default_models()
+                embedding_manager = default_models.get_embedding_manager()
+
+                # Ensure default tenant schema and memory table exist
+                db_client.create_shared_tables()
+                db_client.ensure_memory_table("default")
                 
                 # Create memory manager instance
                 memory_manager = MemoryManager(
