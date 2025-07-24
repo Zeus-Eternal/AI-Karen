@@ -9,7 +9,7 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 
-from ..models.web_ui_types import (
+from ai_karen_engine.models.web_ui_types import (
     ChatProcessRequest,
     ChatProcessResponse,
     WebUIMemoryQuery,
@@ -22,10 +22,10 @@ from ..models.web_ui_types import (
     WebUIUsageAnalytics,
     WebUIHealthCheck
 )
-from ..models.shared_types import FlowInput, FlowOutput, HandleUserMessageResult
-from ..api_routes.ai_orchestrator_routes import ConversationProcessingRequest
-from ..api_routes.memory_routes import QueryMemoryRequest, StoreMemoryRequest, MemoryResponse
-from ..services.memory_service import MemoryType, UISource, WebUIMemoryQuery as ServiceWebUIMemoryQuery
+from ai_karen_engine.models.shared_types import FlowInput, FlowOutput, HandleUserMessageResult
+from ai_karen_engine.api_routes.ai_orchestrator_routes import ConversationProcessingRequest
+from ai_karen_engine.api_routes.memory_routes import QueryMemoryRequest, StoreMemoryRequest, MemoryResponse
+from ai_karen_engine.services.memory_service import MemoryType, UISource, WebUIMemoryQuery as ServiceWebUIMemoryQuery
 
 logger = logging.getLogger(__name__)
 

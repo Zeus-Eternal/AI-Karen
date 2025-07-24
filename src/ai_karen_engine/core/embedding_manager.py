@@ -27,3 +27,7 @@ class EmbeddingManager:
         vector = [b / 255 for b in h[: self.dim]]
         record_metric("embedding_time_seconds", time.time() - start)
         return vector
+    
+    async def get_embedding(self, text: str) -> List[float]:
+        """Async wrapper for embed method to maintain contract compatibility."""
+        return self.embed(text)

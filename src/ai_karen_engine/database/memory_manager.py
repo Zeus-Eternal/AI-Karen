@@ -17,10 +17,10 @@ import numpy as np
 from sqlalchemy import text, select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .client import MultiTenantPostgresClient
-from .models import TenantMemoryEntry
-from ..core.milvus_client import MilvusClient
-from ..core.embedding_manager import EmbeddingManager
+from ai_karen_engine.database.client import MultiTenantPostgresClient
+from ai_karen_engine.database.models import TenantMemoryEntry
+from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +153,10 @@ class MemoryManager:
         try:
             # Generate embedding
             embedding_start = time.time()
-            embedding = self.embedding_manager.embed(content)
+            embedding_raw = self.embedding_manager.embed(content)
+            # Ensure it's a numpy array for .tolist() compatibility
+            import numpy as np
+            embedding = np.array(embedding_raw) if not isinstance(embedding_raw, np.ndarray) else embedding_raw
             embedding_time = time.time() - embedding_start
             
             # Check for surprise (novelty)
@@ -276,7 +279,10 @@ class MemoryManager:
                     return cached_result
             
             # Generate query embedding
-            query_embedding = await self.embedding_manager.get_embedding(query.text)
+            query_embedding_raw = await self.embedding_manager.get_embedding(query.text)
+            # Ensure it's a numpy array for .tolist() compatibility
+            import numpy as np
+            query_embedding = np.array(query_embedding_raw) if not isinstance(query_embedding_raw, np.ndarray) else query_embedding_raw
             
             # Search vector database
             collection_name = self._get_collection_name(tenant_id)
@@ -520,31 +526,20 @@ class MemoryManager:
             logger.warning(f"Failed to check surprise, assuming surprising: {e}")
             return True
     
-    def _build_metadata_filter(self, query: MemoryQuery) -> Dict[str, Any]:
+    def _build_metadata_filter(self, query: MemoryQuery) -> Optional[Dict[str, Any]]:
         """Build metadata filter for vector search."""
-        filter_conditions = []
+        metadata_filter = {}
         
         if query.user_id:
-            filter_conditions.append(f"user_id == '{query.user_id}'")
+            metadata_filter["user_id"] = query.user_id
         
         if query.session_id:
-            filter_conditions.append(f"session_id == '{query.session_id}'")
+            metadata_filter["session_id"] = query.session_id
         
-        if query.time_range:
-            start_ts = int(query.time_range[0].timestamp())
-            end_ts = int(query.time_range[1].timestamp())
-            filter_conditions.append(f"timestamp >= {start_ts} and timestamp <= {end_ts}")
+        # For the in-memory MilvusClient, we'll use simple key-value matching
+        # More complex filters like time ranges and TTL will be handled in post-processing
         
-        # TTL filter (not expired)
-        current_ts = int(datetime.utcnow().timestamp())
-        filter_conditions.append(f"ttl > {current_ts}")
-        
-        if query.tags:
-            # This is simplified - in practice, you'd need more complex tag filtering
-            for tag in query.tags:
-                filter_conditions.append(f"tags like '%{tag}%'")
-        
-        return " and ".join(filter_conditions) if filter_conditions else None
+        return metadata_filter if metadata_filter else None
     
     async def _get_memories_from_postgres(
         self,

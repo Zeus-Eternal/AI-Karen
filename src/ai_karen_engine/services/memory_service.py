@@ -17,9 +17,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update, and_, or_, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database.memory_manager import MemoryManager, MemoryEntry, MemoryQuery
-from ..database.models import TenantMemoryEntry, TenantConversation
-from ..database.client import MultiTenantPostgresClient
+from ai_karen_engine.database.memory_manager import MemoryManager, MemoryEntry, MemoryQuery
+from ai_karen_engine.database.models import TenantMemoryEntry, TenantConversation
+from ai_karen_engine.database.client import MultiTenantPostgresClient
 
 logger = logging.getLogger(__name__)
 

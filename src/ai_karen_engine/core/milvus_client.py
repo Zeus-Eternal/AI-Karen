@@ -64,9 +64,10 @@ class MilvusClient:
         dot = sum(x * y for x, y in zip(v1, v2))
         return dot / (norm1 * norm2)
 
-    def search(
+    def search_sync(
         self, vector: List[float], top_k: int = 3, metadata_filter: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
+        """Synchronous search method (original implementation)."""
         start = time.time()
         with self._lock:
             self._prune()
@@ -80,6 +81,48 @@ class MilvusClient:
             results.sort(key=lambda r: r["score"], reverse=True)
         record_metric("vector_search_latency_seconds", time.time() - start)
         return results[:top_k]
+    
+    async def search(
+        self, vector: Optional[List[float]] = None, top_k: int = 3, metadata_filter: Optional[Dict[str, Any]] = None, 
+        collection_name: Optional[str] = None, query_vectors: Optional[List[List[float]]] = None, **kwargs
+    ) -> List[List[Dict[str, Any]]]:
+        """Async search for similar vectors with memory manager compatible format."""
+        # Handle different calling conventions
+        if query_vectors and len(query_vectors) > 0:
+            vector = query_vectors[0]  # Use first query vector
+        
+        if vector is None:
+            return [[]]  # Return nested list format expected by memory manager
+        
+        # Call the synchronous implementation
+        raw_results = self.search_sync(vector, top_k, metadata_filter)
+        
+        # Convert to memory manager expected format
+        formatted_results = []
+        for result in raw_results:
+            # Create mock result object with expected attributes
+            mock_result = type('MockResult', (), {
+                'distance': result['score'],
+                'entity': {'memory_id': str(result['id'])}
+            })()
+            formatted_results.append(mock_result)
+        
+        # Return as nested list (first query results)
+        return [formatted_results]
+    
+    async def insert(self, collection_name: Optional[str] = None, vectors: Optional[List[List[float]]] = None, 
+                    metadata: Optional[List[Dict[str, Any]]] = None, **kwargs) -> str:
+        """Async wrapper for upsert operations to maintain contract compatibility."""
+        try:
+            if vectors and len(vectors) > 0 and metadata and len(metadata) > 0:
+                # Use the first vector and metadata
+                vector = vectors[0]
+                payload = metadata[0]
+                record_id = self.upsert(vector, payload)
+                return str(record_id)
+            return None
+        except Exception as e:
+            raise Exception(f"Milvus insert failed: {e}")
 
 # === KARI AI ADAPTERS: PLUG FOR MEMORY MANAGER ===
 # ⚡ This is what you import elsewhere!
