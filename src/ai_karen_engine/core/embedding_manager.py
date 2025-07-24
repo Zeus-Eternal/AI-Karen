@@ -27,6 +27,12 @@ class EmbeddingManager:
         vector = [b / 255 for b in h[: self.dim]]
         record_metric("embedding_time_seconds", time.time() - start)
         return vector
+
+    async def initialize(self) -> None:
+        """Async placeholder for initialization logic."""
+        # In this simple implementation there is nothing to initialize, but
+        # the async method keeps the contract consistent with other services.
+        return None
     
     async def get_embedding(self, text: str) -> List[float]:
         """Async wrapper for embed method to maintain contract compatibility."""

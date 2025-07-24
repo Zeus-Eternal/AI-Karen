@@ -5,7 +5,11 @@ Tool registry utilities for automatic tool registration and management.
 import logging
 from typing import List, Optional
 
-from ..tool_service import ToolService, ToolRegistry, get_tool_service
+from ai_karen_engine.services.tool_service import (
+    ToolService,
+    ToolRegistry,
+    get_tool_service,
+)
 from .core_tools import (
     DateTool,
     TimeTool,
@@ -122,7 +126,7 @@ async def initialize_core_tools() -> ToolService:
     Returns:
         Initialized tool service with core tools registered
     """
-    from ..tool_service import initialize_tool_service
+    from ai_karen_engine.services.tool_service import initialize_tool_service
     
     # Initialize tool service
     tool_service = await initialize_tool_service()

@@ -17,10 +17,20 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update, and_, or_, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database.conversation_manager import ConversationManager, Conversation, Message, MessageRole
-from ..database.models import TenantConversation
-from ..services.memory_service import WebUIMemoryService, WebUIMemoryQuery, MemoryType, UISource
-from ..database.client import MultiTenantPostgresClient
+from ai_karen_engine.database.conversation_manager import (
+    ConversationManager,
+    Conversation,
+    Message,
+    MessageRole,
+)
+from ai_karen_engine.database.models import TenantConversation
+from ai_karen_engine.services.memory_service import (
+    WebUIMemoryService,
+    WebUIMemoryQuery,
+    MemoryType,
+    UISource,
+)
+from ai_karen_engine.database.client import MultiTenantPostgresClient
 
 logger = logging.getLogger(__name__)
 

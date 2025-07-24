@@ -27,6 +27,21 @@ class MilvusClient:
         self._data: Dict[int, _Record] = {}
         self._id = 0
         self._lock = threading.Lock()
+        self._connected = True
+
+    async def connect(self) -> None:
+        """Async connection hook for API compatibility."""
+        self._connected = True
+
+    async def disconnect(self) -> None:
+        """Async disconnect hook clearing all state."""
+        self._connected = False
+        # No real connection so nothing to close.
+
+    async def health_check(self) -> Dict[str, str]:
+        """Return simple health information."""
+        status = "healthy" if self._connected else "disconnected"
+        return {"status": status, "records": str(len(self._data))}
 
     def _prune(self) -> None:
         if self.ttl_seconds is None:
@@ -50,12 +65,27 @@ class MilvusClient:
         record_metric("vector_upsert_seconds", time.time() - start)
         return self._id
 
-    def delete(self, ids: Iterable[int]) -> None:
+    def delete_sync(self, ids: Iterable[int]) -> None:
         start = time.time()
         with self._lock:
             for rid in list(ids):
-                self._data.pop(rid, None)
+                self._data.pop(int(rid), None)
         record_metric("vector_delete_seconds", time.time() - start)
+
+    async def delete(
+        self,
+        collection_name: Optional[str] = None,
+        ids: Optional[Iterable[int]] = None,
+        filter_expr: Optional[str] = None,
+        **kwargs,
+    ) -> None:
+        """Async delete wrapper compatible with memory manager."""
+        if ids is None and filter_expr:
+            key = filter_expr.split("==")[-1].strip().strip("'")
+            ids = [rid for rid, rec in self._data.items() if rec.payload.get("memory_id") == key]
+
+        if ids:
+            self.delete_sync(ids)
 
     @staticmethod
     def _similarity(v1: List[float], norm1: float, v2: List[float], norm2: float) -> float:
