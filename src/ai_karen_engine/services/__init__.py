@@ -21,6 +21,11 @@ __all__ = [
     "get_plugin_marketplace_info",
     # Memory service
     "WebUIMemoryService",
+    "transform_web_ui_memory_query",
+    "transform_memory_entries_to_web_ui",
+    "ensure_js_timestamp",
+    "convert_datetime_to_js_timestamp",
+    "sanitize_metadata",
     # Tool services
     "ToolService",
     "ToolRegistry",
@@ -88,6 +93,13 @@ from ai_karen_engine.services.plugin_execution import PluginExecutionEngine
 
 # Import Memory service
 from ai_karen_engine.services.memory_service import WebUIMemoryService
+from ai_karen_engine.services.memory_compatibility import (
+    transform_web_ui_memory_query,
+    transform_memory_entries_to_web_ui,
+    ensure_js_timestamp,
+    convert_datetime_to_js_timestamp,
+    sanitize_metadata,
+)
 
 # Import Tool services
 from ai_karen_engine.services.tool_service import (

@@ -5,20 +5,27 @@ FastAPI routes for AI Orchestrator service integration.
 import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 
-from ..services.ai_orchestrator import (
+from ai_karen_engine.services.ai_orchestrator import (
     AIOrchestrator,
     FlowType,
     FlowInput,
     FlowOutput
 )
-from ..core.dependencies import get_ai_orchestrator_service
+from ai_karen_engine.core.dependencies import get_ai_orchestrator_service
+from ai_karen_engine.core.logging import get_logger
+from ai_karen_engine.models.error_responses import (
+    WebAPIErrorCode,
+    create_error_response,
+)
 # Temporarily disable auth imports for web UI integration
 # from ..core.auth import get_current_user, get_tenant_id
 
 router = APIRouter(prefix="/api/ai", tags=["ai-orchestrator"])
+
+logger = get_logger(__name__)
 
 
 # Request/Response Models
@@ -120,7 +127,15 @@ async def process_flow(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to process flow: {str(e)}")
+        logger.exception("Failed to process flow", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.AI_PROCESSING_ERROR,
+                "Failed to process flow",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/decide-action", response_model=FlowResponse)
@@ -162,7 +177,15 @@ async def decide_action(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to process decide action: {str(e)}")
+        logger.exception("Failed to process decide action", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.AI_PROCESSING_ERROR,
+                "Failed to process decide action",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/conversation-processing", response_model=FlowResponse)
@@ -211,7 +234,15 @@ async def conversation_processing(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to process conversation: {str(e)}")
+        logger.exception("Failed to process conversation", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.AI_PROCESSING_ERROR,
+                "Failed to process conversation",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.get("/flows", response_model=AvailableFlowsResponse)
@@ -238,7 +269,15 @@ async def get_available_flows(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get available flows: {str(e)}")
+        logger.exception("Failed to get available flows", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.SERVICE_ERROR,
+                "Failed to get available flows",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.get("/metrics", response_model=FlowMetricsResponse)
@@ -259,7 +298,15 @@ async def get_flow_metrics(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+        logger.exception("Failed to get metrics", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.SERVICE_ERROR,
+                "Failed to get metrics",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 async def _generate_starter_prompts(_: Optional[str] = None) -> Dict[str, Any]:
@@ -284,7 +331,15 @@ async def generate_starter_prompts_get():
     try:
         return await _generate_starter_prompts()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate starter prompts: {str(e)}")
+        logger.exception("Failed to generate starter prompts", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.SERVICE_ERROR,
+                "Failed to generate starter prompts",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.post("/generate-starter")
@@ -296,7 +351,15 @@ async def generate_starter_prompts_post(body: Optional[Dict[str, Any]] = None):
             assistant_type = body.get("assistant_type") or body.get("assistantType")
         return await _generate_starter_prompts(assistant_type)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate starter prompts: {str(e)}")
+        logger.exception("Failed to generate starter prompts", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=create_error_response(
+                WebAPIErrorCode.SERVICE_ERROR,
+                "Failed to generate starter prompts",
+                {"error": str(e)},
+            ).dict(),
+        )
 
 
 @router.get("/health")

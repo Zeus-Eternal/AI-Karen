@@ -37,6 +37,13 @@ from .shared_types import (
     PluginInfo,
 )
 
+from .error_responses import (
+    WebAPIErrorCode,
+    WebAPIErrorResponse,
+    ValidationErrorDetail,
+    create_error_response,
+)
+
 __all__ = [
     # Enums
     "MessageRole",
@@ -67,4 +74,10 @@ __all__ = [
     "ToolInput",
     "MemoryContext",
     "PluginInfo",
+
+    # Error handling
+    "WebAPIErrorCode",
+    "WebAPIErrorResponse",
+    "ValidationErrorDetail",
+    "create_error_response",
 ]
