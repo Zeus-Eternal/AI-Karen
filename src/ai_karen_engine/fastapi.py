@@ -18,6 +18,7 @@ Features:
 import os
 import logging
 import uuid
+from datetime import datetime
 
 from ai_karen_engine.core.memory.manager import init_memory
 from ai_karen_engine.utils.auth import validate_session
@@ -128,15 +129,59 @@ try:
 except ImportError:
     logger.info("Prometheus metrics not installed; skipping /metrics mount")
 
-# -- CORS Config --
+# -- Enhanced CORS Config for Web UI Integration --
 allowed_origins = os.getenv("KARI_CORS_ORIGINS", "*")
+
+# Parse multiple origins if provided as comma-separated string
+if allowed_origins != "*":
+    origins_list = [origin.strip() for origin in allowed_origins.split(",")]
+else:
+    origins_list = ["*"]
+
+# Add common web UI development origins if in development mode
+if os.getenv("KARI_ENV", "local").lower() in ["local", "development", "dev"]:
+    dev_origins = [
+        "http://localhost:3000",  # Next.js default
+        "http://localhost:3001",  # Alternative port
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://localhost:8080",  # Vue/other frameworks
+        "http://127.0.0.1:8080",
+    ]
+    if origins_list == ["*"]:
+        origins_list = dev_origins
+    else:
+        origins_list.extend(dev_origins)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[allowed_origins] if allowed_origins != "*" else ["*"],
+    allow_origins=origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "X-Web-UI-Compatible",
+        "X-Kari-Trace-Id",
+        "User-Agent",
+        "Cache-Control",
+        "Pragma",
+    ],
+    expose_headers=[
+        "X-Kari-Trace-Id",
+        "X-Web-UI-Compatible", 
+        "X-Response-Time-Ms",
+        "Content-Length",
+        "Content-Type",
+    ],
+    max_age=86400,  # 24 hours for preflight cache
 )
+
+logger.info(f"CORS configured for origins: {origins_list}")
 # -- GZip for payloads (auto, if available) --
 try:
     app.add_middleware(GZipMiddleware, minimum_size=512)
@@ -147,11 +192,22 @@ except Exception:
 def auto_discover_routers(app):
     """
     Scans 'api_routes' and 'plugins' for FastAPI routers and mounts them.
+    Prioritizes web API compatibility routes for proper precedence.
     """
     import importlib
     import pkgutil
 
-    # Internal app routes (api_routes/*.py)
+    # First, explicitly mount web API compatibility router for proper precedence
+    try:
+        from ai_karen_engine.api_routes.web_ui_compatibility import router as web_api_router
+        app.include_router(web_api_router)
+        logger.info("Mounted web API compatibility router with priority")
+    except ImportError as e:
+        logger.warning(f"Web API compatibility router not found: {e}")
+    except Exception as e:
+        logger.error(f"Failed to mount web API compatibility router: {e}")
+
+    # Internal app routes (api_routes/*.py) - skip web_ui_compatibility as it's already mounted
     try:
         from ai_karen_engine import api_routes
         package = api_routes
@@ -161,6 +217,10 @@ def auto_discover_routers(app):
 
     if package:
         for loader, name, is_pkg in pkgutil.iter_modules(package.__path__):
+            # Skip web_ui_compatibility as it's already mounted with priority
+            if name == "web_ui_compatibility":
+                continue
+                
             try:
                 mod = importlib.import_module(f"ai_karen_engine.api_routes.{name}")
                 router = getattr(mod, "router", None)
@@ -207,6 +267,95 @@ async def add_trace_and_audit(request: Request, call_next):
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"error": "Internal Server Error", "trace_id": trace_id, "detail": str(e)},
+        )
+
+# -- Web UI API Request/Response Logging Middleware --
+@app.middleware("http")
+async def web_ui_api_logging(request: Request, call_next):
+    """Enhanced logging middleware for web UI API endpoints."""
+    
+    # Check if this is a web UI API request
+    is_web_ui_api = (
+        request.url.path.startswith("/api/chat/") or
+        request.url.path.startswith("/api/memory/") or
+        request.url.path.startswith("/api/plugins/") or
+        request.url.path.startswith("/api/analytics/") or
+        request.url.path.startswith("/api/health")
+    )
+    
+    if not is_web_ui_api:
+        return await call_next(request)
+    
+    trace_id = getattr(request.state, 'trace_id', str(uuid.uuid4()))
+    start_time = datetime.utcnow()
+    
+    # Log request details for web UI endpoints
+    user_agent = request.headers.get("user-agent", "unknown")
+    content_type = request.headers.get("content-type", "unknown")
+    
+    logger.info(
+        f"[{trace_id}] WEB_UI_API {request.method} {request.url.path} "
+        f"from {request.client.host} UA: {user_agent[:50]} CT: {content_type}"
+    )
+    
+    # Log request body for POST/PUT requests (with size limit for security)
+    if request.method in ["POST", "PUT", "PATCH"] and os.getenv("KARI_LOG_REQUEST_BODY", "false").lower() == "true":
+        try:
+            body = await request.body()
+            if len(body) < 1000:  # Only log small request bodies
+                logger.debug(f"[{trace_id}] Request body: {body.decode('utf-8', errors='ignore')}")
+            else:
+                logger.debug(f"[{trace_id}] Request body size: {len(body)} bytes (too large to log)")
+        except Exception as e:
+            logger.debug(f"[{trace_id}] Could not read request body: {e}")
+    
+    try:
+        response = await call_next(request)
+        
+        # Calculate response time
+        end_time = datetime.utcnow()
+        response_time_ms = (end_time - start_time).total_seconds() * 1000
+        
+        # Log response details
+        logger.info(
+            f"[{trace_id}] WEB_UI_API {request.method} {request.url.path} "
+            f"status={response.status_code} time={response_time_ms:.2f}ms"
+        )
+        
+        # Add web UI specific headers
+        response.headers["X-Web-UI-Compatible"] = "true"
+        response.headers["X-Response-Time-Ms"] = str(int(response_time_ms))
+        
+        # Log error responses for debugging
+        if response.status_code >= 400:
+            logger.warning(
+                f"[{trace_id}] WEB_UI_API Error {response.status_code} for {request.method} {request.url.path} "
+                f"time={response_time_ms:.2f}ms"
+            )
+        
+        return response
+        
+    except Exception as e:
+        end_time = datetime.utcnow()
+        response_time_ms = (end_time - start_time).total_seconds() * 1000
+        
+        logger.error(
+            f"[{trace_id}] WEB_UI_API Exception in {request.method} {request.url.path} "
+            f"time={response_time_ms:.2f}ms: {e}", 
+            exc_info=True
+        )
+        
+        # Return structured error response for web UI
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": "Internal Server Error",
+                "message": "An unexpected error occurred while processing your request",
+                "type": "INTERNAL_SERVER_ERROR",
+                "trace_id": trace_id,
+                "timestamp": datetime.utcnow().isoformat(),
+                "details": {"error_type": type(e).__name__} if os.getenv("KARI_DEBUG", "false").lower() == "true" else None
+            },
         )
 
 # -- OAuth2 Bearer Token Validation --
