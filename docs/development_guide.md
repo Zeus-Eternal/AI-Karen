@@ -50,6 +50,7 @@ Set these required environment variables before development:
 - `KARI_LLM_TIMEOUT` - LLM request timeout in seconds (default: 60)
 - `KARI_ENV` - Selects the runtime environment. Use `local` (the default) to
   run entirely on your machine without relying on external services.
+- `KARI_ECO_MODE` - Skip heavy NLP model loading for low-resource environments
 
 ### Local Development Setup
 
