@@ -508,6 +508,29 @@ class TestWebUIMemoryService:
         assert result == "memory-ttl"
         call_args = mock_base_manager.store_memory.call_args
         assert call_args.kwargs["ttl_hours"] == 24
+
+    @pytest.mark.asyncio
+    async def test_store_memory_without_user_id(self, memory_service, mock_base_manager):
+        """Ensure memories can be stored when user_id is missing."""
+        tenant_id = str(uuid.uuid4())
+        content = "Anonymous memory"
+
+        mock_base_manager.store_memory = AsyncMock(return_value="memory-anon")
+        memory_service._update_web_ui_fields = AsyncMock()
+        memory_service._generate_auto_tags = AsyncMock(return_value=[])
+        memory_service._extract_facts = AsyncMock(return_value=[])
+
+        result = await memory_service.store_web_ui_memory(
+            tenant_id=tenant_id,
+            content=content,
+            user_id=None,
+            ui_source=UISource.WEB,
+            memory_type=MemoryType.GENERAL,
+        )
+
+        assert result == "memory-anon"
+        call_args = mock_base_manager.store_memory.call_args
+        assert call_args.kwargs["user_id"] is None
     
     @pytest.mark.asyncio
     async def test_store_memory_error_handling(self, memory_service, mock_base_manager):
