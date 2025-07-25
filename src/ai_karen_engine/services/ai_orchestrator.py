@@ -17,6 +17,8 @@ from ai_karen_engine.models.shared_types import (
     ToolType, ToolInput, MemoryDepth, PersonalityTone, PersonalityVerbosity,
     AiData, MemoryContext, PluginInfo
 )
+from ai_karen_engine.integrations.llm_router import LLMProfileRouter
+from ai_karen_engine.integrations.llm_utils import LLMUtils
 
 
 class FlowRegistrationError(Exception):
@@ -1040,6 +1042,8 @@ class AIOrchestrator(BaseService):
         self.decision_engine = DecisionEngine()
         self.context_manager = ContextManager()
         self.prompt_manager = PromptManager()
+        self.llm_utils = LLMUtils()
+        self.llm_router = LLMProfileRouter()
         
         # Service state
         self._initialized = False
@@ -1205,54 +1209,77 @@ class AIOrchestrator(BaseService):
             )
     
     async def _process_conversation_with_memory(self, input_data: FlowInput, context: Dict[str, Any]) -> str:
-        """
-        Process conversation with memory integration and context awareness.
-        This simulates the enhanced AI processing that would normally use an LLM.
-        """
+        """Process conversation using LLM with memory/context awareness."""
+        try:
+            template = self.prompt_manager.get_template("conversation_processing")
+            if not template:
+                raise ValueError("conversation_processing template missing")
+
+            context_info = context.get("context_summary", "")
+            plugin_info = ", ".join(p.name for p in input_data.available_plugins or [])
+            memory_info = "; ".join(m.get("content", "") for m in context.get("memories", [])[:3])
+            user_preferences = ", ".join(f"{k}={v}" for k, v in input_data.user_settings.items())
+
+            user_prompt = template["user_template"].format(
+                prompt=input_data.prompt,
+                context_info=context_info,
+                plugin_info=plugin_info,
+                memory_info=memory_info,
+                user_preferences=user_preferences,
+            )
+            full_prompt = f"{template['system_prompt']}\n\n{user_prompt}"
+
+            raw = self.llm_router.invoke(self.llm_utils, full_prompt, task_intent="chat")
+            if not isinstance(raw, str):
+                raise TypeError("LLM response must be text")
+            response = raw.strip()
+            if not response:
+                raise ValueError("empty response")
+            if len(response) > 4000:
+                response = response[:4000]
+            return response
+        except Exception as ex:
+            self.logger.error(f"LLM processing failed: {ex}")
+            return await self._fallback_conversation_response(input_data, context)
+
+    async def _fallback_conversation_response(self, input_data: FlowInput, context: Dict[str, Any]) -> str:
+        """Fallback rule-based conversation processing used if LLM fails."""
         prompt = input_data.prompt
         memories = context.get("memories", [])
         conversation_history = context.get("conversation_history", [])
         user_settings = context.get("user_settings", {})
-        
-        # Build response with memory integration
-        response_parts = []
-        
-        # Reference relevant memories naturally
+
+        response_parts: List[str] = []
+
         if memories:
-            relevant_memories = [mem for mem in memories if mem.get("relevance", 0) > 0.7]
-            if relevant_memories:
-                memory_content = relevant_memories[0]["content"]
-                if "remember" not in prompt.lower():  # Don't be redundant
-                    response_parts.append(f"I recall that {memory_content.lower()}.")
-        
-        # Build upon previous conversations
+            relevant_memories = [m for m in memories if m.get("relevance", 0) > 0.7]
+            if relevant_memories and "remember" not in prompt.lower():
+                response_parts.append(f"I recall that {relevant_memories[0]['content'].lower()}.")
+
         if conversation_history:
             themes = context.get("conversation_themes", [])
             if themes and len(conversation_history) > 2:
                 response_parts.append(f"Continuing our discussion about {themes[0]},")
-        
-        # Generate contextually aware response
+
         if "help" in prompt.lower():
             response_parts.append("I'm here to assist you with various tasks.")
-            
-            # Suggest based on available capabilities
-            capabilities = []
+            capabilities: List[str] = []
             if input_data.available_plugins:
-                plugin_categories = set(plugin.category for plugin in input_data.available_plugins if plugin.enabled)
+                plugin_categories = {
+                    plugin.category for plugin in input_data.available_plugins if plugin.enabled
+                }
                 if plugin_categories:
                     capabilities.append(f"I have access to {', '.join(plugin_categories)} plugins")
-            
             if memories:
                 capabilities.append("I can remember our conversations")
-            
             if capabilities:
                 response_parts.append(f"With my enhanced capabilities, {' and '.join(capabilities)}.")
-        
-        elif any(keyword in prompt.lower() for keyword in ["remember", "my name", "i like", "i am"]):
+
+        elif any(k in prompt.lower() for k in ["remember", "my name", "i like", "i am"]):
             response_parts.append(f"I've noted that information: '{prompt}'.")
             response_parts.append("I'll remember this for our future conversations.")
-        
-        elif any(keyword in prompt.lower() for keyword in ["thank", "thanks"]):
+
+        elif any(k in prompt.lower() for k in ["thank", "thanks"]):
             tone = user_settings.get("personality_tone", "friendly")
             if tone == "formal":
                 response_parts.append("You're quite welcome. I'm pleased to be of assistance.")
@@ -1260,20 +1287,16 @@ class AIOrchestrator(BaseService):
                 response_parts.append("No problem! That's what I'm here for - being helpful is my specialty!")
             else:
                 response_parts.append("You're welcome! I'm glad I could help.")
-        
         else:
-            # General conversational response
             response_parts.append(f"I understand you're saying: '{prompt}'.")
-            
-            # Add contextual insight if available
             if memories:
-                response_parts.append("Based on our previous conversations, I can provide more personalized assistance.")
-        
-        # Combine response parts
+                response_parts.append(
+                    "Based on our previous conversations, I can provide more personalized assistance."
+                )
+
         if response_parts:
             return " ".join(response_parts)
-        else:
-            return f"I hear you saying '{prompt}'. How can I help you further?"
+        return f"I hear you saying '{prompt}'. How can I help you further?"
     
     async def _assess_plugin_needs(
         self, 
