@@ -195,10 +195,10 @@ pip install -r requirements.txt
 pre-commit install
 
 # Set environment variables
-export POSTGRES_USER=postgres
-export POSTGRES_PASSWORD=postgres
-export POSTGRES_DB=postgres
-export POSTGRES_HOST=localhost
+export POSTGRES_USER=karen_user
+export POSTGRES_PASSWORD=karen_secure_pass_change_me
+export POSTGRES_DB=ai_karen
+export POSTGRES_HOST=postgres  # use 'postgres' when running via Docker
 export POSTGRES_PORT=5432
 export REDIS_URL=redis://localhost:6379/0
 export ELASTICSEARCH_URL=http://localhost:9200
@@ -289,10 +289,10 @@ helm install ai-karen ./charts/kari/ \
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `POSTGRES_USER` | PostgreSQL user | `postgres` |
-| `POSTGRES_PASSWORD` | PostgreSQL password | `postgres` |
-| `POSTGRES_DB` | PostgreSQL database | `postgres` |
-| `POSTGRES_HOST` | PostgreSQL host | `localhost` |
+| `POSTGRES_USER` | PostgreSQL user | `karen_user` |
+| `POSTGRES_PASSWORD` | PostgreSQL password | `karen_secure_pass_change_me` |
+| `POSTGRES_DB` | PostgreSQL database | `ai_karen` |
+| `POSTGRES_HOST` | PostgreSQL host | `postgres` |
 | `POSTGRES_PORT` | PostgreSQL port | `5432` |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `ELASTICSEARCH_URL` | Elasticsearch URL | `http://localhost:9200` |
