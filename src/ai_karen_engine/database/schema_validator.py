@@ -104,8 +104,9 @@ class DatabaseSchemaValidator:
             existing_columns = {row[0] for row in result.fetchall()}
             
             missing_columns = [col for col in required_columns if col not in existing_columns]
-            
+
             logger.debug(f"Table {table_name} missing columns: {missing_columns}")
+
             return missing_columns
             
         except Exception as e:

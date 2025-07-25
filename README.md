@@ -300,7 +300,7 @@ helm install ai-karen ./charts/kari/ \
 | `MILVUS_PORT` | Milvus port | `19530` |
 | `JWT_SECRET_KEY` | JWT signing key | `your-secret-key` |
 | `ENABLE_SELF_REFACTOR` | Enable self-refactoring | `false` |
-| `LOG_LEVEL` | Logging level | `INFO` |
+| `KAREN_LOG_LEVEL` | Logging level | `INFO` |
 | `KARI_CORS_ORIGINS` | Comma-separated list of allowed CORS origins | `*` |
 | `KARI_ECO_MODE` | Skip heavy NLP model loading | `false` |
 
@@ -393,11 +393,13 @@ The system exposes Prometheus metrics at `/metrics/prometheus`:
 
 ### Logging
 
-Structured logging with configurable levels:
+Structured logging with configurable levels. The server runs at `INFO` level by
+default and prints `Greetings, the logs are ready for review` once startup
+completes.
 
 ```bash
-# Set log level
-export LOG_LEVEL=DEBUG
+# Increase verbosity if needed
+export KAREN_LOG_LEVEL=DEBUG
 
 # View logs
 docker-compose logs -f api

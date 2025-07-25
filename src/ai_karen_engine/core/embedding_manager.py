@@ -275,7 +275,9 @@ class EmbeddingManager:
             
             batch_time = time.time() - start
             record_metric("batch_embedding_time_seconds", batch_time)
-            logger.debug(f"[EmbeddingManager] Batch processed {len(valid_texts)} texts in {batch_time:.2f}s")
+            logger.debug(
+                f"[EmbeddingManager] Batch processed {len(valid_texts)} texts in {batch_time:.2f}s"
+            )
             
             return result
             

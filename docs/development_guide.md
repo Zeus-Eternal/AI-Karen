@@ -116,13 +116,16 @@ uvicorn main:app --reload --port 8000
 # Development mode with hot reload
 uvicorn main:app --reload --port 8000
 
-# With debug logging
-KARI_LOG_LEVEL=DEBUG uvicorn main:app --reload --port 8000
+# Increase log verbosity
+KAREN_LOG_LEVEL=DEBUG uvicorn main:app --reload --port 8000
 
 # API documentation available at:
 # http://localhost:8000/docs (Swagger UI)
 # http://localhost:8000/redoc (ReDoc)
 ```
+
+On startup the server logs `Greetings, the logs are ready for review` to confirm
+that logging is configured correctly.
 
 **Common Development Tasks:**
 ```bash
@@ -495,10 +498,10 @@ logging.getLogger('ai_karen_engine.plugins').setLevel(logging.DEBUG)
 **Debug Mode:**
 ```bash
 # Start API with debug logging
-KARI_LOG_LEVEL=DEBUG uvicorn main:app --reload --port 8000
+KAREN_LOG_LEVEL=DEBUG uvicorn main:app --reload --port 8000
 
 # Enable SQL query logging
-KARI_DB_ECHO=true uvicorn main:app --reload --port 8000
+KAREN_DB_ECHO=true uvicorn main:app --reload --port 8000
 ```
 
 **Using Python Debugger:**

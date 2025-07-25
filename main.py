@@ -391,6 +391,7 @@ async def on_startup() -> None:
         health_monitor = get_health_monitor()
         health_monitor.start_monitoring()
         logger.info("Health monitoring started")
+        logger.info("Greetings, the logs are ready for review")
 
     except Exception as e:
         logger.error(f"Failed to initialize AI Karen integration: {e}")
