@@ -1,3 +1,10 @@
+import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from ai_karen_engine.models.shared_types import MemoryContext
+
+
 class ContextManager:
     """
     Manages conversation context and memory integration.
