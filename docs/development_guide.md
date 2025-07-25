@@ -51,6 +51,8 @@ Set these required environment variables before development:
 - `KARI_ENV` - Selects the runtime environment. Use `local` (the default) to
   run entirely on your machine without relying on external services.
 - `KARI_ECO_MODE` - Skip heavy NLP model loading for low-resource environments
+- `KARI_MEMORY_SURPRISE_THRESHOLD` - Novelty threshold for memory storage (default: 0.85)
+- `KARI_DISABLE_MEMORY_SURPRISE_FILTER` - Disable surprise filtering to store all memories
 
 ### Local Development Setup
 
