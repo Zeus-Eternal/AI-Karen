@@ -83,7 +83,6 @@ class DatabaseSchemaValidator:
             result = await self.session.execute(query, {"table_name": table_name})
             exists = result.scalar()
             
-            logger.debug(f"Table {table_name} exists: {exists}")
             return bool(exists)
             
         except Exception as e:
@@ -105,7 +104,6 @@ class DatabaseSchemaValidator:
             
             missing_columns = [col for col in required_columns if col not in existing_columns]
             
-            logger.debug(f"Table {table_name} missing columns: {missing_columns}")
             return missing_columns
             
         except Exception as e:

@@ -63,7 +63,7 @@ class ExtensionMCPServer:
             "inputSchema": schema
         }
         
-        self.logger.debug(f"Registered MCP tool: {name}")
+        self.logger.info(f"Registered MCP tool: {name}")
     
     async def call_tool(self, name: str, arguments: Dict[str, Any]) -> Any:
         """
@@ -91,7 +91,7 @@ class ExtensionMCPServer:
             else:
                 result = handler(**arguments)
             
-            self.logger.debug(f"MCP tool {name} executed successfully")
+            self.logger.info(f"MCP tool {name} executed successfully")
             return result
             
         except Exception as e:

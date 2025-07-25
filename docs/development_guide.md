@@ -116,13 +116,16 @@ uvicorn main:app --reload --port 8000
 # Development mode with hot reload
 uvicorn main:app --reload --port 8000
 
-# With debug logging
+# Increase log verbosity
 KARI_LOG_LEVEL=DEBUG uvicorn main:app --reload --port 8000
 
 # API documentation available at:
 # http://localhost:8000/docs (Swagger UI)
 # http://localhost:8000/redoc (ReDoc)
 ```
+
+On startup the server logs `Greetings, the logs are ready for review` to confirm
+that logging is configured correctly.
 
 **Common Development Tasks:**
 ```bash

@@ -119,7 +119,9 @@ class ExtensionRegistry:
         if name in self.extensions:
             self.extensions[name].status = status
             self.extensions[name].error_message = error_message
-            self.logger.debug(f"Updated extension {name} status to {status.value}")
+            self.logger.info(
+                f"Updated extension {name} status to {status.value}"
+            )
             return True
         return False
     

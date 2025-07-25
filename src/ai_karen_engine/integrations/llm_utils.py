@@ -87,7 +87,7 @@ def record_llm_metric(event: str, duration: float, success: bool, provider: str,
         _LLM_COUNT.labels(event=event, provider=provider, success=label_success).inc()
         _LLM_LATENCY.labels(event=event, provider=provider, success=label_success).observe(duration)
     except Exception:  # pragma: no cover - safety guard
-        logger.debug("Prometheus metrics disabled or failed")
+        logger.info("Prometheus metrics disabled or failed")
 
 def trace_llm_event(event: str, correlation_id: str, meta: Dict[str, Any]):
     logger.info(f"[TRACE] event={event} correlation_id={correlation_id} meta={meta}")

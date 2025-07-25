@@ -393,10 +393,12 @@ The system exposes Prometheus metrics at `/metrics/prometheus`:
 
 ### Logging
 
-Structured logging with configurable levels:
+Structured logging with configurable levels. The server runs at `INFO` level by
+default and prints `Greetings, the logs are ready for review` once startup
+completes.
 
 ```bash
-# Set log level
+# Increase verbosity if needed
 export LOG_LEVEL=DEBUG
 
 # View logs
