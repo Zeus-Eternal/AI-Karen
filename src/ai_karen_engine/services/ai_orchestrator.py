@@ -660,6 +660,97 @@ class DecisionEngine:
                 name_part = prompt[name_start:].strip().split()[0]
                 if name_part and not any(name_part.lower() in fact.lower() for fact in existing_facts):
                     new_facts.append(f"{prefix}{name_part}")
+<<<<<<< Updated upstream
+=======
+        
+        # Enhanced preference extraction
+        preference_patterns = [
+            ("i like ", "User likes "),
+            ("i love ", "User loves "),
+            ("i enjoy ", "User enjoys "),
+            ("i prefer ", "User prefers "),
+            ("my favorite ", "User's favorite "),
+            ("i hate ", "User dislikes "),
+            ("i don't like ", "User doesn't like ")
+        ]
+        
+        for pattern, prefix in preference_patterns:
+            if pattern in prompt_lower:
+                pref_start = prompt_lower.find(pattern) + len(pattern)
+                pref_part = prompt[pref_start:].strip()
+                # Take reasonable amount of text for preference
+                pref_words = pref_part.split()[:10]
+                if pref_words:
+                    pref_text = " ".join(pref_words).rstrip(".,!?")
+                    if not any(pref_text.lower() in fact.lower() for fact in existing_facts):
+                        new_facts.append(f"{prefix}{pref_text}")
+        
+        # Enhanced personal information extraction
+        personal_patterns = [
+            ("i work at ", "User works at "),
+            ("i work for ", "User works for "),
+            ("my job is ", "User's job is "),
+            ("i live in ", "User lives in "),
+            ("i'm from ", "User is from "),
+            ("i study ", "User studies "),
+            ("i'm studying ", "User is studying ")
+        ]
+        
+        for pattern, prefix in personal_patterns:
+            if pattern in prompt_lower:
+                info_start = prompt_lower.find(pattern) + len(pattern)
+                info_part = prompt[info_start:].strip()
+                info_words = info_part.split()[:8]
+                if info_words:
+                    info_text = " ".join(info_words).rstrip(".,!?")
+                    if not any(info_text.lower() in fact.lower() for fact in existing_facts):
+                        new_facts.append(f"{prefix}{info_text}")
+        
+        return new_facts if new_facts else None
+    
+    async def _generate_proactive_suggestion_enhanced(
+        self, 
+        prompt: str, 
+        context: Dict[str, Any], 
+        intent_analysis: Dict[str, Any],
+        tool_to_call: ToolType
+    ) -> Optional[str]:
+        """
+        Enhanced proactive suggestion generation that matches TypeScript logic.
+        """
+        # Don't suggest for tool calls that are already being executed
+        if tool_to_call != ToolType.NONE:
+            return None
+        
+        prompt_lower = prompt.lower()
+        personal_facts = context.get("personal_facts", [])
+        
+        # Suggest based on intent and context
+        if intent_analysis["primary_intent"] == "weather_query":
+            return "Would you like me to set up weather alerts for this location or check the forecast?"
+        
+        elif intent_analysis["primary_intent"] == "time_query":
+            return "I can also help you set reminders, alarms, or check time zones if needed."
+        
+        elif intent_analysis["primary_intent"] == "book_query":
+            return "I can help you find similar books, author information, or reading recommendations."
+        
+        elif intent_analysis["primary_intent"] == "conversation":
+            # Suggest based on personal facts
+            if personal_facts:
+                interests = [fact for fact in personal_facts if "likes" in fact.lower() or "enjoys" in fact.lower()]
+                if interests and len(interests) > 0:
+                    return "Based on your interests, I can suggest related topics or help you explore them further."
+            
+            # General conversation suggestions
+            if any(word in prompt_lower for word in ["help", "assist", "support"]):
+                return "I can help with information lookup, scheduling, reminders, or just have a conversation. What interests you?"
+            
+            elif any(word in prompt_lower for word in ["bored", "nothing", "dunno"]):
+                return "I can suggest some interesting topics to discuss, help you learn something new, or assist with tasks."
+        
+        return None
+>>>>>>> Stashed changes
         
         # Enhanced preference extraction
         preference_patterns = [
@@ -1212,6 +1303,7 @@ class AIOrchestrator(BaseService):
             )
     
     async def _process_conversation_with_memory(self, input_data: FlowInput, context: Dict[str, Any]) -> str:
+<<<<<<< Updated upstream
         """Process conversation using LLM with memory/context awareness."""
         try:
             template = self.prompt_manager.get_template("conversation_processing")
@@ -1298,6 +1390,157 @@ class AIOrchestrator(BaseService):
         if response_parts:
             return " ".join(response_parts)
         return f"I hear you saying '{prompt}'. How can I help you further?"
+=======
+        """
+        Process conversation with memory integration and LLM-generated responses.
+        Uses actual LLM providers instead of hardcoded responses.
+        """
+        try:
+            # Import LLM utilities
+            from ai_karen_engine.integrations.llm_utils import get_llm_manager
+            
+            # Get LLM manager
+            llm_manager = get_llm_manager()
+            
+            # Build system prompt with context
+            system_prompt = await self._build_system_prompt(input_data, context)
+            
+            # Build user prompt with memory context
+            user_prompt = await self._build_user_prompt_with_context(input_data, context)
+            
+            # Get user settings for LLM configuration
+            user_settings = context.get("user_settings", {})
+            llm_provider = user_settings.get("llm_provider", "ollama")
+            llm_model = user_settings.get("llm_model", "llama3.2:latest")
+            temperature = user_settings.get("temperature", 0.7)
+            max_tokens = user_settings.get("max_tokens", 1000)
+            
+            # Prepare LLM request
+            full_prompt = f"{system_prompt}\n\nUser: {user_prompt}\n\nAssistant:"
+            
+            # Generate response using LLM
+            response = llm_manager.generate_text(
+                prompt=full_prompt,
+                provider=llm_provider,
+                model=llm_model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                user_ctx={"user_id": input_data.user_id}
+            )
+            
+            # Validate and clean response
+            response = await self._validate_and_clean_response(response, input_data, context)
+            
+            self.logger.info(f"Generated LLM response using {llm_provider} provider")
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"LLM response generation failed: {e}")
+            # Fallback to rule-based response
+            return await self._generate_fallback_response(input_data, context, str(e))
+    
+    async def _build_system_prompt(self, input_data: FlowInput, context: Dict[str, Any]) -> str:
+        """
+        Build system prompt with user preferences and context.
+        This will be implemented in task 4.2.
+        """
+        # Basic system prompt for now - will be enhanced in task 4.2
+        return """You are Karen, an intelligent AI assistant. You are helpful, knowledgeable, and personable. 
+        You have access to conversation history and memory to provide contextual responses.
+        Respond naturally and conversationally while being informative and helpful."""
+    
+    async def _build_user_prompt_with_context(self, input_data: FlowInput, context: Dict[str, Any]) -> str:
+        """
+        Build user prompt with memory context and conversation history.
+        """
+        prompt_parts = []
+        
+        # Add relevant memories if available
+        memories = context.get("memories", [])
+        if memories:
+            relevant_memories = [mem for mem in memories if mem.get("relevance", 0) > 0.6]
+            if relevant_memories:
+                prompt_parts.append("Relevant context from previous conversations:")
+                for mem in relevant_memories[:3]:  # Limit to top 3 memories
+                    prompt_parts.append(f"- {mem.get('content', '')}")
+                prompt_parts.append("")
+        
+        # Add conversation history if available
+        conversation_history = context.get("conversation_history", [])
+        if conversation_history and len(conversation_history) > 0:
+            prompt_parts.append("Recent conversation:")
+            # Include last few exchanges
+            for msg in conversation_history[-4:]:  # Last 4 messages
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if content:
+                    prompt_parts.append(f"{role.capitalize()}: {content}")
+            prompt_parts.append("")
+        
+        # Add current user prompt
+        prompt_parts.append(f"Current message: {input_data.prompt}")
+        
+        return "\n".join(prompt_parts)
+    
+    async def _validate_and_clean_response(self, response: str, input_data: FlowInput, context: Dict[str, Any]) -> str:
+        """
+        Validate and clean the LLM response.
+        """
+        if not response or not response.strip():
+            return await self._generate_fallback_response(input_data, context, "Empty response")
+        
+        # Clean up response
+        response = response.strip()
+        
+        # Remove any system prompt artifacts
+        if response.startswith("Assistant:"):
+            response = response[10:].strip()
+        if response.startswith("Karen:"):
+            response = response[6:].strip()
+        
+        # Ensure response is not too long
+        max_length = context.get("user_settings", {}).get("max_response_length", 2000)
+        if len(response) > max_length:
+            response = response[:max_length] + "..."
+        
+        # Ensure response is appropriate length (not too short for complex queries)
+        if len(response) < 10 and len(input_data.prompt) > 50:
+            return await self._generate_fallback_response(input_data, context, "Response too short")
+        
+        return response
+    
+    async def _generate_fallback_response(self, input_data: FlowInput, context: Dict[str, Any], error_reason: str) -> str:
+        """
+        Generate fallback response when LLM fails.
+        """
+        self.logger.warning(f"Using fallback response due to: {error_reason}")
+        
+        prompt = input_data.prompt
+        user_settings = context.get("user_settings", {})
+        tone = user_settings.get("personality_tone", "friendly")
+        
+        # Generate contextual fallback based on prompt content
+        prompt_lower = prompt.lower()
+        
+        if any(keyword in prompt_lower for keyword in ["help", "assist", "support"]):
+            if tone == "formal":
+                return "I apologize, but I'm experiencing technical difficulties. How may I assist you in the meantime?"
+            else:
+                return "I'm having some technical issues right now, but I'm still here to help! What can I do for you?"
+        
+        elif any(keyword in prompt_lower for keyword in ["thank", "thanks"]):
+            return "You're welcome! I'm glad I could help, even if my systems aren't running perfectly right now."
+        
+        elif any(keyword in prompt_lower for keyword in ["hello", "hi", "hey"]):
+            return "Hello! I'm experiencing some technical difficulties, but I'm still here to chat with you."
+        
+        else:
+            # General fallback
+            if tone == "formal":
+                return "I understand your message, though I'm experiencing some technical limitations at the moment. Could you please rephrase or try again?"
+            else:
+                return "I hear what you're saying! I'm having some technical hiccups right now, but I'm doing my best to help. Could you try rephrasing that?"
+>>>>>>> Stashed changes
     
     async def _assess_plugin_needs(
         self, 
