@@ -303,6 +303,8 @@ helm install ai-karen ./charts/kari/ \
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `KARI_CORS_ORIGINS` | Comma-separated list of allowed CORS origins | `*` |
 | `KARI_ECO_MODE` | Skip heavy NLP model loading | `false` |
+| `KARI_MEMORY_SURPRISE_THRESHOLD` | Novelty threshold for storing memory | `0.85` |
+| `KARI_DISABLE_MEMORY_SURPRISE_FILTER` | Disable surprise filtering to store all memories | `false` |
 
 ---
 
