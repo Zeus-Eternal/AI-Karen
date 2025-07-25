@@ -18,7 +18,6 @@ import uuid
 import inspect
 
 from pydantic import BaseModel, Field, validator, create_model
-from pydantic.fields import FieldInfo
 
 logger = logging.getLogger(__name__)
 
