@@ -164,15 +164,15 @@ The `.env` file controls all aspects of the database stack configuration:
 # PostgreSQL
 POSTGRES_DB=ai_karen
 POSTGRES_USER=karen_user
-POSTGRES_PASSWORD=secure_password_here
+POSTGRES_PASSWORD=karen_secure_pass_change_me
 POSTGRES_MAX_CONNECTIONS=200
 
 # Redis
-REDIS_PASSWORD=redis_secure_password
+REDIS_PASSWORD=redis_secure_pass_change_me
 REDIS_MEMORY_LIMIT=2g
 
 # Elasticsearch
-ELASTICSEARCH_PASSWORD=elastic_secure_password
+ELASTICSEARCH_PASSWORD=elastic_secure_pass_change_me
 ELASTICSEARCH_HEAP_SIZE=2g
 
 # Milvus & MinIO
