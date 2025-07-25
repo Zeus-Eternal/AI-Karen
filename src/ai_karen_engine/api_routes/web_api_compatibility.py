@@ -680,15 +680,60 @@ async def memory_store_compatibility(
             )
         except Exception as e:
             error_str = str(e).lower()
-            
+
             # Handle specific database errors
             if "relation" in error_str and "does not exist" in error_str:
                 logger.error(f"[{request_id}] Database table missing: {e}")
+
+                # Attempt automatic migration and retry once
+                try:
+                    from ..database import get_postgres_session
+
+                    async with get_postgres_session() as session:
+                        schema_error = await validate_and_migrate_schema(session)
+
+                    if not schema_error:
+                        logger.info(f"[{request_id}] Auto-migration successful, retrying memory store")
+
+                        memory_id = await memory_service.store_web_ui_memory(
+                            tenant_id="default",
+                            content=backend_request.content,
+                            user_id=user_id,
+                            ui_source=backend_request.ui_source,
+                            session_id=backend_request.session_id,
+                            memory_type=backend_request.memory_type,
+                            tags=backend_request.tags,
+                            metadata=backend_request.metadata,
+                            ai_generated=backend_request.ai_generated,
+                        )
+                        storage_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                        backend_response = {
+                            "success": memory_id is not None,
+                            "memory_id": memory_id,
+                            "message": "Memory stored successfully" if memory_id else "Memory not stored (not surprising enough)",
+                        }
+                        try:
+                            response = WebUITransformationService.transform_memory_store_response_to_web_ui(backend_response)
+                        except Exception as e_trans:
+                            logger.error(f"[{request_id}] Memory store response transformation failed: {e_trans}")
+                            response = WebUIMemoryStoreResponse(
+                                success=memory_id is not None,
+                                memory_id=memory_id,
+                                message="Memory stored successfully" if memory_id else "Memory not stored",
+                            )
+
+                        logger.info(
+                            f"[{request_id}] Memory storage completed after auto-migration: {response.success} in {storage_time:.2f}ms"
+                        )
+                        return response
+                except Exception as migrate_err:
+                    logger.error(f"[{request_id}] Auto-migration or retry failed: {migrate_err}")
+
                 error_response = create_database_error_response(
                     error=e,
                     operation="memory_store",
                     user_message="Database tables are missing. System needs initialization.",
-                    request_id=request_id
+                    request_id=request_id,
                 )
             elif "connection" in error_str or "connect" in error_str:
                 logger.error(f"[{request_id}] Database connection error: {e}")
