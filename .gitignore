@@ -64,3 +64,5 @@ server.pid
 /.github
 /models
 /data/default_classifier
+src/ai_karen_engine/services/ai_orchestrator-bak.py
+src/ai_karen_engine/services/ai_orchestrator-bak.py
