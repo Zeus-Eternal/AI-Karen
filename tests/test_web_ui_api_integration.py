@@ -4,6 +4,7 @@ Integration tests for Web UI API compatibility endpoints.
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
+from contextlib import asynccontextmanager
 
 try:
     from fastapi.testclient import TestClient
@@ -173,6 +174,43 @@ class TestWebUIAPIIntegration:
         assert "memory_id" in data
         assert "message" in data
         assert data["success"] is True
+
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.validate_and_migrate_schema')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_postgres_session')
+    @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_memory_service')
+    def test_memory_store_auto_migration(self, mock_get_memory, mock_get_session, mock_validate, client, mock_memory_service):
+        """Ensure memory store retries after auto-migration when table is missing."""
+        mock_get_memory.return_value = mock_memory_service
+
+        async def side_effect(*args, **kwargs):
+            if not hasattr(side_effect, "called"):
+                side_effect.called = True
+                raise Exception('relation "memory_entries" does not exist')
+            return "mem-123"
+
+        mock_memory_service.store_web_ui_memory.side_effect = side_effect
+        mock_validate.return_value = None
+
+        @asynccontextmanager
+        async def dummy_session():
+            yield AsyncMock()
+
+        mock_get_session.return_value = dummy_session()
+
+        request_data = {
+            "content": "User likes coffee",
+            "metadata": {"type": "preference"},
+            "tags": ["coffee"],
+            "user_id": "test-user",
+            "session_id": "test-session"
+        }
+
+        response = client.post("/api/memory/store", json=request_data)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["success"] is True
+        assert data["memory_id"] == "mem-123"
     
     @patch('src.ai_karen_engine.api_routes.web_api_compatibility.get_plugin_service')
     def test_list_plugins_endpoint(self, mock_get_plugin, client, mock_plugin_service):
