@@ -301,6 +301,7 @@ npm run dev
 npm run build
 npm start
 ```
+- Runs on port 3000
 - Optimized bundle with tree shaking
 - Static generation where possible
 - Compressed assets
