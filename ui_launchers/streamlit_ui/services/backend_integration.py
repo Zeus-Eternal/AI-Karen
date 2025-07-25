@@ -509,14 +509,22 @@ def get_backend_service(tenant_id: str = "default") -> IntegratedBackendService:
 
 # Utility functions for Streamlit components
 def run_async(coro):
-    """Run async function in Streamlit context."""
+    """Run async function in Streamlit context without leaking threads."""
     try:
         loop = asyncio.get_event_loop()
+        new_loop = False
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    
-    return loop.run_until_complete(coro)
+        new_loop = True
+
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        if new_loop:
+            # Ensure all executor threads from the loop are cleaned up
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
