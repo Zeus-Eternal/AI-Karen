@@ -40,7 +40,7 @@ from ..models.web_api_error_responses import (
 )
 from ..database.schema_validator import validate_and_migrate_schema
 from ..services.web_ui_api import WebUITransformationService
-from ..services.ai_orchestrator import AIOrchestrator
+from ..services.ai_orchestrator.ai_orchestrator import AIOrchestrator
 from ..services.memory_service import WebUIMemoryService
 from ..core.dependencies import (
     get_ai_orchestrator_service,

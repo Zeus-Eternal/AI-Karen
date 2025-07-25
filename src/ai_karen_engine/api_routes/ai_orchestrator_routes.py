@@ -8,8 +8,12 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 
-from ai_karen_engine.services.ai_orchestrator import AIOrchestrator
-from ai_karen_engine.models.shared_types import FlowType, FlowInput, FlowOutput
+from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
+    AIOrchestrator,
+    FlowType,
+    FlowInput,
+    FlowOutput
+)
 from ai_karen_engine.core.dependencies import get_ai_orchestrator_service
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.models.web_api_error_responses import (

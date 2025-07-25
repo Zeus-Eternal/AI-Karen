@@ -82,7 +82,7 @@ def get_gemini_service():
     return gemini
 
 # Import AI Orchestrator components
-from ai_karen_engine.services.ai_orchestrator import (
+from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
     AIOrchestrator,
     FlowManager,
     DecisionEngine,

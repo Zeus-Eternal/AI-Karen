@@ -177,7 +177,7 @@ class PerformanceComparator:
                 registry = ServiceRegistry()
                 
                 # Register and initialize a service
-                from ai_karen_engine.services.ai_orchestrator import AIOrchestrator
+                from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import AIOrchestrator
                 registry.register_service("test_orchestrator", AIOrchestrator)
                 await registry.get_service("test_orchestrator")
                 

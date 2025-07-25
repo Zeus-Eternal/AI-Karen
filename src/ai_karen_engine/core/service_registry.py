@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 
-from ..services.ai_orchestrator import AIOrchestrator
+from ..services.ai_orchestrator.ai_orchestrator import AIOrchestrator
 from ..services.memory_service import WebUIMemoryService
 from ..services.conversation_service import WebUIConversationService
 from ..services.plugin_service import PluginService

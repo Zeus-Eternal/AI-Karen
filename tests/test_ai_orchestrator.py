@@ -7,7 +7,7 @@ import asyncio
 from datetime import datetime
 from unittest.mock import Mock, AsyncMock
 
-from src.ai_karen_engine.services.ai_orchestrator import (
+from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
     AIOrchestrator, FlowManager, DecisionEngine, ContextManager, PromptManager,
     FlowRegistrationError, FlowExecutionError
 )
