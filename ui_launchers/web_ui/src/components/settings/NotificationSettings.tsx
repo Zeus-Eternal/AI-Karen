@@ -204,7 +204,7 @@ export default function NotificationSettings() {
                 </Label>
                 </div>
                 <p className="text-xs text-muted-foreground pl-7">
-                  Notify when a conversation summary is generated. (Summary logged to server console for now).
+                  Notify when a conversation summary is generated.
                 </p>
             </div>
           </div>

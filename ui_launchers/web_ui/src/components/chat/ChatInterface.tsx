@@ -199,7 +199,7 @@ export default function ChatInterface() {
         if (parsedSettings.notifications.enabled && parsedSettings.notifications.alertOnSummaryReady) {
           toast({
             title: "Conversation Summary Ready!",
-            description: "A summary of your recent conversation has been generated. (Logged to server console for now).",
+            description: "A summary of your recent conversation has been generated.",
             duration: 7000,
           });
         }
