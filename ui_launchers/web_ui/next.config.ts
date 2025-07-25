@@ -79,10 +79,10 @@ const nextConfig: NextConfig = {
   },
 
   // Experimental features
-  experimental: {
-    // Enable if using server components with external APIs
-    serverComponentsExternalPackages: [],
-  },
+  // Next.js 15 moved `experimental.serverComponentsExternalPackages`
+  // to a top-level `serverExternalPackages` option.
+  // Update config accordingly.
+  serverExternalPackages: [],
 
   // Output configuration
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
