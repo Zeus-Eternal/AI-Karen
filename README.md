@@ -195,10 +195,15 @@ pip install -r requirements.txt
 pre-commit install
 
 # Set environment variables
+export POSTGRES_USER=postgres
+export POSTGRES_PASSWORD=postgres
+export POSTGRES_DB=postgres
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
 export REDIS_URL=redis://localhost:6379/0
-export POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/postgres
 export ELASTICSEARCH_URL=http://localhost:9200
-export MILVUS_URL=localhost:19530
+export MILVUS_HOST=localhost
+export MILVUS_PORT=19530
 ```
 
 ### Development Commands
@@ -284,10 +289,15 @@ helm install ai-karen ./charts/kari/ \
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `POSTGRES_URL` | PostgreSQL connection string | `postgresql://postgres:postgres@localhost:5432/postgres` |
+| `POSTGRES_USER` | PostgreSQL user | `postgres` |
+| `POSTGRES_PASSWORD` | PostgreSQL password | `postgres` |
+| `POSTGRES_DB` | PostgreSQL database | `postgres` |
+| `POSTGRES_HOST` | PostgreSQL host | `localhost` |
+| `POSTGRES_PORT` | PostgreSQL port | `5432` |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `ELASTICSEARCH_URL` | Elasticsearch URL | `http://localhost:9200` |
-| `MILVUS_URL` | Milvus connection string | `localhost:19530` |
+| `MILVUS_HOST` | Milvus host | `localhost` |
+| `MILVUS_PORT` | Milvus port | `19530` |
 | `JWT_SECRET_KEY` | JWT signing key | `your-secret-key` |
 | `ENABLE_SELF_REFACTOR` | Enable self-refactoring | `false` |
 | `LOG_LEVEL` | Logging level | `INFO` |
