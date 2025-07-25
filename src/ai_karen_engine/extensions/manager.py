@@ -147,7 +147,9 @@ class ExtensionManager:
                 self.logger.warning(f"Manifest warnings for {extension_dir.name}: {'; '.join(warnings)}")
             
             manifests[manifest.name] = manifest
-            self.logger.debug(f"Discovered extension: {manifest.name} v{manifest.version} at {extension_dir}")
+            self.logger.info(
+                f"Discovered extension: {manifest.name} v{manifest.version} at {extension_dir}"
+            )
             
         except Exception as e:
             self.logger.error(f"Failed to load manifest from {manifest_path}: {e}")

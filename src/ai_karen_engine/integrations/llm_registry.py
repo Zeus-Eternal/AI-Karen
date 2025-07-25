@@ -153,7 +153,6 @@ class LLMRegistry:
             with open(self.registry_path, "w") as f:
                 json.dump(data, f, indent=2)
 
-            logger.debug(f"Saved registry to {self.registry_path}")
 
         except Exception as ex:
             logger.error(f"Could not save registry to {self.registry_path}: {ex}")
