@@ -182,19 +182,46 @@ class AIOrchestrator(BaseService):
             return response[:4000] if len(response) > 4000 else response
         except Exception as ex:
             self.logger.error(f"LLM processing failed: {ex}")
-            return await self._fallback_conversation_response(input_data, context)
+            provider_missing = isinstance(ex, RuntimeError) and "no provider for intent" in str(ex).lower()
+            return await self._fallback_conversation_response(
+                input_data, context, provider_missing=provider_missing
+            )
 
     async def _fallback_conversation_response(
-        self, input_data: FlowInput, context: Dict[str, Any]
+        self,
+        input_data: FlowInput,
+        context: Dict[str, Any],
+        provider_missing: bool = False,
     ) -> str:
         """Fallback rule-based conversation processing used if LLM fails."""
+        settings = context.get("user_settings", {})
+        tone = settings.get("personality_tone", "friendly")
+        persona = settings.get("custom_persona_instructions", "").strip()
+
+        prefix_parts = []
+        if persona:
+            prefix_parts.append(persona)
+        if tone:
+            prefix_parts.append(f"{tone} tone")
+        prefix = " ".join(prefix_parts)
+        if prefix:
+            prefix += ": "
+
+        base_msg = ""
+        if provider_missing:
+            base_msg = "My language model is unavailable so I'll reply directly. "
+
         prompt_lower = input_data.prompt.lower()
         if "help" in prompt_lower:
-            return "I'm here to assist. I can access plugins and remember our conversations to help you better."
+            reply = (
+                "I'm here to assist. I can access plugins and remember our conversations to help you better."
+            )
         elif "thank" in prompt_lower:
-            return "You're welcome! I'm glad I could help."
+            reply = "You're welcome! I'm glad I could help."
         else:
-            return f"I've registered your message: '{input_data.prompt}'. How can I further assist you?"
+            reply = f"I've registered your message: '{input_data.prompt}'. How can I further assist you?"
+
+        return f"{prefix}{base_msg}{reply}"
 
     async def _assess_plugin_needs(
         self, prompt: str, context: Dict[str, Any], available_plugins: List[PluginInfo]
