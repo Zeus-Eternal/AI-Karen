@@ -42,6 +42,8 @@ class ParsedMessage:
     entities: List[Tuple[str, str]]  # (text, label)
     pos_tags: List[Tuple[str, str]]  # (token, pos)
     noun_phrases: List[str]
+    sentences: List[str]  # Sentence segmentation
+    dependencies: List[Dict[str, Any]]  # Dependency parsing results
     sentiment: Optional[float] = None
     language: str = "en"
     processing_time: float = 0.0
@@ -149,6 +151,8 @@ class SpacyService:
                 entities=[],
                 pos_tags=[],
                 noun_phrases=[],
+                sentences=[],
+                dependencies=[],
                 used_fallback=True
             )
         
@@ -200,12 +204,29 @@ class SpacyService:
         loop = asyncio.get_event_loop()
         doc = await loop.run_in_executor(None, self.nlp, text)
         
+        # Extract dependency parsing information
+        dependencies = []
+        for token in doc:
+            dep_info = {
+                "text": token.text,
+                "lemma": token.lemma_,
+                "pos": token.pos_,
+                "tag": token.tag_,
+                "dep": token.dep_,
+                "head": token.head.text if token.head != token else "ROOT",
+                "head_pos": token.head.pos_ if token.head != token else "ROOT",
+                "children": [child.text for child in token.children]
+            }
+            dependencies.append(dep_info)
+        
         return ParsedMessage(
             tokens=[token.text for token in doc],
             lemmas=[token.lemma_ for token in doc],
             entities=[(ent.text, ent.label_) for ent in doc.ents],
             pos_tags=[(token.text, token.pos_) for token in doc],
             noun_phrases=[chunk.text for chunk in doc.noun_chunks],
+            sentences=[sent.text.strip() for sent in doc.sents],
+            dependencies=dependencies,
             language=doc.lang_,
             used_fallback=False
         )
@@ -215,16 +236,34 @@ class SpacyService:
         # Basic tokenization
         tokens = text.split()
         
-        # Simple sentence splitting for noun phrases
+        # Simple sentence splitting
         sentences = text.replace('!', '.').replace('?', '.').split('.')
-        noun_phrases = [s.strip() for s in sentences if s.strip()]
+        sentences = [s.strip() for s in sentences if s.strip()]
+        noun_phrases = sentences  # Use sentences as noun phrases in fallback
+        
+        # Basic dependency structure (no real parsing in fallback)
+        dependencies = []
+        for i, token in enumerate(tokens):
+            dep_info = {
+                "text": token,
+                "lemma": token.lower(),  # Simple lowercasing as lemma
+                "pos": "UNKNOWN",
+                "tag": "UNKNOWN", 
+                "dep": "UNKNOWN",
+                "head": "ROOT" if i == 0 else tokens[0],  # First token as head
+                "head_pos": "ROOT" if i == 0 else "UNKNOWN",
+                "children": []
+            }
+            dependencies.append(dep_info)
         
         return ParsedMessage(
             tokens=tokens,
-            lemmas=tokens,  # No lemmatization in fallback
+            lemmas=[token.lower() for token in tokens],  # Simple lowercasing as lemmatization
             entities=[],    # No entity recognition in fallback
             pos_tags=[],    # No POS tagging in fallback
             noun_phrases=noun_phrases,
+            sentences=sentences,
+            dependencies=dependencies,
             used_fallback=True
         )
     
@@ -269,6 +308,67 @@ class SpacyService:
             self._error_count = 0
             self._last_error = None
             logger.info("spaCy service metrics reset")
+    
+    async def extract_entities(self, text: str) -> List[Tuple[str, str]]:
+        """Extract named entities from text."""
+        parsed = await self.parse_message(text)
+        return parsed.entities
+    
+    async def extract_facts(self, text: str) -> List[Dict[str, Any]]:
+        """Extract factual information from text using NER and dependency parsing."""
+        parsed = await self.parse_message(text)
+        
+        facts = []
+        
+        # Extract entity-based facts
+        for entity_text, entity_label in parsed.entities:
+            facts.append({
+                "type": "entity",
+                "entity": entity_text,
+                "label": entity_label,
+                "confidence": "high"  # spaCy entities are generally high confidence
+            })
+        
+        # Extract relationship facts from dependency parsing
+        if not parsed.used_fallback:
+            for dep in parsed.dependencies:
+                if dep["dep"] in ["nsubj", "dobj", "pobj"] and dep["head"] != "ROOT":
+                    facts.append({
+                        "type": "relationship",
+                        "subject": dep["text"],
+                        "relation": dep["dep"],
+                        "object": dep["head"],
+                        "confidence": "medium"
+                    })
+        
+        return facts
+    
+    async def get_linguistic_features(self, text: str) -> Dict[str, Any]:
+        """Extract comprehensive linguistic features from text."""
+        parsed = await self.parse_message(text)
+        
+        # Count different POS types
+        pos_counts = {}
+        for token, pos in parsed.pos_tags:
+            pos_counts[pos] = pos_counts.get(pos, 0) + 1
+        
+        # Count dependency types
+        dep_counts = {}
+        for dep in parsed.dependencies:
+            dep_type = dep["dep"]
+            dep_counts[dep_type] = dep_counts.get(dep_type, 0) + 1
+        
+        return {
+            "token_count": len(parsed.tokens),
+            "sentence_count": len(parsed.sentences),
+            "entity_count": len(parsed.entities),
+            "noun_phrase_count": len(parsed.noun_phrases),
+            "pos_distribution": pos_counts,
+            "dependency_distribution": dep_counts,
+            "avg_sentence_length": len(parsed.tokens) / len(parsed.sentences) if parsed.sentences else 0,
+            "language": parsed.language,
+            "used_fallback": parsed.used_fallback
+        }
     
     async def reload_model(self, new_model_name: Optional[str] = None):
         """Reload spaCy model, optionally with a new model name."""

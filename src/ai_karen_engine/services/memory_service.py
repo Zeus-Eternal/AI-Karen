@@ -124,8 +124,11 @@ class MemoryContextBuilder:
         session_id: Optional[str] = None,
         conversation_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Build conversation context from relevant memories."""
+        """Build conversation context from relevant memories using NLP-enhanced retrieval."""
         try:
+            # Use NLP to analyze the query for better context building
+            query_analysis = await self._analyze_query_with_nlp(query)
+            
             # Query for relevant memories with different types
             memory_query = WebUIMemoryQuery(
                 text=query,
@@ -137,6 +140,9 @@ class MemoryContextBuilder:
             )
             
             memories = await self.memory_service.query_memories(tenant_id, memory_query)
+            
+            # Enhance memory ranking using NLP analysis
+            memories = await self._enhance_memory_ranking_with_nlp(memories, query_analysis)
             
             # Group memories by type
             memories_by_type = {}
@@ -156,8 +162,11 @@ class MemoryContextBuilder:
                     continue
                 
                 type_memories = memories_by_type[mem_type]
-                # Sort by importance score and recency
-                type_memories.sort(key=lambda m: (m.importance_score, m.similarity_score or 0), reverse=True)
+                # Sort by enhanced importance score and similarity
+                type_memories.sort(key=lambda m: (
+                    getattr(m, 'nlp_relevance_score', m.importance_score), 
+                    m.similarity_score or 0
+                ), reverse=True)
                 
                 for memory in type_memories:
                     # Estimate tokens (rough approximation: 1 token ≈ 4 characters)
@@ -170,6 +179,7 @@ class MemoryContextBuilder:
                         "content": memory.content,
                         "importance": memory.importance_score,
                         "similarity": memory.similarity_score,
+                        "nlp_relevance": getattr(memory, 'nlp_relevance_score', None),
                         "timestamp": memory.timestamp,
                         "tags": memory.tags
                     })
@@ -190,6 +200,7 @@ class MemoryContextBuilder:
                 "total_memories": len(context_parts),
                 "memory_types_found": list(memories_by_type.keys()),
                 "conversation_context": conversation_context,
+                "query_analysis": query_analysis,
                 "context_metadata": {
                     "query": query,
                     "user_id": user_id,
@@ -210,6 +221,111 @@ class MemoryContextBuilder:
                 "error": str(e)
             }
     
+    async def _analyze_query_with_nlp(self, query: str) -> Dict[str, Any]:
+        """Analyze query using NLP to extract key information for better context building."""
+        try:
+            # Import spaCy service for query analysis
+            from .nlp_service_manager import nlp_service_manager
+            
+            # Get comprehensive NLP analysis of the query
+            parsed_query = await nlp_service_manager.spacy_service.parse_message(query)
+            linguistic_features = await nlp_service_manager.spacy_service.get_linguistic_features(query)
+            
+            # Extract key entities and their types
+            key_entities = []
+            for entity_text, entity_label in parsed_query.entities:
+                key_entities.append({
+                    "text": entity_text,
+                    "label": entity_label,
+                    "importance": 1.0 if entity_label in ["PERSON", "ORG", "GPE"] else 0.8
+                })
+            
+            # Extract important nouns and verbs
+            important_tokens = []
+            for token, pos in parsed_query.pos_tags:
+                if pos in ["NOUN", "PROPN", "VERB"] and len(token) > 2:
+                    important_tokens.append({
+                        "text": token,
+                        "pos": pos,
+                        "importance": 1.0 if pos in ["PROPN", "NOUN"] else 0.7
+                    })
+            
+            return {
+                "entities": key_entities,
+                "important_tokens": important_tokens,
+                "sentences": parsed_query.sentences,
+                "noun_phrases": parsed_query.noun_phrases,
+                "linguistic_features": linguistic_features,
+                "query_complexity": len(parsed_query.dependencies),
+                "used_fallback": parsed_query.used_fallback
+            }
+            
+        except Exception as e:
+            logger.warning(f"Failed to analyze query with NLP: {e}")
+            # Return basic analysis as fallback
+            return {
+                "entities": [],
+                "important_tokens": [],
+                "sentences": [query],
+                "noun_phrases": [],
+                "linguistic_features": {},
+                "query_complexity": 0,
+                "used_fallback": True
+            }
+    
+    async def _enhance_memory_ranking_with_nlp(
+        self, 
+        memories: List['WebUIMemoryEntry'], 
+        query_analysis: Dict[str, Any]
+    ) -> List['WebUIMemoryEntry']:
+        """Enhance memory ranking using NLP analysis of query and memory content."""
+        try:
+            # Import spaCy service for memory analysis
+            from .nlp_service_manager import nlp_service_manager
+            
+            query_entities = {entity["text"].lower() for entity in query_analysis.get("entities", [])}
+            query_tokens = {token["text"].lower() for token in query_analysis.get("important_tokens", [])}
+            
+            enhanced_memories = []
+            for memory in memories:
+                try:
+                    # Analyze memory content
+                    memory_entities = await nlp_service_manager.spacy_service.extract_entities(memory.content)
+                    memory_entity_texts = {entity[0].lower() for entity in memory_entities}
+                    
+                    # Calculate NLP-based relevance score
+                    entity_overlap = len(query_entities.intersection(memory_entity_texts))
+                    
+                    # Simple token overlap (could be enhanced with semantic similarity)
+                    memory_tokens = set(memory.content.lower().split())
+                    token_overlap = len(query_tokens.intersection(memory_tokens))
+                    
+                    # Calculate enhanced relevance score
+                    base_score = memory.similarity_score or 0.0
+                    entity_boost = entity_overlap * 0.2  # Boost for entity matches
+                    token_boost = token_overlap * 0.1   # Boost for token matches
+                    
+                    nlp_relevance_score = base_score + entity_boost + token_boost
+                    
+                    # Add the enhanced score as an attribute
+                    memory.nlp_relevance_score = min(nlp_relevance_score, 1.0)  # Cap at 1.0
+                    enhanced_memories.append(memory)
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to enhance ranking for memory {memory.id}: {e}")
+                    # Keep original memory without enhancement
+                    memory.nlp_relevance_score = memory.similarity_score or 0.0
+                    enhanced_memories.append(memory)
+            
+            return enhanced_memories
+            
+        except Exception as e:
+            logger.warning(f"Failed to enhance memory ranking with NLP: {e}")
+            # Return original memories without enhancement
+            for memory in memories:
+                memory.nlp_relevance_score = memory.similarity_score or 0.0
+            return memories
+
     async def _get_conversation_context(
         self,
         tenant_id: Union[str, uuid.UUID],
@@ -682,50 +798,139 @@ class WebUIMemoryService:
         content: str,
         memory_type: MemoryType
     ) -> List[str]:
-        """Generate automatic tags for memory content."""
-        # This is a simplified implementation
-        # In production, you might use NLP libraries or LLM for better tagging
-        tags = []
-        
-        # Basic keyword extraction
-        keywords = ["important", "remember", "fact", "preference", "like", "dislike", "always", "never"]
-        for keyword in keywords:
-            if keyword.lower() in content.lower():
-                tags.append(keyword)
-        
-        # Add memory type as tag
-        tags.append(memory_type.value)
-        
-        # Add length-based tags
-        if len(content) > 200:
-            tags.append("detailed")
-        elif len(content) < 50:
-            tags.append("brief")
-        
-        return list(set(tags))  # Remove duplicates
+        """Generate automatic tags for memory content using spaCy NLP."""
+        try:
+            # Import spaCy service for entity-based tagging
+            from .nlp_service_manager import nlp_service_manager
+            
+            tags = []
+            
+            # Extract entities and use them as tags
+            entities = await nlp_service_manager.spacy_service.extract_entities(content)
+            for entity_text, entity_label in entities:
+                # Add entity labels as tags
+                tags.append(entity_label.lower())
+                # Add entity text as tag if it's short enough
+                if len(entity_text) <= 20:
+                    tags.append(entity_text.lower().replace(' ', '_'))
+            
+            # Get linguistic features for additional tagging
+            features = await nlp_service_manager.spacy_service.get_linguistic_features(content)
+            
+            # Add POS-based tags
+            pos_distribution = features.get("pos_distribution", {})
+            if pos_distribution.get("VERB", 0) > pos_distribution.get("NOUN", 0):
+                tags.append("action_oriented")
+            elif pos_distribution.get("NOUN", 0) > 2:
+                tags.append("fact_heavy")
+            
+            # Add sentiment-based tags (basic keyword matching)
+            positive_keywords = ["like", "love", "enjoy", "prefer", "good", "great", "excellent"]
+            negative_keywords = ["dislike", "hate", "avoid", "bad", "terrible", "awful"]
+            
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in positive_keywords):
+                tags.append("positive")
+            if any(keyword in content_lower for keyword in negative_keywords):
+                tags.append("negative")
+            
+            # Fallback to basic keyword extraction if spaCy fails
+            if not tags:
+                keywords = ["important", "remember", "fact", "preference", "like", "dislike", "always", "never"]
+                for keyword in keywords:
+                    if keyword.lower() in content_lower:
+                        tags.append(keyword)
+            
+            # Add memory type as tag
+            tags.append(memory_type.value)
+            
+            # Add length-based tags
+            if len(content) > 200:
+                tags.append("detailed")
+            elif len(content) < 50:
+                tags.append("brief")
+            
+            # Add sentence count based tags
+            sentence_count = features.get("sentence_count", 1)
+            if sentence_count > 3:
+                tags.append("multi_sentence")
+            elif sentence_count == 1:
+                tags.append("single_sentence")
+            
+            return list(set(tags))  # Remove duplicates
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate auto tags using spaCy, using fallback: {e}")
+            # Fallback to simple keyword extraction
+            tags = []
+            keywords = ["important", "remember", "fact", "preference", "like", "dislike", "always", "never"]
+            content_lower = content.lower()
+            for keyword in keywords:
+                if keyword in content_lower:
+                    tags.append(keyword)
+            
+            tags.append(memory_type.value)
+            
+            if len(content) > 200:
+                tags.append("detailed")
+            elif len(content) < 50:
+                tags.append("brief")
+            
+            return list(set(tags))
     
     async def _extract_facts(self, content: str) -> List[str]:
-        """Extract facts from memory content."""
-        # This is a simplified implementation
-        # In production, you might use NLP libraries or LLM for fact extraction
-        facts = []
-        
-        # Simple pattern matching for facts
-        fact_patterns = [
-            "I am", "I like", "I dislike", "I prefer", "My name is",
-            "I work at", "I live in", "I was born", "I studied"
-        ]
-        
-        for pattern in fact_patterns:
-            if pattern.lower() in content.lower():
-                # Extract sentence containing the pattern
-                sentences = content.split('.')
-                for sentence in sentences:
-                    if pattern.lower() in sentence.lower():
-                        facts.append(sentence.strip())
-                        break
-        
-        return facts
+        """Extract facts from memory content using spaCy NLP."""
+        try:
+            # Import spaCy service for fact extraction
+            from .nlp_service_manager import nlp_service_manager
+            
+            # Use spaCy service to extract facts
+            facts = await nlp_service_manager.spacy_service.extract_facts(content)
+            
+            # Convert fact dictionaries to strings for storage
+            fact_strings = []
+            for fact in facts:
+                if fact["type"] == "entity":
+                    fact_strings.append(f"{fact['entity']} is a {fact['label']}")
+                elif fact["type"] == "relationship":
+                    fact_strings.append(f"{fact['subject']} {fact['relation']} {fact['object']}")
+            
+            # Fallback to simple pattern matching if spaCy extraction fails
+            if not fact_strings:
+                fact_patterns = [
+                    "I am", "I like", "I dislike", "I prefer", "My name is",
+                    "I work at", "I live in", "I was born", "I studied"
+                ]
+                
+                for pattern in fact_patterns:
+                    if pattern.lower() in content.lower():
+                        # Extract sentence containing the pattern
+                        sentences = content.split('.')
+                        for sentence in sentences:
+                            if pattern.lower() in sentence.lower():
+                                fact_strings.append(sentence.strip())
+                                break
+            
+            return fact_strings
+            
+        except Exception as e:
+            logger.warning(f"Failed to extract facts using spaCy, using fallback: {e}")
+            # Fallback to simple pattern matching
+            facts = []
+            fact_patterns = [
+                "I am", "I like", "I dislike", "I prefer", "My name is",
+                "I work at", "I live in", "I was born", "I studied"
+            ]
+            
+            for pattern in fact_patterns:
+                if pattern.lower() in content.lower():
+                    sentences = content.split('.')
+                    for sentence in sentences:
+                        if pattern.lower() in sentence.lower():
+                            facts.append(sentence.strip())
+                            break
+            
+            return facts
     
     def get_metrics(self) -> Dict[str, Any]:
         """Get combined metrics from base manager and web UI service."""

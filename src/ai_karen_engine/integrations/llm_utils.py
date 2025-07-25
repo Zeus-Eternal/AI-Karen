@@ -100,45 +100,12 @@ class LLMProviderBase:
     def embed(self, text: Union[str, List[str]], **kwargs) -> List[float]:
         raise NotImplementedError
 
-# Example: Local Ollama
-class OllamaProvider(LLMProviderBase):
-    def __init__(self, model: str = "llama3.2:latest"):
-        try:
-            import ollama
-            self.ollama = ollama
-        except ImportError:
-            raise ProviderNotAvailable("Ollama Python package not installed.")
-        self.model = model
-
-    def generate_text(self, prompt: str, **kwargs) -> str:
-        """Generate text from Ollama.
-
-        If ``model`` is supplied in ``kwargs`` use it, otherwise fall back to
-        ``self.model``. This avoids passing duplicate ``model`` arguments to the
-        underlying client which expects only one.
-        """
-        t0 = time.time()
-        try:
-            model = kwargs.pop("model", self.model)
-            result = self.ollama.generate(model=model, prompt=prompt, **kwargs)
-            text = result.get("response") or result.get("text") or ""
-            record_llm_metric("generate_text", time.time() - t0, True, "ollama")
-            return text
-        except Exception as ex:
-            record_llm_metric(
-                "generate_text", time.time() - t0, False, "ollama", error=str(ex)
-            )
-            raise GenerationFailed(f"Ollama error: {ex}")
-
-    def embed(self, text: Union[str, List[str]], **kwargs) -> List[float]:
-        t0 = time.time()
-        try:
-            raise NotImplementedError("Ollama embedding not wired (implement as needed).")
-        except Exception as ex:
-            record_llm_metric("embed", time.time() - t0, False, "ollama", error=str(ex))
-            raise EmbeddingFailed(f"Ollama embed error: {ex}")
-
-# More providers (Gemini, Anthropic, etc.) can be added here, plugin style.
+# Import enhanced providers
+from .providers.ollama_provider import OllamaProvider
+from .providers.openai_provider import OpenAIProvider
+from .providers.gemini_provider import GeminiProvider
+from .providers.deepseek_provider import DeepseekProvider
+from .providers.huggingface_provider import HuggingFaceProvider
 
 # ========== Main Utility Class ==========
 
@@ -149,16 +116,92 @@ class LLMUtils:
     def __init__(
         self,
         providers: Optional[Dict[str, LLMProviderBase]] = None,
-        default: str = "ollama"
+        default: str = "ollama",
+        use_registry: bool = True
     ):
-        self.providers = providers or {"ollama": OllamaProvider()}
+        self.use_registry = use_registry
         self.default = default
+        
+        if use_registry:
+            # Use registry for provider management (import here to avoid circular import)
+            from .llm_registry import get_registry
+            self.registry = get_registry()
+            self.providers = {}  # Cache for instantiated providers
+        else:
+            # Legacy mode - use provided providers or create default ones
+            if providers is None:
+                providers = {
+                    "ollama": OllamaProvider(),
+                    "openai": OpenAIProvider(),
+                    "gemini": GeminiProvider(),
+                    "deepseek": DeepseekProvider(),
+                    "huggingface": HuggingFaceProvider()
+                }
+            self.providers = providers
+            self.registry = None
 
     def get_provider(self, provider: Optional[str] = None) -> LLMProviderBase:
-        provider = provider or self.default
-        if provider not in self.providers:
-            raise ProviderNotAvailable(f"Provider '{provider}' not registered.")
-        return self.providers[provider]
+        provider_name = provider or self.default
+        
+        if self.use_registry:
+            # Get provider from registry
+            if provider_name in self.providers:
+                return self.providers[provider_name]
+            
+            # Create provider instance via registry
+            provider_instance = self.registry.get_provider(provider_name)
+            if not provider_instance:
+                raise ProviderNotAvailable(f"Provider '{provider_name}' not available in registry.")
+            
+            # Cache the instance
+            self.providers[provider_name] = provider_instance
+            return provider_instance
+        else:
+            # Legacy mode
+            if provider_name not in self.providers:
+                raise ProviderNotAvailable(f"Provider '{provider_name}' not registered.")
+            return self.providers[provider_name]
+    
+    def list_available_providers(self) -> List[str]:
+        """Get list of available providers."""
+        if self.use_registry:
+            return self.registry.get_available_providers()
+        else:
+            return list(self.providers.keys())
+    
+    def health_check_provider(self, provider: str) -> Dict[str, Any]:
+        """Perform health check on a specific provider."""
+        if self.use_registry:
+            return self.registry.health_check(provider)
+        else:
+            # Basic health check for legacy mode
+            try:
+                provider_instance = self.get_provider(provider)
+                if hasattr(provider_instance, 'health_check'):
+                    return provider_instance.health_check()
+                else:
+                    return {"status": "healthy", "message": "Provider available"}
+            except Exception as ex:
+                return {"status": "unhealthy", "error": str(ex)}
+    
+    def health_check_all(self) -> Dict[str, Dict[str, Any]]:
+        """Perform health check on all providers."""
+        if self.use_registry:
+            return self.registry.health_check_all()
+        else:
+            results = {}
+            for provider_name in self.providers.keys():
+                results[provider_name] = self.health_check_provider(provider_name)
+            return results
+    
+    def auto_select_provider(self, requirements: Optional[Dict[str, Any]] = None) -> Optional[str]:
+        """Automatically select best available provider."""
+        if self.use_registry:
+            return self.registry.auto_select_provider(requirements)
+        else:
+            # Simple fallback for legacy mode
+            available = self.list_available_providers()
+            return available[0] if available else None
 
     def generate_text(
         self,
@@ -218,9 +261,10 @@ class LLMUtils:
 # ========== Prompt-First Plugin API ==========
 def get_llm_manager(
     providers: Optional[Dict[str, LLMProviderBase]] = None,
-    default: str = "ollama"
+    default: str = "ollama",
+    use_registry: bool = True
 ) -> LLMUtils:
-    return LLMUtils(providers, default=default)
+    return LLMUtils(providers, default=default, use_registry=use_registry)
 
 def generate_text(
     prompt: str,

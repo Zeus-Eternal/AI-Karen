@@ -15,7 +15,7 @@ from typing import Dict, List, Tuple
 
 from ai_karen_engine.integrations.nanda_client import NANDAClient
  
-from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.llm_registry import get_registry
 
 
 
@@ -46,8 +46,9 @@ class SelfRefactorEngine:
     ) -> None:
         self.repo_root = pathlib.Path(repo_root)
 
-        self.llm = llm or llm_registry.get_active()
-        self.deepseek = deepseek or llm_registry.get_active()
+        llm_registry = get_registry()
+        self.llm = llm or llm_registry.auto_select_provider()
+        self.deepseek = deepseek or llm_registry.auto_select_provider()
 
         self.nanda = nanda or NANDAClient(agent_name="SelfRefactor")
         self.test_cmd = test_cmd or ["pytest", "-q"]
