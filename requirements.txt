@@ -6,6 +6,7 @@ prompt_toolkit
 pydantic
 pytest
 transformers
+sentence-transformers
 duckdb
 huggingface_hub
 openai

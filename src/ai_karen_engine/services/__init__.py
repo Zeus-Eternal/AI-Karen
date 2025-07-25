@@ -52,6 +52,17 @@ __all__ = [
     "AnalyticsDashboard",
     "get_analytics_dashboard",
     "initialize_analytics_dashboard",
+    # NLP services
+    "SpacyService",
+    "DistilBertService",
+    "NLPServiceManager",
+    "NLPHealthMonitor",
+    "NLPConfig",
+    "SpacyConfig",
+    "DistilBertConfig",
+    "ParsedMessage",
+    "EmbeddingResult",
+    "nlp_service_manager",
 ]
 
 def get_ollama_engine():
@@ -138,6 +149,13 @@ from ai_karen_engine.services.analytics_dashboard import (
     get_analytics_dashboard,
     initialize_analytics_dashboard
 )
+
+# Import NLP services
+from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
+from ai_karen_engine.services.distilbert_service import DistilBertService, EmbeddingResult
+from ai_karen_engine.services.nlp_health_monitor import NLPHealthMonitor
+from ai_karen_engine.services.nlp_config import NLPConfig, SpacyConfig, DistilBertConfig
+from ai_karen_engine.services.nlp_service_manager import NLPServiceManager, nlp_service_manager
 
 # Optional: registry pattern for dynamic dispatch
 SERVICES_REGISTRY = {

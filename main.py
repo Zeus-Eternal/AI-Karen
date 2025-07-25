@@ -102,6 +102,8 @@ if os.getenv("KARI_ENV", "local").lower() in ["local", "development", "dev"]:
         "http://127.0.0.1:3001",
         "http://localhost:8080",
         "http://127.0.0.1:8080",
+        "http://localhost:9002",  # Web UI default port
+        "http://127.0.0.1:9002",  # Web UI default port
     ]
     if origins_list == ["*"]:
         origins_list = dev_origins

@@ -2,6 +2,8 @@
   "active_user": "default",
   "theme": "dark",
   "llm_model": "llama3.2:latest",
+  "default_embedding_model": "sentence-transformers/distilbert-base-nli-stsb-mean-tokens",
+  "spacy_model": "en_core_web_sm",
   "memory": {
     "enabled": true,
     "provider": "local",

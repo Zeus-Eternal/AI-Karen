@@ -3,12 +3,14 @@
  * Connects the web UI with existing AI Karen backend services
  */
 
-import type { 
-  ChatMessage, 
-  KarenSettings, 
+import type {
+  ChatMessage,
+  KarenSettings,
   HandleUserMessageResult,
-  AiData 
+  AiData
 } from './types';
+import { webUIConfig, type WebUIConfig } from './config';
+import { getPerformanceMonitor } from './performance-monitor';
 
 // Error handling types
 interface WebUIErrorResponse {
@@ -133,22 +135,44 @@ interface UsageAnalytics {
 class KarenBackendService {
   private config: BackendConfig;
   private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
+  private debugLogging: boolean;
+  private requestLogging: boolean;
+  private performanceMonitoring: boolean;
+  private logLevel: string;
 
   constructor(config: Partial<BackendConfig> = {}) {
     this.config = {
-      baseUrl: config.baseUrl || process.env.KAREN_BACKEND_URL || 'http://localhost:8000',
-      apiKey: config.apiKey || process.env.KAREN_API_KEY,
-      timeout: config.timeout || 30000,
+      baseUrl: config.baseUrl || webUIConfig.backendUrl,
+      apiKey: config.apiKey || webUIConfig.apiKey,
+      timeout: config.timeout || webUIConfig.apiTimeout,
     };
+
+    // Initialize configuration from webUIConfig
+    this.debugLogging = webUIConfig.debugLogging;
+    this.requestLogging = webUIConfig.requestLogging;
+    this.performanceMonitoring = webUIConfig.performanceMonitoring;
+    this.logLevel = webUIConfig.logLevel;
+
+    if (this.debugLogging) {
+      console.log('KarenBackendService initialized with config:', {
+        baseUrl: this.config.baseUrl,
+        timeout: this.config.timeout,
+        hasApiKey: !!this.config.apiKey,
+        debugLogging: this.debugLogging,
+        requestLogging: this.requestLogging,
+        performanceMonitoring: this.performanceMonitoring,
+        logLevel: this.logLevel,
+      });
+    }
   }
 
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {},
     useCache: boolean = false,
-    cacheTtl: number = 300000, // 5 minutes
-    maxRetries: number = 3,
-    retryDelay: number = 1000
+    cacheTtl: number = webUIConfig.cacheTtl,
+    maxRetries: number = webUIConfig.maxRetries,
+    retryDelay: number = webUIConfig.retryDelay
   ): Promise<T> {
     const url = `${this.config.baseUrl}${endpoint}`;
     const cacheKey = `${url}:${JSON.stringify(options)}`;
@@ -172,6 +196,16 @@ class KarenBackendService {
     }
 
     let lastError: Error | null = null;
+
+    // Log request if enabled
+    if (this.requestLogging) {
+      console.log(`[REQUEST] ${options.method || 'GET'} ${url}`, {
+        headers: this.debugLogging ? headers : { 'Content-Type': headers['Content-Type'] },
+        body: options.body ? JSON.parse(options.body as string) : undefined,
+      });
+    }
+
+    const performanceStart = this.performanceMonitoring ? performance.now() : 0;
 
     // Retry logic for transient failures
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -214,13 +248,41 @@ class KarenBackendService {
 
           lastError = apiError;
           console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, apiError.message);
-          
+
           // Wait before retrying with exponential backoff
           await this.sleep(retryDelay * Math.pow(2, attempt));
           continue;
         }
 
         const data = await response.json();
+        const responseTime = this.performanceMonitoring ? performance.now() - performanceStart : 0;
+
+        // Record performance metrics
+        if (this.performanceMonitoring) {
+          const performanceMonitor = getPerformanceMonitor();
+          performanceMonitor.recordRequest(
+            endpoint,
+            options.method || 'GET',
+            performanceStart,
+            performance.now(),
+            response.status,
+            JSON.stringify(data).length
+          );
+
+          if (responseTime > 5000) { // Log slow requests (>5s)
+            console.warn(`[PERFORMANCE] Slow request detected: ${endpoint} took ${responseTime.toFixed(2)}ms`);
+          }
+        }
+
+        // Log response if enabled
+        if (this.requestLogging) {
+          console.log(`[RESPONSE] ${response.status} ${options.method || 'GET'} ${url}`, {
+            status: response.status,
+            responseTime: this.performanceMonitoring ? `${responseTime.toFixed(2)}ms` : undefined,
+            dataSize: JSON.stringify(data).length,
+            cached: useCache,
+          });
+        }
 
         // Cache successful responses
         if (useCache) {
@@ -256,12 +318,26 @@ class KarenBackendService {
 
         // Don't retry if it's not a retryable error or we've exhausted retries
         if (!(lastError instanceof APIError && lastError.isRetryable) || attempt === maxRetries) {
+          // Record performance metrics for failed requests
+          if (this.performanceMonitoring && lastError instanceof APIError) {
+            const performanceMonitor = getPerformanceMonitor();
+            performanceMonitor.recordRequest(
+              endpoint,
+              options.method || 'GET',
+              performanceStart,
+              performance.now(),
+              lastError.status,
+              0,
+              lastError.message
+            );
+          }
+
           console.error(`Backend request failed for ${endpoint} after ${attempt + 1} attempts:`, lastError);
           throw lastError;
         }
 
         console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, lastError.message);
-        
+
         // Wait before retrying with exponential backoff
         await this.sleep(retryDelay * Math.pow(2, attempt));
       }
@@ -328,7 +404,7 @@ class KarenBackendService {
           return this.getCachedMemories(query) || [];
         }
       }
-      
+
       console.error('Failed to query memories:', error);
       return [];
     }
@@ -397,7 +473,7 @@ class KarenBackendService {
       });
     } catch (error) {
       let errorMessage = 'Unknown error';
-      
+
       if (error instanceof APIError) {
         if (error.details?.type === 'PLUGIN_ERROR') {
           errorMessage = error.details.message || 'Plugin execution failed';
@@ -494,7 +570,7 @@ class KarenBackendService {
     sessionId?: string
   ): Promise<HandleUserMessageResult> {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     try {
       // Log request for debugging
       console.log(`[${requestId}] Processing user message:`, {
@@ -543,9 +619,9 @@ class KarenBackendService {
       console.log(`[${requestId}] Chat processing successful:`, {
         responseTime: `${responseTime}ms`,
         responseLength: response.finalResponse?.length || 0,
-        hasAiData: !!response.ai_data_for_final_response,
-        hasSuggestions: !!response.suggested_new_facts,
-        hasProactiveSuggestion: !!response.proactive_suggestion,
+        hasAiData: !!response.aiDataForFinalResponse,
+        hasSuggestions: !!response.suggestedNewFacts,
+        hasProactiveSuggestion: !!response.proactiveSuggestion,
       });
 
       // Store the conversation in memory if successful
@@ -568,7 +644,7 @@ class KarenBackendService {
       return response;
     } catch (error) {
       console.error(`[${requestId}] Failed to process user message:`, error);
-      
+
       // Handle different error types with specific fallback responses
       if (error instanceof APIError) {
         if (error.details?.type === 'CHAT_PROCESSING_ERROR') {
@@ -608,7 +684,7 @@ class KarenBackendService {
           };
         }
       }
-      
+
       // Generic fallback response for unknown errors
       return {
         finalResponse: "I'm having trouble connecting to my backend services right now. Please try again in a moment.",

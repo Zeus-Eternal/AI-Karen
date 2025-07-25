@@ -139,6 +139,10 @@ class AIKarenConfig:
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
     web_ui: WebUIConfig = field(default_factory=WebUIConfig)
     
+    # NLP and Embedding Models
+    default_embedding_model: str = "sentence-transformers/distilbert-base-nli-stsb-mean-tokens"
+    spacy_model: str = "en_core_web_sm"
+    
     # Legacy compatibility
     active_user: str = "default"
     theme: str = "dark"
@@ -271,6 +275,12 @@ class ConfigManager:
             security_config["cors_origins"] = origins.split(",")
         if security_config:
             env_config["security"] = security_config
+        
+        # NLP and Embedding Models
+        if embedding_model := os.getenv("KARI_EMBED_MODEL"):
+            env_config["default_embedding_model"] = embedding_model
+        if spacy_model := os.getenv("KARI_SPACY_MODEL"):
+            env_config["spacy_model"] = spacy_model
         
         return env_config
     
