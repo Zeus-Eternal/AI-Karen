@@ -1,1 +1,62 @@
-[]
+[
+  {
+    "name": "ollama",
+    "provider_class": "OllamaProvider",
+    "description": "Local Ollama server for running open-source models",
+    "supports_streaming": true,
+    "supports_embeddings": true,
+    "requires_api_key": false,
+    "default_model": "llama3.2:latest",
+    "health_status": "unknown",
+    "last_health_check": null,
+    "error_message": null
+  },
+  {
+    "name": "openai",
+    "provider_class": "OpenAIProvider",
+    "description": "OpenAI GPT models via API",
+    "supports_streaming": true,
+    "supports_embeddings": true,
+    "requires_api_key": true,
+    "default_model": "gpt-3.5-turbo",
+    "health_status": "unknown",
+    "last_health_check": null,
+    "error_message": null
+  },
+  {
+    "name": "gemini",
+    "provider_class": "GeminiProvider",
+    "description": "Google Gemini models via API",
+    "supports_streaming": true,
+    "supports_embeddings": true,
+    "requires_api_key": true,
+    "default_model": "gemini-1.5-flash",
+    "health_status": "unknown",
+    "last_health_check": null,
+    "error_message": null
+  },
+  {
+    "name": "deepseek",
+    "provider_class": "DeepseekProvider",
+    "description": "Deepseek models optimized for coding and reasoning",
+    "supports_streaming": true,
+    "supports_embeddings": false,
+    "requires_api_key": true,
+    "default_model": "deepseek-chat",
+    "health_status": "unknown",
+    "last_health_check": null,
+    "error_message": null
+  },
+  {
+    "name": "huggingface",
+    "provider_class": "HuggingFaceProvider",
+    "description": "HuggingFace models via Inference API or local execution",
+    "supports_streaming": false,
+    "supports_embeddings": true,
+    "requires_api_key": true,
+    "default_model": "microsoft/DialoGPT-large",
+    "health_status": "healthy",
+    "last_health_check": 1753442971.6508784,
+    "error_message": null
+  }
+]

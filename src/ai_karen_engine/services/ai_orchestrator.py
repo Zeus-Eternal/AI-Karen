@@ -119,6 +119,7 @@ class FlowManager:
             self.logger.error(f"Flow {flow_type} execution failed: {e}")
             raise FlowExecutionError(f"Flow {flow_type} execution failed: {e}")
 
+# ---
 
 class DecisionEngine:
     """
@@ -447,7 +448,7 @@ class DecisionEngine:
             if name_part and not any(name_part.lower() in fact.lower() for fact in existing_facts):
                 new_facts.append(f"User's name is {name_part}")
         
-        # Look for "I like" patterns
+        # Look for "i like" patterns
         if "i like" in prompt_lower:
             like_start = prompt_lower.find("i like") + len("i like")
             like_part = prompt[like_start:].strip()
@@ -656,18 +657,17 @@ class DecisionEngine:
         for pattern, prefix in name_patterns:
             if pattern in prompt_lower:
                 name_start = prompt_lower.find(pattern) + len(pattern)
-                name_part = prompt[name_start:].strip().split()[0].rstrip(".,!?")
+                name_part = prompt[name_start:].strip().split()[0]
                 if name_part and not any(name_part.lower() in fact.lower() for fact in existing_facts):
                     new_facts.append(f"{prefix}{name_part}")
-                break
         
         # Enhanced preference extraction
         preference_patterns = [
             ("i like ", "User likes "),
             ("i love ", "User loves "),
             ("i enjoy ", "User enjoys "),
-            ("my favorite ", "User's favorite "),
             ("i prefer ", "User prefers "),
+            ("my favorite ", "User's favorite "),
             ("i hate ", "User dislikes "),
             ("i don't like ", "User doesn't like ")
         ]
@@ -677,34 +677,34 @@ class DecisionEngine:
                 pref_start = prompt_lower.find(pattern) + len(pattern)
                 pref_part = prompt[pref_start:].strip()
                 # Take reasonable amount of text for preference
-                pref_words = pref_part.split()[:6]
+                pref_words = pref_part.split()[:10]
                 if pref_words:
-                    preference = " ".join(pref_words).rstrip(".,!?")
-                    if not any(preference.lower() in fact.lower() for fact in existing_facts):
-                        new_facts.append(f"{prefix}{preference}")
-                break
+                    pref_text = " ".join(pref_words).rstrip(".,!?")
+                    if not any(pref_text.lower() in fact.lower() for fact in existing_facts):
+                        new_facts.append(f"{prefix}{pref_text}")
         
-        # Personal details extraction
-        detail_patterns = [
+        # Enhanced personal information extraction
+        personal_patterns = [
             ("i work at ", "User works at "),
+            ("i work for ", "User works for "),
+            ("my job is ", "User's job is "),
             ("i live in ", "User lives in "),
             ("i'm from ", "User is from "),
+            ("i study ", "User studies "),
+            ("i'm studying ", "User is studying "),
             ("i have a ", "User has a "),
-            ("i own a ", "User owns a "),
-            ("my job is ", "User's job is "),
-            ("i study ", "User studies ")
+            ("i own a ", "User owns a ")
         ]
         
-        for pattern, prefix in detail_patterns:
+        for pattern, prefix in personal_patterns:
             if pattern in prompt_lower:
-                detail_start = prompt_lower.find(pattern) + len(pattern)
-                detail_part = prompt[detail_start:].strip()
-                detail_words = detail_part.split()[:5]
-                if detail_words:
-                    detail = " ".join(detail_words).rstrip(".,!?")
-                    if not any(detail.lower() in fact.lower() for fact in existing_facts):
-                        new_facts.append(f"{prefix}{detail}")
-                break
+                info_start = prompt_lower.find(pattern) + len(pattern)
+                info_part = prompt[info_start:].strip()
+                info_words = info_part.split()[:8]
+                if info_words:
+                    info_text = " ".join(info_words).rstrip(".,!?")
+                    if not any(info_text.lower() in fact.lower() for fact in existing_facts):
+                        new_facts.append(f"{prefix}{info_text}")
         
         return new_facts if new_facts else None
     
@@ -762,6 +762,7 @@ class DecisionEngine:
         
         return None
 
+# ---
 
 class ContextManager:
     """
@@ -915,6 +916,7 @@ class ContextManager:
             # Clear all cache
             self._context_cache.clear()
 
+# ---
 
 class PromptManager:
     """
@@ -1027,6 +1029,7 @@ Provide a comprehensive response that demonstrates your enhanced capabilities. C
         """Get list of available template names."""
         return list(self._templates.keys())
 
+# ---
 
 class AIOrchestrator(BaseService):
     """
@@ -1282,9 +1285,7 @@ class AIOrchestrator(BaseService):
         elif any(k in prompt.lower() for k in ["thank", "thanks"]):
             tone = user_settings.get("personality_tone", "friendly")
             if tone == "formal":
-                response_parts.append("You're quite welcome. I'm pleased to be of assistance.")
-            elif tone == "humorous":
-                response_parts.append("No problem! That's what I'm here for - being helpful is my specialty!")
+                response_parts.append("You are most welcome. It was my pleasure to assist you.")
             else:
                 response_parts.append("You're welcome! I'm glad I could help.")
         else:

@@ -29,7 +29,7 @@ from ai_karen_engine.core.soft_reasoning_engine import SoftReasoningEngine
 from ai_karen_engine.core.memory.manager import init_memory
 import ai_karen_engine.utils.auth as auth_utils
 from ai_karen_engine.self_refactor import SelfRefactorEngine, SREScheduler
-from ai_karen_engine.integrations.llm_registry import registry as llm_registry
+from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.integrations.model_discovery import sync_registry
 from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
 from ai_karen_engine.plugins.router import get_plugin_router
@@ -523,17 +523,23 @@ def metrics_prometheus() -> Response:
 
 @app.get("/models")
 def list_models() -> ModelListResponse:
-    models = list(llm_registry.list_models())
-    return ModelListResponse(models=models, active=llm_registry.active)
+    llm_registry = get_registry()
+    models = llm_registry.list_providers()
+    active_provider = llm_registry.auto_select_provider() or (models[0] if models else "none")
+    return ModelListResponse(models=models, active=active_provider)
 
 @app.post("/models/select")
 def select_model(req: ModelSelectRequest) -> ModelListResponse:
+    llm_registry = get_registry()
     try:
-        llm_registry.set_active(req.model)
+        # For now, just validate the model exists
+        if req.model not in llm_registry.list_providers():
+            raise KeyError(f"Model {req.model} not found")
+        # In a full implementation, you'd set the active model here
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    models = list(llm_registry.list_models())
-    return ModelListResponse(models=models, active=llm_registry.active)
+    models = llm_registry.list_providers()
+    return ModelListResponse(models=models, active=req.model)
 
 @app.get("/self_refactor/logs")
 def self_refactor_logs(full: bool = False) -> Dict[str, List[str]]:

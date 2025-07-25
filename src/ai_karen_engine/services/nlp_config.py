@@ -26,10 +26,10 @@ class SpacyConfig(BaseModel):
             # Fallback to environment variable or default
             model_name = os.getenv("SPACY_MODEL", "en_core_web_sm")
         
-        # Set defaults
+        # Set defaults - enable parser for dependency parsing as required by task 3.2
         defaults = {
             "model_name": model_name,
-            "disabled_components": ["textcat", "parser"],
+            "disabled_components": ["textcat"],  # Keep parser enabled for dependency parsing
             "enable_fallback": True,
             "cache_size": 1000,
             "cache_ttl": 3600,
@@ -39,7 +39,7 @@ class SpacyConfig(BaseModel):
         super().__init__(**defaults)
     
     model_name: str = "en_core_web_sm"
-    disabled_components: List[str] = ["textcat", "parser"]
+    disabled_components: List[str] = ["textcat"]  # Keep parser enabled for dependency parsing
     enable_fallback: bool = True
     cache_size: int = 1000
     cache_ttl: int = 3600

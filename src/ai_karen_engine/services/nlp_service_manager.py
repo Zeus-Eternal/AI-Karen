@@ -134,6 +134,8 @@ class NLPServiceManager:
                     "entities": parsed_message.entities,
                     "pos_tags": parsed_message.pos_tags,
                     "noun_phrases": parsed_message.noun_phrases,
+                    "sentences": parsed_message.sentences,
+                    "dependencies": parsed_message.dependencies,
                     "language": parsed_message.language,
                     "processing_time": parsed_message.processing_time,
                     "used_fallback": parsed_message.used_fallback
