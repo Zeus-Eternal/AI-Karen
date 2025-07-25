@@ -391,3 +391,17 @@ def health_check_all() -> Dict[str, Dict[str, Any]]:
     """Health check all providers."""
     registry = get_registry()
     return registry.health_check_all()
+
+
+# Compatibility alias for plugin discovery
+registry = get_registry()
+
+__all__ = [
+    "LLMRegistry",
+    "get_registry",
+    "register_provider",
+    "get_provider",
+    "list_providers",
+    "health_check_all",
+    "registry",
+]

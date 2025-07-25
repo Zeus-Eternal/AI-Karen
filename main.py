@@ -8,6 +8,7 @@ Kari FastAPI Server
 import os
 import sys
 import json
+from dotenv import load_dotenv
 import asyncio
 import logging
 import uuid
@@ -41,6 +42,11 @@ from ai_karen_engine.api_routes.conversation_routes import router as conversatio
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
 from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
+
+# Load environment variables from .env if present
+load_dotenv()
+if "DATABASE_URL" not in os.environ and os.getenv("POSTGRES_URL"):
+    os.environ["DATABASE_URL"] = os.environ["POSTGRES_URL"]
 
 # ─── Prometheus metrics (with graceful fallback) ─────────────────────────────
 

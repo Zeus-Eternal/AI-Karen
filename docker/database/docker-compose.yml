@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ai_karen}
       POSTGRES_USER: ${POSTGRES_USER:-karen_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-karen_secure_pass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-karen_secure_pass_change_me}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -112,7 +112,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ai-karen-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secure_pass} --maxmemory ${REDIS_MEMORY_LIMIT:-512m} --maxmemory-policy allkeys-lru
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secure_pass_change_me} --maxmemory ${REDIS_MEMORY_LIMIT:-512m} --maxmemory-policy allkeys-lru
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -150,14 +150,14 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_DB=${POSTGRES_DB:-ai_karen}
       - POSTGRES_USER=${POSTGRES_USER:-karen_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-karen_secure_pass}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-karen_secure_pass_change_me}
       - ELASTICSEARCH_HOST=elasticsearch
       - ELASTICSEARCH_PORT=9200
       - MILVUS_HOST=milvus
       - MILVUS_PORT=19530
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_pass}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secure_pass_change_me}
       - DUCKDB_PATH=/data/duckdb/kari_duckdb.db
     depends_on:
       postgres:

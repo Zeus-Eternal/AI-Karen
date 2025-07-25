@@ -163,7 +163,11 @@ class AIOrchestrator(BaseService):
             )
             full_prompt = f"{template['system_prompt']}\n\n{user_prompt}"
 
-            raw = self.llm_router.invoke(self.llm_utils, full_prompt, task_intent="chat")
+            raw = self.llm_router.invoke(
+                self.llm_utils,
+                full_prompt,
+                task_intent=FlowType.CONVERSATION_PROCESSING.value,
+            )
             if not isinstance(raw, str):
                 raise TypeError("LLM response must be text")
             response = raw.strip()
