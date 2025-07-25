@@ -1,3 +1,20 @@
+import logging
+from typing import Any, Callable, Dict, List, Optional
+
+from ai_karen_engine.models.shared_types import (
+    DecideActionInput,
+    DecideActionOutput,
+    MemoryDepth,
+    PersonalityTone,
+    PersonalityVerbosity,
+    ToolInput,
+    ToolType,
+    AiData,
+)
+
+from .personality_utils import apply_personality
+
+
 class DecisionEngine:
     """
     Handles cognitive decision-making processes.
@@ -289,16 +306,14 @@ class DecisionEngine:
             )
     
     async def _generate_conversational_response(
-        self, 
-        prompt: str, 
-        context: Dict[str, Any], 
+        self,
+        prompt: str,
+        context: Dict[str, Any],
         intent_analysis: Dict[str, Any]
     ) -> str:
         """Generate a conversational response when no tool is needed."""
         # This is a simplified implementation - in production, this would use LLM
         tone = context.get("personality_tone", PersonalityTone.FRIENDLY)
-        
-        # Basic response generation based on tone
         if intent_analysis["primary_intent"] == "conversation":
             if tone == PersonalityTone.FORMAL:
                 response = "I understand your inquiry. How may I assist you further?"
@@ -308,8 +323,8 @@ class DecisionEngine:
                 response = "I'm here to help! What would you like to know or do?"
         else:
             response = "I'm not sure I understand exactly what you're looking for. Could you provide more details?"
-        
-        return response
+        verbosity = context.get("personality_verbosity", PersonalityVerbosity.BALANCED)
+        return apply_personality(response, tone, verbosity)
     
     async def _check_for_known_information(self, prompt: str, context: Dict[str, Any]) -> Optional[str]:
         """
@@ -350,28 +365,7 @@ class DecisionEngine:
         """Generate a response adapted to the user's personality and context."""
         tone = context.get("personality_tone", PersonalityTone.FRIENDLY)
         verbosity = context.get("personality_verbosity", PersonalityVerbosity.BALANCED)
-        
-        # Adapt tone
-        if tone == PersonalityTone.FORMAL:
-            if "I'd be happy to" in base_response:
-                base_response = base_response.replace("I'd be happy to", "I would be pleased to")
-        elif tone == PersonalityTone.HUMOROUS:
-            if "Which location" in base_response:
-                base_response = base_response.replace("Which location", "What magical place")
-        
-        # Adapt verbosity
-        if verbosity == PersonalityVerbosity.CONCISE:
-            # Make more concise
-            base_response = base_response.replace("I'd be happy to check the weather for you. ", "")
-            base_response = base_response.replace("I'd be happy to look up book information for you. ", "")
-        elif verbosity == PersonalityVerbosity.DETAILED:
-            # Add more detail
-            if "weather" in base_response.lower():
-                base_response += " I can provide current conditions, temperature, and forecast information."
-            elif "book" in base_response.lower():
-                base_response += " I can find details like author, publication date, summary, and reviews."
-        
-        return base_response
+        return apply_personality(base_response, tone, verbosity)
     
     async def _generate_tool_acknowledgment(
         self, 
