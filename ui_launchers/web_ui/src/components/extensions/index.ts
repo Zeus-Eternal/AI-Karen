@@ -6,6 +6,7 @@ export { default as ExtensionStats } from './ExtensionStats';
 export { default as ExtensionHeader } from './ExtensionHeader';
 export { default as ExtensionSettingsPanel } from './ExtensionSettingsPanel';
 export { default as ExtensionControls } from './ExtensionControls';
+export { default as SidebarNavigation } from './SidebarNavigation';
 
 // Core components
 export * from './core';
