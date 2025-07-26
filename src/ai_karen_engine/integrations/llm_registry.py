@@ -130,6 +130,9 @@ class LLMRegistry:
                                 "last_health_check"
                             )
                             registration.error_message = item.get("error_message")
+                            # Also update the default_model if provided
+                            if "default_model" in item:
+                                registration.default_model = item["default_model"]
                         else:
                             # Create new registration from saved data
                             self._registrations[name] = ProviderRegistration(**item)

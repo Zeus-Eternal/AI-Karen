@@ -1,0 +1,15 @@
+profiles:
+    default:
+      providers:
+        chat: ollama
+        conversation_processing: ollama
+        code: deepseek
+        generic: ollama
+      fallback: openai
+    enterprise:
+      providers:
+        chat: openai
+        conversation_processing: openai
+        code: groq
+        generic: openai
+      fallback: openai
