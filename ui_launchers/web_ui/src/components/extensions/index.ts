@@ -2,3 +2,8 @@ export { default as ExtensionBreadcrumbs } from './ExtensionBreadcrumbs';
 export { default as ExtensionSidebar } from './ExtensionSidebar';
 export { default as ExtensionStats } from './ExtensionStats';
 export * from './plugins';
+export { default as AgentList } from './automation/AgentList';
+export { default as WorkflowList } from './automation/WorkflowList';
+export { default as SystemExtensionsList } from './system/SystemExtensionsList';
+export { default as ExtensionSettingsPanel } from './ExtensionSettingsPanel';
+export { default as ExtensionControls } from './ExtensionControls';
