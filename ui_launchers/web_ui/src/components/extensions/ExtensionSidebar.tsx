@@ -9,6 +9,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import ExtensionHeader from "./ExtensionHeader";
+import SidebarNavigation from "./SidebarNavigation";
 import { ExtensionProvider } from "@/extensions";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
@@ -26,8 +27,8 @@ function SidebarInner() {
       <SidebarRail />
       <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20">
         <ExtensionHeader />
-      <SidebarContent className="p-2 space-y-2">
-        {/* Navigation items will be added in future tasks */}
+      <SidebarContent className="p-2 space-y-2 overflow-auto">
+        <SidebarNavigation />
       </SidebarContent>
       <SidebarFooter className="p-2 border-t">
         <p className="text-xs text-muted-foreground text-center">
