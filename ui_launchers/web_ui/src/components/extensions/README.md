@@ -140,6 +140,9 @@ Category (Plugins/Extensions)
 - Shared components for common functionality
 - Category-specific components
 - Responsive design with Shadcn/ui integration
+- Sidebar header with toggle button
+- Stats overview for plugins and extensions
+- Breadcrumb navigation component
 
 ## Usage
 
