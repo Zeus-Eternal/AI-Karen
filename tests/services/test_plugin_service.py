@@ -688,5 +688,33 @@ class TestGmailPlugin:
         await service.cleanup()
 
 
+class TestWeatherPlugin:
+    """Tests for the built-in Weather plugin."""
+
+    @pytest.mark.asyncio
+    async def test_weather_plugin_basic(self):
+        service = await initialize_plugin_service()
+        await service.discover_plugins()
+        await service.validate_and_register_all_discovered()
+        result = await service.execute_plugin(
+            "weather-query",
+            {"location": "Paris"},
+        )
+        assert result.success
+        assert isinstance(result.result, dict)
+        assert "summary" in result.result
+        await service.cleanup()
+
+    @pytest.mark.asyncio
+    async def test_weather_plugin_missing_location(self):
+        service = await initialize_plugin_service()
+        await service.discover_plugins()
+        await service.validate_and_register_all_discovered()
+        result = await service.execute_plugin("weather-query", {})
+        assert result.success
+        assert "error" in result.result
+        await service.cleanup()
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

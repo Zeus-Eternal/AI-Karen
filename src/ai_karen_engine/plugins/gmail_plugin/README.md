@@ -1,9 +1,12 @@
 # Gmail Plugin
 
-This core plugin provides simple Gmail functionality used in tests and demos.
-It supports two actions via parameters:
+This core plugin provides basic Gmail functionality. When the environment
+variable `GMAIL_API_TOKEN` is set with a valid OAuth access token, the plugin
+will call the Gmail REST API to list unread messages and create email drafts.
+If the token is absent or an error occurs, the plugin falls back to mocked
+responses so tests remain deterministic.
 
-- `check_unread` – returns a mocked list of unread emails.
-- `compose_email` – returns a mock confirmation message.
+Supported actions via parameters:
 
-The plugin is intentionally minimal and does not integrate with the real Gmail API.
+- `check_unread` – returns unread emails (real or mocked)
+- `compose_email` – creates a draft (real or mocked)

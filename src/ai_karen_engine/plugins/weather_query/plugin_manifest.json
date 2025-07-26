@@ -7,7 +7,7 @@
   "module": "ai_karen_engine.plugins.weather_query.handler",
   "name": "weather-query",
   "version": "0.1.0",
-  "description": "Fetches weather information using wttr.in",
+  "description": "Fetches weather information using OpenWeatherMap when an API key is set, otherwise returns mocked data",
   "author": "Kari Team",
   "license": "MPL-2.0",
   "entry_point": "run",
