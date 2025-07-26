@@ -8,8 +8,8 @@ import logging
 import asyncio
 from typing import Dict, Any
 
-from .llm_registry import get_registry
-from .llm_utils import get_llm_manager
+from ai_karen_engine.integrations.llm_registry import get_registry
+from ai_karen_engine.integrations.llm_utils import get_llm_manager
 
 logger = logging.getLogger("kari.llm_startup")
 

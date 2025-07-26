@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
-from .registry import ServiceRegistry
+from ai_karen_engine.mcp.registry import ServiceRegistry
 
 try:
     from prometheus_client import Counter, Histogram

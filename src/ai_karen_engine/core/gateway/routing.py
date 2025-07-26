@@ -16,8 +16,8 @@ except ImportError:
     JSONResponse = object
     PlainTextResponse = object
 
-from ..services import ServiceContainer
-from ..logging import get_logger
+from ai_karen_engine.core.services import ServiceContainer
+from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
 

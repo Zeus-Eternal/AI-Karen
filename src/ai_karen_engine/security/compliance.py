@@ -20,8 +20,8 @@ except ImportError:
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .threat_protection import ThreatEvent
-from .incident_response import SecurityIncident
+from ai_karen_engine.security.threat_protection import ThreatEvent
+from ai_karen_engine.security.incident_response import SecurityIncident
 
 logger = logging.getLogger(__name__)
 

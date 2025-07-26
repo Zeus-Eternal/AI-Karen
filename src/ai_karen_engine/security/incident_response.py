@@ -29,7 +29,7 @@ except ImportError:
     AIOHTTP_AVAILABLE = False
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .threat_protection import ThreatEvent, ThreatLevel, AttackType
+from ai_karen_engine.security.threat_protection import ThreatEvent, ThreatLevel, AttackType
 
 logger = logging.getLogger(__name__)
 

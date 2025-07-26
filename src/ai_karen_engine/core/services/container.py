@@ -6,7 +6,7 @@ from typing import Any, Dict, Type, TypeVar, Callable, Optional, List
 from functools import wraps
 import inspect
 import logging
-from .base import BaseService, ServiceConfig
+from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 
 T = TypeVar('T')
 logger = logging.getLogger(__name__)

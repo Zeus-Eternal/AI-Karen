@@ -66,18 +66,18 @@ async def _init_ai_karen_integration() -> None:
     """Initialize AI Karen engine integration services."""
     try:
         # Initialize configuration management
-        from .core.config_manager import get_config_manager
+        from ai_karen_engine.core.config_manager import get_config_manager
         config_manager = get_config_manager()
         config = config_manager.load_config()
         logger.info(f"Configuration loaded for environment: {config.environment}")
         
         # Initialize service registry and core services
-        from .core.service_registry import initialize_services
+        from ai_karen_engine.core.service_registry import initialize_services
         await initialize_services()
         logger.info("AI Karen integration services initialized")
         
         # Set up health monitoring
-        from .core.health_monitor import setup_default_health_checks, get_health_monitor
+        from ai_karen_engine.core.health_monitor import setup_default_health_checks, get_health_monitor
         await setup_default_health_checks()
         health_monitor = get_health_monitor()
         health_monitor.start_monitoring()
@@ -126,7 +126,7 @@ async def _init_extensions() -> None:
 async def _bootstrap_memory_defaults() -> None:
     """Ensure memory tables exist and default models are loaded."""
     try:
-        from .core.service_registry import get_service_registry
+        from ai_karen_engine.core.service_registry import get_service_registry
         from ai_karen_engine.core import default_models
 
         registry = get_service_registry()
@@ -418,7 +418,7 @@ async def auth_middleware(request: Request, call_next):
 async def health(request: Request):
     try:
         # Get comprehensive health status from health monitor
-        from .core.health_monitor import get_health_monitor
+        from ai_karen_engine.core.health_monitor import get_health_monitor
         health_monitor = get_health_monitor()
         health_summary = health_monitor.get_health_summary()
         
@@ -459,7 +459,7 @@ async def readyz():
 async def list_services():
     """List all registered services and their status."""
     try:
-        from .core.service_registry import get_service_registry
+        from ai_karen_engine.core.service_registry import get_service_registry
         registry = get_service_registry()
         return {
             "services": registry.list_services(),
@@ -476,7 +476,7 @@ async def list_services():
 async def get_service_health(service_name: str):
     """Get detailed health information for a specific service."""
     try:
-        from .core.health_monitor import get_health_monitor
+        from ai_karen_engine.core.health_monitor import get_health_monitor
         health_monitor = get_health_monitor()
         service_health = health_monitor.get_service_health(service_name)
         
@@ -515,7 +515,7 @@ async def get_service_health(service_name: str):
 async def get_health_summary():
     """Get comprehensive health summary for all services."""
     try:
-        from .core.health_monitor import get_health_monitor
+        from ai_karen_engine.core.health_monitor import get_health_monitor
         health_monitor = get_health_monitor()
         return health_monitor.get_health_summary()
     except Exception as e:
@@ -529,7 +529,7 @@ async def get_health_summary():
 async def trigger_health_check():
     """Trigger immediate health check for all services."""
     try:
-        from .core.health_monitor import get_health_monitor
+        from ai_karen_engine.core.health_monitor import get_health_monitor
         health_monitor = get_health_monitor()
         results = await health_monitor.check_all_services()
         
@@ -556,7 +556,7 @@ async def trigger_health_check():
 async def get_configuration():
     """Get current system configuration (sanitized)."""
     try:
-        from .core.config_manager import get_config
+        from ai_karen_engine.core.config_manager import get_config
         config = get_config()
         
         # Return sanitized configuration (remove sensitive data)

@@ -20,11 +20,11 @@ import json
 try:
     from pydantic import BaseModel, Field
 except ImportError:
-    from ..pydantic_stub import BaseModel, Field
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
-from ..services.nlp_service_manager import nlp_service_manager
-from ..services.spacy_service import ParsedMessage
-from ..models.shared_types import ChatMessage, MessageRole
+from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+from ai_karen_engine.services.spacy_service import ParsedMessage
+from ai_karen_engine.models.shared_types import ChatMessage, MessageRole
 
 logger = logging.getLogger(__name__)
 

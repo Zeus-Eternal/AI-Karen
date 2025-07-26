@@ -8,7 +8,7 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from .models import ExtensionManifest, ExtensionRecord, ExtensionStatus
+from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionRecord, ExtensionStatus
 
 
 class ExtensionRegistry:

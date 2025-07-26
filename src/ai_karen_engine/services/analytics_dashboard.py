@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from pydantic import BaseModel, Field
 
-from .analytics_service import (
+from ai_karen_engine.services.analytics_service import (
     AnalyticsService,
     get_analytics_service,
     Metric,

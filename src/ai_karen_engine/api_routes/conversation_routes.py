@@ -8,14 +8,14 @@ from typing import List, Optional, Dict, Any, Tuple
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
-from ..services.conversation_service import (
+from ai_karen_engine.services.conversation_service import (
     WebUIConversationService,
     ConversationStatus,
     ConversationPriority,
     UISource
 )
-from ..database.conversation_manager import MessageRole
-from ..models.web_api_error_responses import (
+from ai_karen_engine.database.conversation_manager import MessageRole
+from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
     WebAPIErrorResponse,
     ValidationErrorDetail,
@@ -25,7 +25,7 @@ from ..models.web_api_error_responses import (
     create_generic_error_response,
     get_http_status_for_error_code,
 )
-from ..core.logging import get_logger
+from ai_karen_engine.core.logging import get_logger
 # from ..database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
 
@@ -175,7 +175,7 @@ class AnalyticsResponse(BaseModel):
 
 
 # Import dependency injection
-from ..core.dependencies import get_conversation_service
+from ai_karen_engine.core.dependencies import get_conversation_service
 
 
 def _convert_conversation_to_response(conversation) -> ConversationResponse:

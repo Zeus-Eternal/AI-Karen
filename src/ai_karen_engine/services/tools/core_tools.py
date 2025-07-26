@@ -552,7 +552,7 @@ class KarenPluginTool(BaseTool):
         
         try:
             # Import plugin service
-            from ..plugin_service import get_plugin_service
+            from ai_karen_engine.services.plugin_service import get_plugin_service
             
             plugin_service = get_plugin_service()
             await plugin_service._ensure_initialized()
@@ -646,7 +646,7 @@ class KarenMemoryQueryTool(BaseTool):
         
         try:
             # Import memory service
-            from ..memory_service import WebUIMemoryService
+            from ai_karen_engine.services.memory_service import WebUIMemoryService
             
             memory_service = WebUIMemoryService()
             
@@ -751,7 +751,7 @@ class KarenMemoryStoreTool(BaseTool):
         
         try:
             # Import memory service
-            from ..memory_service import WebUIMemoryService
+            from ai_karen_engine.services.memory_service import WebUIMemoryService
             
             memory_service = WebUIMemoryService()
             

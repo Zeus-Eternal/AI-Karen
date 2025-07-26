@@ -34,7 +34,7 @@ class EmbeddingManager:
             self.model_name = model_name
         else:
             try:
-                from .config_manager import get_config
+                from ai_karen_engine.core.config_manager import get_config
                 config = get_config()
                 self.model_name = config.default_embedding_model
             except Exception:

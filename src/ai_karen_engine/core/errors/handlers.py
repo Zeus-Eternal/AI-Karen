@@ -10,7 +10,7 @@ import logging
 import traceback
 import uuid
 
-from .exceptions import (
+from ai_karen_engine.core.errors.exceptions import (
     KarenError, ValidationError, AuthenticationError, AuthorizationError,
     NotFoundError, ServiceError, PluginError, MemoryError, AIProcessingError,
     RateLimitError, ConfigurationError

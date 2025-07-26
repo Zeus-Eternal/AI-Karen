@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from .resource_monitor import ResourceMonitor, ResourceUsage
+from ai_karen_engine.extensions.resource_monitor import ResourceMonitor, ResourceUsage
 
 
 class MetricsDashboard:

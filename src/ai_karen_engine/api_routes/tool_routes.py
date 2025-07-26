@@ -8,13 +8,13 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
-from ..services.tool_service import (
+from ai_karen_engine.services.tool_service import (
     ToolService,
     ToolInput,
     ToolOutput,
     BaseTool
 )
-from ..core.dependencies import get_tool_service
+from ai_karen_engine.core.dependencies import get_tool_service
 # Temporarily disable auth imports for web UI integration
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])

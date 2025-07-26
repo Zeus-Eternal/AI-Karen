@@ -8,11 +8,11 @@ import asyncio
 import logging
 from typing import Dict, Any, Optional, List, Union
 
-from .spacy_service import SpacyService, ParsedMessage
-from .distilbert_service import DistilBertService, EmbeddingResult
-from .nlp_health_monitor import NLPHealthMonitor, NLPSystemHealth
-from .nlp_config import NLPConfig, SpacyConfig, DistilBertConfig
-from ..config.config_manager import config_manager
+from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
+from ai_karen_engine.services.distilbert_service import DistilBertService, EmbeddingResult
+from ai_karen_engine.services.nlp_health_monitor import NLPHealthMonitor, NLPSystemHealth
+from ai_karen_engine.services.nlp_config import NLPConfig, SpacyConfig, DistilBertConfig
+from ai_karen_engine.config.config_manager import config_manager
 
 logger = logging.getLogger(__name__)
 
