@@ -2,6 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,7 +73,8 @@ export default function GmailPluginPage() {
             Interact with these mocked Gmail features by talking to Karen in the chat.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <CardContent>
+          <ResponsiveCardGrid>
           <div className="p-3 border rounded-md bg-muted/30">
             <div className="flex items-center mb-1">
               <Inbox className="mr-2 h-4 w-4 text-primary/80"/>
@@ -87,6 +89,7 @@ export default function GmailPluginPage() {
             </div>
             <p className="text-xs text-muted-foreground">Ask Karen: "Compose an email to..."</p>
           </div>
+          </ResponsiveCardGrid>
         </CardContent>
       </Card>
 

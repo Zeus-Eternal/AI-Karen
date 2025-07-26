@@ -2,6 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,7 +70,8 @@ export default function FacebookPluginPage() {
             Perform actions on your connected Facebook account (Conceptual placeholders).
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent>
+          <ResponsiveCardGrid>
           <Button variant="outline" disabled className="w-full">
             <MessageSquare className="mr-2 h-4 w-4"/> Fetch Recent Posts
           </Button>
@@ -79,6 +81,7 @@ export default function FacebookPluginPage() {
            <Button variant="outline" disabled className="w-full">
             <BarChart3 className="mr-2 h-4 w-4"/> Analyze Page Insights
           </Button>
+          </ResponsiveCardGrid>
         </CardContent>
       </Card>
 

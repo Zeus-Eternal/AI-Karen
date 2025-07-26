@@ -2,6 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,7 +95,8 @@ export default function DatabaseConnectorPluginPage() { // Renamed component fun
             View discovered tables and their data (Conceptual placeholder).
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <CardContent>
+          <ResponsiveCardGrid className="md:grid-cols-3">
           <div className="md:col-span-1 space-y-3">
             <h4 className="font-medium text-sm flex items-center"><TableIcon className="mr-2 h-4 w-4"/>Discovered Tables</h4>
             <div className="h-48 border rounded-md p-3 bg-muted/50 overflow-y-auto">
@@ -111,6 +113,7 @@ export default function DatabaseConnectorPluginPage() { // Renamed component fun
               <p className="text-xs text-muted-foreground italic">(Data rows would appear here)</p>
             </div>
           </div>
+          </ResponsiveCardGrid>
         </CardContent>
       </Card>
 
