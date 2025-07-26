@@ -8,6 +8,7 @@ originally implemented in TypeScript in the web UI.
 import asyncio
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 import aiohttp
@@ -227,7 +228,7 @@ class WeatherTool(BaseTool):
                     description="Weather service to use",
                     required=False,
                     default="wttr_in",
-                    validation_rules={"allowed_values": ["wttr_in", "custom_api"]}
+                    validation_rules={"allowed_values": ["wttr_in", "openweather", "custom_api"]}
                 )
             ],
             return_type=str,
@@ -246,14 +247,82 @@ class WeatherTool(BaseTool):
         location = parameters["location"].strip()
         temperature_unit = parameters.get("temperature_unit", "C")
         service = parameters.get("service", "wttr_in")
+        api_key = None
+        if context:
+            api_key = context.get("weather_api_key")
+        if not api_key:
+            api_key = os.getenv("OPENWEATHER_API_KEY")
         
         if not location:
             return "Please specify a location for the weather. For example, you can ask 'what's the weather in London?'."
         
-        if service == "custom_api":
+        if service == "openweather":
+            if not api_key:
+                logger.error("OpenWeatherMap API key not provided")
+                return (
+                    "Weather service 'openweather' requires an API key. "
+                    "Please set OPENWEATHER_API_KEY or provide 'weather_api_key' in context."
+                )
+            return await self._get_weather_from_openweather(location, temperature_unit, api_key)
+        elif service == "custom_api":
             logger.info("Custom API service selected but not implemented, falling back to wttr.in")
-        
+
         return await self._get_weather_from_wttr(location, temperature_unit)
+
+    async def _get_weather_from_openweather(self, location: str, temperature_unit: str, api_key: str) -> str:
+        """Get weather using OpenWeatherMap service."""
+        try:
+            geo_url = (
+                f"https://api.openweathermap.org/geo/1.0/direct?q={location}&limit=1&appid={api_key}"
+            )
+            async with aiohttp.ClientSession() as session:
+                async with session.get(geo_url, timeout=aiohttp.ClientTimeout(total=5)) as geo_resp:
+                    if geo_resp.status != 200:
+                        return f"Failed to find location \"{location}\" (HTTP {geo_resp.status})."
+                    geo_data = await geo_resp.json()
+                    if not geo_data:
+                        return f"Could not find location \"{location}\"."
+                    lat = geo_data[0].get("lat")
+                    lon = geo_data[0].get("lon")
+
+            units = "imperial" if temperature_unit == "F" else "metric"
+            weather_url = (
+                f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units={units}&appid={api_key}"
+            )
+            async with aiohttp.ClientSession() as session:
+                async with session.get(weather_url, timeout=aiohttp.ClientTimeout(total=5)) as w_resp:
+                    if w_resp.status != 200:
+                        return f"Failed to fetch weather for \"{location}\" (HTTP {w_resp.status})."
+                    data = await w_resp.json()
+
+            if not data or not data.get("weather") or not data.get("main"):
+                return f"Unexpected response from OpenWeatherMap for \"{location}\"."
+
+            description = data["weather"][0].get("description", "").capitalize()
+            temp = float(data["main"].get("temp", 0))
+            feels_like = float(data["main"].get("feels_like", temp))
+            unit_symbol = "°F" if temperature_unit == "F" else "°C"
+
+            weather_parts = [
+                f"Currently in {location}: {description}.",
+                f"The temperature is {temp:.0f}{unit_symbol} (feels like {feels_like:.0f}{unit_symbol}).",
+            ]
+
+            humidity = data["main"].get("humidity")
+            if humidity is not None:
+                weather_parts.append(f"Humidity is at {humidity}%.")
+
+            wind_speed = data.get("wind", {}).get("speed")
+            if wind_speed is not None:
+                weather_parts.append(f"Wind speed is {wind_speed} m/s.")
+
+            return " ".join(weather_parts)
+
+        except Exception as e:
+            logger.error(f"OpenWeatherMap API error: {e}")
+            return (
+                f"Sorry, I encountered an error while trying to fetch the weather for \"{location}\"."
+            )
     
     async def _get_weather_from_wttr(self, location: str, temperature_unit: str) -> str:
         """Get weather from wttr.in service."""

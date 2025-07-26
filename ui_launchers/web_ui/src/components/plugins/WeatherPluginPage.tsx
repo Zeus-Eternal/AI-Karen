@@ -70,7 +70,9 @@ export default function WeatherPluginPage() {
         ...currentFullSettings,
         temperatureUnit: settings.temperatureUnit,
         weatherService: settings.weatherService,
-        weatherApiKey: settings.weatherService === 'custom_api' ? settings.weatherApiKey : null,
+        weatherApiKey: ['custom_api', 'openweather'].includes(settings.weatherService)
+          ? settings.weatherApiKey
+          : null,
         defaultWeatherLocation: settings.defaultWeatherLocation,
       };
       localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedSettings));
@@ -128,6 +130,7 @@ export default function WeatherPluginPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="wttr_in">wttr.in (Free, Recommended)</SelectItem>
+                <SelectItem value="openweather">OpenWeatherMap</SelectItem>
                 <SelectItem value="custom_api">Custom API (Conceptual)</SelectItem>
               </SelectContent>
             </Select>
@@ -136,19 +139,19 @@ export default function WeatherPluginPage() {
             </p>
           </div>
 
-          {settings.weatherService === 'custom_api' && (
+          {['custom_api', 'openweather'].includes(settings.weatherService) && (
             <div className="space-y-2 pl-4 border-l-2 border-primary/20 py-3">
-              <Label htmlFor="weather-api-key" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80"/>Weather API Key (for Custom API)</Label>
+              <Label htmlFor="weather-api-key" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80"/>Weather API Key</Label>
               <Input
                 id="weather-api-key"
                 type="password"
                 value={settings.weatherApiKey || ''}
                 onChange={(e) => setSettings(prev => ({ ...prev, weatherApiKey: e.target.value }))}
-                placeholder="Enter your API key for the custom service"
-                disabled /* Keep disabled until actual custom service logic is implemented */
+                placeholder="Enter your API key"
+                disabled /* Keep disabled until actual service logic is implemented */
               />
               <p className="text-xs text-muted-foreground">
-                This field is conceptual. Actual API key usage requires specific backend integration for the chosen custom service.
+                API key usage requires backend support for the selected service.
               </p>
             </div>
           )}

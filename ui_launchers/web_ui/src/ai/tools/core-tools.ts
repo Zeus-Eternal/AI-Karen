@@ -220,6 +220,50 @@ export async function getWeather(
     return "Please specify a location for the weather. For example, you can ask 'what's the weather in London?'.";
   }
 
+  if (service === 'openweather') {
+    if (!apiKey) {
+      logs.push("getWeather: 'openweather' selected but no API key provided.");
+      console.warn(logs.join('\n'));
+      return "Weather service 'openweather' requires an API key.";
+    }
+    try {
+      const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(locationToUse)}&limit=1&appid=${apiKey}`;
+      logs.push(`getWeather: OpenWeatherMap geocode URL: ${geoUrl}`);
+      const geoResp = await fetch(geoUrl);
+      const geoData = await geoResp.json();
+      if (!geoResp.ok || !geoData[0]) {
+        throw new Error(`Unable to find location "${locationToUse}"`);
+      }
+      const { lat, lon } = geoData[0];
+      const units = temperatureUnit === 'F' ? 'imperial' : 'metric';
+      const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=${units}&appid=${apiKey}`;
+      logs.push(`getWeather: OpenWeatherMap weather URL: ${weatherUrl}`);
+      const weatherResp = await fetch(weatherUrl);
+      const weatherData = await weatherResp.json();
+      if (!weatherResp.ok) {
+        throw new Error(`HTTP ${weatherResp.status}`);
+      }
+      const description = weatherData.weather[0].description;
+      const temp = Math.round(weatherData.main.temp);
+      const feelsLike = Math.round(weatherData.main.feels_like);
+      const unitSymbol = temperatureUnit === 'F' ? '°F' : '°C';
+      let weatherStr = `Currently in ${locationToUse}: ${description}. The temperature is ${temp}${unitSymbol} (feels like ${feelsLike}${unitSymbol}).`;
+      if (weatherData.main.humidity) {
+        weatherStr += ` Humidity is at ${weatherData.main.humidity}%.`;
+      }
+      if (weatherData.wind && weatherData.wind.speed) {
+        weatherStr += ` Wind speed is ${weatherData.wind.speed} m/s.`;
+      }
+      logs.push(`getWeather: Success using OpenWeatherMap: ${weatherStr}`);
+      console.log(logs.join('\n'));
+      return weatherStr;
+    } catch (error: any) {
+      logs.push(`getWeather: OpenWeatherMap error: ${error.message}`);
+      console.warn(logs.join('\n'));
+      return `Sorry, I encountered an error while trying to fetch the weather for "${locationToUse}".`;
+    }
+  }
+
   if (service === 'custom_api') {
     logs.push("getWeather: 'custom_api' service selected. This is conceptual and not yet implemented.");
     if (!apiKey) {
