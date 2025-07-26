@@ -6,12 +6,32 @@ export interface ExtensionInfo {
   name: string;
   description: string;
   enabled: boolean;
+  health?: 'healthy' | 'degraded' | 'error';
+  cpu?: number;
+  memory?: number;
 }
 
 class ExtensionService {
   private extensions: ExtensionInfo[] = [
-    { name: 'Sample Extension', description: 'Example extension', enabled: true },
+    { name: 'Sample Extension', description: 'Example extension', enabled: true, health: 'healthy', cpu: 5, memory: 100 },
   ];
+
+  enableExtension(name: string): void {
+    this.extensions = this.extensions.map(e => e.name === name ? { ...e, enabled: true } : e);
+  }
+
+  disableExtension(name: string): void {
+    this.extensions = this.extensions.map(e => e.name === name ? { ...e, enabled: false } : e);
+  }
+
+  getExtensionStatus(name: string): 'healthy' | 'degraded' | 'error' | undefined {
+    return this.extensions.find(e => e.name === name)?.health;
+  }
+
+  getExtensionResourceUsage(name: string): { cpu: number; memory: number } | undefined {
+    const ext = this.extensions.find(e => e.name === name);
+    return ext ? { cpu: ext.cpu || 0, memory: ext.memory || 0 } : undefined;
+  }
 
   clearCache(): void {
     // Placeholder: nothing to clear
