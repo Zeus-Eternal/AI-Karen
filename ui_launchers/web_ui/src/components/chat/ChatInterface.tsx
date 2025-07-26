@@ -169,6 +169,7 @@ export default function ChatInterface() {
         timestamp: new Date(),
         aiData: result.aiDataForFinalResponse,
         shouldAutoPlay: autoPlayThisMessage,
+        widget: result.widget,
       });
 
       if (result.proactiveSuggestion) {
