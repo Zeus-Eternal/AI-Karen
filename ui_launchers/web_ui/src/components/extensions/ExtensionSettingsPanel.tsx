@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { sanitizeInput } from "@/lib/utils";
 
 const schema = z.object({
   refreshInterval: z.number().min(1).max(60),
@@ -29,6 +30,7 @@ export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormVa
   const refresh = watch("refreshInterval");
 
   const submit = handleSubmit((vals) => {
+    vals.endpoint = sanitizeInput(vals.endpoint);
     onSave?.(vals);
     toast({ title: "Settings saved" });
   });

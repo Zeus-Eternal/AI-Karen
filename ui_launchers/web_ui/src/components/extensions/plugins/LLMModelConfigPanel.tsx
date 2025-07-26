@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
+import { storeApiKey } from "@/lib/secure-api-key";
+import { sanitizeInput } from "@/lib/utils";
 
 export interface LLMModelConfig {
   temperature: number;
@@ -23,7 +25,14 @@ export default function LLMModelConfigPanel({ onSave }: { onSave?: (cfg: LLMMode
   const temp = watch("temperature");
 
   return (
-    <form onSubmit={handleSubmit((data) => onSave?.(data))} className="space-y-4">
+    <form
+      onSubmit={handleSubmit((data) => {
+        data.systemPrompt = sanitizeInput(data.systemPrompt)
+        if (data.apiKey) storeApiKey(data.apiKey)
+        onSave?.(data)
+      })}
+      className="space-y-4"
+    >
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Model Configuration</CardTitle>

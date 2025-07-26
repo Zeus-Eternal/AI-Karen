@@ -15,6 +15,7 @@ import { ArrowLeft } from "lucide-react";
 import ExtensionBreadcrumbs from "./ExtensionBreadcrumbs";
 import ExtensionStats from "./ExtensionStats";
 import { useExtensionContext, ExtensionProvider } from "@/extensions";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 function SidebarInner() {
   const {
@@ -68,10 +69,12 @@ function SidebarInner() {
 
 export default function ExtensionSidebar() {
   return (
-    <ExtensionProvider>
-      <SidebarProvider>
-        <SidebarInner />
-      </SidebarProvider>
-    </ExtensionProvider>
+    <ErrorBoundary>
+      <ExtensionProvider>
+        <SidebarProvider>
+          <SidebarInner />
+        </SidebarProvider>
+      </ExtensionProvider>
+    </ErrorBoundary>
   );
 }
