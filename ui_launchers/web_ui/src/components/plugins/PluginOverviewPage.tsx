@@ -2,6 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PlugZap, MessageSquare, Info, Settings2, CalendarDays, CloudSun, Database, Facebook, Mail } from "lucide-react";
 
@@ -59,16 +60,18 @@ export default function PluginOverviewPage() {
             Here are some of the tools Karen AI can currently utilize:
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {integratedTools.map((tool) => (
-            <div key={tool.name} className="p-4 border rounded-lg bg-muted/30 flex items-start space-x-3">
-              <div className="shrink-0 mt-1">{tool.icon}</div>
-              <div>
-                <h4 className="font-semibold text-sm">{tool.name}</h4>
-                <p className="text-xs text-muted-foreground">{tool.description}</p>
+        <CardContent>
+          <ResponsiveCardGrid>
+            {integratedTools.map((tool) => (
+              <div key={tool.name} className="p-4 border rounded-lg bg-muted/30 flex items-start space-x-3">
+                <div className="shrink-0 mt-1">{tool.icon}</div>
+                <div>
+                  <h4 className="font-semibold text-sm">{tool.name}</h4>
+                  <p className="text-xs text-muted-foreground">{tool.description}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </ResponsiveCardGrid>
         </CardContent>
       </Card>
 

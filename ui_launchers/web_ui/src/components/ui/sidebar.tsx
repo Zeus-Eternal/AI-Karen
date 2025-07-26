@@ -193,6 +193,8 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
+            role="navigation"
+            aria-label="Sidebar"
             className="w-[--sidebar-width] bg-sidebar text-sidebar-foreground flex flex-col" // Removed p-0
             style={
               {
@@ -220,6 +222,8 @@ const Sidebar = React.forwardRef<
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        role="navigation"
+        aria-label="Sidebar"
       >
         <div
           className={cn(
@@ -497,6 +501,7 @@ const SidebarMenu = React.forwardRef<
   <ul
     ref={ref}
     data-sidebar="menu"
+    role="menu"
     className={cn("flex w-full min-w-0 flex-col gap-1", className)}
     {...props}
   />
@@ -567,6 +572,13 @@ const SidebarMenuButton = React.forwardRef<
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
+        role="menuitem"
+        onKeyDown={(e: React.KeyboardEvent<HTMLButtonElement>) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            (props.onClick as any)?.(e as any);
+          }
+        }}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
         {...props}
       />
@@ -724,6 +736,14 @@ const SidebarMenuSubButton = React.forwardRef<
       data-sidebar="menu-sub-button"
       data-size={size}
       data-active={isActive}
+      role="menuitem"
+      tabIndex={0}
+      onKeyDown={(e: React.KeyboardEvent<HTMLAnchorElement>) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          (props.onClick as any)?.(e as any);
+        }
+      }}
       className={cn(
         "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
