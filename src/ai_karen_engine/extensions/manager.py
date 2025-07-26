@@ -7,6 +7,7 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import logging
+import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -22,7 +23,12 @@ from .models import (
 from .registry import ExtensionRegistry
 from .validator import ExtensionValidator
 from .dependency_resolver import DependencyResolver, DependencyError
-from .resource_monitor import ResourceMonitor, ExtensionHealthChecker
+from .resource_monitor import (
+    ResourceMonitor,
+    ExtensionHealthChecker,
+    HealthStatus,
+)
+from .marketplace_client import MarketplaceClient
 
 
 class ExtensionManager:
@@ -41,7 +47,8 @@ class ExtensionManager:
         extension_root: Path, 
         plugin_router: PluginRouter,
         db_session: Any = None,
-        app_instance: Any = None
+        app_instance: Any = None,
+        marketplace_client: Optional[MarketplaceClient] = None,
     ):
         """
         Initialize the extension manager.
@@ -51,11 +58,13 @@ class ExtensionManager:
             plugin_router: Plugin router instance for plugin orchestration
             db_session: Database session for data management
             app_instance: FastAPI app instance for API integration
+            marketplace_client: Optional marketplace client for remote installs
         """
         self.extension_root = Path(extension_root)
         self.plugin_router = plugin_router
         self.db_session = db_session
         self.app_instance = app_instance
+        self.marketplace_client = marketplace_client or MarketplaceClient()
         
         self.registry = ExtensionRegistry()
         self.validator = ExtensionValidator()
@@ -471,6 +480,70 @@ class ExtensionManager:
     def get_extension_by_name(self, name: str) -> Optional[ExtensionRecord]:
         """Get extension by name."""
         return self.registry.get_extension(name)
+
+    async def install_extension(
+        self,
+        extension_id: str,
+        version: str,
+        source: str = "local",
+        path: Optional[str] = None,
+    ) -> bool:
+        """Install an extension from a local path or marketplace."""
+        self.logger.info(f"Installing extension {extension_id} from {source}")
+
+        try:
+            if source == "local":
+                if not path:
+                    raise ValueError("path required for local install")
+                src = Path(path)
+                dest = self.extension_root / extension_id
+                if dest.exists():
+                    self.logger.warning("Extension already installed")
+                    return False
+                shutil.copytree(src, dest)
+            else:
+                await self.marketplace_client.download_extension(
+                    extension_id, version, self.extension_root
+                )
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to install extension {extension_id}: {e}")
+            return False
+
+    async def update_extension(
+        self,
+        name: str,
+        version: str,
+        source: str = "local",
+        path: Optional[str] = None,
+    ) -> bool:
+        """Update an installed extension."""
+        await self.remove_extension(name)
+        return await self.install_extension(name, version, source, path)
+
+    async def enable_extension(self, name: str) -> Optional[ExtensionRecord]:
+        """Enable and load an extension."""
+        if self.registry.get_extension(name):
+            return self.registry.get_extension(name)
+        return await self.load_extension(name)
+
+    async def disable_extension(self, name: str) -> None:
+        """Disable an extension and unload it."""
+        if self.registry.get_extension(name):
+            await self.unload_extension(name)
+
+    async def remove_extension(self, name: str) -> bool:
+        """Remove an extension from disk and the registry."""
+        try:
+            if self.registry.get_extension(name):
+                await self.unload_extension(name)
+            ext_dir = await self._find_extension_directory(name)
+            if ext_dir and ext_dir.exists():
+                shutil.rmtree(ext_dir)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to remove extension {name}: {e}")
+            return False
     
     async def start_monitoring(self) -> None:
         """Start resource monitoring for all extensions."""
@@ -482,7 +555,7 @@ class ExtensionManager:
         await self.resource_monitor.stop_monitoring()
         self.logger.info("Extension resource monitoring stopped")
     
-    async def check_extension_health(self, name: str) -> bool:
+    async def check_extension_health(self, name: str) -> HealthStatus:
         """
         Check the health of a specific extension.
         
@@ -490,15 +563,15 @@ class ExtensionManager:
             name: Extension name
             
         Returns:
-            True if healthy, False otherwise
+            HealthStatus value
         """
         record = self.registry.get_extension(name)
         if not record:
-            return False
+            return HealthStatus.RED
         
         return await self.health_checker.check_extension_health(record)
     
-    async def check_all_extensions_health(self) -> Dict[str, bool]:
+    async def check_all_extensions_health(self) -> Dict[str, HealthStatus]:
         """
         Check health of all loaded extensions.
         
@@ -658,4 +731,6 @@ __all__ = [
     "ExtensionManager",
     "get_extension_manager",
     "initialize_extension_manager",
+    "HealthStatus",
+    "MarketplaceClient",
 ]

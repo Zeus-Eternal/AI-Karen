@@ -9,6 +9,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
+from enum import Enum
 from typing import Dict, Optional
 
 # Optional psutil import for resource monitoring
@@ -20,6 +21,14 @@ except ImportError:
     psutil = None
 
 from .models import ExtensionRecord, ExtensionStatus
+
+
+class HealthStatus(Enum):
+    """Health status with color-coded states."""
+
+    GREEN = "green"
+    YELLOW = "yellow"
+    RED = "red"
 
 
 @dataclass
@@ -328,10 +337,31 @@ class ExtensionHealthChecker:
         self.logger = logging.getLogger("extension.health_checker")
         
         # Health tracking
-        self.extension_health: Dict[str, bool] = {}
+        self.extension_health: Dict[str, HealthStatus] = {}
         self.last_health_check: Dict[str, float] = {}
+
+    def _determine_health_status(self, name: str) -> HealthStatus:
+        """Determine health status based on resource usage."""
+        usage = self.resource_monitor.get_extension_usage(name)
+        limits = self.resource_monitor.get_extension_limits(name)
+
+        if not usage or not limits:
+            return HealthStatus.GREEN
+
+        ratios = [
+            usage.memory_mb / limits.max_memory_mb if limits.max_memory_mb else 0,
+            usage.cpu_percent / limits.max_cpu_percent if limits.max_cpu_percent else 0,
+            usage.disk_mb / limits.max_disk_mb if limits.max_disk_mb else 0,
+        ]
+
+        worst = max(ratios)
+        if worst < 0.7:
+            return HealthStatus.GREEN
+        if worst < 1.0:
+            return HealthStatus.YELLOW
+        return HealthStatus.RED
     
-    async def check_extension_health(self, record: ExtensionRecord) -> bool:
+    async def check_extension_health(self, record: ExtensionRecord) -> HealthStatus:
         """
         Check the health of a specific extension.
         
@@ -339,48 +369,43 @@ class ExtensionHealthChecker:
             record: Extension record to check
             
         Returns:
-            True if healthy, False otherwise
+            HealthStatus value
         """
         name = record.manifest.name
         current_time = time.time()
-        
+
         try:
             # Check if extension is active
             if record.status != ExtensionStatus.ACTIVE:
-                self.extension_health[name] = False
-                return False
-            
-            # Check resource health
-            resource_healthy = self.resource_monitor.is_extension_healthy(name)
-            
+                status = HealthStatus.RED
+            else:
+                status = self._determine_health_status(name)
+
             # Check if extension instance is responsive
-            instance_healthy = True
             if record.instance and hasattr(record.instance, 'get_status'):
                 try:
-                    status = record.instance.get_status()
-                    instance_healthy = status.get('initialized', False)
+                    inst_status = record.instance.get_status()
+                    if not inst_status.get('initialized', False):
+                        status = HealthStatus.RED
                 except Exception as e:
                     self.logger.warning(f"Extension {name} status check failed: {e}")
-                    instance_healthy = False
-            
-            # Overall health
-            is_healthy = resource_healthy and instance_healthy
-            
+                    status = HealthStatus.RED
+
             # Update health tracking
-            self.extension_health[name] = is_healthy
+            self.extension_health[name] = status
             self.last_health_check[name] = current_time
-            
-            if not is_healthy:
+
+            if status == HealthStatus.RED:
                 self.logger.warning(f"Extension {name} health check failed")
-            
-            return is_healthy
-            
+
+            return status
+
         except Exception as e:
             self.logger.error(f"Health check failed for extension {name}: {e}")
-            self.extension_health[name] = False
-            return False
+            self.extension_health[name] = HealthStatus.RED
+            return HealthStatus.RED
     
-    async def check_all_extensions_health(self, extensions: Dict[str, ExtensionRecord]) -> Dict[str, bool]:
+    async def check_all_extensions_health(self, extensions: Dict[str, ExtensionRecord]) -> Dict[str, HealthStatus]:
         """
         Check health of all extensions.
         
@@ -390,14 +415,14 @@ class ExtensionHealthChecker:
         Returns:
             Dictionary mapping extension names to health status
         """
-        health_results = {}
+        health_results: Dict[str, HealthStatus] = {}
         
         for name, record in extensions.items():
             health_results[name] = await self.check_extension_health(record)
         
         return health_results
     
-    def get_extension_health(self, name: str) -> Optional[bool]:
+    def get_extension_health(self, name: str) -> Optional[HealthStatus]:
         """
         Get cached health status for an extension.
         
@@ -417,7 +442,7 @@ class ExtensionHealthChecker:
             Dictionary with health summary
         """
         total_extensions = len(self.extension_health)
-        healthy_extensions = sum(1 for healthy in self.extension_health.values() if healthy)
+        healthy_extensions = sum(1 for status in self.extension_health.values() if status == HealthStatus.GREEN)
         unhealthy_extensions = total_extensions - healthy_extensions
         
         return {
@@ -432,7 +457,8 @@ class ExtensionHealthChecker:
 
 __all__ = [
     "ResourceMonitor",
-    "ExtensionHealthChecker", 
+    "ExtensionHealthChecker",
+    "HealthStatus",
     "ResourceUsage",
     "ResourceLimits"
 ]
