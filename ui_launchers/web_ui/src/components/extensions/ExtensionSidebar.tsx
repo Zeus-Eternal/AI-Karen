@@ -8,6 +8,7 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarFooter,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,14 @@ import ExtensionStats from "./ExtensionStats";
 import { useExtensionContext, ExtensionProvider } from "@/extensions";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
+export interface ExtensionSidebarProps {
+  /**
+   * Initial category displayed when the sidebar mounts.
+   * Defaults to `"Plugins"`.
+   */
+  initialCategory?: "Plugins" | "Extensions";
+}
+
 function SidebarInner() {
   const {
     state: { currentCategory, level },
@@ -24,12 +33,14 @@ function SidebarInner() {
   } = useExtensionContext();
 
   return (
-    <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20">
-      <SidebarHeader className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Extension Manager</h2>
-          <SidebarTrigger />
-        </div>
+    <>
+      <SidebarRail />
+      <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20">
+        <SidebarHeader className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Extension Manager</h2>
+            <SidebarTrigger />
+          </div>
         <Tabs
           value={currentCategory}
           onValueChange={(val) =>
@@ -63,14 +74,17 @@ function SidebarInner() {
           Extension Manager
         </p>
       </SidebarFooter>
-    </Sidebar>
+      </Sidebar>
+    </>
   );
 }
 
-export default function ExtensionSidebar() {
+export default function ExtensionSidebar({
+  initialCategory = "Plugins",
+}: ExtensionSidebarProps) {
   return (
     <ErrorBoundary>
-      <ExtensionProvider>
+      <ExtensionProvider initialCategory={initialCategory}>
         <SidebarProvider>
           <SidebarInner />
         </SidebarProvider>
