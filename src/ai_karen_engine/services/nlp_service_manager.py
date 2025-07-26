@@ -9,7 +9,7 @@ import logging
 from typing import Dict, Any, Optional, List, Union
 
 from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
-from ai_karen_engine.services.distilbert_service import DistilBertService, EmbeddingResult
+from ai_karen_engine.services.distilbert_service import DistilBertService
 from ai_karen_engine.services.nlp_health_monitor import NLPHealthMonitor, NLPSystemHealth
 from ai_karen_engine.services.nlp_config import NLPConfig, SpacyConfig, DistilBertConfig
 from ai_karen_engine.config.config_manager import config_manager
@@ -48,7 +48,7 @@ class NLPServiceManager:
         """Load NLP configuration from config manager."""
         try:
             # Get NLP config from main config
-            nlp_config_dict = config_manager.get_config_value("nlp", {})
+            nlp_config_dict = config_manager.get_config_value("nlp", default={})
             
             # Create config objects with defaults
             spacy_config = SpacyConfig(**nlp_config_dict.get("spacy", {}))

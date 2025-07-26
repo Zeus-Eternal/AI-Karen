@@ -1,14 +1,16 @@
 import logging
+import os
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 # === Dynamic Model Providers ===
 
-def list_llama_cpp_models(models_dir="/models"):
+def list_llama_cpp_models(models_dir=None):
     """
     Scan for GGUF/llama.cpp compatible models
     """
+    models_dir = models_dir or os.getenv("KARI_MODEL_DIR", "/models")
     supported_ext = {".gguf", ".bin"}
     models = []
 
