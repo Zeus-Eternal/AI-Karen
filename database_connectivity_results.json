@@ -1,0 +1,96 @@
+{
+  "timestamp": 1753496619.0508711,
+  "summary": {
+    "successful": 4,
+    "failed": 1,
+    "skipped": 0,
+    "total": 5
+  },
+  "results": [
+    {
+      "status": "success",
+      "database": "PostgreSQL",
+      "version": [
+        "PostgreSQL",
+        "15.13"
+      ],
+      "response_time_ms": 0.76,
+      "pool_status": {
+        "size": 10,
+        "checked_in": 0,
+        "checked_out": 1,
+        "overflow": -9,
+        "invalid": "N/A"
+      },
+      "details": {
+        "status": "healthy",
+        "database_url": "localhost:5432/ai_karen",
+        "response_time_ms": 0.76,
+        "database_version": [
+          "PostgreSQL",
+          "15.13"
+        ],
+        "database_time": "2025-07-26T02:23:27.969987+00:00",
+        "pool_status": {
+          "size": 10,
+          "checked_in": 0,
+          "checked_out": 1,
+          "overflow": -9,
+          "invalid": "N/A"
+        },
+        "pool_config": {
+          "pool_size": 10,
+          "max_overflow": 20,
+          "pool_timeout": 30,
+          "pool_recycle": 3600
+        },
+        "async_available": true,
+        "config_valid": true,
+        "timestamp": "2025-07-26T02:23:27.970460"
+      }
+    },
+    {
+      "status": "success",
+      "database": "Redis",
+      "version": "7.4.5",
+      "response_time_ms": 1.18,
+      "memory_used": "1.08M",
+      "connected_clients": 1,
+      "details": {
+        "uptime_seconds": 32,
+        "total_commands_processed": 13
+      }
+    },
+    {
+      "status": "success",
+      "database": "Elasticsearch",
+      "version": "8.9.0",
+      "response_time_ms": 15.46,
+      "cluster_name": "docker-cluster",
+      "cluster_status": "green",
+      "number_of_nodes": 1,
+      "details": {
+        "active_primary_shards": 0,
+        "active_shards": 0,
+        "relocating_shards": 0,
+        "initializing_shards": 0,
+        "unassigned_shards": 0
+      }
+    },
+    {
+      "status": "error",
+      "database": "Milvus",
+      "error": "<MilvusException: (code=2, message=Fail connecting to server on localhost:19530, illegal connection params or server unavailable)>"
+    },
+    {
+      "status": "success",
+      "database": "DuckDB",
+      "version": "v1.3.2",
+      "response_time_ms": 356.85,
+      "database_path": "kari_duckdb.db",
+      "details": {
+        "test_query_result": 1
+      }
+    }
+  ]
+}
