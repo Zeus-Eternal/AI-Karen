@@ -307,21 +307,42 @@ async def chat_process_compatibility(
         )
 
         widget_tag = None
-        if (
-            result.requires_plugin
-            and result.tool_to_call == ToolType.GET_WEATHER
-            and result.tool_input
-        ):
-            try:
-                exec_result = await plugin_service.execute_plugin(
-                    "weather_query", {"location": result.tool_input.location}
-                )
-                if isinstance(exec_result.result, dict):
-                    ref_id = exec_result.result.get("ref_id")
-                    if ref_id:
-                        widget_tag = f"\ue200forecast\ue202{ref_id}\ue201"
-            except Exception as e:
-                logger.error(f"[{request_id}] Weather plugin execution failed: {e}")
+        if result.requires_plugin:
+            if result.tool_to_call == ToolType.GET_WEATHER and result.tool_input:
+                try:
+                    exec_result = await plugin_service.execute_plugin(
+                        "weather_query", {"location": result.tool_input.location}
+                    )
+                    if isinstance(exec_result.result, dict):
+                        ref_id = exec_result.result.get("ref_id")
+                        if ref_id:
+                            widget_tag = f"\ue200forecast\ue202{ref_id}\ue201"
+                except Exception as e:
+                    logger.error(f"[{request_id}] Weather plugin execution failed: {e}")
+
+            elif result.tool_to_call == ToolType.CHECK_GMAIL_UNREAD:
+                try:
+                    await plugin_service.execute_plugin(
+                        "gmail-plugin", {"action": "check_unread"}
+                    )
+                    widget_tag = "\ue200gmail\ue202summary\ue201"
+                except Exception as e:
+                    logger.error(f"[{request_id}] Gmail plugin execution failed: {e}")
+
+            elif result.tool_to_call == ToolType.COMPOSE_GMAIL and result.tool_input:
+                try:
+                    await plugin_service.execute_plugin(
+                        "gmail-plugin",
+                        {
+                            "action": "compose_email",
+                            "recipient": result.tool_input.gmail_recipient,
+                            "subject": result.tool_input.gmail_subject,
+                            "body": result.tool_input.gmail_body,
+                        },
+                    )
+                    widget_tag = "\ue200gmail\ue202summary\ue201"
+                except Exception as e:
+                    logger.error(f"[{request_id}] Gmail plugin execution failed: {e}")
 
         # Transform response to web UI format with error handling
         try:
