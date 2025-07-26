@@ -1,5 +1,6 @@
 export { default as ExtensionBreadcrumbs } from './ExtensionBreadcrumbs';
 export { default as ExtensionSidebar } from './ExtensionSidebar';
+export type { ExtensionSidebarProps } from './ExtensionSidebar';
 export { default as ExtensionStats } from './ExtensionStats';
 export * from './plugins';
 export { default as AgentList } from './automation/AgentList';
