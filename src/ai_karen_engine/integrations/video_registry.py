@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 from .provider_registry import ModelInfo, ProviderRegistry
+from .video_providers import DummyVideoProvider, VideoProviderBase
 
 
 class VideoRegistry(ProviderRegistry):
     """Manage image and video generation providers."""
 
     def register_default_providers(self) -> None:
-        """Hook to register built-in visual providers."""
-        # Placeholder for future built-in providers
-        pass
+        """Register built-in visual providers."""
+        self.register_provider(
+            "dummy",
+            DummyVideoProvider,
+            description="Example video provider",
+            models=[ModelInfo(name="dummy-video")],
+            requires_api_key=False,
+            default_model="dummy-video",
+        )
 
 
 _video_registry: VideoRegistry | None = None
@@ -25,4 +32,10 @@ def get_video_registry() -> VideoRegistry:
         _video_registry.register_default_providers()
     return _video_registry
 
-__all__ = ["ModelInfo", "VideoRegistry", "get_video_registry"]
+__all__ = [
+    "ModelInfo",
+    "VideoProviderBase",
+    "DummyVideoProvider",
+    "VideoRegistry",
+    "get_video_registry",
+]
