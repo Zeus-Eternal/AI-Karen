@@ -7,6 +7,7 @@
 export { ChatService, getChatService, initializeChatService } from './chatService';
 export { MemoryService, getMemoryService, initializeMemoryService } from './memoryService';
 export { PluginService, getPluginService, initializePluginService } from './pluginService';
+export { ExtensionService, getExtensionService, initializeExtensionService } from './extensionService';
 
 // Export service types
 export type { ConversationSession, ProcessMessageOptions } from './chatService';
@@ -15,23 +16,26 @@ export type {
   MemoryStats, 
   MemoryContext 
 } from './memoryService';
-export type { 
-  PluginCategory, 
-  PluginExecutionOptions, 
-  PluginValidationResult, 
-  PluginMetrics 
+export type {
+  PluginCategory,
+  PluginExecutionOptions,
+  PluginValidationResult,
+  PluginMetrics
 } from './pluginService';
+export type { ExtensionInfo } from './extensionService';
 
 // Service initialization helper
 export function initializeAllServices() {
   const chatService = initializeChatService();
   const memoryService = initializeMemoryService();
   const pluginService = initializePluginService();
-  
+  const extensionService = initializeExtensionService();
+
   return {
     chatService,
     memoryService,
     pluginService,
+    extensionService,
   };
 }
 
@@ -40,12 +44,14 @@ export async function checkServicesHealth(): Promise<{
   chat: boolean;
   memory: boolean;
   plugins: boolean;
+  extensions: boolean;
   overall: boolean;
 }> {
   const results = {
     chat: false,
     memory: false,
     plugins: false,
+    extensions: false,
     overall: false,
   };
 
@@ -73,7 +79,15 @@ export async function checkServicesHealth(): Promise<{
     console.error('Plugin service health check failed:', error);
   }
 
-  results.overall = results.chat && results.memory && results.plugins;
+  try {
+    // Test extension service
+    const extService = getExtensionService();
+    results.extensions = true;
+  } catch (error) {
+    console.error('Extension service health check failed:', error);
+  }
+
+  results.overall = results.chat && results.memory && results.plugins && results.extensions;
   return results;
 }
 
@@ -83,6 +97,7 @@ export function clearAllServiceCaches(): void {
     getChatService().clearCache();
     getMemoryService().clearCache();
     getPluginService().clearCache();
+    getExtensionService().clearCache?.();
   } catch (error) {
     console.error('Failed to clear service caches:', error);
   }
@@ -100,10 +115,12 @@ export function getAllServiceCacheStats(): {
     executionHistory: { size: number; keys: string[] };
     metricsCache: { size: number; keys: string[] };
   };
+  extensions: { size: number; keys: string[] };
 } {
   return {
     chat: getChatService().getCacheStats(),
     memory: getMemoryService().getCacheStats(),
     plugins: getPluginService().getCacheStats(),
+    extensions: getExtensionService().getCacheStats(),
   };
 }
