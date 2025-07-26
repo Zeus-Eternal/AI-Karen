@@ -3,6 +3,7 @@ export { default as ExtensionBreadcrumbs } from './ExtensionBreadcrumbs';
 export { default as ExtensionSidebar } from './ExtensionSidebar';
 export type { ExtensionSidebarProps } from './ExtensionSidebar';
 export { default as ExtensionStats } from './ExtensionStats';
+export { default as ExtensionHeader } from './ExtensionHeader';
 export { default as ExtensionSettingsPanel } from './ExtensionSettingsPanel';
 export { default as ExtensionControls } from './ExtensionControls';
 

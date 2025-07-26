@@ -1,4 +1,3 @@
-// Core extension management components
 export { ExtensionProvider } from './ExtensionProvider';
 export { default as ExtensionSidebar, type ExtensionSidebarProps } from './ExtensionSidebar';
 export { default as ExtensionHeader, type ExtensionHeaderProps } from './ExtensionHeader';
