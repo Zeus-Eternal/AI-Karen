@@ -21,4 +21,6 @@ export type ExtensionAction =
   | { type: 'SET_CATEGORY'; category: ExtensionCategory }
   | { type: 'PUSH_BREADCRUMB'; item: BreadcrumbItem }
   | { type: 'POP_BREADCRUMB' }
-  | { type: 'RESET_BREADCRUMBS' };
+  | { type: 'RESET_BREADCRUMBS' }
+  | { type: 'GO_BACK' }
+  | { type: 'SET_LEVEL'; level: number };

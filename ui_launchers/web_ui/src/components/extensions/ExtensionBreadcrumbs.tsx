@@ -15,10 +15,7 @@ export default function ExtensionBreadcrumbs() {
   }
 
   const handleClick = (index: number) => {
-    dispatch({ type: 'RESET_BREADCRUMBS' });
-    breadcrumbs.slice(0, index).forEach((item) => {
-      dispatch({ type: 'PUSH_BREADCRUMB', item });
-    });
+    dispatch({ type: 'SET_LEVEL', level: index + 1 });
   };
 
   return (

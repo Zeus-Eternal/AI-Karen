@@ -30,6 +30,18 @@ function reducer(state: ExtensionState, action: ExtensionAction): ExtensionState
         breadcrumbs: state.breadcrumbs.slice(0, -1),
         level: Math.max(0, state.level - 1),
       };
+    case 'GO_BACK':
+      return {
+        ...state,
+        breadcrumbs: state.breadcrumbs.slice(0, -1),
+        level: Math.max(0, state.level - 1),
+      };
+    case 'SET_LEVEL':
+      return {
+        ...state,
+        breadcrumbs: state.breadcrumbs.slice(0, action.level),
+        level: Math.max(0, action.level),
+      };
     case 'RESET_BREADCRUMBS':
       return {
         ...state,
