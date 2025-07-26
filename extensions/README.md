@@ -50,6 +50,24 @@ extensions/
 └── experimental/               # Experimental and beta extensions
 ```
 
+## 🔗 Extension Navigation Hierarchy
+
+The extension system follows a four-level structure that mirrors the navigation
+workflow in the [web UI documentation](../ui_launchers/web_ui/src/components/extensions/README.md#navigation-hierarchy):
+
+1. **Plugins** – Top-level collections found in `plugin_marketplace/` and this
+   `extensions/` directory.
+2. **Providers** – Subfolders such as `integration/`, `analytics/`, or
+   `automation/` that group related providers.
+3. **Models/Services** – Implementation directories inside a provider (for
+   example `models/` or `services/`).
+4. **Settings/Controls** – Configuration files and UI components within each
+   model or service, typically under `settings/` or `ui/`.
+
+Breadcrumb-based navigation in the UI traverses these levels—Plugins → Providers
+→ Models/Services → Settings/Controls—allowing users to drill down into a model
+and then step back up through each level.
+
 ## 🚀 Quick Start
 
 ### Creating Your First Extension
