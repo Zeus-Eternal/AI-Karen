@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import ExtensionBreadcrumbs from "./ExtensionBreadcrumbs";
+import ExtensionStats from "./ExtensionStats";
 import { useExtensionContext, ExtensionProvider } from "@/extensions";
 
 function SidebarInner() {
@@ -24,6 +25,10 @@ function SidebarInner() {
   return (
     <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20">
       <SidebarHeader className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Extension Manager</h2>
+          <SidebarTrigger />
+        </div>
         <Tabs
           value={currentCategory}
           onValueChange={(val) =>
@@ -47,6 +52,7 @@ function SidebarInner() {
           </Button>
         )}
         <ExtensionBreadcrumbs />
+        <ExtensionStats />
       </SidebarHeader>
       <SidebarContent className="p-2 space-y-2">
         {/* Navigation items will be added in future tasks */}
