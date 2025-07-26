@@ -207,11 +207,18 @@ export default function WeatherPluginPage() {
 
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Developer Note</AlertTitle>
+        <AlertTitle>About Weather Service</AlertTitle>
         <AlertDescription>
-          The weather fetching logic currently defaults to using `wttr.in`.
-          Integrating a "Custom API" service requires modifying the `getWeather` tool in `src/ai/tools/core-tools.ts` to handle the specific API calls and data parsing for that service.
-          The `defaultWeatherLocation` is passed to the tool but its usage in `getWeather` would need to be prioritized if no specific location is given in the user's query.
+          <p>
+            By default Karen uses the free <code>wttr.in</code> service to fetch
+            weather data. You can set the environment variable
+            <code>WEATHER_SERVICE=openweather</code> with a valid
+            <code>OPENWEATHER_API_KEY</code> to use OpenWeatherMap instead.
+          </p>
+          <p className="mt-1 text-xs">
+            Integrating a custom API would require extending the backend tool in
+            <code>src/ai_karen_engine/services/tools/core_tools.py</code>.
+          </p>
         </AlertDescription>
       </Alert>
     </div>

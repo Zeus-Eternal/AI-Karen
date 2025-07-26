@@ -14,9 +14,10 @@ import { Switch } from "@/components/ui/switch";
 
 /**
  * @file GmailPluginPage.tsx
- * @description Page describing Karen AI's conceptual Gmail Integration plugin.
- * Users interact with mocked Gmail features (check unread, compose) via chat.
- * This page outlines where settings and real integration points would live.
+ * @description Page describing Karen AI's Gmail Integration plugin. When the
+ * backend provides a GMAIL_API_TOKEN environment variable, actions are
+ * performed against Gmail. Otherwise, the responses are mocked. This page
+ * outlines where settings and real integration points would live.
  */
 export default function GmailPluginPage() {
   return (
@@ -26,18 +27,24 @@ export default function GmailPluginPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Gmail Integration</h2>
           <p className="text-sm text-muted-foreground">
-            Check unread emails or compose new ones with Karen's help (currently using mocked functionality).
+            Check unread emails or compose new ones with Karen's help. If the
+            backend is configured with a valid <code>GMAIL_API_TOKEN</code>,
+            real Gmail actions will be performed; otherwise responses are
+            mocked.
           </p>
         </div>
       </div>
 
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Mocked Functionality & Future Integration</AlertTitle>
+        <AlertTitle>About Gmail Integration</AlertTitle>
         <AlertDescription>
-          <p>The Gmail features (checking unread, composing emails) are currently **mocked**. Karen will simulate these actions but does not connect to your actual Gmail account.</p>
-          <p className="mt-1">Full Gmail integration requires secure account connection (OAuth 2.0) and backend services, which are planned for future development.</p>
-          <p className="mt-2">You can try the mocked features via chat:</p>
+          <p>
+            When the backend has a valid <code>GMAIL_API_TOKEN</code> configured,
+            Karen can access your Gmail to list unread messages and create
+            drafts. Without it, these actions are simulated for demo purposes.
+          </p>
+          <p className="mt-2">You can try the features via chat:</p>
           <ul className="list-disc list-inside pl-4 mt-1 text-xs">
             <li>"Check my unread emails."</li>
             <li>"Compose an email to example@example.com with subject 'Hello' and body 'Just saying hi!'"</li>
@@ -70,7 +77,9 @@ export default function GmailPluginPage() {
         <CardHeader>
           <CardTitle className="text-lg">Available Actions (via Chat)</CardTitle>
           <CardDescription>
-            Interact with these mocked Gmail features by talking to Karen in the chat.
+            Interact with these Gmail features by talking to Karen in the chat.
+            They will use the backend Gmail plugin which may call the real API
+            or return mocked data.
           </CardDescription>
         </CardHeader>
         <CardContent>
