@@ -652,5 +652,41 @@ class TestGlobalServiceFunctions:
         await service.cleanup()
 
 
+class TestGmailPlugin:
+    """Tests for the built-in Gmail plugin."""
+
+    @pytest.mark.asyncio
+    async def test_gmail_plugin_check_unread(self):
+        service = await initialize_plugin_service()
+        await service.discover_plugins()
+        await service.validate_and_register_all_discovered()
+        result = await service.execute_plugin(
+            "gmail-plugin", {"action": "check_unread"}
+        )
+        assert result.success
+        assert isinstance(result.result, dict)
+        assert "unreadCount" in result.result
+        await service.cleanup()
+
+    @pytest.mark.asyncio
+    async def test_gmail_plugin_compose_email(self):
+        service = await initialize_plugin_service()
+        await service.discover_plugins()
+        await service.validate_and_register_all_discovered()
+        result = await service.execute_plugin(
+            "gmail-plugin",
+            {
+                "action": "compose_email",
+                "recipient": "bob@example.com",
+                "subject": "Hi",
+                "body": "Hello there",
+            },
+        )
+        assert result.success
+        assert isinstance(result.result, dict)
+        assert result.result.get("success") is True
+        await service.cleanup()
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
