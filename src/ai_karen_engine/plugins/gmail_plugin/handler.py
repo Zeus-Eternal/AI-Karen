@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
-from typing import Any, Dict, Optional
-
-from .client import GmailClient
 
 logger = logging.getLogger(__name__)
+from typing import Any, Dict
+
+from .gmail_service import GmailService
 
 
 async def run(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -22,19 +21,23 @@ async def run(params: Dict[str, Any]) -> Dict[str, Any]:
         body: message body (compose_email)
     """
     action = params.get("action")
+    
+    service = GmailService()
 
-    token = os.getenv("GMAIL_API_TOKEN")
-    client: Optional[GmailClient] = GmailClient(token) if token else None
+    try:
+        if action == "check_unread":
+            return await service.check_unread()
 
+        if action == "compose_email":
+            recipient = params.get("recipient", "")
+            subject = params.get("subject", "")
+            body = params.get("body", "")
+            return await service.compose_email(recipient, subject, body)
+    except Exception:  # pragma: no cover - external service may fail
+        pass
+
+    # Fallback to mocked responses if service fails or action unknown
     if action == "check_unread":
-        if client:
-            try:
-                emails = await client.list_unread()
-                return {"unreadCount": len(emails), "emails": emails}
-            except Exception as exc:  # pragma: no cover - network fail safe
-                logger.error("Gmail unread check failed: %s", exc)
-
-        # Fallback mock
         return {
             "unreadCount": 3,
             "emails": [

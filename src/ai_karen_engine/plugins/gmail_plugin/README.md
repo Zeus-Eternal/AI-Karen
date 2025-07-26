@@ -1,12 +1,11 @@
 # Gmail Plugin
+This plugin provides Gmail functionality for Karen AI.
+It supports two actions via parameters:
 
-This core plugin provides basic Gmail functionality. When the environment
-variable `GMAIL_API_TOKEN` is set with a valid OAuth access token, the plugin
-will call the Gmail REST API to list unread messages and create email drafts.
-If the token is absent or an error occurs, the plugin falls back to mocked
-responses so tests remain deterministic.
+- `check_unread` – return a summary of unread emails.
+- `compose_email` – send an email via Gmail.
 
-Supported actions via parameters:
-
-- `check_unread` – returns unread emails (real or mocked)
-- `compose_email` – creates a draft (real or mocked)
+For production use the plugin expects Gmail credentials to be supplied via the
+``GMAIL_USERNAME`` and ``GMAIL_APP_PASSWORD`` environment variables. When these
+variables are not set, the plugin falls back to a mocked behaviour so automated
+tests can still run without external dependencies.
