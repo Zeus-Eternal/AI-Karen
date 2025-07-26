@@ -2,6 +2,8 @@
 "use client";
 
 import type { ChatMessage, KarenSettings } from '@/lib/types';
+import ForecastWidget from '../widgets/ForecastWidget';
+import { widgetRefId } from '@/lib/utils';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Avatar } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -222,10 +224,15 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         <CardContent className="p-3 md:p-4">
           <div className="flex justify-between items-start">
             <p className={`whitespace-pre-wrap text-sm md:text-base flex-1 ${
-              isSystemMessage ? 'text-foreground' : '' 
+              isSystemMessage ? 'text-foreground' : ''
             }`}>
               {message.content}
             </p>
+            {message.widget && !isUser && (
+              <div className="mt-2 w-full">
+                <ForecastWidget refId={widgetRefId(message.widget)} />
+              </div>
+            )}
             {!isUser && message.role === 'assistant' && (
               <Button
                 variant="ghost"

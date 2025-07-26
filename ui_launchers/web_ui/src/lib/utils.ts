@@ -25,3 +25,8 @@ export function sanitizeInput(str: string): string {
     }
   })
 }
+
+export function widgetRefId(tag: string): string {
+  const match = tag.match(/\uE200forecast\uE202(.*?)\uE201/);
+  return match ? match[1] : '';
+}

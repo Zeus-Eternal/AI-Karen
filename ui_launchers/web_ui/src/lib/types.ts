@@ -13,6 +13,7 @@ export interface ChatMessage {
   timestamp: Date;
   aiData?: AiData;
   shouldAutoPlay?: boolean;
+  widget?: string;
 }
 
 // Settings types
@@ -51,4 +52,5 @@ export interface HandleUserMessageResult {
   suggestedNewFacts?: string[];
   proactiveSuggestion?: string;
   summaryWasGenerated?: boolean;
+  widget?: string;
 }
