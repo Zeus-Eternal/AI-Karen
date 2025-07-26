@@ -28,6 +28,7 @@ from .resource_monitor import (
     ExtensionHealthChecker,
     HealthStatus,
 )
+from ai_karen_engine.event_bus import get_event_bus
 from .marketplace_client import MarketplaceClient
 
 
@@ -214,10 +215,22 @@ class ExtensionManager:
             try:
                 await extension_instance.initialize()
                 self.registry.update_status(name, ExtensionStatus.ACTIVE)
-                
+
                 # Register for resource monitoring
                 self.resource_monitor.register_extension(record)
-                
+
+                # Publish lifecycle event
+                try:
+                    bus = get_event_bus()
+                    bus.publish(
+                        "extensions",
+                        "loaded",
+                        {"name": name, "version": manifest.version},
+                        roles=["admin"],
+                    )
+                except Exception as exc:  # pragma: no cover - optional
+                    self.logger.debug("Event publish failed: %s", exc)
+
                 self.logger.info(f"Extension {name} loaded and initialized successfully")
                 
             except Exception as e:
@@ -261,10 +274,21 @@ class ExtensionManager:
             
             # Unregister from resource monitoring
             self.resource_monitor.unregister_extension(name)
-            
+
             # Unregister extension
             self.registry.unregister_extension(name)
-            
+
+            try:
+                bus = get_event_bus()
+                bus.publish(
+                    "extensions",
+                    "unloaded",
+                    {"name": name},
+                    roles=["admin"],
+                )
+            except Exception as exc:  # pragma: no cover - optional
+                self.logger.debug("Event publish failed: %s", exc)
+
             self.logger.info(f"Extension {name} unloaded successfully")
             
         except Exception as e:
@@ -287,9 +311,20 @@ class ExtensionManager:
         # Unload if currently loaded
         if self.registry.get_extension(name):
             await self.unload_extension(name)
-        
+
         # Load again
-        return await self.load_extension(name)
+        record = await self.load_extension(name)
+        try:
+            bus = get_event_bus()
+            bus.publish(
+                "extensions",
+                "reloaded",
+                {"name": name},
+                roles=["admin"],
+            )
+        except Exception as exc:  # pragma: no cover - optional
+            self.logger.debug("Event publish failed: %s", exc)
+        return record
     
     def get_extension_status(self, name: str) -> Optional[Dict[str, Any]]:
         """

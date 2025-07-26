@@ -11,6 +11,7 @@ import type {
 } from './types';
 import { webUIConfig, type WebUIConfig } from './config';
 import { getPerformanceMonitor } from './performance-monitor';
+import { getStoredApiKey } from './secure-api-key';
 
 // Error handling types
 interface WebUIErrorResponse {
@@ -143,7 +144,7 @@ class KarenBackendService {
   constructor(config: Partial<BackendConfig> = {}) {
     this.config = {
       baseUrl: config.baseUrl || webUIConfig.backendUrl,
-      apiKey: config.apiKey || webUIConfig.apiKey,
+      apiKey: config.apiKey || getStoredApiKey() || webUIConfig.apiKey,
       timeout: config.timeout || webUIConfig.apiTimeout,
     };
 

@@ -5,6 +5,7 @@
 import type { ChatMessage, KarenSettings } from '@/lib/types';
 import { useState, useRef, useEffect, FormEvent, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
+import { sanitizeInput } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, SendHorizontal, Mic, MicOff, AlertTriangle, Sparkles } from 'lucide-react';
@@ -106,7 +107,7 @@ export default function ChatInterface() {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
-    const currentInput = input.trim();
+    const currentInput = sanitizeInput(input.trim());
     setInput('');
     setIsLoading(true);
     let parsedSettings: KarenSettings = DEFAULT_KAREN_SETTINGS;
