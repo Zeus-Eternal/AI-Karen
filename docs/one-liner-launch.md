@@ -6,10 +6,10 @@
 
 ## **Phase 1: Prereqs**
 
-1. **Install Docker & Docker Compose**
+1. **Install Docker (includes the Compose plugin)**
 
    ```bash
-   sudo apt-get update && sudo apt-get install -y docker.io docker-compose
+   sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
    sudo systemctl enable --now docker
    ```
 
@@ -25,7 +25,7 @@
 ## **Phase 2: Clone the Repo**
 
 ```bash
-git clone https://github.com/Zeus-Eternal/AI-Karen.git
+git clone https://github.com/OWNER/AI-Karen.git
 cd AI-Karen
 ```
 
@@ -110,7 +110,7 @@ If you want to experiment with Ollama, add the service and point Karen to the RE
 > **To launch all of Karen’s memory, AI, plugins, and API (with local, in-process LLM):**
 >
 > ```bash
-> git clone https://github.com/Zeus-Eternal/AI-Karen.git
+> git clone https://github.com/OWNER/AI-Karen.git
 > cd AI-Karen
 > docker compose up --build
 > ```

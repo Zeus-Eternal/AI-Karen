@@ -110,9 +110,9 @@ docker compose up -d postgres redis elasticsearch milvus
 ```bash
 
 # Initialize PostgreSQL schema
-docker-compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/001_create_tables.sql
+docker compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/001_create_tables.sql
 # Create memory_entries table
-docker-compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/004_create_memory_entries_table.sql
+docker compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/004_create_memory_entries_table.sql
 
 # Apply PostgreSQL migrations (creates all tables including `memory_entries`)
 ./docker/database/scripts/migrate.sh --service postgres
@@ -267,12 +267,12 @@ Plugins are automatically discovered and hot-reloaded.
 
 ```bash
 # Production deployment
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 # With custom environment
 cp .env.example .env
 # Edit .env with production values
-docker-compose --env-file .env up -d
+docker compose --env-file .env up -d
 ```
 
 ### Kubernetes Deployment
@@ -404,7 +404,7 @@ completes.
 export LOG_LEVEL=DEBUG
 
 # View logs
-docker-compose logs -f api
+docker compose logs -f api
 ```
 
 ---
@@ -420,13 +420,13 @@ docker-compose logs -f api
 **Solution**:
 ```bash
 # Check service status
-docker-compose ps
+docker compose ps
 
 # Restart services
-docker-compose restart postgres redis
+docker compose restart postgres redis
 
 # Check logs
-docker-compose logs postgres
+docker compose logs postgres
 ```
 
 #### Plugin Loading Failures
@@ -442,7 +442,7 @@ python -c "import json; print(json.load(open('src/ai_karen_engine/plugins/my_plu
 curl -X POST http://localhost:8000/plugins/reload
 
 # Check plugin logs
-docker-compose logs api | grep plugin
+docker compose logs api | grep plugin
 ```
 
 #### Memory Issues
@@ -456,7 +456,7 @@ docker stats
 
 # Adjust memory limits in docker-compose.yml
 # Restart with memory limits
-docker-compose up -d --force-recreate
+docker compose up -d --force-recreate
 ```
 
 #### Frontend Build Issues
