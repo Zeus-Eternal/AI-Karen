@@ -15,7 +15,7 @@ from cachetools import TTLCache
 import threading
 
 try:
-    from .nlp_config import SpacyConfig
+    from ai_karen_engine.services.nlp_config import SpacyConfig
 except ImportError:
     from nlp_config import SpacyConfig
 

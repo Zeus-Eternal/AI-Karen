@@ -7,7 +7,7 @@ from __future__ import annotations
 import re
 from typing import List, Tuple
 
-from .models import ExtensionManifest
+from ai_karen_engine.extensions.models import ExtensionManifest
 
 
 class ValidationError(Exception):

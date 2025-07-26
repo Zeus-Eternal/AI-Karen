@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from .router import PluginRouter
+from ai_karen_engine.plugins.router import PluginRouter
 from ai_karen_engine.core.memory.manager import update_memory
 from ai_karen_engine.integrations.llm_utils import embed_text
 

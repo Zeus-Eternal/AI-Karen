@@ -14,10 +14,10 @@ from ai_karen_engine.models.shared_types import (  # ← ensure FlowType is impo
     AiData, DecideActionInput, FlowInput, FlowOutput, FlowType, PluginInfo,
     ToolType)
 
-from .context_manager import ContextManager
-from .decision_engine import DecisionEngine
-from .flow_manager import FlowManager
-from .prompt_manager import PromptManager
+from ai_karen_engine.services.ai_orchestrator.context_manager import ContextManager
+from ai_karen_engine.services.ai_orchestrator.decision_engine import DecisionEngine
+from ai_karen_engine.services.ai_orchestrator.flow_manager import FlowManager
+from ai_karen_engine.services.ai_orchestrator.prompt_manager import PromptManager
 
 
 class AIOrchestrator(BaseService):

@@ -101,11 +101,11 @@ class LLMProviderBase:
         raise NotImplementedError
 
 # Import enhanced providers
-from .providers.ollama_provider import OllamaProvider
-from .providers.openai_provider import OpenAIProvider
-from .providers.gemini_provider import GeminiProvider
-from .providers.deepseek_provider import DeepseekProvider
-from .providers.huggingface_provider import HuggingFaceProvider
+from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvider
+from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvider
+from ai_karen_engine.integrations.providers.gemini_provider import GeminiProvider
+from ai_karen_engine.integrations.providers.deepseek_provider import DeepseekProvider
+from ai_karen_engine.integrations.providers.huggingface_provider import HuggingFaceProvider
 
 # ========== Main Utility Class ==========
 
@@ -124,7 +124,7 @@ class LLMUtils:
         
         if use_registry:
             # Use registry for provider management (import here to avoid circular import)
-            from .llm_registry import get_registry
+            from ai_karen_engine.integrations.llm_registry import get_registry
             self.registry = get_registry()
             self.providers = {}  # Cache for instantiated providers
         else:

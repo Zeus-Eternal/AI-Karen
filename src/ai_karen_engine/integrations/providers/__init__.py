@@ -2,11 +2,11 @@
 LLM Provider implementations for Kari AI.
 """
 
-from .huggingface_provider import HuggingFaceProvider
-from .ollama_provider import OllamaProvider
-from .openai_provider import OpenAIProvider
-from .gemini_provider import GeminiProvider
-from .deepseek_provider import DeepseekProvider
+from ai_karen_engine.integrations.providers.huggingface_provider import HuggingFaceProvider
+from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvider
+from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvider
+from ai_karen_engine.integrations.providers.gemini_provider import GeminiProvider
+from ai_karen_engine.integrations.providers.deepseek_provider import DeepseekProvider
 
 __all__ = [
     "HuggingFaceProvider",

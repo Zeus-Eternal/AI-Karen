@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from .extension_api_client import ExtensionAPIClient
+from ai_karen_engine.clients.extension_api_client import ExtensionAPIClient
 
 __all__ = ["ExtensionAPIClient"]

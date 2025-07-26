@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from ..models.web_ui_types import (
+from ai_karen_engine.models.web_ui_types import (
     ChatProcessRequest,
     ChatProcessResponse,
     WebUIMemoryQuery,
@@ -28,7 +28,7 @@ from ..models.web_ui_types import (
     WebUIErrorCode,
     create_web_ui_error_response
 )
-from ..models.web_api_error_responses import (
+from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
     WebAPIErrorResponse,
     ValidationErrorDetail,
@@ -38,11 +38,11 @@ from ..models.web_api_error_responses import (
     create_generic_error_response,
     get_http_status_for_error_code
 )
-from ..database.schema_validator import validate_and_migrate_schema
-from ..services.web_ui_api import WebUITransformationService
-from ..services.ai_orchestrator.ai_orchestrator import AIOrchestrator
-from ..services.memory_service import WebUIMemoryService
-from ..core.dependencies import (
+from ai_karen_engine.database.schema_validator import validate_and_migrate_schema
+from ai_karen_engine.services.web_ui_api import WebUITransformationService
+from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import AIOrchestrator
+from ai_karen_engine.services.memory_service import WebUIMemoryService
+from ai_karen_engine.core.dependencies import (
     get_ai_orchestrator_service,
     get_memory_service,
     get_plugin_service
@@ -610,7 +610,7 @@ async def memory_store_compatibility(
         
         # Database schema validation - check if memory_entries table exists
         try:
-            from ..database import get_postgres_session
+            from ai_karen_engine.database import get_postgres_session
             async with get_postgres_session() as session:
                 schema_error = await validate_and_migrate_schema(session)
                 if schema_error:
@@ -687,7 +687,7 @@ async def memory_store_compatibility(
 
                 # Attempt automatic migration and retry once
                 try:
-                    from ..database import get_postgres_session
+                    from ai_karen_engine.database import get_postgres_session
 
                     async with get_postgres_session() as session:
                         schema_error = await validate_and_migrate_schema(session)
@@ -1008,7 +1008,7 @@ async def health_check_compatibility(
         
         # Get health status from health monitor
         try:
-            from ..core.health_monitor import get_health_monitor
+            from ai_karen_engine.core.health_monitor import get_health_monitor
             health_monitor = get_health_monitor()
             health_summary = health_monitor.get_health_summary()
             
@@ -1046,7 +1046,7 @@ async def health_check_compatibility(
             
             # Check AI orchestrator service
             try:
-                from ..core.dependencies import get_ai_orchestrator_service
+                from ai_karen_engine.core.dependencies import get_ai_orchestrator_service
                 ai_service = get_ai_orchestrator_service()
                 services["ai_orchestrator"] = {
                     "status": "healthy",
@@ -1071,7 +1071,7 @@ async def health_check_compatibility(
             
             # Check memory service
             try:
-                from ..core.dependencies import get_memory_service
+                from ai_karen_engine.core.dependencies import get_memory_service
                 memory_service = get_memory_service()
                 services["memory_service"] = {
                     "status": "healthy",
@@ -1096,7 +1096,7 @@ async def health_check_compatibility(
             
             # Check plugin service
             try:
-                from ..core.dependencies import get_plugin_service
+                from ai_karen_engine.core.dependencies import get_plugin_service
                 plugin_service = get_plugin_service()
                 services["plugin_service"] = {
                     "status": "healthy",
@@ -1121,7 +1121,7 @@ async def health_check_compatibility(
             
             # Check database connectivity
             try:
-                from ..database.client import get_db_client
+                from ai_karen_engine.database.client import get_db_client
                 db_client = get_db_client()
                 # Simple connectivity test
                 services["database"] = {
@@ -1195,7 +1195,7 @@ async def service_specific_health_check(
         
         # Get health status from health monitor
         try:
-            from ..core.health_monitor import get_health_monitor
+            from ai_karen_engine.core.health_monitor import get_health_monitor
             health_monitor = get_health_monitor()
             service_health = health_monitor.get_service_health(service_name)
             
@@ -1286,7 +1286,7 @@ async def trigger_health_check(
         
         # Get health monitor and trigger immediate check
         try:
-            from ..core.health_monitor import get_health_monitor
+            from ai_karen_engine.core.health_monitor import get_health_monitor
             health_monitor = get_health_monitor()
             
             # Trigger immediate health check for all services
@@ -1339,7 +1339,7 @@ async def trigger_health_check(
             
             for service_name, dependency_func in services_to_check:
                 try:
-                    from ..core.dependencies import get_ai_orchestrator_service, get_memory_service, get_plugin_service
+                    from ai_karen_engine.core.dependencies import get_ai_orchestrator_service, get_memory_service, get_plugin_service
                     
                     if dependency_func == "get_ai_orchestrator_service":
                         service = get_ai_orchestrator_service()

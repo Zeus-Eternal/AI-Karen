@@ -16,8 +16,8 @@ except ImportError:
     GZipMiddleware = object
     TrustedHostMiddleware = object
 
-from ..errors import error_middleware
-from ..logging import logging_middleware, get_logger
+from ai_karen_engine.core.errors import error_middleware
+from ai_karen_engine.core.logging import logging_middleware, get_logger
 
 logger = get_logger(__name__)
 

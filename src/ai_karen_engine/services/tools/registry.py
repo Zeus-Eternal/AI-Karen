@@ -10,7 +10,7 @@ from ai_karen_engine.services.tool_service import (
     ToolRegistry,
     get_tool_service,
 )
-from .core_tools import (
+from ai_karen_engine.services.tools.core_tools import (
     DateTool,
     TimeTool,
     WeatherTool,

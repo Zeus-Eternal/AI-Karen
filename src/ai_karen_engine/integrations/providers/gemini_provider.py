@@ -9,7 +9,7 @@ import time
 import os
 from typing import Any, Dict, List, Optional, Union, Iterator
 
-from ..llm_utils import LLMProviderBase, GenerationFailed, EmbeddingFailed, record_llm_metric
+from ai_karen_engine.integrations.llm_utils import LLMProviderBase, GenerationFailed, EmbeddingFailed, record_llm_metric
 
 logger = logging.getLogger("kari.gemini_provider")
 

@@ -15,7 +15,7 @@ import threading
 import numpy as np
 
 try:
-    from .nlp_config import DistilBertConfig
+    from ai_karen_engine.services.nlp_config import DistilBertConfig
 except ImportError:
     from nlp_config import DistilBertConfig
 

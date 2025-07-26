@@ -461,7 +461,7 @@ async def setup_default_health_checks() -> None:
     # Database health check
     async def check_database():
         try:
-            from ..database.client import get_db_client
+            from ai_karen_engine.database.client import get_db_client
             client = get_db_client()
             # Simple query to check database connectivity
             await client.execute("SELECT 1")
@@ -472,7 +472,7 @@ async def setup_default_health_checks() -> None:
     # Redis health check
     async def check_redis():
         try:
-            from ..clients.database.redis_client import get_redis_client
+            from ai_karen_engine.clients.database.redis_client import get_redis_client
             client = get_redis_client()
             await client.ping()
             return {"status": "healthy", "message": "Redis connection OK"}
@@ -482,7 +482,7 @@ async def setup_default_health_checks() -> None:
     # Vector database health check
     async def check_vector_db():
         try:
-            from ..clients.database.milvus_client import get_milvus_client
+            from ai_karen_engine.clients.database.milvus_client import get_milvus_client
             client = get_milvus_client()
             # Check if client is connected
             if client.is_connected():
@@ -495,7 +495,7 @@ async def setup_default_health_checks() -> None:
     # Service health checks
     async def check_ai_orchestrator():
         try:
-            from .service_registry import get_ai_orchestrator
+            from ai_karen_engine.core.service_registry import get_ai_orchestrator
             service = await get_ai_orchestrator()
             if hasattr(service, 'health_check'):
                 return await service.health_check()
@@ -505,7 +505,7 @@ async def setup_default_health_checks() -> None:
     
     async def check_memory_service():
         try:
-            from .service_registry import get_memory_service
+            from ai_karen_engine.core.service_registry import get_memory_service
             service = await get_memory_service()
             if hasattr(service, 'health_check'):
                 return await service.health_check()

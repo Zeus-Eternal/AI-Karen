@@ -225,7 +225,7 @@ class MemoryContextBuilder:
         """Analyze query using NLP to extract key information for better context building."""
         try:
             # Import spaCy service for query analysis
-            from .nlp_service_manager import nlp_service_manager
+            from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
             
             # Get comprehensive NLP analysis of the query
             parsed_query = await nlp_service_manager.spacy_service.parse_message(query)
@@ -281,7 +281,7 @@ class MemoryContextBuilder:
         """Enhance memory ranking using NLP analysis of query and memory content."""
         try:
             # Import spaCy service for memory analysis
-            from .nlp_service_manager import nlp_service_manager
+            from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
             
             query_entities = {entity["text"].lower() for entity in query_analysis.get("entities", [])}
             query_tokens = {token["text"].lower() for token in query_analysis.get("important_tokens", [])}
@@ -801,7 +801,7 @@ class WebUIMemoryService:
         """Generate automatic tags for memory content using spaCy NLP."""
         try:
             # Import spaCy service for entity-based tagging
-            from .nlp_service_manager import nlp_service_manager
+            from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
             
             tags = []
             
@@ -882,7 +882,7 @@ class WebUIMemoryService:
         """Extract facts from memory content using spaCy NLP."""
         try:
             # Import spaCy service for fact extraction
-            from .nlp_service_manager import nlp_service_manager
+            from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
             
             # Use spaCy service to extract facts
             facts = await nlp_service_manager.spacy_service.extract_facts(content)

@@ -11,8 +11,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
-from .llm_utils import LLMProviderBase
-from .providers import (DeepseekProvider, GeminiProvider, HuggingFaceProvider,
+from ai_karen_engine.integrations.llm_utils import LLMProviderBase
+from ai_karen_engine.integrations.providers import (DeepseekProvider, GeminiProvider, HuggingFaceProvider,
                         OllamaProvider, OpenAIProvider)
 
 logger = logging.getLogger("kari.llm_registry")

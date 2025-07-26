@@ -17,7 +17,7 @@ except ImportError:
     JSONResponse = object
     BaseHTTPMiddleware = object
 
-from .handlers import get_error_handler, ErrorHandler
+from ai_karen_engine.core.errors.handlers import get_error_handler, ErrorHandler
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ from ai_karen_engine.models.shared_types import (
     AiData,
 )
 
-from .personality_utils import apply_personality
+from ai_karen_engine.services.ai_orchestrator.personality_utils import apply_personality
 
 
 class DecisionEngine:

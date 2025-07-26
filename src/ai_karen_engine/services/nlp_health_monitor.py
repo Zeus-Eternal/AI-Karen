@@ -12,9 +12,9 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 
 try:
-    from .spacy_service import SpacyService, SpacyHealthStatus
-    from .distilbert_service import DistilBertService, DistilBertHealthStatus
-    from .nlp_config import NLPConfig
+    from ai_karen_engine.services.spacy_service import SpacyService, SpacyHealthStatus
+    from ai_karen_engine.services.distilbert_service import DistilBertService, DistilBertHealthStatus
+    from ai_karen_engine.services.nlp_config import NLPConfig
 except ImportError:
     from spacy_service import SpacyService, SpacyHealthStatus
     from distilbert_service import DistilBertService, DistilBertHealthStatus

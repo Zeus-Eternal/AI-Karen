@@ -17,7 +17,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 # Import the new multi-tenant client
 try:
-    from ...database.client import MultiTenantPostgresClient
+    from ai_karen_engine.database.client import MultiTenantPostgresClient
     _MULTITENANT_AVAILABLE = True
 except ImportError:
     MultiTenantPostgresClient = None

@@ -5,7 +5,7 @@ This package contains all data models and type definitions used throughout
 the AI Karen engine, including shared types for frontend-backend consistency.
 """
 
-from .shared_types import (
+from ai_karen_engine.models.shared_types import (
     # Enums
     MessageRole,
     MemoryDepth,
@@ -37,7 +37,7 @@ from .shared_types import (
     PluginInfo,
 )
 
-from .error_responses import (
+from ai_karen_engine.models.error_responses import (
     WebAPIErrorCode,
     WebAPIErrorResponse,
     ValidationErrorDetail,

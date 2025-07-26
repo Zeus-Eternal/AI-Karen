@@ -6,17 +6,17 @@ enabling developers to build substantial, feature-rich modules that can compose 
 plugins, provide rich UIs, manage their own data, and be distributed through a marketplace.
 """
 
-from .manager import ExtensionManager, get_extension_manager, initialize_extension_manager
-from .base import BaseExtension
-from .models import ExtensionManifest, ExtensionRecord, ExtensionStatus
-from .registry import ExtensionRegistry
-from .orchestrator import PluginOrchestrator
-from .data_manager import ExtensionDataManager
-from .validator import ExtensionValidator, validate_extension_manifest
-from .dependency_resolver import DependencyResolver
-from .resource_monitor import ResourceMonitor, ExtensionHealthChecker, HealthStatus
-from .marketplace_client import MarketplaceClient
-from .metrics_dashboard import MetricsDashboard
+from ai_karen_engine.extensions.manager import ExtensionManager, get_extension_manager, initialize_extension_manager
+from ai_karen_engine.extensions.base import BaseExtension
+from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionRecord, ExtensionStatus
+from ai_karen_engine.extensions.registry import ExtensionRegistry
+from ai_karen_engine.extensions.orchestrator import PluginOrchestrator
+from ai_karen_engine.extensions.data_manager import ExtensionDataManager
+from ai_karen_engine.extensions.validator import ExtensionValidator, validate_extension_manifest
+from ai_karen_engine.extensions.dependency_resolver import DependencyResolver
+from ai_karen_engine.extensions.resource_monitor import ResourceMonitor, ExtensionHealthChecker, HealthStatus
+from ai_karen_engine.extensions.marketplace_client import MarketplaceClient
+from ai_karen_engine.extensions.metrics_dashboard import MetricsDashboard
 
 __all__ = [
     "ExtensionManager",

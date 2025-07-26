@@ -20,7 +20,7 @@ except ImportError:
     PSUTIL_AVAILABLE = False
     psutil = None
 
-from .models import ExtensionRecord, ExtensionStatus
+from ai_karen_engine.extensions.models import ExtensionRecord, ExtensionStatus
 
 
 class HealthStatus(Enum):

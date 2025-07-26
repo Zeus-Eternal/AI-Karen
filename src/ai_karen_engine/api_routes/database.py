@@ -17,8 +17,8 @@ from pydantic import BaseModel, Field, validator
 from sqlalchemy.exc import ProgrammingError, OperationalError
 import asyncpg
 
-from ..database.integration_manager import get_database_manager, DatabaseIntegrationManager
-from ..utils.auth import get_current_user, get_tenant_context
+from ai_karen_engine.database.integration_manager import get_database_manager, DatabaseIntegrationManager
+from ai_karen_engine.utils.auth import get_current_user, get_tenant_context
 
 logger = logging.getLogger(__name__)
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
