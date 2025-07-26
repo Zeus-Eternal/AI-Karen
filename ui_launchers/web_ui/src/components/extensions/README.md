@@ -147,12 +147,18 @@ Category (Plugins/Extensions)
 
 ```tsx
 import { ExtensionProvider } from '@/extensions';
-import { ExtensionSidebar } from '@/components/extensions';
+import { ExtensionSidebar, ExtensionHeader, ExtensionContent } from '@/components/extensions';
 
 function App() {
   return (
     <ExtensionProvider initialCategory="Plugins">
-      <ExtensionSidebar />
+      <div className="flex">
+        <ExtensionSidebar />
+        <main className="flex-1">
+          <ExtensionHeader title="Extension Manager" />
+          <ExtensionContent>{/* extension views */}</ExtensionContent>
+        </main>
+      </div>
     </ExtensionProvider>
   );
 }
