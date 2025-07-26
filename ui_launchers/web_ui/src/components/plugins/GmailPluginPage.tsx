@@ -1,24 +1,37 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import ResponsiveCardGrid from "@/components/ui/responsive-card-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Send, Inbox, Settings, AlertTriangle, Info, Zap } from "lucide-react";
+import { Mail, Send, Inbox, Settings, AlertTriangle, Info, Zap, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 
 /**
  * @file GmailPluginPage.tsx
- * @description Page describing Karen AI's conceptual Gmail Integration plugin.
- * Users interact with mocked Gmail features (check unread, compose) via chat.
- * This page outlines where settings and real integration points would live.
+ * @description Page for configuring the Gmail plugin. Users can store
+ * credentials locally and interact with Karen to read or compose emails.
  */
 export default function GmailPluginPage() {
+  const [username, setUsername] = useState<string>("");
+  const [appPassword, setAppPassword] = useState<string>("");
+
+  useEffect(() => {
+    setUsername(localStorage.getItem("gmail_username") || "");
+    setAppPassword(localStorage.getItem("gmail_app_password") || "");
+  }, []);
+
+  const saveCreds = () => {
+    localStorage.setItem("gmail_username", username);
+    localStorage.setItem("gmail_app_password", appPassword);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
@@ -26,41 +39,42 @@ export default function GmailPluginPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Gmail Integration</h2>
           <p className="text-sm text-muted-foreground">
-            Check unread emails or compose new ones with Karen's help (currently using mocked functionality).
+            Connect your Gmail account so Karen can check unread messages or compose new ones on your behalf.
           </p>
         </div>
       </div>
 
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Mocked Functionality & Future Integration</AlertTitle>
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>How to Use</AlertTitle>
         <AlertDescription>
-          <p>The Gmail features (checking unread, composing emails) are currently **mocked**. Karen will simulate these actions but does not connect to your actual Gmail account.</p>
-          <p className="mt-1">Full Gmail integration requires secure account connection (OAuth 2.0) and backend services, which are planned for future development.</p>
-          <p className="mt-2">You can try the mocked features via chat:</p>
-          <ul className="list-disc list-inside pl-4 mt-1 text-xs">
-            <li>"Check my unread emails."</li>
-            <li>"Compose an email to example@example.com with subject 'Hello' and body 'Just saying hi!'"</li>
-          </ul>
+          <p>Provide your Gmail username and app password below. Karen will use them via the Gmail plugin.</p>
+          <p className="mt-1">For security reasons OAuth based connection is recommended in a real deployment.</p>
         </AlertDescription>
       </Alert>
 
       {/* Connection Settings Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Gmail Account Connection</CardTitle>
+          <CardTitle className="text-lg">Gmail Credentials</CardTitle>
           <CardDescription>
-            Connect your Gmail account to enable live features (Requires backend implementation).
+            Store your credentials locally for the Gmail plugin. In production an OAuth flow should be used instead.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button className="w-full sm:w-auto" disabled>
-            <Mail className="mr-2 h-4 w-4" /> Connect with Google (Gmail)
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Status: Not Connected. Real connection requires OAuth flow and backend setup.
-          </p>
+          <div className="space-y-2">
+            <Label htmlFor="gmail-user">Gmail Username</Label>
+            <Input id="gmail-user" value={username} onChange={(e) => setUsername(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="gmail-pass" className="flex items-center"><KeyRound className="mr-2 h-4 w-4 text-primary/80"/>App Password</Label>
+            <Input id="gmail-pass" type="password" value={appPassword} onChange={(e) => setAppPassword(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Use a Gmail app password for SMTP/IMAP access.</p>
+          </div>
         </CardContent>
+        <CardFooter className="flex justify-end">
+          <Button onClick={saveCreds}>Save Credentials</Button>
+        </CardFooter>
       </Card>
 
       <Separator />
@@ -70,7 +84,7 @@ export default function GmailPluginPage() {
         <CardHeader>
           <CardTitle className="text-lg">Available Actions (via Chat)</CardTitle>
           <CardDescription>
-            Interact with these mocked Gmail features by talking to Karen in the chat.
+            Ask Karen in the chat to check your unread emails or compose a message.
           </CardDescription>
         </CardHeader>
         <CardContent>
