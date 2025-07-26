@@ -10,7 +10,8 @@
     "start": "next start -p 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest",
+    "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.8.0",
@@ -68,6 +69,8 @@
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.4.3",
     "jsdom": "^24.0.0",
-    "msw": "^2.0.0"
+    "msw": "^2.0.0",
+    "@storybook/nextjs": "^8.1.0",
+    "@storybook/react": "^8.1.0"
   }
 }

@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Brain, MessageSquare, SettingsIcon as SettingsIconLucide, PanelLeft, Bell, SlidersHorizontal, LayoutGrid, Database, Facebook, BookOpenCheck, Mail, CalendarDays, CloudSun, PlugZap } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import SettingsDialogComponent from '@/components/settings/SettingsDialog';
 import DatabaseConnectorPluginPage from '@/components/plugins/DatabaseConnectorPluginPage';
 import FacebookPluginPage from '@/components/plugins/FacebookPluginPage';
@@ -35,6 +36,9 @@ import {
 import { Separator } from '@/components/ui/separator';
 import NotificationsSection from '@/components/sidebar/NotificationsSection';
 import ChatInterface from '@/components/chat/ChatInterface';
+import { webUIConfig } from '@/lib/config';
+
+const ExtensionSidebar = dynamic(() => import('@/components/extensions/ExtensionSidebar'));
 
 type ActiveView = 'chat' | 'settings' | 'commsCenter' | 'pluginDatabaseConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview';
 
@@ -70,120 +74,120 @@ export default function HomePage() {
         </header>
 
         <div className="flex flex-1 min-h-0">
-          <Sidebar
-            variant="sidebar"
-            collapsible="icon"
-            className="border-r z-20"
-          >
-            <AppSidebarHeader>
-              <h2 className="text-lg font-semibold tracking-tight px-2 py-1">Navigation</h2>
-            </AppSidebarHeader>
-            <Separator className="my-1" />
-            <AppSidebarContent className="p-2">
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setActiveMainView('chat')}
-                    isActive={activeMainView === 'chat'}
-                    className="w-full"
-                  >
-                    <MessageSquare />
-                    Chat
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setActiveMainView('settings')}
-                    isActive={activeMainView === 'settings'}
-                    className="w-full"
-                  >
-                    <SettingsIconLucide />
-                    Settings
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                   <SidebarMenuButton
-                    onClick={() => setActiveMainView('commsCenter')}
-                    isActive={activeMainView === 'commsCenter'}
-                    className="w-full"
-                  >
-                    <Bell />
-                    Comms Center
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-
-              <Separator className="my-2" />
-              <SidebarGroup>
-                <SidebarGroupLabel className="text-sm">Plugins</SidebarGroupLabel>
+          {webUIConfig.enableExtensions ? (
+            <ExtensionSidebar />
+          ) : (
+            <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20">
+              <AppSidebarHeader>
+                <h2 className="text-lg font-semibold tracking-tight px-2 py-1">Navigation</h2>
+              </AppSidebarHeader>
+              <Separator className="my-1" />
+              <AppSidebarContent className="p-2">
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginOverview')}
-                      isActive={activeMainView === 'pluginOverview'}
+                      onClick={() => setActiveMainView('chat')}
+                      isActive={activeMainView === 'chat'}
                       className="w-full"
                     >
-                      <PlugZap />
-                      Plugin Overview
+                      <MessageSquare />
+                      Chat
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginDatabaseConnector')}
-                      isActive={activeMainView === 'pluginDatabaseConnector'}
+                      onClick={() => setActiveMainView('settings')}
+                      isActive={activeMainView === 'settings'}
                       className="w-full"
                     >
-                      <Database />
-                      Database Connector
+                      <SettingsIconLucide />
+                      Settings
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginFacebook')}
-                      isActive={activeMainView === 'pluginFacebook'}
+                      onClick={() => setActiveMainView('commsCenter')}
+                      isActive={activeMainView === 'commsCenter'}
                       className="w-full"
                     >
-                      <Facebook />
-                      Facebook Integration
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginGmail')}
-                      isActive={activeMainView === 'pluginGmail'}
-                      className="w-full"
-                    >
-                      <Mail />
-                      Gmail Integration
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginDateTime')}
-                      isActive={activeMainView === 'pluginDateTime'}
-                      className="w-full"
-                    >
-                      <CalendarDays />
-                      Date/Time Service
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('pluginWeather')}
-                      isActive={activeMainView === 'pluginWeather'}
-                      className="w-full"
-                    >
-                      <CloudSun />
-                      Weather Service
+                      <Bell />
+                      Comms Center
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
-              </SidebarGroup>
-            </AppSidebarContent>
-            <AppSidebarFooter className="p-2 border-t">
-              <p className="text-xs text-muted-foreground text-center">Karen AI Menu</p>
-            </AppSidebarFooter>
-          </Sidebar>
+
+                <Separator className="my-2" />
+                <SidebarGroup>
+                  <SidebarGroupLabel className="text-sm">Plugins</SidebarGroupLabel>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => setActiveMainView('pluginOverview')}
+                        isActive={activeMainView === 'pluginOverview'}
+                        className="w-full"
+                      >
+                        <PlugZap />
+                        Plugin Overview
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => setActiveMainView('pluginDatabaseConnector')}
+                        isActive={activeMainView === 'pluginDatabaseConnector'}
+                        className="w-full"
+                      >
+                        <Database />
+                        Database Connector
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => setActiveMainView('pluginFacebook')}
+                        isActive={activeMainView === 'pluginFacebook'}
+                        className="w-full"
+                      >
+                        <Facebook />
+                        Facebook Integration
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => setActiveMainView('pluginGmail')}
+                        isActive={activeMainView === 'pluginGmail'}
+                        className="w-full"
+                      >
+                        <Mail />
+                        Gmail Integration
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => setActiveMainView('pluginDateTime')}
+                        isActive={activeMainView === 'pluginDateTime'}
+                        className="w-full"
+                      >
+                        <CalendarDays />
+                        Date/Time Service
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => setActiveMainView('pluginWeather')}
+                        isActive={activeMainView === 'pluginWeather'}
+                        className="w-full"
+                      >
+                        <CloudSun />
+                        Weather Service
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroup>
+              </AppSidebarContent>
+              <AppSidebarFooter className="p-2 border-t">
+                <p className="text-xs text-muted-foreground text-center">Karen AI Menu</p>
+              </AppSidebarFooter>
+            </Sidebar>
+          )}
 
           <SidebarInset className="flex-1 flex flex-col min-h-0">
             <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6 overflow-y-auto">

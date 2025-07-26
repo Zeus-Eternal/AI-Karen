@@ -1,3 +1,6 @@
+/**
+ * React context and provider for extension navigation state.
+ */
 "use client";
 
 import React, { createContext, useContext, useReducer } from 'react';
