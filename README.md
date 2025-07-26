@@ -520,6 +520,12 @@ node --version  # Should be 18+
 
 ### Testing
 
+Install project dependencies before running tests:
+
+```bash
+pip install -r requirements.txt
+```
+
 ```bash
 # Run all tests
 pytest
