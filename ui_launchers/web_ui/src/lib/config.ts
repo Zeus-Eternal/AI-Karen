@@ -23,6 +23,7 @@ export interface WebUIConfig {
   enableMemory: boolean;
   enableExperimentalFeatures: boolean;
   enableVoice: boolean;
+  enableExtensions: boolean;
 
   // Health checks
   healthCheckInterval: number;
@@ -85,6 +86,7 @@ export function getWebUIConfig(): WebUIConfig {
     enableMemory: parseBooleanEnv(process.env.KAREN_ENABLE_MEMORY, true),
     enableExperimentalFeatures: parseBooleanEnv(process.env.KAREN_ENABLE_EXPERIMENTAL_FEATURES, false),
     enableVoice: parseBooleanEnv(process.env.KAREN_ENABLE_VOICE, false),
+    enableExtensions: parseBooleanEnv(process.env.KAREN_ENABLE_EXTENSIONS, false),
 
     // Health checks
     healthCheckInterval: parseNumberEnv(process.env.KAREN_HEALTH_CHECK_INTERVAL, 30000),
@@ -177,6 +179,7 @@ export function logConfigInfo(config: WebUIConfig): void {
     memory: config.enableMemory,
     experimental: config.enableExperimentalFeatures,
     voice: config.enableVoice,
+    extensions: config.enableExtensions,
   });
   console.log('Health Checks:', {
     enabled: config.enableHealthChecks,

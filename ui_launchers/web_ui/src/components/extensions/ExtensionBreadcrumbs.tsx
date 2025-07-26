@@ -1,3 +1,8 @@
+/**
+ * Breadcrumb navigation for the Extension Manager sidebar.
+ * Displays the current hierarchy path and allows quick navigation
+ * back to a parent level.
+ */
 "use client";
 
 import React from 'react';
