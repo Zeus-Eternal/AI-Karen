@@ -10,6 +10,7 @@ __all__ = [
     "llm_manager",
     "openai_llm",
     "time_query",
+    "weather_query",
     "tui_fallback",
     "fine_tune_lnm",
 ]

@@ -52,6 +52,7 @@ class CompatibilityImportManager:
             # Individual plugin mappings (examples)
             "ai_karen_engine.plugins.hello_world": "plugins.examples.hello_world",
             "ai_karen_engine.plugins.time_query": "plugins.core.time_query",
+            "ai_karen_engine.plugins.weather_query": "plugins.core.weather_query",
             "ai_karen_engine.plugins.autonomous_task_handler": "plugins.automation.autonomous_task_handler",
             "ai_karen_engine.plugins.desktop_agent": "plugins.integrations.desktop_agent",
             "ai_karen_engine.plugins.fine_tune_lnm": "plugins.ai.fine_tune_lnm",
@@ -171,6 +172,7 @@ def create_plugin_compatibility_imports():
     plugin_mappings = {
         "ai_karen_engine.plugins.hello_world": "plugins.examples.hello_world",
         "ai_karen_engine.plugins.time_query": "plugins.core.time_query",
+        "ai_karen_engine.plugins.weather_query": "plugins.core.weather_query",
         # Add more as needed during migration
     }
     
