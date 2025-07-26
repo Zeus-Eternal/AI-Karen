@@ -61,7 +61,7 @@ export KARI_DUCKDB_PASSWORD=dev-duckdb-pass
 export KARI_JOB_SIGNING_KEY=dev-job-key
 
 # Start database services
-cd docker/database && docker-compose up -d
+cd docker/database && docker compose up -d
 
 # Verify setup
 PYTHONPATH=src pytest tests/test_basic_setup.py

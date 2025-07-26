@@ -85,10 +85,10 @@ pre-commit install
 ```bash
 # Start all database services
 cd docker/database
-docker-compose up -d
+docker compose up -d
 
 # Or start individual services
-docker-compose up -d postgres redis
+docker compose up -d postgres redis
 ```
 
 5. **Initialize Database**
