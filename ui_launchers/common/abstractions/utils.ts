@@ -64,8 +64,8 @@ export class Validator implements IValidator {
       errors.temperatureUnit = 'Temperature unit must be C or F';
     }
     
-    if (settings.weatherService && !['wttr_in', 'custom_api'].includes(settings.weatherService)) {
-      errors.weatherService = 'Weather service must be wttr_in or custom_api';
+    if (settings.weatherService && !['wttr_in', 'openweather', 'custom_api'].includes(settings.weatherService)) {
+      errors.weatherService = 'Weather service must be wttr_in, openweather or custom_api';
     }
     
     if (settings.customPersonaInstructions && typeof settings.customPersonaInstructions !== 'string') {

@@ -20,7 +20,7 @@ export type MemoryDepth = "short" | "medium" | "long";
 export type PersonalityTone = "neutral" | "friendly" | "formal" | "humorous";
 export type PersonalityVerbosity = "concise" | "balanced" | "detailed";
 export type TemperatureUnit = 'C' | 'F';
-export type WeatherServiceOption = 'wttr_in' | 'custom_api';
+export type WeatherServiceOption = 'wttr_in' | 'openweather' | 'custom_api';
 
 export interface NotificationPreferences {
   enabled: boolean;

@@ -51,6 +51,7 @@ class TemperatureUnit(str, Enum):
 class WeatherServiceOption(str, Enum):
     """Enum for weather service options."""
     WTTR_IN = "wttr_in"
+    OPENWEATHER = "openweather"
     CUSTOM_API = "custom_api"
 
 
