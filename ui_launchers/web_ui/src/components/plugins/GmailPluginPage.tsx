@@ -39,12 +39,27 @@ export default function GmailPluginPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Gmail Integration</h2>
           <p className="text-sm text-muted-foreground">
-            Connect your Gmail account so Karen can check unread messages or compose new ones on your behalf.
+            Karen can check unread messages or compose new ones on your behalf.. If the
+            backend is configured with a valid <code>GMAIL_API_TOKEN</code>,
+            real Gmail actions will be performed;
           </p>
         </div>
       </div>
 
-      <Alert>
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>About Gmail Integration</AlertTitle>
+        <AlertDescription>
+          <p>
+            When the backend has a valid <code>GMAIL_API_TOKEN</code> configured,
+            Karen can access your Gmail to list unread messages and create
+            drafts. Without it, these actions are simulated for demo purposes.
+          </p>
+          <p className="mt-2">You can try the features via chat:</p>
+          <ul className="list-disc list-inside pl-4 mt-1 text-xs">
+            <li>"Check my unread emails."</li>
+            <li>"Compose an email to example@example.com with subject 'Hello' and body 'Just saying hi!'"</li>
+          </ul>
         <Info className="h-4 w-4" />
         <AlertTitle>How to Use</AlertTitle>
         <AlertDescription>

@@ -1,5 +1,4 @@
 # Gmail Plugin
-
 This plugin provides Gmail functionality for Karen AI.
 It supports two actions via parameters:
 

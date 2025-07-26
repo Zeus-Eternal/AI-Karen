@@ -17,7 +17,10 @@ import { Separator } from '../ui/separator';
 /**
  * @file WeatherPluginPage.tsx
  * @description Page for configuring Weather Service settings for Karen AI.
- * Allows selection of weather service, API key input (conceptual), default location, and temperature unit.
+ * When the backend provides an OPENWEATHER_API_KEY environment variable,
+ * live weather data is fetched from OpenWeatherMap. Otherwise, mocked
+ * responses are used. This page lets users set preferences for the future
+ * full integration.
  */
 export default function WeatherPluginPage() {
   const [settings, setSettings] = useState<Pick<KarenSettings, 'temperatureUnit' | 'weatherService' | 'weatherApiKey' | 'defaultWeatherLocation'>>({
@@ -207,11 +210,17 @@ export default function WeatherPluginPage() {
 
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Developer Note</AlertTitle>
+        <AlertTitle>About Weather Integration</AlertTitle>
         <AlertDescription>
-          The weather fetching logic currently defaults to using `wttr.in`.
-          Integrating a "Custom API" service requires modifying the `getWeather` tool in `src/ai/tools/core-tools.ts` to handle the specific API calls and data parsing for that service.
-          The `defaultWeatherLocation` is passed to the tool but its usage in `getWeather` would need to be prioritized if no specific location is given in the user's query.
+          <p>
+            If the backend is configured with a valid <code>OPENWEATHER_API_KEY</code>,
+            Karen will fetch live weather data from OpenWeatherMap. Without it,
+            the plugin returns mocked results for demo purposes.
+          </p>
+          <p className="mt-1 text-xs">
+            The location preference below will be used when you ask for the weather
+            without specifying a city.
+          </p>
         </AlertDescription>
       </Alert>
     </div>
