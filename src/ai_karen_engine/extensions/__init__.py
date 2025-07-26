@@ -14,7 +14,9 @@ from .orchestrator import PluginOrchestrator
 from .data_manager import ExtensionDataManager
 from .validator import ExtensionValidator, validate_extension_manifest
 from .dependency_resolver import DependencyResolver
-from .resource_monitor import ResourceMonitor, ExtensionHealthChecker
+from .resource_monitor import ResourceMonitor, ExtensionHealthChecker, HealthStatus
+from .marketplace_client import MarketplaceClient
+from .metrics_dashboard import MetricsDashboard
 
 __all__ = [
     "ExtensionManager",
@@ -32,4 +34,7 @@ __all__ = [
     "DependencyResolver",
     "ResourceMonitor",
     "ExtensionHealthChecker",
+    "HealthStatus",
+    "MarketplaceClient",
+    "MetricsDashboard",
 ]
