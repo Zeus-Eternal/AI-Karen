@@ -11,6 +11,7 @@ import GmailPluginPage from '@/components/plugins/GmailPluginPage';
 import DateTimePluginPage from '@/components/plugins/DateTimePluginPage';
 import WeatherPluginPage from '@/components/plugins/WeatherPluginPage';
 import PluginOverviewPage from '@/components/plugins/PluginOverviewPage'; // Ensure this is imported
+import AuthHeader from '@/components/auth/AuthHeader'
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -71,6 +72,7 @@ export default function HomePage() {
               </div>
             </SheetContent>
           </Sheet>
+          <AuthHeader />
         </header>
 
         <div className="flex flex-1 min-h-0">
