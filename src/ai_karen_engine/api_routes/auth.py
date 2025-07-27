@@ -11,6 +11,11 @@ from ai_karen_engine.utils.auth import (
     validate_session,
     SESSION_DURATION,
 )
+from ai_karen_engine.security.auth_manager import (
+    authenticate,
+    update_credentials,
+    _USERS,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -22,43 +27,7 @@ _LOGIN_ATTEMPTS: Dict[str, List[datetime]] = defaultdict(list)
 RATE_LIMIT = 5
 RATE_WINDOW = timedelta(minutes=1)
 
-# In-memory user store for demo purposes
-_USERS: Dict[str, Dict[str, Any]] = {
-    "admin@example.com": {
-        "password": "admin",
-        "roles": ["admin", "dev", "user"],
-        "tenant_id": "admin_tenant",
-        "preferences": {
-            "personalityTone": "professional",
-            "personalityVerbosity": "balanced",
-            "memoryDepth": "deep",
-            "customPersonaInstructions": "You are an advanced AI assistant with administrative capabilities.",
-            "preferredLLMProvider": "ollama",
-            "preferredModel": "llama3.2:latest",
-            "temperature": 0.7,
-            "maxTokens": 2000,
-            "notifications": {"email": True, "push": False},
-            "ui": {"theme": "dark", "language": "en"},
-        },
-    },
-    "user@example.com": {
-        "password": "user",
-        "roles": ["user"],
-        "tenant_id": "user_tenant",
-        "preferences": {
-            "personalityTone": "friendly",
-            "personalityVerbosity": "balanced",
-            "memoryDepth": "medium",
-            "customPersonaInstructions": "You are a helpful and friendly AI assistant.",
-            "preferredLLMProvider": "ollama",
-            "preferredModel": "llama3.2:latest",
-            "temperature": 0.7,
-            "maxTokens": 1000,
-            "notifications": {"email": True, "push": False},
-            "ui": {"theme": "light", "language": "en"},
-        },
-    },
-}
+# Persistent user store loaded via security.auth_manager
 
 
 class LoginRequest(BaseModel):
@@ -88,6 +57,11 @@ class UserResponse(BaseModel):
     preferences: Dict[str, Any]
 
 
+class UpdateCredentialsRequest(BaseModel):
+    new_username: Optional[str] = None
+    new_password: Optional[str] = None
+
+
 @router.post("/login", response_model=LoginResponse)
 async def login(req: LoginRequest, request: Request, response: Response) -> LoginResponse:
     # --- simple rate limiting ---
@@ -99,8 +73,8 @@ async def login(req: LoginRequest, request: Request, response: Response) -> Logi
     attempts.append(now)
     _LOGIN_ATTEMPTS[ip] = attempts
 
-    user = _USERS.get(req.email)
-    if not user or user["password"] != req.password:
+    user = authenticate(req.email, req.password)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
@@ -108,10 +82,10 @@ async def login(req: LoginRequest, request: Request, response: Response) -> Logi
 
     tenant_id = user.get("tenant_id") or request.headers.get("X-Tenant-ID", "default")
     token = create_session(
-        subject=req.email,
-        roles=user["roles"],
-        user_agent=request.headers.get("user-agent", ""),
-        client_ip=ip,
+        req.email,
+        user["roles"],
+        request.headers.get("user-agent", ""),
+        ip,
         tenant_id=tenant_id,
     )
 
@@ -137,8 +111,8 @@ async def login(req: LoginRequest, request: Request, response: Response) -> Logi
 
 @router.post("/token", response_model=TokenResponse)
 async def token(req: LoginRequest, request: Request) -> TokenResponse:
-    user = _USERS.get(req.email)
-    if not user or user["password"] != req.password:
+    user = authenticate(req.email, req.password)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
@@ -146,10 +120,10 @@ async def token(req: LoginRequest, request: Request) -> TokenResponse:
 
     tenant_id = user.get("tenant_id") or request.headers.get("X-Tenant-ID", "default")
     access_token = create_session(
-        subject=req.email,
-        roles=user["roles"],
-        user_agent=request.headers.get("user-agent", ""),
-        client_ip=request.client.host,
+        req.email,
+        user["roles"],
+        request.headers.get("user-agent", ""),
+        request.client.host,
         tenant_id=tenant_id,
     )
     return TokenResponse(access_token=access_token)
@@ -189,6 +163,64 @@ async def me(request: Request) -> UserResponse:
         roles=list(ctx.get("roles", [])),
         tenant_id=user_data.get("tenant_id", "default"),
         preferences=user_data.get("preferences", {}),
+    )
+
+
+@router.post("/update_credentials", response_model=LoginResponse)
+async def update_creds(
+    req: UpdateCredentialsRequest, request: Request, response: Response
+) -> LoginResponse:
+    """Update the current user's credentials and return a new session."""
+    auth = request.headers.get("authorization")
+    token = None
+    if auth and auth.lower().startswith("bearer "):
+        token = auth.split(None, 1)[1]
+    elif COOKIE_NAME in request.cookies:
+        token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing or invalid token")
+
+    ctx = validate_session(
+        token, request.headers.get("user-agent", ""), request.client.host
+    )
+    if not ctx:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    current_username = ctx["sub"]
+    try:
+        new_username = update_credentials(
+            current_username, req.new_username, req.new_password
+        )
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    user = _USERS.get(new_username)
+    tenant_id = user.get("tenant_id", "default")
+
+    new_token = create_session(
+        new_username,
+        user.get("roles", []),
+        request.headers.get("user-agent", ""),
+        request.client.host,
+        tenant_id=tenant_id,
+    )
+
+    response.set_cookie(
+        COOKIE_NAME,
+        new_token,
+        max_age=SESSION_DURATION,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+    )
+
+    return LoginResponse(
+        token=new_token,
+        user_id=new_username,
+        email=new_username,
+        roles=user.get("roles", []),
+        tenant_id=tenant_id,
+        preferences=user.get("preferences", {}),
     )
 
 
