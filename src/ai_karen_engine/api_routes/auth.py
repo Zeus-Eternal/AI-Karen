@@ -1,9 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+try:
+    from fastapi import APIRouter, HTTPException, Request, Response, status
+except Exception:  # pragma: no cover
+    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException, Request, Response, status
+
 from datetime import datetime, timedelta
 from collections import defaultdict
-from pydantic import BaseModel
+try:
+    from pydantic import BaseModel
+except Exception:
+    from ai_karen_engine.pydantic_stub import BaseModel
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.utils.auth import (

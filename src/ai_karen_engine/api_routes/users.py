@@ -1,7 +1,16 @@
 from typing import Dict, Any
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+try:
+    from fastapi import APIRouter, HTTPException
+except Exception:  # pragma: no cover
+    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
+
+try:
+    from pydantic import BaseModel
+except Exception:
+    from ai_karen_engine.pydantic_stub import BaseModel
+
+from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
 

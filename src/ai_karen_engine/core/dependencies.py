@@ -7,7 +7,12 @@ and other components that need access to the integrated services.
 
 import logging
 from typing import Optional
-from fastapi import Depends, HTTPException
+try:
+    from fastapi import Depends, HTTPException
+except Exception:  # pragma: no cover
+    from ai_karen_engine.fastapi_stub import HTTPException
+    def Depends(func):
+        return func
 
 from ai_karen_engine.core.service_registry import (
     get_service_registry,
