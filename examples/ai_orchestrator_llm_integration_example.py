@@ -8,8 +8,8 @@ import asyncio
 import sys
 import os
 
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# Add the project src directory to the path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import AIOrchestrator
 from ai_karen_engine.core.services.base import ServiceConfig

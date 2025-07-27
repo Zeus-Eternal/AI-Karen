@@ -8,8 +8,8 @@ import asyncio
 import sys
 import os
 
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# Add the project src directory to the path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 async def test_llm_utils():
     """Test the LLM utilities directly."""
