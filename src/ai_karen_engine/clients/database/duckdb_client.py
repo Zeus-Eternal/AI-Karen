@@ -73,6 +73,23 @@ class DuckDBClient:
             profile["last_update"] = datetime.utcnow().timestamp()
             conn.execute("INSERT INTO profiles (user_id, profile_json, last_update) VALUES (?, ?, ?)", (user_id, json.dumps(profile), datetime.utcnow()))
 
+    def save_profile(self, user_id, profile):
+        """Insert or update an entire profile."""
+        with self._lock, self._get_conn() as conn:
+            profile["last_update"] = datetime.utcnow().timestamp()
+            profile_json = json.dumps(profile)
+            res = conn.execute("SELECT 1 FROM profiles WHERE user_id = ?", (user_id,)).fetchone()
+            if res:
+                conn.execute(
+                    "UPDATE profiles SET profile_json = ?, last_update = ? WHERE user_id = ?",
+                    (profile_json, datetime.utcnow(), user_id),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO profiles (user_id, profile_json, last_update) VALUES (?, ?, ?)",
+                    (user_id, profile_json, datetime.utcnow()),
+                )
+
     def delete_profile(self, user_id):
         with self._lock, self._get_conn() as conn:
             conn.execute("DELETE FROM profiles WHERE user_id = ?", (user_id,))

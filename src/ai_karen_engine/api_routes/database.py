@@ -10,8 +10,27 @@ import os
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
 
-from fastapi import APIRouter, HTTPException, Depends, Query, Path, Body
-from pydantic import BaseModel, Field, validator
+try:
+    from fastapi import APIRouter, HTTPException, Depends, Query, Path, Body
+except Exception:  # pragma: no cover - stub fallback
+    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
+    def Depends(func):
+        return func
+    def Query(default=None, **_kw):
+        return default
+    def Path(default=None, **_kw):
+        return default
+    def Body(default=None, **_kw):
+        return default
+
+try:
+    from pydantic import BaseModel, Field, validator
+except Exception:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
+    def validator(*_a, **_kw):
+        def _wrap(func):
+            return func
+        return _wrap
 
 # DB error classes
 from sqlalchemy.exc import ProgrammingError, OperationalError

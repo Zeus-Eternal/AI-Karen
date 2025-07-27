@@ -5,8 +5,19 @@ FastAPI routes for Tool service integration.
 import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
+try:
+    from fastapi import APIRouter, HTTPException, Depends, Query
+except Exception:  # pragma: no cover - stub fallback
+    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
+    def Depends(func):
+        return func
+    def Query(default=None, **_kw):
+        return default
+
+try:
+    from pydantic import BaseModel, Field
+except Exception:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ai_karen_engine.services.tool_service import (
     ToolService,

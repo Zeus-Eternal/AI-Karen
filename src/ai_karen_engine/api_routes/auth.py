@@ -1,9 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+try:
+    from fastapi import APIRouter, HTTPException, Request, Response, status
+except Exception:  # pragma: no cover
+    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException, Request, Response, status
+
 from datetime import datetime, timedelta
 from collections import defaultdict
-from pydantic import BaseModel
+try:
+    from pydantic import BaseModel
+except Exception:
+    from ai_karen_engine.pydantic_stub import BaseModel
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.utils.auth import (
@@ -14,6 +21,7 @@ from ai_karen_engine.utils.auth import (
 from ai_karen_engine.security.auth_manager import (
     authenticate,
     update_credentials,
+    create_user,
     _USERS,
 )
 
@@ -33,6 +41,14 @@ RATE_WINDOW = timedelta(minutes=1)
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    roles: Optional[List[str]] = None
+    tenant_id: str = "default"
+    preferences: Dict[str, Any] = {}
 
 
 class LoginResponse(BaseModel):
@@ -60,6 +76,41 @@ class UserResponse(BaseModel):
 class UpdateCredentialsRequest(BaseModel):
     new_username: Optional[str] = None
     new_password: Optional[str] = None
+
+
+@router.post("/register", response_model=LoginResponse)
+async def register(req: RegisterRequest, request: Request, response: Response) -> LoginResponse:
+    if req.email in _USERS:
+        raise HTTPException(status_code=400, detail="User already exists")
+    try:
+        create_user(req.email, req.password, roles=req.roles, tenant_id=req.tenant_id, preferences=req.preferences)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    user = _USERS[req.email]
+    token = create_session(
+        req.email,
+        user["roles"],
+        request.headers.get("user-agent", ""),
+        request.client.host,
+        tenant_id=user.get("tenant_id", "default"),
+    )
+    response.set_cookie(
+        COOKIE_NAME,
+        token,
+        max_age=SESSION_DURATION,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+    )
+    return LoginResponse(
+        token=token,
+        user_id=req.email,
+        email=req.email,
+        roles=user["roles"],
+        tenant_id=user.get("tenant_id", "default"),
+        preferences=user.get("preferences", {}),
+    )
 
 
 @router.post("/login", response_model=LoginResponse)

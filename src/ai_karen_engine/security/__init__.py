@@ -19,7 +19,7 @@ try:
         IntrusionDetectionSystem,  # noqa: F401
     )
     __all__.extend(['ThreatProtectionSystem', 'IntrusionDetectionSystem'])
-except ImportError:
+except Exception:
     pass
 
 try:
@@ -46,6 +46,6 @@ try:
         SOC2Reporter,  # noqa: F401
         GDPRReporter,  # noqa: F401
     )
-    __all__.extend(['ComplianceReporter', 'SOC2Reporter', 'GDPRReporter'])
-except ImportError:
+    __all__.extend(["ComplianceReporter", "SOC2Reporter", "GDPRReporter"])
+except Exception:
     pass
