@@ -573,6 +573,7 @@ See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt
 - [Security Framework](docs/security.md) - Security implementation
 - [Memory Architecture](docs/memory_arch.md) - Memory system design
 - [Plugin Specification](docs/plugin_spec.md) - Plugin development specification
+- [Agent Roadmap](docs/agent_roadmap.md) - Production readiness and feature roadmap for the web UI
 
 ### Operational Guides
 - [Deployment Guide](docs/deployment.md) - Production deployment

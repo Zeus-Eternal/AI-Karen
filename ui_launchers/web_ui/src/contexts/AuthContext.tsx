@@ -21,55 +21,23 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
-    token: null,
     isAuthenticated: false,
     isLoading: true,
   });
 
-  // Initialize auth state from localStorage
+  // Initialize auth state using cookie-based session
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const token = authService.getToken();
-        const savedUser = authService.getUser();
-
-        if (token && savedUser) {
-          // Verify token is still valid by fetching current user
-          try {
-            const currentUser = await authService.getCurrentUser(token);
-            setAuthState({
-              user: currentUser,
-              token,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            // Update saved user data
-            authService.saveUser(currentUser);
-          } catch (error) {
-            console.error('Token validation failed:', error);
-            // Token is invalid, clear auth data
-            authService.removeToken();
-            authService.removeUser();
-            setAuthState({
-              user: null,
-              token: null,
-              isAuthenticated: false,
-              isLoading: false,
-            });
-          }
-        } else {
-          setAuthState({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
+        const currentUser = await authService.getCurrentUser();
+        setAuthState({
+          user: currentUser,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      } catch {
         setAuthState({
           user: null,
-          token: null,
           isAuthenticated: false,
           isLoading: false,
         });
@@ -111,13 +79,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       };
 
-      // Save to localStorage
-      authService.saveToken(loginResponse.token);
-      authService.saveUser(user);
-
       setAuthState({
         user,
-        token: loginResponse.token,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -128,42 +91,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = (): void => {
-    authService.removeToken();
-    authService.removeUser();
+    authService.logout();
     setAuthState({
       user: null,
-      token: null,
       isAuthenticated: false,
       isLoading: false,
     });
   };
 
   const refreshUser = async (): Promise<void> => {
-    const token = authState.token;
-    if (!token) {
-      throw new Error('No token available');
-    }
-
     try {
-      const user = await authService.getCurrentUser(token);
-      authService.saveUser(user);
+      const user = await authService.getCurrentUser();
       setAuthState(prev => ({ ...prev, user }));
     } catch (error) {
       console.error('Failed to refresh user:', error);
-      // If refresh fails, logout user
       logout();
       throw error;
     }
   };
 
   const updateUserPreferences = async (preferences: Partial<User['preferences']>): Promise<void> => {
-    const token = authState.token;
-    if (!token || !authState.user) {
+    if (!authState.user) {
       throw new Error('User not authenticated');
     }
 
     try {
-      await authService.updateUserPreferences(token, preferences);
+      await authService.updateUserPreferences('', preferences);
       
       // Update local user state
       const updatedUser: User = {
@@ -174,7 +127,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       };
       
-      authService.saveUser(updatedUser);
       setAuthState(prev => ({ ...prev, user: updatedUser }));
     } catch (error) {
       console.error('Failed to update user preferences:', error);
@@ -184,7 +136,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const contextValue: AuthContextType = {
     user: authState.user,
-    token: authState.token,
     isAuthenticated: authState.isAuthenticated,
     isLoading: authState.isLoading,
     login,
