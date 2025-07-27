@@ -16,8 +16,8 @@ def test_authentication_flow():
     # Test 1: Login with admin credentials
     print("\n1. Testing admin login...")
     login_data = {
-        "email": "admin@example.com",
-        "password": "admin"
+        "email": "admin@kari.ai",
+        "password": "pswd123"
     }
     
     try:
@@ -62,8 +62,8 @@ def test_authentication_flow():
     # Test 3: Login with user credentials
     print("\n3. Testing user login...")
     user_login_data = {
-        "email": "user@example.com",
-        "password": "user"
+        "email": "user@kari.ai",
+        "password": "pswd123"
     }
     
     try:
@@ -140,8 +140,8 @@ def test_authentication_flow():
     print("\nNext steps:")
     print("1. Open http://localhost:9002 in your browser")
     print("2. Try logging in with:")
-    print("   - Admin: admin@example.com / admin")
-    print("   - User: user@example.com / user")
+    print("   - Admin: admin@kari.ai / pswd123")
+    print("   - User: user@kari.ai / pswd123")
     print("3. Test the chat interface with authenticated users")
     
     return True

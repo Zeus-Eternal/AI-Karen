@@ -188,7 +188,7 @@ Handles user authentication:
 ```python
 # Login
 auth_response = await httpx.post("/auth/login", json={
-    "username": "user@example.com",
+    "username": "user@kari.ai",
     "password": "secure_password"
 })
 

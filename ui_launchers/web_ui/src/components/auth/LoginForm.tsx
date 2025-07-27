@@ -20,7 +20,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     password: '',
   });
   const [error, setError] = useState<string>('');
-  const [showDemoCredentials, setShowDemoCredentials] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,9 +38,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     }
   };
 
-  const handleDemoLogin = (email: string, password: string) => {
-    setCredentials({ email, password });
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
@@ -109,46 +105,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
             </Button>
           </form>
 
-          {/* Demo Credentials Section */}
-          <div className="mt-6 pt-6 border-t">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowDemoCredentials(!showDemoCredentials)}
-              className="w-full text-sm"
-            >
-              {showDemoCredentials ? 'Hide' : 'Show'} Demo Credentials
-            </Button>
-            
-            {showDemoCredentials && (
-              <div className="mt-3 space-y-2">
-                <p className="text-xs text-muted-foreground mb-2">
-                  Click to use demo credentials:
-                </p>
-                <div className="space-y-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDemoLogin('admin@example.com', 'admin')}
-                    className="w-full justify-start text-xs"
-                  >
-                    <strong className="mr-2">Admin:</strong> admin@example.com / admin
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDemoLogin('user@example.com', 'user')}
-                    className="w-full justify-start text-xs"
-                  >
-                    <strong className="mr-2">User:</strong> user@example.com / user
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+
 
           <div className="mt-6 text-center">
             <p className="text-xs text-muted-foreground">

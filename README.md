@@ -143,8 +143,8 @@ npm run dev
 
 Default demo accounts are available:
 
-* **Admin:** `admin@example.com` / `admin`
-* **User:** `user@example.com` / `user`
+* **Admin:** `admin@kari.ai` / `pswd123`
+* **User:** `user@kari.ai` / `pswd123`
 
 #### Desktop UI (Tauri)
 ```bash
@@ -190,8 +190,8 @@ PYTHONPATH=src python demo_analytics_dashboard.py
 Use these accounts for testing the web or Streamlit UI:
 
 ```
-Admin: admin@example.com / admin
-User:  user@example.com / user
+Admin: admin@kari.ai / pswd123
+User:  user@kari.ai / pswd123
 ```
 Change these demo passwords after your first login.
 
@@ -361,7 +361,7 @@ curl -H "X-Tenant-ID: default" \
 # Login with default admin credentials
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "admin"}'
+  -d '{"email": "admin@kari.ai", "password": "pswd123"}'
 
 # Use token
 curl -H "Authorization: Bearer <token>" \
