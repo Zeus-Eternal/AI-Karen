@@ -8,6 +8,7 @@ export { ChatService, getChatService, initializeChatService } from './chatServic
 export { MemoryService, getMemoryService, initializeMemoryService } from './memoryService';
 export { PluginService, getPluginService, initializePluginService } from './pluginService';
 export { ExtensionService, getExtensionService, initializeExtensionService } from './extensionService';
+export { AuthService, getAuthService } from './authService';
 
 // Export service types
 export type { ConversationSession, ProcessMessageOptions } from './chatService';
@@ -23,6 +24,7 @@ export type {
   PluginMetrics
 } from './pluginService';
 export type { ExtensionInfo } from './extensionService';
+export type { LoginResult, CurrentUser } from '@/lib/karen-backend';
 
 // Service initialization helper
 export function initializeAllServices() {
@@ -30,12 +32,14 @@ export function initializeAllServices() {
   const memoryService = initializeMemoryService();
   const pluginService = initializePluginService();
   const extensionService = initializeExtensionService();
+  const authService = getAuthService();
 
   return {
     chatService,
     memoryService,
     pluginService,
     extensionService,
+    authService,
   };
 }
 

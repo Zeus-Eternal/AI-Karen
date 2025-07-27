@@ -133,6 +133,18 @@ interface UsageAnalytics {
   timestamp: string;
 }
 
+// --- Authentication Types ---
+export interface LoginResult {
+  token: string
+  user_id: string
+  roles: string[]
+}
+
+export interface CurrentUser {
+  user_id: string
+  roles: string[]
+}
+
 class KarenBackendService {
   private config: BackendConfig;
   private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
@@ -744,6 +756,40 @@ class KarenBackendService {
     }
   }
 
+  // --- Authentication ---
+  async login(username: string, password: string): Promise<LoginResult> {
+    return await this.makeRequest<LoginResult>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
+    })
+  }
+
+  async getCurrentUser(token: string): Promise<CurrentUser | null> {
+    try {
+      return await this.makeRequest<CurrentUser>('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    } catch (error) {
+      console.warn('Failed to get current user:', error)
+      return null
+    }
+  }
+
+  async updateCredentials(
+    token: string,
+    newUsername?: string,
+    newPassword?: string
+  ): Promise<LoginResult> {
+    return await this.makeRequest<LoginResult>('/api/auth/update_credentials', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        new_username: newUsername,
+        new_password: newPassword,
+      })
+    })
+  }
+
   // Clear cache
   clearCache(): void {
     this.cache.clear();
@@ -783,6 +829,8 @@ export type {
   SystemMetrics,
   UsageAnalytics,
   WebUIErrorResponse,
+  LoginResult,
+  CurrentUser,
 };
 
 export { KarenBackendService, APIError };
