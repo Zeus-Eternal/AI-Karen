@@ -5,6 +5,24 @@ uint8 = 'uint8'
 inf = float('inf')
 nan = float('nan')
 
+# Additional numpy types needed for torch compatibility
+bool_ = bool
+number = float
+object_ = object
+
+# Additional numpy attributes
+class dtype:
+    def __init__(self, name):
+        self.name = name
+    
+    def __str__(self):
+        return self.name
+
+# Common dtypes
+int32 = dtype('int32')
+int64 = dtype('int64')
+float64 = dtype('float64')
+
 class _Array(list):
     def __getitem__(self, item):
         result = super().__getitem__(item)

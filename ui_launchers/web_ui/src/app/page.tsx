@@ -38,12 +38,25 @@ import { Separator } from '@/components/ui/separator';
 import NotificationsSection from '@/components/sidebar/NotificationsSection';
 import ChatInterface from '@/components/chat/ChatInterface';
 import { webUIConfig } from '@/lib/config';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { AuthenticatedHeader } from '@/components/layout/AuthenticatedHeader';
 
 const ExtensionSidebar = dynamic(() => import('@/components/extensions/ExtensionSidebar'));
 
 type ActiveView = 'chat' | 'settings' | 'commsCenter' | 'pluginDatabaseConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview';
 
 export default function HomePage() {
+  return (
+    <AuthProvider>
+      <ProtectedRoute>
+        <AuthenticatedHomePage />
+      </ProtectedRoute>
+    </AuthProvider>
+  );
+}
+
+function AuthenticatedHomePage() {
   const [activeMainView, setActiveMainView] = useState<ActiveView>('chat');
 
   return (
@@ -57,22 +70,24 @@ export default function HomePage() {
             <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0" />
             <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Karen AI</h1>
           </div>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Settings">
-                <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col">
-              <SheetHeader className="p-4 border-b">
-                <SheetTitle>Settings</SheetTitle>
-              </SheetHeader>
-              <div className="flex-1 overflow-y-auto">
-                <SettingsDialogComponent />
-              </div>
-            </SheetContent>
-          </Sheet>
-          <AuthHeader />
+          <div className="flex items-center gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Settings">
+                  <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col">
+                <SheetHeader className="p-4 border-b">
+                  <SheetTitle>Settings</SheetTitle>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto">
+                  <SettingsDialogComponent />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <AuthenticatedHeader />
+          </div>
         </header>
 
         <div className="flex flex-1 min-h-0">

@@ -1,10 +1,11 @@
-# src/ai_karen_engine/api_routes/memory_routes.py
+"""
+FastAPI routes for enhanced memory management with web UI integration.
+"""
 
-from uuid import UUID
+import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
-
-from fastapi import APIRouter, HTTPException, Depends, Query, Request, status
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 
 from ai_karen_engine.services.memory_service import (
@@ -18,20 +19,25 @@ from ai_karen_engine.core.dependencies import get_memory_service, get_current_co
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
+    WebAPIErrorResponse,
     ValidationErrorDetail,
     create_service_error_response,
     create_validation_error_response,
+    create_database_error_response,
     create_generic_error_response,
     get_http_status_for_error_code,
 )
+# from ..database.client import get_db_client  # Not needed with dependency injection
+# Temporarily disable auth imports for web UI integration
 
 router = APIRouter(prefix="/api/memory", tags=["memory"])
+
 logger = get_logger(__name__)
 
 
-# ─── Request / Response Models ────────────────────────────────────────────────
-
+# Request/Response Models
 class StoreMemoryRequest(BaseModel):
+    """Request model for storing memory."""
     content: str = Field(..., description="Memory content")
     ui_source: UISource = Field(..., description="Source UI")
     session_id: Optional[str] = Field(None, description="Session ID")
@@ -45,6 +51,7 @@ class StoreMemoryRequest(BaseModel):
 
 
 class QueryMemoryRequest(BaseModel):
+    """Request model for querying memories."""
     text: str = Field(..., description="Query text")
     session_id: Optional[str] = Field(None, description="Session ID")
     conversation_id: Optional[str] = Field(None, description="Conversation ID")
@@ -63,21 +70,25 @@ class QueryMemoryRequest(BaseModel):
 
 
 class BuildContextRequest(BaseModel):
+    """Request model for building conversation context."""
     query: str = Field(..., description="Context query")
     session_id: Optional[str] = Field(None, description="Session ID")
     conversation_id: Optional[str] = Field(None, description="Conversation ID")
 
 
 class ConfirmMemoryRequest(BaseModel):
+    """Request model for confirming memory."""
     confirmed: bool = Field(..., description="Whether memory is confirmed")
 
 
 class UpdateImportanceRequest(BaseModel):
+    """Request model for updating memory importance."""
     importance_score: int = Field(..., ge=1, le=10, description="New importance score")
 
 
 class MemoryResponse(BaseModel):
-    id: UUID
+    """Response model for memory entries."""
+    id: str
     content: str
     metadata: Dict[str, Any]
     timestamp: float
@@ -97,18 +108,21 @@ class MemoryResponse(BaseModel):
 
 
 class StoreMemoryResponse(BaseModel):
-    memory_id: Optional[UUID]
+    """Response model for storing memory."""
+    memory_id: Optional[str]
     success: bool
     message: str
 
 
 class QueryMemoryResponse(BaseModel):
+    """Response model for querying memories."""
     memories: List[MemoryResponse]
     total_found: int
     query_metadata: Dict[str, Any]
 
 
 class ContextResponse(BaseModel):
+    """Response model for conversation context."""
     memories: List[Dict[str, Any]]
     total_memories: int
     memory_types_found: List[str]
@@ -117,6 +131,7 @@ class ContextResponse(BaseModel):
 
 
 class AnalyticsResponse(BaseModel):
+    """Response model for memory analytics."""
     total_memories: int
     memories_by_type: Dict[str, int]
     memories_by_ui_source: Dict[str, int]
@@ -130,273 +145,340 @@ class AnalyticsResponse(BaseModel):
     web_ui_metrics: Dict[str, Any]
 
 
-# ─── Endpoints ────────────────────────────────────────────────────────────────
+
+
 
 @router.post("/store", response_model=StoreMemoryResponse)
 async def store_memory(
-    req: StoreMemoryRequest,
-    memory_service: WebUIMemoryService = Depends(get_memory_service),
+    request: StoreMemoryRequest,
+    
+    
+    memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
+    """Store a new memory entry."""
     try:
         memory_id = await memory_service.store_web_ui_memory(
             tenant_id="default",
-            content=req.content,
+            content=request.content,
             user_id="anonymous",
-            ui_source=req.ui_source,
-            session_id=req.session_id,
-            conversation_id=req.conversation_id,
-            memory_type=req.memory_type,
-            tags=req.tags,
-            importance_score=req.importance_score,
-            ai_generated=req.ai_generated,
-            metadata=req.metadata,
-            ttl_hours=req.ttl_hours,
+            ui_source=request.ui_source,
+            session_id=request.session_id,
+            conversation_id=request.conversation_id,
+            memory_type=request.memory_type,
+            tags=request.tags,
+            importance_score=request.importance_score,
+            ai_generated=request.ai_generated,
+            metadata=request.metadata,
+            ttl_hours=request.ttl_hours
         )
+        
         return StoreMemoryResponse(
             memory_id=memory_id,
-            success=bool(memory_id),
-            message="Memory stored successfully" if memory_id else "Memory not stored",
+            success=memory_id is not None,
+            message="Memory stored successfully" if memory_id else "Memory not stored (not surprising enough)"
         )
+        
     except Exception as e:
         logger.exception("Failed to store memory", error=str(e))
-        error = create_service_error_response(
+        error_response = create_service_error_response(
             service_name="memory",
             error=e,
             error_code=WebAPIErrorCode.MEMORY_ERROR,
-            user_message="Failed to store memory. Please try again.",
+            user_message="Failed to store memory. Please try again."
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
-            detail=error.dict(),
+            detail=error_response.dict(),
         )
 
 
 @router.post("/query", response_model=QueryMemoryResponse)
 async def query_memories(
-    req: QueryMemoryRequest,
+    request: QueryMemoryRequest,
     config: AIKarenConfig = Depends(get_current_config),
-    memory_service: WebUIMemoryService = Depends(get_memory_service),
+    memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
+    """Query memories with advanced filtering."""
     try:
-        time_range = (
-            (req.time_range_start, req.time_range_end)
-            if req.time_range_start and req.time_range_end else None
-        )
-        limit = req.result_limit or config.memory.get("query_limit", 100)
+        # Build time range tuple if provided
+        time_range = None
+        if request.time_range_start and request.time_range_end:
+            time_range = (request.time_range_start, request.time_range_end)
+        
+        # Determine the maximum number of results
+        limit = request.result_limit or config.memory.get("query_limit", 100)
 
-        query_obj = WebUIMemoryQuery(
-            text=req.text,
+        # Create query object
+        query = WebUIMemoryQuery(
+            text=request.text,
             user_id="anonymous",
-            session_id=req.session_id,
-            conversation_id=req.conversation_id,
-            ui_source=req.ui_source,
-            memory_types=req.memory_types,
-            tags=req.tags,
-            importance_range=req.importance_range,
-            only_user_confirmed=req.only_user_confirmed,
-            only_ai_generated=req.only_ai_generated,
+            session_id=request.session_id,
+            conversation_id=request.conversation_id,
+            ui_source=request.ui_source,
+            memory_types=request.memory_types,
+            tags=request.tags,
+            importance_range=request.importance_range,
+            only_user_confirmed=request.only_user_confirmed,
+            only_ai_generated=request.only_ai_generated,
             time_range=time_range,
-            top_k=min(req.top_k, limit),
-            similarity_threshold=req.similarity_threshold,
-            include_embeddings=req.include_embeddings,
+            top_k=min(request.top_k, limit),
+            similarity_threshold=request.similarity_threshold,
+            include_embeddings=request.include_embeddings
         )
-        results = await memory_service.query_memories("default", query_obj)
-        results = results[:limit]
 
-        memories = [
-            MemoryResponse(
-                id=m.id,
-                content=m.content,
-                metadata=m.metadata,
-                timestamp=m.timestamp,
-                ttl=m.ttl.isoformat() if m.ttl else None,
-                user_id=m.user_id,
-                session_id=m.session_id,
-                tags=m.tags,
-                similarity_score=m.similarity_score,
-                ui_source=m.ui_source.value if m.ui_source else None,
-                conversation_id=m.conversation_id,
-                memory_type=m.memory_type.value,
-                importance_score=m.importance_score,
-                access_count=m.access_count,
-                last_accessed=m.last_accessed.isoformat() if m.last_accessed else None,
-                ai_generated=m.ai_generated,
-                user_confirmed=m.user_confirmed,
-            )
-            for m in results
-        ]
+        memories = await memory_service.query_memories("default", query)
 
+        # Enforce final limit on returned results
+        memories = memories[:limit]
+        
+        # Convert to response format
+        memory_responses = []
+        for memory in memories:
+            memory_responses.append(MemoryResponse(
+                id=memory.id,
+                content=memory.content,
+                metadata=memory.metadata,
+                timestamp=memory.timestamp,
+                ttl=memory.ttl.isoformat() if memory.ttl else None,
+                user_id=memory.user_id,
+                session_id=memory.session_id,
+                tags=memory.tags,
+                similarity_score=memory.similarity_score,
+                ui_source=memory.ui_source.value if memory.ui_source else None,
+                conversation_id=memory.conversation_id,
+                memory_type=memory.memory_type.value,
+                importance_score=memory.importance_score,
+                access_count=memory.access_count,
+                last_accessed=memory.last_accessed.isoformat() if memory.last_accessed else None,
+                ai_generated=memory.ai_generated,
+                user_confirmed=memory.user_confirmed
+            ))
+        
         return QueryMemoryResponse(
-            memories=memories,
-            total_found=len(memories),
+            memories=memory_responses,
+            total_found=len(memory_responses),
             query_metadata={
-                "query_text": req.text,
+                "query_text": request.text,
                 "filters_applied": {
-                    "ui_source": req.ui_source.value if req.ui_source else None,
-                    "memory_types": [mt.value for mt in req.memory_types],
-                    "tags": req.tags,
-                    "importance_range": req.importance_range,
-                    "only_user_confirmed": req.only_user_confirmed,
-                    "only_ai_generated": req.only_ai_generated,
+                    "ui_source": request.ui_source.value if request.ui_source else None,
+                    "memory_types": [mt.value for mt in request.memory_types],
+                    "tags": request.tags,
+                    "importance_range": request.importance_range,
+                    "only_user_confirmed": request.only_user_confirmed,
+                    "only_ai_generated": request.only_ai_generated
                 },
                 "search_params": {
-                    "top_k": req.top_k,
+                    "top_k": request.top_k,
                     "result_limit": limit,
-                    "similarity_threshold": req.similarity_threshold,
-                },
-            },
+                    "similarity_threshold": request.similarity_threshold
+                }
+            }
         )
+        
     except Exception as e:
         logger.exception("Failed to query memories", error=str(e))
-        error = create_service_error_response(
+        error_response = create_service_error_response(
             service_name="memory",
             error=e,
             error_code=WebAPIErrorCode.MEMORY_ERROR,
-            user_message="Failed to query memories. Please try again.",
+            user_message="Failed to query memories. Please try again."
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
-            detail=error.dict(),
+            detail=error_response.dict(),
         )
 
 
 @router.post("/context", response_model=ContextResponse)
 async def build_context(
-    req: BuildContextRequest,
-    memory_service: WebUIMemoryService = Depends(get_memory_service),
+    request: BuildContextRequest,
+    
+    
+    memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
+    """Build conversation context from relevant memories."""
     try:
-        ctx = await memory_service.build_conversation_context(
+        context = await memory_service.build_conversation_context(
             tenant_id="default",
-            query=req.query,
+            query=request.query,
             user_id="anonymous",
-            session_id=req.session_id,
-            conversation_id=req.conversation_id,
+            session_id=request.session_id,
+            conversation_id=request.conversation_id
         )
-        return ContextResponse(**ctx)
+        
+        return ContextResponse(**context)
+        
     except Exception as e:
         logger.exception("Failed to build context", error=str(e))
-        error = create_service_error_response(
+        error_response = create_service_error_response(
             service_name="memory",
             error=e,
             error_code=WebAPIErrorCode.MEMORY_ERROR,
-            user_message="Failed to build conversation context. Please try again.",
+            user_message="Failed to build conversation context. Please try again."
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
-            detail=error.dict(),
+            detail=error_response.dict(),
         )
 
 
 @router.post("/{memory_id}/confirm")
 async def confirm_memory(
-    memory_id: UUID,
-    req: ConfirmMemoryRequest,
-    memory_service: WebUIMemoryService = Depends(get_memory_service),
+    memory_id: str,
+    request: ConfirmMemoryRequest,
+    
+    
+    memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
+    """Confirm or reject an AI-generated memory."""
     try:
         success = await memory_service.confirm_memory(
-            tenant_id="default", memory_id=str(memory_id), confirmed=req.confirmed
+            tenant_id="default",
+            memory_id=memory_id,
+            confirmed=request.confirmed
         )
+        
         if not success:
-            err = create_generic_error_response(
+            error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
                 message="Memory not found",
                 user_message="The requested memory could not be found.",
-                details={"memory_id": memory_id},
+                details={"memory_id": memory_id}
             )
             raise HTTPException(
-                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND), detail=err.dict()
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
             )
-        return {"success": True, "message": f"Memory {'confirmed' if req.confirmed else 'rejected'} successfully"}
+        
+        return {
+            "success": True,
+            "message": f"Memory {'confirmed' if request.confirmed else 'rejected'} successfully"
+        }
+        
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Failed to confirm memory", error=str(e))
-        error = create_service_error_response(
+        error_response = create_service_error_response(
             service_name="memory",
             error=e,
             error_code=WebAPIErrorCode.MEMORY_ERROR,
-            user_message="Failed to confirm memory. Please try again.",
+            user_message="Failed to confirm memory. Please try again."
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
-            detail=error.dict(),
+            detail=error_response.dict(),
         )
 
 
 @router.put("/{memory_id}/importance")
 async def update_importance(
-    memory_id: UUID,
-    req: UpdateImportanceRequest,
-    memory_service: WebUIMemoryService = Depends(get_memory_service),
+    memory_id: str,
+    request: UpdateImportanceRequest,
+    
+    
+    memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
+    """Update memory importance score."""
     try:
         success = await memory_service.update_memory_importance(
-            tenant_id="default", memory_id=str(memory_id), importance_score=req.importance_score
+            tenant_id="default",
+            memory_id=memory_id,
+            importance_score=request.importance_score
         )
+        
         if not success:
-            err = create_generic_error_response(
+            error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
                 message="Memory not found",
                 user_message="The requested memory could not be found.",
-                details={"memory_id": memory_id},
+                details={"memory_id": memory_id}
             )
             raise HTTPException(
-                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND), detail=err.dict()
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
             )
-        return {"success": True, "message": f"Memory importance updated to {req.importance_score}"}
+        
+        return {
+            "success": True,
+            "message": f"Memory importance updated to {request.importance_score}"
+        }
+        
     except HTTPException:
         raise
     except ValueError as e:
-        val_err = [ValidationErrorDetail(field="importance_score", message=str(e), invalid_value=req.importance_score)]
-        err = create_validation_error_response(field_errors=val_err, user_message="Invalid importance score value.")
-        raise HTTPException(status_code=get_http_status_for_error_code(WebAPIErrorCode.VALIDATION_ERROR), detail=err.dict())
+        logger.warning("Invalid importance value", error=str(e))
+        validation_errors = [ValidationErrorDetail(
+            field="importance_score",
+            message=str(e),
+            invalid_value=request.importance_score
+        )]
+        error_response = create_validation_error_response(
+            field_errors=validation_errors,
+            user_message="Invalid importance score value."
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(WebAPIErrorCode.VALIDATION_ERROR),
+            detail=error_response.dict(),
+        )
     except Exception as e:
         logger.exception("Failed to update importance", error=str(e))
-        error = create_service_error_response(
+        error_response = create_service_error_response(
             service_name="memory",
             error=e,
             error_code=WebAPIErrorCode.MEMORY_ERROR,
-            user_message="Failed to update memory importance. Please try again.",
+            user_message="Failed to update memory importance. Please try again."
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
-            detail=error.dict(),
+            detail=error_response.dict(),
         )
 
 
 @router.delete("/{memory_id}")
 async def delete_memory(
-    memory_id: UUID,
-    memory_service: WebUIMemoryService = Depends(get_memory_service),
+    memory_id: str,
+    
+    
+    memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
+    """Delete a memory entry."""
     try:
-        success = await memory_service.base_manager.delete_memory(tenant_id="default", memory_id=str(memory_id))
+        success = await memory_service.base_manager.delete_memory(
+            tenant_id="default",
+            memory_id=memory_id
+        )
+        
         if not success:
-            err = create_generic_error_response(
+            error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
                 message="Memory not found",
                 user_message="The requested memory could not be found.",
-                details={"memory_id": memory_id},
+                details={"memory_id": memory_id}
             )
             raise HTTPException(
-                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND), detail=err.dict()
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.dict(),
             )
-        return {"success": True, "message": "Memory deleted successfully"}
+        
+        return {
+            "success": True,
+            "message": "Memory deleted successfully"
+        }
+        
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Failed to delete memory", error=str(e))
-        error = create_service_error_response(
+        error_response = create_service_error_response(
             service_name="memory",
             error=e,
             error_code=WebAPIErrorCode.MEMORY_ERROR,
-            user_message="Failed to delete memory. Please try again.",
+            user_message="Failed to delete memory. Please try again."
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
-            detail=error.dict(),
+            detail=error_response.dict(),
         )
 
 
@@ -405,67 +487,109 @@ async def get_analytics(
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
     time_range_start: Optional[datetime] = Query(None, description="Start of time range"),
     time_range_end: Optional[datetime] = Query(None, description="End of time range"),
-    memory_service: WebUIMemoryService = Depends(get_memory_service),
+    
+    
+    memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
+    """Get memory analytics for dashboard."""
     try:
-        time_range = (time_range_start, time_range_end) if time_range_start and time_range_end else None
+        # Build time range tuple if provided
+        time_range = None
+        if time_range_start and time_range_end:
+            time_range = (time_range_start, time_range_end)
+        
+        # Use current user if no user_id specified
+        target_user_id = user_id or "anonymous"
+        
         analytics = await memory_service.get_memory_analytics(
-            tenant_id="default", user_id=user_id or "anonymous", time_range=time_range
+            tenant_id="default",
+            user_id=target_user_id,
+            time_range=time_range
         )
+        
         return AnalyticsResponse(**analytics)
+        
     except Exception as e:
         logger.exception("Failed to get analytics", error=str(e))
-        error = create_service_error_response(
+        error_response = create_service_error_response(
             service_name="memory",
             error=e,
             error_code=WebAPIErrorCode.MEMORY_ERROR,
-            user_message="Failed to get memory analytics. Please try again.",
+            user_message="Failed to get memory analytics. Please try again."
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
-            detail=error.dict(),
+            detail=error_response.dict(),
         )
 
 
 @router.get("/stats")
-async def get_memory_stats(memory_service: WebUIMemoryService = Depends(get_memory_service)):
+async def get_memory_stats(
+    
+    
+    memory_service: WebUIMemoryService = Depends(get_memory_service)
+):
+    """Get basic memory statistics."""
     try:
-        base_stats = await memory_service.base_manager.get_memory_stats("default")
+        stats = await memory_service.base_manager.get_memory_stats("default")
         web_ui_metrics = memory_service.get_metrics()
-        return {"base_stats": base_stats, "web_ui_metrics": web_ui_metrics, "tenant_id": "default"}
+        
+        return {
+            "base_stats": stats,
+            "web_ui_metrics": web_ui_metrics,
+            "tenant_id": "default"
+        }
+        
     except Exception as e:
         logger.exception("Failed to get stats", error=str(e))
-        error = create_service_error_response(
+        error_response = create_service_error_response(
             service_name="memory",
             error=e,
             error_code=WebAPIErrorCode.MEMORY_ERROR,
-            user_message="Failed to get memory statistics. Please try again.",
+            user_message="Failed to get memory statistics. Please try again."
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
-            detail=error.dict(),
+            detail=error_response.dict(),
         )
 
 
 @router.post("/prune-expired")
-async def prune_expired_memories(memory_service: WebUIMemoryService = Depends(get_memory_service)):
+async def prune_expired_memories(
+    
+    
+    memory_service: WebUIMemoryService = Depends(get_memory_service)
+):
+    """Prune expired memories for the tenant."""
     try:
-        count = await memory_service.base_manager.prune_expired_memories("default")
-        return {"success": True, "pruned_count": count, "message": f"Pruned {count} expired memories"}
+        pruned_count = await memory_service.base_manager.prune_expired_memories("default")
+        
+        return {
+            "success": True,
+            "pruned_count": pruned_count,
+            "message": f"Pruned {pruned_count} expired memories"
+        }
+        
     except Exception as e:
         logger.exception("Failed to prune memories", error=str(e))
-        error = create_service_error_response(
+        error_response = create_service_error_response(
             service_name="memory",
             error=e,
             error_code=WebAPIErrorCode.MEMORY_ERROR,
-            user_message="Failed to prune expired memories. Please try again.",
+            user_message="Failed to prune expired memories. Please try again."
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.MEMORY_ERROR),
-            detail=error.dict(),
+            detail=error_response.dict(),
         )
 
 
+# Health check endpoint
 @router.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "memory", "timestamp": datetime.utcnow().isoformat()}
+    """Health check for memory service."""
+    return {
+        "status": "healthy",
+        "service": "memory",
+        "timestamp": datetime.utcnow().isoformat()
+    }

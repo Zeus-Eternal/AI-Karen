@@ -48,6 +48,8 @@ from ai_karen_engine.core.dependencies import (
     get_plugin_service,
 )
 from ai_karen_engine.models.shared_types import ToolType
+from ai_karen_engine.integrations.llm_registry import get_registry
+from ai_karen_engine.integrations.llm_router import LLMProfileRouter
 
 logger = logging.getLogger(__name__)
 
