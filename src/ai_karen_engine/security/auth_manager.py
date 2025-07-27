@@ -28,14 +28,21 @@ def _verify_password(password: str, stored: str) -> bool:
 
 
 def _init_default_admin() -> Dict[str, Dict[str, Any]]:
-    """Create default admin credentials if store missing."""
-    username = os.getenv("KARI_ADMIN_USERNAME", "admin")
-    password = os.getenv("KARI_ADMIN_PASSWORD", "admin")
+    """Create default credentials if the store is missing."""
+    admin_email = os.getenv("KARI_ADMIN_EMAIL", "admin@kari.ai")
+    admin_password = os.getenv("KARI_ADMIN_PASSWORD", "pswd123")
+    user_email = os.getenv("KARI_USER_EMAIL", "user@kari.ai")
+    user_password = os.getenv("KARI_USER_PASSWORD", "pswd123")
+
     return {
-        username: {
-            "password": _hash_password(password),
+        admin_email: {
+            "password": _hash_password(admin_password),
             "roles": ["admin", "dev", "user"],
-        }
+        },
+        user_email: {
+            "password": _hash_password(user_password),
+            "roles": ["user"],
+        },
     }
 
 

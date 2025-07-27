@@ -5,7 +5,10 @@ import math
 import time
 from typing import Any, Dict, Iterable, List, Optional
 
-import spacy
+try:
+    import spacy
+except Exception:  # pragma: no cover - optional
+    spacy = None
 
 from ai_karen_engine.core.embedding_manager import EmbeddingManager, record_metric
 from ai_karen_engine.core.milvus_client import MilvusClient
@@ -93,8 +96,11 @@ class DocumentStore:
         dsn: str = "sqlite:///:memory:",
         use_sqlite: bool = True,
     ) -> None:
-        self.nlp = spacy.blank("en")
-        self.nlp.add_pipe("sentencizer")
+        if spacy is not None:
+            self.nlp = spacy.blank("en")
+            self.nlp.add_pipe("sentencizer")
+        else:
+            self.nlp = None
         self.embedder = EmbeddingManager()
         self.vectors = MilvusClient()
         self.db = _DocPostgres(dsn=dsn, use_sqlite=use_sqlite)
@@ -109,6 +115,10 @@ class DocumentStore:
             return f.read()
 
     def _chunk_by_heading(self, text: str) -> List[tuple[str, str]]:
+        if self.nlp is None:
+            # Fallback: naive split by lines when spaCy is unavailable
+            return [("Document", line.strip()) for line in text.splitlines() if line.strip()]
+
         doc = self.nlp(text)
         chunks: List[tuple[str, str]] = []
         heading = "Document"

@@ -1,6 +1,6 @@
 {
-  "admin@example.com": {
-    "password": "f4b35310e1480ca218ef88cb070f022f:2220987db38266dfd26742d473018a9f1a12bf303dd816a8df00b9a344f99126",
+  "admin@kari.ai": {
+    "password": "eeba5ca104cbc78e1312ccbb773caa7f:79ce7b140c6826edc48d91078eaf050dd3a909eac9b66ac7d673dcb6d821b1f4",
     "roles": ["admin", "dev", "user"],
     "tenant_id": "default",
     "preferences": {
@@ -10,8 +10,8 @@
       "auto_refresh": true
     }
   },
-  "user@example.com": {
-    "password": "d38ac31d74a1e2d0486ab6dc915d871a:02b43f50f625827b3e2beaaa21a679ea72c0262c5452fc5e15f2431e8c2b3c8e",
+  "user@kari.ai": {
+    "password": "fc8fc5a0ac094aa8cebf4b73d9fb9a49:c1679d7edf5c3e5c4da03a494b1f06063b2ee3ba192bbfea294fac81ed192003",
     "roles": ["user"],
     "tenant_id": "default",
     "preferences": {

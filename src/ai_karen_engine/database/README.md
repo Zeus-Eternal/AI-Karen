@@ -51,7 +51,7 @@ async with db_client.get_tenant_session("tenant_123") as session:
     # Create new record
     new_user = User(
         tenant_id="tenant_123",
-        email="user@example.com",
+        email="user@kari.ai",
         name="John Doe"
     )
     session.add(new_user)
