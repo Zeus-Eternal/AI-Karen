@@ -344,9 +344,14 @@ curl -H "X-Tenant-ID: default" \
 
 ```bash
 # Login with default admin credentials
-curl -X POST http://localhost:8000/login \
+curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin"}'
+  -d '{"email": "admin@example.com", "password": "admin"}'
+
+# Or login with the demo user
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "user"}'
 
 # Use token
 curl -H "Authorization: Bearer <token>" \
