@@ -12,8 +12,6 @@ except Exception:
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
 
-from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
-
 router = APIRouter()
 
 db = DuckDBClient()
