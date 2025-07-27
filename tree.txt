@@ -822,8 +822,6 @@ AI-Karen
     │   ├── __init__.py
     │   ├── conftest.py
     │   ├── test_advanced_ui.py
-    │   ├── test_ai_orchestrator_llm_integration.py
-    │   ├── test_ai_orchestrator_service.py
     │   ├── test_ai_orchestrator.py
     │   ├── test_api.py
     │   ├── test_apply_review.py
@@ -834,7 +832,6 @@ AI-Karen
     │   ├── test_autonomous_agent.py
     │   ├── test_basic_orchestration.py
     │   ├── test_chat_orchestrator_simple.py
-    │   ├── test_chat_orchestrator.py
     │   ├── test_chat_services.py
     │   ├── test_cli.py
     │   ├── test_condition_evaluation.py
@@ -864,10 +861,8 @@ AI-Karen
     │   ├── test_imports.py
     │   ├── test_intent_engine.py
     │   ├── test_llama_client.py
-    │   ├── test_llm_integration_simple.py
     │   ├── test_llm_manager.py
     │   ├── test_llm_orchestrator.py
-    │   ├── test_llm_provider_registration.py
     │   ├── test_llm_utils.py
     │   ├── test_log_utils.py
     │   ├── test_mcp.py
@@ -902,8 +897,6 @@ AI-Karen
     │   ├── test_presence.py
     │   ├── test_provider_registry.py
     │   ├── test_sandbox.py
-    │   ├── test_security_basic.py
-    │   ├── test_security_direct.py
     │   ├── test_security_framework.py
     │   ├── test_self_heal.py
     │   ├── test_self_refactor_loop.py

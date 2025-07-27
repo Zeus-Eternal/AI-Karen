@@ -352,8 +352,6 @@ src/ui_logic/utils/file_utils.py
 src/ui_logic/utils/llm_utils.py
 tests/test_advanced_ui.py
 tests/test_ai_orchestrator.py
-tests/test_ai_orchestrator_llm_integration.py
-tests/test_ai_orchestrator_service.py
 tests/test_api.py
 tests/test_apply_review.py
 tests/test_approve_endpoint.py
@@ -362,7 +360,6 @@ tests/test_auth_middleware.py
 tests/test_automation_job_encryption.py
 tests/test_autonomous_agent.py
 tests/test_basic_orchestration.py
-tests/test_chat_orchestrator.py
 tests/test_chat_orchestrator_simple.py
 tests/test_chat_services.py
 tests/test_cli.py
@@ -393,10 +390,8 @@ tests/test_ice_multi_hop.py
 tests/test_imports.py
 tests/test_intent_engine.py
 tests/test_llama_client.py
-tests/test_llm_integration_simple.py
 tests/test_llm_manager.py
 tests/test_llm_orchestrator.py
-tests/test_llm_provider_registration.py
 tests/test_llm_utils.py
 tests/test_log_utils.py
 tests/test_mcp.py
@@ -431,8 +426,6 @@ tests/test_postgres_client.py
 tests/test_presence.py
 tests/test_provider_registry.py
 tests/test_sandbox.py
-tests/test_security_basic.py
-tests/test_security_direct.py
 tests/test_security_framework.py
 tests/test_self_heal.py
 tests/test_self_refactor.py
