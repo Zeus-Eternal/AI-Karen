@@ -141,6 +141,11 @@ npm run dev
 # Access at http://localhost:9002
 ```
 
+Default demo accounts are available:
+
+* **Admin:** `admin@example.com` / `admin`
+* **User:** `user@example.com` / `user`
+
 #### Desktop UI (Tauri)
 ```bash
 cd ui_launchers/desktop_ui

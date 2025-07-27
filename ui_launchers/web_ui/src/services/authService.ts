@@ -42,6 +42,27 @@ export class AuthService {
     return response.json();
   }
 
+  async updateCredentials(newUsername?: string, newPassword?: string): Promise<LoginResponse> {
+    const response = await fetch(`${this.baseUrl}/api/auth/update_credentials`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        new_username: newUsername,
+        new_password: newPassword,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to update credentials: ${error}`);
+    }
+
+    return response.json();
+  }
+
   async updateUserPreferences(_token: string, preferences: Partial<User['preferences']>): Promise<void> {
     // TODO: Implement backend endpoint for updating user preferences
     console.log('Updating user preferences:', preferences);
