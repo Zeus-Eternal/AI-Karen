@@ -2,7 +2,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { getAuthService } from '@/services/authService'
 import type { CurrentUser } from '@/services'
-import { getAuthToken } from '@/lib/auth-token'
 
 interface AuthContextValue {
   user: CurrentUser | null
@@ -26,15 +25,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = getAuthToken()
-    if (!token) {
-      setLoading(false)
-      return
-    }
-    authService.getCurrentUser().then(u => {
-      setUser(u)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    authService
+      .getCurrentUser()
+      .then((u) => {
+        setUser(u)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [])
 
   const login = async (u: string, p: string) => {

@@ -156,9 +156,9 @@ const [memoryCount, setMemoryCount] = useState<number|null>(null);
 
 | Priority | Task                                              | Owner            | ETA     |
 | :------: | ------------------------------------------------- | ---------------- | ------- |
-|    P0    | Remove prefilled env vars in login → empty inputs | Frontend         | 1 day   |
-|    P0    | Switch to HttpOnly cookie storage                 | Frontend/Backend | 2 days  |
-|    P0    | Add rate-limit middleware on `/api/auth/login`    | Backend          | 1 day   |
+|    P0    | ~~Remove prefilled env vars in login → empty inputs~~ | Frontend         | **Complete** |
+|    P0    | ~~Switch to HttpOnly cookie storage~~                 | Frontend/Backend | **Complete** |
+|    P0    | ~~Add rate-limit middleware on `/api/auth/login`~~    | Backend          | **Complete** |
 |    P1    | Signup page + email verification flow             | Full stack       | 1 week  |
 |    P1    | Password reset (magic link) flow                  | Full stack       | 1 week  |
 |    P1    | Client-side validation & error messages           | Frontend         | 2 days  |

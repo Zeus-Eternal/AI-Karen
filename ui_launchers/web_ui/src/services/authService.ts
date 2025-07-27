@@ -14,6 +14,7 @@ export class AuthService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -24,11 +25,11 @@ export class AuthService {
     return response.json();
   }
 
-  async getCurrentUser(token: string): Promise<User> {
+  async getCurrentUser(): Promise<User> {
     const response = await fetch(`${this.baseUrl}/api/auth/me`, {
       method: 'GET',
+      credentials: 'include',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
@@ -41,53 +42,25 @@ export class AuthService {
     return response.json();
   }
 
-  async updateUserPreferences(token: string, preferences: Partial<User['preferences']>): Promise<void> {
-    // For now, we'll store preferences locally since we don't have an update endpoint yet
-    // In a full implementation, this would call the backend API
-    console.log('Updating user preferences:', preferences);
+  async updateUserPreferences(_token: string, preferences: Partial<User['preferences']>): Promise<void> {
     // TODO: Implement backend endpoint for updating user preferences
+    console.log('Updating user preferences:', preferences);
   }
 
-  // Token management
-  saveToken(token: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', token);
-    }
+  async logout(): Promise<void> {
+    await fetch(`${this.baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
   }
 
-  getToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token');
-    }
-    return null;
-  }
-
-  removeToken(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
-    }
-  }
-
-  // User data management
-  saveUser(user: User): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('user_data', JSON.stringify(user));
-    }
-  }
-
-  getUser(): User | null {
-    if (typeof window !== 'undefined') {
-      const userData = localStorage.getItem('user_data');
-      return userData ? JSON.parse(userData) : null;
-    }
-    return null;
-  }
-
-  removeUser(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user_data');
-    }
-  }
+  // Token and user persistence removed for HttpOnly cookie approach
+  saveToken(_: string): void {}
+  getToken(): string | null { return null; }
+  removeToken(): void {}
+  saveUser(_: User): void {}
+  getUser(): User | null { return null; }
+  removeUser(): void {}
 }
 
 export const authService = new AuthService();

@@ -1,12 +1,26 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
+from datetime import datetime, timedelta
+from collections import defaultdict
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.utils.auth import create_session, validate_session
+from ai_karen_engine.utils.auth import (
+    create_session,
+    validate_session,
+    SESSION_DURATION,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Session cookie configuration
+COOKIE_NAME = "kari_session"
+
+# Simple in-memory login rate limiter: max 5 attempts per minute per IP
+_LOGIN_ATTEMPTS: Dict[str, List[datetime]] = defaultdict(list)
+RATE_LIMIT = 5
+RATE_WINDOW = timedelta(minutes=1)
 
 # In-memory user store for demo purposes
 _USERS: Dict[str, Dict[str, Any]] = {
@@ -75,7 +89,16 @@ class UserResponse(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(req: LoginRequest, request: Request) -> LoginResponse:
+async def login(req: LoginRequest, request: Request, response: Response) -> LoginResponse:
+    # --- simple rate limiting ---
+    ip = request.client.host if request.client else "unknown"
+    now = datetime.utcnow()
+    attempts = [t for t in _LOGIN_ATTEMPTS[ip] if now - t < RATE_WINDOW]
+    if len(attempts) >= RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many login attempts")
+    attempts.append(now)
+    _LOGIN_ATTEMPTS[ip] = attempts
+
     user = _USERS.get(req.email)
     if not user or user["password"] != req.password:
         raise HTTPException(
@@ -88,8 +111,18 @@ async def login(req: LoginRequest, request: Request) -> LoginResponse:
         subject=req.email,
         roles=user["roles"],
         user_agent=request.headers.get("user-agent", ""),
-        client_ip=request.client.host,
+        client_ip=ip,
         tenant_id=tenant_id,
+    )
+
+    # Set secure HttpOnly cookie for session
+    response.set_cookie(
+        COOKIE_NAME,
+        token,
+        max_age=SESSION_DURATION,
+        httponly=True,
+        secure=True,
+        samesite="strict",
     )
 
     return LoginResponse(
@@ -125,13 +158,16 @@ async def token(req: LoginRequest, request: Request) -> TokenResponse:
 @router.get("/me", response_model=UserResponse)
 async def me(request: Request) -> UserResponse:
     auth = request.headers.get("authorization")
-    if not auth or not auth.lower().startswith("bearer "):
+    token = None
+    if auth and auth.lower().startswith("bearer "):
+        token = auth.split(None, 1)[1]
+    elif COOKIE_NAME in request.cookies:
+        token = request.cookies.get(COOKIE_NAME)
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid token",
         )
-
-    token = auth.split(None, 1)[1]
     ctx = validate_session(
         token, request.headers.get("user-agent", ""), request.client.host
     )
@@ -154,3 +190,10 @@ async def me(request: Request) -> UserResponse:
         tenant_id=user_data.get("tenant_id", "default"),
         preferences=user_data.get("preferences", {}),
     )
+
+
+@router.post("/logout")
+async def logout(response: Response) -> Dict[str, str]:
+    """Clear authentication cookie."""
+    response.delete_cookie(COOKIE_NAME)
+    return {"detail": "Logged out"}
