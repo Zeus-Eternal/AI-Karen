@@ -343,14 +343,20 @@ curl -H "X-Tenant-ID: default" \
 ### Authentication
 
 ```bash
-# Login
+# Login with default admin credentials
 curl -X POST http://localhost:8000/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "user", "password": "pass"}'
+  -d '{"username": "admin", "password": "admin"}'
 
 # Use token
 curl -H "Authorization: Bearer <token>" \
   http://localhost:8000/chat
+
+# Update your credentials after logging in
+curl -X POST http://localhost:8000/api/auth/update_credentials \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"new_password": "strongpass"}'
 ```
 
 ### Plugin Management

@@ -1,0 +1,6 @@
+{
+  "admin": {
+    "password": "saltsalt:935d9f7e00cf4605d5a8aec3e230bf41a518234d8ef8b5b8a820d4977d9638c2",
+    "roles": ["admin", "dev", "user"]
+  }
+}
