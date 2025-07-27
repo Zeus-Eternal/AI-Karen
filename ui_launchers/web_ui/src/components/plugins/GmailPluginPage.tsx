@@ -32,6 +32,7 @@ export default function GmailPluginPage() {
     localStorage.setItem("gmail_app_password", appPassword);
   };
 
+
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3">
@@ -47,6 +48,7 @@ export default function GmailPluginPage() {
       </div>
 
       <Alert variant="destructive">
+        Karen can check unread messages or compose new ones on your behalf.
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>About Gmail Integration</AlertTitle>
         <AlertDescription>
@@ -60,11 +62,6 @@ export default function GmailPluginPage() {
             <li>"Check my unread emails."</li>
             <li>"Compose an email to example@example.com with subject 'Hello' and body 'Just saying hi!'"</li>
           </ul>
-        <Info className="h-4 w-4" />
-        <AlertTitle>How to Use</AlertTitle>
-        <AlertDescription>
-          <p>Provide your Gmail username and app password below. Karen will use them via the Gmail plugin.</p>
-          <p className="mt-1">For security reasons OAuth based connection is recommended in a real deployment.</p>
         </AlertDescription>
       </Alert>
 

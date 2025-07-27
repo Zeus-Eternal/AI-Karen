@@ -1,6 +1,7 @@
 AI-Karen
     ├── config
-    │   └── llm_profiles.yml
+    │   ├── llm_profiles.yml
+    │   └── security_config.yml
     ├── contracts
     │   ├── LICENSE_REQUEST_TEMPLATE.md
     │   └── license.json
@@ -9,7 +10,90 @@ AI-Karen
     │   │   └── classifier_seed.json
     │   ├── migrations
     │   │   └── postgres
+    │   │       ├── 001_create_tables.sql
+    │   │       ├── 002_create_extension_tables.sql
+    │   │       ├── 002_create_memory_entries_table.sql
+    │   │       ├── 003_web_ui_integration.sql
+    │   │       ├── 004_create_memory_entries_table.sql
+    │   │       ├── 005_create_conversations_table.sql
+    │   │       ├── 006_create_plugin_executions_table.sql
+    │   │       └── 007_create_audit_logs_table.sql
     │   └── announcements.json
+    ├── docker
+    │   └── database
+    │       ├── docs
+    │       │   ├── GETTING_STARTED.md
+    │       │   └── TROUBLESHOOTING.md
+    │       ├── init
+    │       │   ├── bootstrap
+    │       │   │   └── load-bootstrap-data.sh
+    │       │   ├── duckdb
+    │       │   │   ├── health-check.sql
+    │       │   │   └── init-duckdb.sh
+    │       │   ├── elasticsearch
+    │       │   │   ├── analytics_index.json
+    │       │   │   ├── document_index.json
+    │       │   │   ├── init-elasticsearch.sh
+    │       │   │   ├── logs_index.json
+    │       │   │   ├── memory_index.json
+    │       │   │   └── timeseries_template.json
+    │       │   ├── milvus
+    │       │   │   └── init-milvus.sh
+    │       │   ├── postgres
+    │       │   │   ├── health-check.sql
+    │       │   │   └── init-postgres.sh
+    │       │   ├── redis
+    │       │   │   ├── health-check.sh
+    │       │   │   ├── init-redis.sh
+    │       │   │   └── redis.conf
+    │       │   ├── .gitkeep
+    │       │   ├── init-all.sh
+    │       │   └── wait-for-services.sh
+    │       ├── migrations
+    │       │   ├── duckdb
+    │       │   │   ├── 001_create_profile_tables.sql
+    │       │   │   ├── 002_create_memory_tables.sql
+    │       │   │   └── 003_create_analytics_views.sql
+    │       │   ├── elasticsearch
+    │       │   │   ├── analytics_index.json
+    │       │   │   ├── document_index.json
+    │       │   │   ├── logs_index.json
+    │       │   │   └── memory_index.json
+    │       │   ├── milvus
+    │       │   │   ├── 001_persona_collection.py
+    │       │   │   ├── 002_memory_collection.py
+    │       │   │   └── 003_document_collection.py
+    │       │   ├── postgres
+    │       │   │   ├── 001_create_tables.sql
+    │       │   │   ├── 002_create_extension_tables.sql
+    │       │   │   ├── 003_enhance_memory_table.sql
+    │       │   │   ├── 004_create_memory_entries_table.sql
+    │       │   │   ├── 005_create_conversations_table.sql
+    │       │   │   ├── 006_create_plugin_executions_table.sql
+    │       │   │   └── 007_create_audit_logs_table.sql
+    │       │   └── .gitkeep
+    │       ├── scripts
+    │       │   ├── .gitkeep
+    │       │   ├── alert-monitor.sh
+    │       │   ├── backup.sh
+    │       │   ├── configure-env.sh
+    │       │   ├── health-check.sh
+    │       │   ├── migrate.sh
+    │       │   ├── migration-manager.py
+    │       │   ├── monitor.sh
+    │       │   ├── reset.sh
+    │       │   ├── restart.sh
+    │       │   ├── restore.sh
+    │       │   ├── start.sh
+    │       │   ├── stop.sh
+    │       │   └── verify-compatibility.sh
+    │       ├── tests
+    │       │   └── test-suite.sh
+    │       ├── .dockerignore
+    │       ├── docker-compose.dev.yml
+    │       ├── docker-compose.prod.yml
+    │       ├── docker-compose.yml
+    │       └── README.md
     ├── docs
     │   ├── api_reference.md
     │   ├── architecture.md
@@ -18,6 +102,10 @@ AI-Karen
     │   ├── contributing.md
     │   ├── development_guide.md
     │   ├── event_bus.md
+    │   ├── extension_developer_guide.md
+    │   ├── extension_management_tutorial.md
+    │   ├── extension_manager_best_practices.md
+    │   ├── extension_migration.md
     │   ├── features_usage.md
     │   ├── ice_wrapper.md
     │   ├── llm_guide.md
@@ -29,11 +117,22 @@ AI-Karen
     │   ├── openai_customer_service.md
     │   ├── operation_mirrorsnap.md
     │   ├── plugin_spec.md
+    │   ├── security_framework.md
     │   ├── security.md
     │   ├── self_refactor.md
     │   ├── side_by_side_openai_kari.md
     │   ├── tests.md
-    │   └── ui_blueprint.md
+    │   ├── ui_blueprint.md
+    │   ├── weather_gmail_plugin_integration_dev_sheet.md
+    │   ├── weather_plugin_dev_sheet.md
+    │   ├── weather_plugin_developer_sheet.md
+    │   ├── weather_plugin_integration_dev_sheet.md
+    │   └── web_ui_compatibility_layer.md
+    ├── examples
+    │   ├── core_infrastructure_demo.py
+    │   ├── database_config_example.py
+    │   ├── database_showcase.py
+    │   └── multitenant_demo.py
     ├── extensions
     │   ├── __meta
     │   │   └── README.md
@@ -44,16 +143,15 @@ AI-Karen
     │   │   └── workflow-builder
     │   │       ├── __init__.py
     │   │       └── extension.json
-    │   └── examples
-    │       ├── hello-extension
-    │       │   ├── __init__.py
-    │       │   └── extension.json
-    │       └── README.md
+    │   ├── examples
+    │   │   ├── hello-extension
+    │   │   │   ├── __init__.py
+    │   │   │   └── extension.json
+    │   │   └── README.md
+    │   └── README.md
     ├── headers
     │   └── LICENSE_HEADER.txt
-    ├── models
-    │   └── llm_registry.json
-    ├── plugins
+    ├── plugin_marketplace
     │   ├── __meta
     │   │   └── __meta
     │   │       └── command_manifest.json
@@ -153,11 +251,22 @@ AI-Karen
     │   └── README.md
     ├── scripts
     │   ├── bootstrap_ui.sh
+    │   ├── code_example_validator.py
+    │   ├── doc_analysis.py
+    │   ├── doc_validation.py
+    │   ├── health-check.sh
     │   ├── install_models.py
     │   ├── install.sh
+    │   ├── link_checker.py
+    │   ├── multitenant_cli.py
+    │   ├── performance_comparison.py
+    │   ├── security_testing.py
     │   ├── server_cli.py
     │   ├── start.sh
-    │   └── stop.sh
+    │   ├── stop.sh
+    │   ├── test_ui_launchers.py
+    │   ├── validate_documentation.py
+    │   └── validate_integration.py
     ├── self_refactor
     │   └── prompts
     │       ├── accessibility_audit.txt
@@ -173,18 +282,29 @@ AI-Karen
     │   ├── ai_karen_engine
     │   │   ├── api_routes
     │   │   │   ├── __init__.py
+    │   │   │   ├── admin.py
+    │   │   │   ├── ai_orchestrator_routes.py
     │   │   │   ├── announcements.py
     │   │   │   ├── auth.py
+    │   │   │   ├── conversation_routes.py
+    │   │   │   ├── database.py
     │   │   │   ├── events.py
     │   │   │   ├── extensions.py
     │   │   │   ├── health.py
+    │   │   │   ├── memory_routes.py
+    │   │   │   ├── plugin_routes.py
+    │   │   │   ├── README.md
+    │   │   │   ├── self_refactor.py
     │   │   │   ├── system.py
-    │   │   │   └── users.py
+    │   │   │   ├── tool_routes.py
+    │   │   │   ├── users.py
+    │   │   │   └── web_api_compatibility.py
     │   │   ├── automation_manager
     │   │   │   ├── __init__.py
     │   │   │   └── encryption_utils.py
     │   │   ├── capsules
     │   │   │   ├── devops
+    │   │   │   │   ├── __init__.py
     │   │   │   │   ├── handler.py
     │   │   │   │   ├── manifest.yaml
     │   │   │   │   ├── prompt.txt
@@ -192,7 +312,8 @@ AI-Karen
     │   │   │   └── __init__.py
     │   │   ├── chat
     │   │   │   ├── __init__.py
-    │   │   │   └── chat_hub.py
+    │   │   │   ├── chat_hub.py
+    │   │   │   └── chat_orchestrator.py
     │   │   ├── clients
     │   │   │   ├── database
     │   │   │   │   ├── __init__.py
@@ -213,6 +334,7 @@ AI-Karen
     │   │   │   │   ├── __init__.py
     │   │   │   │   └── lnm_client.py
     │   │   │   ├── __init__.py
+    │   │   │   ├── extension_api_client.py
     │   │   │   └── slm_pool.py
     │   │   ├── community_plugins
     │   │   │   └── __init__.py
@@ -228,6 +350,21 @@ AI-Karen
     │   │   │   │   ├── dispatch.py
     │   │   │   │   ├── errors.py
     │   │   │   │   └── intent.py
+    │   │   │   ├── errors
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── exceptions.py
+    │   │   │   │   ├── handlers.py
+    │   │   │   │   └── middleware.py
+    │   │   │   ├── gateway
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── app.py
+    │   │   │   │   ├── middleware.py
+    │   │   │   │   └── routing.py
+    │   │   │   ├── logging
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── formatters.py
+    │   │   │   │   ├── logger.py
+    │   │   │   │   └── middleware.py
     │   │   │   ├── memory
     │   │   │   │   ├── __init__.py
     │   │   │   │   ├── manager.py
@@ -238,10 +375,19 @@ AI-Karen
     │   │   │   │   ├── __init__.py
     │   │   │   │   ├── graph.py
     │   │   │   │   └── ice_integration.py
+    │   │   │   ├── services
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── base.py
+    │   │   │   │   ├── container.py
+    │   │   │   │   └── registry.py
     │   │   │   ├── __init__.py
     │   │   │   ├── autonomous_agent.py
+    │   │   │   ├── config_manager.py
+    │   │   │   ├── default_models.py
+    │   │   │   ├── dependencies.py
     │   │   │   ├── echo_core.py
     │   │   │   ├── embedding_manager.py
+    │   │   │   ├── health_monitor.py
     │   │   │   ├── intent_engine.py
     │   │   │   ├── mesh_planner.py
     │   │   │   ├── migration_executor.py
@@ -252,10 +398,25 @@ AI-Karen
     │   │   │   ├── plugin_registry.py
     │   │   │   ├── predictors.py
     │   │   │   ├── prompt_router.py
+    │   │   │   ├── README.md
     │   │   │   ├── self_refactor_loop.py
+    │   │   │   ├── service_registry.py
     │   │   │   ├── soft_reasoning_engine.py
     │   │   │   ├── tokenizer_manager.py
     │   │   │   └── workflow_engine_client.py
+    │   │   ├── database
+    │   │   │   ├── __init__.py
+    │   │   │   ├── client.py
+    │   │   │   ├── config_cli.py
+    │   │   │   ├── config.py
+    │   │   │   ├── conversation_manager.py
+    │   │   │   ├── integration_manager.py
+    │   │   │   ├── memory_manager.py
+    │   │   │   ├── migrations.py
+    │   │   │   ├── models.py
+    │   │   │   ├── README.md
+    │   │   │   ├── schema_validator.py
+    │   │   │   └── tenant_manager.py
     │   │   ├── doc_store
     │   │   │   ├── __init__.py
     │   │   │   └── document_store.py
@@ -272,9 +433,12 @@ AI-Karen
     │   │   │   ├── data_manager.py
     │   │   │   ├── dependency_resolver.py
     │   │   │   ├── manager.py
+    │   │   │   ├── marketplace_client.py
     │   │   │   ├── mcp_integration.py
+    │   │   │   ├── metrics_dashboard.py
     │   │   │   ├── models.py
     │   │   │   ├── orchestrator.py
+    │   │   │   ├── README.md
     │   │   │   ├── registry.py
     │   │   │   ├── resource_monitor.py
     │   │   │   ├── validator.py
@@ -286,6 +450,13 @@ AI-Karen
     │   │   │   ├── __init__.py
     │   │   │   └── validator.py
     │   │   ├── integrations
+    │   │   │   ├── providers
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── deepseek_provider.py
+    │   │   │   │   ├── gemini_provider.py
+    │   │   │   │   ├── huggingface_provider.py
+    │   │   │   │   ├── ollama_provider.py
+    │   │   │   │   └── openai_provider.py
     │   │   │   ├── __init__.py
     │   │   │   ├── automation_manager.py
     │   │   │   ├── llm_registry.py
@@ -293,7 +464,14 @@ AI-Karen
     │   │   │   ├── llm_utils.py
     │   │   │   ├── local_rpa_client.py
     │   │   │   ├── model_discovery.py
-    │   │   │   └── nanda_client.py
+    │   │   │   ├── nanda_client.py
+    │   │   │   ├── provider_hierarchy.py
+    │   │   │   ├── provider_registry.py
+    │   │   │   ├── startup.py
+    │   │   │   ├── video_providers.py
+    │   │   │   ├── video_registry.py
+    │   │   │   ├── voice_providers.py
+    │   │   │   └── voice_registry.py
     │   │   ├── mcp
     │   │   │   ├── __init__.py
     │   │   │   ├── base.py
@@ -301,9 +479,32 @@ AI-Karen
     │   │   │   ├── json_rpc_client.py
     │   │   │   ├── registry.py
     │   │   │   └── services.py
+    │   │   ├── models
+    │   │   │   ├── __init__.py
+    │   │   │   ├── error_responses.py
+    │   │   │   ├── shared_types.py
+    │   │   │   ├── web_api_error_responses.py
+    │   │   │   └── web_ui_types.py
     │   │   ├── plugins
     │   │   │   ├── __meta
-    │   │   │   │   └── command_manifest.json
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── command_manifest.json
+    │   │   │   │   └── handler.py
+    │   │   │   ├── gmail_plugin
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── gmail_service.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   └── README.md
+    │   │   │   ├── hello_world
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   └── README.md
+    │   │   │   ├── llm_manager
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   └── plugin_manifest.json
     │   │   │   ├── llm_services
     │   │   │   │   ├── deepseek
     │   │   │   │   │   ├── __init__.py
@@ -323,7 +524,8 @@ AI-Karen
     │   │   │   │   │   ├── __init__.py
     │   │   │   │   │   ├── handler.py
     │   │   │   │   │   └── plugin_manifest.json
-    │   │   │   │   └── __init__.py
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   └── handler.py
     │   │   │   ├── sandbox_fail
     │   │   │   │   ├── __init__.py
     │   │   │   │   ├── handler.py
@@ -342,6 +544,11 @@ AI-Karen
     │   │   │   │   ├── prompt.txt
     │   │   │   │   ├── README.md
     │   │   │   │   └── tui.py
+    │   │   │   ├── weather_query
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── handler.py
+    │   │   │   │   ├── plugin_manifest.json
+    │   │   │   │   └── README.md
     │   │   │   ├── __init__.py
     │   │   │   ├── manager.py
     │   │   │   ├── router.py
@@ -351,26 +558,64 @@ AI-Karen
     │   │   │   └── sandbox.py
     │   │   ├── pydantic_stub
     │   │   │   └── __init__.py
+    │   │   ├── security
+    │   │   │   ├── __init__.py
+    │   │   │   ├── compliance.py
+    │   │   │   ├── incident_response.py
+    │   │   │   ├── penetration_testing.py
+    │   │   │   └── threat_protection.py
     │   │   ├── self_refactor
     │   │   │   ├── __init__.py
     │   │   │   ├── engine.py
     │   │   │   ├── log_utils.py
     │   │   │   └── scheduler.py
     │   │   ├── services
+    │   │   │   ├── ai_orchestrator
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── ai_orchestrator.py
+    │   │   │   │   ├── context_manager.py
+    │   │   │   │   ├── decision_engine.py
+    │   │   │   │   ├── flow_manager.py
+    │   │   │   │   ├── personality_utils.py
+    │   │   │   │   └── prompt_manager.py
+    │   │   │   ├── tools
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   ├── core_tools.py
+    │   │   │   │   └── registry.py
     │   │   │   ├── __init__.py
+    │   │   │   ├── analytics_dashboard.py
+    │   │   │   ├── analytics_service.py
+    │   │   │   ├── chat_transformation_utils.py
+    │   │   │   ├── conversation_service.py
+    │   │   │   ├── distilbert_service.py
     │   │   │   ├── health_checker.py
     │   │   │   ├── knowledge_graph_client.py
-    │   │   │   └── plugin_store_client.py
+    │   │   │   ├── memory_compatibility.py
+    │   │   │   ├── memory_service.py
+    │   │   │   ├── memory_transformation_utils.py
+    │   │   │   ├── nlp_config.py
+    │   │   │   ├── nlp_health_monitor.py
+    │   │   │   ├── nlp_service_manager.py
+    │   │   │   ├── plugin_execution.py
+    │   │   │   ├── plugin_registry.py
+    │   │   │   ├── plugin_service.py
+    │   │   │   ├── plugin_store_client.py
+    │   │   │   ├── README.md
+    │   │   │   ├── spacy_service.py
+    │   │   │   ├── tool_service.py
+    │   │   │   └── web_ui_api.py
     │   │   ├── utils
     │   │   │   ├── __init__.py
     │   │   │   ├── auth.py
+    │   │   │   ├── bootstrap.py
     │   │   │   └── sandbox.py
     │   │   ├── __init__.py
     │   │   ├── compatibility.py
     │   │   ├── fastapi.py
     │   │   ├── llm_orchestrator.py
     │   │   ├── plugin_manager.py
-    │   │   └── plugin_router.py
+    │   │   ├── plugin_router.py
+    │   │   └── README.md
     │   ├── ai_karen.egg-info
     │   │   ├── dependency_links.txt
     │   │   ├── PKG-INFO
@@ -382,10 +627,13 @@ AI-Karen
     │   │   └── kari
     │   │       ├── templates
     │   │       │   ├── deployment.yaml
-    │   │       │   └── service.yaml
+    │   │       │   ├── service.yaml
+    │   │       │   └── serviceaccount.yaml
     │   │       ├── Chart.yaml
     │   │       ├── README.md
     │   │       └── values.yaml
+    │   ├── config
+    │   │   └── llm_profiles.yml
     │   ├── ui_logic
     │   │   ├── components
     │   │   │   ├── admin
@@ -521,8 +769,18 @@ AI-Karen
     │   │   ├── ui_core_logic.py
     │   │   └── ui_core.py
     │   ├── __init__.py
-    │   └── dotenv.py
+    │   ├── dotenv.py
+    │   └── pydantic_stub_import.py
     ├── tests
+    │   ├── integrations
+    │   │   └── test_provider_hierarchy.py
+    │   ├── services
+    │   │   ├── test_analytics_dashboard.py
+    │   │   ├── test_analytics_service.py
+    │   │   ├── test_conversation_service.py
+    │   │   ├── test_memory_service.py
+    │   │   ├── test_plugin_service.py
+    │   │   └── test_tool_service.py
     │   ├── stubs
     │   │   ├── ai_karen_engine
     │   │   │   ├── clients
@@ -557,17 +815,33 @@ AI-Karen
     │   ├── ui
     │   │   ├── __init__.py
     │   │   ├── test_chat_hub.py
+    │   │   ├── test_chat_ui_helpers.py
     │   │   ├── test_env_theme_config.py
+    │   │   ├── test_knowledge_graph.py
     │   │   └── test_rbac_token.py
     │   ├── __init__.py
     │   ├── conftest.py
     │   ├── test_advanced_ui.py
+    │   ├── test_ai_orchestrator_llm_integration.py
+    │   ├── test_ai_orchestrator_service.py
+    │   ├── test_ai_orchestrator.py
     │   ├── test_api.py
+    │   ├── test_apply_review.py
+    │   ├── test_approve_endpoint.py
+    │   ├── test_async_contracts.py
     │   ├── test_auth_middleware.py
     │   ├── test_automation_job_encryption.py
     │   ├── test_autonomous_agent.py
     │   ├── test_basic_orchestration.py
+    │   ├── test_chat_orchestrator_simple.py
+    │   ├── test_chat_orchestrator.py
+    │   ├── test_chat_services.py
     │   ├── test_cli.py
+    │   ├── test_condition_evaluation.py
+    │   ├── test_core_infrastructure.py
+    │   ├── test_database_config.py
+    │   ├── test_database_integration.py
+    │   ├── test_default_models.py
     │   ├── test_dispatch.py
     │   ├── test_doc_store.py
     │   ├── test_echocore_modules.py
@@ -575,7 +849,11 @@ AI-Karen
     │   ├── test_elastic_metrics.py
     │   ├── test_embedding_client.py
     │   ├── test_embedding.py
+    │   ├── test_enhanced_chat_error_handling.py
     │   ├── test_event_bus.py
+    │   ├── test_extension_discovery.py
+    │   ├── test_extension_lifecycle_management.py
+    │   ├── test_extension_loading.py
     │   ├── test_extension_plugin_integration.py
     │   ├── test_extension_system_validation.py
     │   ├── test_extensions.py
@@ -586,29 +864,47 @@ AI-Karen
     │   ├── test_imports.py
     │   ├── test_intent_engine.py
     │   ├── test_llama_client.py
+    │   ├── test_llm_integration_simple.py
     │   ├── test_llm_manager.py
     │   ├── test_llm_orchestrator.py
+    │   ├── test_llm_provider_registration.py
     │   ├── test_llm_utils.py
     │   ├── test_log_utils.py
     │   ├── test_mcp.py
+    │   ├── test_memory_compatibility.py
+    │   ├── test_memory_entries_schema.py
+    │   ├── test_memory_entries_table.py
+    │   ├── test_memory_manager_surprise.py
     │   ├── test_memory_manager.py
+    │   ├── test_memory_service_integration.py
     │   ├── test_memory_sync.py
     │   ├── test_memory_tenant_api.py
+    │   ├── test_mesh_planner_events.py
     │   ├── test_mesh_planner.py
     │   ├── test_mesh_reasoning.py
     │   ├── test_milvus_client.py
     │   ├── test_model_registry.py
+    │   ├── test_multitenant_database.py
     │   ├── test_nanda_client.py
     │   ├── test_neuro_vault.py
+    │   ├── test_nlp_direct.py
+    │   ├── test_nlp_requirements.py
+    │   ├── test_nlp_services.py
+    │   ├── test_nlp_simple.py
     │   ├── test_pages_announcement_usage.py
     │   ├── test_persona_controls.py
+    │   ├── test_persona_fallback.py
     │   ├── test_plugin_metrics.py
     │   ├── test_plugin_orchestration.py
     │   ├── test_plugin_router.py
     │   ├── test_plugins.py
     │   ├── test_postgres_client.py
     │   ├── test_presence.py
+    │   ├── test_provider_registry.py
     │   ├── test_sandbox.py
+    │   ├── test_security_basic.py
+    │   ├── test_security_direct.py
+    │   ├── test_security_framework.py
     │   ├── test_self_heal.py
     │   ├── test_self_refactor_loop.py
     │   ├── test_self_refactor.py
@@ -621,15 +917,53 @@ AI-Karen
     │   ├── test_tokenizer_manager.py
     │   ├── test_ui_api_utils.py
     │   ├── test_ui_plugin_manager.py
+    │   ├── test_web_ui_api_integration.py
+    │   ├── test_web_ui_compatibility.py
+    │   ├── test_web_ui_models.py
     │   └── test_workflow_rpa.py
     ├── ui_launchers
     │   ├── backend
     │   │   └── __init__.py
     │   ├── common
+    │   │   ├── abstractions
+    │   │   │   ├── adapters.ts
+    │   │   │   ├── config.ts
+    │   │   │   ├── index.ts
+    │   │   │   ├── interfaces.ts
+    │   │   │   ├── theme.ts
+    │   │   │   ├── types.ts
+    │   │   │   └── utils.ts
     │   │   ├── assets
     │   │   │   └── __init__.py
     │   │   ├── components
+    │   │   │   ├── analytics
+    │   │   │   │   └── index.ts
+    │   │   │   ├── chat
+    │   │   │   │   ├── ChatInterface.ts
+    │   │   │   │   ├── ConversationHistory.ts
+    │   │   │   │   ├── ExportDialog.ts
+    │   │   │   │   ├── index.ts
+    │   │   │   │   ├── MessageBubble.ts
+    │   │   │   │   ├── MessageInput.ts
+    │   │   │   │   ├── MessageSearch.ts
+    │   │   │   │   ├── TypingIndicator.ts
+    │   │   │   │   └── VoiceRecorder.ts
+    │   │   │   ├── memory
+    │   │   │   │   └── index.ts
+    │   │   │   ├── plugins
+    │   │   │   │   └── index.ts
+    │   │   │   ├── settings
+    │   │   │   │   ├── AdvancedSettings.ts
+    │   │   │   │   ├── index.ts
+    │   │   │   │   ├── MemorySettings.ts
+    │   │   │   │   ├── NotificationSettings.ts
+    │   │   │   │   ├── PersonalitySettings.ts
+    │   │   │   │   ├── SettingsPanel.ts
+    │   │   │   │   ├── SettingsSync.ts
+    │   │   │   │   ├── ThemeSettings.ts
+    │   │   │   │   └── VoiceSettings.ts
     │   │   │   ├── __init__.py
+    │   │   │   ├── index.ts
     │   │   │   └── rbac.py
     │   │   ├── hooks
     │   │   │   └── __init__.py
@@ -663,10 +997,16 @@ AI-Karen
     │   │   │   ├── Cargo.lock
     │   │   │   └── Cargo.toml
     │   │   ├── __init__.py
-    │   │   ├── .env
     │   │   ├── README.md
     │   │   └── vite.config.ts
     │   ├── streamlit_ui
+    │   │   ├── components
+    │   │   │   ├── backend_components.py
+    │   │   │   ├── data_utils.py
+    │   │   │   ├── modals.py
+    │   │   │   ├── navigation.py
+    │   │   │   ├── sidebar.py
+    │   │   │   └── styling.py
     │   │   ├── config
     │   │   │   ├── __init__.py
     │   │   │   ├── .gitkeep
@@ -676,68 +1016,272 @@ AI-Karen
     │   │   ├── data
     │   │   │   └── vault.key
     │   │   ├── helpers
+    │   │   │   ├── templates
+    │   │   │   │   ├── export_modal.md
+    │   │   │   │   ├── message_assistant.html
+    │   │   │   │   ├── message_user.html
+    │   │   │   │   └── typing_indicator.html
     │   │   │   ├── __init__.py
     │   │   │   ├── api_handler.py
     │   │   │   ├── auth.py
+    │   │   │   ├── chat_ui.py
     │   │   │   ├── context.py
+    │   │   │   ├── eco_mode.py
     │   │   │   ├── icons.py
     │   │   │   ├── model_loader.py
     │   │   │   ├── rbac.py
     │   │   │   └── session.py
     │   │   ├── pages
-    │   │   │   ├── __init__.py
-    │   │   │   ├── admin.py
-    │   │   │   ├── analytics.py
-    │   │   │   ├── automation.py
-    │   │   │   ├── autonomous.py
     │   │   │   ├── chat.py
-    │   │   │   ├── code_lab.py
-    │   │   │   ├── context.py
-    │   │   │   ├── diagnostics.py
-    │   │   │   ├── echo_core.py
-    │   │   │   ├── files.py
-    │   │   │   ├── home.py
-    │   │   │   ├── integrations.py
-    │   │   │   ├── iot.py
-    │   │   │   ├── memory.py
-    │   │   │   ├── personas.py
+    │   │   │   ├── dashboard.py
+    │   │   │   ├── mirrorsnap_dashboard.py
+    │   │   │   ├── monitoring.py
     │   │   │   ├── plugins.py
-    │   │   │   ├── presence.py
-    │   │   │   ├── security.py
     │   │   │   ├── settings.py
-    │   │   │   ├── task_dashboard.py
-    │   │   │   ├── vision.py
-    │   │   │   ├── voice.py
-    │   │   │   ├── white_label.py
-    │   │   │   ├── workflow_builder.py
-    │   │   │   └── workflows.py
+    │   │   │   └── user_management.py
+    │   │   ├── services
+    │   │   │   ├── backend_integration.py
+    │   │   │   ├── chat_service.py
+    │   │   │   ├── data_flow_manager.py
+    │   │   │   ├── integration_test.py
+    │   │   │   ├── llm_router.py
+    │   │   │   ├── memory_service.py
+    │   │   │   ├── plugin_service.py
+    │   │   │   └── user_service.py
     │   │   ├── styles
     │   │   │   ├── dark.css
     │   │   │   ├── enterprise.css
     │   │   │   └── light.css
     │   │   ├── __init__.py
+    │   │   ├── ai_karen.log
     │   │   ├── app.py
     │   │   ├── README.md
-    │   │   └── requirements.txt
+    │   │   ├── requirements.txt
+    │   │   └── test_integration.py
+    │   ├── web_ui
+    │   │   ├── .storybook
+    │   │   │   ├── main.ts
+    │   │   │   └── preview.ts
+    │   │   ├── docs
+    │   │   │   └── blueprint.md
+    │   │   ├── src
+    │   │   │   ├── __tests__
+    │   │   │   │   └── api.integration.test.tsx
+    │   │   │   ├── ai
+    │   │   │   │   ├── tools
+    │   │   │   │   │   └── core-tools.ts
+    │   │   │   │   ├── dev.ts
+    │   │   │   │   └── genkit.ts
+    │   │   │   ├── app
+    │   │   │   │   ├── actions.ts
+    │   │   │   │   ├── favicon.ico
+    │   │   │   │   ├── globals.css
+    │   │   │   │   ├── layout.tsx
+    │   │   │   │   └── page.tsx
+    │   │   │   ├── components
+    │   │   │   │   ├── chat
+    │   │   │   │   │   ├── ChatInterface.tsx
+    │   │   │   │   │   └── MessageBubble.tsx
+    │   │   │   │   ├── extensions
+    │   │   │   │   │   ├── automation
+    │   │   │   │   │   │   ├── AgentList.tsx
+    │   │   │   │   │   │   ├── index.ts
+    │   │   │   │   │   │   └── WorkflowList.tsx
+    │   │   │   │   │   ├── core
+    │   │   │   │   │   │   ├── ExtensionBreadcrumb.tsx
+    │   │   │   │   │   │   ├── ExtensionContent.tsx
+    │   │   │   │   │   │   ├── ExtensionHeader.tsx
+    │   │   │   │   │   │   ├── ExtensionProvider.tsx
+    │   │   │   │   │   │   ├── ExtensionSidebar.tsx
+    │   │   │   │   │   │   ├── ExtensionStats.tsx
+    │   │   │   │   │   │   └── index.ts
+    │   │   │   │   │   ├── marketplace
+    │   │   │   │   │   │   └── index.ts
+    │   │   │   │   │   ├── plugins
+    │   │   │   │   │   │   ├── models
+    │   │   │   │   │   │   │   └── index.ts
+    │   │   │   │   │   │   ├── providers
+    │   │   │   │   │   │   │   └── index.ts
+    │   │   │   │   │   │   ├── index.ts
+    │   │   │   │   │   │   ├── LLMModelConfigPanel.tsx
+    │   │   │   │   │   │   ├── LLMProviderList.tsx
+    │   │   │   │   │   │   ├── VideoProviderList.tsx
+    │   │   │   │   │   │   └── VoiceProviderList.tsx
+    │   │   │   │   │   ├── shared
+    │   │   │   │   │   │   └── index.ts
+    │   │   │   │   │   ├── system
+    │   │   │   │   │   │   ├── categories
+    │   │   │   │   │   │   │   └── index.ts
+    │   │   │   │   │   │   ├── index.ts
+    │   │   │   │   │   │   └── SystemExtensionsList.tsx
+    │   │   │   │   │   ├── ExtensionBreadcrumbs.tsx
+    │   │   │   │   │   ├── ExtensionControls.tsx
+    │   │   │   │   │   ├── ExtensionHeader.tsx
+    │   │   │   │   │   ├── ExtensionSettingsPanel.tsx
+    │   │   │   │   │   ├── ExtensionSidebar.stories.tsx
+    │   │   │   │   │   ├── ExtensionSidebar.tsx
+    │   │   │   │   │   ├── ExtensionStats.tsx
+    │   │   │   │   │   ├── index.ts
+    │   │   │   │   │   ├── README.md
+    │   │   │   │   │   └── SidebarNavigation.tsx
+    │   │   │   │   ├── monitoring
+    │   │   │   │   │   ├── health-dashboard.tsx
+    │   │   │   │   │   └── monitoring-status.tsx
+    │   │   │   │   ├── plugins
+    │   │   │   │   │   ├── BookDetailsPluginPage.tsx
+    │   │   │   │   │   ├── DatabaseConnectorPluginPage.tsx
+    │   │   │   │   │   ├── DateTimePluginPage.tsx
+    │   │   │   │   │   ├── FacebookPluginPage.tsx
+    │   │   │   │   │   ├── GmailPluginPage.tsx
+    │   │   │   │   │   ├── PluginOverviewPage.tsx
+    │   │   │   │   │   └── WeatherPluginPage.tsx
+    │   │   │   │   ├── settings
+    │   │   │   │   │   ├── ApiKeyManager.tsx
+    │   │   │   │   │   ├── BehaviorSettings.tsx
+    │   │   │   │   │   ├── NotificationSettings.tsx
+    │   │   │   │   │   ├── PersonalFactsSettings.tsx
+    │   │   │   │   │   ├── PersonaSettings.tsx
+    │   │   │   │   │   ├── PrivacySettings.tsx
+    │   │   │   │   │   ├── SettingsDialog.tsx
+    │   │   │   │   │   └── VoiceSettings.tsx
+    │   │   │   │   ├── sidebar
+    │   │   │   │   │   └── NotificationsSection.tsx
+    │   │   │   │   ├── ui
+    │   │   │   │   │   ├── __tests__
+    │   │   │   │   │   │   ├── responsive-card-grid.test.tsx
+    │   │   │   │   │   │   └── sidebar.test.tsx
+    │   │   │   │   │   ├── accordion.tsx
+    │   │   │   │   │   ├── alert-dialog.tsx
+    │   │   │   │   │   ├── alert.tsx
+    │   │   │   │   │   ├── avatar.tsx
+    │   │   │   │   │   ├── badge.tsx
+    │   │   │   │   │   ├── button.tsx
+    │   │   │   │   │   ├── calendar.tsx
+    │   │   │   │   │   ├── card.tsx
+    │   │   │   │   │   ├── chart.tsx
+    │   │   │   │   │   ├── checkbox.tsx
+    │   │   │   │   │   ├── dialog.tsx
+    │   │   │   │   │   ├── dropdown-menu.tsx
+    │   │   │   │   │   ├── error-boundary.tsx
+    │   │   │   │   │   ├── form.tsx
+    │   │   │   │   │   ├── input.tsx
+    │   │   │   │   │   ├── label.tsx
+    │   │   │   │   │   ├── menubar.tsx
+    │   │   │   │   │   ├── popover.tsx
+    │   │   │   │   │   ├── progress.tsx
+    │   │   │   │   │   ├── radio-group.tsx
+    │   │   │   │   │   ├── responsive-card-grid.tsx
+    │   │   │   │   │   ├── scroll-area.tsx
+    │   │   │   │   │   ├── select.tsx
+    │   │   │   │   │   ├── separator.tsx
+    │   │   │   │   │   ├── sheet.tsx
+    │   │   │   │   │   ├── sidebar.tsx
+    │   │   │   │   │   ├── skeleton.tsx
+    │   │   │   │   │   ├── slider.tsx
+    │   │   │   │   │   ├── switch.tsx
+    │   │   │   │   │   ├── table.tsx
+    │   │   │   │   │   ├── tabs.tsx
+    │   │   │   │   │   ├── textarea.tsx
+    │   │   │   │   │   ├── toast.tsx
+    │   │   │   │   │   ├── toaster.tsx
+    │   │   │   │   │   └── tooltip.tsx
+    │   │   │   │   └── widgets
+    │   │   │   │       └── ForecastWidget.tsx
+    │   │   │   ├── extensions
+    │   │   │   │   ├── __tests__
+    │   │   │   │   │   └── ExtensionContext.test.tsx
+    │   │   │   │   ├── ExtensionContext.tsx
+    │   │   │   │   ├── index.ts
+    │   │   │   │   └── types.ts
+    │   │   │   ├── hooks
+    │   │   │   │   ├── extensions
+    │   │   │   │   │   ├── __tests__
+    │   │   │   │   │   │   ├── useExtensionNavigation.test.tsx
+    │   │   │   │   │   │   └── useExtensions.test.tsx
+    │   │   │   │   │   ├── index.ts
+    │   │   │   │   │   ├── useExtensionCache.ts
+    │   │   │   │   │   ├── useExtensionControls.ts
+    │   │   │   │   │   ├── useExtensionHealth.ts
+    │   │   │   │   │   ├── useExtensionMarketplace.ts
+    │   │   │   │   │   ├── useExtensionNavigation.ts
+    │   │   │   │   │   ├── useExtensions.ts
+    │   │   │   │   │   └── useExtensionSettings.ts
+    │   │   │   │   ├── use-mobile.tsx
+    │   │   │   │   ├── use-monitoring.ts
+    │   │   │   │   └── use-toast.ts
+    │   │   │   ├── lib
+    │   │   │   │   ├── extensions
+    │   │   │   │   │   ├── __tests__
+    │   │   │   │   │   │   └── navigationUtils.test.ts
+    │   │   │   │   │   ├── constants.ts
+    │   │   │   │   │   ├── extensionUtils.ts
+    │   │   │   │   │   ├── healthUtils.ts
+    │   │   │   │   │   ├── index.ts
+    │   │   │   │   │   ├── navigationUtils.ts
+    │   │   │   │   │   ├── permissionUtils.ts
+    │   │   │   │   │   └── validationUtils.ts
+    │   │   │   │   ├── config.ts
+    │   │   │   │   ├── constants.ts
+    │   │   │   │   ├── errorHandler.ts
+    │   │   │   │   ├── health-monitor.ts
+    │   │   │   │   ├── karen-backend.ts
+    │   │   │   │   ├── performance-monitor.ts
+    │   │   │   │   ├── secure-api-key.ts
+    │   │   │   │   ├── types.ts
+    │   │   │   │   └── utils.ts
+    │   │   │   ├── services
+    │   │   │   │   ├── extensions
+    │   │   │   │   │   ├── cacheService.ts
+    │   │   │   │   │   ├── extensionAPI.ts
+    │   │   │   │   │   ├── index.ts
+    │   │   │   │   │   ├── marketplaceService.ts
+    │   │   │   │   │   ├── pluginService.ts
+    │   │   │   │   │   ├── systemExtensionService.ts
+    │   │   │   │   │   └── types.ts
+    │   │   │   │   ├── chatService.ts
+    │   │   │   │   ├── extensionService.ts
+    │   │   │   │   ├── index.ts
+    │   │   │   │   ├── memoryService.ts
+    │   │   │   │   └── pluginService.ts
+    │   │   │   └── test
+    │   │   │       └── setup.ts
+    │   │   ├── biome
+    │   │   ├── components.json
+    │   │   ├── next.config.ts
+    │   │   ├── package-lock.json
+    │   │   ├── package.json
+    │   │   ├── postcss.config.mjs
+    │   │   ├── README.md
+    │   │   ├── tailwind.config.ts
+    │   │   ├── tsconfig.json
+    │   │   └── vitest.config.ts
     │   ├── __init__.py
     │   └── README.md
-    ├── .env.example
     ├── .gitignore
     ├── .pre-commit-config.yaml
     ├── AGENTS.md
     ├── CHANGELOG.md
     ├── cli.py
+    ├── config.json
+    ├── database_connectivity_results.json
+    ├── demo_analytics_dashboard.py
+    ├── demo_plugin_system.py
+    ├── demo_tool_system.py
     ├── DEV_SHEET.md
     ├── docker-compose.yml
     ├── Dockerfile
+    ├── documentation_validation_summary.json
     ├── LICENSE
     ├── LICENSE-commercial.txt
     ├── LICENSE.md
     ├── main.py
     ├── model_registry.json
+    ├── NLP_SERVICES_IMPLEMENTATION_SUMMARY.md
     ├── pyproject.toml
     ├── README.md
     ├── requirements.txt
-    ├── test_extension_discovery.py
-    ├── test_extension_loading.py
+    ├── server.log
+    ├── system_analysis.json
+    ├── test_all_database_connections.py
+    ├── test_database_client_enhancement.py
     └── tree.txt

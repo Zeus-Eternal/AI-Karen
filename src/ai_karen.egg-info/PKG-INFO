@@ -384,454 +384,581 @@ License-File: LICENSE-commercial.txt
 License-File: LICENSE.md
 Dynamic: license-file
 
-# Kari AI
+# AI-Karen: Production AI Platform
 [![CI](https://github.com/OWNER/AI-Karen/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/AI-Karen/actions/workflows/ci.yml)
 
-> **Local-first, plugin-driven, self-evolving.**
-> Kari turns a single FastAPI service and a desktop Control Room into an autonomous “Ops Mesh” that can route intents, run domain capsules, and refactor its own code—without leaving your machine.
+> **Enterprise-ready AI platform with modular architecture, multi-database support, and comprehensive UI ecosystem.**
+> AI-Karen provides a production-grade FastAPI backend with multiple frontend interfaces, extensive plugin system, and robust data infrastructure for scalable AI applications.
 
- 
-Kari is a modular, headless-first AI system built for enterprise deployments.
-The stack ships with robust intent detection, a plugin router, and a
-Tauri-based desktop control room. Memory and reasoning subsystems are tuned for
-production workloads.
-
----
- 
-
-## 1 · Overview
-
- 
-* Intent detection engine with runtime-configurable regex rules
-* Robust plugin router with manifest validation and RBAC dispatch
-* Dual vector memory (Milvus + Redis) with Postgres metadata and optional Elasticsearch index
-* Thread-safe Milvus client supporting TTL and metadata filters
-* Recency-weighted memory store with automatic TTL pruning and async queries
-* Local-first LLM orchestration (LNM + OSIRIS)
-* HuggingFace-powered generation for SelfRefactor and automation
-* HuggingFace LLM plugin with auto-download helper
-* Optional OpenAI plugin for hosted inference
-* **SelfRefactor Engine** with sandboxed testing, RL-based patch merging, and
-  dynamic LLM backend selection (HF, DeepSeek or OpenAI)
-* Configurable SRE scheduler (default weekly) continuously improves the codebase
-* NANDA client enables cross-agent snippet sharing
-* **Hydra-Ops Mesh** with capsule planner, event bus and guardrails
-* Example plugins: hello world, desktop agent, TUI fallback, hf_llm, openai_llm
-* Tauri desktop Control Room for chat, dashboard and memory matrix
-* **Premium Streamlit UI** with modern interface, role-based navigation, and real-time analytics
-* Prometheus metrics, tracing and EchoCore logging
-
-Kari is a **modular, headless-first AI system** designed for on-prem or air-gapped environments.
-The stack ships with:
-
-* an intent engine and role-based plugin router
-* a **SelfRefactor Engine** that patches its own code every hour
-* dual-tier vector memory (Milvus + Redis + Postgres metadata) with optional Elasticsearch search and surprise & recency weighting
-* a **Tauri** desktop Control Room (React+Rust) for ops, metrics, and logs
-
-Everything runs locally by default; cloud APIs are optional, opt-in plugins.
+AI-Karen is a comprehensive, production-ready AI platform designed for enterprise deployments. The system features a modular architecture with FastAPI backend, multiple UI interfaces, extensive plugin ecosystem, and robust multi-database infrastructure optimized for AI workloads.
 
 ---
 
-## 2 · Feature Highlights
- 
+## Overview
 
-| Category             | Highlights                                                                    |
-| -------------------- | ----------------------------------------------------------------------------- |
-| **Intent & Routing** | Regex intent matcher → Prompt-First Router → Capsule Planner                  |
-| **Plugins**          | Drop a folder with `manifest.json` & `handler.py`; UI auto-appears            |
-| **Memory**           | Milvus (dense vectors) + Redis (hot cache) + Postgres metadata + optional Elasticsearch + TTL pruning |
-| **LLMs**             | Local LNM & OSIRIS models (ggml / llama.cpp); HF and OpenAI plugins optional  |
-| **Self-Improvement** | DeepSeek-powered **SRE** runs in sandbox, merges patches after tests          |
-| **Ops Mesh**         | *Hydra-Ops* capsules (DevOps, Finance, Growth, …) with guardrails & event bus |
-| **Observability**    | Prometheus metrics, OpenTelemetry tracing, EchoCore immutable logs            |
-| **UI**               | Tauri Control Room: dashboards, model manager, plugin config, memory matrix   |
-| **Chat Hub**        | Slash commands with short-term memory via NeuroVault |
+**Core Platform Features:**
+* **FastAPI Backend** - Production-grade REST API with comprehensive endpoint coverage (106+ endpoints)
+* **Multi-Database Architecture** - PostgreSQL, Redis, DuckDB, Milvus, and Elasticsearch integration
+* **Plugin Ecosystem** - 24+ plugins with hot-reload capability and marketplace integration
+* **Extension System** - Modular extensions for analytics, automation, and workflow building
+* **Multiple UI Interfaces** - Web (Next.js), Desktop (Tauri), and Streamlit applications
+* **AI/ML Integration** - HuggingFace Transformers, OpenAI API, local LLM support via llama-cpp-python
+* **Production Monitoring** - Prometheus metrics, health checks, and comprehensive logging
+* **Authentication & Security** - JWT-based auth, role-based access control, tenant isolation
+* **Container Orchestration** - Docker Compose setup with service discovery and health monitoring
 
-Detailed usage instructions for each feature are in [docs/features_usage.md](docs/features_usage.md).
- 
+**Technology Stack:**
+* **Backend**: FastAPI, Python 3.10+, Pydantic, SQLAlchemy, Alembic
+* **Databases**: PostgreSQL 15, Redis 7, Elasticsearch 8.9, Milvus 2.3, DuckDB
+* **Frontend**: Next.js 15.2.3, React 18, Tauri 2.5, Streamlit
+* **AI/ML**: HuggingFace Transformers, llama-cpp-python, scikit-learn 1.5, spaCy 3.7
+* **Infrastructure**: Docker, Prometheus, nginx (optional), Kubernetes support
 
- 
+---
+
+## Architecture
+
+### System Components
+
 ```
-core/          # dispatch, embeddings, reasoning
-ai_karen_engine/event_bus/     # in-memory or Redis event streams
-guardrails/    # YAML validators
-capsules/      # domain-specific micro agents
-src/integrations/  # helper utilities (RPA, automation)
- src/ai_karen_engine/plugins/       # drop-in plugins (manifest + handler)
-ui_launchers/  # Frontend UIs (desktop, mobile, admin)
-src/fastapi_stub/  # lightweight stubs for tests
-src/pydantic_stub/ # lightweight stubs for tests
-tests/         # pytest suite
+┌─────────────────────────────────────────────────────────────────┐
+│                        Frontend Layer                           │
+├─────────────────┬─────────────────┬─────────────────────────────┤
+│   Web UI        │  Desktop UI     │     Streamlit UI            │
+│  (Next.js)      │   (Tauri)       │   (Modern Interface)        │
+│  Port: 9002     │  Native App     │   Port: 8501                │
+└─────────────────┴─────────────────┴─────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────────┐
+│                     FastAPI Backend                             │
+│                      Port: 8000                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  • REST API (106+ endpoints)    • Plugin System (24+ plugins)  │
+│  • Authentication & RBAC        • Extension System             │
+│  • Multi-tenant Support         • Health Monitoring            │
+│  • Prometheus Metrics           • Event Bus                    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────────┐
+│                    Database Layer                               │
+├─────────────┬─────────────┬─────────────┬─────────────┬─────────┤
+│ PostgreSQL  │   Redis     │   Milvus    │ Elasticsearch│ DuckDB  │
+│ Port: 5432  │ Port: 6379  │Port: 19530  │ Port: 9200   │ Local   │
+│ (Metadata)  │ (Cache)     │ (Vectors)   │ (Search)     │(Analytics)│
+└─────────────┴─────────────┴─────────────┴─────────────┴─────────┘
+```
 
-> **Note**
-> These stub modules exist solely for the test suite. Ensure any old
-> `fastapi/` or `pydantic/` directories are removed so the real packages
-> are used when running `uvicorn`.
+### Key Architectural Principles
+
+1. **Modular Design** - Loosely coupled components with clear interfaces
+2. **Horizontal Scalability** - Database services can be scaled independently
+3. **Plugin Architecture** - Hot-reloadable plugins with manifest-based configuration
+4. **Multi-UI Support** - Different interfaces for different use cases
+5. **Production Ready** - Comprehensive monitoring, logging, and health checks
 
 ---
 
-## 3 · Repository Layout
+## Quick Start
 
-```text
-core/          # dispatcher, embeddings, capsule planner
-ai_karen_engine/event_bus/     # Redis Streams or in-memory bus
-guardrails/    # YAML validators & rule engine
-capsules/      # domain-specific agents (DevOps, Finance, …)
-src/integrations/  # NANDA client, RPA helpers, external bridges
- src/ai_karen_engine/plugins/       # drop-in plugins (manifest + handler + ui)
-ui_launchers/desktop_ui/ # Tauri Control Room (Rust + React)
-ui_launchers/streamlit_ui/config/config_ui.py # Streamlit UI settings (ConfigUI class)
-ui_launchers/streamlit_ui/config/env.py      # environment defaults for the Streamlit UI
-ui_launchers/streamlit_ui/config/routing.py  # page routing map for Streamlit
-src/fastapi_stub/  # API entrypoints, chat & metrics
-src/pydantic_stub/ # DTOs & schemas
-tests/         # pytest suite
-docs/          # architecture docs (mesh_arch.md, …)
-```
-Each UI directory also contains a `README.md` with build notes and setup tips.
 ### Prerequisites
-* Docker and Docker Compose
-* Node.js 18+ with npm
-* Rust toolchain (`cargo`) for Tauri builds
-* Running instances of **Postgres** and **Elasticsearch** (Docker images are fine)
 
+* **Docker & Docker Compose** - For containerized services
+* **Python 3.10+** - For backend development
+* **Node.js 18+** - For frontend development
+* **Rust toolchain** - For Tauri desktop builds (optional)
 
----
-
-## 4 · Quick-Start
-For a detailed setup and troubleshooting guide, see [docs/install_dev.md](docs/install_dev.md).
-
+### 1. Clone and Setup
 
 ```bash
-# 1 · Install Python deps
-./scripts/install.sh  # runs `pip install -r requirements.txt` and `pip install -e .`
-# Download base models
+# Clone repository
+git clone <repository-url>
+cd AI-Karen
+
+# Install Python dependencies
+./scripts/install.sh
+
+# Download AI models (optional)
 python scripts/install_models.py
-
-# 2 · Install Tauri CLI for desktop builds
-cargo install tauri-cli
-
-# 3 · Install Control Room packages
-cd ui_launchers/desktop_ui && npm install
-
-# The Tauri configuration lives in `ui_launchers/desktop_ui/src-tauri/tauri.config.json`.
-# Make sure this file exists before running desktop commands.
-
-# 4 · Launch backend API + dependencies (ensure Postgres & Elasticsearch are running)
-./scripts/start.sh
-
-# 4.1 · Initialize databases
-docker compose exec postgres \
-  psql -U $POSTGRES_USER -d $POSTGRES_DB \
-  -f data/migrations/postgres/001_create_tables.sql
-curl -X PUT "http://localhost:9200/$ELASTIC_INDEX"
-
-# 5 · Run desktop Control Room (dev mode)
-cd ui_launchers/desktop_ui && tauri dev  # uses src-tauri/tauri.config.json
 ```
 
-> **Note** The API server and Control Room require the packages under `src/` to be installed. The `install.sh` script runs `pip install -e .` for you.
-
-# Optional: run everything with one command
-./scripts/bootstrap_ui.sh
-
-**Full stack (API + Milvus + Redis + Postgres + Elasticsearch + Prometheus):**
+### 2. Start Infrastructure Services
 
 ```bash
-# after use
-./scripts/stop.sh
+# Start all database services
+docker compose up -d postgres redis elasticsearch milvus
+
+# Wait for services to be ready
+./scripts/health-check.sh
 ```
 
-Build signed desktop binaries:
-```bash
-cd ui_launchers/desktop_ui
-tauri build          # outputs .app / .exe / .AppImage using src-tauri/tauri.config.json
-
-```
-
-Run tests:
- 
+### 3. Initialize Databases
 
 ```bash
-pytest -q
+
+# Initialize PostgreSQL schema
+docker compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/001_create_tables.sql
+# Create memory_entries table
+docker compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/004_create_memory_entries_table.sql
+
+# Apply PostgreSQL migrations (creates all tables including `memory_entries`)
+./docker/database/scripts/migrate.sh --service postgres
+
+# Create Elasticsearch index
+curl -X PUT "http://localhost:9200/ai_karen_index"
 ```
 
-## 🔧 Local Dev Setup
-
-### 1. Install Prerequisites
+### 4. Start Backend API
 
 ```bash
-brew install rustup
-rustup-init
-source $HOME/.cargo/env
-npm install -g pnpm
-cargo install tauri-cli
+# Start FastAPI server
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Verify API is running
+curl http://localhost:8000/health
 ```
 
-Before launching any Python entrypoints, make sure the packages under `src/`
-are on your `PYTHONPATH`. The easiest way is to install the repo in editable
-mode:
+### 5. Start Frontend (Choose One)
 
+#### Web UI (Next.js)
 ```bash
-pip install -e .
+cd ui_launchers/web_ui
+npm install
+npm run dev
+# Access at http://localhost:9002
 ```
 
-Alternatively, set `PYTHONPATH=src` in your environment.
-
-Ensure a running Redis instance is accessible. Set the connection string using `REDIS_URL` (for example `redis://localhost:6379/0`). The memory manager will disable Redis features if the connection fails.
-
-### 2. Start FastAPI
-
-Make sure the project has been installed in editable mode (`pip install -e .` or
-`./scripts/install.sh`) before launching the server.
-
-```bash
-uvicorn main:app --reload
-```
-
-You can also manage the API server via a small CLI:
-
-```bash
-python scripts/server_cli.py start --reload  # start
-python scripts/server_cli.py stop            # stop if running
-```
-
-### 2.1 Self-test the install
-
-Run a quick self-test to ensure the configuration loads and all plugins are
-valid:
-
-```bash
-python cli.py --self-test
-```
-
-If you encounter `ImportError: cannot import name 'FastAPI'`, check for a
-directory named `fastapi` in the project root. It will shadow the installed
-package. The server now exits with an error if such a folder exists.
-
-### 3. Start Frontend (optional)
-
+#### Desktop UI (Tauri)
 ```bash
 cd ui_launchers/desktop_ui
-pnpm install
-pnpm run dev
+npm install
+npm run tauri dev
+# Native desktop application launches
 ```
 
-### 4. Start Tauri Desktop App
-
-```bash
-cd ui_launchers/desktop_ui
-pnpm install
-npx tauri dev
-```
-
-📦 Ensure `tauri.config.json` is under `ui_launchers/desktop_ui/src-tauri/`
-
-### 5. Start Premium Streamlit UI
-
+#### Streamlit UI
 ```bash
 cd ui_launchers/streamlit_ui
+pip install -r requirements.txt
 streamlit run app.py
+# Access at http://localhost:8501
 ```
 
-🎨 **New Premium Features:**
-- Modern interface with role-based navigation
-- Executive dashboard with real-time analytics
-- Advanced theming system (Executive, Developer Dark, Minimal, Premium Gold)
-- Interactive charts and KPI widgets
-- Professional styling with smooth animations
-
-### API Usage
-
-Kari's FastAPI backend exposes a small set of endpoints for headless deployments.
-See [docs/api_usage.md](docs/api_usage.md) for the full list and example `curl`
-commands.
-
-Common service endpoints:
-
-- `GET /health` – quick liveness check used by the Docker healthcheck
-- `GET /metrics/prometheus` – Prometheus scrape endpoint
-
----
-
-## 5 · Development Cheatsheet
-
- 
-# Launch Control Room
-cd ui_launchers/desktop_ui && tauri dev  # hot reloads the desktop shell using src-tauri/tauri.config.json
-
-| Task               | Command                                |
-| ------------------ | -------------------------------------- |
-| Format             | `black .`                              |
-| Type-check         | `mypy .`                               |
-| Lint               | `ruff .`                               |
-| Tests              | `pytest`                               |
-| Hot-reload plugins | just save the folder—Kari auto-detects |
-
-Pre-commit hooks run these checks automatically. After cloning run:
+### 6. Verify Installation
 
 ```bash
-pre-commit install
+# Run system health check
+python cli.py --self-test
+
+# Run test suite
+pytest -v
+
+# Check all services
+curl http://localhost:8000/api/health/summary
 ```
-Ruff also enforces the UI boundaries described in `AGENTS.md`:
 
-* relative imports are forbidden inside `ui_launchers/`
-* modules under `src/ui_logic/` may not import from the top-level `ui_launchers` package
+### Running Demo Scripts
 
-See `pyproject.toml` for the full configuration.
-### Advanced / Unrestricted Mode
+Run the example demos with the project source on your `PYTHONPATH`:
 
-Set `ADVANCED_MODE=true` to enable full SelfRefactor logs and allow plugin UIs marked as untrusted. Use with caution.
-
- 
+```bash
+PYTHONPATH=src python demo_plugin_system.py
+PYTHONPATH=src python demo_tool_system.py
+PYTHONPATH=src python demo_analytics_dashboard.py
+```
 
 ---
 
-## 6 · Writing a Plugin
+## Development Setup
 
-1. `mkdir src/ai_karen_engine/plugins/my_plugin`
-2. Add **manifest.json**
+### Local Development Environment
 
+```bash
+# Install development dependencies
+pip install -e .
+pip install -r requirements.txt
+
+# Install pre-commit hooks
+pre-commit install
+
+# Set environment variables
+export POSTGRES_USER=karen_user
+export POSTGRES_PASSWORD=karen_secure_pass_change_me
+export POSTGRES_DB=ai_karen
+export POSTGRES_HOST=postgres  # use 'postgres' when running via Docker
+export POSTGRES_PORT=5432
+export REDIS_URL=redis://localhost:6379/0
+export ELASTICSEARCH_URL=http://localhost:9200
+export MILVUS_HOST=localhost
+export MILVUS_PORT=19530
+```
+
+### Development Commands
+
+| Task | Command |
+|------|---------|
+| Format code | `black .` |
+| Type checking | `mypy .` |
+| Linting | `ruff check .` |
+| Run tests | `pytest` |
+| Start API | `uvicorn main:app --reload` |
+| Build web UI | `cd ui_launchers/web_ui && npm run build` |
+| Build desktop | `cd ui_launchers/desktop_ui && npm run tauri build` |
+
+### Demo Scripts
+
+When running the example demo scripts directly from the repository, set
+`PYTHONPATH=src` so the `ai_karen_engine` package can be imported without
+modifying `sys.path` inside the scripts:
+
+```bash
+PYTHONPATH=src python demo_plugin_system.py
+```
+
+### Plugin Development
+
+Create a new plugin in `src/ai_karen_engine/plugins/`:
+
+```bash
+mkdir src/ai_karen_engine/plugins/my_plugin
+```
+
+**plugin_manifest.json:**
 ```json
 {
   "name": "my_plugin",
-  "version": "0.1.0",
-  "description": "Says hello",
-  "author": "Your Name",
-  "plugin_api_version": "1.0.0",
+  "description": "My custom plugin",
+  "plugin_api_version": "0.1.0",
   "required_roles": ["user"],
-  "intent": "my_intent",
-  "module": "ai_karen_engine.plugins.my_plugin.handler"
+  "intent": ["my_intent"]
 }
 ```
 
-3. Add **handler.py**
-
+**handler.py:**
 ```python
 def run(message, context):
-    return "Hello from my_plugin!"
+    return {
+        "intent": "my_intent",
+        "confidence": 1.0,
+        "response": f"Hello from my_plugin! Message: {message}"
+    }
 ```
 
-4. (Optional) **prompt.txt** for extra context or **ui.py** to extend the Control Room.
-
-Drop the folder—Kari discovers it, registers routes, and injects UI automatically.
+Plugins are automatically discovered and hot-reloaded.
 
 ---
 
-## 7 · Control Room
- 
+## Production Deployment
 
-* **Dashboard** – CPU/RAM, capsule health, error feed
-* **LLM Manager** – download / switch local models via `/models` endpoints
-* **Plugins** – enable, disable, edit manifests live
-* **Memory Matrix** – inspect vector hits & decay curves
-* **Logs & Trace** – Prometheus charts, OT spans, SRE patch history
+### Docker Compose (Recommended)
 
-Updates are typically released once a month. See `ui_launchers/desktop_ui/README.md` for the latest cycle notes.
+```bash
+# Production deployment
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-Runs as a native Tauri app; all traffic stays on `localhost`.
+# With custom environment
+cp .env.example .env
+# Edit .env with production values
+docker compose --env-file .env up -d
+```
 
-For a high-level overview of the planned user interface, see the [UI Blueprint](docs/ui_blueprint.md) which outlines conversational features, plugin management screens and memory visualization tools.
+### Kubernetes Deployment
 
- 
-Run the API with `uvicorn main:app` and start the Tauri Control Room for a
-full-featured desktop experience.
+```bash
+# Using Helm chart
+helm install ai-karen ./charts/kari/ \
+  --set image.tag=latest \
+  --set postgresql.enabled=true \
+  --set redis.enabled=true
+```
 
----
- 
+### Environment Variables
 
-## 8 · Deployment Modes
-
-| Mode             | Stack                                                        | Notes                         |
-| ---------------- | ------------------------------------------------------------ | ----------------------------- |
-| **Local**        | `docker-compose.yml` (FastAPI + Milvus + Redis + Prometheus) | single-host dev or small team |
-| **Desktop-only** | Tauri binary spawns embedded FastAPI                         | offline / air-gapped          |
-| **Kubernetes**   | Helm chart `charts/kari/`                                    | GKE, EKS, on-prem             |
-
- 
- 
-* Local: `docker-compose.yml` (FastAPI, Milvus, Redis, Prometheus)
-* Cloud: Helm chart for K8s + GKE/EKS
-
----
- 
-
-## 9 · Roadmap & Docs
-
-Detailed architecture diagrams, sprint plans, and Hydra-Ops capsule spec are in **`DEV_SHEET.md`** and **`docs/mesh_arch.md`**.
-
-Additional guides:
-
-- [API Usage](docs/api_usage.md)
-- [Feature Guide](docs/features_usage.md)
- 
-- [Chat Interface](docs/chat_interface.md)
-
-
-- [Automation Features](docs/automation_features.md)
-- [SelfRefactor Engine](docs/self_refactor.md)
-- [n8n Integration](docs/n8n_integration.md)
-- [OpenAI Customer Service](docs/openai_customer_service.md)
-
-- [Plugin Specification](docs/plugin_spec.md)
-- [Memory Architecture](docs/memory_arch.md)
-- [Architecture Overview](docs/architecture.md)
-- [OpenAI vs Kari](docs/side_by_side_openai_kari.md)
-
-- [LLM Guide](docs/llm_guide.md)
-- [Event Bus](docs/event_bus.md)
-- [Observability](docs/observability.md)
-- [Development Guide](docs/development_guide.md)
- 
-- [ICE Wrapper](docs/ice_wrapper.md)
- 
-- [Security Practices](docs/security.md)
-- [API Reference](docs/api_reference.md)
-- [Test Strategy](docs/tests.md)
-- [Contributing Guide](docs/contributing.md)
-
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `POSTGRES_USER` | PostgreSQL user | `karen_user` |
+| `POSTGRES_PASSWORD` | PostgreSQL password | `karen_secure_pass_change_me` |
+| `POSTGRES_DB` | PostgreSQL database | `ai_karen` |
+| `POSTGRES_HOST` | PostgreSQL host | `postgres` |
+| `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
+| `ELASTICSEARCH_URL` | Elasticsearch URL | `http://localhost:9200` |
+| `MILVUS_HOST` | Milvus host | `localhost` |
+| `MILVUS_PORT` | Milvus port | `19530` |
+| `JWT_SECRET_KEY` | JWT signing key | `your-secret-key` |
+| `ENABLE_SELF_REFACTOR` | Enable self-refactoring | `false` |
+| `LOG_LEVEL` | Logging level | `INFO` |
+| `KARI_CORS_ORIGINS` | Comma-separated list of allowed CORS origins | `*` |
+| `KARI_ECO_MODE` | Skip heavy NLP model loading | `false` |
+| `KARI_MEMORY_SURPRISE_THRESHOLD` | Novelty threshold for storing memory | `0.85` |
+| `KARI_DISABLE_MEMORY_SURPRISE_FILTER` | Disable surprise filtering to store all memories | `false` |
 
 ---
 
-## 10 · License
+## API Reference
 
- 
-This project contains the production-ready Kari AI stack. It includes:
+### Core Endpoints
 
-- A simple intent engine and plugin router.
-- Example plugins (hello world, desktop agent, TUI fallback, hf_llm, openai_llm).
-- Vector-based memory with embeddings and an in-memory Milvus client.
-- Soft reasoning engine with TTL pruning, recency-weighted queries and async support.
-- FastAPI service exposing chat, memory store, metadata-aware search, metrics,
-  plugin management and health checks.
-- Tauri Control Room for chat, dashboard and memory matrix.
-- **Premium Streamlit UI** with executive dashboard, advanced analytics, and modern interface.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | System health check |
+| `GET` | `/ready` | Readiness probe |
+| `GET` | `/metrics` | Application metrics |
+| `GET` | `/metrics/prometheus` | Prometheus metrics |
+| `POST` | `/chat` | Chat completion |
+| `POST` | `/store` | Store memory |
+| `POST` | `/search` | Search memories |
+| `GET` | `/plugins` | List plugins |
+| `GET` | `/models` | List AI models |
 
-Released under a dual license: the Mozilla Public License 2.0 with an optional commercial license. See `LICENSE-commercial.txt` for commercial terms.
- 
+The memory query endpoint (`/api/memory/query`) returns at most **100 results** by default.
+You can override this cap by providing the `result_limit` parameter in your request.
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+### Tenant Header
 
- 
+Most API endpoints are tenant-aware. Include an `X-Tenant-ID` header with your
+tenant name in requests that are not listed under the public paths. For local
+testing you can use `default`:
 
- 
+```bash
+curl -H "X-Tenant-ID: default" \
+     -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "hello"}' http://localhost:8000/chat
+```
+
+### Authentication
+
+```bash
+# Login
+curl -X POST http://localhost:8000/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "user", "password": "pass"}'
+
+# Use token
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8000/chat
+```
+
+### Plugin Management
+
+```bash
+# List plugins
+curl http://localhost:8000/plugins
+
+# Enable plugin
+curl -X POST http://localhost:8000/plugins/my_plugin/enable
+
+# Reload plugins
+curl -X POST http://localhost:8000/plugins/reload
+```
 
 ---
- 
 
-### AI-Karen in One Glance
+## Monitoring & Observability
 
- 
-See `DEV_SHEET.md` for the complete development specification.
-The Hydra-Ops capsule design is further detailed in `docs/mesh_arch.md`.
- 
+### Health Checks
 
-* Intent router, plugin ecosystem, self-patching SRE
-* Vector memory with surprise & recency fusion
-* FastAPI backend + Tauri Control Room
-* Example plugins: hello-world, desktop agent, HF LLM, OpenAI LLM
-* Tests: `pytest -q`
-* More in `DEV_SHEET.md` — happy hacking!
-* See `ui_launchers/desktop_ui/README.md` for Control Room navigation tips.
- 
+```bash
+# System health
+curl http://localhost:8000/health
+
+# Detailed health summary
+curl http://localhost:8000/api/health/summary
+
+# Service-specific health
+curl http://localhost:8000/api/services/postgres/health
+```
+
+### Metrics
+
+The system exposes Prometheus metrics at `/metrics/prometheus`:
+
+* HTTP request metrics
+* Database connection metrics
+* Plugin execution metrics
+* Memory usage metrics
+* AI model performance metrics
+
+### Logging
+
+Structured logging with configurable levels. The server runs at `INFO` level by
+default and prints `Greetings, the logs are ready for review` once startup
+completes.
+
+```bash
+# Increase verbosity if needed
+export LOG_LEVEL=DEBUG
+
+# View logs
+docker compose logs -f api
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### Database Connection Issues
+
+**Problem**: `Connection refused` errors for databases
+
+**Solution**:
+```bash
+# Check service status
+docker compose ps
+
+# Restart services
+docker compose restart postgres redis
+
+# Check logs
+docker compose logs postgres
+```
+
+#### Plugin Loading Failures
+
+**Problem**: Plugins not loading or executing
+
+**Solution**:
+```bash
+# Validate plugin manifest
+python -c "import json; print(json.load(open('src/ai_karen_engine/plugins/my_plugin/plugin_manifest.json')))"
+
+# Reload plugins
+curl -X POST http://localhost:8000/plugins/reload
+
+# Check plugin logs
+docker compose logs api | grep plugin
+```
+
+#### Memory Issues
+
+**Problem**: High memory usage or OOM errors
+
+**Solution**:
+```bash
+# Check memory usage
+docker stats
+
+# Adjust memory limits in docker-compose.yml
+# Restart with memory limits
+docker compose up -d --force-recreate
+```
+
+#### Frontend Build Issues
+
+**Problem**: UI build failures
+
+**Solution**:
+```bash
+# Clear node modules
+cd ui_launchers/web_ui
+rm -rf node_modules package-lock.json
+npm install
+
+# Check Node.js version
+node --version  # Should be 18+
+```
+
+### Performance Optimization
+
+1. **Database Tuning**:
+   - Adjust PostgreSQL `shared_buffers` and `work_mem`
+   - Configure Redis `maxmemory` policy
+   - Optimize Elasticsearch heap size
+
+2. **API Performance**:
+   - Enable FastAPI response caching
+   - Configure connection pooling
+   - Use async endpoints where possible
+
+3. **Frontend Optimization**:
+   - Enable Next.js production build optimizations
+   - Configure CDN for static assets
+   - Implement proper caching headers
+
+### Getting Help
+
+1. **Check Documentation**: Review component-specific README files
+2. **System Analysis**: Run `python scripts/doc_analysis.py` for system overview
+3. **Health Checks**: Use `/api/health/summary` endpoint
+4. **Logs**: Check application and service logs
+5. **Community**: Submit issues with system analysis output
+
+---
+
+## Contributing
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with tests
+4. Run the full test suite
+5. Submit a pull request
+
+### Code Standards
+
+* **Python**: Black formatting, type hints, docstrings
+* **JavaScript/TypeScript**: ESLint, Prettier formatting
+* **Rust**: Standard rustfmt formatting
+* **Documentation**: Update README files for any architectural changes
+
+### Testing
+
+Install project dependencies before running tests:
+
+```bash
+pip install -r requirements.txt
+```
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test categories
+pytest tests/services/
+pytest tests/ui/
+
+# Run with coverage
+pytest --cov=src/ai_karen_engine
+```
+
+---
+
+## License
+
+This project is dual-licensed:
+- **Mozilla Public License 2.0** for open source use
+- **Commercial License** for enterprise deployments
+
+See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt) for details.
+
+---
+
+## Documentation
+
+### Component Documentation
+- [Web UI Documentation](ui_launchers/web_ui/README.md) - Next.js web interface
+- [Desktop UI Documentation](ui_launchers/desktop_ui/README.md) - Tauri desktop application  
+- [Streamlit UI Documentation](ui_launchers/streamlit_ui/README.md) - Modern Streamlit interface
+- [Database Documentation](docker/database/README.md) - Multi-database setup
+- [Plugin Documentation](plugin_marketplace/README.md) - Plugin development guide
+- [Extension Documentation](extensions/README.md) - Extension system overview
+
+### Architecture Guides
+- [API Reference](docs/api_reference.md) - Complete API documentation
+- [Architecture Overview](docs/architecture.md) - System architecture details
+- [Development Guide](docs/development_guide.md) - Development best practices
+- [Security Framework](docs/security.md) - Security implementation
+- [Memory Architecture](docs/memory_arch.md) - Memory system design
+- [Plugin Specification](docs/plugin_spec.md) - Plugin development specification
+
+### Operational Guides
+- [Deployment Guide](docs/deployment.md) - Production deployment
+- [Monitoring Guide](docs/observability.md) - Monitoring and observability
+- [Troubleshooting Guide](docs/troubleshooting.md) - Common issues and solutions
+
+---
+
+*AI-Karen: Production-ready AI platform for enterprise deployments*
