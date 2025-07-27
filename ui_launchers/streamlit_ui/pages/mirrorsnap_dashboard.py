@@ -12,7 +12,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import json
 
-from services.memory_service import memory_service
+from ai_karen_engine.services.memory_service import memory_service
 from services.llm_router import llm_router
 
 

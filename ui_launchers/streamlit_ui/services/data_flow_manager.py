@@ -14,7 +14,10 @@ import threading
 import queue
 import json
 
-from services.backend_integration import get_backend_service, run_async
+from ai_karen_engine.services.backend_integration import (
+    get_backend_service,
+    run_async,
+)
 
 logger = logging.getLogger(__name__)
 
