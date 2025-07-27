@@ -5,7 +5,7 @@ import os
 import secrets
 import hashlib
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 # Path to persistent user store
 USER_STORE_PATH = Path(__file__).resolve().parents[3] / "data" / "users.json"
@@ -39,10 +39,32 @@ def _init_default_admin() -> Dict[str, Dict[str, Any]]:
     }
 
 
+def _convert_legacy_users(data: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    converted: Dict[str, Dict[str, Any]] = {}
+    for entry in data:
+        username = entry.get("username") or entry.get("email")
+        if not username:
+            continue
+        converted[username] = {
+            "password": entry.get("password_hash") or entry.get("password", ""),
+            "roles": entry.get("roles") or [entry.get("role", "user")],
+            "tenant_id": entry.get("tenant_id", "default"),
+            "preferences": entry.get("preferences", {}),
+        }
+    return converted
+
+
 def load_users() -> Dict[str, Dict[str, Any]]:
     if USER_STORE_PATH.exists():
         try:
-            return json.loads(USER_STORE_PATH.read_text())
+            data = json.loads(USER_STORE_PATH.read_text())
+            if isinstance(data, list):
+                users = _convert_legacy_users(data)
+                if users:
+                    USER_STORE_PATH.write_text(json.dumps(users, indent=2))
+                    return users
+            elif isinstance(data, dict):
+                return data
         except Exception:
             pass
     users = _init_default_admin()
@@ -56,6 +78,25 @@ _USERS: Dict[str, Dict[str, Any]] = load_users()
 
 def save_users() -> None:
     USER_STORE_PATH.write_text(json.dumps(_USERS, indent=2))
+
+def create_user(
+    username: str,
+    password: str,
+    roles: Optional[List[str]] = None,
+    *,
+    tenant_id: str = "default",
+    preferences: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Create a new user in the persistent store."""
+    if username in _USERS:
+        raise KeyError("User already exists")
+    _USERS[username] = {
+        "password": _hash_password(password),
+        "roles": roles or ["user"],
+        "tenant_id": tenant_id,
+        "preferences": preferences or {},
+    }
+    save_users()
 
 
 def authenticate(username: str, password: str) -> Optional[Dict[str, Any]]:
@@ -85,4 +126,10 @@ def update_credentials(
     return username
 
 
-__all__ = ["authenticate", "update_credentials", "_USERS"]
+__all__ = [
+    "authenticate",
+    "update_credentials",
+    "create_user",
+    "save_users",
+    "_USERS",
+]
