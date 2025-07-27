@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/auth'
+import { useAuth } from '@/contexts/AuthContext'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,14 +10,14 @@ export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuth()
   // In production, inputs should start empty to avoid leaking defaults
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    const ok = await login(username, password)
+    const ok = await login(email, password)
     if (ok) {
       router.push('/profile')
     } else {
@@ -33,7 +33,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" />
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" />
             <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" />
             {error && <p className="text-destructive text-sm">{error}</p>}
             <Button type="submit" className="w-full">Sign In</Button>

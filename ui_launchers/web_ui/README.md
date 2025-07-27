@@ -91,6 +91,11 @@ npm run dev
 
 The application will be available at `http://localhost:9002`
 
+Default demo users are provided for testing:
+
+* **Admin:** `admin@example.com` / `admin`
+* **User:** `user@example.com` / `user`
+
 ### Development Commands
 
 ```bash

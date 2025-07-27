@@ -141,6 +141,11 @@ npm run dev
 # Access at http://localhost:9002
 ```
 
+Default demo accounts are available:
+
+* **Admin:** `admin@example.com` / `admin`
+* **User:** `user@example.com` / `user`
+
 #### Desktop UI (Tauri)
 ```bash
 cd ui_launchers/desktop_ui
@@ -344,9 +349,9 @@ curl -H "X-Tenant-ID: default" \
 
 ```bash
 # Login with default admin credentials
-curl -X POST http://localhost:8000/login \
+curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin"}'
+  -d '{"email": "admin@example.com", "password": "admin"}'
 
 # Use token
 curl -H "Authorization: Bearer <token>" \
