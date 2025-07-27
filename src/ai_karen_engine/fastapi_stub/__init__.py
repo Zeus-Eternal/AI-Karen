@@ -14,13 +14,19 @@ class HTTPException(Exception):
 
 
 class _Route:
-    __slots__ = ("method", "pattern", "func")
+    __slots__ = ("method", "pattern", "func", "tags", "mount")
 
-    def __init__(self, method: str, path: str, func):
-        regex = re.sub(r"{(\w+)}", r"(?P<\1>[^/]+)", path)
+    def __init__(self, method: str, path: str, func, *, tags=None, mount=False):
         self.method = method
-        self.pattern = re.compile(f"^{regex}$")
         self.func = func
+        self.tags = tags or []
+        self.mount = mount
+        if mount:
+            prefix = path.rstrip("/")
+            self.pattern = re.compile(f"^{re.escape(prefix)}(?P<sub>/.*)?$")
+        else:
+            regex = re.sub(r"{(\w+)}", r"(?P<\1>[^/]+)", path)
+            self.pattern = re.compile(f"^{regex}$")
 
 class FastAPI:
     def __init__(self, *_, **__):
@@ -38,12 +44,18 @@ class FastAPI:
             return func
         return decorator
 
-    async def _handle_request(self, method, path, json=None):
+    async def _handle_request(self, method, path, json=None, headers=None):
         query = {}
         if "?" in path:
             path, qs = path.split("?", 1)
             query = {k: v[0] for k, v in parse_qs(qs).items()}
         for route in self.routes:
+            if route.mount:
+                m = route.pattern.match(path)
+                if not m:
+                    continue
+                sub = m.group("sub") or "/"
+                return await route.func(method, sub, json)
             if route.method != method:
                 continue
             m = route.pattern.match(path)
@@ -53,13 +65,16 @@ class FastAPI:
             if json:
                 params.update(json)
             func = route.func
+            req_obj = Request()
+            req_obj.headers.update(headers or {})
+            resp_obj = Response()
             if asyncio.iscoroutinefunction(func):
                 try:
                     return await func(**params)
                 except TypeError:
                     arg = SimpleNamespace(**params)
                     try:
-                        return await func(arg)
+                        return await func(arg, req_obj, resp_obj)
                     except HTTPException as exc:
                         return Response({"detail": exc.detail}, exc.status_code)
                 except HTTPException as exc:
@@ -69,7 +84,7 @@ class FastAPI:
             except TypeError:
                 arg = SimpleNamespace(**params)
                 try:
-                    return func(arg)
+                    return func(arg, req_obj, resp_obj)
                 except HTTPException as exc:
                     return Response({"detail": exc.detail}, exc.status_code)
             except HTTPException as exc:
@@ -79,7 +94,12 @@ class FastAPI:
     async def __call__(self, *args, **kwargs):
         if len(args) == 3 and isinstance(args[0], dict):
             return await self._asgi(*args)  # type: ignore[arg-type]
-        return await self._handle_request(*args, **kwargs)
+        method, path, json, headers = args[0], args[1], None, None
+        if len(args) > 2:
+            json = args[2]
+        if len(args) > 3:
+            headers = args[3]
+        return await self._handle_request(method, path, json, headers)
 
     async def _asgi(self, scope, receive, send):
         assert scope["type"] == "http"
@@ -103,14 +123,30 @@ class FastAPI:
         await send({"type": "http.response.body", "body": content})
 
     def get(self, path, **_kw):
+        tags = _kw.get("tags")
         def decorator(func):
-            self.routes.append(_Route("GET", path, func))
+            self.routes.append(_Route("GET", path, func, tags=tags))
             return func
         return decorator
 
     def post(self, path, **_kw):
+        tags = _kw.get("tags")
         def decorator(func):
-            self.routes.append(_Route("POST", path, func))
+            self.routes.append(_Route("POST", path, func, tags=tags))
+            return func
+        return decorator
+
+    def put(self, path, **_kw):
+        tags = _kw.get("tags")
+        def decorator(func):
+            self.routes.append(_Route("PUT", path, func, tags=tags))
+            return func
+        return decorator
+
+    def delete(self, path, **_kw):
+        tags = _kw.get("tags")
+        def decorator(func):
+            self.routes.append(_Route("DELETE", path, func, tags=tags))
             return func
         return decorator
 
@@ -128,25 +164,47 @@ class FastAPI:
 
     def include_router(self, router, prefix: str = ""):
         prefix = prefix or getattr(router, "prefix", "")
+        tags = getattr(router, "tags", [])
         for route in router.routes:
             route.pattern = re.compile(f"^{prefix}{route.pattern.pattern.lstrip('^')}")
+            route.tags = getattr(route, "tags", []) + tags
             self.routes.append(route)
+
+    def mount(self, path: str, app, name: str | None = None):
+        self.routes.append(_Route("MOUNT", path, app, mount=True))
 
 
 class APIRouter(FastAPI):
-    def __init__(self, prefix: str = ""):
+    def __init__(self, prefix: str = "", tags=None):
         super().__init__()
         self.prefix = prefix
+        self.tags = tags or []
 
     def get(self, path, **_kw):
+        tags = _kw.get("tags") or self.tags
         def decorator(func):
-            self.routes.append(_Route("GET", path, func))
+            self.routes.append(_Route("GET", path, func, tags=tags))
             return func
         return decorator
 
     def post(self, path, **_kw):
+        tags = _kw.get("tags") or self.tags
         def decorator(func):
-            self.routes.append(_Route("POST", path, func))
+            self.routes.append(_Route("POST", path, func, tags=tags))
+            return func
+        return decorator
+
+    def put(self, path, **_kw):
+        tags = _kw.get("tags") or self.tags
+        def decorator(func):
+            self.routes.append(_Route("PUT", path, func, tags=tags))
+            return func
+        return decorator
+
+    def delete(self, path, **_kw):
+        tags = _kw.get("tags") or self.tags
+        def decorator(func):
+            self.routes.append(_Route("DELETE", path, func, tags=tags))
             return func
         return decorator
 
@@ -157,6 +215,13 @@ class Response:
         self.headers = {"content-type": media_type or "application/json"}
         if headers:
             self.headers.update(headers)
+        self.cookies = {}
+
+    def set_cookie(self, key, value, **_kw):
+        self.cookies[key] = value
+
+    def delete_cookie(self, key):
+        self.cookies.pop(key, None)
 
     def json(self):
         if hasattr(self._data, "__dict__"):
@@ -191,7 +256,10 @@ class status:
 
 
 class Request:
-    pass
+    def __init__(self, client_host="test"):
+        self.client = SimpleNamespace(host=client_host)
+        self.headers = {}
+        self.cookies = {}
 
 class TestClient:
     def __init__(self, app):

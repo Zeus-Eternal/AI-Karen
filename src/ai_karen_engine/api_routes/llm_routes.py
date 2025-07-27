@@ -9,8 +9,17 @@ import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
+try:
+    from fastapi import APIRouter, HTTPException, Depends
+except Exception:  # pragma: no cover - stub fallback
+    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
+    def Depends(func):
+        return func
+
+try:
+    from pydantic import BaseModel, Field
+except Exception:
+    from ai_karen_engine.pydantic_stub import BaseModel, Field
 
 from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.core.config_manager import ConfigManager

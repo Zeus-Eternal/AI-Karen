@@ -13,15 +13,20 @@ class TestClient:
             else:
                 fn()
 
-    def post(self, path, json=None):
-        data = asyncio.run(self.app("POST", path, json))
+    def post(self, path, json=None, headers=None):
+        data = asyncio.run(self.app("POST", path, json, headers))
         if isinstance(data, Response):
             return data
-        return Response(data)
+        resp = Response(data)
+        resp.headers.update(headers or {})
+        return resp
 
-    def get(self, path):
-        data = asyncio.run(self.app("GET", path))
+    def get(self, path, headers=None):
+        data = asyncio.run(self.app("GET", path, None, headers))
         if isinstance(data, Response):
-            return data
-        return Response(data)
+            resp = data
+        else:
+            resp = Response(data)
+        resp.headers.update(headers or {})
+        return resp
 

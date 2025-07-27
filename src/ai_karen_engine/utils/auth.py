@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import time
+import uuid
 from typing import Any, Dict, List, Optional
 
 import jwt
@@ -38,6 +39,7 @@ def create_session(
         "iat": now,
         "device": _device_fingerprint(user_agent, ip),
         "tenant_id": tenant_id or "default",
+        "jti": uuid.uuid4().hex,
     }
     return jwt.encode(payload, AUTH_SIGNING_KEY, algorithm=JWT_ALGORITHM)
 

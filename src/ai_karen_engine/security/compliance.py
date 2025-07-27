@@ -11,12 +11,20 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Any, Tuple
+from types import SimpleNamespace
 import uuid
 
 try:
     import aioredis
-except ImportError:
-    aioredis = None
+except Exception:  # pragma: no cover - missing dependency
+    class _DummyRedis:
+        async def set(self, *_, **__):
+            pass
+
+        async def get(self, *_, **__):
+            return None
+
+    aioredis = SimpleNamespace(Redis=_DummyRedis, from_url=lambda *_a, **_k: _DummyRedis())
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 

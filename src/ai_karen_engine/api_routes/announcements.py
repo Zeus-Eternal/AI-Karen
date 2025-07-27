@@ -1,8 +1,15 @@
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter
-from pydantic import BaseModel
+try:
+    from fastapi import APIRouter
+except Exception:  # pragma: no cover
+    from ai_karen_engine.fastapi_stub import APIRouter
+
+try:
+    from pydantic import BaseModel
+except Exception:
+    from ai_karen_engine.pydantic_stub import BaseModel
 
 router = APIRouter()
 

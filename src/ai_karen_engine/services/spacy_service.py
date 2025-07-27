@@ -26,7 +26,7 @@ try:
     import spacy
     from spacy.cli import download
     SPACY_AVAILABLE = True
-except ImportError:
+except Exception:
     spacy = None
     download = None
     SPACY_AVAILABLE = False
