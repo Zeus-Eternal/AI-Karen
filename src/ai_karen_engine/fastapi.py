@@ -24,6 +24,11 @@ from ai_karen_engine.core.memory.manager import init_memory
 from ai_karen_engine.utils.auth import validate_session
 from ai_karen_engine.extensions import initialize_extension_manager
 from ai_karen_engine.plugins.router import get_plugin_router
+from ai_karen_engine.api_routes.auth import (
+    login as auth_login,
+    LoginRequest,
+    LoginResponse,
+)
 
 try:
     from fastapi import FastAPI, APIRouter, Request, Response, status
@@ -271,6 +276,12 @@ def auto_discover_routers(app):
                     logger.error(f"Failed to mount plugin {mod_name}: {e}")
 
 auto_discover_routers(app)
+
+# -- Legacy Login Endpoint for Backward Compatibility --
+@app.post("/login", response_model=LoginResponse, tags=["auth"])
+async def legacy_login(req: LoginRequest, request: Request, response: Response) -> LoginResponse:
+    """Alias to /api/auth/login for older clients."""
+    return await auth_login(req, request, response)
 
 # -- Trace ID + Logging Per Request --
 @app.middleware("http")
