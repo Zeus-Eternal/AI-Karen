@@ -1,6 +1,6 @@
 import { LoginCredentials, LoginResponse, User } from '@/types/auth';
 
-class AuthService {
+export class AuthService {
   private baseUrl: string;
 
   constructor() {
@@ -91,3 +91,20 @@ class AuthService {
 }
 
 export const authService = new AuthService();
+
+// Global instance used by hooks that rely on lazy initialization
+let authServiceInstance: AuthService | null = null;
+
+export function getAuthService(): AuthService {
+  if (!authServiceInstance) {
+    authServiceInstance = new AuthService();
+  }
+  return authServiceInstance;
+}
+
+export function initializeAuthService(): AuthService {
+  authServiceInstance = new AuthService();
+  return authServiceInstance;
+}
+
+export { AuthService };

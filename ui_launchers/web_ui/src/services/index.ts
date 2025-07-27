@@ -8,7 +8,7 @@ export { ChatService, getChatService, initializeChatService } from './chatServic
 export { MemoryService, getMemoryService, initializeMemoryService } from './memoryService';
 export { PluginService, getPluginService, initializePluginService } from './pluginService';
 export { ExtensionService, getExtensionService, initializeExtensionService } from './extensionService';
-export { AuthService, getAuthService } from './authService';
+export { AuthService, getAuthService, initializeAuthService } from './authService';
 
 // Export service types
 export type { ConversationSession, ProcessMessageOptions } from './chatService';

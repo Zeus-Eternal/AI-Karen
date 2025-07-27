@@ -17,7 +17,7 @@ export interface ExtensionEvent {
   risk: number
 }
 
-class ExtensionService {
+export class ExtensionService {
   private backend = getKarenBackend()
   private polling = false
 
