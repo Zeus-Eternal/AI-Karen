@@ -20,14 +20,17 @@ def test_imports():
     print("🔍 Testing imports...")
     
     try:
-        from services.backend_integration import get_backend_service
+        from ai_karen_engine.services.backend_integration import get_backend_service
         print("✅ Backend integration service imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import backend integration: {e}")
         return False
     
     try:
-        from services.data_flow_manager import get_data_flow_manager, get_streamlit_bridge
+        from ai_karen_engine.services.data_flow_manager import (
+            get_data_flow_manager,
+            get_streamlit_bridge,
+        )
         print("✅ Data flow manager imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import data flow manager: {e}")
@@ -52,7 +55,7 @@ def test_backend_service():
     print("\n🔧 Testing backend service...")
     
     try:
-        from services.backend_integration import get_backend_service
+        from ai_karen_engine.services.backend_integration import get_backend_service
         backend = get_backend_service()
         
         # Test service adapters
@@ -76,7 +79,10 @@ def test_data_flow_manager():
     print("\n🔄 Testing data flow manager...")
     
     try:
-        from services.data_flow_manager import get_data_flow_manager, get_streamlit_bridge
+        from ai_karen_engine.services.data_flow_manager import (
+            get_data_flow_manager,
+            get_streamlit_bridge,
+        )
         
         dfm = get_data_flow_manager()
         bridge = get_streamlit_bridge()
@@ -103,7 +109,7 @@ async def test_async_operations():
     print("\n⚡ Testing async operations...")
     
     try:
-        from services.backend_integration import get_backend_service
+        from ai_karen_engine.services.backend_integration import get_backend_service
         backend = get_backend_service()
         
         # Test memory stats (async operation)
@@ -147,7 +153,7 @@ def test_ui_logic_integration():
             backend_available = False
         
         # Test page service integration
-        from services.backend_integration import get_backend_service
+        from ai_karen_engine.services.backend_integration import get_backend_service
         backend = get_backend_service()
         
         pages = backend.pages.get_available_pages()

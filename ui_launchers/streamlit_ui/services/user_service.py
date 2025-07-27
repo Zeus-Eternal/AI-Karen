@@ -12,7 +12,7 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from enum import Enum
 import streamlit as st
-from services.memory_service import memory_service
+from ai_karen_engine.services.memory_service import memory_service
 
 
 class UserRole(Enum):
@@ -152,7 +152,7 @@ class RBACService:
                 "auto_refresh": True,
             },
             session_data={},
-            password_hash=self._hash_password("admin123"),
+            password_hash=self._hash_password("admin"),
             api_key=self._generate_api_key(),
         )
 
@@ -174,7 +174,7 @@ class RBACService:
                 "auto_refresh": False,
             },
             session_data={},
-            password_hash=self._hash_password("user123"),
+            password_hash=self._hash_password("user"),
             api_key=self._generate_api_key(),
         )
 

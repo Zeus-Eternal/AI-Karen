@@ -12,7 +12,7 @@ import plotly.express as px
 import pandas as pd
 
 from services.chat_service import chat_service
-from services.memory_service import memory_service
+from ai_karen_engine.services.memory_service import memory_service
 from services.llm_router import llm_router
 
 

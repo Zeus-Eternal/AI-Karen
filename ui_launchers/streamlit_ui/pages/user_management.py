@@ -10,7 +10,12 @@ from typing import Dict, Any, List
 import plotly.express as px
 import plotly.graph_objects as go
 
-from services.user_service import rbac_service, User, UserRole, Permission
+from ai_karen_engine.services.user_service import (
+    rbac_service,
+    User,
+    UserRole,
+    Permission,
+)
 
 
 def render_user_management_page(user_ctx=None):
@@ -111,11 +116,11 @@ def render_login_interface():
         st.info("""
         **Admin User:**
         - Username: `admin`
-        - Password: `admin123`
+        - Password: `admin`
         
         **Regular User:**
         - Username: `user`
-        - Password: `user123`
+        - Password: `user`
         """)
 
 

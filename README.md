@@ -180,6 +180,16 @@ PYTHONPATH=src python demo_tool_system.py
 PYTHONPATH=src python demo_analytics_dashboard.py
 ```
 
+### Default Demo Credentials
+
+Use these accounts for testing the web or Streamlit UI:
+
+```
+Admin: admin@example.com / admin
+User:  user@example.com / user
+```
+Change these demo passwords after your first login.
+
 ---
 
 ## Development Setup
@@ -344,9 +354,9 @@ curl -H "X-Tenant-ID: default" \
 
 ```bash
 # Login with default admin credentials
-curl -X POST http://localhost:8000/login \
+curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin"}'
+  -d '{"email": "admin@example.com", "password": "admin"}'
 
 # Use token
 curl -H "Authorization: Bearer <token>" \

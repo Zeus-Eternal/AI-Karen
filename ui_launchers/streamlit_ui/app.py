@@ -42,7 +42,7 @@ from pages.monitoring import render_monitoring_page
 from pages.profile import render_profile_page
 
 # Import backend integration
-from services.backend_integration import get_backend_service
+from ai_karen_engine.services.backend_integration import get_backend_service
 
 # Import existing pages with backend integration
 try:
@@ -175,7 +175,9 @@ def create_enhanced_pages():
 
         # Add integration test page for debugging
         try:
-            from services.integration_test import render_integration_test_page
+            from ai_karen_engine.services.integration_test import (
+                render_integration_test_page,
+            )
 
             pages["Integration Tests"] = {
                 "func": render_integration_test_page,
@@ -274,7 +276,7 @@ def main():
     # Initialize backend integration
     if BACKEND_AVAILABLE:
         try:
-            from services.data_flow_manager import (
+            from ai_karen_engine.services.data_flow_manager import (
                 get_data_flow_manager,
                 get_streamlit_bridge,
             )
@@ -455,7 +457,9 @@ def render_debug_panel():
         # Data flow status
         if BACKEND_AVAILABLE and st.session_state.get("backend_integrated"):
             try:
-                from services.data_flow_manager import render_data_flow_status
+                from ai_karen_engine.services.data_flow_manager import (
+                    render_data_flow_status,
+                )
 
                 render_data_flow_status()
             except ImportError:
