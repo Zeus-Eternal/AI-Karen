@@ -9,7 +9,8 @@ import NotificationSettings from "./NotificationSettings";
 import PrivacySettings from "./PrivacySettings";
 import VoiceSettings from "./VoiceSettings";
 import PersonaSettings from "./PersonaSettings";
-import { Cog, KeyRound, BookText, Bell, Shield, Speaker, UserCog } from "lucide-react";
+import LLMSettings from "./LLMSettings";
+import { Cog, KeyRound, BookText, Bell, Shield, Speaker, UserCog, Brain } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 /**
@@ -30,6 +31,9 @@ export default function SettingsDialog() {
       <Separator />
       <Tabs defaultValue="api-key" className="w-full">
         <TabsList className="flex flex-wrap w-full justify-start shrink-0">
+          <TabsTrigger value="llm">
+            <Brain className="mr-1 sm:mr-2 h-4 w-4" /> LLM
+          </TabsTrigger>
           <TabsTrigger value="api-key">
             <KeyRound className="mr-1 sm:mr-2 h-4 w-4" /> API Key
           </TabsTrigger>
@@ -55,6 +59,9 @@ export default function SettingsDialog() {
 
         {/* This div ensures padding and allows content to grow within the main scrollable area */}
         <div className="mt-4"> 
+          <TabsContent value="llm">
+            <LLMSettings />
+          </TabsContent>
           <TabsContent value="api-key">
             <ApiKeyManager />
           </TabsContent>

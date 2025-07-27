@@ -756,6 +756,18 @@ class KarenBackendService {
       keys: Array.from(this.cache.keys()),
     };
   }
+
+  // Public makeRequest method for external use
+  async makeRequestPublic<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    useCache: boolean = false,
+    cacheTtl: number = webUIConfig.cacheTtl,
+    maxRetries: number = webUIConfig.maxRetries,
+    retryDelay: number = webUIConfig.retryDelay
+  ): Promise<T> {
+    return this.makeRequest<T>(endpoint, options, useCache, cacheTtl, maxRetries, retryDelay);
+  }
 }
 
 // Global instance

@@ -393,6 +393,12 @@ async def auth_middleware(request: Request, call_next):
         "/openapi.json",
         "/api/auth/login",
         "/api/auth/token",
+        "/api/llm/providers",
+        "/api/llm/profiles",
+        "/api/llm/settings",
+        "/api/llm/health-check",
+        "/api/llm/available",
+        "/api/llm/auto-select",
     }
 
     if request.url.path in public_paths:

@@ -506,6 +506,10 @@ class MultiTenantPostgresClient:
         """Get synchronous database session."""
         return self._sync_session_factory()
     
+    def _get_session(self):
+        """Get synchronous database session (compatibility method)."""
+        return self.get_sync_session()
+    
     @asynccontextmanager
     async def get_async_session(self):
         """Get asynchronous database session context manager."""
@@ -564,24 +568,46 @@ class MultiTenantPostgresClient:
                         'conversations': '''
                             CREATE TABLE IF NOT EXISTS {schema}.conversations (
                                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                                tenant_id UUID NOT NULL,
-                                user_id UUID,
+                                user_id UUID NOT NULL,
                                 title VARCHAR(255),
+                                messages JSONB DEFAULT '[]'::jsonb,
+                                conversation_metadata JSONB DEFAULT '{{}}'::jsonb,
+                                is_active BOOLEAN DEFAULT true,
                                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                                metadata JSONB DEFAULT '{{}}'::jsonb
+                                session_id VARCHAR(255),
+                                ui_context JSONB DEFAULT '{{}}'::jsonb,
+                                ai_insights JSONB DEFAULT '{{}}'::jsonb,
+                                user_settings JSONB DEFAULT '{{}}'::jsonb,
+                                summary TEXT,
+                                tags TEXT[],
+                                last_ai_response_id VARCHAR(255)
                             )
                         ''',
                         'memory_entries': '''
                             CREATE TABLE IF NOT EXISTS {schema}.memory_entries (
                                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                                tenant_id UUID NOT NULL,
-                                user_id UUID,
+                                vector_id VARCHAR(255) NOT NULL,
+                                user_id UUID NOT NULL,
+                                session_id VARCHAR(255),
                                 content TEXT NOT NULL,
-                                embedding_vector FLOAT8[],
-                                metadata JSONB DEFAULT '{{}}'::jsonb,
+                                query TEXT,
+                                result JSONB,
+                                embedding_id VARCHAR(255),
+                                memory_metadata JSONB DEFAULT '{{}}'::jsonb,
+                                ttl TIMESTAMP WITH TIME ZONE,
+                                timestamp INTEGER DEFAULT 0,
                                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                ui_source VARCHAR(50),
+                                conversation_id UUID,
+                                memory_type VARCHAR(50) DEFAULT 'general',
+                                tags TEXT[],
+                                importance_score INTEGER DEFAULT 5,
+                                access_count INTEGER DEFAULT 0,
+                                last_accessed TIMESTAMP WITH TIME ZONE,
+                                ai_generated BOOLEAN DEFAULT false,
+                                user_confirmed BOOLEAN DEFAULT true
                             )
                         ''',
                         'plugin_executions': '''

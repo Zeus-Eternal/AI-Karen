@@ -19,6 +19,8 @@ import { MessageBubble } from './MessageBubble';
 import { useToast } from "@/hooks/use-toast";
 import { KAREN_SETTINGS_LS_KEY, DEFAULT_KAREN_SETTINGS, KAREN_SUGGESTED_FACTS_LS_KEY } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
+import { getChatService } from '@/services/chatService';
 
 declare global {
   interface Window {
@@ -28,9 +30,13 @@ declare global {
 }
 
 export default function ChatInterface() {
+  const { user, isAuthenticated } = useAuth();
+  const chatService = getChatService();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -45,52 +51,82 @@ export default function ChatInterface() {
   const micReactivationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 
+  // Initialize session and welcome message
   useEffect(() => {
-    setMessages([
-      {
-        id: 'karen-initial-' + Date.now(),
-        role: 'assistant',
-        content: "Hello! I'm Karen, your intelligent assistant. How can I help you today?",
-        timestamp: new Date(),
-        aiData: {
-          knowledgeGraphInsights: "Karen AI aims to be a human-like AI assistant with advanced memory and learning capabilities. You can ask me about various topics!",
-        },
-        shouldAutoPlay: false,
-      },
-    ]);
+    const initializeChat = async () => {
+      // Create session if user is authenticated
+      if (user && !sessionId && !conversationId) {
+        try {
+          const { conversationId: newConversationId, sessionId: newSessionId } = await chatService.createConversationSession(user.user_id);
+          setSessionId(newSessionId);
+          setConversationId(newConversationId);
+        } catch (error) {
+          console.error('Failed to create conversation session:', error);
+        }
+      }
 
-    // Load activeListenMode setting
+      // Set welcome message with user's name if available
+      const welcomeMessage = user 
+        ? `Hello ${user.email}! I'm Karen, your intelligent assistant. How can I help you today?`
+        : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
+
+      setMessages([
+        {
+          id: 'karen-initial-' + Date.now(),
+          role: 'assistant',
+          content: welcomeMessage,
+          timestamp: new Date(),
+          aiData: {
+            knowledgeGraphInsights: "Karen AI aims to be a human-like AI assistant with advanced memory and learning capabilities. You can ask me about various topics!",
+          },
+          shouldAutoPlay: false,
+        },
+      ]);
+    };
+
+    if (isAuthenticated) {
+      initializeChat();
+    }
+
+    // Load activeListenMode setting - prefer user preferences over localStorage
     try {
+      if (user?.preferences?.ui) {
+        // Use user's saved preferences if available
+        setActiveListenMode(user.preferences.ui.activeListenMode ?? DEFAULT_KAREN_SETTINGS.activeListenMode);
+      } else {
+        // Fallback to localStorage
         const settingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
         if (settingsStr) {
-            const parsedSettings = JSON.parse(settingsStr) as Partial<KarenSettings>;
-            setActiveListenMode(parsedSettings.activeListenMode ?? DEFAULT_KAREN_SETTINGS.activeListenMode);
+          const parsedSettings = JSON.parse(settingsStr) as Partial<KarenSettings>;
+          setActiveListenMode(parsedSettings.activeListenMode ?? DEFAULT_KAREN_SETTINGS.activeListenMode);
         }
+      }
     } catch (e) {
-        console.error("Failed to load activeListenMode from localStorage", e);
+      console.error("Failed to load activeListenMode from user preferences or localStorage", e);
     }
+
     // Listen for settings changes from other tabs/components
     const handleStorageChange = (event: StorageEvent) => {
-        if (event.key === KAREN_SETTINGS_LS_KEY && event.newValue) {
-            try {
-                const parsedSettings = JSON.parse(event.newValue) as Partial<KarenSettings>;
-                 if (typeof parsedSettings.activeListenMode === 'boolean') {
-                    setActiveListenMode(parsedSettings.activeListenMode);
-                }
-            } catch (e) {
-                 console.error("Failed to parse settings from storage event for activeListenMode", e);
-            }
+      if (event.key === KAREN_SETTINGS_LS_KEY && event.newValue) {
+        try {
+          const parsedSettings = JSON.parse(event.newValue) as Partial<KarenSettings>;
+          if (typeof parsedSettings.activeListenMode === 'boolean') {
+            setActiveListenMode(parsedSettings.activeListenMode);
+          }
+        } catch (e) {
+          console.error("Failed to parse settings from storage event for activeListenMode", e);
         }
+      }
     };
+    
     window.addEventListener('storage', handleStorageChange);
     return () => {
-        window.removeEventListener('storage', handleStorageChange);
-        if (micReactivationTimerRef.current) {
-            clearTimeout(micReactivationTimerRef.current);
-        }
+      window.removeEventListener('storage', handleStorageChange);
+      if (micReactivationTimerRef.current) {
+        clearTimeout(micReactivationTimerRef.current);
+      }
     };
-
-  }, []);
+  }, [user, isAuthenticated, sessionId, conversationId, chatService]);
 
   const handleSubmit = useCallback(async (eventDetails?: { isVoiceSubmission?: boolean }) => {
     if (!input.trim() || isLoading) return;
@@ -113,41 +149,68 @@ export default function ChatInterface() {
     let parsedSettings: KarenSettings = DEFAULT_KAREN_SETTINGS;
 
     try {
-      const conversationHistory = messages
-        .filter(msg => msg.role !== 'system')
-        .map(msg => `${msg.role === 'user' ? 'User' : 'Karen'}: ${msg.content}`)
-        .join('\n');
-      
-      let storedSettings: KarenSettings | null = null;
-      try {
-        const settingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
-        if (settingsStr) {
-          const partialSettings = JSON.parse(settingsStr) as Partial<KarenSettings>;
-          parsedSettings = {
-            ...DEFAULT_KAREN_SETTINGS,
-            ...partialSettings,
-            notifications: {
-              ...DEFAULT_KAREN_SETTINGS.notifications,
-              ...(partialSettings.notifications || {}),
-            },
-            personalFacts: Array.isArray(partialSettings.personalFacts) ? partialSettings.personalFacts : DEFAULT_KAREN_SETTINGS.personalFacts,
-            ttsVoiceURI: partialSettings.ttsVoiceURI === undefined ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI : partialSettings.ttsVoiceURI,
-            customPersonaInstructions: typeof partialSettings.customPersonaInstructions === 'string' ? partialSettings.customPersonaInstructions : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
-            activeListenMode: typeof partialSettings.activeListenMode === 'boolean' ? partialSettings.activeListenMode : DEFAULT_KAREN_SETTINGS.activeListenMode,
-          };
-          storedSettings = parsedSettings;
-          // Update local state for activeListenMode if it changed in localStorage
-          if (typeof parsedSettings.activeListenMode === 'boolean' && parsedSettings.activeListenMode !== activeListenMode) {
-            setActiveListenMode(parsedSettings.activeListenMode);
+      // Use user preferences if authenticated, otherwise fall back to localStorage
+      if (user?.preferences) {
+        // Convert user preferences to KarenSettings format
+        parsedSettings = {
+          memoryDepth: user.preferences.memoryDepth as any,
+          personalityTone: user.preferences.personalityTone as any,
+          personalityVerbosity: user.preferences.personalityVerbosity as any,
+          personalFacts: [], // TODO: Add personal facts to user preferences
+          notifications: {
+            enabled: user.preferences.notifications.email,
+            alertOnSummaryReady: true,
+            alertOnNewInsights: true,
+          },
+          ttsVoiceURI: null, // TODO: Add TTS preferences to user model
+          customPersonaInstructions: user.preferences.customPersonaInstructions,
+          temperatureUnit: 'C' as any,
+          weatherService: 'wttr_in' as any,
+          weatherApiKey: null,
+          defaultWeatherLocation: null,
+          activeListenMode: activeListenMode,
+        };
+      } else {
+        // Fallback to localStorage settings
+        try {
+          const settingsStr = localStorage.getItem(KAREN_SETTINGS_LS_KEY);
+          if (settingsStr) {
+            const partialSettings = JSON.parse(settingsStr) as Partial<KarenSettings>;
+            parsedSettings = {
+              ...DEFAULT_KAREN_SETTINGS,
+              ...partialSettings,
+              notifications: {
+                ...DEFAULT_KAREN_SETTINGS.notifications,
+                ...(partialSettings.notifications || {}),
+              },
+              personalFacts: Array.isArray(partialSettings.personalFacts) ? partialSettings.personalFacts : DEFAULT_KAREN_SETTINGS.personalFacts,
+              ttsVoiceURI: partialSettings.ttsVoiceURI === undefined ? DEFAULT_KAREN_SETTINGS.ttsVoiceURI : partialSettings.ttsVoiceURI,
+              customPersonaInstructions: typeof partialSettings.customPersonaInstructions === 'string' ? partialSettings.customPersonaInstructions : DEFAULT_KAREN_SETTINGS.customPersonaInstructions,
+              activeListenMode: typeof partialSettings.activeListenMode === 'boolean' ? partialSettings.activeListenMode : DEFAULT_KAREN_SETTINGS.activeListenMode,
+            };
           }
+        } catch (error) {
+          console.error("Failed to parse settings from localStorage", error);
         }
-      } catch (error) {
-        console.error("Failed to parse settings from localStorage", error);
       }
-      
-      const totalMessagesSoFar = messages.length; 
 
-      const result: HandleUserMessageResult = await handleUserMessage(currentInput, conversationHistory, storedSettings, totalMessagesSoFar);
+      // Use the new chat service for processing
+      const result: HandleUserMessageResult = await chatService.processUserMessage(
+        currentInput,
+        messages.filter(msg => msg.role !== 'system'),
+        parsedSettings,
+        {
+          userId: user?.user_id,
+          sessionId: sessionId || undefined,
+          storeInMemory: true,
+          generateSummary: messages.length > 10, // Generate summary for longer conversations
+        }
+      );
+
+      // Store the message in the conversation if we have a conversation ID
+      if (conversationId) {
+        await chatService.addMessageToConversation(conversationId, userMessage);
+      }
       
       const newMessages: ChatMessage[] = [];
       const autoPlayThisMessage = isVoice;

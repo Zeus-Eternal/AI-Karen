@@ -29,22 +29,54 @@ class AIOrchestrator(BaseService):
         super().__init__(config)
         self.flow_manager = FlowManager()
         self.decision_engine = DecisionEngine()
-        self.context_manager = ContextManager()
+        self.context_manager = ContextManager()  # Will be updated with memory service during initialization
         self.prompt_manager = PromptManager()
         self.llm_utils = LLMUtils()
         self.llm_router = LLMProfileRouter()
+        self._memory_service = None
         self._initialized = False
 
     async def initialize(self) -> None:
         """Initialize the AI Orchestrator service."""
         try:
             self.logger.info("Initializing AI Orchestrator Service")
+            
+            # Initialize memory service integration
+            await self._initialize_memory_service()
+            
             await self._register_default_flows()
             self._initialized = True
             self.logger.info("AI Orchestrator Service initialized successfully")
         except Exception as e:
             self.logger.error(f"Failed to initialize AI Orchestrator: {e}")
             raise
+
+    async def _initialize_memory_service(self) -> None:
+        """Initialize memory service integration for semantic context building."""
+        try:
+            # Try to get memory service - this might not be available in all environments
+            from ai_karen_engine.core.dependencies import get_memory_service
+            
+            # Note: In a real application, this would be properly injected
+            # For now, we'll create a new context manager with memory service when available
+            try:
+                # Check if get_memory_service is a coroutine
+                import inspect
+                if inspect.iscoroutinefunction(get_memory_service):
+                    memory_service = await get_memory_service()
+                else:
+                    memory_service = get_memory_service()
+                    
+                self.context_manager = ContextManager(memory_service)
+                self._memory_service = memory_service
+                self.logger.info("Memory service integrated with context manager")
+            except Exception as e:
+                self.logger.warning(f"Memory service not available, using basic context manager: {e}")
+                # Keep the existing context manager without memory service
+                
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize memory service integration: {e}")
+            # Continue without memory service integration
 
     async def start(self) -> None:
         if not self._initialized:
@@ -76,22 +108,48 @@ class AIOrchestrator(BaseService):
         self.logger.info("Default flows registered")
 
     async def _handle_decide_action_flow(self, input_data: FlowInput) -> FlowOutput:
-        """Handle decide action flow processing."""
-        decide_input = DecideActionInput(
-            prompt=input_data.prompt,
-            short_term_memory=input_data.short_term_memory,
-            long_term_memory=input_data.long_term_memory,
-            personal_facts=input_data.personal_facts,
-        )
-        result = await self.decision_engine.decide_action(decide_input)
-        return FlowOutput(
-            response=result.intermediate_response,
-            requires_plugin=result.tool_to_call != ToolType.NONE,
-            tool_to_call=result.tool_to_call,
-            tool_input=result.tool_input,
-            suggested_new_facts=result.suggested_new_facts,
-            proactive_suggestion=result.proactive_suggestion,
-        )
+        """Handle decide action flow processing with LLM integration."""
+        try:
+            # First use the decision engine for intent analysis and tool selection
+            decide_input = DecideActionInput(
+                prompt=input_data.prompt,
+                short_term_memory=input_data.short_term_memory,
+                long_term_memory=input_data.long_term_memory,
+                personal_facts=input_data.personal_facts,
+            )
+            result = await self.decision_engine.decide_action(decide_input)
+            
+            # If no tool is needed, enhance the response with LLM
+            if result.tool_to_call == ToolType.NONE:
+                enhanced_response = await self._enhance_response_with_llm(
+                    input_data.prompt, 
+                    result.intermediate_response,
+                    input_data
+                )
+                result.intermediate_response = enhanced_response
+            
+            return FlowOutput(
+                response=result.intermediate_response,
+                requires_plugin=result.tool_to_call != ToolType.NONE,
+                tool_to_call=result.tool_to_call,
+                tool_input=result.tool_input,
+                suggested_new_facts=result.suggested_new_facts,
+                proactive_suggestion=result.proactive_suggestion,
+                ai_data=AiData(
+                    confidence=0.8,
+                    reasoning="Response generated by decision engine with LLM enhancement"
+                )
+            )
+        except Exception as e:
+            self.logger.error(f"Decide action flow failed: {e}")
+            return FlowOutput(
+                response="I'm having trouble processing your request. Could you try rephrasing it?",
+                requires_plugin=False,
+                ai_data=AiData(
+                    confidence=0.3,
+                    reasoning="Fallback due to processing error"
+                )
+            )
 
     async def _handle_conversation_processing_flow(
         self, input_data: FlowInput
@@ -149,43 +207,50 @@ class AIOrchestrator(BaseService):
     ) -> str:
         """Process conversation using LLM with memory/context awareness."""
         try:
-            template = self.prompt_manager.get_template("conversation_processing")
-            if not template:
-                raise ValueError("conversation_processing template missing")
-
-            user_prompt = template["user_template"].format(
-                prompt=input_data.prompt,
-                context_info=context.get("context_summary", ""),
-                plugin_info=", ".join(
-                    p.name for p in input_data.available_plugins or []
-                ),
-                memory_info="; ".join(
-                    mem.get("content", "") for mem in context.get("memories", [])[:3]
-                ),
-                user_preferences=", ".join(
-                    f"{k}={v}" for k, v in input_data.user_settings.items()
-                ),
+            # Build dynamic system prompt with user preferences
+            system_prompt = self.prompt_manager.build_system_prompt(
+                "conversation_processing", 
+                input_data.user_settings
             )
-            full_prompt = f"{template['system_prompt']}\n\n{user_prompt}"
 
+            # Build context information
+            context_info = context.get("context_summary", "No additional context available")
+            plugin_info = ", ".join(p.name for p in input_data.available_plugins or []) or "No plugins available"
+            memory_info = "; ".join(mem.get("content", "") for mem in context.get("memories", [])[:3]) or "No relevant memories"
+            user_preferences = ", ".join(f"{k}={v}" for k, v in input_data.user_settings.items()) or "No specific preferences"
+
+            # Build user prompt using the prompt manager
+            user_prompt = self.prompt_manager.build_user_prompt(
+                "conversation_processing",
+                prompt=input_data.prompt,
+                context_info=context_info,
+                plugin_info=plugin_info,
+                memory_info=memory_info,
+                user_preferences=user_preferences
+            )
+            
+            full_prompt = f"{system_prompt}\n\n{user_prompt}"
+
+            # Use LLM router with built-in fallback mechanism
+            self.logger.info("Attempting LLM call for conversation processing")
+            
             raw = self.llm_router.invoke(
                 self.llm_utils,
                 full_prompt,
                 task_intent=FlowType.CONVERSATION_PROCESSING.value,
             )
-            if not isinstance(raw, str):
-                raise TypeError("LLM response must be text")
-            response = raw.strip()
-            if not response:
-                return await self._fallback_conversation_response(input_data, context)
-
-            return response[:4000] if len(response) > 4000 else response
+            
+            if isinstance(raw, str) and raw.strip():
+                response = raw.strip()
+                self.logger.info("Successfully got LLM response")
+                return response[:4000] if len(response) > 4000 else response
+            else:
+                self.logger.warning("Empty response from LLM")
+                return await self._fallback_conversation_response(input_data, context, provider_missing=True)
+            
         except Exception as ex:
-            self.logger.error(f"LLM processing failed: {ex}")
-            provider_missing = isinstance(ex, RuntimeError) and "no provider for intent" in str(ex).lower()
-            return await self._fallback_conversation_response(
-                input_data, context, provider_missing=provider_missing
-            )
+            self.logger.error(f"LLM processing failed with unexpected error: {ex}")
+            return await self._fallback_conversation_response(input_data, context, provider_missing=True)
 
     async def _fallback_conversation_response(
         self,
@@ -248,10 +313,301 @@ class AIOrchestrator(BaseService):
     async def _generate_conversation_proactive_suggestion(
         self, input_data: FlowInput, context: Dict[str, Any]
     ) -> Optional[str]:
-        """Generate proactive suggestions based on the conversation."""
-        if len(input_data.conversation_history) > 4:
-            return "We've been chatting for a bit. Is there a specific task I can help you with?"
-        return None
+        """Generate intelligent proactive suggestions based on conversation analysis."""
+        try:
+            # Generate context-aware suggestions using conversation analysis
+            suggestion = await self._generate_intelligent_suggestions(input_data, context)
+            return suggestion
+        except Exception as e:
+            self.logger.warning(f"Failed to generate intelligent suggestion: {e}")
+            # Fallback to basic suggestion logic
+            if len(input_data.conversation_history) > 4:
+                return "We've been chatting for a bit. Is there a specific task I can help you with?"
+            return None
+
+    async def _generate_intelligent_suggestions(
+        self, input_data: FlowInput, context: Dict[str, Any]
+    ) -> Optional[str]:
+        """Generate context-aware suggestions using conversation analysis and memory."""
+        try:
+            # Analyze conversation patterns and context
+            conversation_analysis = await self._analyze_conversation_patterns(input_data)
+            memory_insights = await self._extract_memory_insights(context)
+            topic_analysis = await self._analyze_conversation_topics(input_data)
+            
+            # Generate suggestions based on analysis
+            suggestions = []
+            
+            # Memory-based suggestions
+            if memory_insights:
+                memory_suggestions = await self._generate_memory_based_suggestions(memory_insights, input_data)
+                suggestions.extend(memory_suggestions)
+            
+            # Topic-based suggestions
+            if topic_analysis:
+                topic_suggestions = await self._generate_topic_based_suggestions(topic_analysis, input_data)
+                suggestions.extend(topic_suggestions)
+            
+            # Pattern-based suggestions
+            if conversation_analysis:
+                pattern_suggestions = await self._generate_pattern_based_suggestions(conversation_analysis, input_data)
+                suggestions.extend(pattern_suggestions)
+            
+            # Filter and rank suggestions by relevance
+            if suggestions:
+                ranked_suggestions = await self._rank_suggestions_by_relevance(suggestions, input_data, context)
+                return ranked_suggestions[0] if ranked_suggestions else None
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error in intelligent suggestion generation: {e}")
+            return None
+
+    async def _analyze_conversation_patterns(self, input_data: FlowInput) -> Dict[str, Any]:
+        """Analyze conversation patterns to identify user behavior and preferences."""
+        try:
+            history = input_data.conversation_history or []
+            if len(history) < 2:
+                return {}
+            
+            patterns = {
+                "message_length_trend": [],
+                "question_frequency": 0,
+                "topic_switches": 0,
+                "help_requests": 0,
+                "task_oriented": False,
+                "conversation_length": len(history)
+            }
+            
+            # Analyze message patterns
+            for i, msg in enumerate(history):
+                content = msg.get("content", "").lower()
+                patterns["message_length_trend"].append(len(content))
+                
+                if "?" in content:
+                    patterns["question_frequency"] += 1
+                if any(word in content for word in ["help", "how", "what", "why", "when", "where"]):
+                    patterns["help_requests"] += 1
+                if any(word in content for word in ["do", "create", "make", "build", "write", "generate"]):
+                    patterns["task_oriented"] = True
+                    
+                # Detect topic switches (simplified)
+                if i > 0:
+                    prev_content = history[i-1].get("content", "").lower()
+                    if len(set(content.split()) & set(prev_content.split())) < 2:
+                        patterns["topic_switches"] += 1
+            
+            return patterns
+            
+        except Exception as e:
+            self.logger.warning(f"Error analyzing conversation patterns: {e}")
+            return {}
+
+    async def _extract_memory_insights(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract insights from memory context for suggestion generation."""
+        try:
+            memories = context.get("memories", [])
+            if not memories:
+                return {}
+            
+            insights = {
+                "recent_topics": [],
+                "user_preferences": [],
+                "recurring_themes": [],
+                "unfinished_tasks": []
+            }
+            
+            # Analyze memories for patterns
+            for memory in memories[:10]:  # Analyze recent memories
+                content = memory.get("content", "").lower()
+                tags = memory.get("tags", [])
+                
+                # Extract topics and themes
+                if "personal_info" in tags:
+                    insights["user_preferences"].append(content)
+                if "task" in tags or "todo" in tags:
+                    insights["unfinished_tasks"].append(content)
+                
+                # Simple topic extraction (could be enhanced with NLP)
+                words = content.split()
+                if len(words) > 3:
+                    insights["recent_topics"].extend(words[:3])
+            
+            return insights
+            
+        except Exception as e:
+            self.logger.warning(f"Error extracting memory insights: {e}")
+            return {}
+
+    async def _analyze_conversation_topics(self, input_data: FlowInput) -> Dict[str, Any]:
+        """Analyze conversation topics using NLP if available."""
+        try:
+            current_prompt = input_data.prompt.lower()
+            history = input_data.conversation_history or []
+            
+            # Simple topic categorization (could be enhanced with spaCy NER)
+            topics = {
+                "technical": any(word in current_prompt for word in ["code", "programming", "api", "database", "server"]),
+                "creative": any(word in current_prompt for word in ["write", "create", "design", "art", "story"]),
+                "informational": any(word in current_prompt for word in ["what", "how", "why", "explain", "tell me"]),
+                "task_oriented": any(word in current_prompt for word in ["do", "make", "build", "help me", "can you"]),
+                "personal": any(word in current_prompt for word in ["i am", "my", "me", "personal", "remember"])
+            }
+            
+            # Analyze conversation flow
+            analysis = {
+                "primary_topic": max(topics.items(), key=lambda x: x[1])[0] if any(topics.values()) else "general",
+                "topic_categories": [k for k, v in topics.items() if v],
+                "conversation_depth": len(history),
+                "current_focus": current_prompt[:100]  # First 100 chars for context
+            }
+            
+            return analysis
+            
+        except Exception as e:
+            self.logger.warning(f"Error analyzing conversation topics: {e}")
+            return {}
+
+    async def _generate_memory_based_suggestions(
+        self, memory_insights: Dict[str, Any], input_data: FlowInput
+    ) -> List[str]:
+        """Generate suggestions based on memory insights."""
+        suggestions = []
+        
+        try:
+            # Suggest based on unfinished tasks
+            if memory_insights.get("unfinished_tasks"):
+                suggestions.append("I notice we discussed some tasks earlier. Would you like to continue working on any of them?")
+            
+            # Suggest based on user preferences
+            if memory_insights.get("user_preferences"):
+                suggestions.append("Based on what I know about your preferences, I can provide more personalized assistance.")
+            
+            # Suggest based on recurring themes
+            if memory_insights.get("recurring_themes"):
+                suggestions.append("I've noticed some recurring topics in our conversations. Would you like to explore any of them further?")
+            
+        except Exception as e:
+            self.logger.warning(f"Error generating memory-based suggestions: {e}")
+        
+        return suggestions
+
+    async def _generate_topic_based_suggestions(
+        self, topic_analysis: Dict[str, Any], input_data: FlowInput
+    ) -> List[str]:
+        """Generate suggestions based on topic analysis."""
+        suggestions = []
+        
+        try:
+            primary_topic = topic_analysis.get("primary_topic", "general")
+            
+            if primary_topic == "technical":
+                suggestions.extend([
+                    "Would you like me to help you with code examples or technical documentation?",
+                    "I can assist with debugging, architecture decisions, or best practices."
+                ])
+            elif primary_topic == "creative":
+                suggestions.extend([
+                    "I can help brainstorm ideas or provide creative feedback.",
+                    "Would you like assistance with writing, design concepts, or creative problem-solving?"
+                ])
+            elif primary_topic == "informational":
+                suggestions.extend([
+                    "I can provide more detailed explanations or related information.",
+                    "Would you like me to break this down into smaller, more manageable parts?"
+                ])
+            elif primary_topic == "task_oriented":
+                suggestions.extend([
+                    "I can help you break this task into smaller steps.",
+                    "Would you like me to create a plan or checklist for this task?"
+                ])
+            elif primary_topic == "personal":
+                suggestions.extend([
+                    "I'll remember this information for future conversations.",
+                    "Is there anything else about your preferences I should know?"
+                ])
+            
+        except Exception as e:
+            self.logger.warning(f"Error generating topic-based suggestions: {e}")
+        
+        return suggestions
+
+    async def _generate_pattern_based_suggestions(
+        self, conversation_analysis: Dict[str, Any], input_data: FlowInput
+    ) -> List[str]:
+        """Generate suggestions based on conversation patterns."""
+        suggestions = []
+        
+        try:
+            # Suggest based on conversation length
+            conv_length = conversation_analysis.get("conversation_length", 0)
+            if conv_length > 10:
+                suggestions.append("We've covered a lot of ground. Would you like me to summarize our discussion?")
+            
+            # Suggest based on question frequency
+            question_freq = conversation_analysis.get("question_frequency", 0)
+            if question_freq > 3:
+                suggestions.append("You've asked several questions. Would you like me to provide a comprehensive overview?")
+            
+            # Suggest based on help requests
+            help_requests = conversation_analysis.get("help_requests", 0)
+            if help_requests > 2:
+                suggestions.append("I notice you're looking for help with multiple things. Would you like me to prioritize them?")
+            
+            # Suggest based on task orientation
+            if conversation_analysis.get("task_oriented", False):
+                suggestions.append("Would you like me to help you organize these tasks or create a workflow?")
+            
+            # Suggest based on topic switches
+            topic_switches = conversation_analysis.get("topic_switches", 0)
+            if topic_switches > 3:
+                suggestions.append("We've covered several different topics. Would you like to focus on one specific area?")
+            
+        except Exception as e:
+            self.logger.warning(f"Error generating pattern-based suggestions: {e}")
+        
+        return suggestions
+
+    async def _rank_suggestions_by_relevance(
+        self, suggestions: List[str], input_data: FlowInput, context: Dict[str, Any]
+    ) -> List[str]:
+        """Rank suggestions by relevance to current conversation context."""
+        try:
+            if not suggestions:
+                return []
+            
+            # Simple relevance scoring based on context
+            scored_suggestions = []
+            current_prompt = input_data.prompt.lower()
+            
+            for suggestion in suggestions:
+                score = 0
+                suggestion_lower = suggestion.lower()
+                
+                # Score based on keyword overlap with current prompt
+                prompt_words = set(current_prompt.split())
+                suggestion_words = set(suggestion_lower.split())
+                overlap = len(prompt_words & suggestion_words)
+                score += overlap * 2
+                
+                # Score based on suggestion type relevance
+                if "task" in current_prompt and "task" in suggestion_lower:
+                    score += 5
+                if "help" in current_prompt and "help" in suggestion_lower:
+                    score += 3
+                if "remember" in current_prompt and "remember" in suggestion_lower:
+                    score += 4
+                
+                scored_suggestions.append((suggestion, score))
+            
+            # Sort by score (descending) and return suggestions
+            scored_suggestions.sort(key=lambda x: x[1], reverse=True)
+            return [suggestion for suggestion, _ in scored_suggestions]
+            
+        except Exception as e:
+            self.logger.warning(f"Error ranking suggestions: {e}")
+            return suggestions  # Return unranked if ranking fails
 
     async def _generate_conversation_ai_data(
         self, input_data: FlowInput, context: Dict[str, Any]
@@ -263,6 +619,40 @@ class AIOrchestrator(BaseService):
             knowledge_graph_insights=context.get("context_summary"),
         )
 
+    async def _enhance_response_with_llm(
+        self, user_prompt: str, base_response: str, input_data: FlowInput
+    ) -> str:
+        """Enhance a basic response using LLM to make it more natural and contextual."""
+        try:
+            # Create an enhancement prompt
+            enhancement_prompt = f"""You are Karen, an AI assistant. A user asked: "{user_prompt}"
+
+I have a basic response: "{base_response}"
+
+Please enhance this response to be more natural, helpful, and conversational while keeping the core information intact. Make it sound more human-like and engaging.
+
+Enhanced response:"""
+
+            self.logger.info("Attempting to enhance response with LLM")
+            
+            raw = self.llm_router.invoke(
+                self.llm_utils,
+                enhancement_prompt,
+                task_intent="conversation_processing",
+            )
+            
+            if isinstance(raw, str) and raw.strip():
+                enhanced = raw.strip()
+                self.logger.info("Successfully enhanced response with LLM")
+                return enhanced[:4000] if len(enhanced) > 4000 else enhanced
+            else:
+                self.logger.warning("Empty response from LLM enhancement, using base response")
+                return base_response
+                
+        except Exception as ex:
+            self.logger.warning(f"LLM enhancement failed: {ex}, using base response")
+            return base_response
+
     # ─────────────────────────────────────────────────────────────────────────────
     # Public API methods exposed to the rest of the system:
     async def process_flow(
@@ -273,6 +663,10 @@ class AIOrchestrator(BaseService):
     async def conversation_processing_flow(self, input_data: FlowInput) -> FlowOutput:
         """Execute the conversation processing flow."""
         return await self.process_flow(FlowType.CONVERSATION_PROCESSING, input_data)
+
+    async def decide_action(self, input_data: FlowInput) -> FlowOutput:
+        """Execute the decide action flow."""
+        return await self.process_flow(FlowType.DECIDE_ACTION, input_data)
 
     # ─────────────────────────────────────────────────────────────────────────────
 

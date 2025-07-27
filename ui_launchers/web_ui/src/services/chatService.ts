@@ -64,15 +64,30 @@ export class ChatService {
   /**
    * Create a new conversation session
    */
-  async createConversationSession(userId: string): Promise<string> {
+  async createConversationSession(userId: string): Promise<{ conversationId: string; sessionId: string }> {
     try {
+      // Generate a unique session ID
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
       const response = await fetch(`${this.backend['config'].baseUrl}/api/conversations/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
         },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify({
+          session_id: sessionId,
+          ui_source: 'web_ui',
+          title: 'New Conversation',
+          user_settings: {},
+          ui_context: {
+            user_id: userId,
+            created_from: 'web_ui',
+            browser: navigator.userAgent
+          },
+          tags: [],
+          priority: 'normal'
+        }),
       });
 
       if (!response.ok) {
@@ -80,11 +95,18 @@ export class ChatService {
       }
 
       const data = await response.json();
-      return data.session_id;
+      return {
+        conversationId: data.conversation.id,
+        sessionId: data.conversation.session_id || sessionId
+      };
     } catch (error) {
       console.error('ChatService: Failed to create conversation session:', error);
-      // Generate a local session ID as fallback
-      return `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generate local IDs as fallback
+      const fallbackId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      return {
+        conversationId: fallbackId,
+        sessionId: fallbackId
+      };
     }
   }
 
@@ -92,11 +114,11 @@ export class ChatService {
    * Add a message to a conversation session
    */
   async addMessageToConversation(
-    sessionId: string,
+    conversationId: string,
     message: ChatMessage
   ): Promise<void> {
     try {
-      await fetch(`${this.backend['config'].baseUrl}/api/conversations/${sessionId}/messages`, {
+      await fetch(`${this.backend['config'].baseUrl}/api/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,10 +127,11 @@ export class ChatService {
         body: JSON.stringify({
           role: message.role,
           content: message.content,
-          timestamp: message.timestamp.toISOString(),
+          ui_source: 'web_ui',
           metadata: {
             ai_data: message.aiData,
             should_auto_play: message.shouldAutoPlay,
+            timestamp: message.timestamp.toISOString(),
           },
         }),
       });

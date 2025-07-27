@@ -8,7 +8,7 @@
     "requires_api_key": false,
     "default_model": "llama3.2:1b",
     "health_status": "healthy",
-    "last_health_check": 1753498869.872746,
+    "last_health_check": 1753583566.6497865,
     "error_message": null
   },
   {
@@ -56,7 +56,7 @@
     "requires_api_key": true,
     "default_model": "microsoft/DialoGPT-large",
     "health_status": "healthy",
-    "last_health_check": 1753498289.9146755,
+    "last_health_check": 1753583566.9024005,
     "error_message": null
   }
 ]

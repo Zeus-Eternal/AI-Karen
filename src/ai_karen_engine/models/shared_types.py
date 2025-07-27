@@ -140,6 +140,7 @@ class MemoryContext(BaseModel):
     similarity_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Similarity score")
     tags: Optional[List[str]] = Field(None, description="Memory tags")
     timestamp: Optional[int] = Field(None, description="Unix timestamp")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
 
 class PluginInfo(BaseModel):

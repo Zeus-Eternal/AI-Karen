@@ -1,0 +1,47 @@
+WARNING:ai_karen_engine.config.model_registry:[llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+INFO:ai_karen_engine.core.config_manager:Loaded configuration from config.json
+INFO:ai_karen_engine.core.config_manager:Configuration validation passed
+INFO:ai_karen_engine.core.config_manager:Configuration loaded for environment: Environment.LOCAL
+INFO:ai_karen_engine.services.nlp_service_manager:NLP configuration loaded successfully
+INFO:ai_karen_engine.services.spacy_service:spaCy service initialized with model: en_core_web_sm
+INFO:ai_karen_engine.services.distilbert_service:Using GPU: NVIDIA GeForce RTX 2080 SUPER
+INFO:ai_karen_engine.services.distilbert_service:DistilBERT service initialized with model: distilbert-base-uncased
+INFO:ai_karen_engine.services.distilbert_service:Using device: cuda
+INFO:ai_karen_engine.services.nlp_service_manager:NLP Service Manager initialized
+INFO:kari_fastapi:Prometheus metrics endpoint mounted at /metrics
+INFO:kari_fastapi:CORS configured for origins: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080']
+INFO:kari.llm_registry:Loaded registry from models/llm_registry.json
+INFO:kari_fastapi:Mounted web API compatibility router with priority
+INFO:kari_fastapi:Mounted router: admin
+INFO:kari_fastapi:Mounted router: ai_orchestrator_routes
+INFO:kari_fastapi:Mounted router: announcements
+INFO:kari_fastapi:Mounted router: auth
+INFO:kari_fastapi:Mounted router: conversation_routes
+ERROR:kari_fastapi:Failed to mount router database: cannot import name 'get_current_user' from 'ai_karen_engine.utils.auth' (/media/zeus/Development3/KIRO/AI-Karen/src/ai_karen_engine/utils/auth.py)
+INFO:kari_fastapi:Mounted router: events
+INFO:kari_fastapi:Mounted router: extensions
+INFO:kari_fastapi:Mounted router: health
+INFO:kari_fastapi:Mounted router: llm_routes
+INFO:kari_fastapi:Mounted router: memory_routes
+INFO:kari_fastapi:Mounted router: plugin_routes
+INFO:kari_fastapi:Mounted router: self_refactor
+ERROR:kari_fastapi:Failed to mount router system: Parser Error: syntax error at or near "AUTO_INCREMENT"
+INFO:kari_fastapi:Mounted router: tool_routes
+INFO:kari_fastapi:Mounted router: users
+INFO:__main__:Starting AI Karen backend server...
+INFO:__main__:Server will be available at: http://localhost:8000
+INFO:__main__:API docs available at: http://localhost:8000/docs
+INFO:__main__:LLM providers endpoint: http://localhost:8000/api/llm/providers
+INFO:     Started server process [1256014]
+INFO:     Waiting for application startup.
+INFO:kari_fastapi:Configuration loaded for environment: Environment.LOCAL
+INFO:ai_karen_engine.core.service_registry:Registered service: ai_orchestrator
+INFO:ai_karen_engine.core.service_registry:Registered service: memory_service
+INFO:ai_karen_engine.core.service_registry:Registered service: conversation_service
+INFO:ai_karen_engine.core.service_registry:Registered service: plugin_service
+INFO:ai_karen_engine.core.service_registry:Registered service: tool_service
+INFO:ai_karen_engine.core.service_registry:Initializing all services...
+INFO:ai_karen_engine.core.service_registry:Initializing service: ai_orchestrator
+INFO:ai_orchestrator.prompt_manager:Registered prompt template: conversation_processing
+INFO:ai_orchestrator.prompt_manager:Registered prompt template: decision_making
+INFO:service.ai_orchestrator:Initializing AI Orchestrator Service
