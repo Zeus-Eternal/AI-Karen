@@ -352,7 +352,6 @@ src/ui_logic/utils/file_utils.py
 src/ui_logic/utils/llm_utils.py
 tests/test_advanced_ui.py
 tests/test_ai_orchestrator.py
-tests/test_ai_orchestrator_llm_integration.py
 tests/test_ai_orchestrator_service.py
 tests/test_api.py
 tests/test_apply_review.py
@@ -393,7 +392,6 @@ tests/test_ice_multi_hop.py
 tests/test_imports.py
 tests/test_intent_engine.py
 tests/test_llama_client.py
-tests/test_llm_integration_simple.py
 tests/test_llm_manager.py
 tests/test_llm_orchestrator.py
 tests/test_llm_provider_registration.py
@@ -401,8 +399,7 @@ tests/test_llm_utils.py
 tests/test_log_utils.py
 tests/test_mcp.py
 tests/test_memory_compatibility.py
-tests/test_memory_entries_schema.py
-tests/test_memory_entries_table.py
+tests/test_memory_entries.py
 tests/test_memory_manager.py
 tests/test_memory_manager_surprise.py
 tests/test_memory_service_integration.py
