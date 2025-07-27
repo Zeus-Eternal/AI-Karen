@@ -1,57 +1,24 @@
-[
-  {
-    "id": "admin_001",
-    "username": "admin",
-    "email": "admin@ai-karen.com",
-    "full_name": "System Administrator",
-    "role": "admin",
-    "permissions": [
-      "manage_users",
-      "view_logs",
-      "manage_plugins",
-      "use_chat",
-      "read_dashboard",
-      "view_memory",
-      "view_analytics",
-      "configure_system"
-    ],
-    "created_at": "2025-07-27T13:29:10.717238",
-    "last_login": null,
-    "is_active": true,
+{
+  "admin@example.com": {
+    "password": "f4b35310e1480ca218ef88cb070f022f:2220987db38266dfd26742d473018a9f1a12bf303dd816a8df00b9a344f99126",
+    "roles": ["admin", "dev", "user"],
+    "tenant_id": "default",
     "preferences": {
       "theme": "dark",
       "language": "en",
       "notifications": true,
       "auto_refresh": true
-    },
-    "session_data": {},
-    "password_hash": "f4b35310e1480ca218ef88cb070f022f:2220987db38266dfd26742d473018a9f1a12bf303dd816a8df00b9a344f99126",
-    "api_key": "ak_7JsmtNRVZroV3UAJtw4ivv4aKgSSOCSNJf6N03vhme4",
-    "two_factor_enabled": false
+    }
   },
-  {
-    "id": "user_001",
-    "username": "user",
-    "email": "user@ai-karen.com",
-    "full_name": "Regular User",
-    "role": "user",
-    "permissions": [
-      "use_chat",
-      "read_dashboard",
-      "view_memory"
-    ],
-    "created_at": "2025-07-27T13:29:10.798084",
-    "last_login": null,
-    "is_active": true,
+  "user@example.com": {
+    "password": "d38ac31d74a1e2d0486ab6dc915d871a:02b43f50f625827b3e2beaaa21a679ea72c0262c5452fc5e15f2431e8c2b3c8e",
+    "roles": ["user"],
+    "tenant_id": "default",
     "preferences": {
       "theme": "light",
       "language": "en",
       "notifications": true,
       "auto_refresh": false
-    },
-    "session_data": {},
-    "password_hash": "d38ac31d74a1e2d0486ab6dc915d871a:02b43f50f625827b3e2beaaa21a679ea72c0262c5452fc5e15f2431e8c2b3c8e",
-    "api_key": "ak_M_tuk5ba_izwHhwTPpATXfmh1V4_7vz2f0kVOZimoD8",
-    "two_factor_enabled": false
+    }
   }
-]
+}
