@@ -15,7 +15,7 @@ AI-Karen is a comprehensive, production-ready AI platform designed for enterpris
 * **Multi-Database Architecture** - PostgreSQL, Redis, DuckDB, Milvus, and Elasticsearch integration
 * **Plugin Ecosystem** - 24+ plugins with hot-reload capability and marketplace integration
 * **Extension System** - Modular extensions for analytics, automation, and workflow building
-* **Multiple UI Interfaces** - Web (Next.js), Desktop (Tauri), and Streamlit applications
+* **Multiple UI Interfaces** - Web (Next.js) is the default interface, with Desktop (Tauri) and Streamlit options
 * **AI/ML Integration** - HuggingFace Transformers, OpenAI API, local LLM support via llama-cpp-python
 * **Production Monitoring** - Prometheus metrics, health checks, and comprehensive logging
 * **Authentication & Security** - JWT-based auth, role-based access control, tenant isolation
@@ -133,7 +133,7 @@ curl http://localhost:8000/health
 
 ### 5. Start Frontend (Choose One)
 
-#### Web UI (Next.js)
+#### Web UI (Next.js, default)
 ```bash
 cd ui_launchers/web_ui
 npm install
