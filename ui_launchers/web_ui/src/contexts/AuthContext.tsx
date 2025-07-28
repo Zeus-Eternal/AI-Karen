@@ -76,6 +76,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           ui: {
             theme: 'light',
             language: 'en',
+            avatarUrl: '',
           },
         },
       };
@@ -140,6 +141,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         preferences: {
           ...authState.user.preferences,
           ...preferences,
+          ui: {
+            ...authState.user.preferences.ui,
+            ...(preferences as any).ui,
+          },
         },
       };
       

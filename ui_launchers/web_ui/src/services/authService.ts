@@ -107,8 +107,32 @@ export class AuthService {
   }
 
   async updateUserPreferences(_token: string, preferences: Partial<User['preferences']>): Promise<void> {
-    // TODO: Implement backend endpoint for updating user preferences
-    console.log('Updating user preferences:', preferences);
+    const response = await fetch(`${this.baseUrl}/api/users/me/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(preferences),
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to update preferences: ${error}`);
+    }
+  }
+
+  async uploadAvatar(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${this.baseUrl}/api/users/me/avatar`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to upload avatar: ${error}`);
+    }
+    const data = await response.json();
+    return data.avatar_url as string;
   }
 
   async logout(): Promise<void> {
