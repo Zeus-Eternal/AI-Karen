@@ -757,10 +757,11 @@ class KarenBackendService {
   }
 
   // --- Authentication ---
-  async login(username: string, password: string): Promise<LoginResult> {
+  async login(email: string, password: string): Promise<LoginResult> {
+    // Backend expects an `email` field for authentication
     return await this.makeRequest<LoginResult>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ email, password })
     })
   }
 
