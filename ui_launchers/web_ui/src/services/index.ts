@@ -9,6 +9,7 @@ export { MemoryService, getMemoryService, initializeMemoryService } from './memo
 export { PluginService, getPluginService, initializePluginService } from './pluginService';
 export { ExtensionService, getExtensionService, initializeExtensionService } from './extensionService';
 export { AuthService, getAuthService, initializeAuthService } from './authService';
+export { AuditService } from './auditService';
 
 // Export service types
 export type { ConversationSession, ProcessMessageOptions } from './chatService';

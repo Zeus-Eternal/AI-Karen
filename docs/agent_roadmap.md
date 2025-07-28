@@ -166,8 +166,8 @@ const [memoryCount, setMemoryCount] = useState<number|null>(null);
 |    P2    | ~~Role-based dashboard variant~~                      | Frontend         | **Complete** |
 |    P3    | ~~Avatar upload & theme picker~~                      | Frontend/Backend | **Complete** |
 |    P3    | ~~Profile-level Integrations plugin~~                 | Plugin Team      | **Complete** |
-|    P4    | Usage analytics charts                            | Frontend/Analytics | 2 weeks |
-|    P4    | Audit log UI                                      | Frontend/Admin   | 2 weeks |
+|    P4    | ~~Usage analytics charts~~                            | Frontend/Analytics | **Complete** |
+|    P4    | ~~Audit log UI~~                                      | Frontend/Admin   | **Complete** |
 
 ---
 **Update 2025-07:** Avatar uploading and theme selection implemented via `UserProfile` component. Profile integrations shipped as plugin `ai_karen_engine.plugins.profile_integrations`.
