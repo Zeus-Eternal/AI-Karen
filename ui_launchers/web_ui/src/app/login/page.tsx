@@ -17,11 +17,15 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    const ok = await login(email, password)
-    if (ok) {
+    if (!email || !password) {
+      setError('Email and password are required')
+      return
+    }
+    try {
+      await login({ email, password })
       router.push('/profile')
-    } else {
-      setError('Login failed')
+    } catch (err) {
+      setError((err as Error).message)
     }
   }
 
@@ -37,6 +41,10 @@ export default function LoginPage() {
             <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" />
             {error && <p className="text-destructive text-sm">{error}</p>}
             <Button type="submit" className="w-full">Sign In</Button>
+            <div className="text-sm text-center space-x-2">
+              <a href="/signup" className="underline">Sign Up</a>
+              <a href="/reset-password" className="underline">Forgot Password?</a>
+            </div>
           </form>
         </CardContent>
       </Card>

@@ -25,6 +25,24 @@ export class AuthService {
     return response.json();
   }
 
+  async register(credentials: LoginCredentials): Promise<LoginResponse> {
+    const response = await fetch(`${this.baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Register failed: ${error}`);
+    }
+
+    return response.json();
+  }
+
   async getCurrentUser(): Promise<User> {
     const response = await fetch(`${this.baseUrl}/api/auth/me`, {
       method: 'GET',
@@ -72,6 +90,22 @@ export class AuthService {
     await fetch(`${this.baseUrl}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',
+    });
+  }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    await fetch(`${this.baseUrl}/api/auth/request_password_reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await fetch(`${this.baseUrl}/api/auth/reset_password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, new_password: newPassword }),
     });
   }
 

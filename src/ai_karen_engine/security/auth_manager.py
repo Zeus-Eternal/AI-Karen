@@ -5,6 +5,7 @@ import os
 import secrets
 import hashlib
 from pathlib import Path
+import time
 from typing import Dict, Any, Optional, List
 
 # Path to persistent user store
@@ -38,10 +39,12 @@ def _init_default_admin() -> Dict[str, Dict[str, Any]]:
         admin_email: {
             "password": _hash_password(admin_password),
             "roles": ["admin", "dev", "user"],
+            "is_verified": True,
         },
         user_email: {
             "password": _hash_password(user_password),
             "roles": ["user"],
+            "is_verified": True,
         },
     }
 
@@ -82,6 +85,12 @@ def load_users() -> Dict[str, Dict[str, Any]]:
 
 _USERS: Dict[str, Dict[str, Any]] = load_users()
 
+# --- Verification & Password Reset Tokens ---
+# token -> email mapping
+EMAIL_VERIFICATION_TOKENS: Dict[str, str] = {}
+PASSWORD_RESET_TOKENS: Dict[str, Dict[str, Any]] = {}
+PASSWORD_RESET_TOKEN_TTL = 3600  # seconds
+
 
 def save_users() -> None:
     USER_STORE_PATH.write_text(json.dumps(_USERS, indent=2))
@@ -102,6 +111,7 @@ def create_user(
         "roles": roles or ["user"],
         "tenant_id": tenant_id,
         "preferences": preferences or {},
+        "is_verified": False,
     }
     save_users()
 
@@ -133,10 +143,62 @@ def update_credentials(
     return username
 
 
+def generate_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def create_email_verification_token(email: str) -> str:
+    token = generate_token()
+    EMAIL_VERIFICATION_TOKENS[token] = email
+    return token
+
+
+def verify_email_token(token: str) -> Optional[str]:
+    return EMAIL_VERIFICATION_TOKENS.pop(token, None)
+
+
+def mark_user_verified(email: str) -> None:
+    if email in _USERS:
+        _USERS[email]["is_verified"] = True
+        save_users()
+
+
+def create_password_reset_token(email: str) -> str:
+    token = generate_token()
+    PASSWORD_RESET_TOKENS[token] = {
+        "email": email,
+        "expires": time.time() + PASSWORD_RESET_TOKEN_TTL,
+    }
+    return token
+
+
+def verify_password_reset_token(token: str) -> Optional[str]:
+    data = PASSWORD_RESET_TOKENS.get(token)
+    if not data:
+        return None
+    if data["expires"] < time.time():
+        PASSWORD_RESET_TOKENS.pop(token, None)
+        return None
+    PASSWORD_RESET_TOKENS.pop(token, None)
+    return data["email"]
+
+
+def update_password(email: str, new_password: str) -> None:
+    if email in _USERS:
+        _USERS[email]["password"] = _hash_password(new_password)
+        save_users()
+
+
 __all__ = [
     "authenticate",
     "update_credentials",
     "create_user",
     "save_users",
     "_USERS",
+    "create_email_verification_token",
+    "verify_email_token",
+    "mark_user_verified",
+    "create_password_reset_token",
+    "verify_password_reset_token",
+    "update_password",
 ]
