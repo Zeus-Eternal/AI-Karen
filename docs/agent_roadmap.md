@@ -162,14 +162,15 @@ const [memoryCount, setMemoryCount] = useState<number|null>(null);
 |    P1    | ~~Signup page + email verification flow~~             | Full stack       | **Complete** |
 |    P1    | ~~Password reset (magic link) flow~~                  | Full stack       | **Complete** |
 |    P1    | ~~Client-side validation & error messages~~           | Frontend         | **Complete** |
-|    P2    | 2FA via TOTP setup UI and enforcement             | Full stack       | 2 weeks |
-|    P2    | Role-based dashboard variant                      | Frontend         | 1 week  |
-|    P3    | Avatar upload & theme picker                      | Frontend/Backend | 1 week  |
-|    P3    | Profile-level Integrations plugin                 | Plugin Team      | 3 weeks |
-|    P4    | Usage analytics charts                            | Frontend/Analytics | 2 weeks |
-|    P4    | Audit log UI                                      | Frontend/Admin   | 2 weeks |
+|    P2    | ~~2FA via TOTP setup UI and enforcement~~             | Full stack       | **Complete** |
+|    P2    | ~~Role-based dashboard variant~~                      | Frontend         | **Complete** |
+|    P3    | ~~Avatar upload & theme picker~~                      | Frontend/Backend | **Complete** |
+|    P3    | ~~Profile-level Integrations plugin~~                 | Plugin Team      | **Complete** |
+|    P4    | ~~Usage analytics charts~~                            | Frontend/Analytics | **Complete** |
+|    P4    | ~~Audit log UI~~                                      | Frontend/Admin   | **Complete** |
 
 ---
+**Update 2025-07:** Avatar uploading and theme selection implemented via `UserProfile` component. Profile integrations shipped as plugin `ai_karen_engine.plugins.profile_integrations`.
 
 ## 8. Developer Guidelines
 

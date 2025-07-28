@@ -57,6 +57,7 @@ from ai_karen_engine.api_routes.events import router as events_router
 from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
+from ai_karen_engine.api_routes.audit import router as audit_router
 from ai_karen_engine.api_routes.web_api_compatibility import \
     router as web_api_router
 from ai_karen_engine.clients.database.elastic_client import \
@@ -357,6 +358,7 @@ app.include_router(memory_router)
 app.include_router(conversation_router)
 app.include_router(plugin_router)
 app.include_router(tool_router)
+app.include_router(audit_router)
 
 # ─── Startup: memory, plugins, LLM registry refresh ───────────────────────────
 

@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { X, Save, LogOut, Loader2 } from 'lucide-react';
+import { authService } from '@/services/authService';
 
 interface UserProfileProps {
   onClose?: () => void;
@@ -24,6 +25,20 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   const [preferences, setPreferences] = useState(user?.preferences || {});
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const url = await authService.uploadAvatar(file);
+      setPreferences(prev => ({
+        ...prev,
+        ui: { ...prev.ui, avatarUrl: url },
+      }));
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+    }
+  };
 
   if (!user) {
     return null;
@@ -233,6 +248,40 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                 />
               ) : (
                 <p className="p-2 bg-muted/50 rounded">{preferences.maxTokens}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>UI Theme</Label>
+              {isEditing ? (
+                <Select
+                  value={preferences.ui.theme}
+                  onValueChange={(value) => setPreferences(prev => ({
+                    ...prev,
+                    ui: { ...prev.ui, theme: value },
+                  }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light">Light</SelectItem>
+                    <SelectItem value="dark">Dark</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="capitalize p-2 bg-muted/50 rounded">{preferences.ui.theme}</p>
+              )}
+            </div>
+
+            <div>
+              <Label>Avatar</Label>
+              {isEditing ? (
+                <Input type="file" accept="image/*" onChange={handleAvatarChange} />
+              ) : (
+                preferences.ui.avatarUrl && (
+                  <img src={preferences.ui.avatarUrl} className="h-12 w-12 rounded-full" alt="avatar" />
+                )
               )}
             </div>
           </div>
