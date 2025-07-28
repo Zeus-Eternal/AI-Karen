@@ -1,16 +1,88 @@
 """
 Security module for AI Karen Engine.
-Provides comprehensive security testing, threat protection, and compliance features.
+Provides comprehensive security testing, threat protection, compliance features,
+and intelligent authentication capabilities.
 """
 
 # Always import basic penetration testing components
 from ai_karen_engine.security.penetration_testing import PenetrationTestSuite, SecurityScanner
 
-# Initialize basic exports
-__all__ = [
-    'PenetrationTestSuite',
-    'SecurityScanner'
-]
+# Import intelligent authentication models and base classes
+try:
+    from ai_karen_engine.security.models import (
+        AuthContext,
+        AuthAnalysisResult,
+        IntelligentAuthConfig,
+        RiskLevel,
+        SecurityActionType,
+        GeoLocation,
+        NLPFeatures,
+        EmbeddingAnalysis,
+        BehavioralAnalysis,
+        ThreatAnalysis,
+        SecurityAction,
+        RiskThresholds,
+        FeatureFlags,
+        FallbackConfig
+    )
+    from ai_karen_engine.security.intelligent_auth_base import (
+        ServiceStatus,
+        ServiceHealthStatus,
+        IntelligentAuthHealthStatus,
+        BaseIntelligentAuthService,
+        ServiceRegistry,
+        HealthMonitor,
+        CredentialAnalyzerInterface,
+        BehavioralEmbeddingInterface,
+        AnomalyDetectorInterface,
+        ThreatIntelligenceInterface,
+        IntelligentAuthServiceInterface,
+        get_service_registry,
+        register_service,
+        get_service
+    )
+    
+    __all__ = [
+        'PenetrationTestSuite',
+        'SecurityScanner',
+        # Intelligent authentication models
+        'AuthContext',
+        'AuthAnalysisResult', 
+        'IntelligentAuthConfig',
+        'RiskLevel',
+        'SecurityActionType',
+        'GeoLocation',
+        'NLPFeatures',
+        'EmbeddingAnalysis',
+        'BehavioralAnalysis',
+        'ThreatAnalysis',
+        'SecurityAction',
+        'RiskThresholds',
+        'FeatureFlags',
+        'FallbackConfig',
+        # Intelligent authentication base classes
+        'ServiceStatus',
+        'ServiceHealthStatus',
+        'IntelligentAuthHealthStatus',
+        'BaseIntelligentAuthService',
+        'ServiceRegistry',
+        'HealthMonitor',
+        'CredentialAnalyzerInterface',
+        'BehavioralEmbeddingInterface',
+        'AnomalyDetectorInterface',
+        'ThreatIntelligenceInterface',
+        'IntelligentAuthServiceInterface',
+        'get_service_registry',
+        'register_service',
+        'get_service'
+    ]
+    
+except ImportError as e:
+    # Fallback if intelligent auth components are not available
+    __all__ = [
+        'PenetrationTestSuite',
+        'SecurityScanner'
+    ]
 
 # Try to import optional components that require additional dependencies
 try:

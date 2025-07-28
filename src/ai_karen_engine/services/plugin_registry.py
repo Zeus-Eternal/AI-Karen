@@ -19,7 +19,7 @@ import uuid
 import importlib.util
 import hashlib
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,8 @@ class PluginManifest(BaseModel):
     category: str = "general"
     intent: Optional[str] = None
     
-    @validator('plugin_api_version')
+    @field_validator('plugin_api_version')
+    @classmethod
     def validate_api_version(cls, v):
         """Validate plugin API version."""
         supported_versions = ["1.0", "1.1"]

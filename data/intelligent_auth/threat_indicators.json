@@ -1,0 +1,75 @@
+[
+  {
+    "value": "10.0.0.0/8",
+    "indicator_type": "ip_address",
+    "reputation_level": "suspicious",
+    "source": "internal",
+    "first_seen": "2025-07-28T17:26:37.212197",
+    "last_seen": "2025-07-28T17:26:37.212198",
+    "confidence": 0.7,
+    "tags": [
+      "internal_network",
+      "test"
+    ],
+    "description": "Internal network range - suspicious for external access",
+    "ttl": null
+  },
+  {
+    "value": "tor_exit_node",
+    "indicator_type": "pattern",
+    "reputation_level": "suspicious",
+    "source": "open_source",
+    "first_seen": "2025-07-28T17:26:37.212199",
+    "last_seen": "2025-07-28T17:26:37.212200",
+    "confidence": 0.8,
+    "tags": [
+      "tor",
+      "anonymization"
+    ],
+    "description": "Tor exit node",
+    "ttl": null
+  },
+  {
+    "value": "sqlmap",
+    "indicator_type": "user_agent",
+    "reputation_level": "malicious",
+    "source": "internal",
+    "first_seen": "2025-07-28T17:26:37.212201",
+    "last_seen": "2025-07-28T17:26:37.212201",
+    "confidence": 0.95,
+    "tags": [
+      "sql_injection",
+      "scanner"
+    ],
+    "description": "SQL injection tool user agent",
+    "ttl": null
+  },
+  {
+    "value": "new_malicious.com",
+    "indicator_type": "domain",
+    "reputation_level": "malicious",
+    "source": "commercial_feed",
+    "first_seen": "2025-07-28T17:26:37.212221",
+    "last_seen": "2025-07-28T17:26:37.212221",
+    "confidence": 0.9,
+    "tags": [
+      "phishing"
+    ],
+    "description": null,
+    "ttl": null
+  },
+  {
+    "value": "10.0.0.100",
+    "indicator_type": "ip_address",
+    "reputation_level": "suspicious",
+    "source": "open_source",
+    "first_seen": "2025-07-28T17:26:37.212221",
+    "last_seen": "2025-07-28T17:26:37.212221",
+    "confidence": 0.7,
+    "tags": [
+      "scanner"
+    ],
+    "description": null,
+    "ttl": null
+  }
+]
