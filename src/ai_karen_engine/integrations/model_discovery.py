@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable
 
 logger = logging.getLogger("kari.model_discovery")
+# Avoid duplicate log messages bubbling up to Uvicorn
+logger.propagate = False
 
 # ======== Model Registry/Source Abstractions =========
 
