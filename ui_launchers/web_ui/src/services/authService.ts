@@ -8,18 +8,32 @@ export class AuthService {
   }
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    const response = await fetch(`${this.baseUrl}/api/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-      credentials: 'include',
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+        credentials: 'include',
+      });
+    } catch (err) {
+      throw new Error('Network error. Please try again.');
+    }
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Login failed: ${error}`);
+      let message = 'Invalid credentials';
+      try {
+        const data = await response.json();
+        if (typeof data.detail === 'string') {
+          message = data.detail;
+        }
+      } catch {
+        const text = await response.text();
+        if (text) message = text;
+      }
+      throw new Error(message);
     }
 
     return response.json();
