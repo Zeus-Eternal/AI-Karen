@@ -23,9 +23,17 @@ from ai_karen_engine.security.auth_manager import (
     update_credentials,
     create_user,
     _USERS,
+    create_email_verification_token,
+    verify_email_token,
+    mark_user_verified,
+    create_password_reset_token,
+    verify_password_reset_token,
+    update_password,
 )
+from ai_karen_engine.core.logging import get_logger
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = get_logger(__name__)
 
 # Session cookie configuration
 COOKIE_NAME = "kari_session"
@@ -86,6 +94,8 @@ async def register(req: RegisterRequest, request: Request, response: Response) -
         create_user(req.email, req.password, roles=req.roles, tenant_id=req.tenant_id, preferences=req.preferences)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    verification_token = create_email_verification_token(req.email)
+    logger.info(f"Verification token for {req.email}: {verification_token}")
 
     user = _USERS[req.email]
     token = create_session(
@@ -130,6 +140,10 @@ async def login(req: LoginRequest, request: Request, response: Response) -> Logi
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
+    if not user.get("is_verified"):
+        raise HTTPException(status_code=403, detail="Email not verified")
+    if not user.get("is_verified"):
+        raise HTTPException(status_code=403, detail="Email not verified")
 
     tenant_id = user.get("tenant_id") or request.headers.get("X-Tenant-ID", "default")
     token = create_session(
@@ -280,3 +294,39 @@ async def logout(response: Response) -> Dict[str, str]:
     """Clear authentication cookie."""
     response.delete_cookie(COOKIE_NAME)
     return {"detail": "Logged out"}
+
+
+@router.get("/verify_email")
+async def verify_email(token: str) -> Dict[str, str]:
+    email = verify_email_token(token)
+    if not email:
+        raise HTTPException(status_code=400, detail="Invalid token")
+    mark_user_verified(email)
+    return {"detail": "Email verified"}
+
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+
+@router.post("/request_password_reset")
+async def request_password_reset(req: PasswordResetRequest) -> Dict[str, str]:
+    if req.email not in _USERS:
+        raise HTTPException(status_code=404, detail="User not found")
+    token = create_password_reset_token(req.email)
+    logger.info(f"Password reset token for {req.email}: {token}")
+    return {"detail": "Password reset link sent"}
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/reset_password")
+async def reset_password(req: PasswordResetConfirm) -> Dict[str, str]:
+    email = verify_password_reset_token(req.token)
+    if not email:
+        raise HTTPException(status_code=400, detail="Invalid token")
+    update_password(email, req.new_password)
+    return {"detail": "Password updated"}

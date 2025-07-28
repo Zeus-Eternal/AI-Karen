@@ -90,6 +90,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const register = async (credentials: LoginCredentials): Promise<void> => {
+    await authService.register(credentials);
+  };
+
+  const requestPasswordReset = async (email: string): Promise<void> => {
+    await authService.requestPasswordReset(email);
+  };
+
+  const resetPassword = async (
+    token: string,
+    newPassword: string,
+  ): Promise<void> => {
+    await authService.resetPassword(token, newPassword);
+  };
+
   const logout = (): void => {
     authService.logout();
     setAuthState({
@@ -139,6 +154,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: authState.isAuthenticated,
     isLoading: authState.isLoading,
     login,
+    register,
+    requestPasswordReset,
+    resetPassword,
     logout,
     refreshUser,
     updateUserPreferences,

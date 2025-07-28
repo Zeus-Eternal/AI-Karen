@@ -48,6 +48,9 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  register: (credentials: LoginCredentials) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   updateUserPreferences: (preferences: Partial<User['preferences']>) => Promise<void>;
