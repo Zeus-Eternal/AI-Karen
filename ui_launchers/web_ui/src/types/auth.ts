@@ -20,6 +20,7 @@ export interface User {
     ui: {
       theme: string;
       language: string;
+      avatarUrl?: string;
     };
   };
 }
