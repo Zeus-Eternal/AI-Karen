@@ -39,5 +39,6 @@ sqlalchemy
 alembic
 chardet
 httpx
+pyotp
 tenacity
 pytest-asyncio

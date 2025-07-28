@@ -3,6 +3,7 @@ export interface User {
   email: string;
   roles: string[];
   tenant_id: string;
+  two_factor_enabled: boolean;
   preferences: {
     personalityTone: string;
     personalityVerbosity: string;
@@ -32,6 +33,7 @@ export interface AuthState {
 export interface LoginCredentials {
   email: string;
   password: string;
+  totp_code?: string;
 }
 
 export interface LoginResponse {
@@ -41,6 +43,7 @@ export interface LoginResponse {
   roles: string[];
   tenant_id: string;
   preferences: any;
+  two_factor_enabled: boolean;
 }
 
 export interface AuthContextType {

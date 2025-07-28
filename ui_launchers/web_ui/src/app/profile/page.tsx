@@ -51,6 +51,13 @@ export default function ProfilePage() {
               <Button type="button" variant="secondary" onClick={logout}>Log Out</Button>
             </div>
           </form>
+          <div>
+            {user.two_factor_enabled ? (
+              <a href="/setup-2fa" className="underline">Manage 2FA</a>
+            ) : (
+              <a href="/setup-2fa" className="underline">Enable Two-Factor Authentication</a>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

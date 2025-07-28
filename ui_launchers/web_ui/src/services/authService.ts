@@ -25,6 +25,31 @@ export class AuthService {
     return response.json();
   }
 
+  async setupTwoFactor(): Promise<{ otpauth_url: string }> {
+    const response = await fetch(`${this.baseUrl}/api/auth/setup_2fa`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to start 2FA setup: ${error}`);
+    }
+    return response.json();
+  }
+
+  async confirmTwoFactor(code: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/auth/confirm_2fa`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ code }),
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to enable 2FA: ${error}`);
+    }
+  }
+
   async register(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await fetch(`${this.baseUrl}/api/auth/register`, {
       method: 'POST',
