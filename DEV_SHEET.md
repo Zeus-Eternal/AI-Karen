@@ -44,7 +44,7 @@ This document summarizes the official development protocol for Kari AI. It captu
              │
              ▼
 ┌────────────────────────────┐
-│  Admin Skin (Streamlit)    │
+│  Admin Web UI (Next.js)    │
 │  • Dashboard               │
 │  • LLM Manager             │
 │  • Plugin Manager          │
@@ -58,7 +58,7 @@ This document summarizes the official development protocol for Kari AI. It captu
 | Layer            | Primary Lib / Service                | Rationale                           | Alt (optional)             |
 | ---------------- | ------------------------------------ | ----------------------------------- | -------------------------- |
 | Web API          | **FastAPI**                          | ASGI, type-hint, websockets         | —                          |
-| Realtime UI      | **Streamlit**                        | Headless skin, rapid dev            | Next.js if SSG needed      |
+| Realtime UI      | **Web UI (Next.js)**                 | Default interface for all users     | Streamlit for rapid prototyping |
 | Task Queue       | Celery + Redis                       | Battle-tested, supports KRONOS beat | RQ                         |
 | Vector DB        | **Milvus 2.4**                       | billion-scale, metadata filter      | FAISS (local), Chroma      |
 | Cache            | Redis                                | fast kv / pubsub                    | —                          |

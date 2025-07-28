@@ -116,11 +116,12 @@ def check_permission(user_ctx: dict, required: List[str]) -> bool:
 
 
 # === Auth API Integration ===
-def api_authenticate(username: str, password: str) -> Optional[dict]:
+def api_authenticate(email: str, password: str) -> Optional[dict]:
     """Authenticate user via backend API; returns user_ctx or None."""
     url = f"{API_BASE_URL}/api/auth/login"
     try:
-        resp = requests.post(url, json={"username": username, "password": password})
+        # Backend expects an email field rather than username
+        resp = requests.post(url, json={"email": email, "password": password})
         if resp.status_code == 200:
             return resp.json()
     except Exception:

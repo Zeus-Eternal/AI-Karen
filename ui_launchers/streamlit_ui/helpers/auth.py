@@ -8,14 +8,15 @@ import streamlit as st
 API_URL = os.getenv("KARI_API_URL", "http://localhost:8000")
 
 
-def login(username: str, password: str) -> bool:
+def login(email: str, password: str) -> bool:
     """Authenticate against the backend and persist the token."""
     try:
         import httpx  # imported lazily to avoid dependency during tests
 
         resp = httpx.post(
             f"{API_URL}/api/auth/login",
-            json={"username": username, "password": password},
+            # Backend expects an email field
+            json={"email": email, "password": password},
             timeout=5,
         )
         if resp.status_code == 200:
