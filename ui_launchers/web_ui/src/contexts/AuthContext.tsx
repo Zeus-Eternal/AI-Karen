@@ -59,6 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email: loginResponse.email,
         roles: loginResponse.roles,
         tenant_id: loginResponse.tenant_id,
+        two_factor_enabled: loginResponse.two_factor_enabled,
         preferences: loginResponse.preferences || {
           personalityTone: 'friendly',
           personalityVerbosity: 'balanced',

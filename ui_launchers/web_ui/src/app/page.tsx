@@ -37,6 +37,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import NotificationsSection from '@/components/sidebar/NotificationsSection';
 import ChatInterface from '@/components/chat/ChatInterface';
+import Dashboard from '@/components/dashboard/Dashboard';
 import { webUIConfig } from '@/lib/config';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -44,7 +45,7 @@ import { AuthenticatedHeader } from '@/components/layout/AuthenticatedHeader';
 
 const ExtensionSidebar = dynamic(() => import('@/components/extensions/ExtensionSidebar'));
 
-type ActiveView = 'chat' | 'settings' | 'commsCenter' | 'pluginDatabaseConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview';
+type ActiveView = 'chat' | 'settings' | 'dashboard' | 'commsCenter' | 'pluginDatabaseConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview';
 
 export default function HomePage() {
   return (
@@ -101,19 +102,29 @@ function AuthenticatedHomePage() {
               <Separator className="my-1" />
               <AppSidebarContent className="p-2">
                 <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('chat')}
-                      isActive={activeMainView === 'chat'}
-                      className="w-full"
-                    >
-                      <MessageSquare />
-                      Chat
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('settings')}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setActiveMainView('chat')}
+                    isActive={activeMainView === 'chat'}
+                    className="w-full"
+                  >
+                    <MessageSquare />
+                    Chat
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setActiveMainView('dashboard')}
+                    isActive={activeMainView === 'dashboard'}
+                    className="w-full"
+                  >
+                    <LayoutGrid />
+                    Dashboard
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setActiveMainView('settings')}
                       isActive={activeMainView === 'settings'}
                       className="w-full"
                     >
@@ -209,6 +220,7 @@ function AuthenticatedHomePage() {
           <SidebarInset className="flex-1 flex flex-col min-h-0">
             <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6 overflow-y-auto">
               {activeMainView === 'chat' && <ChatInterface />}
+              {activeMainView === 'dashboard' && <Dashboard />}
               {activeMainView === 'settings' && <SettingsDialogComponent />}
               {activeMainView === 'pluginDatabaseConnector' && <DatabaseConnectorPluginPage />}
               {activeMainView === 'pluginFacebook' && <FacebookPluginPage />}

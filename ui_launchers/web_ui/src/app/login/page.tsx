@@ -12,6 +12,7 @@ export default function LoginPage() {
   // In production, inputs should start empty to avoid leaking defaults
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [totp, setTotp] = useState('')
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,7 +23,7 @@ export default function LoginPage() {
       return
     }
     try {
-      await login({ email, password })
+      await login({ email, password, totp_code: totp || undefined })
       router.push('/profile')
     } catch (err) {
       setError((err as Error).message)
@@ -39,6 +40,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" />
             <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" />
+            <Input type="text" value={totp} onChange={e => setTotp(e.target.value)} placeholder="2FA code (if enabled)" />
             {error && <p className="text-destructive text-sm">{error}</p>}
             <Button type="submit" className="w-full">Sign In</Button>
             <div className="text-sm text-center space-x-2">

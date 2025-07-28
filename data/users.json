@@ -8,7 +8,9 @@
       "language": "en",
       "notifications": true,
       "auto_refresh": true
-    }
+    },
+    "two_factor_enabled": false,
+    "totp_secret": null
   },
   "user@kari.ai": {
     "password": "fc8fc5a0ac094aa8cebf4b73d9fb9a49:c1679d7edf5c3e5c4da03a494b1f06063b2ee3ba192bbfea294fac81ed192003",
@@ -19,6 +21,8 @@
       "language": "en",
       "notifications": true,
       "auto_refresh": false
-    }
+    },
+    "two_factor_enabled": false,
+    "totp_secret": null
   }
 }

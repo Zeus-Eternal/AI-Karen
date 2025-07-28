@@ -7,6 +7,7 @@ import hashlib
 from pathlib import Path
 import time
 from typing import Dict, Any, Optional, List
+import pyotp
 
 # Path to persistent user store
 USER_STORE_PATH = Path(__file__).resolve().parents[3] / "data" / "users.json"
@@ -40,11 +41,15 @@ def _init_default_admin() -> Dict[str, Dict[str, Any]]:
             "password": _hash_password(admin_password),
             "roles": ["admin", "dev", "user"],
             "is_verified": True,
+            "two_factor_enabled": False,
+            "totp_secret": None,
         },
         user_email: {
             "password": _hash_password(user_password),
             "roles": ["user"],
             "is_verified": True,
+            "two_factor_enabled": False,
+            "totp_secret": None,
         },
     }
 
@@ -112,6 +117,8 @@ def create_user(
         "tenant_id": tenant_id,
         "preferences": preferences or {},
         "is_verified": False,
+        "two_factor_enabled": False,
+        "totp_secret": None,
     }
     save_users()
 
@@ -189,6 +196,31 @@ def update_password(email: str, new_password: str) -> None:
         save_users()
 
 
+def generate_totp_secret() -> str:
+    """Return a new TOTP secret."""
+    return pyotp.random_base32()
+
+
+def get_totp_provisioning_uri(username: str, secret: str, issuer: str = "Kari AI") -> str:
+    totp = pyotp.TOTP(secret)
+    return totp.provisioning_uri(name=username, issuer_name=issuer)
+
+
+def verify_totp(username: str, code: str) -> bool:
+    user = _USERS.get(username)
+    if not user or not user.get("totp_secret"):
+        return False
+    totp = pyotp.TOTP(user["totp_secret"])
+    return totp.verify(code)
+
+
+def enable_two_factor(username: str, secret: str) -> None:
+    if username in _USERS:
+        _USERS[username]["totp_secret"] = secret
+        _USERS[username]["two_factor_enabled"] = True
+        save_users()
+
+
 __all__ = [
     "authenticate",
     "update_credentials",
@@ -201,4 +233,8 @@ __all__ = [
     "create_password_reset_token",
     "verify_password_reset_token",
     "update_password",
+    "generate_totp_secret",
+    "get_totp_provisioning_uri",
+    "verify_totp",
+    "enable_two_factor",
 ]
