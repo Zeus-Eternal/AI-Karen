@@ -9,24 +9,25 @@ Chat Memory & Auth Configuration
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from datetime import timedelta
 
 try:
     # Pydantic v2
     from pydantic_settings import BaseSettings, SettingsConfigDict
     from pydantic import Field
+
     V2 = True
 except ImportError:
     # Pydantic v1 fallback
     from pydantic import BaseSettings, Field
+
     V2 = False
 
 # Optional: load .env at import time if python-dotenv is present
 # so that environment variables are populated for BaseSettings
 try:
     from dotenv import load_dotenv
+
     env_path = Path(__file__).resolve().parent.parent.parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
@@ -62,6 +63,7 @@ class ChatMemorySettings(BaseSettings):
             extra="ignore",
         )
     else:
+
         class Config:
             env_prefix = "CHAT_MEMORY_"
             extra = "ignore"
@@ -71,8 +73,11 @@ class ProductionAuthSettings(BaseSettings):
     """Production authentication config (JWT, sessions, rate limits)"""
 
     # Database & Redis URLs
-    database_url: str = Field(..., env="DATABASE_URL")
-    redis_url: str = Field(..., env="REDIS_URL")
+    database_url: str = Field(
+        "postgresql://karen_user:karen_secure_pass_change_me@postgres:5432/ai_karen",
+        env="DATABASE_URL",
+    )
+    redis_url: str = Field("redis://redis:6379/0", env="REDIS_URL")
 
     # JWT / security
     secret_key: str = Field("changeme", description="JWT secret key (override!)")
@@ -98,6 +103,7 @@ class ProductionAuthSettings(BaseSettings):
             extra="ignore",
         )
     else:
+
         class Config:
             env_file = ".env"
             env_file_encoding = "utf-8"
@@ -112,8 +118,11 @@ class ProductionSettings(BaseSettings):
     debug: bool = Field(False, description="Enable debug logging")
 
     # DB & Redis
-    database_url: str = Field(..., env="DATABASE_URL")
-    redis_url: str = Field(..., env="REDIS_URL")
+    database_url: str = Field(
+        "postgresql://karen_user:karen_secure_pass_change_me@postgres:5432/ai_karen",
+        env="DATABASE_URL",
+    )
+    redis_url: str = Field("redis://redis:6379/0", env="REDIS_URL")
 
     # Vector DB / Milvus
     vector_index_name: str = Field(
@@ -139,6 +148,7 @@ class ProductionSettings(BaseSettings):
             extra="ignore",
         )
     else:
+
         class Config:
             env_file = ".env"
             env_file_encoding = "utf-8"
