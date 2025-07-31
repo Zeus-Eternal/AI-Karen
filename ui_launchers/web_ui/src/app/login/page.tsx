@@ -24,7 +24,8 @@ export default function LoginPage() {
     }
     try {
       await login({ email, password, totp_code: totp || undefined })
-      router.push('/profile')
+      // Redirect to main UI instead of profile page
+      router.push('/')
     } catch (err) {
       setError((err as Error).message)
     }

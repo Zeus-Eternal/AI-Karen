@@ -61,7 +61,7 @@ async def test_user_service():
         print("\n🔑 Testing authentication...")
         auth_result = await user_service.authenticate_user(
             email="admin@kari.ai",
-            password="pswd123",
+            password="password123",
             user_agent="test-agent",
             ip="127.0.0.1"
         )
@@ -124,7 +124,7 @@ def test_api_endpoints():
         print("\n🔐 Testing login endpoint...")
         login_data = {
             "email": "admin@kari.ai",
-            "password": "pswd123"
+            "password": "password123"
         }
         response = requests.post(f"{base_url}/api/auth/login", json=login_data)
         if response.status_code == 200:

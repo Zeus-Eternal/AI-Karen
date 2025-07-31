@@ -61,6 +61,19 @@ export default function ResetPasswordPage() {
               {error && <p className="text-destructive text-sm">{error}</p>}
               {message && <p className="text-sm text-green-600">{message}</p>}
               <Button type="submit" className="w-full">Reset Password</Button>
+              
+              {/* Navigation Links */}
+              <div className="text-center mt-4">
+                <p className="text-sm text-muted-foreground">
+                  Remember your password?{' '}
+                  <a 
+                    href="/login" 
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Back to Sign In
+                  </a>
+                </p>
+              </div>
             </form>
           </CardContent>
         </Card>
@@ -80,6 +93,19 @@ export default function ResetPasswordPage() {
             {error && <p className="text-destructive text-sm">{error}</p>}
             {message && <p className="text-sm text-green-600">{message}</p>}
             <Button type="submit" className="w-full">Send Reset Link</Button>
+            
+            {/* Navigation Links */}
+            <div className="text-center mt-4">
+              <p className="text-sm text-muted-foreground">
+                Remember your password?{' '}
+                <a 
+                  href="/login" 
+                  className="text-primary hover:underline font-medium"
+                >
+                  Back to Sign In
+                </a>
+              </p>
+            </div>
           </form>
         </CardContent>
       </Card>

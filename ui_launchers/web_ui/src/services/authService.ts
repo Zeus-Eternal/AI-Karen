@@ -1,175 +1,125 @@
 import { LoginCredentials, LoginResponse, User } from '@/types/auth';
+import { getApiClient } from '@/lib/api-client';
 
 export class AuthService {
-  private baseUrl: string;
+  private apiClient = getApiClient();
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    // API client handles all endpoint configuration automatically
   }
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-        credentials: 'include',
-      });
-    } catch (err) {
-      throw new Error('Network error. Please try again.');
-    }
-
-    if (!response.ok) {
+      const response = await this.apiClient.post('/api/auth/login', credentials);
+      return response.data;
+    } catch (error: any) {
+      if (error.isNetworkError) {
+        throw new Error('Network error. Please try again.');
+      }
+      
       let message = 'Invalid credentials';
-      try {
-        const data = await response.json();
-        if (typeof data.detail === 'string') {
-          message = data.detail;
+      if (error.status && error.status >= 400 && error.status < 500) {
+        // Try to extract error message from response
+        if (typeof error.originalError === 'object' && error.originalError) {
+          message = error.originalError.detail || error.message;
+        } else {
+          message = error.message;
         }
-      } catch {
-        const text = await response.text();
-        if (text) message = text;
       }
       throw new Error(message);
     }
-
-    return response.json();
   }
 
   async setupTwoFactor(): Promise<{ otpauth_url: string }> {
-    const response = await fetch(`${this.baseUrl}/api/auth/setup_2fa`, {
-      method: 'GET',
-      credentials: 'include',
-    });
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to start 2FA setup: ${error}`);
+    try {
+      const response = await this.apiClient.get('/api/auth/setup_2fa');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(`Failed to start 2FA setup: ${error.message}`);
     }
-    return response.json();
   }
 
   async confirmTwoFactor(code: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/auth/confirm_2fa`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ code }),
-    });
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to enable 2FA: ${error}`);
+    try {
+      await this.apiClient.post('/api/auth/confirm_2fa', { code });
+    } catch (error: any) {
+      throw new Error(`Failed to enable 2FA: ${error.message}`);
     }
   }
 
   async register(credentials: LoginCredentials): Promise<LoginResponse> {
-    const response = await fetch(`${this.baseUrl}/api/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Register failed: ${error}`);
+    try {
+      const response = await this.apiClient.post('/api/auth/register', credentials);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(`Register failed: ${error.message}`);
     }
-
-    return response.json();
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await fetch(`${this.baseUrl}/api/auth/me`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to get user: ${error}`);
+    try {
+      const response = await this.apiClient.get('/api/auth/me');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(`Failed to get user: ${error.message}`);
     }
-
-    return response.json();
   }
 
   async updateCredentials(newUsername?: string, newPassword?: string): Promise<LoginResponse> {
-    const response = await fetch(`${this.baseUrl}/api/auth/update_credentials`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({
+    try {
+      const response = await this.apiClient.post('/api/auth/update_credentials', {
         new_username: newUsername,
         new_password: newPassword,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to update credentials: ${error}`);
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(`Failed to update credentials: ${error.message}`);
     }
-
-    return response.json();
   }
 
   async updateUserPreferences(_token: string, preferences: Partial<User['preferences']>): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/users/me/preferences`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(preferences),
-    });
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to update preferences: ${error}`);
+    try {
+      await this.apiClient.put('/api/users/me/preferences', preferences);
+    } catch (error: any) {
+      throw new Error(`Failed to update preferences: ${error.message}`);
     }
   }
 
   async uploadAvatar(file: File): Promise<string> {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await fetch(`${this.baseUrl}/api/users/me/avatar`, {
-      method: 'POST',
-      credentials: 'include',
-      body: formData,
-    });
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to upload avatar: ${error}`);
+    try {
+      const response = await this.apiClient.uploadFile('/api/users/me/avatar', file);
+      return response.data.avatar_url as string;
+    } catch (error: any) {
+      throw new Error(`Failed to upload avatar: ${error.message}`);
     }
-    const data = await response.json();
-    return data.avatar_url as string;
   }
 
   async logout(): Promise<void> {
-    await fetch(`${this.baseUrl}/api/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
+    try {
+      await this.apiClient.post('/api/auth/logout');
+    } catch (error) {
+      // Logout should not throw errors, just log them
+      console.warn('Logout request failed:', error);
+    }
   }
 
   async requestPasswordReset(email: string): Promise<void> {
-    await fetch(`${this.baseUrl}/api/auth/request_password_reset`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
+    try {
+      await this.apiClient.post('/api/auth/request_password_reset', { email });
+    } catch (error: any) {
+      throw new Error(`Failed to request password reset: ${error.message}`);
+    }
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    await fetch(`${this.baseUrl}/api/auth/reset_password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, new_password: newPassword }),
-    });
+    try {
+      await this.apiClient.post('/api/auth/reset_password', { 
+        token, 
+        new_password: newPassword 
+      });
+    } catch (error: any) {
+      throw new Error(`Failed to reset password: ${error.message}`);
+    }
   }
 
   // Token and user persistence removed for HttpOnly cookie approach
@@ -198,4 +148,4 @@ export function initializeAuthService(): AuthService {
   return authServiceInstance;
 }
 
-export { AuthService };
+

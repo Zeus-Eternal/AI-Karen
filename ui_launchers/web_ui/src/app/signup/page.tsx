@@ -47,6 +47,19 @@ export default function SignupPage() {
             {error && <p className="text-destructive text-sm">{error}</p>}
             {message && <p className="text-sm text-green-600">{message}</p>}
             <Button type="submit" className="w-full">Create Account</Button>
+            
+            {/* Navigation Links */}
+            <div className="text-center mt-4">
+              <p className="text-sm text-muted-foreground">
+                Already have an account?{' '}
+                <a 
+                  href="/login" 
+                  className="text-primary hover:underline font-medium"
+                >
+                  Sign In
+                </a>
+              </p>
+            </div>
           </form>
         </CardContent>
       </Card>

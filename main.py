@@ -50,7 +50,7 @@ if "DATABASE_URL" not in os.environ and os.getenv("POSTGRES_URL"):
 import ai_karen_engine.utils.auth as auth_utils
 from ai_karen_engine.api_routes.ai_orchestrator_routes import \
     router as ai_router
-from ai_karen_engine.api_routes.auth import router as auth_router
+from ai_karen_engine.api_routes.production_auth_routes import router as auth_router
 from ai_karen_engine.api_routes.conversation_routes import \
     router as conversation_router
 from ai_karen_engine.api_routes.events import router as events_router
@@ -105,21 +105,43 @@ except ImportError:
 
     CONTENT_TYPE_LATEST = "text/plain"
 
-REQUEST_COUNT = Counter(
-    "kari_http_requests_total",
-    "Total HTTP requests",
-    registry=PROM_REGISTRY,
-)
-REQUEST_LATENCY = Histogram(
-    "kari_http_request_seconds",
-    "Latency of HTTP requests",
-    registry=PROM_REGISTRY,
-)
-LNM_ERROR_COUNT = Counter(
-    "lnm_runtime_errors_total",
-    "Total LNM pipeline failures",
-    registry=PROM_REGISTRY,
-)
+# Initialize Prometheus metrics with collision handling
+def _init_metrics():
+    """Initialize Prometheus metrics with duplicate handling"""
+    global REQUEST_COUNT, REQUEST_LATENCY, LNM_ERROR_COUNT
+    
+    try:
+        REQUEST_COUNT = Counter(
+            "kari_http_requests_total",
+            "Total HTTP requests",
+            registry=PROM_REGISTRY,
+        )
+        REQUEST_LATENCY = Histogram(
+            "kari_http_request_seconds",
+            "Latency of HTTP requests",
+            registry=PROM_REGISTRY,
+        )
+        LNM_ERROR_COUNT = Counter(
+            "lnm_runtime_errors_total",
+            "Total LNM pipeline failures",
+            registry=PROM_REGISTRY,
+        )
+    except ValueError as e:
+        if "Duplicated timeseries" in str(e):
+            # Metrics already registered, get existing ones
+            for collector in PROM_REGISTRY._collector_to_names:
+                if hasattr(collector, '_name'):
+                    if collector._name == "kari_http_requests_total":
+                        REQUEST_COUNT = collector
+                    elif collector._name == "kari_http_request_seconds":
+                        REQUEST_LATENCY = collector
+                    elif collector._name == "lnm_runtime_errors_total":
+                        LNM_ERROR_COUNT = collector
+        else:
+            raise
+
+# Initialize metrics
+_init_metrics()
 
 # Logger setup
 logger = logging.getLogger("kari")
@@ -176,6 +198,15 @@ PUBLIC_PATHS = {
     "/api/analytics/system",
     "/api/analytics/usage",
     "/api/health",
+    # Authentication endpoints - must be public for login to work
+    "/api/auth/login",
+    "/api/auth/register", 
+    "/api/auth/me",
+    "/api/auth/logout",
+    "/api/auth/request_password_reset",
+    "/api/auth/reset_password",
+    "/api/auth/setup_2fa",
+    "/api/auth/confirm_2fa",
 }
 
 
@@ -680,3 +711,38 @@ def self_refactor_logs(full: bool = False) -> Dict[str, List[str]]:
 if os.getenv("ENABLE_SELF_REFACTOR"):
     _sre_scheduler = SREScheduler(SelfRefactorEngine(Path(__file__).parent))
     _sre_scheduler.start()
+
+# ─── Server Startup ──────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    # Server configuration
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    reload = os.getenv("RELOAD", "true").lower() == "true"
+    log_level = os.getenv("LOG_LEVEL", "info")
+    
+    print(f"🚀 Starting AI Karen Backend Server...")
+    print(f"📍 Server will be available at:")
+    print(f"   - http://localhost:{port}")
+    print(f"   - http://127.0.0.1:{port}")
+    print(f"   - http://{host}:{port}")
+    print(f"🌐 CORS configured for Web UI on port 9002")
+    print(f"⏹️  Press Ctrl+C to stop the server")
+    print("-" * 60)
+    
+    try:
+        uvicorn.run(
+            "main:app",
+            host=host,
+            port=port,
+            reload=reload,
+            log_level=log_level,
+            access_log=True
+        )
+    except KeyboardInterrupt:
+        print("\n🛑 Server stopped by user")
+    except Exception as e:
+        print(f"❌ Server failed to start: {e}")
+        sys.exit(1)

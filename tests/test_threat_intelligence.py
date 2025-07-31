@@ -660,5 +660,107 @@ class TestThreatIntelligenceEngine:
         assert isinstance(stats['by_source'], dict)
 
 
+
+class TestCampaignCorrelation:
+    """Test campaign correlation functionality in threat intelligence engine."""
+    
+    @pytest.mark.asyncio
+    async def test_campaign_correlation_detection(self):
+        """Test detection of campaign correlation."""
+        config = {
+            'persistence_file': 'test_indicators.json',
+            'campaign_analysis': {
+                'correlation_threshold': 0.7,
+                'min_events_for_campaign': 3,
+                'campaign_timeout_hours': 72
+            }
+        }
+        
+        engine = ThreatIntelligenceEngine(config)
+        
+        # Create test authentication context
+        auth_context = AuthContext(
+            email="test@example.com",
+            password_hash="hashed_password",
+            client_ip="192.168.1.100",
+            user_agent="Mozilla/5.0",
+            timestamp=datetime.utcnow(),
+            request_id="test_request"
+        )
+        
+        # Create test threat analysis
+        from src.ai_karen_engine.security.models import ThreatAnalysis
+        threat_analysis = ThreatAnalysis(
+            ip_reputation_score=0.8,
+            known_attack_patterns=["brute_force"],
+            threat_actor_indicators=["automated_tool"]
+        )
+        
+        # Test campaign correlation detection (should return None for new attempt)
+        campaign_id = await engine.detect_attack_campaign_correlation(auth_context, threat_analysis)
+        assert campaign_id is None
+    
+    @pytest.mark.asyncio
+    async def test_analyze_attack_campaigns(self):
+        """Test analysis of attack campaigns."""
+        config = {
+            'persistence_file': 'test_indicators.json',
+            'campaign_analysis': {
+                'correlation_threshold': 0.7,
+                'min_events_for_campaign': 3,
+                'campaign_timeout_hours': 72
+            }
+        }
+        
+        engine = ThreatIntelligenceEngine(config)
+        
+        # Create multiple authentication attempts that could form a campaign
+        auth_attempts = []
+        base_time = datetime.utcnow()
+        
+        for i in range(5):
+            auth_context = AuthContext(
+                email=f"user{i}@example.com",
+                password_hash="hashed_password",
+                client_ip="192.168.1.100",  # Same IP for all attempts
+                user_agent="Mozilla/5.0",
+                timestamp=base_time + timedelta(minutes=i),
+                request_id=f"test_request_{i}"
+            )
+            
+            from src.ai_karen_engine.security.models import ThreatAnalysis
+            threat_analysis = ThreatAnalysis(
+                ip_reputation_score=0.8,
+                known_attack_patterns=["brute_force"],
+                threat_actor_indicators=["automated_tool"]
+            )
+            
+            auth_attempts.append((auth_context, threat_analysis))
+        
+        # Analyze for campaigns
+        result = await engine.analyze_attack_campaigns(auth_attempts)
+        
+        assert result is not None
+        assert hasattr(result, 'detected_campaigns')
+        assert hasattr(result, 'new_campaigns')
+        assert hasattr(result, 'threat_intelligence_updates')
+    
+    def test_campaign_analyzer_integration(self):
+        """Test that campaign analyzer is properly integrated."""
+        config = {
+            'campaign_analysis': {
+                'correlation_threshold': 0.7,
+                'min_events_for_campaign': 3
+            }
+        }
+        
+        engine = ThreatIntelligenceEngine(config)
+        
+        assert hasattr(engine, 'campaign_analyzer')
+        assert engine.campaign_analyzer is not None
+        assert hasattr(engine.campaign_analyzer, 'campaign_db')
+        assert hasattr(engine.campaign_analyzer, 'attack_signatures')
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

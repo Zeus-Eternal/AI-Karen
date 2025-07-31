@@ -4,6 +4,7 @@ LLMOrchestrator: Nuclear-Grade LLM Routing Engine for Kari
 - Hardware-isolated execution domains (psutil/sched_setaffinity)
 - Adaptive load balancing with circuit breakers
 - Military-grade observability and audit trails
+- Enhanced with failover strategies and resource monitoring
 """
 
 import os
@@ -11,7 +12,7 @@ import logging
 import time
 import hashlib
 import hmac
-from typing import Optional, Dict, Any, List, Tuple, Callable
+from typing import Optional, Dict, Any, List, Tuple, Callable, Union
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, Future
 import threading
@@ -19,346 +20,417 @@ import random
 import sys
 import uuid
 import traceback
+import json
+from dataclasses import dataclass, field
+from enum import Enum, auto
+import signal
 
-# === LOGGING: One Ring to Rule Them All ===
-def _resolve_log_path() -> Path:
-    env_dir = os.getenv("KARI_LOG_DIR")
-    if env_dir:
-        p = Path(env_dir)
-        try:
-            p.mkdir(parents=True, exist_ok=True)
-            log_file = p / "llm_orchestrator.log"
-            with open(log_file, "a"):
-                pass
-            return log_file
-        except Exception:
-            pass
+# === Constants & Configuration ===
+DEFAULT_CONFIG = {
+    "max_concurrent_requests": 8,
+    "request_timeout": 60,
+    "failure_trip_limit": 3,
+    "watchdog_interval": 30,
+    "cpu_reservation": 0.2,  # Reserve 20% CPU capacity
+    "memory_threshold": 0.8,  # 80% memory usage threshold
+}
 
-    var_log = Path("/var/log/kari")
-    try:
-        var_log.mkdir(parents=True, exist_ok=True)
-        log_file = var_log / "llm_orchestrator.log"
-        with open(log_file, "a"):
-            pass
-        return log_file
-    except (PermissionError, OSError):
-        user_log_dir = Path.home() / ".kari" / "logs"
-        user_log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = user_log_dir / "llm_orchestrator.log"
-        with open(log_file, "a"):
-            pass
-        return log_file
-
-LOG_FILE = _resolve_log_path()
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger("llm_orchestrator")
-logger.setLevel(logging.INFO)
-logger.info(f"LLM Orchestrator logging initialized. Log file: {LOG_FILE}")
-
-# === Security Constants ===
-def get_signing_key() -> str:
-    key = os.getenv("KARI_MODEL_SIGNING_KEY")
-    if not key:
-        raise RuntimeError("KARI_MODEL_SIGNING_KEY must be set in the environment for LLM operations!")
-    return key
-
-MAX_CONCURRENT_REQUESTS = int(os.getenv("KARI_MAX_LLM_CONCURRENT", "8"))
-REQUEST_TIMEOUT = int(os.getenv("KARI_LLM_TIMEOUT", "60"))
-FAILURE_TRIP_LIMIT = int(os.getenv("KARI_LLM_FAIL_LIMIT", "3"))
-
-# === Hardware Isolation: psutil or sched_setaffinity ===
-try:
-    import psutil
-    PSUTIL_ENABLED = True
-except ImportError:
-    PSUTIL_ENABLED = False
-
-def set_worker_affinity(cpu_id: int):
-    try:
-        if PSUTIL_ENABLED:
-            p = psutil.Process(os.getpid())
-            p.cpu_affinity([cpu_id])
-            logger.info(f"CPU affinity set via psutil to core {cpu_id}")
-        elif hasattr(os, "sched_setaffinity"):
-            os.sched_setaffinity(0, {cpu_id})
-            logger.info(f"CPU affinity set via sched_setaffinity to core {cpu_id}")
-        else:
-            logger.warning("No CPU pinning available; running without explicit affinity.")
-    except Exception as e:
-        logger.warning(f"Failed to set CPU affinity: {e}")
-
-# === Metrics & Observability ===
-try:
-    from prometheus_client import Counter, Histogram, Gauge
-    METRICS_ENABLED = True
-except ImportError:
-    METRICS_ENABLED = False
-    class _DummyMetric:
-        def inc(self, n=1): pass
-        def labels(self, **kwargs): return self
-        def time(self): 
-            class Ctx: 
-                def __enter__(self): return self
-                def __exit__(self, *a): pass
-            return Ctx()
-        def set(self, v): pass
-    Counter = Histogram = Gauge = _DummyMetric
-
-LLM_ROUTE_COUNT = Counter("llm_orchestrator_requests_total", "LLM routing decisions", ["skill", "model", "status"]) if METRICS_ENABLED else Counter()
-LLM_LATENCY = Histogram("llm_orchestrator_latency_seconds", "Request latency", ["model"]) if METRICS_ENABLED else Histogram()
-LLM_CIRCUIT_BREAKER = Gauge("llm_orchestrator_circuit_breaker", "Circuit breaker state", ["model"]) if METRICS_ENABLED else Gauge()
-
-# === Model Registry ===
-class ModelRegistry:
-    """Cryptographically validated model registry with in-memory store and fast locking"""
-    def __init__(self):
-        self._models: Dict[str, Dict[str, Any]] = {}
-        self._lock = threading.RLock()
+# === Enhanced Logging ===
+class SecureLogger:
+    """Logging with redaction and secure handling"""
+    REDACTION_KEYS = {'api_key', 'token', 'password', 'secret'}
     
-    def register(self, model_id: str, model: Any, capabilities: List[str], weight: int = 1, tags: Optional[List[str]]=None):
-        with self._lock:
-            signature = self._sign_model(model_id, capabilities, weight)
-            self._models[model_id] = {
-                "model": model,
-                "capabilities": capabilities,
-                "weight": weight,
-                "tags": tags or [],
-                "signature": signature,
-                "failure_count": 0,
-                "last_used": 0,
-                "created": time.time()
-            }
-            logger.info(f"Registered model {model_id} for capabilities: {capabilities}")
-
-    def _sign_model(self, model_id: str, capabilities: List[str], weight: int) -> str:
-        msg = f"{model_id}|{','.join(sorted(capabilities))}|{weight}".encode()
-        return hmac.new(get_signing_key().encode(), msg, hashlib.sha256).hexdigest()
-
-    def verify_model(self, model_id: str) -> bool:
-        with self._lock:
-            model = self._models.get(model_id)
-            if not model:
-                return False
-            expected = self._sign_model(model_id, model["capabilities"], model["weight"])
-            return hmac.compare_digest(expected, model["signature"])
-
-    def list_models(self) -> List[Dict[str, Any]]:
-        with self._lock:
-            return [dict(model_id=mid, **m) for mid, m in self._models.items()]
-
-    def get(self, model_id: str) -> Optional[Dict[str, Any]]:
-        with self._lock:
-            return self._models.get(model_id)
-
-# === Secure Execution Pool ===
-class SecureLLMPool:
-    """Thread-isolated model execution with circuit breakers and CPU affinity"""
     def __init__(self):
-        self.executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS)
-        self.circuit_breakers: Dict[str, int] = {}  # model_id -> failure count
-        self.lock = threading.RLock()
-        self.cpu_count = os.cpu_count() or 4
+        self.logger = self._setup_logger()
+        
+    def _setup_logger(self) -> logging.Logger:
+        log_file = self._resolve_log_path()
+        logger = logging.getLogger("llm_orchestrator")
+        logger.setLevel(logging.INFO)
+        
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S%z'
+        )
+        
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setFormatter(formatter)
+        file_handler.addFilter(self._security_filter)
+        
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(formatter)
+        console_handler.addFilter(self._security_filter)
+        
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+        
+        return logger
+    
+    def _security_filter(self, record: logging.LogRecord) -> bool:
+        """Redact sensitive information from logs"""
+        try:
+            msg = record.getMessage()
+            for sensitive in self.REDACTION_KEYS:
+                if sensitive in msg.lower():
+                    record.msg = "[REDACTED]"
+                    record.args = ()
+                    break
+        except:
+            pass
+        return True
+    
+    def _resolve_log_path(self) -> Path:
+        """Resolve log file path with fallbacks"""
+        paths = [
+            os.getenv("KARI_LOG_DIR"),
+            "/var/log/kari",
+            Path.home() / ".kari" / "logs"
+        ]
+        
+        for path in paths:
+            if not path:
+                continue
+            try:
+                log_dir = Path(path)
+                log_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+                log_file = log_dir / "llm_orchestrator.log"
+                log_file.touch(exist_ok=True)
+                os.chmod(log_file, 0o600)
+                return log_file
+            except (OSError, PermissionError) as e:
+                continue
+                
+        raise RuntimeError("Could not establish secure logging location")
 
+logger = SecureLogger().logger
+
+# === Security Core ===
+class SecurityEngine:
+    """Centralized security operations"""
+    def __init__(self):
+        self._signing_key = self._load_signing_key()
+        
+    def _load_signing_key(self) -> bytes:
+        """Load and validate signing key"""
+        key = os.getenv("KARI_MODEL_SIGNING_KEY")
+        if not key or len(key) < 32:
+            raise RuntimeError(
+                "KARI_MODEL_SIGNING_KEY must be set and at least 32 characters long"
+            )
+        return key.encode('utf-8')
+    
+    def generate_signature(self, *parts: str) -> str:
+        """Generate HMAC-SHA256 signature"""
+        message = "|".join(parts).encode('utf-8')
+        return hmac.new(
+            self._signing_key,
+            message,
+            hashlib.sha256
+        ).hexdigest()
+    
+    def verify_signature(self, signature: str, *parts: str) -> bool:
+        """Verify HMAC-SHA256 signature"""
+        expected = self.generate_signature(*parts)
+        return hmac.compare_digest(signature, expected)
+
+# === Hardware Isolation ===
+class HardwareManager:
+    """Manage hardware resources and isolation"""
+    def __init__(self):
+        self.cpu_count = self._detect_cpu_count()
+        self.psutil_available = self._check_psutil()
+        
+    def _detect_cpu_count(self) -> int:
+        """Get available CPU count with safety margin"""
+        total = os.cpu_count() or 4
+        reserved = max(1, int(total * DEFAULT_CONFIG['cpu_reservation']))
+        return max(1, total - reserved)
+    
+    def _check_psutil(self) -> bool:
+        """Check if psutil is available"""
+        try:
+            import psutil
+            return True
+        except ImportError:
+            return False
+    
+    def set_affinity(self, cpu_id: int) -> bool:
+        """Set CPU affinity for current thread"""
+        try:
+            if self.psutil_available:
+                import psutil
+                p = psutil.Process(os.getpid())
+                p.cpu_affinity([cpu_id])
+            elif hasattr(os, "sched_setaffinity"):
+                os.sched_setaffinity(0, {cpu_id})
+            else:
+                return False
+            return True
+        except Exception as e:
+            logger.warning(f"CPU affinity setting failed: {e}")
+            return False
+    
+    def check_memory(self) -> bool:
+        """Check if memory usage is within safe thresholds"""
+        try:
+            if self.psutil_available:
+                import psutil
+                mem = psutil.virtual_memory()
+                return mem.percent < (DEFAULT_CONFIG['memory_threshold'] * 100)
+            return True
+        except:
+            return True
+
+# === Model Definitions ===
+class ModelStatus(Enum):
+    ACTIVE = auto()
+    DEGRADED = auto()
+    FAILED = auto()
+    CIRCUIT_BROKEN = auto()
+
+@dataclass
+class ModelInfo:
+    model_id: str
+    model: Any
+    capabilities: List[str]
+    weight: int = 1
+    tags: List[str] = field(default_factory=list)
+    signature: str = ""
+    failure_count: int = 0
+    last_used: float = 0.0
+    created: float = field(default_factory=time.time)
+    status: ModelStatus = ModelStatus.ACTIVE
+
+# === Enhanced Model Registry ===
+class ModelRegistry:
+    """Secure model registry with enhanced management"""
+    def __init__(self, security: SecurityEngine):
+        self._models: Dict[str, ModelInfo] = {}
+        self._lock = threading.RLock()
+        self.security = security
+        
+    def register(self, model_id: str, model: Any, capabilities: List[str], **kwargs):
+        """Register a new model with cryptographic validation"""
+        with self._lock:
+            if model_id in self._models:
+                raise ValueError(f"Model {model_id} already registered")
+                
+            signature = self._generate_signature(model_id, capabilities, kwargs.get('weight', 1))
+            self._models[model_id] = ModelInfo(
+                model_id=model_id,
+                model=model,
+                capabilities=capabilities,
+                signature=signature,
+                **kwargs
+            )
+            logger.info(f"Registered model {model_id} with capabilities: {capabilities}")
+    
+    def _generate_signature(self, model_id: str, capabilities: List[str], weight: int) -> str:
+        """Generate cryptographic signature for model"""
+        return self.security.generate_signature(
+            model_id,
+            ",".join(sorted(capabilities)),
+            str(weight)
+        )
+    
+    def verify(self, model_id: str) -> bool:
+        """Verify model integrity"""
+        with self._lock:
+            if model_id not in self._models:
+                return False
+            model = self._models[model_id]
+            expected = self._generate_signature(
+                model_id,
+                model.capabilities,
+                model.weight
+            )
+            return hmac.compare_digest(expected, model.signature)
+    
+    def get(self, model_id: str) -> Optional[ModelInfo]:
+        """Get model info if it exists and is valid"""
+        with self._lock:
+            if model_id in self._models and self.verify(model_id):
+                return self._models[model_id]
+            return None
+    
+    def list_models(self) -> List[Dict[str, Any]]:
+        """Get list of all valid models"""
+        with self._lock:
+            return [
+                {
+                    "model_id": model.model_id,
+                    "capabilities": model.capabilities,
+                    "tags": model.tags,
+                    "status": model.status.name,
+                    "last_used": model.last_used,
+                    "failure_count": model.failure_count
+                }
+                for model in self._models.values()
+                if self.verify(model.model_id)
+            ]
+
+# === Execution Pool with Enhanced Features ===
+class ExecutionPool:
+    """Secure execution environment with resource management"""
+    def __init__(self, hardware: HardwareManager):
+        self.hardware = hardware
+        self.executor = ThreadPoolExecutor(
+            max_workers=DEFAULT_CONFIG['max_concurrent_requests'],
+            thread_name_prefix="llm_worker"
+        )
+        self.circuit_breakers: Dict[str, int] = {}
+        self.lock = threading.RLock()
+        
     def execute(self, model_id: str, fn: Callable, *args, **kwargs) -> Future:
+        """Execute function in secure environment"""
+        if not self.hardware.check_memory():
+            raise RuntimeError("System memory threshold exceeded")
+            
         if self._check_circuit(model_id):
             raise RuntimeError(f"Circuit breaker tripped for {model_id}")
-
-        cpu_id = random.randint(0, self.cpu_count - 1)
+        
+        cpu_id = random.randint(0, self.hardware.cpu_count - 1)
         job_id = str(uuid.uuid4())[:8]
-
-        def secured_call():
-            set_worker_affinity(cpu_id)
-            logger.info(f"[{job_id}] Executing {model_id} on CPU {cpu_id}")
+        
+        def _wrapped():
             try:
-                result = fn(*args, **kwargs)
-                self._record_success(model_id)
-                logger.info(f"[{job_id}] Model {model_id} execution success.")
-                return result
+                self.hardware.set_affinity(cpu_id)
+                logger.info(f"[{job_id}] Executing on CPU {cpu_id}")
+                return fn(*args, **kwargs)
             except Exception as e:
-                self._record_failure(model_id)
-                logger.error(f"[{job_id}] Model {model_id} execution failed: {e}\n{traceback.format_exc()}")
+                logger.error(f"[{job_id}] Execution failed: {str(e)}")
                 raise
-
-        return self.executor.submit(secured_call)
+            finally:
+                logger.info(f"[{job_id}] Execution completed")
+        
+        future = self.executor.submit(_wrapped)
+        future.model_id = model_id  # type: ignore
+        future.job_id = job_id  # type: ignore
+        return future
     
     def _check_circuit(self, model_id: str) -> bool:
+        """Check if circuit breaker is tripped"""
         with self.lock:
-            failures = self.circuit_breakers.get(model_id, 0)
-            return failures >= FAILURE_TRIP_LIMIT
+            return self.circuit_breakers.get(model_id, 0) >= DEFAULT_CONFIG['failure_trip_limit']
     
-    def _record_success(self, model_id: str):
+    def _record_outcome(self, model_id: str, success: bool):
+        """Update circuit breaker state"""
         with self.lock:
-            self.circuit_breakers[model_id] = 0
-            LLM_CIRCUIT_BREAKER.labels(model=model_id).set(0)
-    
-    def _record_failure(self, model_id: str):
-        with self.lock:
-            self.circuit_breakers[model_id] = self.circuit_breakers.get(model_id, 0) + 1
-            LLM_CIRCUIT_BREAKER.labels(model=model_id).set(1)
-
-    def circuit_status(self, model_id: str) -> int:
-        with self.lock:
-            return self.circuit_breakers.get(model_id, 0)
+            if success:
+                self.circuit_breakers[model_id] = 0
+            else:
+                self.circuit_breakers[model_id] = self.circuit_breakers.get(model_id, 0) + 1
 
 # === Core Orchestrator ===
 class LLMOrchestrator:
-    """
-    Military-grade LLM routing engine with:
-    - Cryptographic model validation
-    - Hardware-isolated execution
-    - Adaptive circuit breakers
-    - Zero-trust architecture
-    """
+    """Enhanced LLM routing engine with failover strategies"""
+    
     _instance = None
-    _lock = threading.RLock()
+    _lock = threading.Lock()
     
     def __new__(cls):
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
-                cls._instance._init()
+                cls._instance.__init__()
         return cls._instance
-
-    def _init(self):
-        self.registry = ModelRegistry()
-        self.pool = SecureLLMPool()
-        self.watchdog = threading.Thread(
-            target=self._monitor_models,
+    
+    def __init__(self):
+        if not hasattr(self, '_initialized'):
+            self.security = SecurityEngine()
+            self.hardware = HardwareManager()
+            self.registry = ModelRegistry(self.security)
+            self.pool = ExecutionPool(self.hardware)
+            self._setup_watchdog()
+            self._initialized = True
+            logger.info("LLMOrchestrator initialized in secure mode")
+    
+    def _setup_watchdog(self):
+        """Start monitoring thread"""
+        def _monitor():
+            while True:
+                time.sleep(DEFAULT_CONFIG['watchdog_interval'])
+                self._audit_models()
+        
+        thread = threading.Thread(
+            target=_monitor,
             daemon=True,
-            name="LLMOrchestratorWatchdog"
+            name="orchestrator-watchdog"
         )
-        self.watchdog.start()
-        logger.info("LLMOrchestrator initialized in secure mode")
-
-    def _monitor_models(self):
-        while True:
-            time.sleep(30)
-            self._audit_models()
-
+        thread.start()
+    
     def _audit_models(self):
-        with self._lock:
+        """Periodically verify all models"""
+        with self.registry._lock:
             for model_id in list(self.registry._models.keys()):
-                if not self.registry.verify_model(model_id):
-                    logger.critical(f"Model integrity violation: {model_id}")
-                    self.registry._models.pop(model_id, None)
-
-    def route_request(
-        self,
-        prompt: str,
-        skill: Optional[str] = None,
-        max_tokens: int = 128,
-        user_id: Optional[str] = None,
-        **kwargs
-    ) -> str:
-        """
-        Secure routing pipeline:
-        1. Validate all models
-        2. Select optimal model
-        3. Execute in isolated environment
-        4. Enforce timeouts
-        """
-        start_time = time.time()
-        route = "unrouted"
-        model_id = None
-        job_id = str(uuid.uuid4())[:8]
-
+                if not self.registry.verify(model_id):
+                    logger.warning(f"Model integrity check failed: {model_id}")
+                    del self.registry._models[model_id]
+    
+    def route(self, prompt: str, skill: Optional[str] = None, **kwargs) -> str:
+        """Route request to appropriate model"""
+        model_id, model = self._select_model(skill)
+        if not model:
+            raise RuntimeError("No suitable model available")
+        
         try:
-            model_id, model = self._select_model(prompt, skill, max_tokens, user_id)
-            if not model_id or not model:
-                logger.error(f"[{job_id}] No valid model available for skill={skill}")
-                raise RuntimeError("No valid model available")
-
-            route = model_id
-            LLM_ROUTE_COUNT.labels(skill=skill or "generic", model=model_id, status="started").inc()
-            logger.info(f"[{job_id}] Routing prompt for skill={skill} to model={model_id}")
-
-            with LLM_LATENCY.labels(model=model_id).time():
-                future = self.pool.execute(
-                    model_id,
-                    model["model"].generate_text,
-                    prompt,
-                    max_tokens=max_tokens,
-                    user_id=user_id,
-                    **kwargs
-                )
-                result = future.result(timeout=REQUEST_TIMEOUT)
-
-            LLM_ROUTE_COUNT.labels(skill=skill or "generic", model=model_id, status="success").inc()
-            return result
-
-        except TimeoutError:
-            LLM_ROUTE_COUNT.labels(skill=skill or "generic", model=model_id or "none", status="timeout").inc()
-            logger.error(f"[{job_id}] Request routing timed out for model {model_id}")
-            raise
-        except Exception as e:
-            LLM_ROUTE_COUNT.labels(skill=skill or "generic", model=model_id or "none", status="failed").inc()
-            logger.error(f"[{job_id}] Request routing failed: {e}\n{traceback.format_exc()}")
-            raise
-        finally:
-            latency = time.time() - start_time
-            logger.info(f"[{job_id}] Request routed to {route} in {latency:.2f}s")
-
-    def _select_model(
-        self, prompt: str, skill: Optional[str], max_tokens: int, user_id: Optional[str]=None
-    ) -> Tuple[Optional[str], Any]:
-        with self._lock:
-            candidates = []
-            # Priority: direct skill match, then tags, then fallback
-            for mid, model in self.registry._models.items():
-                if skill and skill in model["capabilities"] and self.registry.verify_model(mid):
-                    candidates.append((mid, model))
-            if not candidates:
-                for mid, model in self.registry._models.items():
-                    if "generic" in model["capabilities"] and self.registry.verify_model(mid):
-                        candidates.append((mid, model))
-            if candidates:
-                # Prefer lowest-weight, least-recently-used
-                candidates.sort(key=lambda x: (x[1]["weight"], x[1].get("last_used", 0)))
-                selected = candidates[0]
-                selected[1]["last_used"] = time.time()
-                return selected
-            return None, None
-
-    def health_check(self) -> Dict[str, Any]:
-        status = {
-            "status": "unknown",
-            "models": {},
-            "circuit_breakers": {},
-            "integrity_checks": 0
-        }
-        with self._lock:
-            status["integrity_checks"] = sum(
-                1 for mid in self.registry._models if self.registry.verify_model(mid)
+            future = self.pool.execute(
+                model_id,
+                model.model.generate_text,
+                prompt,
+                **kwargs
             )
-            for mid, model in self.registry._models.items():
-                status["models"][mid] = {
-                    "capabilities": model["capabilities"],
-                    "tags": model.get("tags", []),
-                    "verified": self.registry.verify_model(mid),
-                    "failures": model.get("failure_count", 0),
-                    "circuit": self.pool.circuit_status(mid),
-                    "last_used": model.get("last_used", 0),
-                }
-            status["status"] = "healthy" if status["integrity_checks"] > 0 else "critical"
-        return status
+            result = future.result(timeout=DEFAULT_CONFIG['request_timeout'])
+            self.pool._record_outcome(model_id, True)
+            return result
+        except Exception as e:
+            self.pool._record_outcome(model_id, False)
+            logger.error(f"Request failed: {str(e)}")
+            raise
+    
+    def _select_model(self, skill: Optional[str]) -> Tuple[Optional[str], Optional[ModelInfo]]:
+        """Select best model for the task"""
+        with self.registry._lock:
+            candidates = []
+            
+            # First pass: exact skill matches
+            if skill:
+                candidates.extend(
+                    (mid, model) for mid, model in self.registry._models.items()
+                    if skill in model.capabilities
+                    and model.status == ModelStatus.ACTIVE
+                )
+            
+            # Second pass: generic models
+            if not candidates:
+                candidates.extend(
+                    (mid, model) for mid, model in self.registry._models.items()
+                    if "generic" in model.capabilities
+                    and model.status == ModelStatus.ACTIVE
+                )
+            
+            if candidates:
+                # Select least used, lowest weight model
+                candidates.sort(key=lambda x: (x[1].weight, x[1].last_used))
+                selected = candidates[0]
+                selected[1].last_used = time.time()
+                return selected
+            
+            return None, None
+    
+    def health_check(self) -> Dict[str, Any]:
+        """System health status"""
+        return {
+            "status": "operational",
+            "models": len(self.registry._models),
+            "active_workers": self.pool.executor._work_queue.qsize(),
+            "memory_ok": self.hardware.check_memory(),
+            "timestamp": time.time()
+        }
 
-    def audit_log(self) -> List[Dict[str, Any]]:
-        # For external review: return a copy of all model registry entries
-        return self.registry.list_models()
-
-def get_orchestrator():
-    if LLMOrchestrator._instance is None:
-        with LLMOrchestrator._lock:
-            if LLMOrchestrator._instance is None:
-                LLMOrchestrator._instance = LLMOrchestrator()
-    return LLMOrchestrator._instance
+# === Singleton Access ===
+def get_orchestrator() -> LLMOrchestrator:
+    """Get the orchestrator instance"""
+    return LLMOrchestrator()
 
 llm_orchestrator = get_orchestrator()

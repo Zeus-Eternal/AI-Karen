@@ -20,6 +20,7 @@ import aiohttp
 from cachetools import TTLCache
 
 from .models import AuthContext, ThreatAnalysis
+from .campaign_analyzer import CampaignAnalyzer, CampaignAnalysisResult
 
 logger = logging.getLogger(__name__)
 
@@ -449,6 +450,10 @@ class ThreatIntelligenceEngine:
         self.feed_manager_config = config.get('threat_feeds', {})
         self.ip_reputation_cache = TTLCache(maxsize=50000, ttl=3600)  # 1 hour cache
         
+        # Initialize campaign analyzer for attack correlation
+        campaign_config = config.get('campaign_analysis', {})
+        self.campaign_analyzer = CampaignAnalyzer(campaign_config)
+        
         # Initialize with some default malicious indicators
         self._initialize_default_indicators()
     
@@ -648,12 +653,20 @@ class ThreatIntelligenceEngine:
         # Attempt attribution (simplified)
         attribution = self._attempt_attribution(threat_indicators)
         
+        # Check for campaign correlation
+        campaign_id = await self.detect_attack_campaign_correlation(context, ThreatAnalysis(
+            ip_reputation_score=risk_score,
+            known_attack_patterns=threat_categories,
+            threat_actor_indicators=[attribution] if attribution else []
+        ))
+        
         return ThreatContext(
             ip_reputation=ip_reputation,
             threat_indicators=threat_indicators,
             risk_score=risk_score,
             threat_categories=threat_categories,
-            attribution=attribution
+            attribution=attribution,
+            campaign_id=campaign_id
         )
     
     def _calculate_threat_risk_score(self, 
@@ -713,6 +726,32 @@ class ThreatIntelligenceEngine:
                 return f"Botnet (based on {indicator.value})"
             elif 'scanner' in indicator.tags:
                 return f"Automated Scanner (based on {indicator.value})"
+        
+        return None
+    
+    async def analyze_attack_campaigns(self, 
+                                     auth_attempts: List[Tuple[AuthContext, ThreatAnalysis]],
+                                     time_window_hours: int = 24) -> CampaignAnalysisResult:
+        """Analyze authentication attempts for coordinated attack campaigns."""
+        return await self.campaign_analyzer.analyze_attack_campaigns(auth_attempts, time_window_hours)
+    
+    async def detect_attack_campaign_correlation(self, context: AuthContext, threat_analysis: ThreatAnalysis) -> Optional[str]:
+        """Detect if authentication attempt is part of an existing campaign."""
+        # Check if this attempt matches any existing campaigns
+        recent_campaigns = self.campaign_analyzer.campaign_db.find_recent_campaigns(hours=72)
+        
+        # Check by IP
+        ip_campaigns = self.campaign_analyzer.campaign_db.find_campaigns_by_ip(context.client_ip)
+        matching_campaigns = [c for c in ip_campaigns if c in recent_campaigns]
+        
+        # Check by user
+        user_campaigns = self.campaign_analyzer.campaign_db.find_campaigns_by_user(context.email)
+        matching_campaigns.extend([c for c in user_campaigns if c in recent_campaigns and c not in matching_campaigns])
+        
+        if matching_campaigns:
+            # Return the most recent campaign ID
+            latest_campaign = max(matching_campaigns, key=lambda c: c.last_seen)
+            return latest_campaign.campaign_id
         
         return None
     

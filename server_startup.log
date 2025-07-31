@@ -1,0 +1,43 @@
+[2025-07-31T02:00:37.758765] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+[2025-07-31T02:00:37.759642] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-31T02:00:37.759715] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-31T02:00:37.759748] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-31T02:00:37.759809] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP configuration loaded successfully
+[2025-07-31T02:00:38.038931] [INFO] [ai_karen_engine.services.spacy_service] spaCy service initialized with model: en_core_web_sm
+[2025-07-31T02:00:38.042858] [INFO] [ai_karen_engine.services.distilbert_service] Using GPU: NVIDIA GeForce RTX 2080 SUPER
+[2025-07-31T02:00:40.376427] [INFO] [ai_karen_engine.services.distilbert_service] DistilBERT service initialized with model: distilbert-base-uncased
+[2025-07-31T02:00:40.376613] [INFO] [ai_karen_engine.services.distilbert_service] Using device: cuda
+[2025-07-31T02:00:40.376737] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP Service Manager initialized
+[2025-07-31T02:00:40.505764] [INFO] [kari.llm_registry] Loaded registry from models/llm_registry.json
+[2025-07-31T02:00:40.603453] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:9002', 'http://127.0.0.1:9002']
+/media/zeus/Development3/KIRO/AI-Karen/main.py:397: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+🚀 Starting AI Karen Backend Server...
+📍 Server will be available at:
+   - http://localhost:8000
+   - http://127.0.0.1:8000
+   - http://0.0.0.0:8000
+🌐 CORS configured for Web UI on port 9002
+⏹️  Press Ctrl+C to stop the server
+------------------------------------------------------------
+[2025-07-31T02:00:40.787565] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:9002', 'http://127.0.0.1:9002']
+INFO:     Started server process [119967]
+INFO:     Waiting for application startup.
+[2025-07-31T02:00:40.973079] [INFO] [httpx] HTTP Request: GET http://127.0.0.1:11434/api/tags "HTTP/1.1 200 OK"
+Unexpected model entry: model='llama3.2:1b' modified_at=datetime.datetime(2025, 7, 26, 2, 50, 9, 287211, tzinfo=TzInfo(UTC)) digest='baf6a787fdffd633537aa2eb51cfd54cb93ff08e28040095462bb63daf552878' size=1321098329 details=ModelDetails(parent_model='', format='gguf', family='llama', families=['llama'], parameter_size='1.2B', quantization_level='Q8_0')
+[2025-07-31T02:00:40.974646] [INFO] [kari] AI Karen configuration loaded for environment: Environment.LOCAL
+[2025-07-31T02:00:40.974695] [INFO] [ai_karen_engine.core.service_registry] Registered service: ai_orchestrator
+[2025-07-31T02:00:40.974725] [INFO] [ai_karen_engine.core.service_registry] Registered service: memory_service
+[2025-07-31T02:00:40.974756] [INFO] [ai_karen_engine.core.service_registry] Registered service: conversation_service
+[2025-07-31T02:00:40.974779] [INFO] [ai_karen_engine.core.service_registry] Registered service: plugin_service
+[2025-07-31T02:00:40.974801] [INFO] [ai_karen_engine.core.service_registry] Registered service: tool_service
+[2025-07-31T02:00:40.974823] [INFO] [ai_karen_engine.core.service_registry] Initializing all services...
+[2025-07-31T02:00:40.974847] [INFO] [ai_karen_engine.core.service_registry] Initializing service: ai_orchestrator
+[2025-07-31T02:00:40.974953] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: conversation_processing
+[2025-07-31T02:00:40.974982] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: decision_making
+[2025-07-31T02:00:40.976028] [INFO] [service.ai_orchestrator] Initializing AI Orchestrator Service

@@ -12,12 +12,260 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { X, Save, LogOut, Loader2 } from 'lucide-react';
+import { X, Save, LogOut, Loader2, Key, Eye, EyeOff } from 'lucide-react';
 import { authService } from '@/services/authService';
 
 interface UserProfileProps {
   onClose?: () => void;
 }
+
+const ChangePasswordSection: React.FC = () => {
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const validatePassword = (password: string): string[] => {
+    const errors: string[] = [];
+    if (password.length < 8) errors.push('At least 8 characters');
+    if (!/[A-Z]/.test(password)) errors.push('One uppercase letter');
+    if (!/[a-z]/.test(password)) errors.push('One lowercase letter');
+    if (!/\d/.test(password)) errors.push('One number');
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('One special character');
+    return errors;
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    // Validation
+    if (!passwordData.currentPassword) {
+      setPasswordError('Current password is required');
+      return;
+    }
+
+    if (!passwordData.newPassword) {
+      setPasswordError('New password is required');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    const passwordErrors = validatePassword(passwordData.newPassword);
+    if (passwordErrors.length > 0) {
+      setPasswordError(`Password must have: ${passwordErrors.join(', ')}`);
+      return;
+    }
+
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      setPasswordError('New password must be different from current password');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      await authService.updateCredentials(undefined, passwordData.newPassword);
+      setPasswordSuccess('Password updated successfully!');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setIsChangingPassword(false);
+      setTimeout(() => setPasswordSuccess(''), 3000);
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const resetPasswordForm = () => {
+    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setPasswordError('');
+    setPasswordSuccess('');
+    setIsChangingPassword(false);
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Security</h3>
+        <Button
+          variant={isChangingPassword ? "outline" : "default"}
+          size="sm"
+          onClick={() => isChangingPassword ? resetPasswordForm() : setIsChangingPassword(true)}
+          className="flex items-center gap-2"
+        >
+          <Key className="h-4 w-4" />
+          {isChangingPassword ? 'Cancel' : 'Change Password'}
+        </Button>
+      </div>
+
+      {passwordSuccess && (
+        <Alert className="mb-4 border-green-200 bg-green-50">
+          <AlertDescription>{passwordSuccess}</AlertDescription>
+        </Alert>
+      )}
+
+      {isChangingPassword ? (
+        <form onSubmit={handlePasswordChange} className="space-y-4 p-4 bg-muted/50 rounded-lg">
+          {/* Current Password */}
+          <div>
+            <Label htmlFor="currentPassword">Current Password</Label>
+            <div className="relative">
+              <Input
+                id="currentPassword"
+                type={showPasswords.current ? "text" : "password"}
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                placeholder="Enter your current password"
+                className="pr-10"
+                required
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => togglePasswordVisibility('current')}
+              >
+                {showPasswords.current ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* New Password */}
+          <div>
+            <Label htmlFor="newPassword">New Password</Label>
+            <div className="relative">
+              <Input
+                id="newPassword"
+                type={showPasswords.new ? "text" : "password"}
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                placeholder="Enter your new password"
+                className="pr-10"
+                required
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => togglePasswordVisibility('new')}
+              >
+                {showPasswords.new ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
+            {passwordData.newPassword && (
+              <div className="mt-2">
+                <div className="text-xs text-muted-foreground mb-1">Password requirements:</div>
+                <div className="grid grid-cols-2 gap-1 text-xs">
+                  {validatePassword(passwordData.newPassword).map((error, index) => (
+                    <div key={index} className="text-red-500">• {error}</div>
+                  ))}
+                  {validatePassword(passwordData.newPassword).length === 0 && (
+                    <div className="text-green-600 col-span-2">• Password meets all requirements</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showPasswords.confirm ? "text" : "password"}
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                placeholder="Confirm your new password"
+                className="pr-10"
+                required
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => togglePasswordVisibility('confirm')}
+              >
+                {showPasswords.confirm ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
+            {passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
+              <div className="text-xs text-red-500 mt-1">Passwords do not match</div>
+            )}
+          </div>
+
+          {passwordError && (
+            <Alert variant="destructive">
+              <AlertDescription>{passwordError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="submit"
+              disabled={isUpdating || validatePassword(passwordData.newPassword).length > 0 || passwordData.newPassword !== passwordData.confirmPassword}
+              className="flex items-center gap-2"
+            >
+              {isUpdating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Key className="h-4 w-4" />
+              )}
+              {isUpdating ? 'Updating...' : 'Update Password'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resetPasswordForm}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <div className="p-4 bg-muted/50 rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            Keep your account secure by regularly updating your password.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   const { user, logout, updateUserPreferences, isLoading } = useAuth();
@@ -109,6 +357,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             </div>
           </div>
         </div>
+
+        <Separator />
+
+        {/* Change Password */}
+        <ChangePasswordSection />
 
         <Separator />
 

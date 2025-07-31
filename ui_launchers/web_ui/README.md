@@ -93,8 +93,8 @@ The application will be available at `http://localhost:9002`
 
 Default demo users are provided for testing:
 
-* **Admin:** `admin@kari.ai` / `pswd123`
-* **User:** `user@kari.ai` / `pswd123`
+* **Admin:** `admin@kari.ai` / `password123`
+* **User:** `user@kari.ai` / `password123`
 
 ### Development Commands
 

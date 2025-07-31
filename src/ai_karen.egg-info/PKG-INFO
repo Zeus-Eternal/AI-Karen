@@ -401,7 +401,7 @@ AI-Karen is a comprehensive, production-ready AI platform designed for enterpris
 * **Multi-Database Architecture** - PostgreSQL, Redis, DuckDB, Milvus, and Elasticsearch integration
 * **Plugin Ecosystem** - 24+ plugins with hot-reload capability and marketplace integration
 * **Extension System** - Modular extensions for analytics, automation, and workflow building
-* **Multiple UI Interfaces** - Web (Next.js), Desktop (Tauri), and Streamlit applications
+* **Multiple UI Interfaces** - Web (Next.js) is the default interface, with Desktop (Tauri) and Streamlit options
 * **AI/ML Integration** - HuggingFace Transformers, OpenAI API, local LLM support via llama-cpp-python
 * **Production Monitoring** - Prometheus metrics, health checks, and comprehensive logging
 * **Authentication & Security** - JWT-based auth, role-based access control, tenant isolation
@@ -519,13 +519,18 @@ curl http://localhost:8000/health
 
 ### 5. Start Frontend (Choose One)
 
-#### Web UI (Next.js)
+#### Web UI (Next.js, default)
 ```bash
 cd ui_launchers/web_ui
 npm install
 npm run dev
 # Access at http://localhost:9002
 ```
+
+Default demo accounts are available:
+
+* **Admin:** `admin@kari.ai` / `password123`
+* **User:** `user@kari.ai` / `password123`
 
 #### Desktop UI (Tauri)
 ```bash
@@ -565,6 +570,16 @@ PYTHONPATH=src python demo_plugin_system.py
 PYTHONPATH=src python demo_tool_system.py
 PYTHONPATH=src python demo_analytics_dashboard.py
 ```
+
+### Default Demo Credentials
+
+Use these accounts for testing the web or Streamlit UI:
+
+```
+Admin: admin@kari.ai / password123
+User:  user@kari.ai / password123
+```
+Change these demo passwords after your first login.
 
 ---
 
@@ -732,14 +747,20 @@ curl -H "X-Tenant-ID: default" \
 ### Authentication
 
 ```bash
-# Login
-curl -X POST http://localhost:8000/login \
+# Login with default admin credentials
+curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "user", "password": "pass"}'
+  -d '{"email": "admin@kari.ai", "password": "password123"}'
 
 # Use token
 curl -H "Authorization: Bearer <token>" \
   http://localhost:8000/chat
+
+# Update your credentials after logging in
+curl -X POST http://localhost:8000/api/auth/update_credentials \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"new_password": "strongpass"}'
 ```
 
 ### Plugin Management
@@ -956,6 +977,7 @@ See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt
 - [Security Framework](docs/security.md) - Security implementation
 - [Memory Architecture](docs/memory_arch.md) - Memory system design
 - [Plugin Specification](docs/plugin_spec.md) - Plugin development specification
+- [Agent Roadmap](docs/agent_roadmap.md) - Production readiness and feature roadmap for the web UI
 
 ### Operational Guides
 - [Deployment Guide](docs/deployment.md) - Production deployment

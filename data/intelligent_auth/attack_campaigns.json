@@ -1,0 +1,2470 @@
+[
+  {
+    "campaign_id": "campaign_6281f0192797",
+    "campaign_type": "brute_force",
+    "threat_actor": "automated_tool",
+    "first_seen": "2025-07-29T02:56:46.783979",
+    "last_seen": "2025-07-29T03:00:47.011442",
+    "events": [
+      {
+        "event_id": "event_1753757806_0",
+        "timestamp": "2025-07-29T02:56:46.783979",
+        "auth_context": {
+          "email": "user0@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:46.783979",
+          "request_id": "req_9351",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.8,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_1",
+        "timestamp": "2025-07-29T02:57:46.783979",
+        "auth_context": {
+          "email": "user1@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:57:46.783979",
+          "request_id": "req_3134",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.8,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_2",
+        "timestamp": "2025-07-29T02:58:46.783979",
+        "auth_context": {
+          "email": "user2@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:58:46.783979",
+          "request_id": "req_8789",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.8,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_3",
+        "timestamp": "2025-07-29T02:59:46.783979",
+        "auth_context": {
+          "email": "user3@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:59:46.783979",
+          "request_id": "req_3226",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.8,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_4",
+        "timestamp": "2025-07-29T03:00:46.783979",
+        "auth_context": {
+          "email": "user4@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T03:00:46.783979",
+          "request_id": "req_8052",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.8,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_0",
+        "timestamp": "2025-07-29T02:56:46.786640",
+        "auth_context": {
+          "email": "user0@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:46.786640",
+          "request_id": "req_9351",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.6,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_0",
+        "timestamp": "2025-07-29T02:56:46.997275",
+        "auth_context": {
+          "email": "user2@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:46.997275",
+          "request_id": "req_8789",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_1",
+        "timestamp": "2025-07-29T02:56:46.997281",
+        "auth_context": {
+          "email": "user3@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:46.997281",
+          "request_id": "req_3226",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_2",
+        "timestamp": "2025-07-29T02:56:46.997284",
+        "auth_context": {
+          "email": "user4@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:46.997284",
+          "request_id": "req_8052",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_0",
+        "timestamp": "2025-07-29T02:56:47.007188",
+        "auth_context": {
+          "email": "user0@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:47.007188",
+          "request_id": "req_9351",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_1",
+        "timestamp": "2025-07-29T02:57:47.007188",
+        "auth_context": {
+          "email": "user1@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:57:47.007188",
+          "request_id": "req_3134",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_2",
+        "timestamp": "2025-07-29T02:58:47.007188",
+        "auth_context": {
+          "email": "user2@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:58:47.007188",
+          "request_id": "req_8789",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_3",
+        "timestamp": "2025-07-29T02:59:47.007188",
+        "auth_context": {
+          "email": "user3@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:59:47.007188",
+          "request_id": "req_3226",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_0",
+        "timestamp": "2025-07-29T02:56:47.011442",
+        "auth_context": {
+          "email": "user0@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:47.011442",
+          "request_id": "req_9351",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_1",
+        "timestamp": "2025-07-29T02:57:47.011442",
+        "auth_context": {
+          "email": "user1@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:57:47.011442",
+          "request_id": "req_3134",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_2",
+        "timestamp": "2025-07-29T02:58:47.011442",
+        "auth_context": {
+          "email": "user2@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:58:47.011442",
+          "request_id": "req_8789",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_3",
+        "timestamp": "2025-07-29T02:59:47.011442",
+        "auth_context": {
+          "email": "user3@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:59:47.011442",
+          "request_id": "req_3226",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_4",
+        "timestamp": "2025-07-29T03:00:47.011442",
+        "auth_context": {
+          "email": "user4@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T03:00:47.011442",
+          "request_id": "req_8052",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      }
+    ],
+    "target_users": [
+      "user1@example.com",
+      "user2@example.com",
+      "user4@example.com",
+      "user0@example.com",
+      "user3@example.com"
+    ],
+    "source_ips": [
+      "192.168.1.100"
+    ],
+    "user_agents": [
+      "Mozilla/5.0 (Test Browser)"
+    ],
+    "attack_patterns": [],
+    "total_attempts": 18,
+    "success_rate": 0.0,
+    "geographic_distribution": {
+      "US": 18
+    },
+    "temporal_pattern": {
+      "hour_02": 16,
+      "hour_03": 2
+    },
+    "attribution_confidence": 0.7,
+    "related_campaigns": [
+      "campaign_5e0e38664dc4"
+    ],
+    "iocs": []
+  },
+  {
+    "campaign_id": "existing_campaign",
+    "campaign_type": "brute_force",
+    "threat_actor": "automated_tool",
+    "first_seen": "2025-07-29T01:56:46.997252",
+    "last_seen": "2025-07-29T02:26:46.997255",
+    "events": [],
+    "target_users": [
+      "user1@example.com"
+    ],
+    "source_ips": [
+      "192.168.1.100"
+    ],
+    "user_agents": [],
+    "attack_patterns": [],
+    "total_attempts": 0,
+    "success_rate": 0.0,
+    "geographic_distribution": {},
+    "temporal_pattern": {},
+    "attribution_confidence": 0.0,
+    "related_campaigns": [],
+    "iocs": []
+  },
+  {
+    "campaign_id": "campaign_bd0d4d9bfe6d",
+    "campaign_type": "brute_force",
+    "threat_actor": "automated_tool",
+    "first_seen": "2025-07-29T02:56:46.997275",
+    "last_seen": "2025-07-29T02:56:46.997284",
+    "events": [
+      {
+        "event_id": "event_1753757806_0",
+        "timestamp": "2025-07-29T02:56:46.997275",
+        "auth_context": {
+          "email": "user2@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:46.997275",
+          "request_id": "req_8789",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_1",
+        "timestamp": "2025-07-29T02:56:46.997281",
+        "auth_context": {
+          "email": "user3@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:46.997281",
+          "request_id": "req_3226",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757806_2",
+        "timestamp": "2025-07-29T02:56:46.997284",
+        "auth_context": {
+          "email": "user4@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:46.997284",
+          "request_id": "req_8052",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      }
+    ],
+    "target_users": [
+      "user4@example.com",
+      "user2@example.com",
+      "user3@example.com"
+    ],
+    "source_ips": [
+      "192.168.1.100"
+    ],
+    "user_agents": [
+      "Mozilla/5.0 (Test Browser)"
+    ],
+    "attack_patterns": [],
+    "total_attempts": 3,
+    "success_rate": 0.0,
+    "geographic_distribution": {
+      "US": 3
+    },
+    "temporal_pattern": {
+      "hour_02": 3
+    },
+    "attribution_confidence": 1.0,
+    "related_campaigns": [
+      "campaign_6281f0192797"
+    ],
+    "iocs": []
+  },
+  {
+    "campaign_id": "campaign_535caba1a4e1",
+    "campaign_type": "brute_force",
+    "threat_actor": "automated_tool",
+    "first_seen": "2025-07-29T02:56:47.007188",
+    "last_seen": "2025-07-29T04:59:47.007188",
+    "events": [
+      {
+        "event_id": "event_1753757807_0",
+        "timestamp": "2025-07-29T02:56:47.007188",
+        "auth_context": {
+          "email": "user0@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:47.007188",
+          "request_id": "req_9351",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_1",
+        "timestamp": "2025-07-29T02:57:47.007188",
+        "auth_context": {
+          "email": "user1@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:57:47.007188",
+          "request_id": "req_3134",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_2",
+        "timestamp": "2025-07-29T02:58:47.007188",
+        "auth_context": {
+          "email": "user2@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:58:47.007188",
+          "request_id": "req_8789",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_3",
+        "timestamp": "2025-07-29T02:59:47.007188",
+        "auth_context": {
+          "email": "user3@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:59:47.007188",
+          "request_id": "req_3226",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_4",
+        "timestamp": "2025-07-29T04:56:47.007188",
+        "auth_context": {
+          "email": "user10@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T04:56:47.007188",
+          "request_id": "req_9413",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_5",
+        "timestamp": "2025-07-29T04:57:47.007188",
+        "auth_context": {
+          "email": "user11@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T04:57:47.007188",
+          "request_id": "req_7515",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_6",
+        "timestamp": "2025-07-29T04:58:47.007188",
+        "auth_context": {
+          "email": "user12@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T04:58:47.007188",
+          "request_id": "req_9214",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_7",
+        "timestamp": "2025-07-29T04:59:47.007188",
+        "auth_context": {
+          "email": "user13@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T04:59:47.007188",
+          "request_id": "req_7030",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.5,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      }
+    ],
+    "target_users": [
+      "user1@example.com",
+      "user13@example.com",
+      "user2@example.com",
+      "user11@example.com",
+      "user0@example.com",
+      "user10@example.com",
+      "user12@example.com",
+      "user3@example.com"
+    ],
+    "source_ips": [
+      "192.168.1.100"
+    ],
+    "user_agents": [
+      "Mozilla/5.0 (Test Browser)"
+    ],
+    "attack_patterns": [],
+    "total_attempts": 8,
+    "success_rate": 0.0,
+    "geographic_distribution": {
+      "US": 8
+    },
+    "temporal_pattern": {
+      "hour_02": 4,
+      "hour_04": 4
+    },
+    "attribution_confidence": 0.7,
+    "related_campaigns": [
+      "campaign_6281f0192797"
+    ],
+    "iocs": []
+  },
+  {
+    "campaign_id": "campaign_5e0e38664dc4",
+    "campaign_type": "brute_force",
+    "threat_actor": "automated_tool",
+    "first_seen": "2025-07-29T02:56:47.011442",
+    "last_seen": "2025-07-29T03:03:47.011442",
+    "events": [
+      {
+        "event_id": "event_1753757807_0",
+        "timestamp": "2025-07-29T02:56:47.011442",
+        "auth_context": {
+          "email": "user0@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:56:47.011442",
+          "request_id": "req_9351",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_1",
+        "timestamp": "2025-07-29T02:57:47.011442",
+        "auth_context": {
+          "email": "user1@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:57:47.011442",
+          "request_id": "req_3134",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_2",
+        "timestamp": "2025-07-29T02:58:47.011442",
+        "auth_context": {
+          "email": "user2@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:58:47.011442",
+          "request_id": "req_8789",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_3",
+        "timestamp": "2025-07-29T02:59:47.011442",
+        "auth_context": {
+          "email": "user3@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T02:59:47.011442",
+          "request_id": "req_3226",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_4",
+        "timestamp": "2025-07-29T03:00:47.011442",
+        "auth_context": {
+          "email": "user4@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T03:00:47.011442",
+          "request_id": "req_8052",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_5",
+        "timestamp": "2025-07-29T03:01:47.011442",
+        "auth_context": {
+          "email": "user5@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T03:01:47.011442",
+          "request_id": "req_8996",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_6",
+        "timestamp": "2025-07-29T03:02:47.011442",
+        "auth_context": {
+          "email": "user6@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T03:02:47.011442",
+          "request_id": "req_5796",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      },
+      {
+        "event_id": "event_1753757807_7",
+        "timestamp": "2025-07-29T03:03:47.011442",
+        "auth_context": {
+          "email": "user7@example.com",
+          "password_hash": "hashed_password",
+          "client_ip": "192.168.1.100",
+          "user_agent": "Mozilla/5.0 (Test Browser)",
+          "timestamp": "2025-07-29T03:03:47.011442",
+          "request_id": "req_2339",
+          "geolocation": {
+            "country": "US",
+            "region": "CA",
+            "city": "San Francisco",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "timezone": "America/Los_Angeles",
+            "is_usual_location": false
+          },
+          "device_fingerprint": null,
+          "session_id": null,
+          "referrer": null,
+          "time_since_last_login": null,
+          "login_frequency_pattern": null,
+          "typical_login_hours": null,
+          "is_tor_exit_node": false,
+          "is_vpn": false,
+          "threat_intel_score": 0.0,
+          "previous_failed_attempts": 0
+        },
+        "threat_analysis": {
+          "ip_reputation_score": 0.9,
+          "known_attack_patterns": [
+            "brute_force"
+          ],
+          "threat_actor_indicators": [
+            "automated_tool"
+          ],
+          "brute_force_indicators": {
+            "rapid_attempts": true,
+            "multiple_ips": false,
+            "password_variations": false,
+            "time_pattern_score": 0.0
+          },
+          "credential_stuffing_indicators": {
+            "multiple_accounts": false,
+            "common_passwords": false,
+            "distributed_sources": false,
+            "success_rate_pattern": 0.0
+          },
+          "account_takeover_indicators": {
+            "location_anomaly": false,
+            "device_change": false,
+            "behavior_change": false,
+            "privilege_escalation": false
+          },
+          "similar_attacks_detected": 1,
+          "attack_campaign_correlation": null
+        },
+        "campaign_indicators": [],
+        "confidence_score": 0.0
+      }
+    ],
+    "target_users": [
+      "user1@example.com",
+      "user5@example.com",
+      "user2@example.com",
+      "user7@example.com",
+      "user4@example.com",
+      "user6@example.com",
+      "user0@example.com",
+      "user3@example.com"
+    ],
+    "source_ips": [
+      "192.168.1.100"
+    ],
+    "user_agents": [
+      "Mozilla/5.0 (Test Browser)"
+    ],
+    "attack_patterns": [],
+    "total_attempts": 8,
+    "success_rate": 0.0,
+    "geographic_distribution": {
+      "US": 8
+    },
+    "temporal_pattern": {
+      "hour_02": 4,
+      "hour_03": 4
+    },
+    "attribution_confidence": 0.7,
+    "related_campaigns": [
+      "campaign_6281f0192797"
+    ],
+    "iocs": []
+  }
+]

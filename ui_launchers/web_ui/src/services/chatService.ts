@@ -4,6 +4,7 @@
  */
 
 import { getKarenBackend } from '@/lib/karen-backend';
+import { getApiClient } from '@/lib/api-client';
 import type { 
   ChatMessage, 
   KarenSettings, 
@@ -30,6 +31,7 @@ export interface ProcessMessageOptions {
 
 export class ChatService {
   private backend = getKarenBackend();
+  private apiClient = getApiClient();
   private cache = new Map<string, ConversationSession>();
 
   /**
@@ -69,35 +71,23 @@ export class ChatService {
       // Generate a unique session ID
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      const response = await fetch(`${this.backend['config'].baseUrl}/api/conversations/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
+      const response = await this.apiClient.post('/api/conversations/create', {
+        session_id: sessionId,
+        ui_source: 'web_ui',
+        title: 'New Conversation',
+        user_settings: {},
+        ui_context: {
+          user_id: userId,
+          created_from: 'web_ui',
+          browser: navigator.userAgent
         },
-        body: JSON.stringify({
-          session_id: sessionId,
-          ui_source: 'web_ui',
-          title: 'New Conversation',
-          user_settings: {},
-          ui_context: {
-            user_id: userId,
-            created_from: 'web_ui',
-            browser: navigator.userAgent
-          },
-          tags: [],
-          priority: 'normal'
-        }),
+        tags: [],
+        priority: 'normal'
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to create conversation session: ${response.statusText}`);
-      }
-
-      const data = await response.json();
       return {
-        conversationId: data.conversation.id,
-        sessionId: data.conversation.session_id || sessionId
+        conversationId: response.data.conversation.id,
+        sessionId: response.data.conversation.session_id || sessionId
       };
     } catch (error) {
       console.error('ChatService: Failed to create conversation session:', error);
@@ -118,22 +108,15 @@ export class ChatService {
     message: ChatMessage
   ): Promise<void> {
     try {
-      await fetch(`${this.backend['config'].baseUrl}/api/conversations/${conversationId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
+      await this.apiClient.post(`/api/conversations/${conversationId}/messages`, {
+        role: message.role,
+        content: message.content,
+        ui_source: 'web_ui',
+        metadata: {
+          ai_data: message.aiData,
+          should_auto_play: message.shouldAutoPlay,
+          timestamp: message.timestamp.toISOString(),
         },
-        body: JSON.stringify({
-          role: message.role,
-          content: message.content,
-          ui_source: 'web_ui',
-          metadata: {
-            ai_data: message.aiData,
-            should_auto_play: message.shouldAutoPlay,
-            timestamp: message.timestamp.toISOString(),
-          },
-        }),
       });
     } catch (error) {
       console.error('ChatService: Failed to add message to conversation:', error);
@@ -151,20 +134,9 @@ export class ChatService {
         return this.cache.get(sessionId)!;
       }
 
-      const response = await fetch(`${this.backend['config'].baseUrl}/api/conversations/${sessionId}`, {
-        headers: {
-          ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
-        },
-      });
+      const response = await this.apiClient.get(`/api/conversations/${sessionId}`);
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null;
-        }
-        throw new Error(`Failed to get conversation: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      const data = response.data;
       const session: ConversationSession = {
         sessionId: data.session_id,
         userId: data.user_id,
@@ -185,7 +157,10 @@ export class ChatService {
       // Cache the session
       this.cache.set(sessionId, session);
       return session;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.status === 404) {
+        return null;
+      }
       console.error('ChatService: Failed to get conversation:', error);
       return null;
     }
@@ -196,20 +171,8 @@ export class ChatService {
    */
   async generateConversationSummary(sessionId: string): Promise<string | null> {
     try {
-      const response = await fetch(`${this.backend['config'].baseUrl}/api/conversations/${sessionId}/summary`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to generate summary: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.summary;
+      const response = await this.apiClient.post(`/api/conversations/${sessionId}/summary`);
+      return response.data.summary;
     } catch (error) {
       console.error('ChatService: Failed to generate conversation summary:', error);
       return null;
@@ -221,18 +184,9 @@ export class ChatService {
    */
   async getUserConversations(userId: string): Promise<ConversationSession[]> {
     try {
-      const response = await fetch(`${this.backend['config'].baseUrl}/api/conversations/user/${userId}`, {
-        headers: {
-          ...(this.backend['config'].apiKey && { 'Authorization': `Bearer ${this.backend['config'].apiKey}` }),
-        },
-      });
+      const response = await this.apiClient.get(`/api/conversations/user/${userId}`);
 
-      if (!response.ok) {
-        throw new Error(`Failed to get user conversations: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.conversations.map((conv: any) => ({
+      return response.data.conversations.map((conv: any) => ({
         sessionId: conv.session_id,
         userId: conv.user_id,
         createdAt: new Date(conv.created_at),

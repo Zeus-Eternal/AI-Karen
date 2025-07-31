@@ -1,27 +1,21 @@
 {
   "admin@kari.ai": {
-    "password": "eeba5ca104cbc78e1312ccbb773caa7f:79ce7b140c6826edc48d91078eaf050dd3a909eac9b66ac7d673dcb6d821b1f4",
-    "roles": ["admin", "dev", "user"],
-    "tenant_id": "default",
-    "preferences": {
-      "theme": "dark",
-      "language": "en",
-      "notifications": true,
-      "auto_refresh": true
-    },
+    "password": "5a4072a6c884169311ca87838378465a:b9fe45ac985104733c78077990a60a5a05b136008c8c051781f1fea370fa952b",
+    "roles": [
+      "admin",
+      "dev",
+      "user"
+    ],
+    "is_verified": true,
     "two_factor_enabled": false,
     "totp_secret": null
   },
   "user@kari.ai": {
-    "password": "fc8fc5a0ac094aa8cebf4b73d9fb9a49:c1679d7edf5c3e5c4da03a494b1f06063b2ee3ba192bbfea294fac81ed192003",
-    "roles": ["user"],
-    "tenant_id": "default",
-    "preferences": {
-      "theme": "light",
-      "language": "en",
-      "notifications": true,
-      "auto_refresh": false
-    },
+    "password": "c1fa08613b3bb485bb0ccc8c246158ef:4e286b5de1ae993471016ace83e4fec96aabab6252880c7cdbdd12f32188b3f0",
+    "roles": [
+      "user"
+    ],
+    "is_verified": true,
     "two_factor_enabled": false,
     "totp_secret": null
   }

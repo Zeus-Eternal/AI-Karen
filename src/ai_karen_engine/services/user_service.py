@@ -381,8 +381,8 @@ class UserService(BaseService):
             # For demo purposes, we'll use simple password validation
             # In production, this should use proper password hashing
             demo_users = {
-                "admin@kari.ai": {"password": "pswd123", "roles": ["admin", "user"]},
-                "user@kari.ai": {"password": "pswd123", "roles": ["user"]},
+                "admin@kari.ai": {"password": "password123", "roles": ["admin", "user"]},
+                "user@kari.ai": {"password": "password123", "roles": ["user"]},
             }
             
             if email not in demo_users or demo_users[email]["password"] != password:

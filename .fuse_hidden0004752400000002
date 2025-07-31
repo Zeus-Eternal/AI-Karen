@@ -1,0 +1,59 @@
+nohup: ignoring input
+[2025-07-30T23:35:32.428464] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+[2025-07-30T23:35:32.429292] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-30T23:35:32.429363] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-30T23:35:32.429398] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-30T23:35:32.429461] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP configuration loaded successfully
+[2025-07-30T23:35:32.689745] [INFO] [ai_karen_engine.services.spacy_service] spaCy service initialized with model: en_core_web_sm
+[2025-07-30T23:35:32.693197] [INFO] [ai_karen_engine.services.distilbert_service] Using GPU: NVIDIA GeForce RTX 2080 SUPER
+[2025-07-30T23:35:34.281513] [INFO] [ai_karen_engine.services.distilbert_service] DistilBERT service initialized with model: distilbert-base-uncased
+[2025-07-30T23:35:34.281610] [INFO] [ai_karen_engine.services.distilbert_service] Using device: cuda
+[2025-07-30T23:35:34.281664] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP Service Manager initialized
+[2025-07-30T23:35:34.399698] [INFO] [kari.llm_registry] Loaded registry from models/llm_registry.json
+[2025-07-30T23:35:34.487427] [INFO] [kari] CORS configured for origins: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:9002', 'http://127.0.0.1:9002']
+/media/zeus/Development3/KIRO/AI-Karen/main.py:388: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+🚀 Starting AI Karen Backend Server...
+📍 Server will be available at:
+   - http://localhost:8000
+   - http://127.0.0.1:8000
+   - http://0.0.0.0:8000
+🌐 CORS configured for Web UI on port 9002
+⏹️  Press Ctrl+C to stop the server
+------------------------------------------------------------
+INFO:     Will watch for changes in these directories: ['/media/zeus/Development3/KIRO/AI-Karen']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [3684491] using StatReload
+[2025-07-30T23:35:42.593033] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+[2025-07-30T23:35:42.594052] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-30T23:35:42.594141] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-30T23:35:42.594180] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-30T23:35:42.594249] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP configuration loaded successfully
+[2025-07-30T23:35:42.904544] [INFO] [ai_karen_engine.services.spacy_service] spaCy service initialized with model: en_core_web_sm
+[2025-07-30T23:35:42.906223] [INFO] [ai_karen_engine.services.distilbert_service] Using GPU: NVIDIA GeForce RTX 2080 SUPER
+[2025-07-30T23:35:45.119826] [INFO] [ai_karen_engine.services.distilbert_service] DistilBERT service initialized with model: distilbert-base-uncased
+[2025-07-30T23:35:45.119931] [INFO] [ai_karen_engine.services.distilbert_service] Using device: cuda
+[2025-07-30T23:35:45.119969] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP Service Manager initialized
+[2025-07-30T23:35:45.268166] [INFO] [kari.llm_registry] Loaded registry from models/llm_registry.json
+[2025-07-30T23:35:45.385510] [INFO] [kari] CORS configured for origins: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:9002', 'http://127.0.0.1:9002']
+[2025-07-30T23:35:45.580112] [INFO] [kari] CORS configured for origins: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:9002', 'http://127.0.0.1:9002']
+INFO:     Started server process [3684702]
+INFO:     Waiting for application startup.
+[2025-07-30T23:35:45.793053] [INFO] [httpx] HTTP Request: GET http://127.0.0.1:11434/api/tags "HTTP/1.1 200 OK"
+Unexpected model entry: model='llama3.2:1b' modified_at=datetime.datetime(2025, 7, 26, 2, 50, 9, 287211, tzinfo=TzInfo(UTC)) digest='baf6a787fdffd633537aa2eb51cfd54cb93ff08e28040095462bb63daf552878' size=1321098329 details=ModelDetails(parent_model='', format='gguf', family='llama', families=['llama'], parameter_size='1.2B', quantization_level='Q8_0')
+[2025-07-30T23:35:45.794914] [INFO] [kari] AI Karen configuration loaded for environment: Environment.LOCAL
+[2025-07-30T23:35:45.794968] [INFO] [ai_karen_engine.core.service_registry] Registered service: ai_orchestrator
+[2025-07-30T23:35:45.795003] [INFO] [ai_karen_engine.core.service_registry] Registered service: memory_service
+[2025-07-30T23:35:45.795029] [INFO] [ai_karen_engine.core.service_registry] Registered service: conversation_service
+[2025-07-30T23:35:45.795062] [INFO] [ai_karen_engine.core.service_registry] Registered service: plugin_service
+[2025-07-30T23:35:45.795089] [INFO] [ai_karen_engine.core.service_registry] Registered service: tool_service
+[2025-07-30T23:35:45.795117] [INFO] [ai_karen_engine.core.service_registry] Initializing all services...
+[2025-07-30T23:35:45.795148] [INFO] [ai_karen_engine.core.service_registry] Initializing service: ai_orchestrator
+[2025-07-30T23:35:45.795244] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: conversation_processing
+[2025-07-30T23:35:45.795278] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: decision_making
+[2025-07-30T23:35:45.796251] [INFO] [service.ai_orchestrator] Initializing AI Orchestrator Service

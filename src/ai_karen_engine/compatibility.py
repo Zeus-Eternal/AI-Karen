@@ -1,236 +1,306 @@
 """
-Backward compatibility layer for directory structure reorganization.
+Backward Compatibility Layer for Directory Structure Reorganization
 
-This module provides temporary compatibility imports to ensure
-existing code continues to work during the migration period.
+Provides temporary compatibility imports during migration with:
+- Detailed usage tracking
+- Version-aware deprecation warnings
+- Automatic module redirection
+- Migration progress monitoring
 """
 
 import warnings
-from typing import Any, Dict
 import sys
 import importlib
+import inspect
+from typing import Any, Dict, Optional, Type, Callable, Union
+from types import ModuleType
+from dataclasses import dataclass, field
+from datetime import datetime
+import functools
+import logging
 
+# === Logging Setup ===
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
-def deprecated_import(old_path: str, new_path: str, removal_version: str = "0.5.0"):
-    """
-    Decorator to mark imports as deprecated.
-    
-    Args:
-        old_path: The old import path being deprecated
-        new_path: The new import path to use instead
-        removal_version: Version when the compatibility will be removed
-    """
-    def decorator(func_or_class):
-        def wrapper(*args, **kwargs):
-            warnings.warn(
-                f"Import from '{old_path}' is deprecated. "
-                f"Use '{new_path}' instead. "
-                f"This compatibility layer will be removed in version {removal_version}.",
-                DeprecationWarning,
-                stacklevel=3
-            )
-            return func_or_class(*args, **kwargs)
-        
-        # Preserve original attributes
-        wrapper.__name__ = getattr(func_or_class, '__name__', 'unknown')
-        wrapper.__doc__ = getattr(func_or_class, '__doc__', None)
-        wrapper.__module__ = getattr(func_or_class, '__module__', None)
-        
-        return wrapper
-    return decorator
+# === Configuration ===
+@dataclass
+class CompatibilityConfig:
+    removal_version: str = "0.5.0"
+    warn_once_per_module: bool = True
+    track_usage: bool = True
+    strict_checks: bool = False
 
+class ImportRedirect:
+    """Descriptor for attribute access with redirection tracking"""
+    def __init__(self, name: str, old_path: str, new_path: str, manager: 'CompatibilityImportManager'):
+        self.name = name
+        self.old_path = old_path
+        self.new_path = new_path
+        self.manager = manager
+        self._resolved = None
+
+    def __get__(self, obj, objtype=None):
+        if self._resolved is None:
+            try:
+                module = importlib.import_module(self.new_path)
+                self._resolved = getattr(module, self.name)
+                self.manager.track_successful_redirect(self.old_path)
+            except (ImportError, AttributeError) as e:
+                self.manager.track_failed_redirect(self.old_path, str(e))
+                raise AttributeError(
+                    f"Could not redirect '{self.old_path}.{self.name}' to '{self.new_path}.{self.name}': {e}"
+                ) from e
+
+        self.manager.track_usage(self.old_path)
+        warnings.warn(
+            f"Import of '{self.name}' from '{self.old_path}' is deprecated. "
+            f"Use '{self.new_path}.{self.name}' instead. "
+            f"Will be removed in version {self.manager.config.removal_version}.",
+            DeprecationWarning,
+            stacklevel=3
+        )
+        return self._resolved
+
+@dataclass
+class MigrationStats:
+    total_redirects: int = 0
+    successful_redirects: int = 0
+    failed_redirects: int = 0
+    usage_counts: Dict[str, int] = field(default_factory=dict)
+    first_use_timestamps: Dict[str, float] = field(default_factory=dict)
+    last_use_timestamps: Dict[str, float] = field(default_factory=dict)
+    error_messages: Dict[str, List[str]] = field(default_factory=lambda: {})
 
 class CompatibilityImportManager:
-    """Manages compatibility imports during migration."""
+    """Central manager for compatibility imports during migration"""
     
-    def __init__(self):
+    def __init__(self, config: Optional[CompatibilityConfig] = None):
+        self.config = config or CompatibilityConfig()
+        self.stats = MigrationStats()
+        self._seen_warnings = set()
+        self._redirect_cache = {}
+        
+        # Define all migration paths
         self.import_mappings = {
-            # Plugin system mappings
+            # Core system mappings
             "ai_karen_engine.plugin_manager": "ai_karen_engine.plugins.manager",
             "ai_karen_engine.plugin_router": "ai_karen_engine.plugins.router",
             
-            # Individual plugin mappings (examples)
-            "ai_karen_engine.plugins.hello_world": "plugins.examples.hello_world",
-            "ai_karen_engine.plugins.time_query": "plugins.core.time_query",
-            "ai_karen_engine.plugins.weather_query": "plugins.core.weather_query",
-            "ai_karen_engine.plugins.autonomous_task_handler": "plugins.automation.autonomous_task_handler",
-            "ai_karen_engine.plugins.desktop_agent": "plugins.integrations.desktop_agent",
-            "ai_karen_engine.plugins.fine_tune_lnm": "plugins.ai.fine_tune_lnm",
-            "ai_karen_engine.plugins.git_merge_safe": "plugins.automation.git_merge_safe",
-            "ai_karen_engine.plugins.hf_llm": "plugins.ai.hf_llm",
-            "ai_karen_engine.plugins.k8s_scale": "plugins.integrations.k8s_scale",
-            "ai_karen_engine.plugins.llm_manager": "plugins.integrations.llm_manager",
-            "ai_karen_engine.plugins.llm_services": "plugins.ai.llm_services",
-            "ai_karen_engine.plugins.sandbox_fail": "plugins.examples.sandbox_fail",
-            "ai_karen_engine.plugins.tui_fallback": "plugins.core.tui_fallback",
+            # Plugin mappings organized by category
+            "examples": {
+                "ai_karen_engine.plugins.hello_world": "plugins.examples.hello_world",
+                "ai_karen_engine.plugins.sandbox_fail": "plugins.examples.sandbox_fail",
+            },
+            "core": {
+                "ai_karen_engine.plugins.time_query": "plugins.core.time_query",
+                "ai_karen_engine.plugins.weather_query": "plugins.core.weather_query",
+                "ai_karen_engine.plugins.tui_fallback": "plugins.core.tui_fallback",
+            },
+            "automation": {
+                "ai_karen_engine.plugins.autonomous_task_handler": "plugins.automation.autonomous_task_handler",
+                "ai_karen_engine.plugins.git_merge_safe": "plugins.automation.git_merge_safe",
+            },
+            "integrations": {
+                "ai_karen_engine.plugins.desktop_agent": "plugins.integrations.desktop_agent",
+                "ai_karen_engine.plugins.k8s_scale": "plugins.integrations.k8s_scale",
+                "ai_karen_engine.plugins.llm_manager": "plugins.integrations.llm_manager",
+            },
+            "ai": {
+                "ai_karen_engine.plugins.fine_tune_lnm": "plugins.ai.fine_tune_lnm",
+                "ai_karen_engine.plugins.hf_llm": "plugins.ai.hf_llm",
+                "ai_karen_engine.plugins.llm_services": "plugins.ai.llm_services",
+            }
         }
-        
-        self.usage_tracking: Dict[str, int] = {}
     
     def track_usage(self, old_path: str) -> None:
-        """Track usage of deprecated import paths."""
-        self.usage_tracking[old_path] = self.usage_tracking.get(old_path, 0) + 1
+        """Track usage of deprecated import paths"""
+        if not self.config.track_usage:
+            return
+            
+        now = time.time()
+        self.stats.usage_counts[old_path] = self.stats.usage_counts.get(old_path, 0) + 1
+        self.stats.total_redirects += 1
+        
+        if old_path not in self.stats.first_use_timestamps:
+            self.stats.first_use_timestamps[old_path] = now
+        self.stats.last_use_timestamps[old_path] = now
+    
+    def track_successful_redirect(self, old_path: str) -> None:
+        """Track successful import redirections"""
+        self.stats.successful_redirects += 1
+    
+    def track_failed_redirect(self, old_path: str, error: str) -> None:
+        """Track failed import redirections"""
+        self.stats.failed_redirects += 1
+        if old_path not in self.stats.error_messages:
+            self.stats.error_messages[old_path] = []
+        self.stats.error_messages[old_path].append(error)
     
     def get_usage_report(self) -> Dict[str, Any]:
-        """Get report of deprecated import usage."""
+        """Generate comprehensive usage report"""
         return {
-            "total_deprecated_imports": len(self.usage_tracking),
-            "usage_by_path": self.usage_tracking,
-            "most_used": max(self.usage_tracking.items(), key=lambda x: x[1]) if self.usage_tracking else None
+            "summary": {
+                "total_redirects": self.stats.total_redirects,
+                "successful_redirects": self.stats.successful_redirects,
+                "failed_redirects": self.stats.failed_redirects,
+                "unique_deprecated_paths": len(self.stats.usage_counts),
+            },
+            "usage_details": {
+                "most_used": max(self.stats.usage_counts.items(), key=lambda x: x[1]) if self.stats.usage_counts else None,
+                "least_used": min(self.stats.usage_counts.items(), key=lambda x: x[1]) if self.stats.usage_counts else None,
+                "unused_paths": [path for path in self.import_mappings if path not in self.stats.usage_counts],
+            },
+            "timing": {
+                "first_use": min(self.stats.first_use_timestamps.values()) if self.stats.first_use_timestamps else None,
+                "last_use": max(self.stats.last_use_timestamps.values()) if self.stats.last_use_timestamps else None,
+            },
+            "errors": self.stats.error_messages,
         }
     
-    def create_compatibility_module(self, old_module_path: str, new_module_path: str) -> None:
-        """Create a compatibility module that redirects to the new location."""
-        try:
-            # Import the new module
-            new_module = __import__(new_module_path, fromlist=[''])
+    def deprecated_import(self, old_path: str, new_path: str, removal_version: Optional[str] = None):
+        """Decorator factory for deprecated imports"""
+        removal = removal_version or self.config.removal_version
+        
+        def decorator(obj):
+            nonlocal old_path, new_path
             
-            # Create compatibility wrapper
-            class CompatibilityModule:
+            if inspect.isclass(obj) or inspect.isfunction(obj):
+                # For classes and functions
+                @functools.wraps(obj)
+                def wrapper(*args, **kwargs):
+                    self._warn_deprecated(old_path, new_path, removal)
+                    return obj(*args, **kwargs)
+                
+                return wrapper
+            else:
+                # For modules
+                class DeprecatedModule(ModuleType):
+                    def __getattr__(self, name):
+                        self._warn_deprecated(old_path, new_path, removal)
+                        try:
+                            new_module = importlib.import_module(new_path)
+                            return getattr(new_module, name)
+                        except (ImportError, AttributeError) as e:
+                            raise AttributeError(
+                                f"Could not redirect '{old_path}.{name}' to '{new_path}.{name}': {e}"
+                            ) from e
+                
+                return DeprecatedModule(old_path)
+        
+        return decorator
+    
+    def _warn_deprecated(self, old_path: str, new_path: str, removal_version: str):
+        """Issue deprecation warning with tracking"""
+        if self.config.warn_once_per_module:
+            key = f"{old_path}->{new_path}"
+            if key in self._seen_warnings:
+                return
+            self._seen_warnings.add(key)
+        
+        self.track_usage(old_path)
+        warnings.warn(
+            f"Import from '{old_path}' is deprecated. "
+            f"Use '{new_path}' instead. "
+            f"Will be removed in version {removal_version}.",
+            DeprecationWarning,
+            stacklevel=3
+        )
+    
+    def create_compatibility_module(self, old_path: str, new_path: str) -> None:
+        """Create a module that redirects imports to new location"""
+        if old_path in sys.modules:
+            return
+            
+        try:
+            new_module = importlib.import_module(new_path)
+            
+            class CompatibilityModule(ModuleType):
                 def __getattr__(self, name):
-                    self.track_usage(f"{old_module_path}.{name}")
-                    warnings.warn(
-                        f"Import from '{old_module_path}' is deprecated. "
-                        f"Use '{new_module_path}' instead.",
-                        DeprecationWarning,
-                        stacklevel=2
-                    )
-                    return getattr(new_module, name)
+                    self.track_usage(old_path)
+                    try:
+                        return getattr(new_module, name)
+                    except AttributeError as e:
+                        raise AttributeError(
+                            f"'{name}' not found in '{new_path}' (compatibility redirect from '{old_path}')"
+                        ) from e
             
-            # Install compatibility module
-            sys.modules[old_module_path] = CompatibilityModule()
-            
-        except ImportError:
-            # New module doesn't exist yet, skip compatibility
-            pass
-
-
-# Global compatibility manager instance
-_compatibility_manager = CompatibilityImportManager()
-
-
-# Plugin System Compatibility Imports
-try:
-    from ai_karen_engine.plugins.manager import PluginManager as _PluginManager
-    from ai_karen_engine.plugins.manager import get_plugin_manager as _get_plugin_manager
+            sys.modules[old_path] = CompatibilityModule(old_path)
+            self.track_successful_redirect(old_path)
+            logger.info(f"Created compatibility redirect: {old_path} -> {new_path}")
+        
+        except ImportError as e:
+            self.track_failed_redirect(old_path, str(e))
+            if self.config.strict_checks:
+                logger.warning(f"Failed to create compatibility redirect: {old_path} -> {new_path}: {e}")
     
-    @deprecated_import("ai_karen_engine.plugin_manager", "ai_karen_engine.plugins.manager")
-    class PluginManager(_PluginManager):
-        """Compatibility wrapper for PluginManager."""
-        pass
-    
-    @deprecated_import("ai_karen_engine.plugin_manager", "ai_karen_engine.plugins.manager")
-    def get_plugin_manager(*args, **kwargs):
-        """Compatibility wrapper for get_plugin_manager."""
-        return _get_plugin_manager(*args, **kwargs)
-    
-except ImportError:
-    # New plugin system not available yet
-    PluginManager = None
-    get_plugin_manager = None
+    def setup_compatibility_imports(self) -> None:
+        """Initialize all compatibility imports"""
+        # Process core mappings
+        for old_path, new_path in self.import_mappings.items():
+            if isinstance(new_path, dict):
+                # Skip category containers
+                continue
+            self.create_compatibility_module(old_path, new_path)
+        
+        # Process plugin mappings by category
+        for category, mappings in self.import_mappings.items():
+            if isinstance(mappings, dict):
+                for old_path, new_path in mappings.items():
+                    self.create_compatibility_module(old_path, new_path)
 
+# Global manager instance
+_compat_manager = CompatibilityImportManager()
 
-try:
-    from ai_karen_engine.plugins.router import PluginRouter as _PluginRouter
-    from ai_karen_engine.plugins.router import PluginRecord as _PluginRecord
-    from ai_karen_engine.plugins.router import AccessDenied as _AccessDenied
-    from ai_karen_engine.plugins.router import get_plugin_router as _get_plugin_router
-    
-    @deprecated_import("ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router")
-    class PluginRouter(_PluginRouter):
-        """Compatibility wrapper for PluginRouter."""
-        pass
-    
-    @deprecated_import("ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router")
-    class PluginRecord(_PluginRecord):
-        """Compatibility wrapper for PluginRecord."""
-        pass
-    
-    @deprecated_import("ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router")
-    class AccessDenied(_AccessDenied):
-        """Compatibility wrapper for AccessDenied."""
-        pass
-    
-    @deprecated_import("ai_karen_engine.plugin_router", "ai_karen_engine.plugins.router")
-    def get_plugin_router(*args, **kwargs):
-        """Compatibility wrapper for get_plugin_router."""
-        return _get_plugin_router(*args, **kwargs)
-    
-except ImportError:
-    # New plugin system not available yet
-    PluginRouter = None
-    PluginRecord = None
-    AccessDenied = None
-    get_plugin_router = None
+# === Public API ===
+def deprecated_import(old_path: str, new_path: str, removal_version: Optional[str] = None):
+    """Public decorator for deprecated imports"""
+    return _compat_manager.deprecated_import(old_path, new_path, removal_version)
 
-
-# Individual Plugin Compatibility
-# Note: These will be created dynamically as plugins are moved
-
-def create_plugin_compatibility_imports():
-    """Create compatibility imports for individual plugins."""
-    plugin_mappings = {
-        "ai_karen_engine.plugins.hello_world": "plugins.examples.hello_world",
-        "ai_karen_engine.plugins.time_query": "plugins.core.time_query",
-        "ai_karen_engine.plugins.weather_query": "plugins.core.weather_query",
-        # Add more as needed during migration
-    }
-    
-    for old_path, new_path in plugin_mappings.items():
-        try:
-            # Try to import from new location
-            __import__(new_path, fromlist=[""])
-
-            # Create compatibility module
-            _compatibility_manager.create_compatibility_module(old_path, new_path)
-            
-        except ImportError:
-            # New location doesn't exist yet, skip
-            continue
-
-
-# Utility functions for migration support
 def check_deprecated_imports() -> Dict[str, Any]:
-    """Check for usage of deprecated imports."""
-    return _compatibility_manager.get_usage_report()
-
+    """Check usage of deprecated imports"""
+    return _compat_manager.get_usage_report()
 
 def warn_about_deprecated_import(old_path: str, new_path: str) -> None:
-    """Issue a deprecation warning for an import."""
-    _compatibility_manager.track_usage(old_path)
-    warnings.warn(
-        f"Import from '{old_path}' is deprecated. Use '{new_path}' instead.",
-        DeprecationWarning,
-        stacklevel=3
-    )
-
+    """Warn about specific deprecated import"""
+    _compat_manager._warn_deprecated(old_path, new_path, _compat_manager.config.removal_version)
 
 def is_migration_complete() -> bool:
-    """Check if migration is complete by testing new import paths."""
+    """Check if migration to new structure is complete"""
     try:
-        # Test key new imports without exposing them
         importlib.import_module("ai_karen_engine.plugins.manager")
         importlib.import_module("ai_karen_engine.plugins.router")
+        
+        # Check some representative plugins
+        importlib.import_module("plugins.core.time_query")
+        importlib.import_module("plugins.integrations.llm_manager")
+        
         return True
     except ImportError:
         return False
 
+def get_migration_progress() -> Dict[str, Any]:
+    """Get detailed migration progress report"""
+    report = _compat_manager.get_usage_report()
+    report["migration_complete"] = is_migration_complete()
+    report["pending_migrations"] = [
+        path for path in _compat_manager.import_mappings
+        if path not in report["usage_details"]["unused_paths"]
+    ]
+    return report
 
-# Auto-setup compatibility imports when module is imported
-if __name__ != "__main__":
-    create_plugin_compatibility_imports()
+# Initialize compatibility imports when module loads
+_compat_manager.setup_compatibility_imports()
 
-
-# Export compatibility components
+# === Compatibility Exports ===
 __all__ = [
-    "PluginManager",
-    "PluginRouter", 
-    "PluginRecord",
-    "AccessDenied",
-    "get_plugin_manager",
-    "get_plugin_router",
     "deprecated_import",
     "check_deprecated_imports",
     "warn_about_deprecated_import",
     "is_migration_complete",
+    "get_migration_progress",
 ]

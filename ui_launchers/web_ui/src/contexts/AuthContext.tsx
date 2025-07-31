@@ -114,6 +114,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isAuthenticated: false,
       isLoading: false,
     });
+    
+    // Redirect to login page after logout
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
   };
 
   const refreshUser = async (): Promise<void> => {
