@@ -39,7 +39,7 @@ Set these required environment variables before development:
 | `KARI_DUCKDB_PASSWORD` | Encryption password for automation DuckDB database | `export KARI_DUCKDB_PASSWORD=dev-duckdb-pass` |
 | `KARI_JOB_SIGNING_KEY` | Signs automation tasks for integrity checks | `export KARI_JOB_SIGNING_KEY=dev-job-key-456` |
 | `KARI_LOG_DIR` | Directory for log files | `export KARI_LOG_DIR=$HOME/.kari/logs` |
-| `DATABASE_URL` | PostgreSQL connection string | `export DATABASE_URL=postgresql://user:pass@localhost:5432/karen_dev` |
+| `POSTGRES_URL` | PostgreSQL connection string | `export POSTGRES_URL=postgresql://user:pass@localhost:5432/karen_dev` |
 | `REDIS_URL` | Redis connection string | `export REDIS_URL=redis://localhost:6379/0` |
 
 **Optional Environment Variables:**
@@ -258,10 +258,10 @@ class MyExtension(BaseExtension):
     async def initialize(self):
         await self.register_plugins(["data-processor"])
         await self.setup_ui_components()
-    
+
     async def activate(self):
         self.logger.info("Extension activated")
-    
+
     async def deactivate(self):
         self.logger.info("Extension deactivated")
 ```
@@ -313,7 +313,7 @@ export KARI_TEST_MODE=true
 export KARI_MODEL_SIGNING_KEY=test-key
 export KARI_DUCKDB_PASSWORD=test-pass
 export KARI_JOB_SIGNING_KEY=test-job-key
-export DATABASE_URL=postgresql://test:test@localhost:5432/karen_test
+export POSTGRES_URL=postgresql://test:test@localhost:5432/karen_test
 ```
 
 **Test Database Setup:**
@@ -335,13 +335,13 @@ from ai_karen_engine.services import get_plugin_service
 @pytest.mark.asyncio
 async def test_plugin_execution():
     plugin_service = get_plugin_service()
-    
+
     result = await plugin_service.execute_plugin(
         name="test-plugin",
         params={"input": "test"},
         user_context={"user_id": "test_user"}
     )
-    
+
     assert result["status"] == "success"
     assert "output" in result
 ```
@@ -400,25 +400,25 @@ async def process_data(
     options: Optional[Dict[str, str]] = None
 ) -> Dict[str, List[str]]:
     """Process input data with optional configuration.
-    
+
     Args:
         data: List of data dictionaries to process
         options: Optional processing configuration
-        
+
     Returns:
         Dictionary containing processed results
-        
+
     Raises:
         ValueError: If data format is invalid
     """
     if not data:
         raise ValueError("Data cannot be empty")
-    
+
     logger.info(f"Processing {len(data)} records")
-    
+
     # Processing logic here
     result = {"processed": []}
-    
+
     return result
 ```
 
@@ -447,11 +447,11 @@ interface UserData {
 export async function fetchUserData(userId: string): Promise<UserData> {
   try {
     const response = await fetch(`/api/users/${userId}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch user: ${response.statusText}`);
     }
-    
+
     const userData: UserData = await response.json();
     return userData;
   } catch (error) {
@@ -513,7 +513,7 @@ import pdb
 def problematic_function():
     # Set breakpoint
     pdb.set_trace()
-    
+
     # Your code here
     result = complex_operation()
     return result
@@ -612,7 +612,7 @@ redis-cli ping
 
 **Example:**
 ```python
-@app.post("/plugins/execute", 
+@app.post("/plugins/execute",
           summary="Execute a plugin",
           description="Execute a plugin with given parameters and user context",
           response_model=PluginExecutionResult)
@@ -622,11 +622,11 @@ async def execute_plugin(
 ):
     """
     Execute a plugin with the provided parameters.
-    
+
     - **name**: Plugin name to execute
     - **params**: Plugin-specific parameters
     - **user_context**: User context for execution
-    
+
     Returns the plugin execution result including output and metadata.
     """
     # Implementation here

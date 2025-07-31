@@ -18,7 +18,6 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-
 from pydantic import BaseModel
 
 # --- Environment Loading ----------------------------------------------------
@@ -39,29 +38,27 @@ except Exception:  # Fallback if python-dotenv is not installed
         return True
 
 
-# Load variables from .envK if present
+# Load variables from .envK and .env before importing the engine
 if Path(".envK").exists():
-    load_dotenv(".envK")
+    load_dotenv(".envK", override=True)
+if Path(".env").exists():
+    load_dotenv(".env", override=True)
 
 # Ensure DATABASE_URL is set for database clients
 if "DATABASE_URL" not in os.environ and os.getenv("POSTGRES_URL"):
     os.environ["DATABASE_URL"] = os.environ["POSTGRES_URL"]
 
 import ai_karen_engine.utils.auth as auth_utils
-from ai_karen_engine.api_routes.ai_orchestrator_routes import \
-    router as ai_router
-from ai_karen_engine.api_routes.production_auth_routes import router as auth_router
-from ai_karen_engine.api_routes.conversation_routes import \
-    router as conversation_router
+from ai_karen_engine.api_routes.ai_orchestrator_routes import router as ai_router
+from ai_karen_engine.api_routes.audit import router as audit_router
+from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
 from ai_karen_engine.api_routes.events import router as events_router
 from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
+from ai_karen_engine.api_routes.production_auth_routes import router as auth_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
-from ai_karen_engine.api_routes.audit import router as audit_router
-from ai_karen_engine.api_routes.web_api_compatibility import \
-    router as web_api_router
-from ai_karen_engine.clients.database.elastic_client import \
-    _METRICS as DOC_METRICS
+from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
+from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS
 from ai_karen_engine.core.cortex.dispatch import dispatch
 from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
 from ai_karen_engine.core.memory import manager as memory_manager
@@ -77,8 +74,12 @@ from ai_karen_engine.self_refactor import SelfRefactorEngine, SREScheduler
 # ─── Prometheus metrics (with graceful fallback) ─────────────────────────────
 
 try:
-    from prometheus_client import (CONTENT_TYPE_LATEST, Counter, Histogram,
-                                   generate_latest)
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        Counter,
+        Histogram,
+        generate_latest,
+    )
 except ImportError:
 
     class _DummyMetric:
@@ -105,11 +106,12 @@ except ImportError:
 
     CONTENT_TYPE_LATEST = "text/plain"
 
+
 # Initialize Prometheus metrics with collision handling
 def _init_metrics():
     """Initialize Prometheus metrics with duplicate handling"""
     global REQUEST_COUNT, REQUEST_LATENCY, LNM_ERROR_COUNT
-    
+
     try:
         REQUEST_COUNT = Counter(
             "kari_http_requests_total",
@@ -130,7 +132,7 @@ def _init_metrics():
         if "Duplicated timeseries" in str(e):
             # Metrics already registered, get existing ones
             for collector in PROM_REGISTRY._collector_to_names:
-                if hasattr(collector, '_name'):
+                if hasattr(collector, "_name"):
                     if collector._name == "kari_http_requests_total":
                         REQUEST_COUNT = collector
                     elif collector._name == "kari_http_request_seconds":
@@ -139,6 +141,7 @@ def _init_metrics():
                         LNM_ERROR_COUNT = collector
         else:
             raise
+
 
 # Initialize metrics
 _init_metrics()
@@ -200,7 +203,7 @@ PUBLIC_PATHS = {
     "/api/health",
     # Authentication endpoints - must be public for login to work
     "/api/auth/login",
-    "/api/auth/register", 
+    "/api/auth/register",
     "/api/auth/me",
     "/api/auth/logout",
     "/api/auth/request_password_reset",
@@ -351,6 +354,7 @@ async def web_ui_api_logging(request: Request, call_next):
             },
         )
 
+
 # Configure CORS after all custom middleware so that preflight requests are
 # processed before tenant or authentication checks.
 app.add_middleware(
@@ -407,7 +411,9 @@ async def on_startup() -> None:
     try:
         from ai_karen_engine.core.config_manager import get_config_manager
         from ai_karen_engine.core.health_monitor import (
-            get_health_monitor, setup_default_health_checks)
+            get_health_monitor,
+            setup_default_health_checks,
+        )
         from ai_karen_engine.core.service_registry import initialize_services
 
         # Load configuration
@@ -716,13 +722,13 @@ if os.getenv("ENABLE_SELF_REFACTOR"):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Server configuration
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
     reload = os.getenv("RELOAD", "true").lower() == "true"
     log_level = os.getenv("LOG_LEVEL", "info")
-    
+
     print(f"🚀 Starting AI Karen Backend Server...")
     print(f"📍 Server will be available at:")
     print(f"   - http://localhost:{port}")
@@ -731,7 +737,7 @@ if __name__ == "__main__":
     print(f"🌐 CORS configured for Web UI on port 9002")
     print(f"⏹️  Press Ctrl+C to stop the server")
     print("-" * 60)
-    
+
     try:
         uvicorn.run(
             "main:app",
@@ -739,7 +745,7 @@ if __name__ == "__main__":
             port=port,
             reload=reload,
             log_level=log_level,
-            access_log=True
+            access_log=True,
         )
     except KeyboardInterrupt:
         print("\n🛑 Server stopped by user")
