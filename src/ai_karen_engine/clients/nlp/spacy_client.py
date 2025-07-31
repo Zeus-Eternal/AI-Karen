@@ -14,23 +14,33 @@ except Exception:  # pragma: no cover - optional dep
     spacy = None
 
 
-DEFAULT_MODEL = "en_core_web_sm"
+TRF_MODEL = "en_core_web_trf"
+SM_MODEL = "en_core_web_sm"
+DEFAULT_MODEL = TRF_MODEL
 
 
 class SpaCyClient:
     """Expose common spaCy pipeline hooks."""
 
-    def __init__(self, model_name: str = DEFAULT_MODEL) -> None:
+    def __init__(self, model_name: str | None = None) -> None:
         if spacy is None:
             raise RuntimeError("spaCy is required for SpaCyClient")
+
+        chosen_model = model_name or DEFAULT_MODEL
         try:
-            self.nlp = spacy.load(model_name)
+            self.nlp = spacy.load(chosen_model)
+            self.model_name = chosen_model
         except Exception:
-            logger.warning(
-                "[SpaCyClient] ⚠️ Failed to load %s. Falling back to en_core_web_sm.",
-                model_name,
-            )
-            self.nlp = spacy.load("en_core_web_sm")
+            if model_name is None and chosen_model == TRF_MODEL:
+                logger.warning(
+                    "[SpaCyClient] ⚠️ Failed to load %s. Falling back to %s.",
+                    TRF_MODEL,
+                    SM_MODEL,
+                )
+                self.nlp = spacy.load(SM_MODEL)
+                self.model_name = SM_MODEL
+            else:
+                raise
 
     def extract_entities(self, text: str) -> List[Dict[str, str]]:
         doc = self.nlp(text)

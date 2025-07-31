@@ -32,9 +32,7 @@ async def load_default_models() -> None:
             spacy_client = SpaCyClient()
             logger.info(
                 "SpaCy model loaded: %s",
-                SpaCyClient.DEFAULT_MODEL
-                if hasattr(SpaCyClient, "DEFAULT_MODEL")
-                else "default",
+                getattr(spacy_client, "model_name", SpaCyClient.DEFAULT_MODEL),
             )
         except Exception as exc:  # pragma: no cover - runtime only
             logger.error("Failed to load spaCy model: %s", exc)
