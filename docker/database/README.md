@@ -218,7 +218,7 @@ Default ports (all configurable via `.env`):
 
 | Service | Default Port | Purpose | Production Binding |
 |---------|--------------|---------|-------------------|
-| PostgreSQL | 5432 | Database connections | 127.0.0.1:5432 |
+| PostgreSQL | 5433 | Database connections | 127.0.0.1:5433 |
 | Elasticsearch | 9200 | HTTP API | 127.0.0.1:9200 |
 | Milvus | 19530 | Vector database | 127.0.0.1:19530 |
 | Redis | 6379 | Cache & sessions | 127.0.0.1:6379 |

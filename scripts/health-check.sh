@@ -13,20 +13,20 @@ check_service() {
     local url=$2
     local max_attempts=${3:-30}
     local attempt=1
-    
+
     echo "Checking $service_name..."
-    
+
     while [ $attempt -le $max_attempts ]; do
         if curl -f -s "$url" > /dev/null 2>&1; then
             echo "✅ $service_name is ready"
             return 0
         fi
-        
+
         echo "⏳ $service_name not ready (attempt $attempt/$max_attempts)"
         sleep 2
         ((attempt++))
     done
-    
+
     echo "❌ $service_name failed to become ready"
     return 1
 }
@@ -34,10 +34,10 @@ check_service() {
 # Check database services
 echo "Checking database services..."
 
-check_service "PostgreSQL" "http://localhost:5432" 15 || {
+check_service "PostgreSQL" "http://localhost:${POSTGRES_PORT:-5433}" 15 || {
     echo "Checking if PostgreSQL is accepting connections..."
     if command -v pg_isready >/dev/null 2>&1; then
-        pg_isready -h localhost -p 5432 -U postgres
+        pg_isready -h localhost -p ${POSTGRES_PORT:-5433} -U postgres
     else
         echo "pg_isready not available, assuming PostgreSQL is ready"
     fi
@@ -61,7 +61,7 @@ echo ""
 echo "🎉 All services are ready!"
 echo ""
 echo "Service URLs:"
-echo "  PostgreSQL: localhost:5432"
+echo "  PostgreSQL: localhost:${POSTGRES_PORT:-5433}"
 echo "  Redis: localhost:6379"
 echo "  Elasticsearch: http://localhost:9200"
 echo "  Milvus: localhost:19530"

@@ -12,7 +12,7 @@ log() {
     local level="$1"
     local message="$2"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    
+
     case "$level" in
         "INFO")
             echo -e "\033[0;32m[$timestamp] INFO: $message\033[0m"
@@ -38,12 +38,12 @@ check_docker() {
         log "ERROR" "Docker is not installed or not in PATH"
         exit 1
     fi
-    
+
     if ! docker info &> /dev/null; then
         log "ERROR" "Docker daemon is not running"
         exit 1
     fi
-    
+
     log "SUCCESS" "Docker is available and running"
 }
 
@@ -57,7 +57,7 @@ check_docker_compose() {
         log "ERROR" "Docker Compose is not available"
         exit 1
     fi
-    
+
     log "SUCCESS" "Docker Compose is available: $COMPOSE_CMD"
 }
 
@@ -81,7 +81,7 @@ setup_environment() {
 # Function to create necessary directories
 create_directories() {
     log "INFO" "Creating necessary directories..."
-    
+
     # Create data directories
     mkdir -p data/postgres
     mkdir -p data/elasticsearch
@@ -90,24 +90,24 @@ create_directories() {
     mkdir -p data/duckdb
     mkdir -p data/etcd
     mkdir -p data/minio
-    
+
     # Create backup directories
     mkdir -p backups/postgres
     mkdir -p backups/elasticsearch
     mkdir -p backups/milvus
     mkdir -p backups/redis
     mkdir -p backups/duckdb
-    
+
     # Create log directories
     mkdir -p logs
-    
+
     log "SUCCESS" "Directories created"
 }
 
 # Function to pull latest images
 pull_images() {
     local pull_images="${1:-true}"
-    
+
     if [ "$pull_images" = "true" ]; then
         log "INFO" "Pulling latest Docker images..."
         $COMPOSE_CMD pull
@@ -120,9 +120,9 @@ pull_images() {
 # Function to start services in proper order
 start_services() {
     local mode="${1:-detached}"
-    
+
     log "INFO" "Starting database services..."
-    
+
     if [ "$mode" = "detached" ]; then
         log "INFO" "Starting in detached mode..."
         $COMPOSE_CMD up -d
@@ -135,26 +135,26 @@ start_services() {
 # Function to wait for services to be healthy
 wait_for_health() {
     log "INFO" "Waiting for services to become healthy..."
-    
+
     local max_attempts=60
     local attempt=1
-    
+
     while [ $attempt -le $max_attempts ]; do
         log "INFO" "Health check attempt $attempt/$max_attempts..."
-        
+
         # Check if all services are healthy
         local unhealthy_services=$($COMPOSE_CMD ps --format json | jq -r '.[] | select(.Health != "healthy" and .Health != "") | .Service' 2>/dev/null || echo "")
-        
+
         if [ -z "$unhealthy_services" ]; then
             log "SUCCESS" "All services are healthy!"
             return 0
         fi
-        
+
         log "INFO" "Waiting for services to become healthy: $unhealthy_services"
         sleep 10
         attempt=$((attempt + 1))
     done
-    
+
     log "WARN" "Some services may not be fully healthy yet"
     log "INFO" "You can check service status with: $COMPOSE_CMD ps"
     return 1
@@ -163,19 +163,19 @@ wait_for_health() {
 # Function to run initialization
 run_initialization() {
     local skip_init="${1:-false}"
-    
+
     if [ "$skip_init" = "true" ]; then
         log "INFO" "Skipping initialization (--skip-init flag provided)"
         return 0
     fi
-    
+
     log "INFO" "Running database initialization..."
-    
+
     # Check if initialization container exists and run it
     if $COMPOSE_CMD ps db-init &> /dev/null; then
         log "INFO" "Running initialization container..."
         $COMPOSE_CMD up db-init
-        
+
         # Check if initialization was successful
         if $COMPOSE_CMD logs db-init | grep -q "AI Karen Database Initialization Complete"; then
             log "SUCCESS" "Database initialization completed successfully!"
@@ -191,15 +191,15 @@ run_initialization() {
 show_status() {
     log "INFO" "Database service status:"
     echo ""
-    
+
     $COMPOSE_CMD ps
-    
+
     echo ""
     log "INFO" "Service health summary:"
-    
+
     # Show health status for each service
     services=("postgres" "elasticsearch" "milvus" "redis")
-    
+
     for service in "${services[@]}"; do
         if $COMPOSE_CMD ps "$service" &> /dev/null; then
             local status=$($COMPOSE_CMD ps "$service" --format "table {{.Status}}" | tail -n +2)
@@ -242,7 +242,7 @@ main() {
     local skip_init="false"
     local mode="detached"
     local status_only="false"
-    
+
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -273,29 +273,29 @@ main() {
                 ;;
         esac
     done
-    
+
     # Show status only if requested
     if [ "$status_only" = "true" ]; then
         show_status
         exit 0
     fi
-    
+
     # Pre-flight checks
     check_docker
     check_docker_compose
     setup_environment
     create_directories
-    
+
     # Start the stack
     pull_images "$pull_images"
     start_services "$mode"
-    
+
     # If running in detached mode, wait for health and run initialization
     if [ "$mode" = "detached" ]; then
         wait_for_health
         run_initialization "$skip_init"
         show_status
-        
+
         echo ""
         log "SUCCESS" "🎉 AI Karen Database Stack is running!"
         echo ""
@@ -304,7 +304,7 @@ main() {
         echo "  - View logs: $COMPOSE_CMD logs [service_name]"
         echo "  - Stop services: ./scripts/stop.sh"
         echo "  - Access services:"
-        echo "    - PostgreSQL: localhost:5432"
+        echo "    - PostgreSQL: localhost:${POSTGRES_PORT:-5433}"
         echo "    - Elasticsearch: http://localhost:9200"
         echo "    - Milvus: localhost:19530"
         echo "    - Redis: localhost:6379"

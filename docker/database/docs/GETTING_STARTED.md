@@ -52,12 +52,12 @@ free -h
    POSTGRES_PASSWORD=your_secure_postgres_password
    REDIS_PASSWORD=your_secure_redis_password
    ELASTICSEARCH_PASSWORD=your_secure_elasticsearch_password
-   
+
    # Resource limits (adjust based on your system)
    POSTGRES_MAX_CONNECTIONS=100
    ELASTICSEARCH_HEAP_SIZE=1g
    REDIS_MEMORY_LIMIT=512m
-   
+
    # Environment mode
    ENVIRONMENT=development  # or production
    ```
@@ -73,7 +73,7 @@ free -h
    ```bash
    # Watch logs in real-time
    docker-compose logs -f
-   
+
    # Check service status
    docker-compose ps
    ```
@@ -95,13 +95,13 @@ free -h
    ```bash
    # PostgreSQL
    psql -h localhost -U karen_user -d ai_karen -c "SELECT version();"
-   
+
    # Elasticsearch
    curl http://localhost:9200/_cluster/health
-   
+
    # Redis
    redis-cli -h localhost ping
-   
+
    # Milvus (requires Python)
    python3 -c "from pymilvus import connections; connections.connect(); print('Milvus OK')"
    ```
@@ -112,10 +112,10 @@ free -h
    ```bash
    # Connect to PostgreSQL
    psql -h localhost -U karen_user -d ai_karen
-   
+
    # List tables
    \dt
-   
+
    # Check sample data
    SELECT * FROM profiles LIMIT 5;
    ```
@@ -124,7 +124,7 @@ free -h
    ```bash
    # Check indices
    curl http://localhost:9200/_cat/indices?v
-   
+
    # Search sample data
    curl http://localhost:9200/ai_karen_memory/_search
    ```
@@ -133,10 +133,10 @@ free -h
    ```bash
    # Connect to Redis
    redis-cli -h localhost
-   
+
    # List AI Karen keys
    KEYS ai_karen:*
-   
+
    # Check configuration
    HGETALL ai_karen:config:system
    ```
@@ -185,7 +185,7 @@ docker-compose up --rm
 **Solutions:**
 ```bash
 # Check port conflicts
-netstat -tulpn | grep -E ':(5432|9200|19530|6379)'
+netstat -tulpn | grep -E ':(5433|9200|19530|6379)'
 
 # Check Docker resources
 docker system df

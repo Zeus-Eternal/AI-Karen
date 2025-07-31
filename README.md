@@ -57,7 +57,7 @@ AI-Karen is a comprehensive, production-ready AI platform designed for enterpris
 │                    Database Layer                               │
 ├─────────────┬─────────────┬─────────────┬─────────────┬─────────┤
 │ PostgreSQL  │   Redis     │   Milvus    │ Elasticsearch│ DuckDB  │
-│ Port: 5432  │ Port: 6379  │Port: 19530  │ Port: 9200   │ Local   │
+│ Port: 5433  │ Port: 6379  │Port: 19530  │ Port: 9200   │ Local   │
 │ (Metadata)  │ (Cache)     │ (Vectors)   │ (Search)     │(Analytics)│
 └─────────────┴─────────────┴─────────────┴─────────────┴─────────┘
 ```
@@ -214,7 +214,7 @@ export POSTGRES_USER=karen_user
 export POSTGRES_PASSWORD=karen_secure_pass_change_me
 export POSTGRES_DB=ai_karen
 export POSTGRES_HOST=postgres  # use 'postgres' when running via Docker
-export POSTGRES_PORT=5432
+export POSTGRES_PORT=5433  # change if port 5432 is busy
 export REDIS_URL=redis://localhost:6379/0
 export ELASTICSEARCH_URL=http://localhost:9200
 export MILVUS_HOST=localhost
@@ -308,7 +308,7 @@ helm install ai-karen ./charts/kari/ \
 | `POSTGRES_PASSWORD` | PostgreSQL password | `karen_secure_pass_change_me` |
 | `POSTGRES_DB` | PostgreSQL database | `ai_karen` |
 | `POSTGRES_HOST` | PostgreSQL host | `postgres` |
-| `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `POSTGRES_PORT` | PostgreSQL port | `5433` |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `ELASTICSEARCH_URL` | Elasticsearch URL | `http://localhost:9200` |
 | `MILVUS_HOST` | Milvus host | `localhost` |
@@ -578,7 +578,7 @@ See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt
 
 ### Component Documentation
 - [Web UI Documentation](ui_launchers/web_ui/README.md) - Next.js web interface
-- [Desktop UI Documentation](ui_launchers/desktop_ui/README.md) - Tauri desktop application  
+- [Desktop UI Documentation](ui_launchers/desktop_ui/README.md) - Tauri desktop application
 - [Streamlit UI Documentation](ui_launchers/streamlit_ui/README.md) - Modern Streamlit interface
 - [Database Documentation](docker/database/README.md) - Multi-database setup
 - [Plugin Documentation](plugin_marketplace/README.md) - Plugin development guide

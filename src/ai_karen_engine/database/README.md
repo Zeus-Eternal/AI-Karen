@@ -35,7 +35,7 @@ from ai_karen_engine.database import MultiTenantPostgresClient
 # Initialize client
 db_client = MultiTenantPostgresClient(
     host="localhost",
-    port=5432,
+    port=5433,
     database="karen_db",
     username="karen_user",
     password="secure_password"
@@ -266,7 +266,7 @@ For AI embeddings and similarity search:
 ### Database Configuration
 ```python
 # Environment variables
-POSTGRES_URL = "postgresql://user:pass@localhost:5432/karen_db"
+POSTGRES_URL = "postgresql://user:pass@localhost:5433/karen_db"
 REDIS_URL = "redis://localhost:6379/0"
 DUCKDB_PATH = "/data/analytics.duckdb"
 MILVUS_HOST = "localhost"

@@ -39,7 +39,7 @@ Set these required environment variables before development:
 | `KARI_DUCKDB_PASSWORD` | Encryption password for automation DuckDB database | `export KARI_DUCKDB_PASSWORD=dev-duckdb-pass` |
 | `KARI_JOB_SIGNING_KEY` | Signs automation tasks for integrity checks | `export KARI_JOB_SIGNING_KEY=dev-job-key-456` |
 | `KARI_LOG_DIR` | Directory for log files | `export KARI_LOG_DIR=$HOME/.kari/logs` |
-| `POSTGRES_URL` | PostgreSQL connection string | `export POSTGRES_URL=postgresql://user:pass@localhost:5432/karen_dev` |
+| `POSTGRES_URL` | PostgreSQL connection string | `export POSTGRES_URL=postgresql://user:pass@localhost:5433/karen_dev` |
 | `REDIS_URL` | Redis connection string | `export REDIS_URL=redis://localhost:6379/0` |
 
 **Optional Environment Variables:**
@@ -313,7 +313,7 @@ export KARI_TEST_MODE=true
 export KARI_MODEL_SIGNING_KEY=test-key
 export KARI_DUCKDB_PASSWORD=test-pass
 export KARI_JOB_SIGNING_KEY=test-job-key
-export POSTGRES_URL=postgresql://test:test@localhost:5432/karen_test
+export POSTGRES_URL=postgresql://test:test@localhost:5433/karen_test
 ```
 
 **Test Database Setup:**
@@ -322,7 +322,7 @@ export POSTGRES_URL=postgresql://test:test@localhost:5432/karen_test
 createdb karen_test
 
 # Run test migrations
-PYTHONPATH=src python -m ai_karen_engine.database.migrations migrate --database-url postgresql://test:test@localhost:5432/karen_test
+PYTHONPATH=src python -m ai_karen_engine.database.migrations migrate --database-url postgresql://test:test@localhost:5433/karen_test
 ```
 
 ### Writing Tests
