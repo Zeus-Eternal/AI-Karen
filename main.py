@@ -158,35 +158,6 @@ if os.getenv("KARI_ENV", "local").lower() in ["local", "development", "dev"]:
     else:
         origins_list.extend(dev_origins)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins_list,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=[
-        "Accept",
-        "Accept-Language",
-        "Content-Language",
-        "Content-Type",
-        "Authorization",
-        "X-Requested-With",
-        "X-Web-UI-Compatible",
-        "X-Kari-Trace-Id",
-        "User-Agent",
-        "Cache-Control",
-        "Pragma",
-    ],
-    expose_headers=[
-        "X-Kari-Trace-Id",
-        "X-Web-UI-Compatible",
-        "X-Response-Time-Ms",
-        "Content-Length",
-        "Content-Type",
-    ],
-    max_age=86400,
-)
-
-logger.info(f"CORS configured for origins: {origins_list}")
 
 # ─── Middleware: Metrics & Multi-Tenant ─────────────────────────────────────
 PUBLIC_PATHS = {
@@ -349,6 +320,37 @@ async def web_ui_api_logging(request: Request, call_next):
             },
         )
 
+# Configure CORS after all custom middleware so that preflight requests are
+# processed before tenant or authentication checks.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins_list,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "X-Web-UI-Compatible",
+        "X-Kari-Trace-Id",
+        "User-Agent",
+        "Cache-Control",
+        "Pragma",
+    ],
+    expose_headers=[
+        "X-Kari-Trace-Id",
+        "X-Web-UI-Compatible",
+        "X-Response-Time-Ms",
+        "Content-Length",
+        "Content-Type",
+    ],
+    max_age=86400,
+)
+
+logger.info(f"CORS configured for origins: {origins_list}")
 
 app.include_router(auth_router)
 app.include_router(events_router)
