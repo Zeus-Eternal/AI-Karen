@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: karen_secure_pass_change_me
       POSTGRES_DB: ai_karen
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./data/migrations/postgres:/docker-entrypoint-initdb.d

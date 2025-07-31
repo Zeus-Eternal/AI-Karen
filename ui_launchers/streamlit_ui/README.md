@@ -132,7 +132,7 @@ KAREN_BACKEND_URL=http://localhost:8000
 KAREN_API_KEY=your_api_key_here
 
 # Database Configuration
-POSTGRES_URL=postgresql://user:pass@localhost:5432/karen
+POSTGRES_URL=postgresql://user:pass@localhost:5433/karen
 REDIS_URL=redis://localhost:6379
 MILVUS_HOST=localhost
 MILVUS_PORT=19530

@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-karen_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-karen_secure_pass_change_me}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init/postgres:/docker-entrypoint-initdb.d

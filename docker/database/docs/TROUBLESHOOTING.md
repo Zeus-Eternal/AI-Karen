@@ -59,7 +59,7 @@ free -h
 docker info
 
 # Check port conflicts
-netstat -tulpn | grep -E ':(5432|9200|19530|6379)'
+netstat -tulpn | grep -E ':(5433|9200|19530|6379)'
 
 # Check Docker Compose file syntax
 docker-compose config
@@ -70,7 +70,7 @@ docker-compose config
 **Port Conflicts:**
 ```bash
 # Find process using the port
-lsof -i :5432  # Replace with conflicting port
+lsof -i :5433  # Replace with conflicting port
 
 # Kill the process or change port in .env
 POSTGRES_PORT=5433
@@ -108,7 +108,7 @@ docker system prune -a
 #### Diagnosis:
 ```bash
 # Test PostgreSQL connection
-pg_isready -h localhost -p 5432 -U karen_user
+pg_isready -h localhost -p 5433 -U karen_user
 
 # Test Redis connection
 redis-cli -h localhost -p 6379 ping

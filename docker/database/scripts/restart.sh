@@ -12,7 +12,7 @@ log() {
     local level="$1"
     local message="$2"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    
+
     case "$level" in
         "INFO")
             echo -e "\033[0;32m[$timestamp] INFO: $message\033[0m"
@@ -64,14 +64,14 @@ check_docker_compose() {
         log "ERROR" "Docker Compose is not available"
         exit 1
     fi
-    
+
     log "SUCCESS" "Docker Compose is available: $COMPOSE_CMD"
 }
 
 # Function to restart services using docker-compose restart
 soft_restart() {
     local service="$1"
-    
+
     if [ -n "$service" ]; then
         log "INFO" "Soft restarting service: $service"
         $COMPOSE_CMD restart "$service"
@@ -79,7 +79,7 @@ soft_restart() {
         log "INFO" "Soft restarting all services..."
         $COMPOSE_CMD restart
     fi
-    
+
     log "SUCCESS" "Services restarted"
 }
 
@@ -89,9 +89,9 @@ hard_restart() {
     local timeout="$2"
     local pull_images="$3"
     local skip_init="$4"
-    
+
     log "INFO" "Performing hard restart..."
-    
+
     # Stop services
     if [ -n "$service" ]; then
         log "INFO" "Stopping service: $service"
@@ -100,7 +100,7 @@ hard_restart() {
         log "INFO" "Stopping all services..."
         $COMPOSE_CMD stop --timeout "$timeout"
     fi
-    
+
     # Pull images if requested
     if [ "$pull_images" = "true" ]; then
         log "INFO" "Pulling latest images..."
@@ -110,7 +110,7 @@ hard_restart() {
             $COMPOSE_CMD pull
         fi
     fi
-    
+
     # Start services
     if [ -n "$service" ]; then
         log "INFO" "Starting service: $service"
@@ -119,11 +119,11 @@ hard_restart() {
         log "INFO" "Starting all services..."
         $COMPOSE_CMD up -d
     fi
-    
+
     # Wait for services to be ready
     log "INFO" "Waiting for services to be ready..."
     sleep 10
-    
+
     # Run initialization if not skipped and restarting all services
     if [ "$skip_init" = "false" ] && [ -z "$service" ]; then
         if $COMPOSE_CMD ps db-init &> /dev/null; then
@@ -131,23 +131,23 @@ hard_restart() {
             $COMPOSE_CMD up db-init
         fi
     fi
-    
+
     log "SUCCESS" "Hard restart completed"
 }
 
 # Function to show service status
 show_status() {
     local service="$1"
-    
+
     log "INFO" "Service status:"
     echo ""
-    
+
     if [ -n "$service" ]; then
         $COMPOSE_CMD ps "$service"
     else
         $COMPOSE_CMD ps
     fi
-    
+
     echo ""
 }
 
@@ -156,12 +156,12 @@ wait_for_health() {
     local service="$1"
     local max_attempts=30
     local attempt=1
-    
+
     log "INFO" "Waiting for service health..."
-    
+
     while [ $attempt -le $max_attempts ]; do
         log "INFO" "Health check attempt $attempt/$max_attempts..."
-        
+
         if [ -n "$service" ]; then
             # Check specific service
             local status=$($COMPOSE_CMD ps "$service" --format "table {{.Status}}" | tail -n +2)
@@ -172,19 +172,19 @@ wait_for_health() {
         else
             # Check all services
             local unhealthy_services=$($COMPOSE_CMD ps --format json | jq -r '.[] | select(.Health != "healthy" and .Health != "" and .State == "running") | .Service' 2>/dev/null || echo "")
-            
+
             if [ -z "$unhealthy_services" ]; then
                 log "SUCCESS" "All services are ready!"
                 return 0
             fi
-            
+
             log "INFO" "Waiting for services: $unhealthy_services"
         fi
-        
+
         sleep 5
         attempt=$((attempt + 1))
     done
-    
+
     log "WARN" "Services may not be fully ready yet"
     return 1
 }
@@ -196,7 +196,7 @@ main() {
     local service=""
     local timeout="30"
     local skip_init="false"
-    
+
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -231,20 +231,20 @@ main() {
                 ;;
         esac
     done
-    
+
     # Validate timeout
     if ! [[ "$timeout" =~ ^[0-9]+$ ]]; then
         log "ERROR" "Timeout must be a number"
         exit 1
     fi
-    
+
     # Check Docker Compose availability
     check_docker_compose
-    
+
     # Show current status
     log "INFO" "Current status before restart:"
     show_status "$service"
-    
+
     # Perform restart
     if [ "$hard_restart_flag" = "true" ]; then
         hard_restart "$service" "$timeout" "$pull_images" "$skip_init"
@@ -258,25 +258,25 @@ main() {
                 $COMPOSE_CMD pull
             fi
         fi
-        
+
         soft_restart "$service"
     fi
-    
+
     # Wait for services to be healthy
     wait_for_health "$service"
-    
+
     # Show final status
     echo ""
     log "INFO" "Final status after restart:"
     show_status "$service"
-    
+
     echo ""
     log "SUCCESS" "🎉 AI Karen Database Stack restart completed!"
-    
+
     if [ -z "$service" ]; then
         echo ""
         echo "Service URLs:"
-        echo "  - PostgreSQL: localhost:5432"
+        echo "  - PostgreSQL: localhost:${POSTGRES_PORT:-5433}"
         echo "  - Elasticsearch: http://localhost:9200"
         echo "  - Milvus: localhost:19530"
         echo "  - Redis: localhost:6379"
