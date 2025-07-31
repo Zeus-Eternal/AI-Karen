@@ -47,7 +47,7 @@ async with db_client.get_tenant_session("tenant_123") as session:
     users = await session.query(User).filter(
         User.tenant_id == "tenant_123"
     ).all()
-    
+
     # Create new record
     new_user = User(
         tenant_id="tenant_123",
@@ -76,7 +76,7 @@ from ai_karen_engine.database import Base, Tenant, User
 # Access model classes
 class CustomModel(Base):
     __tablename__ = 'custom_data'
-    
+
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     tenant_id = Column(String, nullable=False, index=True)
     name = Column(String, nullable=False)
@@ -266,7 +266,7 @@ For AI embeddings and similarity search:
 ### Database Configuration
 ```python
 # Environment variables
-DATABASE_URL = "postgresql://user:pass@localhost:5432/karen_db"
+POSTGRES_URL = "postgresql://user:pass@localhost:5432/karen_db"
 REDIS_URL = "redis://localhost:6379/0"
 DUCKDB_PATH = "/data/analytics.duckdb"
 MILVUS_HOST = "localhost"
@@ -298,7 +298,7 @@ DEFAULT_TENANT_CONFIG = {
 from sqlalchemy.pool import QueuePool
 
 engine = create_async_engine(
-    DATABASE_URL,
+    POSTGRES_URL,
     poolclass=QueuePool,
     pool_size=20,
     max_overflow=30,
@@ -312,7 +312,7 @@ engine = create_async_engine(
 # Use indexes for common queries
 class User(Base):
     __tablename__ = 'users'
-    
+
     id = Column(UUID, primary_key=True)
     tenant_id = Column(String, index=True)  # Indexed for tenant queries
     email = Column(String, unique=True, index=True)  # Indexed for lookups
@@ -352,7 +352,7 @@ from sqlalchemy_utils.types.encrypted.encrypted_type import AesEngine
 
 class User(Base):
     __tablename__ = 'users'
-    
+
     id = Column(UUID, primary_key=True)
     email = Column(String)
     # Encrypt sensitive data
@@ -368,10 +368,10 @@ async def get_tenant_data(session, tenant_id: str, user_id: str):
         User.id == user_id,
         User.tenant_id == tenant_id
     ).first()
-    
+
     if not user:
         raise AuthorizationError("Access denied")
-    
+
     # Return tenant-specific data
     return await session.query(Data).filter(
         Data.tenant_id == tenant_id
@@ -401,10 +401,10 @@ async def check_database_health():
     try:
         # Test database connection
         await db_client.execute("SELECT 1")
-        
+
         # Test Redis connection
         await redis_client.ping()
-        
+
         return {"status": "healthy", "databases": ["postgresql", "redis"]}
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
@@ -436,7 +436,7 @@ import sqlalchemy as sa
 
 def upgrade():
     op.add_column('users', sa.Column('preferences', sa.JSON))
-    
+
 def downgrade():
     op.drop_column('users', 'preferences')
 ```
@@ -464,7 +464,7 @@ async def test_user_creation(db_client):
         )
         session.add(user)
         await session.commit()
-        
+
         # Verify user was created
         created_user = await session.query(User).filter(
             User.email == "test@example.com"
