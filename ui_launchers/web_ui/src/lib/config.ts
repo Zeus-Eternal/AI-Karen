@@ -94,7 +94,7 @@ export function getWebUIConfig(): WebUIConfig {
     enableHealthChecks: parseBooleanEnv(process.env.KAREN_ENABLE_HEALTH_CHECKS, true),
 
     // CORS configuration
-    corsOrigins: parseArrayEnv(process.env.KAREN_CORS_ORIGINS, ['http://localhost:9002']),
+    corsOrigins: parseArrayEnv(process.env.KARI_CORS_ORIGINS, ['http://localhost:9002']),
 
     // Performance
     enableServiceWorker: parseBooleanEnv(process.env.KAREN_ENABLE_SERVICE_WORKER, false),

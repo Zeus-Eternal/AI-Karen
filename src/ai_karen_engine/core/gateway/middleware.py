@@ -30,10 +30,10 @@ def setup_cors_middleware(app: FastAPI) -> None:
         app: FastAPI application
     """
     # Get CORS configuration from environment
-    allowed_origins = os.getenv("KAREN_CORS_ORIGINS", "*")
-    allowed_methods = os.getenv("KAREN_CORS_METHODS", "*")
-    allowed_headers = os.getenv("KAREN_CORS_HEADERS", "*")
-    allow_credentials = os.getenv("KAREN_CORS_CREDENTIALS", "true").lower() == "true"
+    allowed_origins = os.getenv("KARI_CORS_ORIGINS", "*")
+    allowed_methods = os.getenv("KARI_CORS_METHODS", "*")
+    allowed_headers = os.getenv("KARI_CORS_HEADERS", "*")
+    allow_credentials = os.getenv("KARI_CORS_CREDENTIALS", "true").lower() == "true"
     
     # Parse origins
     if allowed_origins == "*":

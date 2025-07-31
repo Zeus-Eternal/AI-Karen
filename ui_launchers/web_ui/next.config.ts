@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: process.env.KAREN_CORS_ORIGINS || 'http://localhost:9002',
+            value: process.env.KARI_CORS_ORIGINS || 'http://localhost:9002',
           },
           {
             key: 'Access-Control-Allow-Methods',
