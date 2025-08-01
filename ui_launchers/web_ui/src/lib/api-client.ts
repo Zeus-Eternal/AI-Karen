@@ -7,6 +7,7 @@ import { getConfigManager } from './endpoint-config';
 import { getEndpointFallbackService } from './endpoint-fallback';
 import { getNetworkDetectionService } from './network-detector';
 import { shouldAutoRetry, getRetryDelay, formatErrorForLogging } from './error-handler';
+import { getDiagnosticLogger, logEndpointAttempt, logCORSIssue } from './diagnostics';
 
 export interface ApiClientConfig {
   timeout: number;
@@ -63,7 +64,7 @@ export class ApiClient {
       retries: 3,
       retryDelay: 1000,
       enableFallback: true,
-      enableNetworkDetection: true,
+      enableNetworkDetection: false, // Disable automatic network detection to prevent override
       defaultHeaders: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -99,13 +100,15 @@ export class ApiClient {
     const makeRequest = async (baseUrl: string): Promise<ApiResponse<T>> => {
       const url = `${baseUrl}${request.endpoint}`;
       const timeout = request.timeout || this.config.timeout;
+      const method = request.method || 'GET';
+      const requestStartTime = performance.now();
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
       try {
         const response = await fetch(url, {
-          method: request.method || 'GET',
+          method,
           headers: {
             ...this.config.defaultHeaders,
             ...request.headers,
@@ -116,7 +119,13 @@ export class ApiClient {
         });
 
         clearTimeout(timeoutId);
-        const responseTime = performance.now() - startTime;
+        const responseTime = performance.now() - requestStartTime;
+
+        // Extract response headers for logging
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          responseHeaders[key] = value;
+        });
 
         // Parse response body
         let data: T;
@@ -128,8 +137,24 @@ export class ApiClient {
           data = (await response.text()) as unknown as T;
         }
 
+        // Determine if this is a connectivity success vs application error
+        const isAuthEndpoint = url.includes('/api/auth/');
+        const isConnectivitySuccess = response.ok || 
+          (isAuthEndpoint && (response.status === 401 || response.status === 403));
+
+        // Log endpoint attempt with appropriate success status
+        logEndpointAttempt(
+          url,
+          method,
+          requestStartTime,
+          isConnectivitySuccess,
+          response.status,
+          response.ok ? undefined : `HTTP ${response.status}: ${response.statusText}`,
+          responseHeaders
+        );
+
         if (!response.ok) {
-          throw this.createApiError(
+          const apiError = this.createApiError(
             `HTTP ${response.status}: ${response.statusText}`,
             response.status,
             response.statusText,
@@ -139,6 +164,8 @@ export class ApiClient {
             false,
             false
           );
+          
+          throw apiError;
         }
 
         return {
@@ -153,11 +180,13 @@ export class ApiClient {
 
       } catch (error) {
         clearTimeout(timeoutId);
-        const responseTime = performance.now() - startTime;
+        const responseTime = performance.now() - requestStartTime;
+
+        let apiError: ApiError;
 
         if (error instanceof Error) {
           if (error.name === 'AbortError') {
-            throw this.createApiError(
+            apiError = this.createApiError(
               'Request timeout',
               0,
               'Timeout',
@@ -169,7 +198,7 @@ export class ApiClient {
               error
             );
           } else if (error.message.includes('CORS')) {
-            throw this.createApiError(
+            apiError = this.createApiError(
               'CORS error - cross-origin requests blocked',
               0,
               'CORS Error',
@@ -180,8 +209,13 @@ export class ApiClient {
               false,
               error
             );
+            
+            // Log CORS issue with additional details
+            const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
+            logCORSIssue(url, origin, error);
+            
           } else if (error.message.includes('fetch')) {
-            throw this.createApiError(
+            apiError = this.createApiError(
               'Network error - unable to connect',
               0,
               'Network Error',
@@ -192,26 +226,46 @@ export class ApiClient {
               false,
               error
             );
+          } else {
+            apiError = this.createApiError(
+              error.message,
+              0,
+              'Unknown Error',
+              url,
+              responseTime,
+              true,
+              false,
+              false,
+              error
+            );
           }
+        } else if (this.isApiError(error)) {
+          apiError = error;
+        } else {
+          apiError = this.createApiError(
+            'Unknown error',
+            0,
+            'Unknown Error',
+            url,
+            responseTime,
+            true,
+            false,
+            false,
+            error instanceof Error ? error : undefined
+          );
         }
 
-        // Re-throw ApiError instances
-        if (this.isApiError(error)) {
-          throw error;
-        }
-
-        // Wrap unknown errors
-        throw this.createApiError(
-          error instanceof Error ? error.message : 'Unknown error',
-          0,
-          'Unknown Error',
+        // Log failed endpoint attempt
+        logEndpointAttempt(
           url,
-          responseTime,
-          true,
+          method,
+          requestStartTime,
           false,
-          false,
-          error instanceof Error ? error : undefined
+          apiError.status,
+          apiError,
         );
+
+        throw apiError;
       }
     };
 

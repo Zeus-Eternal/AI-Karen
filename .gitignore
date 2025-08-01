@@ -67,3 +67,4 @@ server.pid
 src/ai_karen_engine/services/ai_orchestrator-bak.py
 src/ai_karen_engine/services/ai_orchestrator-bak.py
 /kari_duckdb.db
+.fuse_hidden0004897500000004

@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  
+  // Force localhost for development to prevent external IP issues
+  assetPrefix: process.env.NODE_ENV === 'development' ? 'http://localhost:8010' : undefined,
   images: {
     remotePatterns: [
       {
@@ -47,7 +50,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: process.env.KARI_CORS_ORIGINS || 'http://localhost:9002',
+            value: process.env.KARI_CORS_ORIGINS || 'http://localhost:8010',
           },
           {
             key: 'Access-Control-Allow-Methods',

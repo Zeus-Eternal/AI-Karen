@@ -54,26 +54,10 @@ class AIOrchestrator(BaseService):
     async def _initialize_memory_service(self) -> None:
         """Initialize memory service integration for semantic context building."""
         try:
-            # Try to get memory service - this might not be available in all environments
-            from ai_karen_engine.core.dependencies import get_memory_service
+            # Skip memory service integration during initialization to avoid circular dependencies
+            # Memory service will be integrated lazily when first needed
+            self.logger.info("Memory service integration deferred until first use")
             
-            # Note: In a real application, this would be properly injected
-            # For now, we'll create a new context manager with memory service when available
-            try:
-                # Check if get_memory_service is a coroutine
-                import inspect
-                if inspect.iscoroutinefunction(get_memory_service):
-                    memory_service = await get_memory_service()
-                else:
-                    memory_service = get_memory_service()
-                    
-                self.context_manager = ContextManager(memory_service)
-                self._memory_service = memory_service
-                self.logger.info("Memory service integrated with context manager")
-            except Exception as e:
-                self.logger.warning(f"Memory service not available, using basic context manager: {e}")
-                # Keep the existing context manager without memory service
-                
         except Exception as e:
             self.logger.warning(f"Failed to initialize memory service integration: {e}")
             # Continue without memory service integration

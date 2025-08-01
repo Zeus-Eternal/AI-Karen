@@ -1,0 +1,478 @@
+[2025-07-31T23:13:43.897692] [INFO] [ai_karen_engine.database.client] Database engine initialized successfully
+[2025-07-31T23:13:44.176529] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+[2025-07-31T23:13:44.185056] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-31T23:13:44.185286] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-31T23:13:44.185350] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-31T23:13:44.185477] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP configuration loaded successfully
+[2025-07-31T23:13:44.626600] [INFO] [ai_karen_engine.services.spacy_service] spaCy service initialized with model: en_core_web_sm
+[2025-07-31T23:13:44.631566] [INFO] [ai_karen_engine.services.distilbert_service] Using GPU: NVIDIA GeForce RTX 2080 SUPER
+[2025-07-31T23:13:46.625205] [INFO] [ai_karen_engine.services.distilbert_service] DistilBERT service initialized with model: distilbert-base-uncased
+[2025-07-31T23:13:46.625267] [INFO] [ai_karen_engine.services.distilbert_service] Using device: cuda
+[2025-07-31T23:13:46.625293] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP Service Manager initialized
+[2025-07-31T23:13:46.689970] [INFO] [kari.llm_registry] Loaded registry from models/llm_registry.json
+[2025-07-31T23:13:46.852752] [WARNING] [kari.memory.manager] [MemoryManager] Redis connection failed: Error -2 connecting to redis:6379. Name or service not known.
+[DEBUG] Metrics initialized successfully: REQUEST_COUNT=counter:kari_http_requests
+[2025-07-31T23:13:47.063170] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://localhost:3000', 'http://localhost:3001', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080']
+/media/zeus/Development3/KIRO/AI-Karen/main.py:521: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+🚀 Starting AI Karen Backend Server...
+📍 Server will be available at:
+   - http://localhost:8000
+   - http://127.0.0.1:8000
+   - http://0.0.0.0:8000
+🌐 CORS configured for Web UI on port 9002
+⏹️  Press Ctrl+C to stop the server
+------------------------------------------------------------
+INFO:     Will watch for changes in these directories: ['/media/zeus/Development3/KIRO/AI-Karen']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [2253102] using StatReload
+[2025-07-31T23:13:55.562707] [INFO] [ai_karen_engine.database.client] Database engine initialized successfully
+[2025-07-31T23:13:55.815061] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+[2025-07-31T23:13:55.823412] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-31T23:13:55.823509] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-31T23:13:55.823534] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-31T23:13:55.823600] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP configuration loaded successfully
+[2025-07-31T23:13:56.223311] [INFO] [ai_karen_engine.services.spacy_service] spaCy service initialized with model: en_core_web_sm
+[2025-07-31T23:13:56.225509] [INFO] [ai_karen_engine.services.distilbert_service] Using GPU: NVIDIA GeForce RTX 2080 SUPER
+[2025-07-31T23:13:58.056412] [INFO] [ai_karen_engine.services.distilbert_service] DistilBERT service initialized with model: distilbert-base-uncased
+[2025-07-31T23:13:58.056485] [INFO] [ai_karen_engine.services.distilbert_service] Using device: cuda
+[2025-07-31T23:13:58.056514] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP Service Manager initialized
+[2025-07-31T23:13:58.128321] [INFO] [kari.llm_registry] Loaded registry from models/llm_registry.json
+[2025-07-31T23:13:58.231463] [WARNING] [kari.memory.manager] [MemoryManager] Redis connection failed: Error -2 connecting to redis:6379. Name or service not known.
+[DEBUG] Metrics initialized successfully: REQUEST_COUNT=counter:kari_http_requests
+[2025-07-31T23:13:58.457330] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://localhost:3000', 'http://localhost:3001', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080']
+Process SpawnProcess-1:
+Traceback (most recent call last):
+  File "/media/zeus/Development3/KIRO/AI-Karen/main.py", line 116, in _init_metrics
+    REQUEST_COUNT = Counter(
+                    ^^^^^^^^
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/prometheus_client/metrics.py", line 132, in __init__
+    registry.register(self)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/prometheus_client/registry.py", line 43, in register
+    raise ValueError(
+ValueError: Duplicated timeseries in CollectorRegistry: {'kari_http_requests_created', 'kari_http_requests', 'kari_http_requests_total'}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/server.py", line 67, in run
+    return asyncio.run(self.serve(sockets=sockets))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/server.py", line 71, in serve
+    await self._serve(sockets)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/server.py", line 78, in _serve
+    config.load()
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/config.py", line 436, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1206, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1178, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1149, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/media/zeus/Development3/KIRO/AI-Karen/main.py", line 157, in <module>
+    _init_metrics()
+  File "/media/zeus/Development3/KIRO/AI-Karen/main.py", line 144, in _init_metrics
+    print(f"[DEBUG] Reused existing metrics: REQUEST_COUNT={REQUEST_COUNT}")
+                                                            ^^^^^^^^^^^^^
+NameError: name 'REQUEST_COUNT' is not defined
+[DEBUG] Handling duplicate metrics: Duplicated timeseries in CollectorRegistry: {'kari_http_requests_created', 'kari_http_requests', 'kari_http_requests_total'}
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+[2025-07-31T23:15:38.041743] [INFO] [ai_karen_engine.database.client] Database engine initialized successfully
+[2025-07-31T23:15:38.260163] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+[2025-07-31T23:15:38.267440] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-31T23:15:38.267560] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-31T23:15:38.267594] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-31T23:15:38.267696] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP configuration loaded successfully
+[2025-07-31T23:15:38.628840] [INFO] [ai_karen_engine.services.spacy_service] spaCy service initialized with model: en_core_web_sm
+[2025-07-31T23:15:38.633226] [INFO] [ai_karen_engine.services.distilbert_service] Using GPU: NVIDIA GeForce RTX 2080 SUPER
+[2025-07-31T23:15:40.516375] [INFO] [ai_karen_engine.services.distilbert_service] DistilBERT service initialized with model: distilbert-base-uncased
+[2025-07-31T23:15:40.516440] [INFO] [ai_karen_engine.services.distilbert_service] Using device: cuda
+[2025-07-31T23:15:40.516464] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP Service Manager initialized
+[2025-07-31T23:15:40.575672] [INFO] [kari.llm_registry] Loaded registry from models/llm_registry.json
+[2025-07-31T23:15:40.676342] [WARNING] [kari.memory.manager] [MemoryManager] Redis connection failed: Error -2 connecting to redis:6379. Name or service not known.
+[DEBUG] Metrics initialized successfully: REQUEST_COUNT=counter:kari_http_requests
+[2025-07-31T23:15:40.861389] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://localhost:3000', 'http://localhost:3001', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080']
+Process SpawnProcess-2:
+Traceback (most recent call last):
+  File "/media/zeus/Development3/KIRO/AI-Karen/main.py", line 116, in _init_metrics
+    REQUEST_COUNT = Counter(
+                    ^^^^^^^^
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/prometheus_client/metrics.py", line 132, in __init__
+    registry.register(self)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/prometheus_client/registry.py", line 43, in register
+    raise ValueError(
+ValueError: Duplicated timeseries in CollectorRegistry: {'kari_http_requests', 'kari_http_requests_total', 'kari_http_requests_created'}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/server.py", line 67, in run
+    return asyncio.run(self.serve(sockets=sockets))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/server.py", line 71, in serve
+    await self._serve(sockets)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/server.py", line 78, in _serve
+    config.load()
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/config.py", line 436, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1206, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1178, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1149, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/media/zeus/Development3/KIRO/AI-Karen/main.py", line 171, in <module>
+    _init_metrics()
+  File "/media/zeus/Development3/KIRO/AI-Karen/main.py", line 152, in _init_metrics
+    REQUEST_COUNT = _DummyMetric()
+                    ^^^^^^^^^^^^
+NameError: name '_DummyMetric' is not defined
+[DEBUG] Handling duplicate metrics: Duplicated timeseries in CollectorRegistry: {'kari_http_requests', 'kari_http_requests_total', 'kari_http_requests_created'}
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+[2025-07-31T23:17:38.117356] [INFO] [ai_karen_engine.database.client] Database engine initialized successfully
+[2025-07-31T23:17:38.325665] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+[2025-07-31T23:17:38.332708] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-31T23:17:38.332797] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-31T23:17:38.332824] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-31T23:17:38.332890] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP configuration loaded successfully
+[2025-07-31T23:17:38.681603] [INFO] [ai_karen_engine.services.spacy_service] spaCy service initialized with model: en_core_web_sm
+[2025-07-31T23:17:38.685237] [INFO] [ai_karen_engine.services.distilbert_service] Using GPU: NVIDIA GeForce RTX 2080 SUPER
+[2025-07-31T23:17:41.006040] [INFO] [ai_karen_engine.services.distilbert_service] DistilBERT service initialized with model: distilbert-base-uncased
+[2025-07-31T23:17:41.006097] [INFO] [ai_karen_engine.services.distilbert_service] Using device: cuda
+[2025-07-31T23:17:41.006131] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP Service Manager initialized
+[2025-07-31T23:17:41.069043] [INFO] [kari.llm_registry] Loaded registry from models/llm_registry.json
+[2025-07-31T23:17:41.152713] [WARNING] [kari.memory.manager] [MemoryManager] Redis connection failed: Error -2 connecting to redis:6379. Name or service not known.
+[DEBUG] Metrics initialized successfully: REQUEST_COUNT=counter:kari_http_requests
+[2025-07-31T23:17:41.328010] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://localhost:3000', 'http://localhost:3001', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080']
+Process SpawnProcess-3:
+Traceback (most recent call last):
+  File "/media/zeus/Development3/KIRO/AI-Karen/main.py", line 116, in _init_metrics
+    REQUEST_COUNT = Counter(
+                    ^^^^^^^^
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/prometheus_client/metrics.py", line 132, in __init__
+    registry.register(self)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/prometheus_client/registry.py", line 43, in register
+    raise ValueError(
+ValueError: Duplicated timeseries in CollectorRegistry: {'kari_http_requests_total', 'kari_http_requests_created', 'kari_http_requests'}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/server.py", line 67, in run
+    return asyncio.run(self.serve(sockets=sockets))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/base_events.py", line 653, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/server.py", line 71, in serve
+    await self._serve(sockets)
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/server.py", line 78, in _serve
+    config.load()
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/config.py", line 436, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/media/zeus/Development3/KIRO/AI-Karen/.env_ai/lib/python3.11/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1206, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1178, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1149, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/media/zeus/Development3/KIRO/AI-Karen/main.py", line 171, in <module>
+    _init_metrics()
+  File "/media/zeus/Development3/KIRO/AI-Karen/main.py", line 152, in _init_metrics
+    REQUEST_COUNT = Counter()
+                    ^^^^^^^^^
+TypeError: MetricWrapperBase.__init__() missing 2 required positional arguments: 'name' and 'documentation'
+[DEBUG] Handling duplicate metrics: Duplicated timeseries in CollectorRegistry: {'kari_http_requests_total', 'kari_http_requests_created', 'kari_http_requests'}
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+[2025-07-31T23:18:07.762701] [INFO] [ai_karen_engine.database.client] Database engine initialized successfully
+[2025-07-31T23:18:07.981264] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+[2025-07-31T23:18:07.988307] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-31T23:18:07.988393] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-31T23:18:07.988419] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-31T23:18:07.988482] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP configuration loaded successfully
+[2025-07-31T23:18:08.381261] [INFO] [ai_karen_engine.services.spacy_service] spaCy service initialized with model: en_core_web_sm
+[2025-07-31T23:18:08.384977] [INFO] [ai_karen_engine.services.distilbert_service] Using GPU: NVIDIA GeForce RTX 2080 SUPER
+[2025-07-31T23:18:11.895558] [INFO] [ai_karen_engine.services.distilbert_service] DistilBERT service initialized with model: distilbert-base-uncased
+[2025-07-31T23:18:11.895630] [INFO] [ai_karen_engine.services.distilbert_service] Using device: cuda
+[2025-07-31T23:18:11.895658] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP Service Manager initialized
+[2025-07-31T23:18:11.970721] [INFO] [kari.llm_registry] Loaded registry from models/llm_registry.json
+[2025-07-31T23:18:12.067515] [WARNING] [kari.memory.manager] [MemoryManager] Redis connection failed: Error -2 connecting to redis:6379. Name or service not known.
+[DEBUG] Metrics initialized successfully: REQUEST_COUNT=counter:kari_http_requests
+[2025-07-31T23:18:12.260944] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://localhost:3000', 'http://localhost:3001', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080']
+[DEBUG] Handling duplicate metrics: Duplicated timeseries in CollectorRegistry: {'kari_http_requests', 'kari_http_requests_created', 'kari_http_requests_total'}
+[DEBUG] Reused existing metrics: REQUEST_COUNT=<main._init_metrics.<locals>._LocalDummyMetric object at 0x7f8bea7e8a90>
+[2025-07-31T23:18:12.342187] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://localhost:3000', 'http://localhost:3001', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080']
+INFO:     Started server process [2257817]
+INFO:     Waiting for application startup.
+[2025-07-31T23:18:12.373143] [INFO] [kari] CORS configuration validation passed
+[2025-07-31T23:18:12.547144] [INFO] [httpx] HTTP Request: GET http://127.0.0.1:11434/api/tags "HTTP/1.1 200 OK"
+Unexpected model entry: model='llama3.2:1b' modified_at=datetime.datetime(2025, 7, 26, 2, 50, 9, 287211, tzinfo=TzInfo(UTC)) digest='baf6a787fdffd633537aa2eb51cfd54cb93ff08e28040095462bb63daf552878' size=1321098329 details=ModelDetails(parent_model='', format='gguf', family='llama', families=['llama'], parameter_size='1.2B', quantization_level='Q8_0')
+[2025-07-31T23:18:12.548818] [INFO] [kari] AI Karen configuration loaded for environment: Environment.LOCAL
+[2025-07-31T23:18:12.548865] [INFO] [ai_karen_engine.core.service_registry] Registered service: ai_orchestrator
+[2025-07-31T23:18:12.548883] [INFO] [ai_karen_engine.core.service_registry] Registered service: memory_service
+[2025-07-31T23:18:12.548895] [INFO] [ai_karen_engine.core.service_registry] Registered service: conversation_service
+[2025-07-31T23:18:12.548905] [INFO] [ai_karen_engine.core.service_registry] Registered service: plugin_service
+[2025-07-31T23:18:12.548915] [INFO] [ai_karen_engine.core.service_registry] Registered service: tool_service
+[2025-07-31T23:18:12.548924] [INFO] [ai_karen_engine.core.service_registry] Initializing all services...
+[2025-07-31T23:18:12.548937] [INFO] [ai_karen_engine.core.service_registry] Initializing service: ai_orchestrator
+[2025-07-31T23:18:12.549028] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: conversation_processing
+[2025-07-31T23:18:12.549047] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: decision_making
+[2025-07-31T23:18:12.550066] [INFO] [service.ai_orchestrator] Initializing AI Orchestrator Service
+[2025-07-31T23:18:12.550090] [INFO] [service.ai_orchestrator] Memory service integration deferred until first use
+[2025-07-31T23:18:12.550110] [INFO] [ai_orchestrator.flow_manager] Registered flow handler for FlowType.DECIDE_ACTION
+[2025-07-31T23:18:12.550123] [INFO] [ai_orchestrator.flow_manager] Registered flow handler for FlowType.CONVERSATION_PROCESSING
+[2025-07-31T23:18:12.550133] [INFO] [service.ai_orchestrator] Default flows registered
+[2025-07-31T23:18:12.550141] [INFO] [service.ai_orchestrator] AI Orchestrator Service initialized successfully
+[2025-07-31T23:18:12.550158] [INFO] [ai_karen_engine.core.service_registry] Service ai_orchestrator initialized successfully in 0.00s
+[2025-07-31T23:18:12.550173] [INFO] [ai_karen_engine.core.service_registry] Initializing service: memory_service
+[2025-07-31T23:18:12.550625] [INFO] [ai_karen_engine.database.client] Database engine initialized successfully
+[2025-07-31T23:18:12.550682] [INFO] [ai_karen_engine.core.embedding_manager] [EmbeddingManager] Loading DistilBERT model: sentence-transformers/distilbert-base-nli-stsb-mean-tokens
+[2025-07-31T23:18:12.552473] [INFO] [sentence_transformers.SentenceTransformer] Use pytorch device_name: cuda:0
+[2025-07-31T23:18:12.552516] [INFO] [sentence_transformers.SentenceTransformer] Load pretrained SentenceTransformer: sentence-transformers/distilbert-base-nli-stsb-mean-tokens
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.46it/s]
+[2025-07-31T23:18:14.979533] [INFO] [ai_karen_engine.core.embedding_manager] [EmbeddingManager] Successfully loaded sentence-transformers/distilbert-base-nli-stsb-mean-tokens in 2.43s (dim=768)
+[2025-07-31T23:18:14.979602] [INFO] [ai_karen_engine.core.default_models] Default embedding model loaded: True
+[2025-07-31T23:18:16.249579] [ERROR] [ai_karen_engine.core.default_models] Failed to load spaCy model: type object 'SpaCyClient' has no attribute 'DEFAULT_MODEL'
+[2025-07-31T23:18:16.251327] [INFO] [ai_karen_engine.core.default_models] Basic classifier ready
+[2025-07-31T23:18:16.251389] [INFO] [ai_karen_engine.core.service_registry] Service memory_service initialized successfully in 3.70s
+[2025-07-31T23:18:16.251421] [INFO] [ai_karen_engine.core.service_registry] Initializing service: conversation_service
+[2025-07-31T23:18:16.251476] [INFO] [ai_karen_engine.core.service_registry] Service conversation_service initialized successfully in 0.00s
+[2025-07-31T23:18:16.251499] [INFO] [ai_karen_engine.core.service_registry] Initializing service: plugin_service
+[2025-07-31T23:18:16.251540] [INFO] [ai_karen_engine.services.plugin_service] Initializing plugin service...
+[2025-07-31T23:18:16.251564] [INFO] [ai_karen_engine.services.plugin_registry] Starting plugin discovery...
+[2025-07-31T23:18:16.273608] [INFO] [ai_karen_engine.services.plugin_registry] Discovered 18 plugins
+[2025-07-31T23:18:16.274040] [INFO] [ai_karen_engine.services.plugin_service] Plugin service initialized successfully
+[2025-07-31T23:18:16.274080] [INFO] [ai_karen_engine.core.service_registry] Service plugin_service initialized successfully in 0.02s
+[2025-07-31T23:18:16.274107] [INFO] [ai_karen_engine.core.service_registry] Initializing service: tool_service
+[2025-07-31T23:18:16.274153] [INFO] [ai_karen_engine.core.service_registry] Service tool_service initialized successfully in 0.00s
+[2025-07-31T23:18:16.274182] [INFO] [ai_karen_engine.core.service_registry] Service initialization complete: 5/5 services ready
+[2025-07-31T23:18:16.274225] [INFO] [ai_karen_engine.core.service_registry] Started health monitoring
+[2025-07-31T23:18:16.274241] [INFO] [ai_karen_engine.core.service_registry] AI Karen engine integration services initialized successfully
+[2025-07-31T23:18:16.274253] [INFO] [kari] AI Karen integration services initialized
+[2025-07-31T23:18:16.274280] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: database
+[2025-07-31T23:18:16.274293] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: redis
+[2025-07-31T23:18:16.274306] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: vector_db
+[2025-07-31T23:18:16.274317] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: ai_orchestrator
+[2025-07-31T23:18:16.274327] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: memory_service
+[2025-07-31T23:18:16.274337] [INFO] [ai_karen_engine.core.health_monitor] Default health checks configured
+[2025-07-31T23:18:16.274369] [INFO] [ai_karen_engine.core.health_monitor] Started health monitoring for 5 services
+[2025-07-31T23:18:16.274384] [INFO] [kari] Health monitoring started
+[2025-07-31T23:18:16.274395] [INFO] [kari] Greetings, the logs are ready for review
+INFO:     Application startup complete.
+[2025-07-31T23:18:29.982133] [INFO] [kari] [55c1f0b5-7336-45fa-8843-1dbb5fa9485d] GET /health from 127.0.0.1
+[2025-07-31T23:18:29.983012] [INFO] [kari] [e53724fe-09fb-4959-9150-803994be82e1] GET /health from 127.0.0.1
+[2025-07-31T23:18:29.984238] [INFO] [kari] [fd206448-41d9-4185-8507-ffaec0f494a9] GET /health from 127.0.0.1
+[2025-07-31T23:18:29.985880] [INFO] [kari] [e53724fe-09fb-4959-9150-803994be82e1] GET /health status=200 time=2.86ms
+[2025-07-31T23:18:29.985956] [INFO] [kari] [fd206448-41d9-4185-8507-ffaec0f494a9] GET /health status=200 time=1.72ms
+[2025-07-31T23:18:29.986003] [INFO] [kari] [55c1f0b5-7336-45fa-8843-1dbb5fa9485d] GET /health status=200 time=3.88ms
+INFO:     127.0.0.1:46826 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46832 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46818 - "GET /health HTTP/1.1" 200 OK
+[2025-07-31T23:18:31.239163] [INFO] [kari] [b5e2ccc7-f9e2-4a56-9566-1206bb0bb444] GET /health from 10.105.235.209
+[2025-07-31T23:18:31.239456] [INFO] [kari] [3fde2408-b985-428f-b3dd-3cea4000cc69] GET /health from 127.0.0.1
+[2025-07-31T23:18:31.240617] [INFO] [kari] [b5e2ccc7-f9e2-4a56-9566-1206bb0bb444] GET /health status=200 time=1.46ms
+[2025-07-31T23:18:31.240680] [INFO] [kari] [3fde2408-b985-428f-b3dd-3cea4000cc69] GET /health status=200 time=1.23ms
+INFO:     10.105.235.209:48692 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46836 - "GET /health HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2257817]
+[2025-07-31T23:18:40.503769] [INFO] [ai_karen_engine.database.client] Database engine initialized successfully
+[2025-07-31T23:18:40.737712] [WARNING] [ai_karen_engine.config.model_registry] [llama-cpp] Failed to list models: [Errno 2] No such file or directory: '/models'
+[2025-07-31T23:18:40.745527] [INFO] [ai_karen_engine.core.config_manager] Loaded configuration from config.json
+[2025-07-31T23:18:40.745620] [INFO] [ai_karen_engine.core.config_manager] Configuration validation passed
+[2025-07-31T23:18:40.745649] [INFO] [ai_karen_engine.core.config_manager] Configuration loaded for environment: Environment.LOCAL
+[2025-07-31T23:18:40.745711] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP configuration loaded successfully
+[2025-07-31T23:18:41.119697] [INFO] [ai_karen_engine.services.spacy_service] spaCy service initialized with model: en_core_web_sm
+[2025-07-31T23:18:41.123848] [INFO] [ai_karen_engine.services.distilbert_service] Using GPU: NVIDIA GeForce RTX 2080 SUPER
+[2025-07-31T23:18:43.348625] [INFO] [ai_karen_engine.services.distilbert_service] DistilBERT service initialized with model: distilbert-base-uncased
+[2025-07-31T23:18:43.348685] [INFO] [ai_karen_engine.services.distilbert_service] Using device: cuda
+[2025-07-31T23:18:43.348708] [INFO] [ai_karen_engine.services.nlp_service_manager] NLP Service Manager initialized
+[2025-07-31T23:18:43.417109] [INFO] [kari.llm_registry] Loaded registry from models/llm_registry.json
+[2025-07-31T23:18:43.522026] [WARNING] [kari.memory.manager] [MemoryManager] Redis connection failed: Error -2 connecting to redis:6379. Name or service not known.
+[DEBUG] Metrics initialized successfully: REQUEST_COUNT=counter:kari_http_requests
+[2025-07-31T23:18:43.711408] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://localhost:3000', 'http://localhost:3001', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080']
+[DEBUG] Handling duplicate metrics: Duplicated timeseries in CollectorRegistry: {'kari_http_requests', 'kari_http_requests_total', 'kari_http_requests_created'}
+[DEBUG] Reused existing metrics: REQUEST_COUNT=<main._init_metrics.<locals>._LocalDummyMetric object at 0x7f4d6d804910>
+[2025-07-31T23:18:43.784517] [INFO] [kari] CORS configured for origins: ['http://localhost:9002', 'http://127.0.0.1:9002', 'http://localhost:3000', 'http://localhost:3001', 'http://10.105.235.209:9002', 'http://10.105.235.209:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://localhost:8080', 'http://127.0.0.1:8080']
+INFO:     Started server process [2258635]
+INFO:     Waiting for application startup.
+[2025-07-31T23:18:43.815005] [INFO] [kari] CORS configuration validation passed
+[2025-07-31T23:18:43.986046] [INFO] [httpx] HTTP Request: GET http://127.0.0.1:11434/api/tags "HTTP/1.1 200 OK"
+Unexpected model entry: model='llama3.2:1b' modified_at=datetime.datetime(2025, 7, 26, 2, 50, 9, 287211, tzinfo=TzInfo(UTC)) digest='baf6a787fdffd633537aa2eb51cfd54cb93ff08e28040095462bb63daf552878' size=1321098329 details=ModelDetails(parent_model='', format='gguf', family='llama', families=['llama'], parameter_size='1.2B', quantization_level='Q8_0')
+[2025-07-31T23:18:43.987746] [INFO] [kari] AI Karen configuration loaded for environment: Environment.LOCAL
+[2025-07-31T23:18:43.987791] [INFO] [ai_karen_engine.core.service_registry] Registered service: ai_orchestrator
+[2025-07-31T23:18:43.987807] [INFO] [ai_karen_engine.core.service_registry] Registered service: memory_service
+[2025-07-31T23:18:43.987819] [INFO] [ai_karen_engine.core.service_registry] Registered service: conversation_service
+[2025-07-31T23:18:43.987829] [INFO] [ai_karen_engine.core.service_registry] Registered service: plugin_service
+[2025-07-31T23:18:43.987839] [INFO] [ai_karen_engine.core.service_registry] Registered service: tool_service
+[2025-07-31T23:18:43.987848] [INFO] [ai_karen_engine.core.service_registry] Initializing all services...
+[2025-07-31T23:18:43.987862] [INFO] [ai_karen_engine.core.service_registry] Initializing service: ai_orchestrator
+[2025-07-31T23:18:43.987965] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: conversation_processing
+[2025-07-31T23:18:43.987986] [INFO] [ai_orchestrator.prompt_manager] Registered prompt template: decision_making
+[2025-07-31T23:18:43.989001] [INFO] [service.ai_orchestrator] Initializing AI Orchestrator Service
+[2025-07-31T23:18:43.989023] [INFO] [service.ai_orchestrator] Memory service integration deferred until first use
+[2025-07-31T23:18:43.989048] [INFO] [ai_orchestrator.flow_manager] Registered flow handler for FlowType.DECIDE_ACTION
+[2025-07-31T23:18:43.989065] [INFO] [ai_orchestrator.flow_manager] Registered flow handler for FlowType.CONVERSATION_PROCESSING
+[2025-07-31T23:18:43.989076] [INFO] [service.ai_orchestrator] Default flows registered
+[2025-07-31T23:18:43.989085] [INFO] [service.ai_orchestrator] AI Orchestrator Service initialized successfully
+[2025-07-31T23:18:43.989101] [INFO] [ai_karen_engine.core.service_registry] Service ai_orchestrator initialized successfully in 0.00s
+[2025-07-31T23:18:43.989115] [INFO] [ai_karen_engine.core.service_registry] Initializing service: memory_service
+[2025-07-31T23:18:43.989600] [INFO] [ai_karen_engine.database.client] Database engine initialized successfully
+[2025-07-31T23:18:43.990548] [INFO] [ai_karen_engine.core.embedding_manager] [EmbeddingManager] Loading DistilBERT model: sentence-transformers/distilbert-base-nli-stsb-mean-tokens
+[2025-07-31T23:18:43.991835] [INFO] [sentence_transformers.SentenceTransformer] Use pytorch device_name: cuda:0
+[2025-07-31T23:18:43.991876] [INFO] [sentence_transformers.SentenceTransformer] Load pretrained SentenceTransformer: sentence-transformers/distilbert-base-nli-stsb-mean-tokens
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.59it/s]
+[2025-07-31T23:18:48.292744] [INFO] [ai_karen_engine.core.embedding_manager] [EmbeddingManager] Successfully loaded sentence-transformers/distilbert-base-nli-stsb-mean-tokens in 4.30s (dim=768)
+[2025-07-31T23:18:48.292802] [INFO] [ai_karen_engine.core.default_models] Default embedding model loaded: True
+[2025-07-31T23:18:49.531346] [ERROR] [ai_karen_engine.core.default_models] Failed to load spaCy model: type object 'SpaCyClient' has no attribute 'DEFAULT_MODEL'
+[2025-07-31T23:18:49.533537] [INFO] [ai_karen_engine.core.default_models] Basic classifier ready
+[2025-07-31T23:18:49.533662] [INFO] [ai_karen_engine.core.service_registry] Service memory_service initialized successfully in 5.54s
+[2025-07-31T23:18:49.533718] [INFO] [ai_karen_engine.core.service_registry] Initializing service: conversation_service
+[2025-07-31T23:18:49.533799] [INFO] [ai_karen_engine.core.service_registry] Service conversation_service initialized successfully in 0.00s
+[2025-07-31T23:18:49.533826] [INFO] [ai_karen_engine.core.service_registry] Initializing service: plugin_service
+[2025-07-31T23:18:49.533888] [INFO] [ai_karen_engine.services.plugin_service] Initializing plugin service...
+[2025-07-31T23:18:49.533928] [INFO] [ai_karen_engine.services.plugin_registry] Starting plugin discovery...
+[2025-07-31T23:18:49.563770] [INFO] [ai_karen_engine.services.plugin_registry] Discovered 18 plugins
+[2025-07-31T23:18:49.564198] [INFO] [ai_karen_engine.services.plugin_service] Plugin service initialized successfully
+[2025-07-31T23:18:49.564239] [INFO] [ai_karen_engine.core.service_registry] Service plugin_service initialized successfully in 0.03s
+[2025-07-31T23:18:49.564267] [INFO] [ai_karen_engine.core.service_registry] Initializing service: tool_service
+[2025-07-31T23:18:49.564306] [INFO] [ai_karen_engine.core.service_registry] Service tool_service initialized successfully in 0.00s
+[2025-07-31T23:18:49.564331] [INFO] [ai_karen_engine.core.service_registry] Service initialization complete: 5/5 services ready
+[2025-07-31T23:18:49.564368] [INFO] [ai_karen_engine.core.service_registry] Started health monitoring
+[2025-07-31T23:18:49.564380] [INFO] [ai_karen_engine.core.service_registry] AI Karen engine integration services initialized successfully
+[2025-07-31T23:18:49.564392] [INFO] [kari] AI Karen integration services initialized
+[2025-07-31T23:18:49.564415] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: database
+[2025-07-31T23:18:49.564427] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: redis
+[2025-07-31T23:18:49.564437] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: vector_db
+[2025-07-31T23:18:49.564448] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: ai_orchestrator
+[2025-07-31T23:18:49.564459] [INFO] [ai_karen_engine.core.health_monitor] Registered health check: memory_service
+[2025-07-31T23:18:49.564467] [INFO] [ai_karen_engine.core.health_monitor] Default health checks configured
+[2025-07-31T23:18:49.564496] [INFO] [ai_karen_engine.core.health_monitor] Started health monitoring for 5 services
+[2025-07-31T23:18:49.564510] [INFO] [kari] Health monitoring started
+[2025-07-31T23:18:49.564520] [INFO] [kari] Greetings, the logs are ready for review
+INFO:     Application startup complete.
+INFO:     127.0.0.1:56426 - "OPTIONS / HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:56436 - "OPTIONS / HTTP/1.1" 400 Bad Request
+INFO:     10.105.235.209:35712 - "OPTIONS / HTTP/1.1" 400 Bad Request
+INFO:     10.105.235.209:35728 - "OPTIONS / HTTP/1.1" 400 Bad Request
+[2025-07-31T23:18:49.570436] [INFO] [kari] [8f361585-8460-4988-ac65-d972a97f1513] GET /api/auth/me from 10.105.235.209
+[2025-07-31T23:18:49.570542] [INFO] [kari] [8964298f-b195-43c9-a146-54c66fd10aba] POST /api/auth/login from 10.105.235.209
+[2025-07-31T23:18:49.572498] [INFO] [kari] [8f361585-8460-4988-ac65-d972a97f1513] GET /api/auth/me status=401 time=2.06ms
+INFO:     10.105.235.209:35734 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+[2025-07-31T23:18:49.631245] [ERROR] [ai_karen_engine.api_routes.production_auth_routes] Login failed: (psycopg2.OperationalError) could not translate host name "postgres" to address: Name or service not known
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2025-07-31T23:18:49.631807] [INFO] [kari] [8964298f-b195-43c9-a146-54c66fd10aba] POST /api/auth/login status=500 time=61.25ms
+INFO:     10.105.235.209:57244 - "POST /api/auth/login HTTP/1.1" 500 Internal Server Error
+[2025-07-31T23:18:50.584859] [INFO] [kari] [88cc3136-c064-44e2-99ce-5f23e117c538] GET /api/auth/me from 127.0.0.1
+[2025-07-31T23:18:50.585495] [INFO] [kari] [88cc3136-c064-44e2-99ce-5f23e117c538] GET /api/auth/me status=401 time=0.65ms
+INFO:     127.0.0.1:38254 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+[2025-07-31T23:18:50.642235] [INFO] [kari] [805a1ec9-3e3a-41e7-947d-cc98632a20b7] POST /api/auth/login from 127.0.0.1
+[2025-07-31T23:18:50.653132] [ERROR] [ai_karen_engine.api_routes.production_auth_routes] Login failed: (psycopg2.OperationalError) could not translate host name "postgres" to address: Name or service not known
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2025-07-31T23:18:50.653447] [INFO] [kari] [805a1ec9-3e3a-41e7-947d-cc98632a20b7] POST /api/auth/login status=500 time=11.21ms
+INFO:     127.0.0.1:38254 - "POST /api/auth/login HTTP/1.1" 500 Internal Server Error
+[2025-07-31T23:18:59.983276] [INFO] [kari] [358f4088-15af-4f13-9e98-102f66e8134a] GET /health from 127.0.0.1
+[2025-07-31T23:18:59.984167] [INFO] [kari] [dcd415c9-0595-4419-b94b-ceed3ad2f91f] GET /health from 127.0.0.1
+[2025-07-31T23:18:59.984243] [INFO] [kari] [07fc9587-4a53-42af-a371-ff2cae5bb83f] GET /health from 127.0.0.1
+[2025-07-31T23:18:59.985712] [INFO] [kari] [dcd415c9-0595-4419-b94b-ceed3ad2f91f] GET /health status=200 time=1.54ms
+[2025-07-31T23:18:59.985764] [INFO] [kari] [358f4088-15af-4f13-9e98-102f66e8134a] GET /health status=200 time=2.50ms
+[2025-07-31T23:18:59.985886] [INFO] [kari] [07fc9587-4a53-42af-a371-ff2cae5bb83f] GET /health status=200 time=1.64ms
+INFO:     127.0.0.1:48878 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48862 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48890 - "GET /health HTTP/1.1" 200 OK
+[2025-07-31T23:19:05.136295] [INFO] [kari] [95f371cf-3c23-4555-bdb2-a407538d394b] GET /health from 10.105.235.209
+[2025-07-31T23:19:05.136381] [INFO] [kari] [2dffb66e-c874-40de-b558-5fa19a0902f0] GET /health from 127.0.0.1
+[2025-07-31T23:19:05.137319] [INFO] [kari] [2dffb66e-c874-40de-b558-5fa19a0902f0] GET /health status=200 time=0.93ms
+INFO:     127.0.0.1:45598 - "GET /health HTTP/1.1" 200 OK
+[2025-07-31T23:19:05.137897] [INFO] [kari] [95f371cf-3c23-4555-bdb2-a407538d394b] GET /health status=200 time=1.60ms
+INFO:     10.105.235.209:57424 - "GET /health HTTP/1.1" 200 OK
+[2025-07-31T23:19:30.008052] [INFO] [kari] [5caf176b-6c82-4a2a-975e-da6cc98ddfd6] GET /health from 127.0.0.1
+[2025-07-31T23:19:30.008812] [INFO] [kari] [bbe6b2b4-fba5-4395-b7ab-11ee9cd5585e] GET /health from 127.0.0.1
+[2025-07-31T23:19:30.008883] [INFO] [kari] [f3c700d6-1ce2-4d8c-a4b1-43f7c61e60bb] GET /health from 127.0.0.1
+[2025-07-31T23:19:30.010178] [INFO] [kari] [5caf176b-6c82-4a2a-975e-da6cc98ddfd6] GET /health status=200 time=2.13ms
+[2025-07-31T23:19:30.010227] [INFO] [kari] [bbe6b2b4-fba5-4395-b7ab-11ee9cd5585e] GET /health status=200 time=1.42ms
+INFO:     127.0.0.1:34382 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34398 - "GET /health HTTP/1.1" 200 OK
+[2025-07-31T23:19:30.011106] [INFO] [kari] [f3c700d6-1ce2-4d8c-a4b1-43f7c61e60bb] GET /health status=200 time=2.22ms
+INFO:     127.0.0.1:34400 - "GET /health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2258635]
+INFO:     Stopping reloader process [2253102]
+/usr/lib/python3.11/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 12 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

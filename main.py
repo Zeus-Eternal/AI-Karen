@@ -128,8 +128,15 @@ def _init_metrics():
             "Total LNM pipeline failures",
             registry=PROM_REGISTRY,
         )
+        print(f"[DEBUG] Metrics initialized successfully: REQUEST_COUNT={REQUEST_COUNT}")
     except ValueError as e:
         if "Duplicated timeseries" in str(e):
+            print(f"[DEBUG] Handling duplicate metrics: {e}")
+            # Initialize to None first
+            REQUEST_COUNT = None
+            REQUEST_LATENCY = None
+            LNM_ERROR_COUNT = None
+            
             # Metrics already registered, get existing ones
             for collector in PROM_REGISTRY._collector_to_names:
                 if hasattr(collector, "_name"):
@@ -139,8 +146,46 @@ def _init_metrics():
                         REQUEST_LATENCY = collector
                     elif collector._name == "lnm_runtime_errors_total":
                         LNM_ERROR_COUNT = collector
+            
+            # Fallback to dummy metrics if not found
+            if REQUEST_COUNT is None:
+                class _LocalDummyMetric:
+                    def inc(self, amount=1):
+                        pass
+                    def time(self):
+                        class _Ctx:
+                            def __enter__(self):
+                                return self
+                            def __exit__(self, exc_type, exc, tb):
+                                pass
+                        return _Ctx()
+                REQUEST_COUNT = _LocalDummyMetric()
+            if REQUEST_LATENCY is None:
+                REQUEST_LATENCY = _LocalDummyMetric()
+            if LNM_ERROR_COUNT is None:
+                LNM_ERROR_COUNT = _LocalDummyMetric()
+                
+            print(f"[DEBUG] Reused existing metrics: REQUEST_COUNT={REQUEST_COUNT}")
         else:
+            print(f"[DEBUG] Unexpected ValueError: {e}")
             raise
+    except Exception as e:
+        print(f"[DEBUG] Error initializing metrics: {e}")
+        # Fallback to dummy metrics - create instances without arguments
+        class _LocalDummyMetric:
+            def inc(self, amount=1):
+                pass
+            def time(self):
+                class _Ctx:
+                    def __enter__(self):
+                        return self
+                    def __exit__(self, exc_type, exc, tb):
+                        pass
+                return _Ctx()
+        
+        REQUEST_COUNT = _LocalDummyMetric()
+        REQUEST_LATENCY = _LocalDummyMetric()
+        LNM_ERROR_COUNT = _LocalDummyMetric()
 
 
 # Initialize metrics
@@ -161,27 +206,97 @@ if (Path(__file__).resolve().parent / "fastapi").is_dir():
 
 app = FastAPI()
 
-allowed_origins = os.getenv("KARI_CORS_ORIGINS", "*")
-origins_list = (
-    [origin.strip() for origin in allowed_origins.split(",")]
-    if allowed_origins != "*"
-    else ["*"]
-)
-if os.getenv("KARI_ENV", "local").lower() in ["local", "development", "dev"]:
-    dev_origins = [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "http://localhost:9002",  # Web UI default port
-        "http://127.0.0.1:9002",  # Web UI default port
-    ]
-    if origins_list == ["*"]:
-        origins_list = dev_origins
+def _validate_cors_configuration():
+    """Validate CORS configuration and log potential issues."""
+    environment = os.getenv("KARI_ENV", "local").lower()
+    allowed_origins = os.getenv("KARI_CORS_ORIGINS", "")
+    
+    validation_issues = []
+    
+    # Check for production security
+    if environment in ["production", "prod"]:
+        if not allowed_origins or allowed_origins == "*":
+            validation_issues.append(
+                "Production environment should have explicit CORS origins configured, not '*'"
+            )
+        elif "*" in allowed_origins:
+            validation_issues.append(
+                "Production environment should not include '*' in CORS origins"
+            )
+    
+    # Check for common misconfigurations
+    if allowed_origins:
+        origins = [origin.strip() for origin in allowed_origins.split(",")]
+        for origin in origins:
+            if origin.endswith("/"):
+                validation_issues.append(f"CORS origin should not end with '/': {origin}")
+            if not origin.startswith(("http://", "https://")) and origin != "*":
+                validation_issues.append(f"CORS origin should include protocol: {origin}")
+    
+    # Log validation results
+    if validation_issues:
+        logger.warning("CORS configuration validation issues found:")
+        for issue in validation_issues:
+            logger.warning(f"  - {issue}")
     else:
-        origins_list.extend(dev_origins)
+        logger.info("CORS configuration validation passed")
+    
+    return len(validation_issues) == 0
+
+
+def _get_cors_origins():
+    """Get CORS origins based on environment configuration."""
+    # Get base origins from environment
+    allowed_origins = os.getenv("KARI_CORS_ORIGINS", "")
+    origins_list = []
+    
+    if allowed_origins:
+        origins_list = [origin.strip() for origin in allowed_origins.split(",") if origin.strip()]
+    
+    # Add environment-specific origins
+    environment = os.getenv("KARI_ENV", "local").lower()
+    
+    if environment in ["local", "development", "dev"]:
+        # Development origins - use environment variables for external hosts
+        external_host = os.getenv("KAREN_EXTERNAL_HOST", "")
+        web_ui_port = os.getenv("KAREN_WEB_UI_PORT", "9002")
+        backend_port = os.getenv("PORT", "8000")
+        
+        dev_origins = [
+            "http://localhost:3000",
+            "http://localhost:3001", 
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
+            f"http://localhost:{web_ui_port}",  # Web UI default port
+            f"http://127.0.0.1:{web_ui_port}",  # Web UI default port
+        ]
+        
+        # Add external host origins if configured
+        if external_host:
+            dev_origins.extend([
+                f"http://{external_host}:{web_ui_port}",
+                f"http://{external_host}:{backend_port}",
+            ])
+        
+        # Add development origins to the list
+        for origin in dev_origins:
+            if origin not in origins_list:
+                origins_list.append(origin)
+    
+    # If no origins configured, allow all for development, restrict for production
+    if not origins_list:
+        if environment in ["local", "development", "dev"]:
+            return ["*"]
+        else:
+            # Production should have explicit origins configured
+            logger.warning("No CORS origins configured for production environment")
+            return []
+    
+    return origins_list
+
+origins_list = _get_cors_origins()
 
 
 # ─── Middleware: Metrics & Multi-Tenant ─────────────────────────────────────
@@ -192,6 +307,7 @@ PUBLIC_PATHS = {
     "/ready",
     "/metrics",
     "/metrics/prometheus",
+    "/cors/config",  # CORS debugging endpoint
     "/api/ai/generate-starter",
     "/api/chat/process",
     "/api/memory/query",
@@ -261,6 +377,43 @@ async def log_requests(request: Request, call_next):
     )
     response.headers["X-Kari-Trace-Id"] = trace_id
     response.headers["X-Response-Time-Ms"] = str(int(duration))
+    return response
+
+
+@app.middleware("http")
+async def cors_debugging_middleware(request: Request, call_next):
+    """Log CORS preflight requests and potential CORS issues."""
+    
+    # Log preflight requests
+    if request.method == "OPTIONS":
+        origin = request.headers.get("origin", "unknown")
+        requested_method = request.headers.get("access-control-request-method", "unknown")
+        requested_headers = request.headers.get("access-control-request-headers", "none")
+        
+        logger.info(
+            f"CORS preflight request from origin: {origin}, "
+            f"method: {requested_method}, headers: {requested_headers}"
+        )
+        
+        # Check if origin is allowed
+        if origin != "unknown" and origins_list != ["*"]:
+            if origin not in origins_list:
+                logger.warning(
+                    f"CORS preflight request from unauthorized origin: {origin}. "
+                    f"Allowed origins: {origins_list}"
+                )
+    
+    response = await call_next(request)
+    
+    # Log CORS-related response headers for debugging
+    if request.method == "OPTIONS" or request.headers.get("origin"):
+        cors_headers = {
+            k: v for k, v in response.headers.items() 
+            if k.lower().startswith("access-control-")
+        }
+        if cors_headers:
+            logger.debug(f"CORS response headers: {cors_headers}")
+    
     return response
 
 
@@ -402,6 +555,9 @@ app.include_router(audit_router)
 
 @app.on_event("startup")
 async def on_startup() -> None:
+    # Validate CORS configuration on startup
+    _validate_cors_configuration()
+    
     # Initialize legacy components
     init_memory()
     _load_plugins()
@@ -710,6 +866,31 @@ def self_refactor_logs(full: bool = False) -> Dict[str, List[str]]:
     from ai_karen_engine.self_refactor import log_utils
 
     return {"logs": log_utils.load_logs(full=full)}
+
+
+@app.get("/cors/config")
+def cors_config() -> Dict[str, Any]:
+    """Get current CORS configuration for debugging."""
+    environment = os.getenv("KARI_ENV", "local").lower()
+    allowed_origins_env = os.getenv("KARI_CORS_ORIGINS", "")
+    external_host = os.getenv("KAREN_EXTERNAL_HOST", "")
+    web_ui_port = os.getenv("KAREN_WEB_UI_PORT", "9002")
+    backend_port = os.getenv("PORT", "8000")
+    
+    return {
+        "environment": environment,
+        "configured_origins": allowed_origins_env,
+        "active_origins": origins_list,
+        "external_host": external_host,
+        "web_ui_port": web_ui_port,
+        "backend_port": backend_port,
+        "validation_passed": _validate_cors_configuration(),
+        "cors_middleware_config": {
+            "allow_credentials": True,
+            "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+            "max_age": 86400,
+        }
+    }
 
 
 # ─── Optional Self-Refactor Scheduler ─────────────────────────────────────────

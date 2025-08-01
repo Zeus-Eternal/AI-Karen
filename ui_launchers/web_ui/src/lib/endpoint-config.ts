@@ -36,17 +36,38 @@ export class ConfigManager {
 
   constructor() {
     this.config = this.loadConfiguration();
+    
+    // Debug logging for configuration
+    if (typeof console !== 'undefined') {
+      console.log('🔧 ConfigManager: Initial configuration loaded:', {
+        backendUrl: this.config.backendUrl,
+        environment: this.config.environment,
+        networkMode: this.config.networkMode,
+        fallbackUrls: this.config.fallbackUrls
+      });
+    }
+    
     this.detectEnvironment();
+    
+    // Debug logging after environment detection
+    if (typeof console !== 'undefined') {
+      console.log('🌐 ConfigManager: Final configuration after environment detection:', {
+        backendUrl: this.config.backendUrl,
+        environment: this.config.environment,
+        networkMode: this.config.networkMode,
+        currentHostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A'
+      });
+    }
   }
 
   /**
    * Load configuration from environment variables with defaults
    */
   private loadConfiguration(): EndpointConfig {
-    // Parse environment variables
-    const backendUrl = this.getEnvVar('KAREN_BACKEND_URL', 'http://localhost:8000');
-    const environment = this.getEnvVar('KAREN_ENVIRONMENT', 'local') as Environment;
-    const networkMode = this.getEnvVar('KAREN_NETWORK_MODE', 'localhost') as NetworkMode;
+    // Force localhost configuration for development to prevent external IP issues
+    const backendUrl = 'http://localhost:8000';
+    const environment = 'local' as Environment;
+    const networkMode = 'localhost' as NetworkMode;
     
     // Parse fallback URLs
     const fallbackUrlsStr = this.getEnvVar('KAREN_FALLBACK_BACKEND_URLS', '');
@@ -75,7 +96,22 @@ export class ConfigManager {
    */
   private getEnvVar(key: string, defaultValue: string): string {
     if (typeof process !== 'undefined' && process.env) {
-      return process.env[key] || defaultValue;
+      // Check for Next.js public environment variable first (client-side)
+      const nextPublicKey = `NEXT_PUBLIC_${key}`;
+      const value = process.env[nextPublicKey] || process.env[key] || defaultValue;
+      
+      // Debug logging for environment variable resolution
+      if (typeof console !== 'undefined' && key === 'KAREN_BACKEND_URL') {
+        console.log(`🔍 Environment variable lookup for ${key}:`, {
+          nextPublicKey,
+          nextPublicValue: process.env[nextPublicKey],
+          regularValue: process.env[key],
+          finalValue: value,
+          defaultValue
+        });
+      }
+      
+      return value;
     }
     return defaultValue;
   }
@@ -128,6 +164,29 @@ export class ConfigManager {
    * Detect the current environment and update configuration accordingly
    */
   private detectEnvironment(): void {
+    // Skip environment detection if explicit configuration is provided
+    const hasExplicitConfig = this.getEnvVar('KAREN_BACKEND_URL', '') !== '' ||
+                             this.getEnvVar('KAREN_ENVIRONMENT', '') !== '' ||
+                             this.getEnvVar('KAREN_NETWORK_MODE', '') !== '';
+    
+    if (hasExplicitConfig) {
+      // Use explicit configuration, don't override with auto-detection
+      console.log('🔒 Using explicit configuration, skipping environment detection');
+      return;
+    }
+
+    // For local development, force localhost configuration to prevent connectivity issues
+    const isLocalDevelopment = this.getEnvVar('NODE_ENV', 'development') === 'development' ||
+                              this.getEnvVar('KAREN_ENVIRONMENT', 'local') === 'local';
+    
+    if (isLocalDevelopment) {
+      console.log('🏠 Forcing localhost configuration for local development');
+      this.config.backendUrl = 'http://localhost:8000';
+      this.config.networkMode = 'localhost';
+      this.config.environment = 'local';
+      return;
+    }
+
     // Check if running in Docker container
     const isDocker = this.isRunningInDocker();
     
@@ -209,6 +268,14 @@ export class ConfigManager {
     const containerPort = this.getEnvVar('KAREN_CONTAINER_BACKEND_PORT', '8000');
     const externalHost = this.getEnvVar('KAREN_EXTERNAL_HOST', '');
     const externalPort = this.getEnvVar('KAREN_EXTERNAL_BACKEND_PORT', '8000');
+
+    // Check if external host is explicitly set to localhost - this overrides auto-detection
+    if (externalHost === 'localhost' || externalHost === '127.0.0.1') {
+      this.config.backendUrl = `http://${externalHost}:${externalPort}`;
+      this.config.networkMode = 'localhost';
+      this.config.environment = 'local';
+      return;
+    }
 
     switch (this.config.networkMode) {
       case 'container':

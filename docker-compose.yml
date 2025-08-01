@@ -1,29 +1,38 @@
+# docker-compose.yml
+
 services:
-  # =========================
+
+  # ──────────────────────────────────────────────────────────────────────────────
   # PostgreSQL
-  # =========================
+  # ──────────────────────────────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
+    container_name: ai-karen-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: karen_user
-      POSTGRES_PASSWORD: karen_secure_pass_change_me
-      POSTGRES_DB: ai_karen
+      POSTGRES_USER: ${POSTGRES_USER:-karen_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-karen_secure_pass_change_me}
+      POSTGRES_DB:      ${POSTGRES_DB:-ai_karen}
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./data/migrations/postgres:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U karen_user"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - ai-karen-net
 
-  # =========================
+  # ──────────────────────────────────────────────────────────────────────────────
   # Elasticsearch
-  # =========================
+  # ──────────────────────────────────────────────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    container_name: ai-karen-elasticsearch
+    restart: unless-stopped
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -37,28 +46,36 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    networks:
+      - ai-karen-net
 
-  # =========================
+  # ──────────────────────────────────────────────────────────────────────────────
   # Redis
-  # =========================
+  # ──────────────────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--requirepass", "redis_secure_pass_change_me"]
+    container_name: ai-karen-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redis_secure_pass_change_me", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
+    networks:
+      - ai-karen-net
 
-  # =========================
-  # Milvus Dependencies
-  # =========================
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Milvus Dependencies: etcd + MinIO
+  # ──────────────────────────────────────────────────────────────────────────────
   milvus-etcd:
     image: quay.io/coreos/etcd:v3.5.5
+    container_name: ai-karen-milvus-etcd
+    restart: unless-stopped
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
       - ETCD_AUTO_COMPACTION_RETENTION=1000
@@ -76,50 +93,71 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+    networks:
+      - ai-karen-net
 
   milvus-minio:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: ai-karen-minio
+    restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: minioadmin_change_me
-      MINIO_ROOT_PASSWORD: minioadmin_secret_change_me
+      MINIO_ROOT_USER:     ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     ports:
       - "9000:9000"
       - "9001:9001"
+    command: minio server /data --console-address ":9001"
     volumes:
       - minio_data:/data
-    command: minio server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl -f http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
+    networks:
+      - ai-karen-net
 
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Milvus Vector DB (Standalone Mode)
+  # ──────────────────────────────────────────────────────────────────────────────
   milvus:
     image: milvusdb/milvus:v2.3.2
-    command: ["milvus", "run", "standalone"]
+    container_name: ai-karen-milvus
+    restart: unless-stopped
+    depends_on:
+      milvus-etcd:
+        condition: service_healthy
+      milvus-minio:
+        condition: service_healthy
     environment:
-      ETCD_ENDPOINTS: milvus-etcd:2379
-      MINIO_ADDRESS: milvus-minio:9000
-      MINIO_ACCESS_KEY_ID: minioadmin_change_me
-      MINIO_SECRET_ACCESS_KEY: minioadmin_secret_change_me
+      ETCD_ENDPOINTS:          milvus-etcd:2379
+      MINIO_ADDRESS:          milvus-minio:9000
+      MINIO_ACCESS_KEY_ID:    ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY}
+      DEPLOY_MODE:            standalone
     ports:
-      - "19530:19530"
+      - "19530:19530"   # gRPC
+      - "9091:9091"     # HTTP (health, metrics)
+      - "19121:19121"   # Prometheus exporter
+      - "30001:30001"   # RootCoord
+      - "30002:30002"   # DataCoord
     volumes:
       - milvus_data:/var/lib/milvus
-    depends_on:
-      - milvus-etcd
-      - milvus-minio
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      test: ["CMD-SHELL", "curl -fsSL http://localhost:9091/healthz || exit 1"]
       interval: 30s
-      timeout: 20s
+      timeout: 10s
       retries: 5
+    networks:
+      - ai-karen-net
 
-  # =========================
+  # ──────────────────────────────────────────────────────────────────────────────
   # Ollama LLM Service
-  # =========================
+  # ──────────────────────────────────────────────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
+    container_name: ai-karen-ollama
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
@@ -127,63 +165,55 @@ services:
     environment:
       - OLLAMA_HOST=0.0.0.0
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434"]
+      test: ["CMD", "curl -f http://localhost:11434"]
       interval: 30s
       timeout: 5s
       retries: 5
+    networks:
+      - ai-karen-net
 
-  # =========================
-  # API / FastAPI Backend
-  # =========================
+  # ──────────────────────────────────────────────────────────────────────────────
+  # FastAPI Backend (“api”)
+  # ──────────────────────────────────────────────────────────────────────────────
   api:
     build: .
+    container_name: ai-karen-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - KARI_CORS_ORIGINS=http://localhost:8010
     ports:
       - "8000:8000"
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: karen_user
-      POSTGRES_PASSWORD: karen_secure_pass_change_me
-      POSTGRES_DB: ai_karen
-      POSTGRES_URL: postgresql://karen_user:karen_secure_pass_change_me@postgres:5432/ai_karen
-
-      ELASTICSEARCH_HOST: elasticsearch
-      ELASTICSEARCH_PORT: 9200
-      ELASTICSEARCH_URL: http://elasticsearch:9200
-
-      REDIS_URL: redis://:redis_secure_pass_change_me@redis:6379/0
-      REDIS_PASSWORD: redis_secure_pass_change_me
-
-      MILVUS_URL: milvus:19530
-
-      MINIO_ACCESS_KEY: minioadmin_change_me
-      MINIO_SECRET_KEY: minioadmin_secret_change_me
-      MINIO_HOST: milvus-minio
-      MINIO_PORT: 9000
-      MINIO_CONSOLE_PORT: 9001
-
-      OLLAMA_URL: http://ollama:11434
-
-      ENVIRONMENT: development
-      DEV_MODE: "true"
-      DEBUG_LOGGING: "true"
-      ENABLE_MILVUS: "true"
-      ENABLE_REDIS: "true"
-      ENABLE_ELASTICSEARCH: "true"
-      ENABLE_MONITORING: "true"
-      ENABLE_BACKUPS: "true"
     depends_on:
-      - postgres
-      - elasticsearch
-      - redis
-      - milvus
-      - ollama
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - ai-karen-net
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Named Volumes
+# ──────────────────────────────────────────────────────────────────────────────
 volumes:
   postgres_data:
   es_data:
   redis_data:
-  milvus_data:
   etcd_data:
   minio_data:
+  milvus_data:
   ollama_data:
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Custom Network
+# ──────────────────────────────────────────────────────────────────────────────
+networks:
+  ai-karen-net:
+    driver: bridge
