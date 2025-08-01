@@ -14,6 +14,8 @@ Enhanced Features:
 import os
 import logging
 import uuid
+import sys
+import time
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, Callable, Awaitable
@@ -32,26 +34,118 @@ logging.basicConfig(
 )
 logger = logging.getLogger("kari.api")
 
+
+# --- Enhanced Middleware ---
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses"""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers.update({
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block",
+            "Content-Security-Policy": "default-src 'self'",
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+            "Permissions-Policy": "geolocation=(), microphone=()",
+        })
+        return response
+
+
+class RateLimitingMiddleware(BaseHTTPMiddleware):
+    """Basic rate limiting implementation"""
+
+    def __init__(self, app, max_requests: int = 100, window: int = 60):
+        super().__init__(app)
+        self.max_requests = max_requests
+        self.window = window
+        self.requests: Dict[str, list[float]] = {}
+
+    async def dispatch(self, request: Request, call_next):
+        client_ip = request.client.host
+        now = time.time()
+
+        # Cleanup old entries
+        self.requests = {
+            ip: ts for ip, ts in self.requests.items() if now - ts < self.window
+        }
+
+        # Check rate limit
+        if len(self.requests.get(client_ip, [])) >= self.max_requests:
+            return JSONResponse(status_code=429, content={"detail": "Too many requests"})
+
+        # Track request
+        self.requests.setdefault(client_ip, []).append(now)
+
+        return await call_next(request)
+
+
+class ObservabilityMiddleware(BaseHTTPMiddleware):
+    """Enhanced observability with OpenTelemetry"""
+
+    async def dispatch(self, request: Request, call_next):
+        trace_id = str(uuid.uuid4())
+        request.state.trace_id = trace_id
+        start_time = time.monotonic()
+
+        # Log request
+        logger.info(
+            f"Request {trace_id} {request.method} {request.url.path}",
+        )
+
+        response = await call_next(request)
+
+        duration = (time.monotonic() - start_time) * 1000
+        logger.info(
+            f"Response {trace_id} status={response.status_code} time={duration:.2f}ms",
+        )
+        return response
+
+
+# --- Authentication Middleware ---
+async def auth_middleware(request: Request, call_next):
+    """Simple bearer-token authentication middleware."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+    token = auth_header.split(" ", 1)[1]
+    from ai_karen_engine.utils.auth import validate_session  # local import for tests
+
+    user_data = validate_session(
+        token,
+        request.headers.get("user-agent", ""),
+        request.client.host if request.client else "",
+    )
+    if not user_data:
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+    request.state.user = user_data.get("sub")
+    request.state.roles = user_data.get("roles", [])
+    return await call_next(request)
+
+
 # --- Application Lifespan Management ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application startup and shutdown events"""
     # Startup
     logger.info("Starting Kari AI API server")
-    
+
     try:
         await initialize_core_services()
         logger.info("Core services initialized")
-        
+
         await load_plugins()
         logger.info("Plugins loaded")
-        
+
         yield  # Application runs here
-        
+
     finally:
         # Shutdown
         logger.info("Shutting down Kari AI API server")
         await shutdown_services()
+
 
 # --- Core Application Setup ---
 app = FastAPI(
@@ -67,8 +161,9 @@ app = FastAPI(
         Middleware(SecurityHeadersMiddleware),
         Middleware(RateLimitingMiddleware),
         Middleware(ObservabilityMiddleware),
-    ]
+    ],
 )
+
 
 # --- Core Service Initialization ---
 async def initialize_core_services():

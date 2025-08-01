@@ -16,10 +16,8 @@ class HTTPError(Exception):
     def __init__(self, response):
         self.response = response
 
-
 class RequestException(Exception):
     pass
-
 
 def get(*args, **kwargs):
     return Response()
@@ -32,7 +30,6 @@ def put(*args, **kwargs):
 
 def delete(*args, **kwargs):
     return Response()
-
 
 def request(method, *args, **kwargs):
     method = method.lower()
