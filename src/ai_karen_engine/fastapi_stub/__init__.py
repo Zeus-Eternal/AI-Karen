@@ -235,7 +235,16 @@ class JSONResponse(Response):
     pass
 
 
-responses = SimpleNamespace(JSONResponse=JSONResponse, Response=Response)
+class PlainTextResponse(Response):
+    def __init__(self, content: str, status_code: int = 200, headers=None):
+        super().__init__(content, status_code, media_type="text/plain", headers=headers)
+
+
+responses = SimpleNamespace(
+    JSONResponse=JSONResponse,
+    Response=Response,
+    PlainTextResponse=PlainTextResponse,
+)
 sys.modules["fastapi.responses"] = responses  # type: ignore[assignment]
 
 # Middleware stubs

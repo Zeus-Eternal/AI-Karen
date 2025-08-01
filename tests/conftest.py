@@ -6,7 +6,14 @@ import types
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-sys.modules.setdefault("requests", importlib.import_module("tests.stubs.requests"))
+# Prefer the real `requests` package when available to support
+# libraries that rely on its internal structure. Fall back to the
+# lightweight stub only if `requests` cannot be imported.
+try:
+    import requests as _real_requests  # type: ignore
+    sys.modules.setdefault("requests", _real_requests)
+except Exception:  # pragma: no cover - only used when requests isn't installed
+    sys.modules.setdefault("requests", importlib.import_module("tests.stubs.requests"))
 sys.modules.setdefault("tenacity", importlib.import_module("tests.stubs.tenacity"))
 pg_mod = importlib.import_module("tests.stubs.ai_karen_engine.clients.database.postgres_client")
 
