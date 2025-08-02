@@ -212,10 +212,13 @@ class DiagnosticLogger {
     headers?: Record<string, string>
   ): void {
     const duration = Date.now() - startTime;
-    const level = success ? 'info' : 'error';
-    const message = success 
+    const isNetworkIssue = !success && (!statusCode || statusCode === 0);
+    const level = success ? 'info' : isNetworkIssue ? 'warn' : 'error';
+    const message = success
       ? `Endpoint connectivity successful: ${method} ${endpoint}`
-      : `Endpoint connectivity failed: ${method} ${endpoint}`;
+      : isNetworkIssue
+        ? `Network connectivity failed: ${method} ${endpoint}`
+        : `Endpoint connectivity failed: ${method} ${endpoint}`;
 
     const troubleshooting = success ? undefined : this.generateEndpointTroubleshooting(endpoint, statusCode, error);
 
@@ -252,7 +255,7 @@ class DiagnosticLogger {
     const level = diagnostic.status === 'success' ? 'info' : 'error';
     const message = `Network diagnostic: ${diagnostic.method} ${diagnostic.endpoint} - ${diagnostic.status}`;
 
-    const troubleshooting = diagnostic.status !== 'success' 
+    const troubleshooting = diagnostic.status !== 'success'
       ? this.generateNetworkTroubleshooting(diagnostic)
       : undefined;
 
@@ -443,11 +446,11 @@ class DiagnosticLogger {
    */
   public getLogs(limit: number = 100, category?: DiagnosticInfo['category']): DiagnosticInfo[] {
     let logs = this.logs;
-    
+
     if (category) {
       logs = logs.filter(log => log.category === category);
     }
-    
+
     return logs.slice(0, limit);
   }
 
