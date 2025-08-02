@@ -90,7 +90,8 @@ export class ChatService {
         sessionId: response.data.conversation.session_id || sessionId
       };
     } catch (error) {
-      console.error('ChatService: Failed to create conversation session:', error);
+      // Backend connection issues are common during development, so log as a warning
+      console.warn('ChatService: Failed to create conversation session:', error);
       // Generate local IDs as fallback
       const fallbackId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       return {
@@ -119,7 +120,8 @@ export class ChatService {
         },
       });
     } catch (error) {
-      console.error('ChatService: Failed to add message to conversation:', error);
+      // Treat message persistence failures as warnings to reduce console noise
+      console.warn('ChatService: Failed to add message to conversation:', error);
       // Continue silently - message will be stored locally
     }
   }
@@ -161,7 +163,8 @@ export class ChatService {
       if (error.status === 404) {
         return null;
       }
-      console.error('ChatService: Failed to get conversation:', error);
+      // Downgrade to warning since missing conversations are non-fatal
+      console.warn('ChatService: Failed to get conversation:', error);
       return null;
     }
   }
@@ -174,7 +177,8 @@ export class ChatService {
       const response = await this.apiClient.post(`/api/conversations/${sessionId}/summary`);
       return response.data.summary;
     } catch (error) {
-      console.error('ChatService: Failed to generate conversation summary:', error);
+      // Summary generation failures shouldn't surface as errors in console
+      console.warn('ChatService: Failed to generate conversation summary:', error);
       return null;
     }
   }
@@ -196,7 +200,8 @@ export class ChatService {
         summary: conv.summary,
       }));
     } catch (error) {
-      console.error('ChatService: Failed to get user conversations:', error);
+      // Network issues when listing conversations are expected in dev environments
+      console.warn('ChatService: Failed to get user conversations:', error);
       return [];
     }
   }
