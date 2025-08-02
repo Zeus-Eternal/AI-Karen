@@ -1,6 +1,5 @@
-@import '../styles/karen-alerts.css';
-
 /* Karen Alert System Styles */
+@import '../styles/karen-alerts.css';
 
 @tailwind base;
 @tailwind components;
