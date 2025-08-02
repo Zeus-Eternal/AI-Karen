@@ -218,7 +218,12 @@ class DiagnosticLogger {
   ): void {
     const duration = Date.now() - startTime;
     const isNetworkIssue = !success && (!statusCode || statusCode === 0);
-    const level = success ? 'info' : isNetworkIssue ? 'warn' : 'error';
+    const isClientError = !success && statusCode ? Math.floor(statusCode / 100) === 4 : false;
+    const level = success
+      ? 'info'
+      : isNetworkIssue || isClientError
+        ? 'warn'
+        : 'error';
     const message = success
       ? `Endpoint connectivity successful: ${method} ${endpoint}`
       : isNetworkIssue
