@@ -181,7 +181,12 @@ class DiagnosticLogger {
         console.warn(message, logData);
         break;
       case 'error':
-        console.error(message, logData);
+        if (log.category === 'network') {
+          // Network errors are common during development; treat them as warnings to reduce noise
+          console.warn(message, logData);
+        } else {
+          console.error(message, logData);
+        }
         break;
     }
   }
@@ -281,6 +286,19 @@ class DiagnosticLogger {
     const possibleCauses: string[] = [];
     const suggestedFixes: string[] = [];
     const documentationLinks: string[] = [];
+
+    // Handle generic network connectivity failures where no status code is returned
+    if (!statusCode || statusCode === 0) {
+      possibleCauses.push('Backend server is not running');
+      possibleCauses.push('Incorrect backend URL or port');
+      possibleCauses.push('CORS policy or network restrictions are blocking the request');
+      possibleCauses.push('API route is missing or mismatched');
+
+      suggestedFixes.push('Start the backend server and ensure it listens on the expected port');
+      suggestedFixes.push('Verify the webUI backendUrl points to the correct host and port');
+      suggestedFixes.push('Allow requests from the web UI origin in CORS settings and check network/firewall rules');
+      suggestedFixes.push('Confirm the backend exposes the requested API route');
+    }
 
     // Analyze status code
     if (statusCode) {
