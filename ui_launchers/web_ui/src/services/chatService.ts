@@ -5,11 +5,11 @@
 
 import { getKarenBackend } from '@/lib/karen-backend';
 import { getApiClient } from '@/lib/api-client';
-import type { 
-  ChatMessage, 
-  KarenSettings, 
+import type {
+  ChatMessage,
+  KarenSettings,
   HandleUserMessageResult,
-  AiData 
+  AiData
 } from '@/lib/types';
 
 export interface ConversationSession {
@@ -70,10 +70,10 @@ export class ChatService {
     try {
       // Generate a unique session ID
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       const response = await this.apiClient.post('/api/conversations/create', {
         session_id: sessionId,
-        ui_source: 'web_ui',
+        ui_source: 'web',
         title: 'New Conversation',
         user_settings: {},
         ui_context: {
@@ -111,7 +111,7 @@ export class ChatService {
       await this.apiClient.post(`/api/conversations/${conversationId}/messages`, {
         role: message.role,
         content: message.content,
-        ui_source: 'web_ui',
+        ui_source: 'web',
         metadata: {
           ai_data: message.aiData,
           should_auto_play: message.shouldAutoPlay,
