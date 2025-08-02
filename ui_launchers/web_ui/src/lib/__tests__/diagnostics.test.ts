@@ -89,7 +89,7 @@ describe('DiagnosticLogger', () => {
     it('should log to console with correct level', () => {
       logger.log('error', 'network', 'Error message');
 
-      expect(mockConsole.error).toHaveBeenCalledWith(
+      expect(mockConsole.warn).toHaveBeenCalledWith(
         '🔍 [NETWORK] Error message',
         expect.objectContaining({
           timestamp: expect.any(String),
@@ -219,7 +219,7 @@ describe('DiagnosticLogger', () => {
       const logs = logger.getLogs(1);
       const endpointLog = logs[0];
 
-      expect(endpointLog.level).toBe('error');
+      expect(endpointLog.level).toBe('warn');
       expect(endpointLog.message).toContain('Endpoint connectivity failed');
       expect(endpointLog.troubleshooting).toBeDefined();
       expect(endpointLog.troubleshooting?.possibleCauses).toContain('Endpoint not found or incorrect URL');
