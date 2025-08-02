@@ -1,9 +1,10 @@
+@import '../styles/karen-alerts.css';
+
+/* Karen Alert System Styles */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Karen Alert System Styles */
-@import '../styles/karen-alerts.css';
 
 @layer base {
   :root {
