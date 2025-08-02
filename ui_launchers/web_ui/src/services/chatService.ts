@@ -68,12 +68,12 @@ export class ChatService {
    */
   async createConversationSession(userId: string): Promise<{ conversationId: string; sessionId: string }> {
     try {
-      // Generate a unique session ID
-      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+      // Generate a UUID for session identification
+      const sessionId = crypto.randomUUID();
+
       const response = await this.apiClient.post('/api/conversations/create', {
         session_id: sessionId,
-        ui_source: 'web_ui',
+        ui_source: 'web',
         title: 'New Conversation',
         user_settings: {},
         ui_context: {
@@ -91,12 +91,7 @@ export class ChatService {
       };
     } catch (error) {
       console.error('ChatService: Failed to create conversation session:', error);
-      // Generate local IDs as fallback
-      const fallbackId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      return {
-        conversationId: fallbackId,
-        sessionId: fallbackId
-      };
+      throw error;
     }
   }
 
@@ -111,7 +106,7 @@ export class ChatService {
       await this.apiClient.post(`/api/conversations/${conversationId}/messages`, {
         role: message.role,
         content: message.content,
-        ui_source: 'web_ui',
+        ui_source: 'web',
         metadata: {
           ai_data: message.aiData,
           should_auto_play: message.shouldAutoPlay,
