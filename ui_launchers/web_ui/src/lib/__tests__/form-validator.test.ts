@@ -65,7 +65,7 @@ describe('FormValidator', () => {
       validEmails.forEach(email => {
         const result = validator.validateField('email', email);
         expect(result.isValid).toBe(true);
-        expect(result.error).toBeUndefined();
+        expect(result.error).toBeNull();
       });
     });
 
@@ -113,7 +113,7 @@ describe('FormValidator', () => {
       validPasswords.forEach(password => {
         const result = validator.validateField('password', password);
         expect(result.isValid).toBe(true);
-        expect(result.error).toBeUndefined();
+        expect(result.error).toBeNull();
       });
     });
   });
@@ -122,7 +122,7 @@ describe('FormValidator', () => {
     it('should accept empty TOTP code (optional field)', () => {
       const result = validator.validateField('totp_code', '');
       expect(result.isValid).toBe(true);
-      expect(result.error).toBeUndefined();
+      expect(result.error).toBeNull();
     });
 
     it('should validate TOTP code format', () => {
@@ -147,7 +147,7 @@ describe('FormValidator', () => {
       validCodes.forEach(code => {
         const result = validator.validateField('totp_code', code);
         expect(result.isValid).toBe(true);
-        expect(result.error).toBeUndefined();
+        expect(result.error).toBeNull();
       });
     });
   });
@@ -193,7 +193,7 @@ describe('FormValidator', () => {
       strongPasswords.forEach(password => {
         const result = validator.validateField('password', password);
         expect(result.isValid).toBe(true);
-        expect(result.error).toBeUndefined();
+        expect(result.error).toBeNull();
       });
     });
   });
@@ -260,7 +260,7 @@ describe('FormValidator', () => {
 
       expect(callback).toHaveBeenCalledWith({
         isValid: true,
-        error: undefined
+        error: null
       });
     });
 
@@ -279,7 +279,7 @@ describe('FormValidator', () => {
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith({
         isValid: true,
-        error: undefined
+        error: null
       });
     });
 
@@ -345,7 +345,7 @@ describe('FormValidator', () => {
       // Now it should pass the original 8-character rule
       result = validator.validateField('password', 'short123');
       expect(result.isValid).toBe(true);
-      expect(result.error).toBeUndefined();
+      expect(result.error).toBeNull();
     });
   });
 

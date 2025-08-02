@@ -25,6 +25,7 @@ except ImportError:
 from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
 from ai_karen_engine.services.spacy_service import ParsedMessage
 from ai_karen_engine.models.shared_types import ChatMessage, MessageRole
+from ai_karen_engine.chat.memory_processor import MemoryProcessor, MemoryContext
 
 logger = logging.getLogger(__name__)
 
@@ -132,10 +133,12 @@ class ChatOrchestrator:
     
     def __init__(
         self,
+        memory_processor: Optional[MemoryProcessor] = None,
         retry_config: Optional[RetryConfig] = None,
         timeout_seconds: float = 30.0,
         enable_monitoring: bool = True
     ):
+        self.memory_processor = memory_processor
         self.retry_config = retry_config or RetryConfig()
         self.timeout_seconds = timeout_seconds
         self.enable_monitoring = enable_monitoring
@@ -472,7 +475,24 @@ class ChatOrchestrator:
                     correlation_id=context.correlation_id
                 )
             
-            # Step 3: Retrieve context (if enabled)
+            # Step 3: Extract and store memories (if memory processor available)
+            extracted_memories = []
+            if self.memory_processor:
+                try:
+                    extracted_memories = await self.memory_processor.extract_memories(
+                        request.message,
+                        parsed_message,
+                        embeddings,
+                        request.user_id,
+                        request.conversation_id
+                    )
+                    logger.debug(f"Extracted {len(extracted_memories)} memories")
+                    
+                except Exception as e:
+                    logger.warning(f"Memory extraction failed: {e}")
+                    # Don't fail the entire request for memory extraction errors
+            
+            # Step 4: Retrieve context (if enabled)
             if request.include_context:
                 try:
                     retrieved_context = await self._retrieve_context(
@@ -481,14 +501,14 @@ class ChatOrchestrator:
                         request.user_id,
                         request.conversation_id
                     )
-                    logger.debug(f"Retrieved context: {len(retrieved_context.get('memories', []))} memories")
+                    logger.debug(f"Retrieved context: {retrieved_context.get('context_summary', 'No context')}")
                     
                 except Exception as e:
                     logger.warning(f"Context retrieval failed: {e}")
                     # Don't fail the entire request for context retrieval errors
                     retrieved_context = {}
             
-            # Step 4: Generate AI response
+            # Step 5: Generate AI response
             try:
                 ai_response = await self._generate_ai_response(
                     request.message,
@@ -536,26 +556,68 @@ class ChatOrchestrator:
         user_id: str,
         conversation_id: str
     ) -> Dict[str, Any]:
-        """Retrieve relevant context for the message."""
-        # This is a placeholder for memory/context retrieval
-        # In the actual implementation, this would integrate with:
-        # - Memory storage system
-        # - Vector similarity search
-        # - Conversation history
-        # - User preferences
+        """Retrieve relevant context for the message using MemoryProcessor."""
+        if not self.memory_processor:
+            # Fallback context when memory processor is not available
+            return {
+                "memories": [],
+                "conversation_history": [],
+                "user_preferences": {},
+                "entities": [{"text": ent[0], "label": ent[1]} for ent in parsed_message.entities],
+                "embedding_similarity_threshold": 0.7,
+                "context_summary": "Memory processor not available"
+            }
         
-        context = {
-            "memories": [],
-            "conversation_history": [],
-            "user_preferences": {},
-            "entities": [{"text": ent[0], "label": ent[1]} for ent in parsed_message.entities],
-            "embedding_similarity_threshold": 0.7
-        }
-        
-        # Simulate context retrieval delay
-        await asyncio.sleep(0.1)
-        
-        return context
+        try:
+            # Use MemoryProcessor to get relevant context
+            memory_context = await self.memory_processor.get_relevant_context(
+                embeddings,
+                parsed_message,
+                user_id,
+                conversation_id
+            )
+            
+            # Convert MemoryContext to dictionary format
+            context = {
+                "memories": [
+                    {
+                        "id": mem.id,
+                        "content": mem.content,
+                        "type": mem.memory_type.value,
+                        "similarity_score": mem.similarity_score,
+                        "recency_score": mem.recency_score,
+                        "combined_score": mem.combined_score,
+                        "created_at": mem.created_at.isoformat(),
+                        "metadata": mem.metadata
+                    }
+                    for mem in memory_context.memories
+                ],
+                "entities": memory_context.entities,
+                "preferences": memory_context.preferences,
+                "facts": memory_context.facts,
+                "relationships": memory_context.relationships,
+                "context_summary": memory_context.context_summary,
+                "retrieval_time": memory_context.retrieval_time,
+                "total_memories_considered": memory_context.total_memories_considered,
+                "embedding_similarity_threshold": self.memory_processor.similarity_threshold
+            }
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"Memory context retrieval failed: {e}")
+            # Return fallback context on error
+            return {
+                "memories": [],
+                "entities": [{"text": ent[0], "label": ent[1]} for ent in parsed_message.entities],
+                "preferences": [],
+                "facts": [],
+                "relationships": [],
+                "context_summary": f"Context retrieval failed: {str(e)}",
+                "retrieval_time": 0.0,
+                "total_memories_considered": 0,
+                "embedding_similarity_threshold": 0.7
+            }
     
     async def _generate_ai_response(
         self,

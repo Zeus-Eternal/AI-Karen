@@ -10,6 +10,7 @@ export { PluginService, getPluginService, initializePluginService } from './plug
 export { ExtensionService, getExtensionService, initializeExtensionService } from './extensionService';
 export { AuthService, getAuthService, initializeAuthService } from './authService';
 export { AuditService } from './auditService';
+export { AlertManager, alertManager } from './alertManager';
 
 // Export service types
 export type { ConversationSession, ProcessMessageOptions } from './chatService';
@@ -28,12 +29,15 @@ export type { ExtensionInfo } from './extensionService';
 export type { LoginResult, CurrentUser } from '@/lib/karen-backend';
 
 // Service initialization helper
-export function initializeAllServices() {
+export async function initializeAllServices() {
   const chatService = initializeChatService();
   const memoryService = initializeMemoryService();
   const pluginService = initializePluginService();
   const extensionService = initializeExtensionService();
   const authService = getAuthService();
+  
+  // Initialize AlertManager
+  await alertManager.initialize();
 
   return {
     chatService,
@@ -41,6 +45,7 @@ export function initializeAllServices() {
     pluginService,
     extensionService,
     authService,
+    alertManager,
   };
 }
 

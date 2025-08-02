@@ -13,20 +13,33 @@ export class AuthService {
       const response = await this.apiClient.post('/api/auth/login', credentials);
       return response.data;
     } catch (error: any) {
+      // Handle different types of errors appropriately
       if (error.isNetworkError) {
-        throw new Error('Network error. Please try again.');
-      }
-      
-      let message = 'Invalid credentials';
-      if (error.status && error.status >= 400 && error.status < 500) {
-        // Try to extract error message from response
-        if (typeof error.originalError === 'object' && error.originalError) {
-          message = error.originalError.detail || error.message;
-        } else {
+        throw new Error('Network error. Please check your connection and try again.');
+      } else if (error.isTimeoutError) {
+        throw new Error('Request timeout. Please try again.');
+      } else if (error.status === 401) {
+        // Invalid credentials
+        throw new Error('Invalid email or password');
+      } else if (error.status === 403) {
+        // Account issues (not verified, locked, etc.)
+        throw new Error('Account access denied. Please check your email for verification or contact support.');
+      } else if (error.status === 429) {
+        // Rate limiting
+        throw new Error('Too many login attempts. Please wait a moment and try again.');
+      } else if (error.status >= 500) {
+        // Server errors
+        throw new Error('Server error. Please try again later or contact support.');
+      } else {
+        // Try to extract specific error message from response
+        let message = 'Login failed';
+        if (error.originalError && typeof error.originalError === 'object') {
+          message = error.originalError.detail || error.message || message;
+        } else if (error.message) {
           message = error.message;
         }
+        throw new Error(message);
       }
-      throw new Error(message);
     }
   }
 
@@ -61,7 +74,23 @@ export class AuthService {
       const response = await this.apiClient.get('/api/auth/me');
       return response.data;
     } catch (error: any) {
-      throw new Error(`Failed to get user: ${error.message}`);
+      // Handle authentication errors specifically
+      if (error.status === 401) {
+        // User is not authenticated - this is expected behavior, not an error
+        throw new Error('Not authenticated');
+      } else if (error.status === 403) {
+        // User is authenticated but not authorized
+        throw new Error('Access forbidden');
+      } else if (error.isNetworkError) {
+        // Actual network connectivity issue
+        throw new Error('Network error. Please check your connection and try again.');
+      } else if (error.isTimeoutError) {
+        // Request timeout
+        throw new Error('Request timeout. Please try again.');
+      } else {
+        // Other server errors
+        throw new Error(`Server error: ${error.message}`);
+      }
     }
   }
 

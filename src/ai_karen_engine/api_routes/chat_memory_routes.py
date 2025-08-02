@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 
 from ai_karen_engine.chat.production_memory import production_chat_memory
-from ai_karen_engine.security.production_auth_service import production_auth_service
+from ai_karen_engine.services.auth_service import auth_service
 from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -73,7 +73,7 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=401, detail="Authentication required")
     
     # Validate session
-    user_data = await production_auth_service.validate_session(
+    user_data = await auth_service.validate_session(
         session_token=session_token,
         ip_address=request.client.host if request.client else "unknown",
         user_agent=request.headers.get("user-agent", "")

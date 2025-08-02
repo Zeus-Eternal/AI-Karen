@@ -178,9 +178,30 @@ class PerformanceMonitor {
    * Trigger a performance alert
    */
   private triggerAlert(alert: PerformanceAlert): void {
-    // Log the alert
-    const logLevel = alert.severity === 'high' ? 'error' : 'warn';
-    console[logLevel](`🚨 Performance Alert: ${alert.message}`, alert);
+    // Use the performance alert service for graceful handling
+    if (typeof window !== 'undefined') {
+      // Only import and use the alert service in browser environment
+      import('./performance-alert-service').then(({ performanceAlertService }) => {
+        performanceAlertService.handleAlert(alert);
+      }).catch(error => {
+        // Fallback to console logging if alert service fails
+        console.warn('Performance alert service unavailable, falling back to console:', error);
+        const logLevel = alert.severity === 'high' ? 'warn' : 'info';
+        console[logLevel](`Karen Performance: ${alert.message}`, {
+          type: alert.type,
+          severity: alert.severity,
+          endpoint: (alert.metrics as any)?.endpoint || 'unknown'
+        });
+      });
+    } else {
+      // Server-side: just log without the alert service
+      const logLevel = alert.severity === 'high' ? 'warn' : 'info';
+      console[logLevel](`Karen Performance: ${alert.message}`, {
+        type: alert.type,
+        severity: alert.severity,
+        endpoint: (alert.metrics as any)?.endpoint || 'unknown'
+      });
+    }
 
     // Notify alert listeners
     this.alertListeners.forEach(listener => {

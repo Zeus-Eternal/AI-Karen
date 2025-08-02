@@ -119,7 +119,7 @@ export function useFormValidation(config: UseFormValidationConfig = {}): UseForm
 
   // Validation state
   const [validationState, setValidationState] = useState<FormValidationState>(
-    createInitialValidationState
+    createInitialValidationState()
   );
 
   // Cleanup debounce timers on unmount

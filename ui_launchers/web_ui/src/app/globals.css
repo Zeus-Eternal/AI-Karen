@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Karen Alert System Styles */
+@import '../styles/karen-alerts.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;

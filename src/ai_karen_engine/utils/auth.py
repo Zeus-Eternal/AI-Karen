@@ -9,7 +9,7 @@ import asyncio
 
 import jwt
 
-from ai_karen_engine.security.production_auth_service import production_auth_service
+from ai_karen_engine.services.auth_service import auth_service
 from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -38,10 +38,10 @@ def create_session(
     This function maintains backward compatibility while using the production database.
     """
     try:
-        # Use production auth service to create session
+        # Use auth service to create session
         loop = asyncio.get_event_loop()
         session_data = loop.run_until_complete(
-            production_auth_service.create_session(
+            auth_service.create_session(
                 user_id=user_id,
                 ip_address=ip,
                 user_agent=user_agent,
@@ -74,10 +74,10 @@ def validate_session(token: str, user_agent: str, ip: str) -> Optional[Dict[str,
     Falls back to legacy validation for backward compatibility.
     """
     try:
-        # First try to validate using production auth service
+        # First try to validate using auth service
         loop = asyncio.get_event_loop()
         user_data = loop.run_until_complete(
-            production_auth_service.validate_session(
+            auth_service.validate_session(
                 session_token=token,
                 ip_address=ip,
                 user_agent=user_agent

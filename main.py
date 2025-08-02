@@ -55,7 +55,7 @@ from ai_karen_engine.api_routes.conversation_routes import router as conversatio
 from ai_karen_engine.api_routes.events import router as events_router
 from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
-from ai_karen_engine.api_routes.production_auth_routes import router as auth_router
+from ai_karen_engine.api_routes.auth import router as auth_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
 from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
 from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS

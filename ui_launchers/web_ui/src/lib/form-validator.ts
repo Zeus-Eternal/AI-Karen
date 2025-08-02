@@ -15,7 +15,7 @@ import type { FormFieldType } from '@/types/auth-form';
  */
 export interface FieldValidationResult {
   isValid: boolean;
-  error: string | undefined;
+  error: string | null;
 }
 
 /**
@@ -152,7 +152,7 @@ export class FormValidator {
   validateField(field: FormFieldType, value: string): FieldValidationResult {
     const rules = this.config[field];
     if (!rules) {
-      return { isValid: true, error: undefined };
+      return { isValid: true, error: null };
     }
 
     for (const rule of rules) {
@@ -164,7 +164,7 @@ export class FormValidator {
       }
     }
 
-    return { isValid: true, error: undefined };
+    return { isValid: true, error: null };
   }
 
   /**

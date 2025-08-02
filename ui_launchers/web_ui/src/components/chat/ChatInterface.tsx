@@ -158,12 +158,12 @@ export default function ChatInterface() {
           personalityVerbosity: user.preferences.personalityVerbosity as any,
           personalFacts: [], // TODO: Add personal facts to user preferences
           notifications: {
-            enabled: user.preferences.notifications.email,
+            enabled: user.preferences.notifications?.email ?? true,
             alertOnSummaryReady: true,
             alertOnNewInsights: true,
           },
           ttsVoiceURI: null, // TODO: Add TTS preferences to user model
-          customPersonaInstructions: user.preferences.customPersonaInstructions,
+          customPersonaInstructions: user.preferences.customPersonaInstructions || '',
           temperatureUnit: 'C' as any,
           weatherService: 'wttr_in' as any,
           weatherApiKey: null,

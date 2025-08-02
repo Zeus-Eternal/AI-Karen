@@ -1,18 +1,19 @@
 # docker-compose.yml
-
 services:
 
   # ──────────────────────────────────────────────────────────────────────────────
   # PostgreSQL
   # ──────────────────────────────────────────────────────────────────────────────
   postgres:
-    image: postgres:15-alpine
     container_name: ai-karen-postgres
+    image: postgres:15-alpine
     restart: unless-stopped
+    env_file: 
+      - .env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-karen_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-karen_secure_pass_change_me}
-      POSTGRES_DB:      ${POSTGRES_DB:-ai_karen}
+      POSTGRES_USER:    ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:      ${POSTGRES_DB}
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
@@ -30,8 +31,8 @@ services:
   # Elasticsearch
   # ──────────────────────────────────────────────────────────────────────────────
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
     container_name: ai-karen-elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
     restart: unless-stopped
     environment:
       - discovery.type=single-node
@@ -53,16 +54,18 @@ services:
   # Redis
   # ──────────────────────────────────────────────────────────────────────────────
   redis:
-    image: redis:7-alpine
     container_name: ai-karen-redis
+    image: redis:7-alpine
     restart: unless-stopped
+    env_file:
+      - .env
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -70,17 +73,12 @@ services:
       - ai-karen-net
 
   # ──────────────────────────────────────────────────────────────────────────────
-  # Milvus Dependencies: etcd + MinIO
+  # Milvus Dependencies: Etcd
   # ──────────────────────────────────────────────────────────────────────────────
   milvus-etcd:
-    image: quay.io/coreos/etcd:v3.5.5
     container_name: ai-karen-milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
     restart: unless-stopped
-    environment:
-      - ETCD_AUTO_COMPACTION_MODE=revision
-      - ETCD_AUTO_COMPACTION_RETENTION=1000
-      - ETCD_QUOTA_BACKEND_BYTES=4294967296
-      - ETCD_SNAPSHOT_COUNT=50000
     command: >
       etcd
       -advertise-client-urls=http://0.0.0.0:2379
@@ -89,28 +87,30 @@ services:
     volumes:
       - etcd_data:/etcd
     healthcheck:
-      test: ["CMD", "etcdctl", "endpoint", "health"]
+      test: ["CMD-SHELL", "etcdctl endpoint health"]
       interval: 30s
       timeout: 20s
       retries: 3
     networks:
       - ai-karen-net
 
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Milvus Dependencies: MinIO
+  # ──────────────────────────────────────────────────────────────────────────────
   milvus-minio:
-    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     container_name: ai-karen-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER:     ${MINIO_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    env_file:
+      - .env
     command: minio server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # MinIO API
+      - "9001:9001"   # Console
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl -f http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "curl -fsSL http://localhost:9000/minio/health/live || exit 1"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -118,26 +118,28 @@ services:
       - ai-karen-net
 
   # ──────────────────────────────────────────────────────────────────────────────
-  # Milvus Vector DB (Standalone Mode)
+  # Milvus Vector DB (Standalone)
   # ──────────────────────────────────────────────────────────────────────────────
   milvus:
-    image: milvusdb/milvus:v2.3.2
     container_name: ai-karen-milvus
+    image: milvusdb/milvus:v2.3.2
     restart: unless-stopped
     depends_on:
       milvus-etcd:
         condition: service_healthy
       milvus-minio:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
-      ETCD_ENDPOINTS:          milvus-etcd:2379
-      MINIO_ADDRESS:          milvus-minio:9000
-      MINIO_ACCESS_KEY_ID:    ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY}
-      DEPLOY_MODE:            standalone
+      ETCD_ENDPOINTS:           milvus-etcd:2379
+      MINIO_ADDRESS:            milvus-minio:9000
+      MINIO_ACCESS_KEY_ID:      ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_ACCESS_KEY:  ${MINIO_SECRET_KEY}
+      DEPLOY_MODE:              standalone
     ports:
-      - "19530:19530"   # gRPC
-      - "9091:9091"     # HTTP (health, metrics)
+      - "19530:19530"   # gRPC API
+      - "9091:9091"     # HTTP (health)
       - "19121:19121"   # Prometheus exporter
       - "30001:30001"   # RootCoord
       - "30002:30002"   # DataCoord
@@ -155,17 +157,15 @@ services:
   # Ollama LLM Service
   # ──────────────────────────────────────────────────────────────────────────────
   ollama:
-    image: ollama/ollama:latest
     container_name: ai-karen-ollama
+    image: ollama/ollama:latest
     restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0
     healthcheck:
-      test: ["CMD", "curl -f http://localhost:11434"]
+      test: ["CMD-SHELL", "curl -f http://localhost:11434 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -176,13 +176,11 @@ services:
   # FastAPI Backend (“api”)
   # ──────────────────────────────────────────────────────────────────────────────
   api:
-    build: .
     container_name: ai-karen-api
+    build: .
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      - KARI_CORS_ORIGINS=http://localhost:8010
     ports:
       - "8000:8000"
     depends_on:
