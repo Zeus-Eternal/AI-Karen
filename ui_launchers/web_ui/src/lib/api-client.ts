@@ -94,15 +94,13 @@ export class ApiClient {
    * Make an API request with automatic fallback
    */
   public async request<T = any>(request: ApiRequest): Promise<ApiResponse<T>> {
-    const startTime = performance.now();
-
     // Prepare request function
     const makeRequest = async (baseUrl: string): Promise<ApiResponse<T>> => {
       const url = `${baseUrl}${request.endpoint}`;
       const timeout = request.timeout || this.config.timeout;
       const method = request.method || 'GET';
-      const requestStartTime = performance.now();
-      
+      const requestStartTime = Date.now();
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -119,7 +117,7 @@ export class ApiClient {
         });
 
         clearTimeout(timeoutId);
-        const responseTime = performance.now() - requestStartTime;
+        const responseTime = Date.now() - requestStartTime;
 
         // Extract response headers for logging
         const responseHeaders: Record<string, string> = {};
@@ -130,7 +128,7 @@ export class ApiClient {
         // Parse response body
         let data: T;
         const contentType = response.headers.get('content-type');
-        
+
         if (contentType?.includes('application/json')) {
           data = await response.json();
         } else {
@@ -139,7 +137,7 @@ export class ApiClient {
 
         // Determine if this is a connectivity success vs application error
         const isAuthEndpoint = url.includes('/api/auth/');
-        const isConnectivitySuccess = response.ok || 
+        const isConnectivitySuccess = response.ok ||
           (isAuthEndpoint && (response.status === 401 || response.status === 403));
 
         // Log endpoint attempt with appropriate success status
@@ -164,7 +162,7 @@ export class ApiClient {
             false,
             false
           );
-          
+
           throw apiError;
         }
 
@@ -180,7 +178,7 @@ export class ApiClient {
 
       } catch (error) {
         clearTimeout(timeoutId);
-        const responseTime = performance.now() - requestStartTime;
+        const responseTime = Date.now() - requestStartTime;
 
         let apiError: ApiError;
 
@@ -209,11 +207,11 @@ export class ApiClient {
               false,
               error
             );
-            
+
             // Log CORS issue with additional details
             const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
             logCORSIssue(url, origin, error);
-            
+
           } else if (error.message.includes('fetch')) {
             apiError = this.createApiError(
               'Network error - unable to connect',
@@ -379,7 +377,7 @@ export class ApiClient {
   ): Promise<ApiResponse<T>> {
     const formData = new FormData();
     formData.append(fieldName, file);
-    
+
     if (additionalFields) {
       Object.entries(additionalFields).forEach(([key, value]) => {
         formData.append(key, value);
