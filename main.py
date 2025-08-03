@@ -8,42 +8,43 @@ Kari FastAPI Server - Production Version
 
 import logging
 import logging.config
-import os
-import sys
+import secrets
+import ssl
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, Field, validator
-from pydantic_settings import BaseSettings
-import secrets
+from fastapi.responses import Response
 
 # Security imports
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
 from passlib.context import CryptContext
-import ssl
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Original route imports
 from ai_karen_engine.api_routes.ai_orchestrator_routes import router as ai_router
 from ai_karen_engine.api_routes.audit import router as audit_router
 from ai_karen_engine.api_routes.auth import router as auth_router
+from ai_karen_engine.api_routes.code_execution_routes import (
+    router as code_execution_router,
+)
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
 from ai_karen_engine.api_routes.events import router as events_router
+from ai_karen_engine.api_routes.file_attachment_routes import (
+    router as file_attachment_router,
+)
 from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
 from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
 from ai_karen_engine.api_routes.websocket_routes import router as websocket_router
-from ai_karen_engine.api_routes.file_attachment_routes import router as file_attachment_router
-from ai_karen_engine.api_routes.code_execution_routes import router as code_execution_router
-
 from ai_karen_engine.server.middleware import configure_middleware
-from ai_karen_engine.server.startup import create_lifespan
 from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS, PLUGIN_MAP
+from ai_karen_engine.server.startup import create_lifespan
 
 # --- Configuration Management -------------------------------------------------
+
 
 class Settings(BaseSettings):
     app_name: str = "Kari AI Server"
@@ -60,10 +61,13 @@ class Settings(BaseSettings):
     plugin_dir: str = "/app/plugins"
     llm_refresh_interval: int = 3600
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
 
 settings = Settings()
 
@@ -73,6 +77,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
+
 def get_ssl_context():
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
@@ -80,71 +85,76 @@ def get_ssl_context():
     ssl_context.load_cert_chain("cert.pem", "key.pem")
     return ssl_context
 
+
 # --- Logging Configuration --------------------------------------------------
+
 
 def configure_logging():
     """Configure production-grade logging"""
     Path("logs").mkdir(exist_ok=True)
-    
-    logging.config.dictConfig({
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "json": {
-                "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-                "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(lineno)d %(pathname)s"
+
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "json": {
+                    "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+                    "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(lineno)d %(pathname)s",
+                },
+                "access": {
+                    "()": "uvicorn.logging.AccessFormatter",
+                    "fmt": '%(asctime)s - %(client_addr)s - "%(request_line)s" %(status_code)s',
+                },
             },
-            "access": {
-                "()": "uvicorn.logging.AccessFormatter",
-                "fmt": '%(asctime)s - %(client_addr)s - "%(request_line)s" %(status_code)s'
-            }
-        },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "formatter": "json",
-                "stream": "ext://sys.stdout"
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "json",
+                    "stream": "ext://sys.stdout",
+                },
+                "file": {
+                    "class": "logging.handlers.RotatingFileHandler",
+                    "filename": "logs/kari.log",
+                    "maxBytes": 10485760,
+                    "backupCount": 5,
+                    "formatter": "json",
+                },
+                "access": {
+                    "class": "logging.handlers.RotatingFileHandler",
+                    "filename": "logs/access.log",
+                    "maxBytes": 10485760,
+                    "backupCount": 5,
+                    "formatter": "access",
+                },
+                "error": {
+                    "class": "logging.handlers.RotatingFileHandler",
+                    "filename": "logs/error.log",
+                    "maxBytes": 10485760,
+                    "backupCount": 5,
+                    "formatter": "json",
+                    "level": "ERROR",
+                },
             },
-            "file": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "filename": "logs/kari.log",
-                "maxBytes": 10485760,
-                "backupCount": 5,
-                "formatter": "json"
+            "loggers": {
+                "uvicorn.error": {
+                    "handlers": ["console", "file"],
+                    "level": "INFO",
+                    "propagate": False,
+                },
+                "uvicorn.access": {
+                    "handlers": ["access"],
+                    "level": "INFO",
+                    "propagate": False,
+                },
             },
-            "access": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "filename": "logs/access.log",
-                "maxBytes": 10485760,
-                "backupCount": 5,
-                "formatter": "access"
+            "root": {
+                "handlers": ["console", "file", "error"],
+                "level": "INFO" if not settings.debug else "DEBUG",
             },
-            "error": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "filename": "logs/error.log",
-                "maxBytes": 10485760,
-                "backupCount": 5,
-                "formatter": "json",
-                "level": "ERROR"
-            }
-        },
-        "loggers": {
-            "uvicorn.error": {
-                "handlers": ["console", "file"],
-                "level": "INFO",
-                "propagate": False
-            },
-            "uvicorn.access": {
-                "handlers": ["access"],
-                "level": "INFO",
-                "propagate": False
-            }
-        },
-        "root": {
-            "handlers": ["console", "file", "error"],
-            "level": "INFO" if not settings.debug else "DEBUG"
         }
-    })
+    )
+
 
 configure_logging()
 logger = logging.getLogger("kari")
@@ -154,12 +164,12 @@ logger = logging.getLogger("kari")
 try:
     from prometheus_client import (
         CONTENT_TYPE_LATEST,
+        REGISTRY,
         Counter,
         Histogram,
         generate_latest,
-        REGISTRY,
-        CollectorRegistry
     )
+
     PROMETHEUS_ENABLED = True
 except ImportError:
     PROMETHEUS_ENABLED = False
@@ -171,28 +181,32 @@ if PROMETHEUS_ENABLED:
         "kari_http_requests_total",
         "Total HTTP requests",
         ["method", "path", "status"],
-        registry=REGISTRY
+        registry=REGISTRY,
     )
     REQUEST_LATENCY = Histogram(
         "kari_http_request_duration_seconds",
         "HTTP request latency",
         ["method", "path"],
-        registry=REGISTRY
+        registry=REGISTRY,
     )
     ERROR_COUNT = Counter(
         "kari_http_errors_total",
         "Total HTTP errors",
         ["method", "path", "error_type"],
-        registry=REGISTRY
+        registry=REGISTRY,
     )
 else:
     # Dummy metrics if Prometheus is not available
     class DummyMetric:
         def labels(self, **kwargs):
             return self
-        def inc(self, amount=1): pass
-        def observe(self, value): pass
-    
+
+        def inc(self, amount=1):
+            pass
+
+        def observe(self, value):
+            pass
+
     REQUEST_COUNT = DummyMetric()
     REQUEST_LATENCY = DummyMetric()
     ERROR_COUNT = DummyMetric()
@@ -231,7 +245,9 @@ def create_app() -> FastAPI:
     app.include_router(web_api_router, prefix="/api/web", tags=["web-api"])
     app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
     app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
-    app.include_router(conversation_router, prefix="/api/conversations", tags=["conversations"])
+    app.include_router(
+        conversation_router, prefix="/api/conversations", tags=["conversations"]
+    )
     app.include_router(plugin_router, prefix="/api/plugins", tags=["plugins"])
     app.include_router(tool_router, prefix="/api/tools", tags=["tools"])
     app.include_router(audit_router, prefix="/api/audit", tags=["audit"])
