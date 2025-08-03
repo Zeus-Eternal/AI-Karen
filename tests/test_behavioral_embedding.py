@@ -4,9 +4,16 @@ Unit tests for behavioral embedding service.
 
 import pytest
 import asyncio
+import json
+import sys
 from datetime import datetime, timedelta
 from unittest.mock import Mock, AsyncMock, patch
 from typing import List
+
+# Ensure real numpy is used for clustering tests
+if "numpy" in sys.modules and sys.modules["numpy"].__name__ != "numpy":
+    del sys.modules["numpy"]
+    import numpy  # noqa: F401
 
 from src.ai_karen_engine.security.behavioral_embedding import (
     BehavioralEmbeddingService,
@@ -396,11 +403,98 @@ class TestBehavioralEmbeddingService:
         
         # Act
         results = await behavioral_embedding_service.batch_generate_embeddings(auth_contexts)
-        
+
         # Assert
         assert len(results) == 3
         assert all(isinstance(result, BehavioralEmbeddingResult) for result in results)
         assert all(result.embedding_vector == [0.1] * 768 for result in results)
+
+    @pytest.mark.asyncio
+    async def test_attack_pattern_similarity_scoring(
+        self,
+        mock_distilbert_service,
+        sample_auth_context,
+        tmp_path
+    ):
+        """Verify that attack pattern similarity is computed from database."""
+        attack_data = {
+            "attack_patterns": [
+                {"id": "attack1", "embedding": [0.1, 0.2, 0.3]}
+            ]
+        }
+        db_file = tmp_path / "attack_patterns.json"
+        db_file.write_text(json.dumps(attack_data))
+
+        config = BehavioralEmbeddingConfig(
+            attack_pattern_db_path=str(db_file)
+        )
+        service = BehavioralEmbeddingService(
+            distilbert_service=mock_distilbert_service,
+            config=config
+        )
+
+        embedding_result = BehavioralEmbeddingResult(
+            embedding_vector=[0.1, 0.2, 0.3],
+            context_features={},
+            processing_time=0.1,
+            used_fallback=False,
+            model_version="test-model",
+            similarity_scores={"max_similarity_to_profile": 0.0}
+        )
+
+        analysis = await service.analyze_embedding_for_anomalies(
+            sample_auth_context,
+            embedding_result
+        )
+
+        assert analysis.similarity_to_attack_patterns == pytest.approx(1.0, rel=1e-6)
+
+    @pytest.mark.asyncio
+    async def test_cluster_assignment(
+        self,
+        mock_distilbert_service,
+        sample_auth_context
+    ):
+        """Ensure embeddings are assigned to expected clusters."""
+        config = BehavioralEmbeddingConfig(cluster_count=2)
+        service = BehavioralEmbeddingService(
+            distilbert_service=mock_distilbert_service,
+            config=config
+        )
+
+        profile_embeddings = [
+            [1.0, 0.0, 0.0],
+            [1.1, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 1.1, 0.0]
+        ]
+        profile = UserBehavioralProfile(
+            user_id=sample_auth_context.email,
+            typical_embeddings=profile_embeddings
+        )
+        service.user_profiles[sample_auth_context.email] = profile
+
+        embedding_result = BehavioralEmbeddingResult(
+            embedding_vector=[1.05, 0.0, 0.0],
+            context_features={},
+            processing_time=0.1,
+            used_fallback=False,
+            model_version="test-model",
+            similarity_scores={"max_similarity_to_profile": 0.9}
+        )
+
+        analysis = await service.analyze_embedding_for_anomalies(
+            sample_auth_context,
+            embedding_result
+        )
+
+        from sklearn.cluster import KMeans
+
+        kmeans = KMeans(n_clusters=2, random_state=42, n_init=10)
+        kmeans.fit(profile_embeddings)
+        expected_label = kmeans.predict([[1.05, 0.0, 0.0]])[0]
+
+        assert analysis.cluster_assignment == f"cluster_{expected_label}"
     
     def test_get_health_status(self, behavioral_embedding_service, mock_distilbert_service):
         """Test health status reporting."""
@@ -510,6 +604,9 @@ class TestBehavioralEmbeddingConfig:
         assert config.outlier_threshold == 0.3
         assert config.cache_size == 5000
         assert config.cache_ttl == 3600
+        assert config.attack_pattern_db_path is None
+        assert config.attack_similarity_threshold == 0.8
+        assert config.cluster_count == 5
     
     def test_behavioral_embedding_config_custom_values(self):
         """Test behavioral embedding configuration with custom values."""
