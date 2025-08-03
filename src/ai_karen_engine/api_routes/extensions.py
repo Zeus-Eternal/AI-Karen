@@ -6,9 +6,10 @@ from typing import List
 
 from ai_karen_engine.extensions import get_extension_manager
 from ai_karen_engine.extensions.models import ExtensionStatusAPI
+from ai_karen_engine.utils.auth import validate_session
 
 try:
-    from fastapi import APIRouter, HTTPException, Depends
+    from fastapi import APIRouter, HTTPException, Depends, Request
     from fastapi.responses import JSONResponse
     FASTAPI_AVAILABLE = True
 except ImportError:
@@ -25,14 +26,24 @@ except ImportError:
 
 if FASTAPI_AVAILABLE:
     router = APIRouter()
-    
-    def get_current_user():
-        """Get current user from request context. TODO: Implement properly."""
-        return {"user_id": "admin", "roles": ["admin"], "tenant_id": "default"}
+
+    def get_current_user(request: Request):
+        """Validate bearer token from request and return user context."""
+        auth = request.headers.get("authorization")
+        if not auth or not auth.lower().startswith("bearer "):
+            return None
+        token = auth.split(None, 1)[1]
+        return validate_session(
+            token,
+            request.headers.get("user-agent", ""),
+            request.client.host,
+        )
     
     @router.get("/extensions", response_model=List[ExtensionStatusAPI])
     async def list_extensions(user: dict = Depends(get_current_user)):
         """List all extensions and their status."""
+        if not user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
         extension_manager = get_extension_manager()
         if not extension_manager:
             raise HTTPException(status_code=503, detail="Extension manager not initialized")
@@ -51,10 +62,12 @@ if FASTAPI_AVAILABLE:
     
     @router.get("/extensions/{extension_name}")
     async def get_extension_status(
-        extension_name: str, 
+        extension_name: str,
         user: dict = Depends(get_current_user)
     ):
         """Get detailed status of a specific extension."""
+        if not user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
         extension_manager = get_extension_manager()
         if not extension_manager:
             raise HTTPException(status_code=503, detail="Extension manager not initialized")
@@ -71,6 +84,8 @@ if FASTAPI_AVAILABLE:
         user: dict = Depends(get_current_user)
     ):
         """Load an extension."""
+        if not user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
         extension_manager = get_extension_manager()
         if not extension_manager:
             raise HTTPException(status_code=503, detail="Extension manager not initialized")
@@ -90,6 +105,8 @@ if FASTAPI_AVAILABLE:
         user: dict = Depends(get_current_user)
     ):
         """Unload an extension."""
+        if not user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
         extension_manager = get_extension_manager()
         if not extension_manager:
             raise HTTPException(status_code=503, detail="Extension manager not initialized")
@@ -106,6 +123,8 @@ if FASTAPI_AVAILABLE:
         user: dict = Depends(get_current_user)
     ):
         """Reload an extension (for development)."""
+        if not user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
         extension_manager = get_extension_manager()
         if not extension_manager:
             raise HTTPException(status_code=503, detail="Extension manager not initialized")
@@ -122,6 +141,8 @@ if FASTAPI_AVAILABLE:
     @router.get("/extensions/discover")
     async def discover_extensions(user: dict = Depends(get_current_user)):
         """Discover available extensions in the extensions directory."""
+        if not user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
         extension_manager = get_extension_manager()
         if not extension_manager:
             raise HTTPException(status_code=503, detail="Extension manager not initialized")
@@ -148,6 +169,8 @@ if FASTAPI_AVAILABLE:
     @router.get("/extensions/registry/summary")
     async def get_registry_summary(user: dict = Depends(get_current_user)):
         """Get extension registry summary."""
+        if not user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
         extension_manager = get_extension_manager()
         if not extension_manager:
             raise HTTPException(status_code=503, detail="Extension manager not initialized")
