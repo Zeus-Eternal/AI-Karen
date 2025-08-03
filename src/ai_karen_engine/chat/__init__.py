@@ -12,6 +12,8 @@ from ai_karen_engine.chat.chat_orchestrator import (
     ProcessingStatus,
     ErrorType
 )
+from ai_karen_engine.chat.websocket_gateway import WebsocketGateway
+from ai_karen_engine.chat.stream_processor import StreamProcessor
 
 __all__ = [
     "ChatHub", 
@@ -25,5 +27,7 @@ __all__ = [
     "ProcessingResult",
     "RetryConfig",
     "ProcessingStatus",
-    "ErrorType"
+    "ErrorType",
+    "WebsocketGateway",
+    "StreamProcessor",
 ]
