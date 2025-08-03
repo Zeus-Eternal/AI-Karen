@@ -48,7 +48,8 @@ echo "⏹️  Press Ctrl+C to stop the server"
 echo "=================================="
 
 # Start uvicorn with proper configuration
-exec uvicorn main:app \
+exec uvicorn main:create_app \
+    --factory \
     --host 0.0.0.0 \
     --port 8000 \
     --reload \

@@ -125,7 +125,7 @@ curl -X PUT "http://localhost:9200/ai_karen_index"
 
 ```bash
 # Start FastAPI server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:create_app --factory --reload --host 0.0.0.0 --port 8000
 
 # Verify API is running
 curl http://localhost:8000/health
@@ -229,7 +229,7 @@ export MILVUS_PORT=19530
 | Type checking | `mypy .` |
 | Linting | `ruff check .` |
 | Run tests | `pytest` |
-| Start API | `uvicorn main:app --reload` |
+| Start API | `uvicorn main:create_app --factory --reload` |
 | Build web UI | `cd ui_launchers/web_ui && npm run build` |
 | Build desktop | `cd ui_launchers/desktop_ui && npm run tauri build` |
 

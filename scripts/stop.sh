@@ -6,7 +6,7 @@
 echo "🛑 Stopping AI Karen Backend Server..."
 
 # Find and kill uvicorn processes
-PIDS=$(ps aux | grep "uvicorn main:app" | grep -v grep | awk '{print $2}')
+PIDS=$(ps aux | grep "uvicorn main:create_app" | grep -v grep | awk '{print $2}')
 
 if [ -z "$PIDS" ]; then
     echo "ℹ️  No backend server processes found running"

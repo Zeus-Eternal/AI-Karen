@@ -71,7 +71,7 @@ def start_server() -> bool:
     # Server configuration
     host = os.getenv("HOST", "0.0.0.0")  # Bind to all interfaces
     port = int(os.getenv("PORT", "8000"))
-    app = "main:app"
+    app = "main:create_app"
     
     print(f"📍 Server will be available at:")
     for url in get_local_ips():
@@ -96,7 +96,8 @@ def start_server() -> bool:
             log_level="info",
             access_log=True,
             workers=1,  # Explicitly set workers for development
-            reload_dirs=["."] if os.getenv("ENV") == "development" else None
+            reload_dirs=["."] if os.getenv("ENV") == "development" else None,
+            factory=True,
         )
         
     except KeyboardInterrupt:

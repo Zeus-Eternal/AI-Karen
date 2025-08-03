@@ -43,4 +43,4 @@ echo "🏃  Running AI Karen on 0.0.0.0:8000 (CTRL+C to stop)"
 python main.py
 
 # Option B: call uvicorn directly
-# uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# uvicorn main:create_app --factory --reload --host 0.0.0.0 --port 8000

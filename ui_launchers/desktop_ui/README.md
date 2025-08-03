@@ -124,7 +124,7 @@ npm install
 # Start AI Karen backend (required)
 # From project root:
 cd ../..
-python main.py  # or uvicorn main:app
+python main.py  # or uvicorn main:create_app --factory
 
 # Start development server
 cargo tauri dev

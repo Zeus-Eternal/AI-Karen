@@ -91,7 +91,8 @@ class BackendRunner:
         uvicorn_exe = self._get_venv_executable("uvicorn")
         cmd = [
             str(uvicorn_exe),
-            "main:app",
+            "main:create_app",
+            "--factory",
             "--host", self.host,
             "--port", self.port,
             "--reload",
