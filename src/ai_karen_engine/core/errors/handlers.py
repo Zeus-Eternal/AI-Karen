@@ -78,10 +78,9 @@ class ErrorHandler:
         if not trace_id:
             trace_id = str(uuid.uuid4())
         
-        # Log the error
-        logger.error(
-            f"[{trace_id}] Error handling request {request_id}: {error}",
-            exc_info=True
+        # Log the error with full traceback
+        logger.exception(
+            f"[{trace_id}] Error handling request {request_id}: {error}"
         )
         
         # Handle known Karen errors
@@ -99,7 +98,7 @@ class ErrorHandler:
             return self._handle_not_found_error(error, request_id, trace_id)
         
         # Handle unknown errors
-        return self._handle_internal_error(error, request_id, trace_id)
+        return self.handle_unexpected(error, request_id, trace_id)
     
     def _handle_karen_error(
         self, 
@@ -199,21 +198,22 @@ class ErrorHandler:
             trace_id=trace_id
         )
     
-    def _handle_internal_error(
-        self, 
-        error: Exception, 
-        request_id: str, 
+    def handle_unexpected(
+        self,
+        error: Exception,
+        request_id: str,
         trace_id: str
     ) -> ErrorResponse:
-        """Handle unknown errors as internal errors."""
-        details = {
-            "error_type": type(error).__name__,
-            "original_error": str(error)
-        }
-        
+        """Handle unknown errors with sanitized response."""
+        logger.exception(
+            f"[{trace_id}] Unexpected error while handling request {request_id}"
+        )
+
+        details = {"error_type": type(error).__name__}
+
         if self.include_traceback:
             details["traceback"] = traceback.format_exc()
-        
+
         return ErrorResponse(
             error_code=ErrorCode.INTERNAL_ERROR,
             message="An internal error occurred",
