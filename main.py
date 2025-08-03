@@ -11,6 +11,7 @@ import logging
 import os
 import sys
 import uuid
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -51,11 +52,11 @@ if "DATABASE_URL" not in os.environ and os.getenv("POSTGRES_URL"):
 import ai_karen_engine.utils.auth as auth_utils
 from ai_karen_engine.api_routes.ai_orchestrator_routes import router as ai_router
 from ai_karen_engine.api_routes.audit import router as audit_router
+from ai_karen_engine.api_routes.auth import router as auth_router
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
 from ai_karen_engine.api_routes.events import router as events_router
 from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
-from ai_karen_engine.api_routes.auth import router as auth_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
 from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
 from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS
@@ -128,7 +129,9 @@ def _init_metrics():
             "Total LNM pipeline failures",
             registry=PROM_REGISTRY,
         )
-        print(f"[DEBUG] Metrics initialized successfully: REQUEST_COUNT={REQUEST_COUNT}")
+        print(
+            f"[DEBUG] Metrics initialized successfully: REQUEST_COUNT={REQUEST_COUNT}"
+        )
     except ValueError as e:
         if "Duplicated timeseries" in str(e):
             print(f"[DEBUG] Handling duplicate metrics: {e}")
@@ -136,7 +139,7 @@ def _init_metrics():
             REQUEST_COUNT = None
             REQUEST_LATENCY = None
             LNM_ERROR_COUNT = None
-            
+
             # Metrics already registered, get existing ones
             for collector in PROM_REGISTRY._collector_to_names:
                 if hasattr(collector, "_name"):
@@ -146,43 +149,52 @@ def _init_metrics():
                         REQUEST_LATENCY = collector
                     elif collector._name == "lnm_runtime_errors_total":
                         LNM_ERROR_COUNT = collector
-            
+
             # Fallback to dummy metrics if not found
             if REQUEST_COUNT is None:
+
                 class _LocalDummyMetric:
                     def inc(self, amount=1):
                         pass
+
                     def time(self):
                         class _Ctx:
                             def __enter__(self):
                                 return self
+
                             def __exit__(self, exc_type, exc, tb):
                                 pass
+
                         return _Ctx()
+
                 REQUEST_COUNT = _LocalDummyMetric()
             if REQUEST_LATENCY is None:
                 REQUEST_LATENCY = _LocalDummyMetric()
             if LNM_ERROR_COUNT is None:
                 LNM_ERROR_COUNT = _LocalDummyMetric()
-                
+
             print(f"[DEBUG] Reused existing metrics: REQUEST_COUNT={REQUEST_COUNT}")
         else:
             print(f"[DEBUG] Unexpected ValueError: {e}")
             raise
     except Exception as e:
         print(f"[DEBUG] Error initializing metrics: {e}")
+
         # Fallback to dummy metrics - create instances without arguments
         class _LocalDummyMetric:
             def inc(self, amount=1):
                 pass
+
             def time(self):
                 class _Ctx:
                     def __enter__(self):
                         return self
+
                     def __exit__(self, exc_type, exc, tb):
                         pass
+
                 return _Ctx()
-        
+
         REQUEST_COUNT = _LocalDummyMetric()
         REQUEST_LATENCY = _LocalDummyMetric()
         LNM_ERROR_COUNT = _LocalDummyMetric()
@@ -194,6 +206,8 @@ _init_metrics()
 # Logger setup
 logger = logging.getLogger("kari")
 
+_registry_refresh_task: Optional[asyncio.Task] = None
+
 
 # ─── FastAPI Setup ───────────────────────────────────────────────────────────
 
@@ -204,15 +218,14 @@ if (Path(__file__).resolve().parent / "fastapi").is_dir():
     )
     sys.exit(1)
 
-app = FastAPI()
 
 def _validate_cors_configuration():
     """Validate CORS configuration and log potential issues."""
     environment = os.getenv("KARI_ENV", "local").lower()
     allowed_origins = os.getenv("KARI_CORS_ORIGINS", "")
-    
+
     validation_issues = []
-    
+
     # Check for production security
     if environment in ["production", "prod"]:
         if not allowed_origins or allowed_origins == "*":
@@ -223,16 +236,20 @@ def _validate_cors_configuration():
             validation_issues.append(
                 "Production environment should not include '*' in CORS origins"
             )
-    
+
     # Check for common misconfigurations
     if allowed_origins:
         origins = [origin.strip() for origin in allowed_origins.split(",")]
         for origin in origins:
             if origin.endswith("/"):
-                validation_issues.append(f"CORS origin should not end with '/': {origin}")
+                validation_issues.append(
+                    f"CORS origin should not end with '/': {origin}"
+                )
             if not origin.startswith(("http://", "https://")) and origin != "*":
-                validation_issues.append(f"CORS origin should include protocol: {origin}")
-    
+                validation_issues.append(
+                    f"CORS origin should include protocol: {origin}"
+                )
+
     # Log validation results
     if validation_issues:
         logger.warning("CORS configuration validation issues found:")
@@ -240,7 +257,7 @@ def _validate_cors_configuration():
             logger.warning(f"  - {issue}")
     else:
         logger.info("CORS configuration validation passed")
-    
+
     return len(validation_issues) == 0
 
 
@@ -249,22 +266,24 @@ def _get_cors_origins():
     # Get base origins from environment
     allowed_origins = os.getenv("KARI_CORS_ORIGINS", "")
     origins_list = []
-    
+
     if allowed_origins:
-        origins_list = [origin.strip() for origin in allowed_origins.split(",") if origin.strip()]
-    
+        origins_list = [
+            origin.strip() for origin in allowed_origins.split(",") if origin.strip()
+        ]
+
     # Add environment-specific origins
     environment = os.getenv("KARI_ENV", "local").lower()
-    
+
     if environment in ["local", "development", "dev"]:
         # Development origins - use environment variables for external hosts
         external_host = os.getenv("KAREN_EXTERNAL_HOST", "")
         web_ui_port = os.getenv("KAREN_WEB_UI_PORT", "9002")
         backend_port = os.getenv("PORT", "8000")
-        
+
         dev_origins = [
             "http://localhost:3000",
-            "http://localhost:3001", 
+            "http://localhost:3001",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
             "http://localhost:8080",
@@ -272,19 +291,21 @@ def _get_cors_origins():
             f"http://localhost:{web_ui_port}",  # Web UI default port
             f"http://127.0.0.1:{web_ui_port}",  # Web UI default port
         ]
-        
+
         # Add external host origins if configured
         if external_host:
-            dev_origins.extend([
-                f"http://{external_host}:{web_ui_port}",
-                f"http://{external_host}:{backend_port}",
-            ])
-        
+            dev_origins.extend(
+                [
+                    f"http://{external_host}:{web_ui_port}",
+                    f"http://{external_host}:{backend_port}",
+                ]
+            )
+
         # Add development origins to the list
         for origin in dev_origins:
             if origin not in origins_list:
                 origins_list.append(origin)
-    
+
     # If no origins configured, allow all for development, restrict for production
     if not origins_list:
         if environment in ["local", "development", "dev"]:
@@ -293,10 +314,81 @@ def _get_cors_origins():
             # Production should have explicit origins configured
             logger.warning("No CORS origins configured for production environment")
             return []
-    
+
     return origins_list
 
+
 origins_list = _get_cors_origins()
+
+
+async def on_startup() -> None:
+    """Application startup routine"""
+    global _registry_refresh_task
+
+    # Validate CORS configuration on startup
+    _validate_cors_configuration()
+
+    # Initialize legacy components
+    init_memory()
+    _load_plugins()
+    sync_registry()
+
+    # Initialize AI Karen integration services
+    try:
+        from ai_karen_engine.core.config_manager import get_config_manager
+        from ai_karen_engine.core.health_monitor import (
+            get_health_monitor,
+            setup_default_health_checks,
+        )
+        from ai_karen_engine.core.service_registry import initialize_services
+
+        # Load configuration
+        config_manager = get_config_manager()
+        config = config_manager.load_config()
+        logger.info(
+            f"AI Karen configuration loaded for environment: {config.environment}"
+        )
+
+        # Initialize services
+        await initialize_services()
+        logger.info("AI Karen integration services initialized")
+
+        # Set up health monitoring
+        await setup_default_health_checks()
+        health_monitor = get_health_monitor()
+        health_monitor.start_monitoring()
+        logger.info("Health monitoring started")
+        logger.info("Greetings, the logs are ready for review")
+
+    except Exception as e:
+        logger.error(f"Failed to initialize AI Karen integration: {e}")
+        # Continue with legacy startup even if integration fails
+
+    # Legacy LLM refresh interval
+    interval = int(os.getenv("LLM_REFRESH_INTERVAL", "0"))
+    if interval > 0:
+
+        async def _periodic_refresh():
+            while True:
+                await asyncio.sleep(interval)
+                sync_registry()
+
+        _registry_refresh_task = asyncio.create_task(_periodic_refresh())
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await on_startup()
+    try:
+        yield
+    finally:
+        if _registry_refresh_task:
+            _registry_refresh_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await _registry_refresh_task
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 # ─── Middleware: Metrics & Multi-Tenant ─────────────────────────────────────
@@ -346,11 +438,10 @@ TENANT_HEADER = "X-Tenant-ID"
 @app.middleware("http")
 async def require_tenant(request: Request, call_next):
     # Check if path is in public paths or matches conversation patterns
-    is_public = (
-        request.url.path in PUBLIC_PATHS or
-        request.url.path.startswith("/api/conversations/")
+    is_public = request.url.path in PUBLIC_PATHS or request.url.path.startswith(
+        "/api/conversations/"
     )
-    
+
     if not is_public:
         tenant = request.headers.get(TENANT_HEADER)
         if not tenant:
@@ -392,18 +483,22 @@ async def log_requests(request: Request, call_next):
 @app.middleware("http")
 async def cors_debugging_middleware(request: Request, call_next):
     """Log CORS preflight requests and potential CORS issues."""
-    
+
     # Log preflight requests
     if request.method == "OPTIONS":
         origin = request.headers.get("origin", "unknown")
-        requested_method = request.headers.get("access-control-request-method", "unknown")
-        requested_headers = request.headers.get("access-control-request-headers", "none")
-        
+        requested_method = request.headers.get(
+            "access-control-request-method", "unknown"
+        )
+        requested_headers = request.headers.get(
+            "access-control-request-headers", "none"
+        )
+
         logger.info(
             f"CORS preflight request from origin: {origin}, "
             f"method: {requested_method}, headers: {requested_headers}"
         )
-        
+
         # Check if origin is allowed
         if origin != "unknown" and origins_list != ["*"]:
             if origin not in origins_list:
@@ -411,18 +506,19 @@ async def cors_debugging_middleware(request: Request, call_next):
                     f"CORS preflight request from unauthorized origin: {origin}. "
                     f"Allowed origins: {origins_list}"
                 )
-    
+
     response = await call_next(request)
-    
+
     # Log CORS-related response headers for debugging
     if request.method == "OPTIONS" or request.headers.get("origin"):
         cors_headers = {
-            k: v for k, v in response.headers.items() 
+            k: v
+            for k, v in response.headers.items()
             if k.lower().startswith("access-control-")
         }
         if cors_headers:
             logger.debug(f"CORS response headers: {cors_headers}")
-    
+
     return response
 
 
@@ -558,62 +654,6 @@ app.include_router(conversation_router)
 app.include_router(plugin_router)
 app.include_router(tool_router)
 app.include_router(audit_router)
-
-# ─── Startup: memory, plugins, LLM registry refresh ───────────────────────────
-
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    # Validate CORS configuration on startup
-    _validate_cors_configuration()
-    
-    # Initialize legacy components
-    init_memory()
-    _load_plugins()
-    sync_registry()
-
-    # Initialize AI Karen integration services
-    try:
-        from ai_karen_engine.core.config_manager import get_config_manager
-        from ai_karen_engine.core.health_monitor import (
-            get_health_monitor,
-            setup_default_health_checks,
-        )
-        from ai_karen_engine.core.service_registry import initialize_services
-
-        # Load configuration
-        config_manager = get_config_manager()
-        config = config_manager.load_config()
-        logger.info(
-            f"AI Karen configuration loaded for environment: {config.environment}"
-        )
-
-        # Initialize services
-        await initialize_services()
-        logger.info("AI Karen integration services initialized")
-
-        # Set up health monitoring
-        await setup_default_health_checks()
-        health_monitor = get_health_monitor()
-        health_monitor.start_monitoring()
-        logger.info("Health monitoring started")
-        logger.info("Greetings, the logs are ready for review")
-
-    except Exception as e:
-        logger.error(f"Failed to initialize AI Karen integration: {e}")
-        # Continue with legacy startup even if integration fails
-
-    # Legacy LLM refresh interval
-    interval = int(os.getenv("LLM_REFRESH_INTERVAL", "0"))
-    if interval > 0:
-
-        async def _periodic_refresh():
-            while True:
-                await asyncio.sleep(interval)
-                sync_registry()
-
-        asyncio.create_task(_periodic_refresh())
-
 
 # ─── Plugin Discovery ────────────────────────────────────────────────────────
 
@@ -885,7 +925,7 @@ def cors_config() -> Dict[str, Any]:
     external_host = os.getenv("KAREN_EXTERNAL_HOST", "")
     web_ui_port = os.getenv("KAREN_WEB_UI_PORT", "9002")
     backend_port = os.getenv("PORT", "8000")
-    
+
     return {
         "environment": environment,
         "configured_origins": allowed_origins_env,
@@ -898,7 +938,7 @@ def cors_config() -> Dict[str, Any]:
             "allow_credentials": True,
             "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
             "max_age": 86400,
-        }
+        },
     }
 
 
@@ -919,13 +959,13 @@ if __name__ == "__main__":
     reload = os.getenv("RELOAD", "true").lower() == "true"
     log_level = os.getenv("LOG_LEVEL", "info")
 
-    print(f"🚀 Starting AI Karen Backend Server...")
-    print(f"📍 Server will be available at:")
+    print("🚀 Starting AI Karen Backend Server...")
+    print("📍 Server will be available at:")
     print(f"   - http://localhost:{port}")
     print(f"   - http://127.0.0.1:{port}")
     print(f"   - http://{host}:{port}")
-    print(f"🌐 CORS configured for Web UI on port 9002")
-    print(f"⏹️  Press Ctrl+C to stop the server")
+    print("🌐 CORS configured for Web UI on port 9002")
+    print("⏹️  Press Ctrl+C to stop the server")
     print("-" * 60)
 
     try:
