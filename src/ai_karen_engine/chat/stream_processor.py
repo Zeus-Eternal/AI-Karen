@@ -12,6 +12,10 @@ class StreamProcessor:
 
     async def start(self) -> None:
         """Start the heartbeat loop."""
+        # Schedule the heartbeat loop as a background task. Using
+        # ``asyncio.create_task`` ensures the coroutine is properly
+        # registered with the event loop and prevents ``coroutine was
+        # never awaited`` warnings when the processor shuts down.
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
     async def shutdown(self) -> None:

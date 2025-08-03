@@ -50,6 +50,13 @@ class WebSocketGateway:
         for task in self._tasks:
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+        # Reset references so any pending coroutines are not left dangling
+        # which previously triggered 'coroutine was never awaited' warnings
+        # during shutdown.
+        self._typing_cleanup_task = None
+        self._presence_cleanup_task = None
+        self._message_cleanup_task = None
+        self._heartbeat_task = None
         self._tasks.clear()
 
     async def _cleanup_expired_typing(self) -> None:  # pragma: no cover - loop
