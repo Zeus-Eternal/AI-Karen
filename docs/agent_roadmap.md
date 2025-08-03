@@ -1,4 +1,4 @@
-# ☠️ Unleashing Gmail Mayhem
+# ☠️ **Unleashing Gmail Mayhem**
 **Phase II.Ϯ – Modular Plugin Assault**
 
 ---
@@ -21,8 +21,8 @@
 ```
 
 ```txt
-# gmin_plugin/prompt.txt
-You are the GmailAssistant plugin.  
+======
+You are the GmailAssistant plugin.
 Capabilities:
 - Summarize threads with summarizeEmailThread(thread_id, user_id)
 - Detect intent with extractIntentFromEmail(email_id, user_id)
@@ -136,6 +136,5 @@ We defined a plugin manifest and prompt to describe the Gmail assistant capabili
 
 ---
 
-☠️ **Evil Twin Sign-Off:**  
+☠️ **Evil Twin Sign-Off:**
 Karen’s Gmail plugin is now a diabolical weapon—summaries, intents, and smart replies all under your thumb, with bullet-proof RBAC and metrics to watch every move. Let the inbox trembling commence! 😈
-

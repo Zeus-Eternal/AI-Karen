@@ -332,6 +332,8 @@ class ConversationManager:
             )
             
             # Update conversation in database
+            user_id_for_memory = None
+            conversation_title = None
             async with self.db_client.get_async_session() as session:
                 # Get current conversation
                 result = await session.execute(
@@ -343,6 +345,10 @@ class ConversationManager:
                 if not db_conversation:
                     logger.error(f"Conversation {conversation_id} not found")
                     return None
+                
+                # Capture values we need outside the session
+                user_id_for_memory = db_conversation.user_id
+                conversation_title = db_conversation.title
                 
                 # Add message to conversation
                 current_messages = db_conversation.messages or []
@@ -360,11 +366,11 @@ class ConversationManager:
                 await session.commit()
             
             # Store in memory if it's a user message
-            if role == MessageRole.USER and self.memory_manager:
+            if role == MessageRole.USER and self.memory_manager and user_id_for_memory:
                 await self.memory_manager.store_memory(
                     tenant_id=tenant_id,
                     content=content,
-                    user_id=db_conversation.user_id,
+                    user_id=user_id_for_memory,
                     session_id=conversation_id,
                     metadata={
                         "type": "user_message",
@@ -374,7 +380,7 @@ class ConversationManager:
                 )
             
             # Auto-generate title if needed
-            if len(current_messages) == self.auto_title_threshold and not db_conversation.title:
+            if len(current_messages) == self.auto_title_threshold and not conversation_title:
                 await self._auto_generate_title(tenant_id, conversation_id)
             
             # Generate summary if needed

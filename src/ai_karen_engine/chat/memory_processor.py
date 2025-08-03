@@ -768,13 +768,13 @@ class MemoryProcessor:
         self,
         relevant_memories: List[RelevantMemory]
     ) -> MemoryContext:
-        """Build structured memory context from relevant memories."""
+        """Build structured memory context from relevant memories with intelligent aggregation."""
         entities = []
         preferences = []
         facts = []
         relationships = []
         
-        # Categorize memories
+        # Categorize and process memories
         for memory in relevant_memories:
             memory_data = {
                 "content": memory.content,
@@ -793,18 +793,14 @@ class MemoryProcessor:
             elif memory.memory_type == MemoryType.RELATIONSHIP:
                 relationships.append(memory_data)
         
-        # Build context summary
-        context_parts = []
-        if entities:
-            context_parts.append(f"{len(entities)} relevant entities")
-        if preferences:
-            context_parts.append(f"{len(preferences)} user preferences")
-        if facts:
-            context_parts.append(f"{len(facts)} factual memories")
-        if relationships:
-            context_parts.append(f"{len(relationships)} relationships")
+        # Resolve conflicts and aggregate preferences
+        preferences = await self._resolve_preference_conflicts(preferences)
+        facts = await self._resolve_fact_conflicts(facts)
         
-        context_summary = f"Retrieved {', '.join(context_parts)}" if context_parts else "No relevant memories found"
+        # Build intelligent context summary
+        context_summary = await self._generate_context_summary(
+            entities, preferences, facts, relationships
+        )
         
         return MemoryContext(
             memories=relevant_memories,
@@ -816,6 +812,381 @@ class MemoryProcessor:
             retrieval_time=0.0,  # Will be set by caller
             total_memories_considered=0  # Will be set by caller
         )
+    
+    async def _resolve_preference_conflicts(
+        self, 
+        preferences: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Resolve conflicts in user preferences using recency and confidence."""
+        if not preferences:
+            return preferences
+        
+        # Group preferences by content/subject
+        preference_groups = {}
+        for pref in preferences:
+            # Extract preference content from metadata
+            pref_content = pref.get("metadata", {}).get("preference_content", "")
+            
+            # Use the preference content as the grouping key
+            key = pref_content.lower() if pref_content else "general"
+            
+            if key not in preference_groups:
+                preference_groups[key] = []
+            preference_groups[key].append(pref)
+        
+        resolved_preferences = []
+        
+        for group_key, group_prefs in preference_groups.items():
+            if len(group_prefs) == 1:
+                resolved_preferences.extend(group_prefs)
+            else:
+                # Check for contradictory preferences (positive vs negative)
+                positive_prefs = []
+                negative_prefs = []
+                
+                for pref in group_prefs:
+                    pref_type = pref.get("metadata", {}).get("preference_type", "")
+                    if "negative" in pref_type or "don't" in pref.get("content", "").lower():
+                        negative_prefs.append(pref)
+                    else:
+                        positive_prefs.append(pref)
+                
+                # If we have both positive and negative preferences, keep the most recent
+                if positive_prefs and negative_prefs:
+                    all_prefs = positive_prefs + negative_prefs
+                    all_prefs.sort(key=lambda p: p.get("recency_score", 0), reverse=True)
+                    resolved_preferences.append(all_prefs[0])
+                    self._conflict_resolution_count += 1
+                else:
+                    # No conflict, keep the highest scoring preference
+                    group_prefs.sort(key=lambda p: p.get("combined_score", 0), reverse=True)
+                    resolved_preferences.append(group_prefs[0])
+        
+        return resolved_preferences
+    
+    async def _resolve_fact_conflicts(
+        self, 
+        facts: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Resolve conflicts in factual memories using confidence and recency."""
+        if not facts:
+            return facts
+        
+        # Group facts by subject
+        fact_groups = {}
+        for fact in facts:
+            subject = fact.get("metadata", {}).get("subject", "")
+            if not subject:
+                # Try to extract subject from content
+                content = fact.get("content", "")
+                subject = content.split()[0] if content else "unknown"
+            
+            if subject not in fact_groups:
+                fact_groups[subject] = []
+            fact_groups[subject].append(fact)
+        
+        resolved_facts = []
+        
+        for subject, group_facts in fact_groups.items():
+            if len(group_facts) == 1:
+                resolved_facts.extend(group_facts)
+            else:
+                # Check for contradictory facts about the same subject
+                # Sort by confidence level (high > medium > low) and then by recency
+                def sort_key(f):
+                    confidence = f.get("metadata", {}).get("confidence", "low")
+                    confidence_score = {"high": 3, "medium": 2, "low": 1}.get(confidence, 1)
+                    recency_score = f.get("recency_score", 0)
+                    return (confidence_score, recency_score)
+                
+                group_facts.sort(key=sort_key, reverse=True)
+                
+                # Keep the most confident and recent fact
+                resolved_facts.append(group_facts[0])
+                
+                # Log conflict resolution
+                if len(group_facts) > 1:
+                    self._conflict_resolution_count += 1
+                    logger.info(f"Resolved fact conflict for subject '{subject}': kept most recent/confident fact")
+        
+        return resolved_facts
+    
+    async def _generate_context_summary(
+        self,
+        entities: List[Dict[str, Any]],
+        preferences: List[Dict[str, Any]],
+        facts: List[Dict[str, Any]],
+        relationships: List[Dict[str, Any]]
+    ) -> str:
+        """Generate intelligent context summary with key insights."""
+        summary_parts = []
+        
+        # Summarize entities
+        if entities:
+            entity_types = {}
+            for entity in entities:
+                entity_type = entity.get("metadata", {}).get("entity_label", "MISC")
+                entity_types[entity_type] = entity_types.get(entity_type, 0) + 1
+            
+            entity_summary = ", ".join([f"{count} {etype.lower()}" for etype, count in entity_types.items()])
+            summary_parts.append(f"Entities: {entity_summary}")
+        
+        # Summarize preferences with insights
+        if preferences:
+            positive_prefs = []
+            negative_prefs = []
+            
+            for pref in preferences:
+                pref_type = pref.get("metadata", {}).get("preference_type", "")
+                content = pref.get("content", "")
+                
+                if "negative" in pref_type or "don't" in content.lower():
+                    negative_prefs.append(pref)
+                else:
+                    positive_prefs.append(pref)
+            
+            pref_summary = f"{len(positive_prefs)} likes"
+            if negative_prefs:
+                pref_summary += f", {len(negative_prefs)} dislikes"
+            summary_parts.append(f"Preferences: {pref_summary}")
+        
+        # Summarize facts by type
+        if facts:
+            fact_types = {}
+            for fact in facts:
+                fact_type = fact.get("metadata", {}).get("fact_type", "general")
+                fact_types[fact_type] = fact_types.get(fact_type, 0) + 1
+            
+            fact_summary = ", ".join([f"{count} {ftype.replace('_', ' ')}" for ftype, count in fact_types.items()])
+            summary_parts.append(f"Facts: {fact_summary}")
+        
+        # Summarize relationships
+        if relationships:
+            summary_parts.append(f"Relationships: {len(relationships)} connections")
+        
+        if not summary_parts:
+            return "No relevant context found"
+        
+        # Add confidence and recency insights
+        all_memories = entities + preferences + facts + relationships
+        if all_memories:
+            avg_confidence = sum(1 for m in all_memories if m.get("metadata", {}).get("confidence") == "high") / len(all_memories)
+            avg_recency = sum(m.get("recency_score", 0) for m in all_memories) / len(all_memories)
+            
+            confidence_note = "high confidence" if avg_confidence > 0.7 else "mixed confidence"
+            recency_note = "recent" if avg_recency > 0.5 else "older"
+            
+            summary_parts.append(f"({confidence_note}, {recency_note} memories)")
+        
+        return f"Retrieved {', '.join(summary_parts)}"
+    
+    async def get_memory_analytics(
+        self, 
+        user_id: str, 
+        time_range: Optional[Tuple[datetime, datetime]] = None
+    ) -> Dict[str, Any]:
+        """Get comprehensive memory analytics and usage tracking."""
+        try:
+            # Build query for user's memories
+            query = MemoryQuery(
+                text="",
+                user_id=user_id,
+                top_k=1000,  # Get many memories for analysis
+                similarity_threshold=0.0,  # Include all memories
+                time_range=time_range
+            )
+            
+            memories = await self.memory_manager.query_memories("default_tenant", query)
+            
+            if not memories:
+                return {
+                    "total_memories": 0,
+                    "memory_types": {},
+                    "confidence_distribution": {},
+                    "temporal_distribution": {},
+                    "extraction_methods": {},
+                    "avg_similarity_scores": {},
+                    "memory_growth": [],
+                    "top_entities": [],
+                    "preference_insights": {},
+                    "fact_categories": {}
+                }
+            
+            # Analyze memory types
+            memory_types = {}
+            confidence_dist = {"high": 0, "medium": 0, "low": 0}
+            extraction_methods = {}
+            temporal_dist = {}
+            
+            # Track entities and preferences for insights
+            entities = {}
+            preferences = {"positive": [], "negative": []}
+            fact_categories = {}
+            
+            for memory in memories:
+                # Memory type analysis
+                mem_type = memory.metadata.get("type", "unknown")
+                memory_types[mem_type] = memory_types.get(mem_type, 0) + 1
+                
+                # Confidence analysis
+                confidence = memory.metadata.get("confidence", "medium")
+                confidence_dist[confidence] = confidence_dist.get(confidence, 0) + 1
+                
+                # Extraction method analysis
+                method = memory.metadata.get("extraction_method", "unknown")
+                extraction_methods[method] = extraction_methods.get(method, 0) + 1
+                
+                # Temporal analysis
+                if memory.timestamp:
+                    memory_date = datetime.fromtimestamp(memory.timestamp)
+                    month_key = memory_date.strftime("%Y-%m")
+                    temporal_dist[month_key] = temporal_dist.get(month_key, 0) + 1
+                
+                # Entity analysis
+                if mem_type == "entity":
+                    entity_label = memory.metadata.get("entity_label", "MISC")
+                    entity_text = memory.metadata.get("entity_text", "")
+                    if entity_text:
+                        entities[entity_label] = entities.get(entity_label, [])
+                        entities[entity_label].append(entity_text)
+                
+                # Preference analysis
+                elif mem_type == "preference":
+                    pref_type = memory.metadata.get("preference_type", "")
+                    if "negative" in pref_type:
+                        preferences["negative"].append(memory.content)
+                    else:
+                        preferences["positive"].append(memory.content)
+                
+                # Fact analysis
+                elif mem_type == "fact":
+                    fact_type = memory.metadata.get("fact_type", "general")
+                    fact_categories[fact_type] = fact_categories.get(fact_type, 0) + 1
+            
+            # Calculate top entities
+            top_entities = []
+            for entity_type, entity_list in entities.items():
+                entity_counts = {}
+                for entity in entity_list:
+                    entity_counts[entity] = entity_counts.get(entity, 0) + 1
+                
+                for entity, count in sorted(entity_counts.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    top_entities.append({
+                        "entity": entity,
+                        "type": entity_type,
+                        "count": count
+                    })
+            
+            # Memory growth analysis
+            memory_growth = []
+            sorted_months = sorted(temporal_dist.keys())
+            cumulative = 0
+            for month in sorted_months:
+                cumulative += temporal_dist[month]
+                memory_growth.append({
+                    "month": month,
+                    "new_memories": temporal_dist[month],
+                    "total_memories": cumulative
+                })
+            
+            # Preference insights
+            preference_insights = {
+                "total_preferences": len(preferences["positive"]) + len(preferences["negative"]),
+                "positive_ratio": len(preferences["positive"]) / max(1, len(preferences["positive"]) + len(preferences["negative"])),
+                "top_positive": preferences["positive"][:5],
+                "top_negative": preferences["negative"][:5]
+            }
+            
+            return {
+                "total_memories": len(memories),
+                "memory_types": memory_types,
+                "confidence_distribution": confidence_dist,
+                "temporal_distribution": temporal_dist,
+                "extraction_methods": extraction_methods,
+                "memory_growth": memory_growth,
+                "top_entities": top_entities[:10],
+                "preference_insights": preference_insights,
+                "fact_categories": fact_categories,
+                "analysis_timestamp": datetime.utcnow().isoformat(),
+                "time_range": [t.isoformat() for t in time_range] if time_range else None
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to generate memory analytics: {e}")
+            return {"error": str(e)}
+    
+    async def learn_user_preferences(
+        self, 
+        user_id: str, 
+        conversation_history: List[str]
+    ) -> Dict[str, Any]:
+        """Learn and update user preferences from conversation patterns."""
+        try:
+            learned_patterns = {
+                "communication_style": {},
+                "topic_interests": {},
+                "response_preferences": {},
+                "interaction_patterns": {}
+            }
+            
+            # Analyze conversation patterns
+            for message in conversation_history:
+                # Parse message for preference learning
+                parsed_data = await self.spacy_service.parse_message(message)
+                embeddings = await self.distilbert_service.get_embeddings(message)
+                
+                # Extract implicit preferences from communication style
+                if len(message.split()) > 20:
+                    learned_patterns["communication_style"]["verbose"] = learned_patterns["communication_style"].get("verbose", 0) + 1
+                else:
+                    learned_patterns["communication_style"]["concise"] = learned_patterns["communication_style"].get("concise", 0) + 1
+                
+                # Analyze question patterns
+                if "?" in message:
+                    learned_patterns["interaction_patterns"]["asks_questions"] = learned_patterns["interaction_patterns"].get("asks_questions", 0) + 1
+                
+                # Extract topic interests from entities
+                for entity_text, entity_label in parsed_data.entities:
+                    if entity_label in ["ORG", "PRODUCT", "WORK_OF_ART", "EVENT"]:
+                        learned_patterns["topic_interests"][entity_text.lower()] = learned_patterns["topic_interests"].get(entity_text.lower(), 0) + 1
+            
+            # Store learned preferences as memories
+            for category, patterns in learned_patterns.items():
+                if patterns:
+                    # Find the most common pattern in each category
+                    top_pattern = max(patterns.items(), key=lambda x: x[1])
+                    
+                    # Create a preference memory
+                    preference_content = f"User tends to {category.replace('_', ' ')}: {top_pattern[0]}"
+                    
+                    # Store as a learned preference
+                    await self.memory_manager.store_memory(
+                        tenant_id="default_tenant",
+                        content=preference_content,
+                        user_id=user_id,
+                        metadata={
+                            "type": "preference",
+                            "preference_type": "learned_pattern",
+                            "category": category,
+                            "confidence": "medium",
+                            "extraction_method": "pattern_learning",
+                            "pattern_strength": top_pattern[1]
+                        },
+                        tags=["preference", "learned", category]
+                    )
+            
+            logger.info(f"Learned {sum(len(p) for p in learned_patterns.values())} preference patterns for user {user_id}")
+            
+            return {
+                "learned_patterns": learned_patterns,
+                "total_patterns": sum(len(p) for p in learned_patterns.values()),
+                "categories_analyzed": len([c for c, p in learned_patterns.items() if p]),
+                "learning_timestamp": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to learn user preferences: {e}")
+            return {"error": str(e)}
     
     def get_processing_stats(self) -> Dict[str, Any]:
         """Get memory processing statistics."""
