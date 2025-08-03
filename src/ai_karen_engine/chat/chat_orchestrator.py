@@ -212,18 +212,28 @@ class ChatOrchestrator:
                 self._successful_requests += 1
                 context.status = ProcessingStatus.COMPLETED
                 
+                # Build metadata with context information
+                metadata = {
+                    "parsed_entities": len(result.parsed_message.entities) if result.parsed_message else 0,
+                    "embedding_dimension": len(result.embeddings) if result.embeddings else 0,
+                    "retry_count": context.retry_count,
+                    **context.metadata
+                }
+                
+                # Add context summary if available
+                if result.context:
+                    metadata["context_summary"] = result.context.get("context_summary", "Context retrieved")
+                    metadata["memories_used"] = len(result.context.get("memories", []))
+                    metadata["retrieval_time"] = result.context.get("retrieval_time", 0.0)
+                    metadata["total_memories_considered"] = result.context.get("total_memories_considered", 0)
+                
                 return ChatResponse(
                     response=result.response or "",
                     correlation_id=context.correlation_id,
                     processing_time=processing_time,
                     used_fallback=result.used_fallback,
                     context_used=bool(result.context),
-                    metadata={
-                        "parsed_entities": len(result.parsed_message.entities) if result.parsed_message else 0,
-                        "embedding_dimension": len(result.embeddings) if result.embeddings else 0,
-                        "retry_count": context.retry_count,
-                        **context.metadata
-                    }
+                    metadata=metadata
                 )
             else:
                 self._failed_requests += 1
@@ -637,7 +647,12 @@ class ChatOrchestrator:
         # Build context string
         context_info = ""
         if context and context.get("entities"):
-            entities = [f"{ent['label']}: {ent['text']}" for ent in context["entities"]]
+            entities = []
+            for ent in context["entities"]:
+                if isinstance(ent, dict):
+                    entities.append(f"{ent.get('label', 'UNKNOWN')}: {ent.get('text', '')}")
+                elif isinstance(ent, (list, tuple)) and len(ent) >= 2:
+                    entities.append(f"{ent[1]}: {ent[0]}")
             if entities:
                 context_info = f" (Entities detected: {', '.join(entities)})"
         

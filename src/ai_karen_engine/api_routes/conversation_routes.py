@@ -249,8 +249,8 @@ async def create_conversation(
     """Create a new conversation with web UI features."""
     try:
         conversation = await conversation_service.create_web_ui_conversation(
-            tenant_id="default",
-            user_id="anonymous",
+            tenant_id="00000000-0000-0000-0000-000000000001",  # Default tenant UUID
+            user_id="00000000-0000-0000-0000-000000000002",    # Anonymous user UUID
             session_id=request.session_id,
             ui_source=request.ui_source,
             title=request.title,
@@ -304,7 +304,7 @@ async def get_conversation(
     """Get conversation by ID with web UI features."""
     try:
         conversation = await conversation_service.get_web_ui_conversation(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
             include_context=include_context
         )
@@ -350,7 +350,7 @@ async def add_message(
     """Add a message to conversation with web UI features."""
     try:
         message = await conversation_service.add_web_ui_message(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
             role=request.role,
             content=request.content,
@@ -425,7 +425,7 @@ async def build_context(
     """Build comprehensive conversation context."""
     try:
         context = await conversation_service.build_conversation_context(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
             current_message=request.current_message,
             include_memories=request.include_memories,
@@ -459,7 +459,7 @@ async def update_ui_context(
     """Update conversation UI context."""
     try:
         success = await conversation_service.update_conversation_ui_context(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
             ui_context=request.ui_context
         )
@@ -508,7 +508,7 @@ async def update_ai_insights(
     """Update conversation AI insights."""
     try:
         success = await conversation_service.update_conversation_ai_insights(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
             ai_insights=request.ai_insights
         )
@@ -557,7 +557,7 @@ async def add_tags(
     """Add tags to conversation."""
     try:
         success = await conversation_service.add_conversation_tags(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
             tags=request.tags
         )
@@ -607,8 +607,8 @@ async def list_conversations(
     """List conversations for current user."""
     try:
         conversations = await conversation_service.base_manager.list_conversations(
-            tenant_id="default",
-            user_id="anonymous",
+            tenant_id="00000000-0000-0000-0000-000000000001",
+            user_id="00000000-0000-0000-0000-000000000002",
             active_only=active_only,
             limit=limit,
             offset=offset
@@ -667,7 +667,7 @@ async def update_conversation(
     """Update conversation properties."""
     try:
         success = await conversation_service.base_manager.update_conversation(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
             title=title,
             is_active=is_active
@@ -716,7 +716,7 @@ async def delete_conversation(
     """Delete a conversation."""
     try:
         success = await conversation_service.base_manager.delete_conversation(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id
         )
         
@@ -770,10 +770,10 @@ async def get_analytics(
             time_range = (time_range_start, time_range_end)
         
         # Use current user if no user_id specified
-        target_user_id = user_id or "anonymous"
+        target_user_id = user_id or "00000000-0000-0000-0000-000000000002"
         
         analytics = await conversation_service.get_conversation_analytics(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             user_id=target_user_id,
             time_range=time_range
         )
@@ -803,7 +803,7 @@ async def get_conversation_stats(
     """Get basic conversation statistics."""
     try:
         stats = await conversation_service.base_manager.get_conversation_stats(
-            tenant_id, "anonymous"
+            tenant_id, "00000000-0000-0000-0000-000000000002"
         )
         web_ui_metrics = conversation_service.get_metrics()
         
@@ -837,7 +837,7 @@ async def cleanup_inactive_conversations(
     """Mark old conversations as inactive."""
     try:
         count = await conversation_service.base_manager.cleanup_inactive_conversations(
-            tenant_id="default",
+            tenant_id="00000000-0000-0000-0000-000000000001",
             days_inactive=days_inactive
         )
         

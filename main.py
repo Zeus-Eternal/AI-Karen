@@ -317,6 +317,9 @@ PUBLIC_PATHS = {
     "/api/analytics/system",
     "/api/analytics/usage",
     "/api/health",
+    # Conversation endpoints - must be public for web UI integration
+    "/api/conversations/create",
+    "/api/conversations",
     # Authentication endpoints - must be public for login to work
     "/api/auth/login",
     "/api/auth/register",
@@ -342,7 +345,13 @@ TENANT_HEADER = "X-Tenant-ID"
 
 @app.middleware("http")
 async def require_tenant(request: Request, call_next):
-    if request.url.path not in PUBLIC_PATHS:
+    # Check if path is in public paths or matches conversation patterns
+    is_public = (
+        request.url.path in PUBLIC_PATHS or
+        request.url.path.startswith("/api/conversations/")
+    )
+    
+    if not is_public:
         tenant = request.headers.get(TENANT_HEADER)
         if not tenant:
             auth = request.headers.get("authorization", "")
