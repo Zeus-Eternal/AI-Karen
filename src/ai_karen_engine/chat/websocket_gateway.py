@@ -3,7 +3,22 @@ import contextlib
 from typing import List, Optional
 
 
-class WebsocketGateway:
+class WebSocketMessage:
+    """Represents a message sent or received over the websocket."""
+    def __init__(self, content: str, type_: 'MessageType'):
+        self.content = content
+        self.type = type_
+
+
+class MessageType:
+    """Enumeration of websocket message types."""
+    TEXT = "text"
+    BINARY = "binary"
+    PING = "ping"
+    PONG = "pong"
+    CLOSE = "close"
+
+class WebSocketGateway:
     """Manage websocket background tasks such as cleanup and heartbeats."""
 
     def __init__(self, cleanup_interval: float = 30.0, heartbeat_interval: float = 30.0) -> None:

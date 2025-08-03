@@ -12,7 +12,7 @@ from ai_karen_engine.chat.chat_orchestrator import (
     ProcessingStatus,
     ErrorType
 )
-from ai_karen_engine.chat.websocket_gateway import WebsocketGateway
+from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
 from ai_karen_engine.chat.stream_processor import StreamProcessor
 
 __all__ = [
