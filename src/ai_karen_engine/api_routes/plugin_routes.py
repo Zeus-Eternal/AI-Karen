@@ -27,6 +27,15 @@ from ai_karen_engine.models.web_api_error_responses import (
 
 router = APIRouter(prefix="/api/plugins", tags=["plugins"])
 
+
+def get_current_user() -> Dict[str, Any]:
+    """Retrieve current user context.
+
+    This is a placeholder implementation that always returns an admin user.
+    In production, this should extract the user from the request/session.
+    """
+    return {"user_id": "admin", "roles": ["admin"], "tenant_id": "default"}
+
 logger = get_logger(__name__)
 
 
@@ -290,26 +299,15 @@ async def validate_plugin_parameters(
 @router.post("/{plugin_name}/enable")
 async def enable_plugin(
     plugin_name: str,
-    
-    plugin_service: PluginService = Depends(get_plugin_service)
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    plugin_service: PluginService = Depends(get_plugin_service),
 ):
     """Enable a plugin."""
     try:
-        # TODO: Check if user has admin privileges when auth is implemented
-        # For now, allow all operations for Web UI API
-        # if "admin" not in current_user.get("roles", []):
-        #     error_response = create_generic_error_response(
-        #         error_code=WebAPIErrorCode.AUTHORIZATION_ERROR,
-        #         message="Admin privileges required",
-        #         user_message="You need administrator privileges to perform this action."
-        #     )
-        #     raise HTTPException(
-        #         status_code=get_http_status_for_error_code(WebAPIErrorCode.AUTHORIZATION_ERROR),
-        #         detail=error_response.dict(),
-        #     )
-        
+        if "admin" not in current_user.get("roles", []):
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+
         success = await plugin_service.enable_plugin(plugin_name)
-        
         if not success:
             error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
@@ -346,26 +344,15 @@ async def enable_plugin(
 @router.post("/{plugin_name}/disable")
 async def disable_plugin(
     plugin_name: str,
-    
-    plugin_service: PluginService = Depends(get_plugin_service)
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    plugin_service: PluginService = Depends(get_plugin_service),
 ):
     """Disable a plugin."""
     try:
-        # TODO: Check if user has admin privileges when auth is implemented
-        # For now, allow all operations for Web UI API
-        # if "admin" not in current_user.get("roles", []):
-        #     error_response = create_generic_error_response(
-        #         error_code=WebAPIErrorCode.AUTHORIZATION_ERROR,
-        #         message="Admin privileges required",
-        #         user_message="You need administrator privileges to perform this action."
-        #     )
-        #     raise HTTPException(
-        #         status_code=get_http_status_for_error_code(WebAPIErrorCode.AUTHORIZATION_ERROR),
-        #         detail=error_response.dict(),
-        #     )
-        
+        if "admin" not in current_user.get("roles", []):
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+
         success = await plugin_service.disable_plugin(plugin_name)
-        
         if not success:
             error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
@@ -469,26 +456,15 @@ async def get_plugin_metrics(
 
 @router.post("/reload")
 async def reload_plugins(
-    
-    plugin_service: PluginService = Depends(get_plugin_service)
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    plugin_service: PluginService = Depends(get_plugin_service),
 ):
     """Reload all plugins from disk."""
     try:
-        # TODO: Check if user has admin privileges when auth is implemented
-        # For now, allow all operations for Web UI API
-        # if "admin" not in current_user.get("roles", []):
-        #     error_response = create_generic_error_response(
-        #         error_code=WebAPIErrorCode.AUTHORIZATION_ERROR,
-        #         message="Admin privileges required",
-        #         user_message="You need administrator privileges to perform this action."
-        #     )
-        #     raise HTTPException(
-        #         status_code=get_http_status_for_error_code(WebAPIErrorCode.AUTHORIZATION_ERROR),
-        #         detail=error_response.dict(),
-        #     )
-        
+        if "admin" not in current_user.get("roles", []):
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+
         count = await plugin_service.reload_plugins()
-        
         return {
             "success": True,
             "message": f"Reloaded {count} plugins successfully",
