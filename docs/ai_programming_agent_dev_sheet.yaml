@@ -1,0 +1,77 @@
+# docs/ai_programming_agent_dev_sheet.yaml
+agent:
+  name: AIProgrammingAgent
+  version: 1.0.0
+  description: >
+    Agent specialized in code comprehension, generation, debugging,
+    refactoring and optimization tasks, integrated with Karen's
+    prompt-first plugin framework.
+  capabilities:
+    - parseCode
+    - generateCode
+    - debugCode
+    - optimizeCode
+    - refactorCode
+  interfaces:
+    endpoints:
+      /agent/program:
+        method: POST
+        handler: handleProgramRequest
+      /agent/debug:
+        method: POST
+        handler: handleDebugRequest
+      /agent/optimize:
+        method: POST
+        handler: handleOptimizeRequest
+  modules:
+    ParserModule:
+      description: "Syntax tree generation & static analysis"
+      dependencies: [TypeScriptCompiler, ASTService]
+    GenerationModule:
+      description: "LLM-driven code generation"
+      dependencies: [KarenBackend, PromptManager]
+    DebuggerModule:
+      description: "Semantic error detection & suggestion"
+      dependencies: [ErrorAnalyzer, StackTraceParser]
+    OptimizerModule:
+      description: "Performance profiling & code improvements"
+      dependencies: [ProfilerService, LinterService]
+    RefactorModule:
+      description: "Automated refactoring rules & formatting"
+      dependencies: [PatternRewriter, CodeFormatter]
+  integrations:
+    memory:
+      type: vector
+      primary: milvus
+      fallback: redis
+    metrics:
+      logger: MetricsLogger
+    rbac:
+      service: RBACService
+  observability:
+    traces: true
+    metrics:
+      - agent_invocations
+      - latency_ms
+      - error_count
+    logging: structured_json
+  security:
+    rbac_roles: [user, admin]
+    input_sanitization: true
+  testing:
+    unit_coverage: 80%
+    integration_tests: true
+    load_tests:
+      concurrent_sessions: 200
+  deployment:
+    container:
+      image: ai_programming_agent:1.0.0
+      resources:
+        cpu: "500m"
+        memory: "1Gi"
+    kubernetes:
+      replicas: 3
+      autoscaling:
+        minReplicas: 2
+        maxReplicas: 10
+        cpuThresholdPercent: 70

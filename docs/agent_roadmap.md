@@ -21,7 +21,7 @@
 ```
 
 ```txt
-# gmin_plugin/prompt.txt
+======
 You are the GmailAssistant plugin.
 Capabilities:
 - Summarize threads with summarizeEmailThread(thread_id, user_id)
