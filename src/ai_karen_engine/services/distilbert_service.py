@@ -111,9 +111,13 @@ class DistilBertService:
     
     def _setup_device(self):
         """Setup compute device (GPU/CPU)."""
-        if self.config.enable_gpu and torch.cuda.is_available():
-            device = torch.device("cuda")
-            logger.info(f"Using GPU: {torch.cuda.get_device_name()}")
+        if self.config.enable_gpu:
+            if torch.cuda.is_available():
+                device = torch.device("cuda")
+                logger.info(f"Using GPU: {torch.cuda.get_device_name()}")
+            else:
+                device = torch.device("cpu")
+                logger.info("CUDA unavailable, using CPU for inference")
         else:
             device = torch.device("cpu")
             logger.info("Using CPU for inference")
