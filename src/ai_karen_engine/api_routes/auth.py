@@ -10,6 +10,7 @@ from pydantic import BaseModel, EmailStr
 
 from ai_karen_engine.services.auth_service import auth_service
 from ai_karen_engine.core.logging import get_logger
+from ai_karen_engine.security.auth_manager import verify_totp
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -172,8 +173,12 @@ async def login(
                 detail="Two-factor authentication required"
             )
         
-        # TODO: Verify TOTP code if provided
-        # This would integrate with the existing 2FA system
+        if user_data["two_factor_enabled"]:
+            if not verify_totp(user_data["user_id"], req.totp_code or ""):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid two-factor code",
+                )
         
         # Create session
         session_data = await auth_service.create_session(
