@@ -102,6 +102,9 @@ class BehavioralEmbeddingConfig:
     outlier_threshold: float = 0.3
     cache_size: int = 5000
     cache_ttl: int = 3600
+    attack_pattern_db_path: Optional[str] = None
+    attack_similarity_threshold: float = 0.8
+    cluster_count: int = 5
 
 
 class BehavioralEmbeddingService:
@@ -113,11 +116,25 @@ class BehavioralEmbeddingService:
     def __init__(
         self,
         distilbert_service: Optional[DistilBertService] = None,
-        config: Optional[BehavioralEmbeddingConfig] = None
+        config: Optional[BehavioralEmbeddingConfig] = None,
+        attack_db_client: Optional[Any] = None
     ):
         self.config = config or BehavioralEmbeddingConfig()
         self.distilbert_service = distilbert_service or DistilBertService()
+        self.attack_db_client = attack_db_client
         self.logger = logger
+
+        # Load attack pattern embeddings if configured
+        self.attack_pattern_embeddings: List[Tuple[str, List[float]]] = []
+        try:
+            if self.attack_db_client is not None:
+                self.attack_pattern_embeddings = self.attack_db_client.get_attack_embeddings()
+            elif self.config.attack_pattern_db_path:
+                self.attack_pattern_embeddings = self._load_attack_pattern_embeddings(
+                    self.config.attack_pattern_db_path
+                )
+        except Exception as e:
+            self.logger.error(f"Failed to load attack pattern embeddings: {e}")
         
         # User behavioral profiles storage (in-memory with fallback)
         self.user_profiles: Dict[str, UserBehavioralProfile] = {}
@@ -133,7 +150,7 @@ class BehavioralEmbeddingService:
             ttl=self.config.cache_ttl // 2
         )
         self.cache_lock = threading.RLock()
-        
+
         # Metrics tracking
         self._embedding_count = 0
         self._similarity_calculations = 0
@@ -142,6 +159,23 @@ class BehavioralEmbeddingService:
         self._processing_times = []
         
         self.logger.info("BehavioralEmbeddingService initialized")
+
+    def _load_attack_pattern_embeddings(self, path: str) -> List[Tuple[str, List[float]]]:
+        """Load attack pattern embeddings from a JSON file."""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            patterns = data.get("attack_patterns", [])
+            embeddings: List[Tuple[str, List[float]]] = []
+            for pattern in patterns:
+                pid = pattern.get("id", "")
+                embedding = pattern.get("embedding")
+                if isinstance(embedding, list):
+                    embeddings.append((pid, embedding))
+            return embeddings
+        except Exception as e:
+            self.logger.error(f"Failed to load attack pattern embeddings from {path}: {e}")
+            return []
     
     async def generate_behavioral_embedding(
         self,
@@ -446,18 +480,49 @@ class BehavioralEmbeddingService:
         try:
             # Get similarity scores from embedding result
             similarity_scores = embedding_result.similarity_scores
-            
+
             # Calculate similarity to user profile
             similarity_to_user_profile = similarity_scores.get('max_similarity_to_profile', 0.0)
-            
-            # Calculate similarity to attack patterns (placeholder - would use known attack embeddings)
-            similarity_to_attack_patterns = 0.0  # TODO: Implement with attack pattern database
-            
+
+            # Calculate similarity to attack patterns using configured database
+            similarity_to_attack_patterns = 0.0
+            if self.attack_pattern_embeddings:
+                attack_similarities = [
+                    self._cosine_similarity(
+                        embedding_result.embedding_vector, emb
+                    )
+                    for _, emb in self.attack_pattern_embeddings
+                ]
+                if attack_similarities:
+                    similarity_to_attack_patterns = max(attack_similarities)
+
             # Calculate outlier score based on similarity to user profile
-            outlier_score = 1.0 - similarity_to_user_profile if similarity_to_user_profile > 0 else 0.5
-            
-            # Determine cluster assignment (placeholder - would use clustering algorithm)
-            cluster_assignment = None  # TODO: Implement clustering
+            outlier_score = (
+                1.0 - similarity_to_user_profile
+                if similarity_to_user_profile > 0
+                else 0.5
+            )
+            if similarity_to_attack_patterns >= self.config.attack_similarity_threshold:
+                outlier_score = max(outlier_score, similarity_to_attack_patterns)
+
+            # Determine cluster assignment using k-means clustering
+            cluster_assignment = None
+            user_profile = self.get_user_profile(auth_context.email)
+            if user_profile and len(user_profile.typical_embeddings) >= self.config.cluster_count:
+                try:
+                    from sklearn.cluster import KMeans
+                    kmeans = KMeans(
+                        n_clusters=self.config.cluster_count,
+                        random_state=42,
+                        n_init=10
+                    )
+                    kmeans.fit(user_profile.typical_embeddings)
+                    cluster_id = int(
+                        kmeans.predict([embedding_result.embedding_vector])[0]
+                    )
+                    cluster_assignment = f"cluster_{cluster_id}"
+                except Exception as e:
+                    self.logger.error(f"Clustering failed: {e}")
             
             return EmbeddingAnalysis(
                 embedding_vector=embedding_result.embedding_vector,
