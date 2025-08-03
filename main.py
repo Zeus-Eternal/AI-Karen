@@ -202,11 +202,18 @@ else:
 
 def create_app() -> FastAPI:
     """Application factory for Kari AI"""
+    # The lifespan context manager manages startup and shutdown
+    # logic for the application. Previously this variable was
+    # referenced without being defined which caused the server
+    # to crash during initialization. We create it explicitly
+    # here before passing it to FastAPI so the app can start
+    # correctly.
+    lifespan = create_lifespan(settings)
     app = FastAPI(
         title=settings.app_name,
         description="Kari AI Production Server",
         version="1.0.0",
-        lifespan=create_lifespan(settings),
+        lifespan=lifespan,
         docs_url="/docs" if settings.debug else None,
         redoc_url="/redoc" if settings.debug else None,
         openapi_url="/openapi.json" if settings.debug else None,
