@@ -26,6 +26,10 @@ from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
 from ai_karen_engine.services.spacy_service import ParsedMessage
 from ai_karen_engine.models.shared_types import ChatMessage, MessageRole
 from ai_karen_engine.chat.memory_processor import MemoryProcessor, MemoryContext
+from ai_karen_engine.chat.file_attachment_service import FileAttachmentService
+from ai_karen_engine.chat.multimedia_service import MultimediaService
+from ai_karen_engine.chat.code_execution_service import CodeExecutionService
+from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +102,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = Field(None, description="Session ID for correlation")
     stream: bool = Field(True, description="Whether to stream the response")
     include_context: bool = Field(True, description="Whether to include memory context")
+    attachments: List[str] = Field(default_factory=list, description="List of file attachment IDs")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
@@ -134,11 +139,19 @@ class ChatOrchestrator:
     def __init__(
         self,
         memory_processor: Optional[MemoryProcessor] = None,
+        file_attachment_service: Optional[FileAttachmentService] = None,
+        multimedia_service: Optional[MultimediaService] = None,
+        code_execution_service: Optional[CodeExecutionService] = None,
+        tool_integration_service: Optional[ToolIntegrationService] = None,
         retry_config: Optional[RetryConfig] = None,
         timeout_seconds: float = 30.0,
         enable_monitoring: bool = True
     ):
         self.memory_processor = memory_processor
+        self.file_attachment_service = file_attachment_service
+        self.multimedia_service = multimedia_service
+        self.code_execution_service = code_execution_service
+        self.tool_integration_service = tool_integration_service
         self.retry_config = retry_config or RetryConfig()
         self.timeout_seconds = timeout_seconds
         self.enable_monitoring = enable_monitoring
@@ -154,7 +167,7 @@ class ChatOrchestrator:
         # Active processing contexts
         self._active_contexts: Dict[str, ProcessingContext] = {}
         
-        logger.info("ChatOrchestrator initialized with NLP integration")
+        logger.info("ChatOrchestrator initialized with NLP integration and file attachment support")
     
     async def process_message(
         self,
@@ -502,7 +515,23 @@ class ChatOrchestrator:
                     logger.warning(f"Memory extraction failed: {e}")
                     # Don't fail the entire request for memory extraction errors
             
-            # Step 4: Retrieve context (if enabled)
+            # Step 4: Process file attachments (if any)
+            attachment_context = {}
+            if request.attachments and self.file_attachment_service:
+                try:
+                    attachment_context = await self._process_attachments(
+                        request.attachments,
+                        request.user_id,
+                        request.conversation_id
+                    )
+                    logger.debug(f"Processed {len(request.attachments)} attachments")
+                    
+                except Exception as e:
+                    logger.warning(f"Attachment processing failed: {e}")
+                    # Don't fail the entire request for attachment processing errors
+                    attachment_context = {"error": str(e)}
+            
+            # Step 5: Retrieve context (if enabled)
             if request.include_context:
                 try:
                     retrieved_context = await self._retrieve_context(
@@ -513,12 +542,18 @@ class ChatOrchestrator:
                     )
                     logger.debug(f"Retrieved context: {retrieved_context.get('context_summary', 'No context')}")
                     
+                    # Merge attachment context into retrieved context
+                    if attachment_context:
+                        retrieved_context["attachments"] = attachment_context
+                    
                 except Exception as e:
                     logger.warning(f"Context retrieval failed: {e}")
                     # Don't fail the entire request for context retrieval errors
-                    retrieved_context = {}
+                    retrieved_context = {"attachments": attachment_context} if attachment_context else {}
+            else:
+                retrieved_context = {"attachments": attachment_context} if attachment_context else {}
             
-            # Step 5: Generate AI response
+            # Step 6: Generate AI response
             try:
                 ai_response = await self._generate_ai_response(
                     request.message,
@@ -638,11 +673,19 @@ class ChatOrchestrator:
         processing_context: ProcessingContext
     ) -> str:
         """Generate AI response using the processed information."""
-        # This is a placeholder for AI model integration
-        # In the actual implementation, this would integrate with:
-        # - LLM service (OpenAI, local models, etc.)
-        # - Context building from retrieved memories
-        # - Response generation with streaming support
+        # Check for code execution requests
+        code_execution_result = await self._handle_code_execution_request(
+            message, processing_context
+        )
+        if code_execution_result:
+            return code_execution_result
+        
+        # Check for tool execution requests
+        tool_execution_result = await self._handle_tool_execution_request(
+            message, processing_context
+        )
+        if tool_execution_result:
+            return tool_execution_result
         
         # Build context string
         context_info = ""
@@ -656,11 +699,28 @@ class ChatOrchestrator:
             if entities:
                 context_info = f" (Entities detected: {', '.join(entities)})"
         
+        # Add attachment information if available
+        attachment_info = ""
+        if context and context.get("attachments"):
+            attachments = context["attachments"]
+            if attachments.get("total_files", 0) > 0:
+                attachment_info = f" I also processed {attachments['total_files']} file attachment(s)."
+                
+                # Add extracted content summary
+                if attachments.get("extracted_content"):
+                    content_count = len(attachments["extracted_content"])
+                    attachment_info += f" I extracted content from {content_count} file(s)."
+                
+                # Add multimedia analysis summary
+                if attachments.get("multimedia_analysis"):
+                    media_count = len(attachments["multimedia_analysis"])
+                    attachment_info += f" I analyzed {media_count} multimedia file(s)."
+        
         # Simulate AI processing delay
         await asyncio.sleep(0.5)
         
         # Generate a contextual response
-        response = f"I understand your message: '{message}'{context_info}. "
+        response = f"I understand your message: '{message}'{context_info}.{attachment_info} "
         
         if parsed_message.entities:
             response += f"I noticed {len(parsed_message.entities)} important entities in your message. "
@@ -671,6 +731,281 @@ class ChatOrchestrator:
         response += "How can I help you further?"
         
         return response
+    
+    async def _handle_code_execution_request(
+        self,
+        message: str,
+        processing_context: ProcessingContext
+    ) -> Optional[str]:
+        """Handle code execution requests detected in the message."""
+        if not self.code_execution_service:
+            return None
+        
+        # Simple pattern matching for code execution requests
+        import re
+        
+        # Look for code blocks
+        code_block_pattern = r'```(\w+)?\n(.*?)\n```'
+        code_matches = re.findall(code_block_pattern, message, re.DOTALL)
+        
+        if not code_matches:
+            # Look for inline code execution requests
+            execution_patterns = [
+                r'execute\s+(?:this\s+)?(\w+)\s+code[:\s]+(.*)',
+                r'run\s+(?:this\s+)?(\w+)[:\s]+(.*)',
+                r'calculate[:\s]+(.*)',
+                r'eval(?:uate)?[:\s]+(.*)'
+            ]
+            
+            for pattern in execution_patterns:
+                match = re.search(pattern, message, re.IGNORECASE)
+                if match:
+                    if len(match.groups()) == 2:
+                        language, code = match.groups()
+                        code_matches = [(language.lower(), code.strip())]
+                    else:
+                        # Default to Python for calculations
+                        code_matches = [('python', match.group(1).strip())]
+                    break
+        
+        if not code_matches:
+            return None
+        
+        try:
+            # Execute the first code block found
+            language_str, code = code_matches[0]
+            
+            # Map language strings to CodeLanguage enum
+            language_mapping = {
+                'python': 'python',
+                'py': 'python',
+                'javascript': 'javascript',
+                'js': 'javascript',
+                'bash': 'bash',
+                'sh': 'bash',
+                'sql': 'sql',
+                '': 'python'  # Default to Python
+            }
+            
+            language = language_mapping.get(language_str.lower(), 'python')
+            
+            # Import required classes
+            from ai_karen_engine.chat.code_execution_service import (
+                CodeExecutionRequest, CodeLanguage, SecurityLevel
+            )
+            
+            # Create execution request
+            exec_request = CodeExecutionRequest(
+                code=code,
+                language=CodeLanguage(language),
+                user_id=processing_context.user_id,
+                conversation_id=processing_context.conversation_id,
+                security_level=SecurityLevel.STRICT,
+                metadata={"triggered_by_chat": True}
+            )
+            
+            # Execute code
+            result = await self.code_execution_service.execute_code(exec_request)
+            
+            if result.success and result.result:
+                execution_result = result.result
+                response = f"I executed your {language} code:\n\n"
+                
+                if execution_result.stdout:
+                    response += f"**Output:**\n```\n{execution_result.stdout}\n```\n\n"
+                
+                if execution_result.stderr:
+                    response += f"**Errors:**\n```\n{execution_result.stderr}\n```\n\n"
+                
+                response += f"**Execution completed in {execution_result.execution_time:.2f} seconds**"
+                
+                if execution_result.visualization_data:
+                    response += "\n\n*Visualization data available*"
+                
+                return response
+            else:
+                return f"I attempted to execute your {language} code, but encountered an error: {result.message}"
+                
+        except Exception as e:
+            logger.error(f"Code execution handling failed: {e}")
+            return f"I detected a code execution request, but encountered an error: {str(e)}"
+    
+    async def _handle_tool_execution_request(
+        self,
+        message: str,
+        processing_context: ProcessingContext
+    ) -> Optional[str]:
+        """Handle tool execution requests detected in the message."""
+        if not self.tool_integration_service:
+            return None
+        
+        # Simple pattern matching for tool execution requests
+        import re
+        
+        # Look for tool execution patterns
+        tool_patterns = [
+            r'use\s+(?:the\s+)?(\w+)\s+tool\s+(?:with\s+|to\s+)?(.*)',
+            r'run\s+(?:the\s+)?(\w+)\s+tool\s+(?:with\s+|on\s+)?(.*)',
+            r'execute\s+(?:the\s+)?(\w+)\s+tool\s+(?:with\s+)?(.*)',
+            r'calculate\s+(.*)',  # For calculator tool
+            r'analyze\s+(?:this\s+)?text[:\s]+(.*)',  # For text analyzer
+        ]
+        
+        tool_name = None
+        tool_params = {}
+        
+        for pattern in tool_patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                if pattern.endswith(r'calculate\s+(.*)'):
+                    tool_name = "calculator"
+                    tool_params = {"expression": match.group(1).strip()}
+                elif pattern.endswith(r'analyze\s+(?:this\s+)?text[:\s]+(.*)'):
+                    tool_name = "text_analyzer"
+                    tool_params = {"text": match.group(1).strip(), "analysis_type": "basic"}
+                else:
+                    tool_name = match.group(1).lower()
+                    param_text = match.group(2).strip() if len(match.groups()) > 1 else ""
+                    
+                    # Simple parameter parsing
+                    if tool_name == "calculator" and param_text:
+                        tool_params = {"expression": param_text}
+                    elif tool_name == "text_analyzer" and param_text:
+                        tool_params = {"text": param_text, "analysis_type": "basic"}
+                
+                break
+        
+        if not tool_name:
+            return None
+        
+        try:
+            # Import required classes
+            from ai_karen_engine.chat.tool_integration_service import ToolExecutionContext
+            
+            # Create execution context
+            context = ToolExecutionContext(
+                user_id=processing_context.user_id,
+                conversation_id=processing_context.conversation_id,
+                metadata={"triggered_by_chat": True}
+            )
+            
+            # Execute tool
+            result = await self.tool_integration_service.execute_tool(
+                tool_name, tool_params, context
+            )
+            
+            if result.success:
+                response = f"I used the **{tool_name}** tool:\n\n"
+                
+                # Format result based on tool type
+                if tool_name == "calculator":
+                    calc_result = result.result
+                    response += f"**Expression:** {calc_result.get('expression', 'N/A')}\n"
+                    response += f"**Result:** {calc_result.get('result', 'N/A')}\n"
+                    response += f"**Type:** {calc_result.get('type', 'N/A')}"
+                
+                elif tool_name == "text_analyzer":
+                    analysis = result.result
+                    response += f"**Text Length:** {analysis.get('text_length', 0)} characters\n"
+                    response += f"**Word Count:** {analysis.get('word_count', 0)} words\n"
+                    response += f"**Sentence Count:** {analysis.get('sentence_count', 0)} sentences"
+                    
+                    if 'sentiment' in analysis:
+                        response += f"\n**Sentiment:** {analysis['sentiment']}"
+                    
+                    if 'keywords' in analysis:
+                        keywords = analysis['keywords'][:5]  # Top 5 keywords
+                        keyword_list = [f"{kw['word']} ({kw['frequency']})" for kw in keywords]
+                        response += f"\n**Top Keywords:** {', '.join(keyword_list)}"
+                
+                else:
+                    # Generic result formatting
+                    response += f"**Result:** {result.result}"
+                
+                response += f"\n\n*Execution completed in {result.execution_time:.2f} seconds*"
+                
+                return response
+            else:
+                return f"I attempted to use the **{tool_name}** tool, but encountered an error: {result.error_message}"
+                
+        except Exception as e:
+            logger.error(f"Tool execution handling failed: {e}")
+            return f"I detected a tool execution request, but encountered an error: {str(e)}"
+    
+    async def _process_attachments(
+        self,
+        attachment_ids: List[str],
+        user_id: str,
+        conversation_id: str
+    ) -> Dict[str, Any]:
+        """Process file attachments and extract relevant information."""
+        if not self.file_attachment_service:
+            return {"error": "File attachment service not available"}
+        
+        attachment_context = {
+            "files": [],
+            "extracted_content": [],
+            "multimedia_analysis": [],
+            "total_files": len(attachment_ids),
+            "processing_errors": []
+        }
+        
+        for attachment_id in attachment_ids:
+            try:
+                # Get file information
+                file_info = await self.file_attachment_service.get_file_info(attachment_id)
+                if not file_info:
+                    attachment_context["processing_errors"].append(
+                        f"File {attachment_id} not found"
+                    )
+                    continue
+                
+                # Add basic file info
+                file_data = {
+                    "file_id": attachment_id,
+                    "processing_status": file_info.processing_status.value,
+                    "extracted_content": file_info.extracted_content,
+                    "analysis_results": file_info.analysis_results
+                }
+                
+                attachment_context["files"].append(file_data)
+                
+                # Add extracted content if available
+                if file_info.extracted_content:
+                    attachment_context["extracted_content"].append({
+                        "file_id": attachment_id,
+                        "content": file_info.extracted_content[:1000]  # Limit content size
+                    })
+                
+                # Process multimedia if service is available and file is multimedia
+                if (self.multimedia_service and 
+                    file_info.analysis_results and 
+                    attachment_id in self.file_attachment_service._file_metadata):
+                    
+                    metadata = self.file_attachment_service._file_metadata[attachment_id]
+                    if metadata.file_type.value in ["image", "audio", "video"]:
+                        try:
+                            # Get basic multimedia analysis
+                            multimedia_info = {
+                                "file_id": attachment_id,
+                                "media_type": metadata.file_type.value,
+                                "basic_analysis": file_info.analysis_results
+                            }
+                            attachment_context["multimedia_analysis"].append(multimedia_info)
+                            
+                        except Exception as e:
+                            logger.warning(f"Multimedia analysis failed for {attachment_id}: {e}")
+                            attachment_context["processing_errors"].append(
+                                f"Multimedia analysis failed for {attachment_id}: {str(e)}"
+                            )
+                
+            except Exception as e:
+                logger.error(f"Failed to process attachment {attachment_id}: {e}")
+                attachment_context["processing_errors"].append(
+                    f"Failed to process {attachment_id}: {str(e)}"
+                )
+        
+        return attachment_context
     
     def get_processing_stats(self) -> Dict[str, Any]:
         """Get processing statistics."""

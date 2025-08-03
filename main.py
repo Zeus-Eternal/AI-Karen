@@ -58,6 +58,9 @@ from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
 from ai_karen_engine.api_routes.auth import router as auth_router
 from ai_karen_engine.api_routes.tool_routes import router as tool_router
 from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
+from ai_karen_engine.api_routes.websocket_routes import router as websocket_router
+from ai_karen_engine.api_routes.file_attachment_routes import router as file_attachment_router
+from ai_karen_engine.api_routes.code_execution_routes import router as code_execution_router
 from ai_karen_engine.clients.database.elastic_client import _METRICS as DOC_METRICS
 from ai_karen_engine.core.cortex.dispatch import dispatch
 from ai_karen_engine.core.embedding_manager import _METRICS as METRICS
@@ -204,7 +207,7 @@ if (Path(__file__).resolve().parent / "fastapi").is_dir():
     )
     sys.exit(1)
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 def _validate_cors_configuration():
     """Validate CORS configuration and log potential issues."""
@@ -551,6 +554,7 @@ logger.info(f"CORS configured for origins: {origins_list}")
 
 app.include_router(auth_router)
 app.include_router(events_router)
+app.include_router(websocket_router)  # WebSocket routes for real-time communication
 app.include_router(web_api_router)  # Web API compatibility router first for precedence
 app.include_router(ai_router)
 app.include_router(memory_router)
@@ -558,12 +562,19 @@ app.include_router(conversation_router)
 app.include_router(plugin_router)
 app.include_router(tool_router)
 app.include_router(audit_router)
+app.include_router(file_attachment_router)  # File attachment and multimedia support
+app.include_router(code_execution_router)  # Code execution and tool integration
 
-# ─── Startup: memory, plugins, LLM registry refresh ───────────────────────────
+# ─── Application Lifespan Management ───────────────────────────────────────
 
+from contextlib import asynccontextmanager
 
-@app.on_event("startup")
-async def on_startup() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application startup and shutdown events"""
+    # Startup
+    logger.info("Starting Kari AI API server")
+    
     # Validate CORS configuration on startup
     _validate_cors_configuration()
     
@@ -612,7 +623,21 @@ async def on_startup() -> None:
                 await asyncio.sleep(interval)
                 sync_registry()
 
-        asyncio.create_task(_periodic_refresh())
+        refresh_task = asyncio.create_task(_periodic_refresh())
+    else:
+        refresh_task = None
+
+    try:
+        yield  # Application runs here
+    finally:
+        # Shutdown
+        logger.info("Shutting down Kari AI API server")
+        if refresh_task:
+            refresh_task.cancel()
+            try:
+                await refresh_task
+            except asyncio.CancelledError:
+                pass
 
 
 # ─── Plugin Discovery ────────────────────────────────────────────────────────
