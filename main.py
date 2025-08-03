@@ -71,137 +71,10 @@ from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
 from ai_karen_engine.integrations.model_discovery import sync_registry
 from ai_karen_engine.plugins.router import get_plugin_router
 from ai_karen_engine.self_refactor import SelfRefactorEngine, SREScheduler
+from ai_karen_engine.utils import metrics as metrics_utils
 
-# ─── Prometheus metrics (with graceful fallback) ─────────────────────────────
-
-try:
-    from prometheus_client import (
-        CONTENT_TYPE_LATEST,
-        Counter,
-        Histogram,
-        generate_latest,
-    )
-except ImportError:
-
-    class _DummyMetric:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def inc(self, amount: int = 1):
-            pass
-
-        def time(self):
-            class _Ctx:
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    pass
-
-            return _Ctx()
-
-    Counter = Histogram = _DummyMetric
-
-    def generate_latest() -> bytes:
-        return b""
-
-    CONTENT_TYPE_LATEST = "text/plain"
-
-
-# Initialize Prometheus metrics with collision handling
-def _init_metrics():
-    """Initialize Prometheus metrics with duplicate handling"""
-    global REQUEST_COUNT, REQUEST_LATENCY, LNM_ERROR_COUNT
-
-    try:
-        REQUEST_COUNT = Counter(
-            "kari_http_requests_total",
-            "Total HTTP requests",
-            registry=PROM_REGISTRY,
-        )
-        REQUEST_LATENCY = Histogram(
-            "kari_http_request_seconds",
-            "Latency of HTTP requests",
-            registry=PROM_REGISTRY,
-        )
-        LNM_ERROR_COUNT = Counter(
-            "lnm_runtime_errors_total",
-            "Total LNM pipeline failures",
-            registry=PROM_REGISTRY,
-        )
-        print(
-            f"[DEBUG] Metrics initialized successfully: REQUEST_COUNT={REQUEST_COUNT}"
-        )
-    except ValueError as e:
-        if "Duplicated timeseries" in str(e):
-            print(f"[DEBUG] Handling duplicate metrics: {e}")
-            # Initialize to None first
-            REQUEST_COUNT = None
-            REQUEST_LATENCY = None
-            LNM_ERROR_COUNT = None
-
-            # Metrics already registered, get existing ones
-            for collector in PROM_REGISTRY._collector_to_names:
-                if hasattr(collector, "_name"):
-                    if collector._name == "kari_http_requests_total":
-                        REQUEST_COUNT = collector
-                    elif collector._name == "kari_http_request_seconds":
-                        REQUEST_LATENCY = collector
-                    elif collector._name == "lnm_runtime_errors_total":
-                        LNM_ERROR_COUNT = collector
-
-            # Fallback to dummy metrics if not found
-            if REQUEST_COUNT is None:
-
-                class _LocalDummyMetric:
-                    def inc(self, amount=1):
-                        pass
-
-                    def time(self):
-                        class _Ctx:
-                            def __enter__(self):
-                                return self
-
-                            def __exit__(self, exc_type, exc, tb):
-                                pass
-
-                        return _Ctx()
-
-                REQUEST_COUNT = _LocalDummyMetric()
-            if REQUEST_LATENCY is None:
-                REQUEST_LATENCY = _LocalDummyMetric()
-            if LNM_ERROR_COUNT is None:
-                LNM_ERROR_COUNT = _LocalDummyMetric()
-
-            print(f"[DEBUG] Reused existing metrics: REQUEST_COUNT={REQUEST_COUNT}")
-        else:
-            print(f"[DEBUG] Unexpected ValueError: {e}")
-            raise
-    except Exception as e:
-        print(f"[DEBUG] Error initializing metrics: {e}")
-
-        # Fallback to dummy metrics - create instances without arguments
-        class _LocalDummyMetric:
-            def inc(self, amount=1):
-                pass
-
-            def time(self):
-                class _Ctx:
-                    def __enter__(self):
-                        return self
-
-                    def __exit__(self, exc_type, exc, tb):
-                        pass
-
-                return _Ctx()
-
-        REQUEST_COUNT = _LocalDummyMetric()
-        REQUEST_LATENCY = _LocalDummyMetric()
-        LNM_ERROR_COUNT = _LocalDummyMetric()
-
-
-# Initialize metrics
-_init_metrics()
+# Initialize Prometheus metrics
+metrics_utils.init_metrics()
 
 # Logger setup
 logger = logging.getLogger("kari")
@@ -426,9 +299,9 @@ PUBLIC_PATHS = {
 
 @app.middleware("http")
 async def record_metrics(request: Request, call_next):
-    with REQUEST_LATENCY.time():
+    with metrics_utils.REQUEST_LATENCY.time():
         response = await call_next(request)
-    REQUEST_COUNT.inc()
+    metrics_utils.REQUEST_COUNT.inc()
     return response
 
 
@@ -828,7 +701,7 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
         data = await dispatch(user_ctx, req.text, role=role)
     except Exception as exc:
         logger.exception("dispatch error")
-        LNM_ERROR_COUNT.inc()
+        metrics_utils.LNM_ERROR_COUNT.inc()
         return JSONResponse(status_code=500, content={"error": str(exc)})
     if data.get("error"):
         raise HTTPException(status_code=403, detail=data["error"])
@@ -877,12 +750,16 @@ def metrics() -> MetricsResponse:
 
 @app.get("/metrics/prometheus")
 def metrics_prometheus() -> Response:
-    data = generate_latest(PROM_REGISTRY) if PROM_REGISTRY else generate_latest()
+    data = (
+        metrics_utils.generate_latest(PROM_REGISTRY)
+        if PROM_REGISTRY
+        else metrics_utils.generate_latest()
+    )
     try:
-        return Response(data, media_type=CONTENT_TYPE_LATEST)
+        return Response(data, media_type=metrics_utils.CONTENT_TYPE_LATEST)
     except TypeError:
         r = Response(data)
-        r.media_type = CONTENT_TYPE_LATEST
+        r.media_type = metrics_utils.CONTENT_TYPE_LATEST
         return r
 
 
