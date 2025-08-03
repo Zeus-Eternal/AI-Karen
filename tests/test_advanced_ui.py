@@ -2,9 +2,9 @@ import types
 from ui_launchers.common.components import rbac
 from ai_karen_engine.services import health_checker
 from fastapi.testclient import TestClient
-from main import app
+from main import create_app
 
-client = TestClient(app)
+client = TestClient(create_app())
 
 
 def test_has_role():

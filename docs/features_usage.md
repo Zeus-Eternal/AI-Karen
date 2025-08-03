@@ -89,7 +89,7 @@ Kari evolves using a SelfRefactor engine. It evaluates plugin performance, rewri
 * With `ADVANCED_MODE=true`, enables full stdout/stderr logs.
 
 ```bash
-ADVANCED_MODE=true uvicorn main:app
+ADVANCED_MODE=true uvicorn main:create_app --factory
 curl http://localhost:8000/self_refactor/logs?full=true
 ```
 

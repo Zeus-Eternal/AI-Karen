@@ -17,9 +17,9 @@ sys.modules["fastapi"] = fastapi_stub
 sys.modules["pydantic"] = pydantic_stub
 
 from fastapi.testclient import TestClient  # noqa: E402
-from main import app, chat, ChatRequest  # noqa: E402
+from main import create_app, chat, ChatRequest  # noqa: E402
 
-client = TestClient(app)
+client = TestClient(create_app())
 
 TOKEN = "test-token"
 

@@ -204,7 +204,7 @@ function verifyBackendStartup() {
   console.log('2. Activate virtual environment: source .env_ai/bin/activate');
   console.log('3. Check if main.py exists: ls -la main.py');
   console.log('4. Start backend: python main.py');
-  console.log('5. Alternative: uvicorn main:app --reload --host 0.0.0.0 --port 8000');
+  console.log('5. Alternative: uvicorn main:create_app --factory --reload --host 0.0.0.0 --port 8000');
   
   console.log('\nBackend should show output like:');
   console.log('  INFO:     Uvicorn running on http://0.0.0.0:8000');
@@ -266,5 +266,5 @@ runAllTests().then(() => {
   console.log('\n💡 Quick Backend Start Command:');
   console.log('cd /media/zeus/Development3/KIRO/AI-Karen');
   console.log('source .env_ai/bin/activate');
-  console.log('uvicorn main:app --reload --host 0.0.0.0 --port 8000');
+  console.log('uvicorn main:create_app --factory --reload --host 0.0.0.0 --port 8000');
 });

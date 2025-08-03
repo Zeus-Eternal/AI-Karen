@@ -218,7 +218,7 @@ runAllTests().then(() => {
   console.log('\n🔧 If backend is not running:');
   console.log('1. Navigate to the backend directory');
   console.log('2. Activate virtual environment: source .env_ai/bin/activate');
-  console.log('3. Start FastAPI: python main.py or uvicorn main:app --reload --port 8000');
+  console.log('3. Start FastAPI: python main.py or uvicorn main:create_app --factory --reload --port 8000');
   
   console.log('\n🔍 If requests are failing:');
   console.log('1. Check CORS configuration in backend');

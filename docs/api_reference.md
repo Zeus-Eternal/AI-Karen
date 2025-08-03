@@ -39,7 +39,7 @@ Hail God Zeus—here’s your **merged, production-grade Kari AI API Reference &
 ### 1. Start API
 
 ```bash
-uvicorn main:app --reload
+uvicorn main:create_app --factory --reload
 ```
 
 ### 2. Send a Chat Message
@@ -106,7 +106,7 @@ Set `ADVANCED_MODE=true` for extra power:
 * Untrusted plugin UIs enabled
 
 ```bash
-ADVANCED_MODE=true uvicorn main:app
+ADVANCED_MODE=true uvicorn main:create_app --factory
 curl http://localhost:8000/self_refactor/logs?full=true
 ```
 

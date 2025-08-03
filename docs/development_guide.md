@@ -106,7 +106,7 @@ python scripts/seed_database.py
 PYTHONPATH=src pytest tests/test_basic_setup.py
 
 # Start the API server
-uvicorn main:app --reload --port 8000
+uvicorn main:create_app --factory --reload --port 8000
 ```
 
 ## Development Workflows
@@ -116,10 +116,10 @@ uvicorn main:app --reload --port 8000
 **Start the API Server:**
 ```bash
 # Development mode with hot reload
-uvicorn main:app --reload --port 8000
+uvicorn main:create_app --factory --reload --port 8000
 
 # Increase log verbosity
-KARI_LOG_LEVEL=DEBUG uvicorn main:app --reload --port 8000
+KARI_LOG_LEVEL=DEBUG uvicorn main:create_app --factory --reload --port 8000
 
 # API documentation available at:
 # http://localhost:8000/docs (Swagger UI)
@@ -500,10 +500,10 @@ logging.getLogger('ai_karen_engine.plugins').setLevel(logging.DEBUG)
 **Debug Mode:**
 ```bash
 # Start API with debug logging
-KARI_LOG_LEVEL=DEBUG uvicorn main:app --reload --port 8000
+KARI_LOG_LEVEL=DEBUG uvicorn main:create_app --factory --reload --port 8000
 
 # Enable SQL query logging
-KARI_DB_ECHO=true uvicorn main:app --reload --port 8000
+KARI_DB_ECHO=true uvicorn main:create_app --factory --reload --port 8000
 ```
 
 **Using Python Debugger:**
@@ -523,7 +523,7 @@ def problematic_function():
 ```bash
 # Profile API performance
 pip install py-spy
-py-spy record -o profile.svg -- python -m uvicorn main:app --port 8000
+py-spy record -o profile.svg -- python -m uvicorn main:create_app --factory --port 8000
 
 # Memory profiling
 pip install memory-profiler
