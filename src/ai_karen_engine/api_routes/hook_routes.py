@@ -15,32 +15,17 @@ from datetime import datetime
 try:
     from fastapi import APIRouter, HTTPException, Depends, Query, Path
     from fastapi.responses import JSONResponse
-except ImportError:
-    # Stubs for testing
-    class APIRouter:
-        def __init__(self, **kwargs): 
-            self.routes = []
-            self.prefix = kwargs.get('prefix', '')
-            self.tags = kwargs.get('tags', [])
-        def get(self, path: str, **kwargs): return lambda f: f
-        def post(self, path: str, **kwargs): return lambda f: f
-        def delete(self, path: str, **kwargs): return lambda f: f
-        def put(self, path: str, **kwargs): return lambda f: f
-    
-    class HTTPException(Exception):
-        def __init__(self, status_code: int, detail: str): pass
-    
-    class JSONResponse:
-        def __init__(self, content: Dict, **kwargs): pass
-    
-    def Depends(func): return func
-    def Query(default=None, **kwargs): return default
-    def Path(**kwargs): return ""
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for hook routes. Install via `pip install fastapi`."
+    ) from e
 
 try:
     from pydantic import BaseModel, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for hook routes. Install via `pip install pydantic`."
+    ) from e
 
 from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext, HookRegistration
 from ai_karen_engine.utils.auth import validate_session

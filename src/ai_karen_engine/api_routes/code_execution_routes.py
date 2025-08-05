@@ -19,8 +19,10 @@ except Exception:  # pragma: no cover
 
 try:
     from pydantic import BaseModel, Field
-except Exception:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for code execution routes. Install via `pip install pydantic`."
+    ) from e
 
 from ai_karen_engine.chat.code_execution_service import (
     CodeExecutionRequest,
