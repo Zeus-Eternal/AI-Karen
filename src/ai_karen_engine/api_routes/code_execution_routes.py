@@ -7,9 +7,10 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 try:
-    from fastapi import APIRouter, HTTPException, Depends, Query
+    from fastapi import APIRouter, HTTPException, Depends, Query, Request
 except Exception:  # pragma: no cover
     from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
+    from ai_karen_engine.fastapi_stub import Request
     def Depends(func):
         return func
     def Query(default=None, **_kw):
@@ -24,7 +25,6 @@ from ai_karen_engine.chat.code_execution_service import (
     CodeExecutionService,
     CodeExecutionRequest,
     CodeExecutionResponse,
-    ToolExecutionRequest,
     ToolDefinition,
     CodeLanguage,
     SecurityLevel,
@@ -33,10 +33,9 @@ from ai_karen_engine.chat.code_execution_service import (
 from ai_karen_engine.chat.tool_integration_service import (
     ToolIntegrationService,
     ToolExecutionContext,
-    ToolExecutionResult,
-    ToolType,
-    ToolStatus
+    ToolExecutionResult
 )
+from ai_karen_engine.services.auth_service import auth_service
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
     WebAPIErrorResponse,
@@ -55,12 +54,35 @@ code_execution_service = CodeExecutionService()
 tool_integration_service = ToolIntegrationService()
 
 
+# Authentication dependency
+async def get_current_user(request: Request) -> Dict[str, Any]:
+    """Get current authenticated user from session or token."""
+    session_token = request.cookies.get("kari_session")
+    if not session_token:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header.split(" ", 1)[1]
+
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    user_data = await auth_service.validate_session(
+        session_token=session_token,
+        ip_address=request.client.host if request.client else "unknown",
+        user_agent=request.headers.get("user-agent", "")
+    )
+
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    return user_data
+
+
 # Request/Response Models
 class ExecuteCodeRequest(BaseModel):
     """Request for code execution."""
     code: str = Field(..., description="Code to execute")
     language: CodeLanguage = Field(..., description="Programming language")
-    user_id: str = Field(..., description="User ID")
     conversation_id: str = Field(..., description="Conversation ID")
     security_level: SecurityLevel = Field(SecurityLevel.STRICT, description="Security level")
     execution_limits: Optional[Dict[str, Any]] = Field(None, description="Custom execution limits")
@@ -78,7 +100,6 @@ class ToolExecuteRequest(BaseModel):
     """Request for tool execution."""
     tool_name: str = Field(..., description="Name of the tool to execute")
     parameters: Dict[str, Any] = Field(..., description="Tool parameters")
-    user_id: str = Field(..., description="User ID")
     conversation_id: str = Field(..., description="Conversation ID")
 
 
@@ -96,14 +117,17 @@ class ServiceStatsResponse(BaseModel):
 
 
 @router.post("/execute", response_model=CodeExecutionResponse)
-async def execute_code(request: ExecuteCodeRequest):
+async def execute_code(
+    request: ExecuteCodeRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
     """Execute code with security controls."""
     try:
         # Create execution request
         exec_request = CodeExecutionRequest(
             code=request.code,
             language=request.language,
-            user_id=request.user_id,
+            user_id=current_user["user_id"],
             conversation_id=request.conversation_id,
             security_level=request.security_level,
             execution_limits=request.execution_limits,
@@ -162,13 +186,13 @@ async def get_supported_languages():
 
 @router.get("/history", response_model=ExecutionHistoryResponse)
 async def get_execution_history(
-    user_id: Optional[str] = Query(None, description="Filter by user ID"),
-    limit: int = Query(50, ge=1, le=100, description="Maximum number of executions")
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of executions"),
+    current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Get code execution history."""
+    """Get code execution history for the authenticated user."""
     try:
         # Get execution history from code execution service
-        code_history = code_execution_service.get_execution_history(user_id or "", limit)
+        code_history = code_execution_service.get_execution_history(current_user["user_id"], limit)
         
         return ExecutionHistoryResponse(
             executions=code_history,
@@ -229,12 +253,15 @@ async def cancel_execution(execution_id: str):
 
 
 @router.post("/tools/execute", response_model=ToolExecutionResult)
-async def execute_tool(request: ToolExecuteRequest):
+async def execute_tool(
+    request: ToolExecuteRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
     """Execute a registered tool."""
     try:
         # Create execution context
         context = ToolExecutionContext(
-            user_id=request.user_id,
+            user_id=current_user["user_id"],
             conversation_id=request.conversation_id,
             execution_id=str(uuid.uuid4()),
             timestamp=datetime.utcnow()
@@ -335,14 +362,14 @@ async def get_tool_info(tool_name: str):
 
 @router.get("/tools/history", response_model=ExecutionHistoryResponse)
 async def get_tool_execution_history(
-    user_id: Optional[str] = Query(None, description="Filter by user ID"),
     tool_name: Optional[str] = Query(None, description="Filter by tool name"),
-    limit: int = Query(50, ge=1, le=100, description="Maximum number of executions")
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of executions"),
+    current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Get tool execution history."""
+    """Get tool execution history for the authenticated user."""
     try:
         history = tool_integration_service.get_execution_history(
-            user_id=user_id,
+            user_id=current_user["user_id"],
             tool_name=tool_name,
             limit=limit
         )
