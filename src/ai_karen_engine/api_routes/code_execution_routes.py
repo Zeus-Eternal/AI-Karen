@@ -31,13 +31,15 @@ from ai_karen_engine.chat.code_execution_service import (
     CodeExecutionService,
     CodeLanguage,
     SecurityLevel,
+)
+from ai_karen_engine.chat.dependencies import (
     get_code_execution_service,
+    get_tool_integration_service,
 )
 from ai_karen_engine.chat.tool_integration_service import (
     ToolExecutionContext,
     ToolExecutionResult,
     ToolIntegrationService,
-    get_tool_integration_service,
 )
 from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.core.logging import get_logger
