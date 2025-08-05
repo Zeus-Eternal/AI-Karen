@@ -27,3 +27,13 @@ Be sure to provision PostgreSQL, Redis and any vector stores before installing t
 
 Runtime settings are controlled via environment variables or the `config.json` file. Review `config/README.md` for parameter descriptions.
 
+### Required `SECRET_KEY`
+
+For security, the server **requires** a secret key for signing tokens. Set it via the `SECRET_KEY` environment variable or in a `.env` file before starting the application:
+
+```bash
+export SECRET_KEY="your-production-secret"
+```
+
+Deployments without this value will fail to start.
+

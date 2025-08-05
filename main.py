@@ -9,7 +9,6 @@ Kari FastAPI Server - Production Version
 
 import logging
 import logging.config
-import secrets
 import ssl
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,7 +49,7 @@ from ai_karen_engine.server.startup import create_lifespan
 class Settings(BaseSettings):
     app_name: str = "Kari AI Server"
     environment: str = "development"
-    secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(64))
+    secret_key: str = Field(..., env="SECRET_KEY")
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     database_url: str = "postgresql://user:password@localhost:5432/kari_prod"
