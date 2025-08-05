@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
 import time
 import uuid
 from typing import Any, Dict, List, Optional
-import asyncio
 
 import jwt
+from fastapi import HTTPException, Request
 
-from ai_karen_engine.services.auth_service import auth_service
 from ai_karen_engine.core.logging import get_logger
+from ai_karen_engine.services.auth_service import auth_service
 
 logger = get_logger(__name__)
 
@@ -19,12 +20,14 @@ AUTH_SIGNING_KEY = os.getenv("KARI_AUTH_SIGNING_KEY", "change-me-in-prod")
 SESSION_DURATION = int(os.getenv("KARI_SESSION_DURATION", "3600"))
 JWT_ALGORITHM = "HS256"
 
+
 def _device_fingerprint(user_agent: str, ip: str) -> str:
     """
     Create a unique device fingerprint from user agent and IP.
     """
     data = f"{user_agent}:{ip}".encode()
     return hashlib.sha256(data).hexdigest()
+
 
 def create_session(
     user_id: str,
@@ -45,16 +48,16 @@ def create_session(
                 user_id=user_id,
                 ip_address=ip,
                 user_agent=user_agent,
-                device_fingerprint=_device_fingerprint(user_agent, ip)
+                device_fingerprint=_device_fingerprint(user_agent, ip),
             )
         )
-        
+
         # Return the access token for backward compatibility
         return session_data["access_token"]
-        
+
     except Exception as e:
         logger.error(f"Failed to create session using production auth service: {e}")
-        
+
         # Fallback to legacy JWT creation for backward compatibility
         now = int(time.time())
         payload = {
@@ -68,6 +71,7 @@ def create_session(
         }
         return jwt.encode(payload, AUTH_SIGNING_KEY, algorithm=JWT_ALGORITHM)
 
+
 def validate_session(token: str, user_agent: str, ip: str) -> Optional[Dict[str, Any]]:
     """
     Validate a JWT session token using production authentication service.
@@ -78,12 +82,10 @@ def validate_session(token: str, user_agent: str, ip: str) -> Optional[Dict[str,
         loop = asyncio.get_event_loop()
         user_data = loop.run_until_complete(
             auth_service.validate_session(
-                session_token=token,
-                ip_address=ip,
-                user_agent=user_agent
+                session_token=token, ip_address=ip, user_agent=user_agent
             )
         )
-        
+
         if user_data:
             # Convert to legacy format for backward compatibility
             return {
@@ -95,10 +97,10 @@ def validate_session(token: str, user_agent: str, ip: str) -> Optional[Dict[str,
                 "device": _device_fingerprint(user_agent, ip),
                 "jti": uuid.uuid4().hex,
             }
-    
+
     except Exception as e:
         logger.warning(f"Production auth validation failed, trying legacy: {e}")
-    
+
     # Fallback to legacy JWT validation
     try:
         decoded = jwt.decode(token, AUTH_SIGNING_KEY, algorithms=[JWT_ALGORITHM])
@@ -111,4 +113,29 @@ def validate_session(token: str, user_agent: str, ip: str) -> Optional[Dict[str,
         logger.debug(f"Legacy JWT validation also failed: {e}")
         return None
 
-__all__ = ["create_session", "validate_session", "SESSION_DURATION"]
+
+async def get_current_user(request: Request) -> Dict[str, Any]:
+    """Retrieve current authenticated user from session cookie or JWT."""
+
+    session_token = request.cookies.get("kari_session")
+    if not session_token:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header.split(" ")[1]
+
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    user_data = await auth_service.validate_session(
+        session_token=session_token,
+        ip_address=request.client.host if request.client else "unknown",
+        user_agent=request.headers.get("user-agent", ""),
+    )
+
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    return user_data
+
+
+__all__ = ["create_session", "validate_session", "SESSION_DURATION", "get_current_user"]
