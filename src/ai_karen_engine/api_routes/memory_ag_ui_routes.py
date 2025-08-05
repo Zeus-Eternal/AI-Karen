@@ -3,13 +3,13 @@ AG-UI Memory API Routes
 Provides endpoints for AG-UI enhanced memory management with CopilotKit integration.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional, Union
 import logging
 from datetime import datetime
 
-from ai_karen_engine.core.memory.ag_ui_manager import AGUIMemoryManager, MemoryGridRow
+from ai_karen_engine.core.memory.ag_ui_manager import AGUIMemoryManager
 from ai_karen_engine.integrations.providers.copilotkit_provider import CopilotKitProvider
 try:
     from ai_karen_engine.services.nlp_service_manager import spacy_service_manager

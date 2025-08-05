@@ -2,24 +2,20 @@
 Enhanced FastAPI routes for file attachment with AG-UI and hook integration.
 """
 
-import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional, Dict, Any
-import mimetypes
 import json
 
 try:
     from fastapi import (
         APIRouter,
         HTTPException,
-        Depends,
         UploadFile,
         File,
         Form,
         Query,
     )
-    from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
+    from fastapi.responses import JSONResponse
 except ImportError as e:  # pragma: no cover - runtime dependency
     raise ImportError(
         "FastAPI is required for file attachment routes. Install via `pip install fastapi`."
@@ -36,7 +32,6 @@ from ai_karen_engine.chat.hook_enabled_file_service import get_hook_enabled_file
 from ai_karen_engine.chat.file_attachment_service import (
     FileUploadRequest,
     FileUploadResponse,
-    FileProcessingResult,
     FileType,
     ProcessingStatus
 )
@@ -49,7 +44,6 @@ from ai_karen_engine.chat.multimedia_service import (
 )
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
-    WebAPIErrorResponse,
     create_service_error_response,
     create_validation_error_response,
     get_http_status_for_error_code,

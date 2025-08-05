@@ -30,7 +30,6 @@ from ai_karen_engine.models.web_ui_types import (
 )
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
-    WebAPIErrorResponse,
     ValidationErrorDetail,
     create_validation_error_response as create_api_validation_error_response,
     create_database_error_response,
@@ -48,8 +47,6 @@ from ai_karen_engine.core.dependencies import (
     get_plugin_service,
 )
 from ai_karen_engine.models.shared_types import ToolType
-from ai_karen_engine.integrations.llm_registry import get_registry
-from ai_karen_engine.integrations.llm_router import LLMProfileRouter
 
 logger = logging.getLogger(__name__)
 
@@ -1171,7 +1168,7 @@ async def health_check_compatibility(http_request: Request):
                     get_ai_orchestrator_service,
                 )
 
-                ai_service = get_ai_orchestrator_service()
+                get_ai_orchestrator_service()
                 services["ai_orchestrator"] = {
                     "status": "healthy",
                     "last_check": datetime.utcnow().isoformat(),
@@ -1199,7 +1196,7 @@ async def health_check_compatibility(http_request: Request):
             try:
                 from ai_karen_engine.core.dependencies import get_memory_service
 
-                memory_service = get_memory_service()
+                get_memory_service()
                 services["memory_service"] = {
                     "status": "healthy",
                     "last_check": datetime.utcnow().isoformat(),
@@ -1227,7 +1224,7 @@ async def health_check_compatibility(http_request: Request):
             try:
                 from ai_karen_engine.core.dependencies import get_plugin_service
 
-                plugin_service = get_plugin_service()
+                get_plugin_service()
                 services["plugin_service"] = {
                     "status": "healthy",
                     "last_check": datetime.utcnow().isoformat(),
@@ -1255,7 +1252,7 @@ async def health_check_compatibility(http_request: Request):
             try:
                 from ai_karen_engine.database.client import get_db_client
 
-                db_client = get_db_client()
+                get_db_client()
                 # Simple connectivity test
                 services["database"] = {
                     "status": "healthy",
@@ -1517,11 +1514,11 @@ async def trigger_health_check(http_request: Request):
                     )
 
                     if dependency_func == "get_ai_orchestrator_service":
-                        service = get_ai_orchestrator_service()
+                        get_ai_orchestrator_service()
                     elif dependency_func == "get_memory_service":
-                        service = get_memory_service()
+                        get_memory_service()
                     elif dependency_func == "get_plugin_service":
-                        service = get_plugin_service()
+                        get_plugin_service()
 
                     results[service_name] = {
                         "status": "healthy",

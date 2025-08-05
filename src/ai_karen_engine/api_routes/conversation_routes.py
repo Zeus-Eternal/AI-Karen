@@ -2,9 +2,8 @@
 FastAPI routes for enhanced conversation management with web UI integration.
 """
 
-import uuid
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any
 
 try:
     from fastapi import APIRouter, HTTPException, Depends, Query
@@ -22,18 +21,13 @@ except ImportError as e:  # pragma: no cover - runtime dependency
 
 from ai_karen_engine.services.conversation_service import (
     WebUIConversationService,
-    ConversationStatus,
     ConversationPriority,
     UISource
 )
 from ai_karen_engine.database.conversation_manager import MessageRole
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
-    WebAPIErrorResponse,
-    ValidationErrorDetail,
     create_service_error_response,
-    create_validation_error_response,
-    create_database_error_response,
     create_generic_error_response,
     get_http_status_for_error_code,
 )
@@ -620,7 +614,7 @@ async def list_conversations(
         for conv in conversations:
             # Get web UI data for each conversation
             web_ui_data = await conversation_service._get_web_ui_conversation_data(
-                tenant_id, conv.id
+                "00000000-0000-0000-0000-000000000001", conv.id
             )
             
             web_ui_conv = await conversation_service._convert_to_web_ui_conversation(
@@ -804,14 +798,15 @@ async def get_conversation_stats(
     """Get basic conversation statistics."""
     try:
         stats = await conversation_service.base_manager.get_conversation_stats(
-            tenant_id, "00000000-0000-0000-0000-000000000002"
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
         )
         web_ui_metrics = conversation_service.get_metrics()
         
         return {
             "base_stats": stats,
             "web_ui_metrics": web_ui_metrics,
-            "tenant_id": tenant_id
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
         }
         
     except Exception as e:
