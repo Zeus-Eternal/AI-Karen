@@ -209,6 +209,40 @@ def init_memory() -> None:
 # NeuroVault vector index
 neuro_vault = NeuroVault()
 
+
+async def close() -> None:
+    """Clean up memory manager resources."""
+    global pg_syncer, postgres, redis_client
+
+    if pg_syncer:
+        try:
+            pg_syncer.stop()
+        except Exception as ex:  # pragma: no cover - defensive
+            logger.warning(f"[MemoryManager] Postgres syncer stop failed: {ex}")
+        pg_syncer = None
+
+    if postgres:
+        try:
+            conn = getattr(postgres, "conn", None)
+            if conn:
+                conn.close()
+        except Exception as ex:  # pragma: no cover - defensive
+            logger.warning(f"[MemoryManager] Postgres close failed: {ex}")
+        postgres = None
+
+    if redis_client and hasattr(redis_client, "close"):
+        try:
+            redis_client.close()
+        except Exception as ex:  # pragma: no cover - defensive
+            logger.warning(f"[MemoryManager] Redis close failed: {ex}")
+
+    index = getattr(neuro_vault, "index", None)
+    if index and hasattr(index, "disconnect"):
+        try:
+            await index.disconnect()
+        except Exception as ex:  # pragma: no cover - defensive
+            logger.warning(f"[MemoryManager] NeuroVault disconnect failed: {ex}")
+
 # ====== Context Recall ======
 def recall_context(
     user_ctx: Dict[str, Any], query: str, limit: int = 10, tenant_id: Optional[str] = None
@@ -465,6 +499,8 @@ async def close() -> None:
 
 
 __all__ = [
+    "init_memory",
+    "close",
     "recall_context",
     "update_memory",
     "flush_duckdb_to_postgres",
