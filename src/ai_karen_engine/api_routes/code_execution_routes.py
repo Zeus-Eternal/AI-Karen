@@ -31,7 +31,6 @@ from ai_karen_engine.chat.code_execution_service import (
     CodeExecutionService,
     CodeLanguage,
     SecurityLevel,
-    ToolDefinition,
     get_code_execution_service,
 )
 from ai_karen_engine.chat.tool_integration_service import (
@@ -433,8 +432,6 @@ async def get_tool_execution_history(
             total_count=len(history),
         )
 
-        return ExecutionHistoryResponse(executions=history, total_count=len(history))
-
     except Exception as e:
         logger.exception(
             "Failed to get tool execution history",
@@ -446,40 +443,6 @@ async def get_tool_execution_history(
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
             user_message="Failed to get tool execution history. Please try again.",
-        )
-        raise HTTPException(
-            status_code=get_http_status_for_error_code(
-                WebAPIErrorCode.INTERNAL_SERVER_ERROR
-            ),
-            detail=error_response.dict(),
-        )
-
-
-@router.post("/tools/register")
-async def register_custom_tool(tool_definition: ToolDefinition):
-    """Register a custom tool (for advanced users)."""
-    try:
-        # Note: In a production system, this would require proper authentication
-        # and validation of the tool definition for security
-
-        # For now, return a placeholder response
-        return {
-            "success": False,
-            "message": "Custom tool registration is not yet implemented",
-            "tool_name": tool_definition.name,
-        }
-
-    except Exception as e:
-        logger.exception(
-            "Failed to register custom tool",
-            error=str(e),
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-        error_response = create_service_error_response(
-            service_name="tool_integration",
-            error=e,
-            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to register custom tool. Please try again.",
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(
