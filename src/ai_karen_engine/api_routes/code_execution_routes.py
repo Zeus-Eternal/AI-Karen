@@ -6,16 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-try:
-    from fastapi import APIRouter, HTTPException, Depends, Query, Request
-except Exception:  # pragma: no cover
-    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
-    from ai_karen_engine.fastapi_stub import Request
-    def Depends(func):
-        return func
-    def Query(default=None, **_kw):
-        return default
-
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 try:
     from pydantic import BaseModel, Field
@@ -27,49 +18,31 @@ except ImportError as e:  # pragma: no cover - runtime dependency
 from ai_karen_engine.chat.code_execution_service import (
     CodeExecutionRequest,
     CodeExecutionResponse,
-    ToolDefinition,
+    CodeExecutionService,
     CodeLanguage,
     SecurityLevel,
     ToolDefinition,
 )
+from ai_karen_engine.chat.dependencies import (
+    get_code_execution_service,
+    get_tool_integration_service,
+)
 from ai_karen_engine.chat.tool_integration_service import (
     ToolExecutionContext,
-    ToolExecutionResult
+    ToolExecutionResult,
+    ToolIntegrationService,
 )
-from ai_karen_engine.services.auth_service import auth_service
+from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
     create_service_error_response,
     get_http_status_for_error_code,
 )
+from ai_karen_engine.services.auth_utils import get_current_user
 
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["code-execution"])
-
-
-# Authentication dependency
-async def get_current_user(request: Request) -> Dict[str, Any]:
-    """Get current authenticated user from session or token."""
-    session_token = request.cookies.get("kari_session")
-    if not session_token:
-        auth_header = request.headers.get("authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            session_token = auth_header.split(" ", 1)[1]
-
-    if not session_token:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    user_data = await auth_service.validate_session(
-        session_token=session_token,
-        ip_address=request.client.host if request.client else "unknown",
-        user_agent=request.headers.get("user-agent", "")
-    )
-
-    if not user_data:
-        raise HTTPException(status_code=401, detail="Invalid or expired session")
-
-    return user_data
 
 
 # Request/Response Models
@@ -128,7 +101,8 @@ class ServiceStatsResponse(BaseModel):
 @router.post("/execute", response_model=CodeExecutionResponse)
 async def execute_code(
     request: ExecuteCodeRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
 ):
     """Execute code with security controls."""
     try:
@@ -169,15 +143,12 @@ async def execute_code(
         )
 
 
-
-
 @router.get("/languages")
 async def get_supported_languages(
     code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
 ):
     """Get list of supported programming languages."""
     try:
-        language_configs = code_execution_service.get_language_configs()
         return {
             "supported_languages": [
                 lang.value for lang in code_execution_service.supported_languages
@@ -215,13 +186,16 @@ async def get_supported_languages(
 @router.get("/history", response_model=ExecutionHistoryResponse)
 async def get_execution_history(
     limit: int = Query(50, ge=1, le=100, description="Maximum number of executions"),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
 ):
     """Get code execution history for the authenticated user."""
     try:
         # Get execution history from code execution service
-        code_history = code_execution_service.get_execution_history(current_user["user_id"], limit)
-  
+        code_history = code_execution_service.get_execution_history(
+            current_user["user_id"], limit
+        )
+
         return ExecutionHistoryResponse(
             executions=code_history, total_count=len(code_history)
         )
@@ -294,7 +268,10 @@ async def cancel_execution(
 @router.post("/tools/execute", response_model=ToolExecutionResult)
 async def execute_tool(
     request: ToolExecuteRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    tool_integration_service: ToolIntegrationService = Depends(
+        get_tool_integration_service
+    ),
 ):
     """Execute a registered tool."""
     try:
@@ -339,6 +316,9 @@ async def list_tools(
     search: Optional[str] = Query(
         None, description="Search tools by name or description"
     ),
+    tool_integration_service: ToolIntegrationService = Depends(
+        get_tool_integration_service
+    ),
 ):
     """List available tools."""
     try:
@@ -376,7 +356,9 @@ async def list_tools(
 @router.get("/tools/{tool_name}")
 async def get_tool_info(
     tool_name: str,
-    tool_integration_service: ToolIntegrationService = Depends(get_tool_integration_service),
+    tool_integration_service: ToolIntegrationService = Depends(
+        get_tool_integration_service
+    ),
 ):
     """Get detailed information about a specific tool."""
     try:
@@ -422,22 +404,21 @@ async def get_tool_info(
 async def get_tool_execution_history(
     tool_name: Optional[str] = Query(None, description="Filter by tool name"),
     limit: int = Query(50, ge=1, le=100, description="Maximum number of executions"),
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    tool_integration_service: ToolIntegrationService = Depends(
+        get_tool_integration_service
+    ),
 ):
     """Get tool execution history for the authenticated user."""
     try:
         history = tool_integration_service.get_execution_history(
-            user_id=current_user["user_id"],
-            tool_name=tool_name,
-            limit=limit
+            user_id=current_user["user_id"], tool_name=tool_name, limit=limit
         )
 
         return ExecutionHistoryResponse(
             executions=history,
             total_count=len(history),
         )
-
-        return ExecutionHistoryResponse(executions=history, total_count=len(history))
 
     except Exception as e:
         logger.exception(
@@ -496,7 +477,9 @@ async def register_custom_tool(tool_definition: ToolDefinition):
 @router.get("/stats", response_model=ServiceStatsResponse)
 async def get_service_stats(
     code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
-    tool_integration_service: ToolIntegrationService = Depends(get_tool_integration_service),
+    tool_integration_service: ToolIntegrationService = Depends(
+        get_tool_integration_service
+    ),
 ):
     """Get code execution and tool integration statistics."""
     try:
