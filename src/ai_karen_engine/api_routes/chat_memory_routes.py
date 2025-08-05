@@ -6,7 +6,7 @@ RESTful endpoints for chat memory management with proper authentication
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ai_karen_engine.chat.production_memory import production_chat_memory
 from ai_karen_engine.core.dependencies import get_current_user_context
@@ -33,8 +33,8 @@ class ChatReferenceResponse(BaseModel):
     user_id: str
     query: Optional[str] = None
     summary: Optional[str] = None
-    turns: List[Dict[str, Any]] = []
-    semantic_results: List[Dict[str, Any]] = []
+    turns: List[Dict[str, Any]] = Field(default_factory=list)
+    semantic_results: List[Dict[str, Any]] = Field(default_factory=list)
     recent_context: Optional[Dict[str, Any]] = None
     timestamp: str
 
