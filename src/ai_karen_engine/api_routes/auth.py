@@ -401,14 +401,12 @@ async def request_password_reset(
         if not token:
             # Don't reveal if user exists or not
             return {"detail": "If the email exists, a reset link has been sent"}
-        
         # For now, log an anonymized identifier
         hashed_email = hashlib.sha256(req.email.encode()).hexdigest()
         logger.info(
             "Password reset token generated",
             extra={"hashed_email": hashed_email},
         )
-      
         return {"detail": "Password reset link sent"}
 
     except Exception as e:
