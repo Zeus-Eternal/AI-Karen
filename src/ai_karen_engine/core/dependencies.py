@@ -6,9 +6,9 @@ and other components that need access to the integrated services.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 try:
-    from fastapi import Depends, HTTPException
+    from fastapi import Depends, HTTPException, Request
 except Exception:  # pragma: no cover
     from ai_karen_engine.fastapi_stub import HTTPException
     def Depends(func):
@@ -25,6 +25,7 @@ from ai_karen_engine.core.service_registry import (
 )
 from ai_karen_engine.core.config_manager import get_config, AIKarenConfig
 from ai_karen_engine.core.health_monitor import get_health_monitor, HealthMonitor
+from ai_karen_engine.services.auth_service import auth_service
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,34 @@ async def get_current_config() -> AIKarenConfig:
     except Exception as e:
         logger.error(f"Failed to get configuration: {e}")
         raise HTTPException(status_code=500, detail="Configuration unavailable")
+
+
+# Authentication dependencies
+async def get_current_user_context(request: Request) -> Dict[str, Any]:
+    """Get authenticated user context from session token."""
+    session_token = request.cookies.get("kari_session")
+    if not session_token:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header.split(" ")[1]
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user_data = await auth_service.validate_session(
+        session_token=session_token,
+        ip_address=request.client.host if request.client else "unknown",
+        user_agent=request.headers.get("user-agent", ""),
+    )
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    return user_data
+
+
+async def get_current_user_id(user_ctx: Dict[str, Any] = Depends(get_current_user_context)) -> str:
+    return user_ctx["user_id"]
+
+
+async def get_current_tenant_id(user_ctx: Dict[str, Any] = Depends(get_current_user_context)) -> str:
+    return user_ctx["tenant_id"]
 
 
 # Service dependencies
@@ -156,3 +185,6 @@ AnalyticsService_Dep = Depends(get_analytics_service)
 Config_Dep = Depends(get_current_config)
 HealthMonitor_Dep = Depends(get_health_monitor_service)
 ServiceRegistry_Dep = Depends(get_service_registry_instance)
+UserContext_Dep = Depends(get_current_user_context)
+UserId_Dep = Depends(get_current_user_id)
+TenantId_Dep = Depends(get_current_tenant_id)
