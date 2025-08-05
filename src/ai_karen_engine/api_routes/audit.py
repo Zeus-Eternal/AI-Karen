@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import uuid
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends
 
-from ai_karen_engine.utils.auth import validate_session
+from ai_karen_engine.core.dependencies import get_current_user_context
 
 router = APIRouter(tags=["audit"])
+
+
+# Alias core dependency for convenience
+get_current_user = get_current_user_context
 
 _AUDIT_LOGS: List[dict] = [
     {
@@ -22,28 +26,16 @@ _AUDIT_LOGS: List[dict] = [
 ]
 
 
-def _get_context(request: Request):
-    auth = request.headers.get("authorization")
-    if not auth or not auth.lower().startswith("bearer "):
-        raise HTTPException(status_code=401, detail="missing token")
-    token = auth.split(None, 1)[1]
-    ctx = validate_session(token, request.headers.get("user-agent", ""), request.client.host)
-    if not ctx:
-        raise HTTPException(status_code=401, detail="invalid token")
-    return ctx
-
-
 @router.get("/logs")
 async def get_audit_logs(
-    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user),
     limit: int = 100,
     category: Optional[str] = None,
     user_id: Optional[str] = None,
 ):
-    _get_context(request)
     logs = list(_AUDIT_LOGS)
     if category:
-        logs = [l for l in logs if l.get("action") == category]
+        logs = [log for log in logs if log.get("action") == category]
     if user_id:
-        logs = [l for l in logs if l.get("user_id") == user_id]
+        logs = [log for log in logs if log.get("user_id") == user_id]
     return logs[-limit:][::-1]
