@@ -21,7 +21,7 @@ from ai_karen_engine.services.plugin_service import (
 
 # Temporarily disable auth imports for web UI integration
 
-router = APIRouter(prefix="/api/plugins", tags=["plugins"])
+router = APIRouter(tags=["plugins"])
 
 
 def get_current_user() -> Dict[str, Any]:

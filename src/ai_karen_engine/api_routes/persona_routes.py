@@ -16,7 +16,7 @@ from ai_karen_engine.models.persona_models import (
 from ai_karen_engine.services.persona_service import get_persona_service
 from ai_karen_engine.utils.auth import get_current_user_context
 
-router = APIRouter(prefix="/api/personas", tags=["personas"])
+router = APIRouter(tags=["personas"])
 
 
 # Request/Response Models

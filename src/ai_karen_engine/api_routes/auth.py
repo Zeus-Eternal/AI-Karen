@@ -8,13 +8,14 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr
+import hashlib
 
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.security.auth_manager import verify_totp
 from ai_karen_engine.services.auth_service import auth_service
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 # Session cookie configuration
 COOKIE_NAME = "kari_session"
@@ -119,13 +120,12 @@ async def register(
             "two_factor_enabled": user.two_factor_enabled,
             "is_verified": user.is_verified,
         }
-
+                
         logger.info(
-            "User registered successfully",
-            email=req.email,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            "User registered",
+            extra={"user_id": user.user_id},
         )
-
+    
         return LoginResponse(
             access_token=session_data["access_token"],
             refresh_token=session_data["refresh_token"],
@@ -201,13 +201,12 @@ async def login(
             secure=True,
             samesite="strict",
         )
-
+        
         logger.info(
-            "User logged in successfully",
-            email=req.email,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            "User logged in",
+            extra={"user_id": user_data["user_id"]},
         )
-
+    
         return LoginResponse(
             access_token=session_data["access_token"],
             refresh_token=session_data["refresh_token"],
@@ -347,7 +346,12 @@ async def update_credentials(
             email=user_data["email"],
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
-
+                
+        logger.info(
+            "User credentials updated",
+            extra={"user_id": user_data["user_id"]},
+        )
+    
         return LoginResponse(
             access_token=session_data["access_token"],
             refresh_token=session_data["refresh_token"],
@@ -397,16 +401,14 @@ async def request_password_reset(
         if not token:
             # Don't reveal if user exists or not
             return {"detail": "If the email exists, a reset link has been sent"}
-
-        # In production, you would send this token via email
-        # For now, log it (remove this in production!)
+        
+        # For now, log an anonymized identifier
+        hashed_email = hashlib.sha256(req.email.encode()).hexdigest()
         logger.info(
             "Password reset token generated",
-            email=req.email,
-            token=token,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            extra={"hashed_email": hashed_email},
         )
-
+      
         return {"detail": "Password reset link sent"}
 
     except Exception as e:

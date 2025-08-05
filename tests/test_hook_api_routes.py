@@ -35,7 +35,7 @@ class TestHookAPIRoutes:
     def app(self):
         """Create FastAPI app with hook routes."""
         app = FastAPI()
-        app.include_router(router)
+        app.include_router(router, prefix="/api/hooks")
         return app
     
     @pytest.fixture
