@@ -42,7 +42,7 @@ from ai_karen_engine.utils.auth import get_current_user, get_tenant_context
 logger = logging.getLogger(__name__)
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
 
-router = APIRouter(prefix="/api/v1/database", tags=["database"])
+router = APIRouter(tags=["database"])
 
 
 # ------------------------------------------------------------------------------

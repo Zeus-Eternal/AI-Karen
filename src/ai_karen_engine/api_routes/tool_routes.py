@@ -28,7 +28,7 @@ from ai_karen_engine.services.tool_service import (
 from ai_karen_engine.core.dependencies import get_tool_service
 # Temporarily disable auth imports for web UI integration
 
-router = APIRouter(prefix="/api/tools", tags=["tools"])
+router = APIRouter(tags=["tools"])
 
 
 # Request/Response Models
