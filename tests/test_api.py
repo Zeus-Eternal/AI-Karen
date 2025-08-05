@@ -4,17 +4,8 @@ import asyncio
 import pytest
 from fastapi import HTTPException
 
-import ai_karen_engine.fastapi_stub as fastapi_stub
-import ai_karen_engine.pydantic_stub as pydantic_stub
 import ai_karen_engine.utils.auth as auth_utils
 from types import SimpleNamespace
-
-# Expose stubs under their expected top-level names
-sys.modules.setdefault("fastapi_stub", fastapi_stub)
-sys.modules.setdefault("pydantic_stub", pydantic_stub)
-
-sys.modules["fastapi"] = fastapi_stub
-sys.modules["pydantic"] = pydantic_stub
 
 from fastapi.testclient import TestClient  # noqa: E402
 from main import create_app, chat, ChatRequest  # noqa: E402

@@ -2,25 +2,19 @@
 Production Authentication Routes
 Real database-backed authentication with secure session management
 """
-
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr
+import hashlib
 
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.security.auth_manager import verify_totp
 from ai_karen_engine.services.auth_service import auth_service
-from ai_karen_engine.services.auth_utils import (
-    COOKIE_NAME,
-    get_current_user,
-    get_session_token,
-    set_session_cookie,
-)
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 
 # Request/Response Models
@@ -102,7 +96,15 @@ async def register(
         )
 
         # Set secure HttpOnly cookie
-        set_session_cookie(response, session_data["session_token"])
+        
+        response.set_cookie(
+            COOKIE_NAME,
+            session_data["session_token"],
+            max_age=24 * 60 * 60,  # 24 hours
+            httponly=True,
+            secure=True,
+            samesite="strict",
+        )
 
         # Convert UserData to dict format
         user_data = {
@@ -115,9 +117,11 @@ async def register(
             "two_factor_enabled": user.two_factor_enabled,
             "is_verified": user.is_verified,
         }
-
-        logger.info(f"User registered successfully: {req.email}")
-
+                
+        logger.info(
+            "User registered",
+            extra={"user_id": user.user_id},
+        )
         return LoginResponse(
             access_token=session_data["access_token"],
             refresh_token=session_data["refresh_token"],
@@ -128,7 +132,11 @@ async def register(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Registration failed: {e}")
+        logger.error(
+            "Registration failed",
+            error=str(e),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
         raise HTTPException(status_code=500, detail="Registration failed")
 
 
@@ -181,10 +189,21 @@ async def login(
         )
 
         # Set secure HttpOnly cookie
-        set_session_cookie(response, session_data["session_token"])
-
-        logger.info(f"User logged in successfully: {req.email}")
-
+        
+        response.set_cookie(
+            COOKIE_NAME,
+            session_data["session_token"],
+            max_age=24 * 60 * 60,  # 24 hours
+            httponly=True,
+            secure=True,
+            samesite="strict",
+        )
+        
+        logger.info(
+            "User logged in",
+            extra={"user_id": user_data["user_id"]},
+        )
+      
         return LoginResponse(
             access_token=session_data["access_token"],
             refresh_token=session_data["refresh_token"],
@@ -195,7 +214,11 @@ async def login(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Login failed: {e}")
+        logger.error(
+            "Login failed",
+            error=str(e),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
         raise HTTPException(status_code=500, detail="Login failed")
 
 
@@ -204,19 +227,57 @@ async def get_current_user_route(
     user_data: Dict[str, Any] = Depends(get_current_user),
 ) -> UserResponse:
     """Get current user information"""
+    
+    # Get session token from cookie or header
+    session_token = request.cookies.get(COOKIE_NAME)
+    if not session_token:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header.split(" ")[1]
 
+    if not session_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authentication token",
+        )
+
+    # Validate session
+    user_data = await auth_service.validate_session(
+        session_token=session_token,
+        ip_address=request.client.host if request.client else "unknown",
+        user_agent=request.headers.get("user-agent", ""),
+    )
+
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session",
+        )
+        
     return UserResponse(**user_data)
 
 
 @router.post("/update_credentials", response_model=LoginResponse)
 async def update_credentials(
-    req: UpdateCredentialsRequest,
-    request: Request,
-    response: Response,
-    user_data: Dict[str, Any] = Depends(get_current_user),
+  
+    req: UpdateCredentialsRequest, request: Request, response: Response
 ) -> LoginResponse:
     """Update user credentials"""
 
+    # Get current user
+    session_token = request.cookies.get(COOKIE_NAME)
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Missing authentication token")
+
+    user_data = await auth_service.validate_session(
+        session_token=session_token,
+        ip_address=request.client.host if request.client else "unknown",
+        user_agent=request.headers.get("user-agent", ""),
+    )
+
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid session")
+        
     try:
         # Update password if provided
         if req.new_password:
@@ -264,7 +325,16 @@ async def update_credentials(
         )
 
         # Set new cookie
-        set_session_cookie(response, session_data["session_token"])
+        
+        response.set_cookie(
+            COOKIE_NAME,
+            session_data["session_token"],
+            max_age=24 * 60 * 60,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+        )
+  
 
         # Get updated user data
         updated_user = await auth_service.validate_session(
@@ -272,9 +342,18 @@ async def update_credentials(
             ip_address=request.client.host if request.client else "unknown",
             user_agent=request.headers.get("user-agent", ""),
         )
-
-        logger.info(f"Credentials updated for user: {user_data['email']}")
-
+      
+        logger.info(
+            "Credentials updated for user",
+            email=user_data["email"],
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+                
+        logger.info(
+            "User credentials updated",
+            extra={"user_id": user_data["user_id"]},
+        )
+      
         return LoginResponse(
             access_token=session_data["access_token"],
             refresh_token=session_data["refresh_token"],
@@ -285,15 +364,20 @@ async def update_credentials(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to update credentials: {e}")
+        logger.error(
+            "Failed to update credentials",
+            error=str(e),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
         raise HTTPException(status_code=500, detail="Failed to update credentials")
 
 
 @router.post("/logout")
 async def logout(request: Request, response: Response) -> Dict[str, str]:
     """Logout user and invalidate session"""
-
-    session_token = get_session_token(request)
+    
+    session_token = request.cookies.get(COOKIE_NAME)
+  
     if session_token:
         # Invalidate session
         await auth_service.invalidate_session(session_token)
@@ -320,15 +404,22 @@ async def request_password_reset(
         if not token:
             # Don't reveal if user exists or not
             return {"detail": "If the email exists, a reset link has been sent"}
-
-        # In production, you would send this token via email
-        # For now, log it (remove this in production!)
-        logger.info(f"Password reset token for {req.email}: {token}")
-
+          
+        # For now, log an anonymized identifier
+        hashed_email = hashlib.sha256(req.email.encode()).hexdigest()
+        logger.info(
+            "Password reset token generated",
+            extra={"hashed_email": hashed_email},
+        )
+      
         return {"detail": "Password reset link sent"}
 
     except Exception as e:
-        logger.error(f"Password reset request failed: {e}")
+        logger.error(
+            "Password reset request failed",
+            error=str(e),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
         raise HTTPException(status_code=500, detail="Failed to process request")
 
 
@@ -349,7 +440,11 @@ async def reset_password(req: PasswordResetConfirm) -> Dict[str, str]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Password reset failed: {e}")
+        logger.error(
+            "Password reset failed",
+            error=str(e),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
         raise HTTPException(status_code=500, detail="Password reset failed")
 
 
@@ -363,10 +458,23 @@ async def auth_health_check():
         # This is a simple check - in production you might want more comprehensive checks
         return {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+          
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+          
             "service": "auth",
         }
 
     except Exception as e:
-        logger.error(f"Auth health check failed: {e}")
-        return {"status": "unhealthy", "error": str(e), "service": "auth"}
+      
+        logger.error(
+            "Auth health check failed",
+            error=str(e),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "service": "auth",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+  

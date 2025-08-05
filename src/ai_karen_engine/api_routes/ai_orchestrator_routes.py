@@ -2,7 +2,6 @@
 FastAPI routes for AI Orchestrator service integration.
 """
 
-import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
@@ -11,8 +10,6 @@ from pydantic import BaseModel, Field
 from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
     AIOrchestrator,
     FlowType,
-    FlowInput,
-    FlowOutput
 )
 from ai_karen_engine.core.dependencies import get_ai_orchestrator_service
 from ai_karen_engine.core.logging import get_logger
@@ -29,7 +26,7 @@ from ai_karen_engine.models.web_api_error_responses import (
 # Temporarily disable auth imports for web UI integration
 # from ..core.auth import get_current_user, get_tenant_id
 
-router = APIRouter(prefix="/api/ai", tags=["ai-orchestrator"])
+router = APIRouter(tags=["ai-orchestrator"])
 
 logger = get_logger(__name__)
 
@@ -104,13 +101,12 @@ async def process_flow(
     """Process an AI flow with the given input."""
     try:
         # Create flow input
-        flow_input = FlowInput(
+        flow_input = build_flow_input(
             prompt=request.prompt,
             conversation_history=request.conversation_history,
             user_settings=request.user_settings,
             context=request.context,
-            user_id="anonymous",
-            session_id=request.session_id
+            session_id=request.session_id,
         )
         
         # Process the flow
@@ -119,17 +115,7 @@ async def process_flow(
         processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         
         return FlowResponse(
-            response=result.response,
-            requires_plugin=result.requires_plugin,
-            plugin_to_execute=result.plugin_to_execute,
-            plugin_parameters=result.plugin_parameters,
-            memory_to_store=result.memory_to_store,
-            suggested_actions=result.suggested_actions,
-            ai_data=result.ai_data,
-            proactive_suggestion=result.proactive_suggestion,
-            processing_time_ms=int(processing_time),
-            model_used=result.ai_data.get("model_used") if result.ai_data else None,
-            confidence_score=result.ai_data.get("confidence") if result.ai_data else None
+            **format_flow_response(result, int(processing_time))
         )
         
     except Exception as e:
@@ -156,13 +142,12 @@ async def decide_action(
     """Process decision-making flow."""
     try:
         # Create flow input
-        flow_input = FlowInput(
+        flow_input = build_flow_input(
             prompt=request.prompt,
             conversation_history=request.conversation_history,
             user_settings=request.user_settings,
             context=request.context,
-            user_id="anonymous",
-            session_id=request.session_id
+            session_id=request.session_id,
         )
         
         # Process decide action flow
@@ -171,17 +156,7 @@ async def decide_action(
         processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         
         return FlowResponse(
-            response=result.response,
-            requires_plugin=result.requires_plugin,
-            plugin_to_execute=result.plugin_to_execute,
-            plugin_parameters=result.plugin_parameters,
-            memory_to_store=result.memory_to_store,
-            suggested_actions=result.suggested_actions,
-            ai_data=result.ai_data,
-            proactive_suggestion=result.proactive_suggestion,
-            processing_time_ms=int(processing_time),
-            model_used=result.ai_data.get("model_used") if result.ai_data else None,
-            confidence_score=result.ai_data.get("confidence") if result.ai_data else None
+            **format_flow_response(result, int(processing_time))
         )
         
     except Exception as e:
@@ -215,13 +190,12 @@ async def conversation_processing(
             "tenant_id": "default"  # Use default tenant for Web UI API
         })
         
-        flow_input = FlowInput(
+        flow_input = build_flow_input(
             prompt=request.prompt,
             conversation_history=request.conversation_history,
             user_settings=request.user_settings,
             context=context,
-            user_id="anonymous",
-            session_id=request.session_id
+            session_id=request.session_id,
         )
         
         # Process conversation flow
@@ -230,17 +204,7 @@ async def conversation_processing(
         processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         
         return FlowResponse(
-            response=result.response,
-            requires_plugin=result.requires_plugin,
-            plugin_to_execute=result.plugin_to_execute,
-            plugin_parameters=result.plugin_parameters,
-            memory_to_store=result.memory_to_store,
-            suggested_actions=result.suggested_actions,
-            ai_data=result.ai_data,
-            proactive_suggestion=result.proactive_suggestion,
-            processing_time_ms=int(processing_time),
-            model_used=result.ai_data.get("model_used") if result.ai_data else None,
-            confidence_score=result.ai_data.get("confidence") if result.ai_data else None
+            **format_flow_response(result, int(processing_time))
         )
         
     except Exception as e:

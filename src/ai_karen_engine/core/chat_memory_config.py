@@ -11,15 +11,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
-try:
-    # Pydantic v2
-    from pydantic import Field
-    from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
+from pydantic import __version__ as pydantic_version
 
+if pydantic_version.startswith("2"):
+    try:
+        from pydantic_settings import BaseSettings, SettingsConfigDict
+    except ImportError as exc:
+        raise ImportError(
+            "pydantic-settings is required when using Pydantic v2. "
+            "Install it with `pip install pydantic-settings`."
+        ) from exc
     V2 = True
-except ImportError:
-    # Pydantic v1 fallback
-    from pydantic import BaseSettings, Field
+else:
+    from pydantic import BaseSettings  # type: ignore
 
     V2 = False
 
@@ -77,7 +82,9 @@ class ProductionAuthSettings(BaseSettings):
         "postgresql://karen_user:karen_secure_pass_change_me@postgres:5432/ai_karen",
         json_schema_extra={"env": ["POSTGRES_URL", "DATABASE_URL"]},
     )
-    redis_url: str = Field("redis://redis:6379/0", json_schema_extra={"env": "REDIS_URL"})
+    redis_url: str = Field(
+        "redis://redis:6379/0", json_schema_extra={"env": "REDIS_URL"}
+    )
 
     # JWT / security
     secret_key: str = Field("changeme", description="JWT secret key (override!)")
@@ -122,7 +129,9 @@ class ProductionSettings(BaseSettings):
         "postgresql://karen_user:karen_secure_pass_change_me@postgres:5432/ai_karen",
         json_schema_extra={"env": ["POSTGRES_URL", "DATABASE_URL"]},
     )
-    redis_url: str = Field("redis://redis:6379/0", json_schema_extra={"env": "REDIS_URL"})
+    redis_url: str = Field(
+        "redis://redis:6379/0", json_schema_extra={"env": "REDIS_URL"}
+    )
 
     # Vector DB / Milvus
     vector_index_name: str = Field(

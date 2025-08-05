@@ -3,13 +3,17 @@ from typing import List
 
 try:
     from fastapi import APIRouter
-except Exception:  # pragma: no cover
-    from ai_karen_engine.fastapi_stub import APIRouter
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for announcement routes. Install via `pip install fastapi`."
+    ) from e
 
 try:
     from pydantic import BaseModel
-except Exception:
-    from ai_karen_engine.pydantic_stub import BaseModel
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for announcement routes. Install via `pip install pydantic`."
+    ) from e
 
 router = APIRouter()
 

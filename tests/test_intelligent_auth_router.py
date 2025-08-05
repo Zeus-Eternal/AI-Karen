@@ -32,7 +32,7 @@ from ai_karen_engine.security.models import (
 def app():
     """Create FastAPI app with auth router for testing."""
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(router, prefix="/api/auth")
     return app
 
 

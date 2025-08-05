@@ -12,25 +12,17 @@ from typing import Dict, List, Optional, Any, Union
 
 try:
     from fastapi import APIRouter, HTTPException, Depends, Query, Path, Body
-except Exception:  # pragma: no cover - stub fallback
-    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
-    def Depends(func):
-        return func
-    def Query(default=None, **_kw):
-        return default
-    def Path(default=None, **_kw):
-        return default
-    def Body(default=None, **_kw):
-        return default
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for database routes. Install via `pip install fastapi`."
+    ) from e
 
 try:
     from pydantic import BaseModel, Field, validator
-except Exception:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
-    def validator(*_a, **_kw):
-        def _wrap(func):
-            return func
-        return _wrap
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for database routes. Install via `pip install pydantic`."
+    ) from e
 
 # DB error classes
 from sqlalchemy.exc import ProgrammingError, OperationalError
@@ -42,7 +34,7 @@ from ai_karen_engine.utils.auth import get_current_user, get_tenant_context
 logger = logging.getLogger(__name__)
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
 
-router = APIRouter(prefix="/api/v1/database", tags=["database"])
+router = APIRouter(tags=["database"])
 
 
 # ------------------------------------------------------------------------------
