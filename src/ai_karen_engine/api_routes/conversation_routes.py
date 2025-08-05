@@ -49,7 +49,7 @@ router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 class CreateConversationRequest(BaseModel):
     """Request model for creating conversation."""
     session_id: str = Field(..., description="Session ID")
-    ui_source: UISource = Field(..., description="Source UI")
+    ui_source: UISource = Field(..., description="Source UI (web, streamlit, desktop, api, ag_ui)")
     title: Optional[str] = Field(None, description="Conversation title")
     initial_message: Optional[str] = Field(None, description="Initial user message")
     user_settings: Optional[Dict[str, Any]] = Field(None, description="User settings")
@@ -62,7 +62,7 @@ class AddMessageRequest(BaseModel):
     """Request model for adding message."""
     role: MessageRole = Field(..., description="Message role")
     content: str = Field(..., description="Message content")
-    ui_source: UISource = Field(..., description="Source UI")
+    ui_source: UISource = Field(..., description="Source UI (web, streamlit, desktop, api, ag_ui)")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Message metadata")
     ai_confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="AI confidence score")
     processing_time_ms: Optional[int] = Field(None, description="Processing time in milliseconds")
