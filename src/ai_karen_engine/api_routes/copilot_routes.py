@@ -66,7 +66,7 @@ class ChatResponse(BaseModel):
     metadata: Dict[str, Any]
 
 # Create router
-router = APIRouter(prefix="/api/copilot", tags=["copilot"])
+router = APIRouter(tags=["copilot"])
 
 def get_copilot_provider() -> CopilotKitProvider:
     """Get CopilotKit provider instance."""

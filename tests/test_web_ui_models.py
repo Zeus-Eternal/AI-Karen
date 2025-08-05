@@ -39,6 +39,7 @@ from src.ai_karen_engine.models.shared_types import (
     ToolType,
     WeatherServiceOption,
 )
+from src.ai_karen_engine.models.web_ui_types import ChatProcessRequest
 
 
 class TestSharedTypes:
@@ -292,6 +293,26 @@ class TestDatabaseModels:
         memory_entry.update_metadata({"confidence": 0.85})
         assert memory_entry.memory_metadata["source"] == "web"
         assert memory_entry.memory_metadata["confidence"] == 0.85
+
+
+class TestChatProcessRequestValidation:
+    """Tests for ChatProcessRequest validators."""
+
+    def test_empty_message(self):
+        with pytest.raises(ValidationError):
+            ChatProcessRequest(message="")
+
+    def test_message_too_long(self):
+        with pytest.raises(ValidationError):
+            ChatProcessRequest(message="x" * 10001)
+
+    def test_invalid_conversation_history(self):
+        with pytest.raises(ValidationError):
+            ChatProcessRequest(message="hi", conversation_history=["bad"])
+
+    def test_invalid_user_settings(self):
+        with pytest.raises(ValidationError):
+            ChatProcessRequest(message="hi", user_settings="bad")
 
 
 if __name__ == "__main__":

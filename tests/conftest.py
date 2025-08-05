@@ -54,21 +54,18 @@ sys.modules.setdefault(
 sys.modules.setdefault("ai_karen_engine", importlib.import_module("ai_karen_engine"))
 sys.modules.setdefault("ui_logic", importlib.import_module("ui_logic"))
 sys.modules.setdefault("services", importlib.import_module("ai_karen_engine.services"))
-sys.modules.setdefault(
-    "integrations", importlib.import_module("ai_karen_engine.integrations")
-)
-sys.modules.setdefault(
-    "integrations.llm_registry",
-    importlib.import_module("ai_karen_engine.integrations.llm_registry"),
-)
-sys.modules.setdefault(
-    "integrations.model_discovery",
-    importlib.import_module("ai_karen_engine.integrations.model_discovery"),
-)
-sys.modules.setdefault(
-    "integrations.llm_utils",
-    importlib.import_module("ai_karen_engine.integrations.llm_utils"),
-)
+sys.modules.setdefault("integrations", importlib.import_module("ai_karen_engine.integrations"))
+sys.modules.setdefault("integrations.llm_registry", importlib.import_module("ai_karen_engine.integrations.llm_registry"))
+sys.modules.setdefault("integrations.model_discovery", importlib.import_module("ai_karen_engine.integrations.model_discovery"))
+sys.modules.setdefault("integrations.llm_utils", importlib.import_module("ai_karen_engine.integrations.llm_utils"))
+# Ensure required runtime dependencies are available
+try:  # pragma: no cover - fail early if missing
+    import fastapi  # noqa: F401
+    import pydantic  # noqa: F401
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(
+        "FastAPI and Pydantic must be installed for tests. Install with `pip install fastapi pydantic`."
+    ) from e
 
 os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "test")
 os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")

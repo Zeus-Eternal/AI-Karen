@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from ai_karen_engine.utils.auth import validate_session
 
-router = APIRouter(prefix="/api/audit", tags=["audit"])
+router = APIRouter(tags=["audit"])
 
 _AUDIT_LOGS: List[dict] = [
     {
