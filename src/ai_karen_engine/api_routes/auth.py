@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status, Depends
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, EmailStr
+import hashlib
 
 from ai_karen_engine.services.auth_service import auth_service
 from ai_karen_engine.core.logging import get_logger
@@ -120,7 +121,10 @@ async def register(
             "is_verified": user.is_verified
         }
         
-        logger.info(f"User registered successfully: {req.email}")
+        logger.info(
+            "User registered",
+            extra={"user_id": user.user_id},
+        )
         
         return LoginResponse(
             access_token=session_data["access_token"],
@@ -198,7 +202,10 @@ async def login(
             samesite="strict",
         )
         
-        logger.info(f"User logged in successfully: {req.email}")
+        logger.info(
+            "User logged in",
+            extra={"user_id": user_data["user_id"]},
+        )
         
         return LoginResponse(
             access_token=session_data["access_token"],
@@ -330,7 +337,10 @@ async def update_credentials(
             user_agent=request.headers.get("user-agent", "")
         )
         
-        logger.info(f"Credentials updated for user: {user_data['email']}")
+        logger.info(
+            "User credentials updated",
+            extra={"user_id": user_data["user_id"]},
+        )
         
         return LoginResponse(
             access_token=session_data["access_token"],
@@ -380,8 +390,12 @@ async def request_password_reset(
             return {"detail": "If the email exists, a reset link has been sent"}
         
         # In production, you would send this token via email
-        # For now, log it (remove this in production!)
-        logger.info(f"Password reset token for {req.email}: {token}")
+        # For now, log an anonymized identifier
+        hashed_email = hashlib.sha256(req.email.encode()).hexdigest()
+        logger.info(
+            "Password reset token generated",
+            extra={"hashed_email": hashed_email},
+        )
         
         return {"detail": "Password reset link sent"}
         
