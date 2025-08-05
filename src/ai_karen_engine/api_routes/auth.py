@@ -4,7 +4,7 @@ Real database-backed authentication with secure session management
 """
 
 from fastapi import APIRouter, HTTPException, Request, Response, status, Depends
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, EmailStr
 
@@ -243,8 +243,15 @@ async def get_current_user(request: Request) -> UserResponse:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired session"
         )
-    
+
     return UserResponse(**user_data)
+
+
+async def get_current_tenant(
+    current_user: UserResponse = Depends(get_current_user),
+) -> str:
+    """Dependency to retrieve the current tenant ID."""
+    return current_user.tenant_id
 
 
 @router.post("/update_credentials", response_model=LoginResponse)
