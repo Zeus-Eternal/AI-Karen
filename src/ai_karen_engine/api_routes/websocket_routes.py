@@ -8,32 +8,31 @@ Server-Sent Events when WebSocket is not available.
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
-from typing import Dict, Any, Optional
-
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Depends, Query, HTTPException
+from datetime import datetime, timezone
+from functools import lru_cache
+from typing import Any, Dict, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 
 try:
     from sse_starlette.sse import EventSourceResponse
-except ImportError:
+except ImportError:  # pragma: no cover - optional dependency
     # Fallback for EventSourceResponse if sse_starlette is not available
     class EventSourceResponse:
-        def __init__(self, content): 
+        def __init__(self, content):
             self.content = content
 
 try:
     from pydantic import BaseModel, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for websocket routes. Install via `pip install pydantic`."
+    ) from e
 
-from ai_karen_engine.chat.websocket_gateway import WebSocketGateway, WebSocketMessage, MessageType
-from ai_karen_engine.chat.stream_processor import StreamProcessor
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
-from ai_karen_engine.utils.auth import validate_session
-from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext
+from ai_karen_engine.chat.stream_processor import StreamProcessor
+from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
 
 logger = logging.getLogger(__name__)
 
@@ -93,54 +92,31 @@ class StreamMetricsResponse(BaseModel):
 
 
 # Dependency injection functions
+@lru_cache
+def get_chat_orchestrator() -> ChatOrchestrator:
+    """Create or return the chat orchestrator instance."""
+    from ai_karen_engine.chat.memory_processor import MemoryProcessor
+    from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+
+    memory_processor = MemoryProcessor(
+        spacy_service=nlp_service_manager.spacy_service,
+        distilbert_service=nlp_service_manager.distilbert_service,
+        memory_manager=None  # Will be injected later
+    )
+
+    return ChatOrchestrator(memory_processor=memory_processor)
+
+
+@lru_cache
 def get_websocket_gateway() -> WebSocketGateway:
     """Get WebSocket gateway instance."""
-    global websocket_gateway
-    if websocket_gateway is None:
-        # Initialize with default chat orchestrator
-        from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator
-        from ai_karen_engine.chat.memory_processor import MemoryProcessor
-        from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
-        
-        # Create memory processor
-        memory_processor = MemoryProcessor(
-            spacy_service=nlp_service_manager.spacy_service,
-            distilbert_service=nlp_service_manager.distilbert_service,
-            memory_manager=None  # Will be injected later
-        )
-        
-        # Create chat orchestrator
-        chat_orch = ChatOrchestrator(memory_processor=memory_processor)
-        
-        # Create WebSocket gateway
-        websocket_gateway = WebSocketGateway(chat_orch)
-    
-    return websocket_gateway
+    return WebSocketGateway(get_chat_orchestrator())
 
 
+@lru_cache
 def get_stream_processor() -> StreamProcessor:
     """Get stream processor instance."""
-    global stream_processor
-    if stream_processor is None:
-        # Initialize with default chat orchestrator
-        from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator
-        from ai_karen_engine.chat.memory_processor import MemoryProcessor
-        from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
-        
-        # Create memory processor
-        memory_processor = MemoryProcessor(
-            spacy_service=nlp_service_manager.spacy_service,
-            distilbert_service=nlp_service_manager.distilbert_service,
-            memory_manager=None  # Will be injected later
-        )
-        
-        # Create chat orchestrator
-        chat_orch = ChatOrchestrator(memory_processor=memory_processor)
-        
-        # Create stream processor
-        stream_processor = StreamProcessor(chat_orch)
-    
-    return stream_processor
+    return StreamProcessor(get_chat_orchestrator())
 
 
 # WebSocket endpoint
@@ -466,52 +442,32 @@ async def get_conversation_connections(
 
 # Health check endpoint
 @router.get("/health")
-async def websocket_health_check():
+async def websocket_health_check(
+    gateway: WebSocketGateway = Depends(get_websocket_gateway),
+    processor: StreamProcessor = Depends(get_stream_processor),
+):
     """Health check for WebSocket services."""
     try:
-        gateway = get_websocket_gateway()
-        processor = get_stream_processor()
-        
         gateway_stats = gateway.get_connection_stats()
         stream_metrics = processor.get_performance_metrics()
-        
+
         return {
             "status": "healthy",
             "websocket_gateway": {
                 "status": "running",
                 "connections": gateway_stats["total_connections"],
-                "authenticated_users": gateway_stats["unique_users"]
+                "authenticated_users": gateway_stats["unique_users"],
             },
             "stream_processor": {
                 "status": "running",
                 "active_streams": processor.get_active_session_count(),
-                "success_rate": stream_metrics["success_rate"]
+                "success_rate": stream_metrics["success_rate"],
             },
-            "timestamp": asyncio.get_event_loop().time()
+            "timestamp": datetime.now(timezone.utc),
         }
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
-            "timestamp": asyncio.get_event_loop().time()
+            "timestamp": datetime.now(timezone.utc),
         }
-
-
-# Initialize services on module import
-def initialize_websocket_services():
-    """Initialize WebSocket services."""
-    global websocket_gateway, stream_processor
-    
-    try:
-        # Get instances to trigger initialization
-        get_websocket_gateway()
-        get_stream_processor()
-        
-        logger.info("WebSocket services initialized successfully")
-        
-    except Exception as e:
-        logger.error(f"Failed to initialize WebSocket services: {e}")
-
-
-# Initialize on import
-initialize_websocket_services()

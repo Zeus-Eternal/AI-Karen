@@ -9,29 +9,27 @@ from typing import List, Optional, Dict, Any
 import mimetypes
 
 try:
-    from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Query
+    from fastapi import (
+        APIRouter,
+        HTTPException,
+        Depends,
+        UploadFile,
+        File,
+        Form,
+        Query,
+    )
     from fastapi.responses import FileResponse, StreamingResponse
-except Exception:  # pragma: no cover
-    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
-    def Depends(func):
-        return func
-    def Query(default=None, **_kw):
-        return default
-    def Form(default=None, **_kw):
-        return default
-    def File(default=None, **_kw):
-        return default
-    class UploadFile:
-        pass
-    class FileResponse:
-        pass
-    class StreamingResponse:
-        pass
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for file attachment routes. Install via `pip install fastapi`."
+    ) from e
 
 try:
     from pydantic import BaseModel, Field
-except Exception:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for file attachment routes. Install via `pip install pydantic`."
+    ) from e
 
 from ai_karen_engine.chat.file_attachment_service import (
     FileAttachmentService,
@@ -113,8 +111,29 @@ async def upload_file(
                 detail=error_response.dict(),
             )
         
-        # Read file content
-        file_content = await file.read()
+        # Stream file content in chunks to enforce size limits
+        max_size = file_service.max_file_size
+        file_size = 0
+        content_chunks: List[bytes] = []
+        chunk_size = 1024 * 1024  # 1MB
+        file.file.seek(0)
+        while True:
+            chunk = file.file.read(chunk_size)
+            if not chunk:
+                break
+            file_size += len(chunk)
+            if file_size > max_size:
+                error_response = create_validation_error_response(
+                    field="file",
+                    message=f"File size exceeds maximum allowed size of {max_size} bytes",
+                    details={"max_size": max_size}
+                )
+                raise HTTPException(
+                    status_code=get_http_status_for_error_code(WebAPIErrorCode.VALIDATION_ERROR),
+                    detail=error_response.dict(),
+                )
+            content_chunks.append(chunk)
+        file_content = b"".join(content_chunks)
         
         # Create upload request
         upload_request = FileUploadRequest(
@@ -229,7 +248,7 @@ async def download_file(file_id: str):
             )
         
         # Get file metadata for proper response
-        metadata = file_service._file_metadata.get(file_id)
+        metadata = file_service.list_files().get(file_id)
         if not metadata:
             filename = f"file_{file_id}"
             mime_type = "application/octet-stream"
@@ -328,7 +347,7 @@ async def process_multimedia(
             )
         
         # Get file metadata to determine media type
-        metadata = file_service._file_metadata.get(file_id)
+        metadata = file_service.list_files().get(file_id)
         if not metadata:
             error_response = create_service_error_response(
                 service_name="multimedia",
@@ -407,7 +426,7 @@ async def list_files(
         # Get all files from service
         all_files = []
         
-        for file_id, metadata in file_service._file_metadata.items():
+        for file_id, metadata in file_service.list_files().items():
             # Apply filters
             if file_type and metadata.file_type != file_type:
                 continue

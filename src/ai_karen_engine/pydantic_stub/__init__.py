@@ -1,10 +1,12 @@
 from __future__ import annotations
-from typing import Any, Optional, Union
-from enum import Enum
+
+# mypy: ignore-errors
+from typing import Any, Optional
 
 
 class ValidationError(Exception):
     """Pydantic validation error stub."""
+
     pass
 
 
@@ -55,28 +57,42 @@ class BaseModel:
     def model_dump(self) -> dict[str, Any]:
         return self.dict()
 
+
+class BaseSettings(BaseModel):
+    """Minimal BaseSettings stub."""
+
+    pass
+
+
 # Simple ConfigDict replacement
 class ConfigDict(dict):
     """Pydantic ConfigDict stub."""
+
     pass
+
 
 # Simple decorator for validators (no-op)
 def validator(*fields, **kwargs):
     def decorator(func):
         return func
+
     return decorator
+
 
 # Pydantic v2 field validator (no-op)
 def field_validator(*fields, **kwargs):
     def decorator(func):
         return func
+
     return decorator
+
 
 # Create model function (stub)
 def create_model(model_name: str, **field_definitions: Any) -> type:
     """Create a dynamic model (stub implementation)."""
+
     class DynamicModel(BaseModel):
         pass
-    
+
     DynamicModel.__name__ = model_name
     return DynamicModel
