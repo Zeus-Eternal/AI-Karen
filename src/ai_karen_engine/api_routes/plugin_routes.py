@@ -6,7 +6,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from ai_karen_engine.core.dependencies import get_plugin_service
+from ai_karen_engine.core.dependencies import (
+    get_current_user_context,
+    get_plugin_service,
+)
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
@@ -19,18 +22,11 @@ from ai_karen_engine.services.plugin_service import (
     PluginService,
 )
 
-# Temporarily disable auth imports for web UI integration
-
 router = APIRouter(tags=["plugins"])
 
 
-def get_current_user() -> Dict[str, Any]:
-    """Retrieve current user context.
-
-    This is a placeholder implementation that always returns an admin user.
-    In production, this should extract the user from the request/session.
-    """
-    return {"user_id": "admin", "roles": ["admin"], "tenant_id": "default"}
+# Alias core dependency for convenience
+get_current_user = get_current_user_context
 
 
 logger = get_logger(__name__)
