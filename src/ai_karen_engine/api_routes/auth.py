@@ -23,7 +23,7 @@ router = APIRouter(tags=["auth"])
 
 # Alias core dependencies for convenience
 get_current_user = get_current_user_context
-get_current_tenant = get_current_tenant_id
+get_tenant_id = get_current_tenant_id
 
 COOKIE_NAME = "kari_session"
 
@@ -242,10 +242,10 @@ async def get_current_user_route(
     return UserResponse(**user_data)
 
 
-async def get_current_tenant(
+async def get_tenant_from_user(
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> str:
-    """Dependency to retrieve the current tenant ID."""
+    """Retrieve the tenant ID from the current user context."""
     return current_user["tenant_id"]
 
 
