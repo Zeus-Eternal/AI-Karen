@@ -23,6 +23,7 @@ except ImportError:
     psutil = None
 
 from ai_karen_engine.extensions.models import ExtensionRecord, ExtensionStatus
+from ai_karen_engine.hooks.hook_types import HookTypes
 
 
 class HealthStatus(Enum):
@@ -43,6 +44,13 @@ class ResourceUsage:
     network_bytes_sent: int = 0
     network_bytes_recv: int = 0
     uptime_seconds: float = 0
+    
+    # Hook monitoring metrics
+    hooks_registered: int = 0
+    hooks_executed: int = 0
+    hooks_failed: int = 0
+    hook_execution_time_ms: float = 0.0
+    last_hook_execution: Optional[float] = None
 
 
 @dataclass
@@ -362,6 +370,115 @@ class ResourceMonitor:
         disk_ok = usage.disk_mb <= limits.max_disk_mb * 0.9
 
         return memory_ok and cpu_ok and disk_ok
+    
+    def update_hook_metrics(
+        self,
+        extension_name: str,
+        hooks_registered: int = 0,
+        hook_executed: bool = False,
+        hook_failed: bool = False,
+        execution_time_ms: float = 0.0
+    ) -> None:
+        """
+        Update hook execution metrics for an extension.
+        
+        Args:
+            extension_name: Name of the extension
+            hooks_registered: Number of hooks registered (if changed)
+            hook_executed: Whether a hook was executed
+            hook_failed: Whether a hook execution failed
+            execution_time_ms: Hook execution time in milliseconds
+        """
+        with self._lock:
+            if extension_name not in self.extension_usage:
+                return
+            
+            usage = self.extension_usage[extension_name]
+            
+            # Update hook registration count
+            if hooks_registered > 0:
+                usage.hooks_registered = hooks_registered
+            
+            # Update execution metrics
+            if hook_executed:
+                usage.hooks_executed += 1
+                usage.hook_execution_time_ms += execution_time_ms
+                usage.last_hook_execution = time.time()
+            
+            if hook_failed:
+                usage.hooks_failed += 1
+    
+    def get_hook_metrics(self, extension_name: str) -> Optional[Dict[str, any]]:
+        """
+        Get hook execution metrics for an extension.
+        
+        Args:
+            extension_name: Name of the extension
+            
+        Returns:
+            Dictionary with hook metrics or None if not found
+        """
+        with self._lock:
+            usage = self.extension_usage.get(extension_name)
+            
+        if not usage:
+            return None
+        
+        return {
+            "hooks_registered": usage.hooks_registered,
+            "hooks_executed": usage.hooks_executed,
+            "hooks_failed": usage.hooks_failed,
+            "hook_success_rate": (
+                (usage.hooks_executed - usage.hooks_failed) / usage.hooks_executed * 100
+                if usage.hooks_executed > 0 else 100.0
+            ),
+            "average_execution_time_ms": (
+                usage.hook_execution_time_ms / usage.hooks_executed
+                if usage.hooks_executed > 0 else 0.0
+            ),
+            "total_execution_time_ms": usage.hook_execution_time_ms,
+            "last_hook_execution": usage.last_hook_execution
+        }
+    
+    def get_all_hook_metrics(self) -> Dict[str, Dict[str, any]]:
+        """Get hook metrics for all extensions."""
+        metrics = {}
+        
+        with self._lock:
+            extension_names = list(self.extension_usage.keys())
+        
+        for name in extension_names:
+            hook_metrics = self.get_hook_metrics(name)
+            if hook_metrics:
+                metrics[name] = hook_metrics
+        
+        return metrics
+    
+    def is_extension_hook_healthy(self, extension_name: str) -> bool:
+        """
+        Check if an extension's hook system is healthy.
+        
+        Args:
+            extension_name: Name of the extension
+            
+        Returns:
+            True if hook system is healthy, False otherwise
+        """
+        metrics = self.get_hook_metrics(extension_name)
+        if not metrics:
+            return True  # Assume healthy if no metrics
+        
+        # Check hook failure rate (should be less than 10%)
+        success_rate = metrics["hook_success_rate"]
+        if success_rate < 90.0 and metrics["hooks_executed"] > 10:
+            return False
+        
+        # Check average execution time (should be reasonable)
+        avg_time = metrics["average_execution_time_ms"]
+        if avg_time > 5000.0:  # 5 seconds threshold
+            return False
+        
+        return True
 
 
 class ExtensionHealthChecker:
@@ -384,25 +501,35 @@ class ExtensionHealthChecker:
         self.last_health_check: Dict[str, float] = {}
 
     def _determine_health_status(self, name: str) -> HealthStatus:
-        """Determine health status based on resource usage."""
+        """Determine health status based on resource usage and hook health."""
         usage = self.resource_monitor.get_extension_usage(name)
         limits = self.resource_monitor.get_extension_limits(name)
 
         if not usage or not limits:
             return HealthStatus.GREEN
 
+        # Check resource usage ratios
         ratios = [
             usage.memory_mb / limits.max_memory_mb if limits.max_memory_mb else 0,
             usage.cpu_percent / limits.max_cpu_percent if limits.max_cpu_percent else 0,
             usage.disk_mb / limits.max_disk_mb if limits.max_disk_mb else 0,
         ]
 
-        worst = max(ratios)
-        if worst < 0.7:
+        worst_resource_ratio = max(ratios)
+        
+        # Check hook health
+        hook_healthy = self.resource_monitor.is_extension_hook_healthy(name)
+        
+        # Determine overall health status
+        if not hook_healthy:
+            return HealthStatus.RED
+        
+        if worst_resource_ratio < 0.7:
             return HealthStatus.GREEN
-        if worst < 1.0:
+        elif worst_resource_ratio < 1.0:
             return HealthStatus.YELLOW
-        return HealthStatus.RED
+        else:
+            return HealthStatus.RED
 
     async def check_extension_health(self, record: ExtensionRecord) -> HealthStatus:
         """

@@ -48,16 +48,19 @@ from ai_karen_engine.server.startup import create_lifespan
 
 class Settings(BaseSettings):
     app_name: str = "Kari AI Server"
-    environment: str = "production"
+    environment: str = "development"
     secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(64))
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     database_url: str = "postgresql://user:password@localhost:5432/kari_prod"
-    cors_origins: str = "https://yourdomain.com"
+    kari_cors_origins: str = Field(
+        default="http://localhost:8010,http://127.0.0.1:8010,http://localhost:3000",
+        alias="cors_origins"
+    )
     prometheus_enabled: bool = True
-    https_redirect: bool = True
+    https_redirect: bool = False
     rate_limit: str = "100/minute"
-    debug: bool = False
+    debug: bool = True
     plugin_dir: str = "/app/plugins"
     llm_refresh_interval: int = 3600
 
@@ -175,41 +178,71 @@ except ImportError:
     PROMETHEUS_ENABLED = False
     logger.warning("Prometheus client not available, metrics disabled")
 
+# Initialize metrics - use a global flag to prevent duplicate registration
+_metrics_initialized = False
+REQUEST_COUNT = None
+REQUEST_LATENCY = None
+ERROR_COUNT = None
+
+def initialize_metrics():
+    global _metrics_initialized, REQUEST_COUNT, REQUEST_LATENCY, ERROR_COUNT
+    
+    if _metrics_initialized:
+        return
+        
+    if PROMETHEUS_ENABLED:
+        try:
+            REQUEST_COUNT = Counter(
+                "kari_http_requests_total",
+                "Total HTTP requests",
+                ["method", "path", "status"],
+                registry=REGISTRY,
+            )
+            REQUEST_LATENCY = Histogram(
+                "kari_http_request_duration_seconds",
+                "HTTP request latency",
+                ["method", "path"],
+                registry=REGISTRY,
+            )
+            ERROR_COUNT = Counter(
+                "kari_http_errors_total",
+                "Total HTTP errors",
+                ["method", "path", "error_type"],
+                registry=REGISTRY,
+            )
+        except ValueError as e:
+            if "Duplicated timeseries" in str(e):
+                logger.warning("Metrics already registered, using dummy metrics")
+                # Use dummy metrics if already registered
+                class DummyMetric:
+                    def labels(self, **kwargs):
+                        return self
+                    def inc(self, amount=1):
+                        pass
+                    def observe(self, value):
+                        pass
+                REQUEST_COUNT = DummyMetric()
+                REQUEST_LATENCY = DummyMetric()
+                ERROR_COUNT = DummyMetric()
+            else:
+                raise
+    else:
+        # Dummy metrics if Prometheus is not available
+        class DummyMetric:
+            def labels(self, **kwargs):
+                return self
+            def inc(self, amount=1):
+                pass
+            def observe(self, value):
+                pass
+        REQUEST_COUNT = DummyMetric()
+        REQUEST_LATENCY = DummyMetric()
+        ERROR_COUNT = DummyMetric()
+    
+    _metrics_initialized = True
+
 # Initialize metrics
-if PROMETHEUS_ENABLED:
-    REQUEST_COUNT = Counter(
-        "kari_http_requests_total",
-        "Total HTTP requests",
-        ["method", "path", "status"],
-        registry=REGISTRY,
-    )
-    REQUEST_LATENCY = Histogram(
-        "kari_http_request_duration_seconds",
-        "HTTP request latency",
-        ["method", "path"],
-        registry=REGISTRY,
-    )
-    ERROR_COUNT = Counter(
-        "kari_http_errors_total",
-        "Total HTTP errors",
-        ["method", "path", "error_type"],
-        registry=REGISTRY,
-    )
-else:
-    # Dummy metrics if Prometheus is not available
-    class DummyMetric:
-        def labels(self, **kwargs):
-            return self
-
-        def inc(self, amount=1):
-            pass
-
-        def observe(self, value):
-            pass
-
-    REQUEST_COUNT = DummyMetric()
-    REQUEST_LATENCY = DummyMetric()
-    ERROR_COUNT = DummyMetric()
+initialize_metrics()
 
 # --- FastAPI Application Setup ---------------------------------------------
 
@@ -292,26 +325,155 @@ def create_app() -> FastAPI:
             "count": len(PLUGIN_MAP),
         }
 
+    # Add exception handlers for better error handling
+    @app.exception_handler(400)
+    async def bad_request_handler(request, exc):
+        """Handle bad requests gracefully"""
+        return Response(
+            content="Bad Request",
+            status_code=400,
+            headers={"Content-Type": "text/plain"}
+        )
+
+    @app.exception_handler(422)
+    async def validation_exception_handler(request, exc):
+        """Handle validation errors gracefully"""
+        return Response(
+            content="Unprocessable Entity",
+            status_code=422,
+            headers={"Content-Type": "text/plain"}
+        )
+
+    # Add a catch-all route for invalid requests
+    @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE"])
+    async def catch_all(request):
+        """Catch-all route for unmatched requests"""
+        # Return 404 for any unmatched routes
+        return Response(
+            content="Not Found",
+            status_code=404,
+            headers={"Content-Type": "text/plain"}
+        )
+
     return app
 
 
 if __name__ == "__main__":
     import uvicorn
+    import logging
 
+    # Create a custom filter to suppress specific uvicorn warnings
+    class SuppressInvalidHTTPFilter(logging.Filter):
+        def filter(self, record):
+            # Suppress "Invalid HTTP request received" messages
+            if "Invalid HTTP request received" in record.getMessage():
+                return False
+            return True
+
+    # Apply the filter to all relevant uvicorn loggers immediately
+    uvicorn_error_logger = logging.getLogger("uvicorn.error")
+    uvicorn_error_logger.addFilter(SuppressInvalidHTTPFilter())
+    uvicorn_error_logger.setLevel(logging.ERROR)  # Set to ERROR level to suppress warnings
+    
+    # Also apply to the root uvicorn logger to catch all messages
+    uvicorn_root_logger = logging.getLogger("uvicorn")
+    uvicorn_root_logger.addFilter(SuppressInvalidHTTPFilter())
+    
+    # Apply to any existing handlers on the uvicorn.error logger
+    for handler in uvicorn_error_logger.handlers:
+        handler.addFilter(SuppressInvalidHTTPFilter())
+    
+    # Set the uvicorn.protocols logger to ERROR level to suppress protocol warnings
+    uvicorn_protocols_logger = logging.getLogger("uvicorn.protocols")
+    uvicorn_protocols_logger.setLevel(logging.ERROR)
+    
+    # Set the uvicorn.protocols.http logger specifically
+    uvicorn_http_logger = logging.getLogger("uvicorn.protocols.http")
+    uvicorn_http_logger.setLevel(logging.ERROR)
+    
+    # Apply filter to all uvicorn-related loggers
+    for logger_name in ["uvicorn.protocols.http.h11_impl", "uvicorn.protocols.http.httptools_impl"]:
+        logger_obj = logging.getLogger(logger_name)
+        logger_obj.addFilter(SuppressInvalidHTTPFilter())
+        logger_obj.setLevel(logging.ERROR)
+    
+    # Completely disable the specific logger that generates "Invalid HTTP request received"
+    # This is the most direct way to suppress these warnings
+    logging.getLogger("uvicorn.protocols.http.h11_impl").disabled = True
+    logging.getLogger("uvicorn.protocols.http.httptools_impl").disabled = True
+    
+    # Also try to suppress at the uvicorn.error level more aggressively
+    uvicorn_error_logger.disabled = False  # Keep it enabled but filtered
+    uvicorn_error_logger.propagate = False  # Don't propagate to parent loggers
+
+    # Disable SSL for development
     ssl_context = None
-    if settings.https_redirect:
-        ssl_context = get_ssl_context()
+    # if settings.https_redirect:
+    #     ssl_context = get_ssl_context()
 
-    uvicorn.run(
-        "main:create_app",
-        host="0.0.0.0",
-        port=8000,
-        ssl=ssl_context,
-        reload=settings.debug,
-        workers=4 if settings.environment == "production" else 1,
-        log_config=None,
-        access_log=False,
-        timeout_keep_alive=30,
-        timeout_graceful_shutdown=30,
-        factory=True,
-    )
+    # Create custom log config to suppress uvicorn HTTP warnings
+    log_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "()": "uvicorn.logging.DefaultFormatter",
+                "fmt": "%(levelprefix)s %(message)s",
+                "use_colors": None,
+            },
+            "access": {
+                "()": "uvicorn.logging.AccessFormatter",
+                "fmt": '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+            },
+        },
+        "filters": {
+            "suppress_invalid_http": {
+                "()": SuppressInvalidHTTPFilter,
+            },
+        },
+        "handlers": {
+            "default": {
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stderr",
+                "filters": ["suppress_invalid_http"],
+            },
+            "access": {
+                "formatter": "access",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+            },
+        },
+        "loggers": {
+            "uvicorn": {"handlers": ["default"], "level": "INFO"},
+            "uvicorn.error": {"handlers": ["default"], "level": "WARNING", "propagate": False},
+            "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
+        },
+    }
+
+    uvicorn_kwargs = {
+        "app": "main:create_app",
+        "host": "0.0.0.0",
+        "port": 8000,
+        "reload": settings.debug,
+        "workers": 1,  # Use single worker for development to avoid issues
+        "log_config": log_config,
+        "access_log": False,
+        "timeout_keep_alive": 30,
+        "timeout_graceful_shutdown": 30,
+        "factory": True,
+        # Add better handling for invalid HTTP requests
+        "http": "httptools",  # Use httptools HTTP implementation for better error handling
+        "loop": "auto",  # Auto-select the best event loop
+        "server_header": False,  # Disable server header to reduce attack surface
+        "date_header": False,  # Disable date header for performance
+        # Add limits to prevent resource exhaustion from invalid requests
+        "limit_concurrency": 100,
+        "limit_max_requests": 1000,
+        "backlog": 2048,
+    }
+    
+    if ssl_context:
+        uvicorn_kwargs["ssl"] = ssl_context
+
+    uvicorn.run(**uvicorn_kwargs)

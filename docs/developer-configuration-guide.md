@@ -16,28 +16,28 @@ graph TB
         EV[Endpoint Validation]
         FC[Fallback Controller]
     end
-    
+
     subgraph "Data Layer"
         EC[Environment Config]
         VC[Validation Cache]
         ER[Error Reporting]
     end
-    
+
     subgraph "Client Layer"
         AC[API Client]
         AC2[Auth Client]
         HC[Health Monitor]
         UI[UI Components]
     end
-    
+
     CM --> ED
     CM --> EV
     CM --> FC
-    
+
     CM --> EC
     CM --> VC
     CM --> ER
-    
+
     AC --> CM
     AC2 --> CM
     HC --> CM
@@ -57,18 +57,18 @@ interface ConfigManager {
   getMemoryEndpoint(): string;
   getPluginsEndpoint(): string;
   getHealthEndpoint(): string;
-  
+
   // Configuration management
   getConfiguration(): EndpointConfig;
   updateConfiguration(updates: Partial<EndpointConfig>): void;
-  
+
   // Environment detection
   getEnvironmentInfo(): EnvironmentInfo;
-  
+
   // Validation and health checks
   validateEndpoints(): Promise<EndpointValidationResult[]>;
   clearValidationCache(): void;
-  
+
   // Fallback management
   getFallbackUrls(): string[];
 }
@@ -77,8 +77,8 @@ interface ConfigManager {
 ### Configuration Types
 
 ```typescript
-export type NetworkMode = 'localhost' | 'container' | 'external';
-export type Environment = 'local' | 'docker' | 'production';
+export type NetworkMode = "localhost" | "container" | "external";
+export type Environment = "local" | "docker" | "production";
 
 export interface EndpointConfig {
   backendUrl: string;
@@ -113,7 +113,7 @@ export interface EnvironmentInfo {
 ### Basic Configuration Usage
 
 ```typescript
-import { getConfigManager } from '@/lib/endpoint-config';
+import { getConfigManager } from "@/lib/endpoint-config";
 
 // Get singleton instance
 const configManager = getConfigManager();
@@ -126,48 +126,48 @@ const authEndpoint = configManager.getAuthEndpoint();
 
 // Make API call
 const response = await fetch(`${authEndpoint}/login`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ username, password })
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ username, password }),
 });
 ```
 
 ### Environment Detection
 
 ```typescript
-import { getConfigManager } from '@/lib/endpoint-config';
+import { getConfigManager } from "@/lib/endpoint-config";
 
 const configManager = getConfigManager();
 const envInfo = configManager.getEnvironmentInfo();
 
-console.log('Current environment:', envInfo.environment);
-console.log('Network mode:', envInfo.networkMode);
-console.log('Backend URL:', envInfo.backendUrl);
+console.log("Current environment:", envInfo.environment);
+console.log("Network mode:", envInfo.networkMode);
+console.log("Backend URL:", envInfo.backendUrl);
 
 // Conditional logic based on environment
 if (envInfo.isDocker) {
   // Docker-specific configuration
-  console.log('Running in Docker container');
+  console.log("Running in Docker container");
 } else if (envInfo.isExternal) {
   // External access configuration
-  console.log('External IP access detected');
+  console.log("External IP access detected");
 } else {
   // Local development configuration
-  console.log('Local development environment');
+  console.log("Local development environment");
 }
 ```
 
 ### Endpoint Validation
 
 ```typescript
-import { getConfigManager } from '@/lib/endpoint-config';
+import { getConfigManager } from "@/lib/endpoint-config";
 
 const configManager = getConfigManager();
 
 // Validate all endpoints
 const validationResults = await configManager.validateEndpoints();
 
-validationResults.forEach(result => {
+validationResults.forEach((result) => {
   if (result.isValid) {
     console.log(`✓ ${result.endpoint} - ${result.responseTime}ms`);
   } else {
@@ -176,24 +176,24 @@ validationResults.forEach(result => {
 });
 
 // Handle validation failures
-const validEndpoints = validationResults.filter(r => r.isValid);
+const validEndpoints = validationResults.filter((r) => r.isValid);
 if (validEndpoints.length === 0) {
-  throw new Error('No valid endpoints available');
+  throw new Error("No valid endpoints available");
 }
 ```
 
 ### Dynamic Configuration Updates
 
 ```typescript
-import { getConfigManager } from '@/lib/endpoint-config';
+import { getConfigManager } from "@/lib/endpoint-config";
 
 const configManager = getConfigManager();
 
 // Update configuration at runtime
 configManager.updateConfiguration({
-  backendUrl: 'http://new-backend:8000',
+  backendUrl: "http://new-backend:8000",
   healthCheckInterval: 60000,
-  fallbackUrls: ['http://backup-backend:8000']
+  fallbackUrls: ["http://backup-backend:8000"],
 });
 
 // Clear validation cache after configuration change
@@ -208,7 +208,7 @@ const newResults = await configManager.validateEndpoints();
 ### Base API Client
 
 ```typescript
-import { getConfigManager } from '@/lib/endpoint-config';
+import { getConfigManager } from "@/lib/endpoint-config";
 
 class ApiClient {
   private configManager = getConfigManager();
@@ -218,17 +218,14 @@ class ApiClient {
     this.baseURL = this.configManager.getBackendUrl();
   }
 
-  async request<T>(
-    endpoint: string, 
-    options: RequestInit = {}
-  ): Promise<T> {
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     try {
       const response = await fetch(url, {
         ...options,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...options.headers,
         },
       });
@@ -250,24 +247,24 @@ class ApiClient {
     originalError: any
   ): Promise<T> {
     const fallbackUrls = this.configManager.getFallbackUrls();
-    
+
     for (const fallbackUrl of fallbackUrls) {
       try {
         const response = await fetch(`${fallbackUrl}${endpoint}`, options);
-        
+
         if (response.ok) {
           // Update configuration to use working fallback
           this.configManager.updateConfiguration({
-            backendUrl: fallbackUrl
+            backendUrl: fallbackUrl,
           });
-          
+
           return await response.json();
         }
       } catch (fallbackError) {
         console.warn(`Fallback ${fallbackUrl} also failed:`, fallbackError);
       }
     }
-    
+
     // All endpoints failed, throw original error
     throw originalError;
   }
@@ -279,22 +276,22 @@ export const apiClient = new ApiClient();
 ### Authentication Client
 
 ```typescript
-import { getConfigManager } from '@/lib/endpoint-config';
+import { getConfigManager } from "@/lib/endpoint-config";
 
 class AuthClient {
   private configManager = getConfigManager();
 
   async login(username: string, password: string) {
     const authEndpoint = this.configManager.getAuthEndpoint();
-    
+
     const response = await fetch(`${authEndpoint}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
     });
 
     if (!response.ok) {
-      throw new Error('Authentication failed');
+      throw new Error("Authentication failed");
     }
 
     return await response.json();
@@ -302,10 +299,10 @@ class AuthClient {
 
   async logout() {
     const authEndpoint = this.configManager.getAuthEndpoint();
-    
+
     const response = await fetch(`${authEndpoint}/logout`, {
-      method: 'POST',
-      credentials: 'include'
+      method: "POST",
+      credentials: "include",
     });
 
     return response.ok;
@@ -313,15 +310,15 @@ class AuthClient {
 
   async validateSession() {
     const authEndpoint = this.configManager.getAuthEndpoint();
-    
+
     try {
       const response = await fetch(`${authEndpoint}/validate`, {
-        credentials: 'include'
+        credentials: "include",
       });
-      
+
       return response.ok;
     } catch (error) {
-      console.error('Session validation failed:', error);
+      console.error("Session validation failed:", error);
       return false;
     }
   }
@@ -335,8 +332,12 @@ export const authClient = new AuthClient();
 ### Configuration Hook
 
 ```typescript
-import { useState, useEffect } from 'react';
-import { getConfigManager, EndpointConfig, EnvironmentInfo } from '@/lib/endpoint-config';
+import { useState, useEffect } from "react";
+import {
+  getConfigManager,
+  EndpointConfig,
+  EnvironmentInfo,
+} from "@/lib/endpoint-config";
 
 export function useEndpointConfig() {
   const [config, setConfig] = useState<EndpointConfig | null>(null);
@@ -345,7 +346,7 @@ export function useEndpointConfig() {
 
   useEffect(() => {
     const configManager = getConfigManager();
-    
+
     setConfig(configManager.getConfiguration());
     setEnvInfo(configManager.getEnvironmentInfo());
     setIsLoading(false);
@@ -369,25 +370,30 @@ export function useEndpointConfig() {
 ### Health Check Hook
 
 ```typescript
-import { useState, useEffect, useCallback } from 'react';
-import { getConfigManager, EndpointValidationResult } from '@/lib/endpoint-config';
+import { useState, useEffect, useCallback } from "react";
+import {
+  getConfigManager,
+  EndpointValidationResult,
+} from "@/lib/endpoint-config";
 
 export function useHealthCheck(interval: number = 30000) {
-  const [healthStatus, setHealthStatus] = useState<EndpointValidationResult[]>([]);
+  const [healthStatus, setHealthStatus] = useState<EndpointValidationResult[]>(
+    []
+  );
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
 
   const performHealthCheck = useCallback(async () => {
     setIsChecking(true);
-    
+
     try {
       const configManager = getConfigManager();
       const results = await configManager.validateEndpoints();
-      
+
       setHealthStatus(results);
       setLastCheck(new Date());
     } catch (error) {
-      console.error('Health check failed:', error);
+      console.error("Health check failed:", error);
     } finally {
       setIsChecking(false);
     }
@@ -403,7 +409,7 @@ export function useHealthCheck(interval: number = 30000) {
     return () => clearInterval(intervalId);
   }, [performHealthCheck, interval]);
 
-  const isHealthy = healthStatus.some(result => result.isValid);
+  const isHealthy = healthStatus.some((result) => result.isValid);
 
   return {
     healthStatus,
@@ -418,9 +424,9 @@ export function useHealthCheck(interval: number = 30000) {
 ### Configuration Provider
 
 ```typescript
-import React, { createContext, useContext, ReactNode } from 'react';
-import { useEndpointConfig } from './useEndpointConfig';
-import { EndpointConfig, EnvironmentInfo } from '@/lib/endpoint-config';
+import React, { createContext, useContext, ReactNode } from "react";
+import { useEndpointConfig } from "./useEndpointConfig";
+import { EndpointConfig, EnvironmentInfo } from "@/lib/endpoint-config";
 
 interface ConfigContextType {
   config: EndpointConfig | null;
@@ -444,7 +450,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 export function useConfig() {
   const context = useContext(ConfigContext);
   if (context === undefined) {
-    throw new Error('useConfig must be used within a ConfigProvider');
+    throw new Error("useConfig must be used within a ConfigProvider");
   }
   return context;
 }
@@ -461,21 +467,22 @@ class EnvironmentDetector {
    */
   static isRunningInDocker(): boolean {
     // Check environment variables
-    if (process.env.DOCKER_CONTAINER || 
-        process.env.HOSTNAME?.startsWith('docker-') ||
-        process.env.KAREN_CONTAINER_MODE === 'true') {
+    if (
+      process.env.DOCKER_CONTAINER ||
+      process.env.HOSTNAME?.startsWith("docker-") ||
+      process.env.KAREN_CONTAINER_MODE === "true"
+    ) {
       return true;
     }
 
     // Check for container-specific files (server-side only)
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       try {
-        const fs = require('fs');
+        const fs = require("fs");
         // Check for Docker-specific files
-        if (fs.existsSync('/.dockerenv') || 
-            fs.existsSync('/proc/1/cgroup')) {
-          const cgroup = fs.readFileSync('/proc/1/cgroup', 'utf8');
-          return cgroup.includes('docker') || cgroup.includes('containerd');
+        if (fs.existsSync("/.dockerenv") || fs.existsSync("/proc/1/cgroup")) {
+          const cgroup = fs.readFileSync("/proc/1/cgroup", "utf8");
+          return cgroup.includes("docker") || cgroup.includes("containerd");
         }
       } catch (error) {
         // Ignore file system errors
@@ -483,9 +490,9 @@ class EnvironmentDetector {
     }
 
     // Check hostname patterns
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const hostname = window.location.hostname;
-      return hostname.includes('docker') || hostname.includes('container');
+      return hostname.includes("docker") || hostname.includes("container");
     }
 
     return false;
@@ -495,14 +502,14 @@ class EnvironmentDetector {
    * Detect external IP access
    */
   static isExternalAccess(): boolean {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return false;
     }
 
     const hostname = window.location.hostname;
-    
+
     // Localhost check
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
       return false;
     }
 
@@ -512,7 +519,7 @@ class EnvironmentDetector {
     }
 
     // Non-localhost hostname
-    return hostname !== 'localhost' && hostname !== '127.0.0.1';
+    return hostname !== "localhost" && hostname !== "127.0.0.1";
   }
 
   /**
@@ -520,11 +527,11 @@ class EnvironmentDetector {
    */
   static detectNetworkMode(): NetworkMode {
     if (this.isRunningInDocker()) {
-      return 'container';
+      return "container";
     } else if (this.isExternalAccess()) {
-      return 'external';
+      return "external";
     } else {
-      return 'localhost';
+      return "localhost";
     }
   }
 
@@ -534,20 +541,23 @@ class EnvironmentDetector {
   static detectEnvironment(): Environment {
     // Check explicit environment variable
     const explicitEnv = process.env.KAREN_ENVIRONMENT as Environment;
-    if (explicitEnv && ['local', 'docker', 'production'].includes(explicitEnv)) {
+    if (
+      explicitEnv &&
+      ["local", "docker", "production"].includes(explicitEnv)
+    ) {
       return explicitEnv;
     }
 
     // Auto-detect based on other indicators
     if (this.isRunningInDocker()) {
-      return 'docker';
+      return "docker";
     }
 
-    if (process.env.NODE_ENV === 'production') {
-      return 'production';
+    if (process.env.NODE_ENV === "production") {
+      return "production";
     }
 
-    return 'local';
+    return "local";
   }
 }
 ```
@@ -582,7 +592,10 @@ export class ConnectionErrorHandler {
     this.retryAttempts++;
 
     // Log the error
-    console.error(`Connection error in ${context} (attempt ${this.retryAttempts}):`, error);
+    console.error(
+      `Connection error in ${context} (attempt ${this.retryAttempts}):`,
+      error
+    );
 
     // If we've exceeded max retries, throw the original error
     if (this.retryAttempts >= this.maxRetries) {
@@ -592,7 +605,7 @@ export class ConnectionErrorHandler {
 
     // Try fallback endpoints
     const fallbackUrls = this.configManager.getFallbackUrls();
-    
+
     for (const fallbackUrl of fallbackUrls) {
       try {
         // Update configuration to use fallback
@@ -601,29 +614,28 @@ export class ConnectionErrorHandler {
 
         // Retry the request
         const result = await originalRequest();
-        
+
         // Success with fallback - reset retry counter
         this.retryAttempts = 0;
         return result;
-        
       } catch (fallbackError) {
         console.warn(`Fallback ${fallbackUrl} failed:`, fallbackError);
-        
+
         // Restore original configuration
-        this.configManager.updateConfiguration({ 
-          backendUrl: originalConfig.backendUrl 
+        this.configManager.updateConfiguration({
+          backendUrl: originalConfig.backendUrl,
         });
       }
     }
 
     // All fallbacks failed, wait and retry with exponential backoff
     await this.delay(this.retryDelay * Math.pow(2, this.retryAttempts - 1));
-    
+
     return this.retryWithFallback(originalRequest, error, context);
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   reset(): void {
@@ -637,9 +649,11 @@ export class ConnectionErrorHandler {
 ```typescript
 export class CorsErrorHandler {
   static isCorsError(error: any): boolean {
-    return error.message?.includes('CORS') ||
-           error.message?.includes('Cross-Origin') ||
-           error.name === 'TypeError' && error.message?.includes('fetch');
+    return (
+      error.message?.includes("CORS") ||
+      error.message?.includes("Cross-Origin") ||
+      (error.name === "TypeError" && error.message?.includes("fetch"))
+    );
   }
 
   static generateCorsErrorMessage(endpoint: string, origin: string): string {
@@ -652,32 +666,35 @@ Possible solutions:
 3. Verify CORS middleware configuration in backend
 4. For Docker: ensure container networking is configured correctly
 
-Current CORS origins: ${process.env.KAREN_CORS_ORIGINS || 'Not configured'}
+Current CORS origins: ${process.env.KAREN_CORS_ORIGINS || "Not configured"}
     `.trim();
   }
 
   static async diagnoseCorsIssue(endpoint: string): Promise<string[]> {
     const issues: string[] = [];
-    
+
     try {
       // Test preflight request
       const response = await fetch(endpoint, {
-        method: 'OPTIONS',
+        method: "OPTIONS",
         headers: {
-          'Origin': window.location.origin,
-          'Access-Control-Request-Method': 'GET',
-          'Access-Control-Request-Headers': 'Content-Type'
-        }
+          Origin: window.location.origin,
+          "Access-Control-Request-Method": "GET",
+          "Access-Control-Request-Headers": "Content-Type",
+        },
       });
 
-      if (!response.headers.get('Access-Control-Allow-Origin')) {
-        issues.push('Backend is not sending Access-Control-Allow-Origin header');
+      if (!response.headers.get("Access-Control-Allow-Origin")) {
+        issues.push(
+          "Backend is not sending Access-Control-Allow-Origin header"
+        );
       }
 
-      if (!response.headers.get('Access-Control-Allow-Methods')) {
-        issues.push('Backend is not sending Access-Control-Allow-Methods header');
+      if (!response.headers.get("Access-Control-Allow-Methods")) {
+        issues.push(
+          "Backend is not sending Access-Control-Allow-Methods header"
+        );
       }
-
     } catch (error) {
       issues.push(`Preflight request failed: ${error.message}`);
     }
@@ -696,17 +713,19 @@ export class ConfigTestHelpers {
   /**
    * Create test configuration
    */
-  static createTestConfig(overrides: Partial<EndpointConfig> = {}): EndpointConfig {
+  static createTestConfig(
+    overrides: Partial<EndpointConfig> = {}
+  ): EndpointConfig {
     return {
-      backendUrl: 'http://localhost:8000',
-      environment: 'local',
-      networkMode: 'localhost',
-      fallbackUrls: ['http://127.0.0.1:8000'],
+      backendUrl: "http://localhost:8000",
+      environment: "local",
+      networkMode: "localhost",
+      fallbackUrls: ["http://127.0.0.1:8000"],
       healthCheckEnabled: true,
       healthCheckInterval: 30000,
       healthCheckTimeout: 5000,
-      corsOrigins: ['http://localhost:9002'],
-      ...overrides
+      corsOrigins: ["http://localhost:9002"],
+      ...overrides,
     };
   }
 
@@ -715,9 +734,9 @@ export class ConfigTestHelpers {
    */
   static mockEnvironmentVariables(vars: Record<string, string>): () => void {
     const originalEnv = { ...process.env };
-    
+
     Object.assign(process.env, vars);
-    
+
     // Return cleanup function
     return () => {
       process.env = originalEnv;
@@ -729,22 +748,22 @@ export class ConfigTestHelpers {
    */
   static mockFetch(responses: Record<string, any>): () => void {
     const originalFetch = global.fetch;
-    
+
     global.fetch = jest.fn((url: string) => {
       const response = responses[url];
-      
+
       if (response) {
         return Promise.resolve({
           ok: response.ok !== false,
           status: response.status || 200,
           json: () => Promise.resolve(response.data || {}),
-          headers: new Map(Object.entries(response.headers || {}))
+          headers: new Map(Object.entries(response.headers || {})),
         });
       }
-      
+
       return Promise.reject(new Error(`No mock response for ${url}`));
     });
-    
+
     // Return cleanup function
     return () => {
       global.fetch = originalFetch;
@@ -759,18 +778,18 @@ export class ConfigTestHelpers {
     timeout: number = 5000
   ): Promise<void> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       const results = await configManager.validateEndpoints();
-      
-      if (results.some(r => r.isValid)) {
+
+      if (results.some((r) => r.isValid)) {
         return;
       }
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    
-    throw new Error('Configuration did not stabilize within timeout');
+
+    throw new Error("Configuration did not stabilize within timeout");
   }
 }
 ```
@@ -778,9 +797,9 @@ export class ConfigTestHelpers {
 ### Example Test Cases
 
 ```typescript
-import { ConfigManager, ConfigTestHelpers } from '@/lib/endpoint-config';
+import { ConfigManager, ConfigTestHelpers } from "@/lib/endpoint-config";
 
-describe('ConfigManager', () => {
+describe("ConfigManager", () => {
   let configManager: ConfigManager;
   let cleanupEnv: () => void;
   let cleanupFetch: () => void;
@@ -788,15 +807,15 @@ describe('ConfigManager', () => {
   beforeEach(() => {
     // Mock environment variables
     cleanupEnv = ConfigTestHelpers.mockEnvironmentVariables({
-      KAREN_BACKEND_URL: 'http://localhost:8000',
-      KAREN_ENVIRONMENT: 'local',
-      KAREN_NETWORK_MODE: 'localhost'
+      KAREN_BACKEND_URL: "http://localhost:8000",
+      KAREN_ENVIRONMENT: "local",
+      KAREN_NETWORK_MODE: "localhost",
     });
 
     // Mock fetch responses
     cleanupFetch = ConfigTestHelpers.mockFetch({
-      'http://localhost:8000/health': { ok: true, data: { status: 'healthy' } },
-      'http://127.0.0.1:8000/health': { ok: true, data: { status: 'healthy' } }
+      "http://localhost:8000/health": { ok: true, data: { status: "healthy" } },
+      "http://127.0.0.1:8000/health": { ok: true, data: { status: "healthy" } },
     });
 
     configManager = new ConfigManager();
@@ -807,32 +826,32 @@ describe('ConfigManager', () => {
     cleanupFetch();
   });
 
-  test('should initialize with correct configuration', () => {
+  test("should initialize with correct configuration", () => {
     const config = configManager.getConfiguration();
-    
-    expect(config.backendUrl).toBe('http://localhost:8000');
-    expect(config.environment).toBe('local');
-    expect(config.networkMode).toBe('localhost');
+
+    expect(config.backendUrl).toBe("http://localhost:8000");
+    expect(config.environment).toBe("local");
+    expect(config.networkMode).toBe("localhost");
   });
 
-  test('should validate endpoints successfully', async () => {
+  test("should validate endpoints successfully", async () => {
     const results = await configManager.validateEndpoints();
-    
+
     expect(results).toHaveLength(2); // Primary + fallback
     expect(results[0].isValid).toBe(true);
-    expect(results[0].endpoint).toBe('http://localhost:8000');
+    expect(results[0].endpoint).toBe("http://localhost:8000");
   });
 
-  test('should handle endpoint failures with fallback', async () => {
+  test("should handle endpoint failures with fallback", async () => {
     // Mock primary endpoint failure
     cleanupFetch();
     cleanupFetch = ConfigTestHelpers.mockFetch({
-      'http://localhost:8000/health': { ok: false, status: 500 },
-      'http://127.0.0.1:8000/health': { ok: true, data: { status: 'healthy' } }
+      "http://localhost:8000/health": { ok: false, status: 500 },
+      "http://127.0.0.1:8000/health": { ok: true, data: { status: "healthy" } },
     });
 
     const results = await configManager.validateEndpoints();
-    
+
     expect(results[0].isValid).toBe(false);
     expect(results[1].isValid).toBe(true);
   });
@@ -874,14 +893,14 @@ describe('ConfigManager', () => {
 ### Custom Environment Detection
 
 ```typescript
-import { ConfigManager } from '@/lib/endpoint-config';
+import { ConfigManager } from "@/lib/endpoint-config";
 
 class CustomConfigManager extends ConfigManager {
   protected detectEnvironment(): void {
     // Custom environment detection logic
     if (this.isKubernetesEnvironment()) {
-      this.config.networkMode = 'container';
-      this.config.environment = 'production';
+      this.config.networkMode = "container";
+      this.config.environment = "production";
       this.adjustBackendUrlForKubernetes();
     } else {
       super.detectEnvironment();
@@ -893,8 +912,8 @@ class CustomConfigManager extends ConfigManager {
   }
 
   private adjustBackendUrlForKubernetes(): void {
-    const serviceName = process.env.KAREN_K8S_SERVICE_NAME || 'ai-karen-api';
-    const namespace = process.env.KAREN_K8S_NAMESPACE || 'default';
+    const serviceName = process.env.KAREN_K8S_SERVICE_NAME || "ai-karen-api";
+    const namespace = process.env.KAREN_K8S_NAMESPACE || "default";
     this.config.backendUrl = `http://${serviceName}.${namespace}.svc.cluster.local:8000`;
   }
 }
@@ -903,13 +922,15 @@ class CustomConfigManager extends ConfigManager {
 ### Custom Validation Logic
 
 ```typescript
-import { ConfigManager, EndpointValidationResult } from '@/lib/endpoint-config';
+import { ConfigManager, EndpointValidationResult } from "@/lib/endpoint-config";
 
 class EnhancedConfigManager extends ConfigManager {
-  protected async validateSingleEndpoint(endpoint: string): Promise<EndpointValidationResult> {
+  protected async validateSingleEndpoint(
+    endpoint: string
+  ): Promise<EndpointValidationResult> {
     // Run standard validation
     const standardResult = await super.validateSingleEndpoint(endpoint);
-    
+
     if (!standardResult.isValid) {
       return standardResult;
     }
@@ -918,21 +939,21 @@ class EnhancedConfigManager extends ConfigManager {
     try {
       const authResult = await this.validateAuthEndpoint(endpoint);
       const dbResult = await this.validateDatabaseConnection(endpoint);
-      
+
       if (!authResult || !dbResult) {
         return {
           ...standardResult,
           isValid: false,
-          error: 'Backend services not fully operational'
+          error: "Backend services not fully operational",
         };
       }
-      
+
       return standardResult;
     } catch (error) {
       return {
         ...standardResult,
         isValid: false,
-        error: `Enhanced validation failed: ${error.message}`
+        error: `Enhanced validation failed: ${error.message}`,
       };
     }
   }

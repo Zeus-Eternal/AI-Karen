@@ -388,6 +388,174 @@ class LLMOrchestrator:
             logger.error(f"Request failed: {str(e)}")
             raise
     
+    def route_with_copilotkit(self, prompt: str, context: Optional[Dict[str, Any]] = None, **kwargs) -> str:
+        """Route request specifically to CopilotKit provider with enhanced context"""
+        # Try to get CopilotKit provider first
+        copilotkit_model = None
+        for model_id, model in self.registry._models.items():
+            if "copilotkit" in model_id.lower() and model.status == ModelStatus.ACTIVE:
+                copilotkit_model = (model_id, model)
+                break
+        
+        if not copilotkit_model:
+            # Fallback to regular routing if CopilotKit not available
+            logger.warning("CopilotKit provider not available, falling back to regular routing")
+            return self.route(prompt, **kwargs)
+        
+        model_id, model = copilotkit_model
+        
+        try:
+            # Add conversation context for CopilotKit
+            if context:
+                kwargs["conversation_context"] = context
+            
+            future = self.pool.execute(
+                model_id,
+                model.model.generate_text,
+                prompt,
+                **kwargs
+            )
+            result = future.result(timeout=DEFAULT_CONFIG['request_timeout'])
+            self.pool._record_outcome(model_id, True)
+            return result
+        except Exception as e:
+            self.pool._record_outcome(model_id, False)
+            logger.error(f"CopilotKit request failed: {str(e)}")
+            # Fallback to regular routing
+            return self.route(prompt, **kwargs)
+    
+    async def get_code_suggestions(self, code: str, language: str = "python", **kwargs) -> List[Dict[str, Any]]:
+        """Get code suggestions from CopilotKit provider or enhanced providers"""
+        # First try CopilotKit provider
+        copilotkit_model = None
+        for model_id, model in self.registry._models.items():
+            if "copilotkit" in model_id.lower() and model.status == ModelStatus.ACTIVE:
+                copilotkit_model = (model_id, model)
+                break
+        
+        if copilotkit_model:
+            model_id, model = copilotkit_model
+            try:
+                if hasattr(model.model, 'get_code_suggestions'):
+                    return await model.model.get_code_suggestions(code, language, **kwargs)
+            except Exception as e:
+                logger.warning(f"CopilotKit code suggestions failed: {e}")
+        
+        # Fallback to any provider with code assistance capabilities
+        for model_id, model in self.registry._models.items():
+            if model.status == ModelStatus.ACTIVE:
+                try:
+                    if hasattr(model.model, 'get_code_suggestions'):
+                        return await model.model.get_code_suggestions(code, language, **kwargs)
+                except Exception as e:
+                    logger.debug(f"Provider {model_id} code suggestions failed: {e}")
+                    continue
+        
+        logger.warning("No providers available for code suggestions")
+        return []
+    
+    async def get_debugging_assistance(self, code: str, error_message: str = "", language: str = "python", **kwargs) -> Dict[str, Any]:
+        """Get debugging assistance from enhanced providers"""
+        # Try providers with debugging assistance capabilities
+        for model_id, model in self.registry._models.items():
+            if model.status == ModelStatus.ACTIVE:
+                try:
+                    if hasattr(model.model, 'get_debugging_assistance'):
+                        return await model.model.get_debugging_assistance(
+                            code=code,
+                            error_message=error_message,
+                            language=language,
+                            **kwargs
+                        )
+                except Exception as e:
+                    logger.debug(f"Provider {model_id} debugging assistance failed: {e}")
+                    continue
+        
+        logger.warning("No providers available for debugging assistance")
+        return {"suggestions": [], "analysis": "No debugging assistance available"}
+    
+    async def generate_documentation(self, code: str, language: str = "python", style: str = "comprehensive", **kwargs) -> str:
+        """Generate documentation using enhanced providers"""
+        # Try providers with documentation generation capabilities
+        for model_id, model in self.registry._models.items():
+            if model.status == ModelStatus.ACTIVE:
+                try:
+                    if hasattr(model.model, 'generate_documentation'):
+                        return await model.model.generate_documentation(
+                            code=code,
+                            language=language,
+                            style=style,
+                            **kwargs
+                        )
+                except Exception as e:
+                    logger.debug(f"Provider {model_id} documentation generation failed: {e}")
+                    continue
+        
+        logger.warning("No providers available for documentation generation")
+        return f"Documentation generation unavailable for {language} code"
+    
+    async def get_contextual_suggestions(self, message: str, context: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
+        """Get contextual suggestions from CopilotKit provider or enhanced providers"""
+        # First try CopilotKit provider
+        copilotkit_model = None
+        for model_id, model in self.registry._models.items():
+            if "copilotkit" in model_id.lower() and model.status == ModelStatus.ACTIVE:
+                copilotkit_model = (model_id, model)
+                break
+        
+        if copilotkit_model:
+            model_id, model = copilotkit_model
+            try:
+                if hasattr(model.model, 'get_contextual_suggestions'):
+                    return await model.model.get_contextual_suggestions(message, context, **kwargs)
+            except Exception as e:
+                logger.warning(f"CopilotKit contextual suggestions failed: {e}")
+        
+        # Fallback to any provider with contextual suggestions capabilities
+        for model_id, model in self.registry._models.items():
+            if model.status == ModelStatus.ACTIVE:
+                try:
+                    if hasattr(model.model, 'get_contextual_suggestions'):
+                        return await model.model.get_contextual_suggestions(message, context, **kwargs)
+                except Exception as e:
+                    logger.debug(f"Provider {model_id} contextual suggestions failed: {e}")
+                    continue
+        
+        logger.warning("No providers available for contextual suggestions")
+        return []
+    
+    async def enhanced_route(self, prompt: str, skill: Optional[str] = None, **kwargs) -> str:
+        """Enhanced routing with CopilotKit code assistance integration"""
+        model_id, model = self._select_model(skill)
+        if not model:
+            raise RuntimeError("No suitable model available")
+        
+        try:
+            # Use enhanced response generation if available
+            if hasattr(model.model, 'enhanced_generate_response'):
+                future = self.pool.execute(
+                    model_id,
+                    model.model.enhanced_generate_response,
+                    prompt,
+                    **kwargs
+                )
+            else:
+                # Fallback to regular generation
+                future = self.pool.execute(
+                    model_id,
+                    model.model.generate_response,
+                    prompt,
+                    **kwargs
+                )
+            
+            result = future.result(timeout=DEFAULT_CONFIG['request_timeout'])
+            self.pool._record_outcome(model_id, True)
+            return result
+        except Exception as e:
+            self.pool._record_outcome(model_id, False)
+            logger.error(f"Enhanced request failed: {str(e)}")
+            raise
+    
     def _select_model(self, skill: Optional[str]) -> Tuple[Optional[str], Optional[ModelInfo]]:
         """Select best model for the task"""
         with self.registry._lock:

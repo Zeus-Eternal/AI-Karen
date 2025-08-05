@@ -30,7 +30,7 @@ def run_server(host: str, port: int, reload: bool = False) -> None:
         )
         sys.exit(1)
 
-    config = uvicorn.Config("ai_karen_engine.fastapi:app", host=host, port=port, reload=reload)
+    config = uvicorn.Config("main:create_app", host=host, port=port, reload=reload, factory=True)
     server = uvicorn.Server(config)
 
     def handle_sig(_sig, _frame):

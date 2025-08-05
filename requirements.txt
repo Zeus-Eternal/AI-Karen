@@ -1,4 +1,4 @@
-fastapi
+fastapi==0.116.1
 uvicorn
 pyautogui
 urwid
@@ -44,3 +44,5 @@ pyotp
 tenacity
 pytest-asyncio
 bcrypt
+copilotkit
+sse-starlette

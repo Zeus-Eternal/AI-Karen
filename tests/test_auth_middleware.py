@@ -8,7 +8,7 @@ import sys
 sys.modules.setdefault("fastapi", fastapi_stub)
 sys.modules.setdefault("pydantic", pydantic_stub)
 
-from ai_karen_engine.fastapi import auth_middleware
+from ai_karen_engine.middleware.auth import auth_middleware
 from ai_karen_engine.utils.auth import create_session
 from ai_karen_engine.fastapi_stub import Response
 

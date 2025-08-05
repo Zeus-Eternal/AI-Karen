@@ -9,6 +9,8 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+from .http_validator import HTTPRequestValidator, ValidationConfig
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,10 +30,10 @@ def configure_middleware(
         secret_key=settings.secret_key,
         session_cookie="kari_session",
         same_site="lax",
-        https_only=True,
+        https_only=settings.https_redirect,
     )
 
-    origins = [origin.strip() for origin in settings.cors_origins.split(",")]
+    origins = [origin.strip() for origin in settings.kari_cors_origins.split(",")]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -59,11 +61,74 @@ def configure_middleware(
         )
         return response
 
+    # Initialize HTTP validator with configuration
+    validation_config = ValidationConfig(
+        max_content_length=getattr(settings, 'max_request_size', 10 * 1024 * 1024),
+        log_invalid_requests=True,
+        enable_security_analysis=True
+    )
+    http_validator = HTTPRequestValidator(validation_config)
+
     @app.middleware("http")
     async def request_monitoring_middleware(request: Request, call_next):
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
 
+        # Perform comprehensive request validation using the new validator
+        validation_result = await http_validator.validate_request(request)
+        
+        if not validation_result.is_valid:
+            # Get sanitized request data for logging
+            sanitized_data = http_validator.sanitize_request_data(request)
+            
+            # Log invalid request with sanitized data (INFO level as per requirements)
+            logger.info(
+                "Invalid request blocked",
+                extra={
+                    "request_id": request_id,
+                    "error_type": validation_result.error_type,
+                    "error_message": validation_result.error_message,
+                    "security_threat_level": validation_result.security_threat_level,
+                    "sanitized_request": sanitized_data,
+                    "validation_details": validation_result.validation_details
+                }
+            )
+            
+            # Update error metrics
+            error_count.labels(
+                method=sanitized_data.get("method", "unknown"),
+                path=sanitized_data.get("path", "/unknown"),
+                error_type=validation_result.error_type or "validation_error",
+            ).inc()
+            
+            # Return appropriate error response based on validation result
+            from fastapi.responses import Response
+            
+            error_responses = {
+                "malformed_request": (400, "Bad Request"),
+                "invalid_method": (405, "Method Not Allowed"),
+                "invalid_headers": (400, "Bad Request"),
+                "content_too_large": (413, "Payload Too Large"),
+                "security_threat": (403, "Forbidden"),
+                "validation_error": (400, "Bad Request")
+            }
+            
+            status_code, status_text = error_responses.get(
+                validation_result.error_type, 
+                (400, "Bad Request")
+            )
+            
+            return Response(
+                content=status_text,
+                status_code=status_code,
+                headers={
+                    "Content-Type": "text/plain",
+                    "X-Request-ID": request_id,
+                    "X-Validation-Error": validation_result.error_type or "unknown"
+                }
+            )
+
+        # Log valid request start
         logger.info(
             "Request started",
             extra={
@@ -71,6 +136,7 @@ def configure_middleware(
                 "method": request.method,
                 "path": request.url.path,
                 "client": request.client.host if request.client else None,
+                "security_threat_level": validation_result.security_threat_level
             },
         )
 
@@ -84,7 +150,7 @@ def configure_middleware(
                 error_type="http_exception",
             ).inc()
             raise
-        except Exception:
+        except Exception as e:
             error_count.labels(
                 method=request.method,
                 path=request.url.path,
