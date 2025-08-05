@@ -27,6 +27,7 @@ from ai_karen_engine.services.tool_service import (
     BaseTool
 )
 from ai_karen_engine.core.dependencies import get_tool_service
+from ai_karen_engine.core.error_handler import handle_api_exception
 # Temporarily disable auth imports for web UI integration
 
 router = APIRouter(tags=["tools"])
@@ -118,7 +119,7 @@ async def list_tools(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list tools: {str(e)}")
+        return handle_api_exception(e, "Failed to list tools")
 
 
 @router.get("/{tool_name}", response_model=ToolInfoResponse)
@@ -138,7 +139,7 @@ async def get_tool_info(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get tool info: {str(e)}")
+        return handle_api_exception(e, "Failed to get tool info")
 
 
 @router.post("/{tool_name}/execute", response_model=ToolExecutionResponse)
@@ -181,7 +182,7 @@ async def execute_tool(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to execute tool: {str(e)}")
+        return handle_api_exception(e, "Failed to execute tool")
 
 
 @router.get("/{tool_name}/schema", response_model=ToolSchemaResponse)
@@ -216,7 +217,7 @@ async def get_tool_schema(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get tool schema: {str(e)}")
+        return handle_api_exception(e, "Failed to get tool schema")
 
 
 @router.get("/categories")
@@ -241,7 +242,7 @@ async def get_tool_categories(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get categories: {str(e)}")
+        return handle_api_exception(e, "Failed to get categories")
 
 
 @router.get("/metrics", response_model=ToolMetricsResponse)
@@ -264,7 +265,7 @@ async def get_tool_metrics(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+        return handle_api_exception(e, "Failed to get metrics")
 
 
 @router.post("/register")
@@ -291,7 +292,7 @@ async def register_tool(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to register tool: {str(e)}")
+        return handle_api_exception(e, "Failed to register tool")
 
 
 @router.get("/health")
@@ -311,12 +312,7 @@ async def health_check(
                 "tools_available": len(tool_service.list_tools())
             }
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "service": "tool_service",
-            "timestamp": datetime.utcnow().isoformat(),
-            "error": str(e)
-        }
+        return handle_api_exception(e, "Tool service unhealthy")
 
 
 # Helper functions
