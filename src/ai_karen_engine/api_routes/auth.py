@@ -379,10 +379,10 @@ async def request_password_reset(
             # Don't reveal if user exists or not
             return {"detail": "If the email exists, a reset link has been sent"}
         
-        # In production, you would send this token via email
-        # For now, log it (remove this in production!)
-        logger.info(f"Password reset token for {req.email}: {token}")
-        
+        # Send token through a secure channel (e.g., email) without logging
+        # Example implementation:
+        # await email_service.send_password_reset_email(req.email, token)
+
         return {"detail": "Password reset link sent"}
         
     except Exception as e:
