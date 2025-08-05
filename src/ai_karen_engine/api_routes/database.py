@@ -5,10 +5,9 @@ Provides REST endpoints for tenant, memory, and conversation management.
 """
 
 import logging
-import uuid
 import os
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 
 try:
     from fastapi import APIRouter, HTTPException, Depends, Query, Path, Body
@@ -29,7 +28,6 @@ from sqlalchemy.exc import ProgrammingError, OperationalError
 import asyncpg
 
 from ai_karen_engine.database.integration_manager import get_database_manager, DatabaseIntegrationManager
-from ai_karen_engine.utils.auth import get_current_user, get_tenant_context
 
 logger = logging.getLogger(__name__)
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
@@ -426,7 +424,6 @@ async def health_check(db_manager: DatabaseIntegrationManager = Depends(get_db_m
     """Perform comprehensive health check."""
     try:
         hd = await db_manager.health_check()
-        code = 200 if hd["status"] in ["healthy", "degraded"] else 503
         return {"success": True, "data": hd}
     except Exception as e:
         logger.error(f"Health check failed: {e}")

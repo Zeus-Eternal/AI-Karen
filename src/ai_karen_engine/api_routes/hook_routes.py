@@ -13,8 +13,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 try:
-    from fastapi import APIRouter, HTTPException, Depends, Query, Path
-    from fastapi.responses import JSONResponse
+    from fastapi import APIRouter, HTTPException, Query, Path
 except ImportError as e:  # pragma: no cover - runtime dependency
     raise ImportError(
         "FastAPI is required for hook routes. Install via `pip install fastapi`."
@@ -27,8 +26,7 @@ except ImportError as e:  # pragma: no cover - runtime dependency
         "Pydantic is required for hook routes. Install via `pip install pydantic`."
     ) from e
 
-from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext, HookRegistration
-from ai_karen_engine.utils.auth import validate_session
+from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext
 
 logger = logging.getLogger(__name__)
 

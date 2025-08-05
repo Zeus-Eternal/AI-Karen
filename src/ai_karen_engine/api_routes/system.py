@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
 
 try:
-    from fastapi import APIRouter, HTTPException, Request
+    from fastapi import APIRouter, HTTPException
 except ImportError as e:  # pragma: no cover - runtime dependency
     raise ImportError(
         "FastAPI is required for system routes. Install via `pip install fastapi`."
