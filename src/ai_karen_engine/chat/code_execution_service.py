@@ -216,7 +216,11 @@ class CodeExecutionService:
             }
         
         logger.info(f"Initialized environments for: {list(self._language_configs.keys())}")
-    
+
+    def get_language_configs(self) -> Dict[CodeLanguage, Dict[str, Any]]:
+        """Return configuration details for supported languages."""
+        return dict(self._language_configs)
+
     def _get_python_security_wrapper(self) -> str:
         """Get Python security wrapper code."""
         return '''

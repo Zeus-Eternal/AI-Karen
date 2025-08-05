@@ -2,13 +2,17 @@ from typing import Dict, Any
 
 try:
     from fastapi import APIRouter, HTTPException
-except Exception:  # pragma: no cover
-    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for user routes. Install via `pip install fastapi`."
+    ) from e
 
 try:
     from pydantic import BaseModel
-except Exception:
-    from ai_karen_engine.pydantic_stub import BaseModel
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for user routes. Install via `pip install pydantic`."
+    ) from e
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
 

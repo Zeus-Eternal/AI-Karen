@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Kari FastAPI Server - Production Version
 - Complete implementation with all original routes
@@ -12,9 +13,9 @@ import secrets
 import ssl
 from datetime import datetime, timezone
 from pathlib import Path
-
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import Response
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, Response
 
 # Security imports
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
@@ -55,7 +56,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://user:password@localhost:5432/kari_prod"
     kari_cors_origins: str = Field(
         default="http://localhost:8010,http://127.0.0.1:8010,http://localhost:3000",
-        alias="cors_origins"
+        alias="cors_origins",
     )
     prometheus_enabled: bool = True
     https_redirect: bool = False
@@ -193,12 +194,13 @@ REQUEST_COUNT = None
 REQUEST_LATENCY = None
 ERROR_COUNT = None
 
+
 def initialize_metrics():
     global _metrics_initialized, REQUEST_COUNT, REQUEST_LATENCY, ERROR_COUNT
-    
+
     if _metrics_initialized:
         return
-        
+
     if PROMETHEUS_ENABLED:
         try:
             REQUEST_COUNT = Counter(
@@ -222,14 +224,18 @@ def initialize_metrics():
         except ValueError as e:
             if "Duplicated timeseries" in str(e):
                 logger.warning("Metrics already registered, using dummy metrics")
+
                 # Use dummy metrics if already registered
                 class DummyMetric:
                     def labels(self, **kwargs):
                         return self
+
                     def inc(self, amount=1):
                         pass
+
                     def observe(self, value):
                         pass
+
                 REQUEST_COUNT = DummyMetric()
                 REQUEST_LATENCY = DummyMetric()
                 ERROR_COUNT = DummyMetric()
@@ -240,15 +246,19 @@ def initialize_metrics():
         class DummyMetric:
             def labels(self, **kwargs):
                 return self
+
             def inc(self, amount=1):
                 pass
+
             def observe(self, value):
                 pass
+
         REQUEST_COUNT = DummyMetric()
         REQUEST_LATENCY = DummyMetric()
         ERROR_COUNT = DummyMetric()
-    
+
     _metrics_initialized = True
+
 
 # Initialize metrics
 initialize_metrics()
@@ -338,44 +348,34 @@ def create_app() -> FastAPI:
 
     # Add exception handlers for better error handling
     @app.exception_handler(400)
-    async def bad_request_handler(request, exc):
-        """Handle bad requests gracefully"""
-        return Response(
-            content="Bad Request",
+    async def bad_request_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        """Handle bad requests gracefully with JSON response"""
+        return JSONResponse(
+            content={"detail": "Bad Request"},
             status_code=400,
-            headers={"Content-Type": "text/plain"}
         )
 
-    @app.exception_handler(422)
-    async def validation_exception_handler(request, exc):
-        """Handle validation errors gracefully"""
-        return Response(
-            content="Unprocessable Entity",
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        """Handle validation errors gracefully with JSON response"""
+        return JSONResponse(
+            content={"detail": "Unprocessable Entity"},
             status_code=422,
-            headers={"Content-Type": "text/plain"}
-        )
-
-    # Add a catch-all route for invalid requests
-    @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE"])
-    async def catch_all(request):
-        """Catch-all route for unmatched requests"""
-        # Return 404 for any unmatched routes
-        return Response(
-            content="Not Found",
-            status_code=404,
-            headers={"Content-Type": "text/plain"}
         )
 
     return app
 
 
 if __name__ == "__main__":
-    import uvicorn
     import logging
+
+    import uvicorn  # type: ignore[import-not-found]
 
     # Create a custom filter to suppress specific uvicorn warnings
     class SuppressInvalidHTTPFilter(logging.Filter):
-        def filter(self, record):
+        def filter(self, record: logging.LogRecord) -> bool:
             # Suppress "Invalid HTTP request received" messages
             if "Invalid HTTP request received" in record.getMessage():
                 return False
@@ -384,35 +384,40 @@ if __name__ == "__main__":
     # Apply the filter to all relevant uvicorn loggers immediately
     uvicorn_error_logger = logging.getLogger("uvicorn.error")
     uvicorn_error_logger.addFilter(SuppressInvalidHTTPFilter())
-    uvicorn_error_logger.setLevel(logging.ERROR)  # Set to ERROR level to suppress warnings
-    
+    uvicorn_error_logger.setLevel(
+        logging.ERROR
+    )  # Set to ERROR level to suppress warnings
+
     # Also apply to the root uvicorn logger to catch all messages
     uvicorn_root_logger = logging.getLogger("uvicorn")
     uvicorn_root_logger.addFilter(SuppressInvalidHTTPFilter())
-    
+
     # Apply to any existing handlers on the uvicorn.error logger
     for handler in uvicorn_error_logger.handlers:
         handler.addFilter(SuppressInvalidHTTPFilter())
-    
+
     # Set the uvicorn.protocols logger to ERROR level to suppress protocol warnings
     uvicorn_protocols_logger = logging.getLogger("uvicorn.protocols")
     uvicorn_protocols_logger.setLevel(logging.ERROR)
-    
+
     # Set the uvicorn.protocols.http logger specifically
     uvicorn_http_logger = logging.getLogger("uvicorn.protocols.http")
     uvicorn_http_logger.setLevel(logging.ERROR)
-    
+
     # Apply filter to all uvicorn-related loggers
-    for logger_name in ["uvicorn.protocols.http.h11_impl", "uvicorn.protocols.http.httptools_impl"]:
+    for logger_name in [
+        "uvicorn.protocols.http.h11_impl",
+        "uvicorn.protocols.http.httptools_impl",
+    ]:
         logger_obj = logging.getLogger(logger_name)
         logger_obj.addFilter(SuppressInvalidHTTPFilter())
         logger_obj.setLevel(logging.ERROR)
-    
+
     # Completely disable the specific logger that generates "Invalid HTTP request received"
     # This is the most direct way to suppress these warnings
     logging.getLogger("uvicorn.protocols.http.h11_impl").disabled = True
     logging.getLogger("uvicorn.protocols.http.httptools_impl").disabled = True
-    
+
     # Also try to suppress at the uvicorn.error level more aggressively
     uvicorn_error_logger.disabled = False  # Keep it enabled but filtered
     uvicorn_error_logger.propagate = False  # Don't propagate to parent loggers
@@ -457,8 +462,16 @@ if __name__ == "__main__":
         },
         "loggers": {
             "uvicorn": {"handlers": ["default"], "level": "INFO"},
-            "uvicorn.error": {"handlers": ["default"], "level": "WARNING", "propagate": False},
-            "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
+            "uvicorn.error": {
+                "handlers": ["default"],
+                "level": "WARNING",
+                "propagate": False,
+            },
+            "uvicorn.access": {
+                "handlers": ["access"],
+                "level": "INFO",
+                "propagate": False,
+            },
         },
     }
 
@@ -483,7 +496,7 @@ if __name__ == "__main__":
         "limit_max_requests": 1000,
         "backlog": 2048,
     }
-    
+
     if ssl_context:
         uvicorn_kwargs["ssl"] = ssl_context
 

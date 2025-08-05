@@ -4,6 +4,7 @@ pyautogui
 urwid
 prompt_toolkit
 pydantic
+pydantic-settings
 pytest
 transformers
 sentence-transformers
@@ -18,6 +19,9 @@ scikit-learn==1.5.*
 spacy==3.7.*
 datasets
 jinja2
+passlib
+email-validator
+itsdangerous
 python-multipart
 prometheus_client
 cryptography
@@ -32,7 +36,7 @@ fitz
 bs4
 plotly
 seaborn
-redis 
+redis
 psycopg
 psycopg2-binary
 asyncpg

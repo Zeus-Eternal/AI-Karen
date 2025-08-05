@@ -11,7 +11,7 @@ from ai_karen_engine.utils.bootstrap import bootstrap_memory_system
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(tags=["admin"])
 
 @router.post("/bootstrap_memory")
 async def bootstrap_memory(

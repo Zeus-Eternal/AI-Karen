@@ -2,7 +2,9 @@
 
 try:
     from fastapi import APIRouter
-except Exception:  # pragma: no cover - fallback for minimal envs
-    from ai_karen_engine.fastapi_stub import APIRouter
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for API routes. Install via `pip install fastapi`."
+    ) from e
 
 router = APIRouter()
