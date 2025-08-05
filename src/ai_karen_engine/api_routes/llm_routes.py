@@ -23,6 +23,7 @@ except Exception:
 
 from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.core.config_manager import ConfigManager
+from ai_karen_engine.core.error_handler import handle_api_exception
 
 logger = logging.getLogger("kari.llm_routes")
 
@@ -115,14 +116,7 @@ async def list_providers(registry=Depends(get_llm_registry)):
         
     except Exception as ex:
         logger.error(f"Failed to list providers: {ex}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "PROVIDER_LIST_ERROR",
-                "message": "Failed to retrieve provider list",
-                "type": "SERVICE_ERROR"
-            }
-        )
+        return handle_api_exception(ex, "Failed to retrieve provider list")
 
 
 @router.get("/providers/{provider_name}", response_model=ProviderInfo)
@@ -158,13 +152,9 @@ async def get_provider_info(
         raise
     except Exception as ex:
         logger.error(f"Failed to get provider info for {provider_name}: {ex}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "PROVIDER_INFO_ERROR",
-                "message": f"Failed to get provider information for {provider_name}",
-                "type": "SERVICE_ERROR"
-            }
+        return handle_api_exception(
+            ex,
+            f"Failed to get provider information for {provider_name}",
         )
 
 
@@ -221,14 +211,7 @@ async def list_profiles():
         
     except Exception as ex:
         logger.error(f"Failed to load LLM profiles: {ex}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "PROFILES_LOAD_ERROR",
-                "message": "Failed to load LLM profiles",
-                "type": "SERVICE_ERROR"
-            }
-        )
+        return handle_api_exception(ex, "Failed to load LLM profiles")
 
 
 @router.post("/settings")
@@ -266,14 +249,7 @@ async def save_settings(
         
     except Exception as ex:
         logger.error(f"Failed to save LLM settings: {ex}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "SETTINGS_SAVE_ERROR",
-                "message": "Failed to save LLM settings",
-                "type": "SERVICE_ERROR"
-            }
-        )
+        return handle_api_exception(ex, "Failed to save LLM settings")
 
 
 @router.post("/health-check", response_model=Dict[str, Dict[str, Any]])
@@ -305,14 +281,7 @@ async def health_check_providers(
         
     except Exception as ex:
         logger.error(f"Failed to perform health check: {ex}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "HEALTH_CHECK_ERROR",
-                "message": "Failed to perform provider health check",
-                "type": "SERVICE_ERROR"
-            }
-        )
+        return handle_api_exception(ex, "Failed to perform provider health check")
 
 
 @router.get("/health-check/{provider_name}", response_model=HealthCheckResult)
@@ -341,13 +310,9 @@ async def health_check_provider(
         
     except Exception as ex:
         logger.error(f"Failed to health check provider {provider_name}: {ex}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "PROVIDER_HEALTH_CHECK_ERROR",
-                "message": f"Failed to health check provider {provider_name}",
-                "type": "SERVICE_ERROR"
-            }
+        return handle_api_exception(
+            ex,
+            f"Failed to health check provider {provider_name}",
         )
 
 
@@ -365,14 +330,7 @@ async def get_available_providers(registry=Depends(get_llm_registry)):
         
     except Exception as ex:
         logger.error(f"Failed to get available providers: {ex}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "AVAILABLE_PROVIDERS_ERROR",
-                "message": "Failed to get available providers",
-                "type": "SERVICE_ERROR"
-            }
-        )
+        return handle_api_exception(ex, "Failed to get available providers")
 
 
 @router.post("/auto-select", response_model=Dict[str, Optional[str]])
@@ -399,14 +357,7 @@ async def auto_select_provider(
         
     except Exception as ex:
         logger.error(f"Failed to auto-select provider: {ex}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "AUTO_SELECT_ERROR",
-                "message": "Failed to auto-select provider",
-                "type": "SERVICE_ERROR"
-            }
-        )
+        return handle_api_exception(ex, "Failed to auto-select provider")
 
 
 # Export the router
