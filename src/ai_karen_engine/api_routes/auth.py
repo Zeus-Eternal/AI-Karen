@@ -5,13 +5,19 @@ Real database-backed authentication with secure session management
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr
 import hashlib
 
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.security.auth_manager import verify_totp
 from ai_karen_engine.services.auth_service import auth_service
+from ai_karen_engine.services.auth_utils import (
+    COOKIE_NAME,
+    get_current_user,
+    get_session_token,
+    set_session_cookie,
+)
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["auth"])
@@ -96,15 +102,7 @@ async def register(
         )
 
         # Set secure HttpOnly cookie
-        
-        response.set_cookie(
-            COOKIE_NAME,
-            session_data["session_token"],
-            max_age=24 * 60 * 60,  # 24 hours
-            httponly=True,
-            secure=True,
-            samesite="strict",
-        )
+        set_session_cookie(response, session_data["session_token"])
 
         # Convert UserData to dict format
         user_data = {
@@ -189,15 +187,7 @@ async def login(
         )
 
         # Set secure HttpOnly cookie
-        
-        response.set_cookie(
-            COOKIE_NAME,
-            session_data["session_token"],
-            max_age=24 * 60 * 60,  # 24 hours
-            httponly=True,
-            secure=True,
-            samesite="strict",
-        )
+        set_session_cookie(response, session_data["session_token"])
         
         logger.info(
             "User logged in",
@@ -224,36 +214,14 @@ async def login(
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_route(
+    request: Request,
     user_data: Dict[str, Any] = Depends(get_current_user),
 ) -> UserResponse:
     """Get current user information"""
-    
-    # Get session token from cookie or header
-    session_token = request.cookies.get(COOKIE_NAME)
-    if not session_token:
-        auth_header = request.headers.get("authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            session_token = auth_header.split(" ")[1]
 
-    if not session_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authentication token",
-        )
+    # Retrieve session token using shared utility
+    get_session_token(request)
 
-    # Validate session
-    user_data = await auth_service.validate_session(
-        session_token=session_token,
-        ip_address=request.client.host if request.client else "unknown",
-        user_agent=request.headers.get("user-agent", ""),
-    )
-
-    if not user_data:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired session",
-        )
-        
     return UserResponse(**user_data)
 
 
@@ -272,7 +240,7 @@ async def update_credentials(
     """Update user credentials"""
 
     # Get current user
-    session_token = request.cookies.get(COOKIE_NAME)
+    session_token = get_session_token(request)
     if not session_token:
         raise HTTPException(status_code=401, detail="Missing authentication token")
 
@@ -332,15 +300,7 @@ async def update_credentials(
         )
 
         # Set new cookie
-        
-        response.set_cookie(
-            COOKIE_NAME,
-            session_data["session_token"],
-            max_age=24 * 60 * 60,
-            httponly=True,
-            secure=True,
-            samesite="strict",
-        )
+        set_session_cookie(response, session_data["session_token"])
   
 
         # Get updated user data
@@ -383,7 +343,7 @@ async def update_credentials(
 async def logout(request: Request, response: Response) -> Dict[str, str]:
     """Logout user and invalidate session"""
     
-    session_token = request.cookies.get(COOKIE_NAME)
+    session_token = get_session_token(request)
   
     if session_token:
         # Invalidate session
