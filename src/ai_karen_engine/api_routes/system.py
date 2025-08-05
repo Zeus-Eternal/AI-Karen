@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
+from ai_karen_engine.core.dependencies import get_db
 
 try:
-    from fastapi import APIRouter, HTTPException, Request
+    from fastapi import APIRouter, Depends, HTTPException
 except ImportError as e:  # pragma: no cover - runtime dependency
     raise ImportError(
         "FastAPI is required for system routes. Install via `pip install fastapi`."
@@ -21,8 +23,6 @@ except ImportError as e:  # pragma: no cover - runtime dependency
     ) from e
 
 router = APIRouter()
-
-db = DuckDBClient()
 ANNOUNCE_PATH = Path(__file__).resolve().parents[3] / "data" / "announcements.json"
 
 
@@ -55,8 +55,11 @@ def list_announcements(limit: int = 10) -> List[Announcement]:
 
 
 @router.get("/users/{user_id}/profile", response_model=UserProfile)
-def get_profile(user_id: str) -> UserProfile:
-    profile = db.get_profile(user_id)
+async def get_profile(
+    user_id: str,
+    db: DuckDBClient = Depends(get_db),
+) -> UserProfile:
+    profile = await asyncio.to_thread(db.get_profile, user_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     return UserProfile(user_id=user_id, **profile)

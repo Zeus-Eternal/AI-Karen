@@ -6,28 +6,37 @@ and other components that need access to the integrated services.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict
+
 try:
     from fastapi import Depends, HTTPException, Request
 except Exception:  # pragma: no cover
     from ai_karen_engine.fastapi_stub import HTTPException
+
     def Depends(func):
         return func
 
+
+from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
+from ai_karen_engine.core.config_manager import AIKarenConfig, get_config
+from ai_karen_engine.core.health_monitor import HealthMonitor, get_health_monitor
 from ai_karen_engine.core.service_registry import (
-    get_service_registry,
     AIOrchestrator,
-    WebUIMemoryService,
-    WebUIConversationService,
+    AnalyticsService,
     PluginService,
     ToolService,
-    AnalyticsService
+    WebUIConversationService,
+    WebUIMemoryService,
+    get_service_registry,
 )
-from ai_karen_engine.core.config_manager import get_config, AIKarenConfig
-from ai_karen_engine.core.health_monitor import get_health_monitor, HealthMonitor
 from ai_karen_engine.services.auth_service import auth_service
 
 logger = logging.getLogger(__name__)
+
+
+def get_db() -> DuckDBClient:
+    """Provide a DuckDBClient instance."""
+    return DuckDBClient()
 
 
 # Configuration dependency
@@ -60,11 +69,15 @@ async def get_current_user_context(request: Request) -> Dict[str, Any]:
     return user_data
 
 
-async def get_current_user_id(user_ctx: Dict[str, Any] = Depends(get_current_user_context)) -> str:
+async def get_current_user_id(
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context)
+) -> str:
     return user_ctx["user_id"]
 
 
-async def get_current_tenant_id(user_ctx: Dict[str, Any] = Depends(get_current_user_context)) -> str:
+async def get_current_tenant_id(
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context)
+) -> str:
     return user_ctx["tenant_id"]
 
 
@@ -76,7 +89,9 @@ async def get_ai_orchestrator_service() -> AIOrchestrator:
         return await registry.get_service("ai_orchestrator")
     except Exception as e:
         logger.error(f"Failed to get AI Orchestrator service: {e}")
-        raise HTTPException(status_code=503, detail="AI Orchestrator service unavailable")
+        raise HTTPException(
+            status_code=503, detail="AI Orchestrator service unavailable"
+        )
 
 
 async def get_memory_service() -> WebUIMemoryService:
@@ -150,7 +165,9 @@ async def get_service_registry_instance():
 
 
 # Convenience dependencies for common combinations
-async def get_ai_services() -> tuple[AIOrchestrator, WebUIMemoryService, WebUIConversationService]:
+async def get_ai_services() -> tuple[
+    AIOrchestrator, WebUIMemoryService, WebUIConversationService
+]:
     """Get core AI services (orchestrator, memory, conversation)."""
     try:
         registry = get_service_registry()

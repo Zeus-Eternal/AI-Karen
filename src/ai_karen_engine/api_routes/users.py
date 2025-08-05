@@ -1,6 +1,5 @@
-from typing import Dict, Any
-
 import asyncio
+from typing import Any, Dict
 
 try:
     from fastapi import APIRouter, Depends, HTTPException
@@ -17,11 +16,9 @@ except ImportError as e:  # pragma: no cover - runtime dependency
     ) from e
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
-from ai_karen_engine.core.dependencies import get_current_user_context
+from ai_karen_engine.core.dependencies import get_current_user_context, get_db
 
 router = APIRouter()
-
-db = DuckDBClient()
 
 
 class UserProfile(BaseModel):
@@ -35,6 +32,7 @@ class UserProfile(BaseModel):
 async def get_profile(
     user_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user_context),
+    db: DuckDBClient = Depends(get_db),
 ) -> UserProfile:
     profile = await asyncio.to_thread(db.get_profile, user_id)
     if profile is None:
@@ -47,6 +45,7 @@ async def save_profile(
     user_id: str,
     profile: UserProfile,
     current_user: Dict[str, Any] = Depends(get_current_user_context),
+    db: DuckDBClient = Depends(get_db),
 ) -> UserProfile:
     data = profile.dict(exclude={"user_id"})
     await asyncio.to_thread(db.save_profile, user_id, data)
