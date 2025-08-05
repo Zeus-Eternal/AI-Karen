@@ -45,6 +45,8 @@ class ValidationErrorDetail(BaseModel):
 
 
 # Chat Processing Models
+
+
 class ChatProcessRequest(BaseModel):
     """Request format expected by web UI for chat processing."""
 
@@ -60,6 +62,43 @@ class ChatProcessRequest(BaseModel):
     )
     user_id: Optional[str] = Field(None, description="User ID")
     session_id: Optional[str] = Field(None, description="Session ID")
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, v: str) -> str:
+        """Ensure message is non-empty and within length limits."""
+        if not v or not v.strip():
+            raise ValueError(
+                "Message cannot be empty or contain only whitespace"
+            )
+        if len(v) > 10_000:
+            raise ValueError("Message is too long (maximum 10,000 characters)")
+        return v
+
+    @field_validator("conversation_history")
+    @classmethod
+    def validate_conversation_history(
+        cls, v: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Ensure conversation history entries have required structure."""
+        for i, msg in enumerate(v):
+            if not isinstance(msg, dict):
+                raise ValueError(
+                    f"conversation_history[{i}] must be an object"
+                )
+            if "role" not in msg or "content" not in msg:
+                raise ValueError(
+                    f"conversation_history[{i}] must include 'role' and 'content'"
+                )
+        return v
+
+    @field_validator("user_settings")
+    @classmethod
+    def validate_user_settings(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        """Ensure user settings is a dictionary."""
+        if not isinstance(v, dict):
+            raise TypeError("User settings must be an object")
+        return v
 
 
 class ChatProcessResponse(BaseModel):

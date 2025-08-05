@@ -10,7 +10,6 @@ import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
-from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from ai_karen_engine.models.web_ui_types import (
@@ -27,12 +26,13 @@ from ai_karen_engine.models.web_ui_types import (
     WebUIHealthCheck,
     WebUIErrorCode,
     create_web_ui_error_response,
+    create_validation_error_response as create_web_ui_validation_error_response,
 )
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
     WebAPIErrorResponse,
     ValidationErrorDetail,
-    create_validation_error_response,
+    create_validation_error_response as create_api_validation_error_response,
     create_database_error_response,
     create_service_error_response,
     create_generic_error_response,
@@ -112,7 +112,7 @@ def create_fallback_chat_response(
 
 @router.post("/chat/process", response_model=ChatProcessResponse)
 async def chat_process_compatibility(
-    request: ChatProcessRequest,
+    raw_request: Dict[str, Any],
     http_request: Request,
     ai_orchestrator: AIOrchestrator = Depends(get_ai_orchestrator_service),
     plugin_service=Depends(get_plugin_service),
@@ -126,80 +126,10 @@ async def chat_process_compatibility(
     request_id = get_request_id(http_request)
 
     try:
+        request = ChatProcessRequest.model_validate(raw_request)
         logger.info(
             f"[{request_id}] Processing chat request for user: {request.user_id}"
         )
-
-        # Enhanced request validation
-        validation_errors = []
-
-        # Validate message content
-        if not request.message or not request.message.strip():
-            validation_errors.append(
-                {
-                    "field": "message",
-                    "message": "Message cannot be empty or contain only whitespace",
-                    "invalid_value": request.message,
-                }
-            )
-
-        # Validate message length (prevent extremely long messages)
-        if request.message and len(request.message) > 10000:
-            validation_errors.append(
-                {
-                    "field": "message",
-                    "message": "Message is too long (maximum 10,000 characters)",
-                    "invalid_value": f"Length: {len(request.message)}",
-                }
-            )
-
-        # Validate conversation history format
-        if request.conversation_history:
-            for i, msg in enumerate(request.conversation_history):
-                if not isinstance(msg, dict):
-                    validation_errors.append(
-                        {
-                            "field": f"conversation_history[{i}]",
-                            "message": "Conversation history entries must be objects",
-                            "invalid_value": type(msg).__name__,
-                        }
-                    )
-                elif "role" not in msg or "content" not in msg:
-                    validation_errors.append(
-                        {
-                            "field": f"conversation_history[{i}]",
-                            "message": "Conversation history entries must have 'role' and 'content' fields",
-                            "invalid_value": (
-                                list(msg.keys()) if isinstance(msg, dict) else str(msg)
-                            ),
-                        }
-                    )
-
-        # Validate user settings format
-        if request.user_settings and not isinstance(request.user_settings, dict):
-            validation_errors.append(
-                {
-                    "field": "user_settings",
-                    "message": "User settings must be an object",
-                    "invalid_value": type(request.user_settings).__name__,
-                }
-            )
-
-        # If validation errors exist, return them
-        if validation_errors:
-            logger.warning(
-                f"[{request_id}] Request validation failed: {validation_errors}"
-            )
-            raise HTTPException(
-                status_code=400,
-                detail=create_web_ui_error_response(
-                    WebUIErrorCode.VALIDATION_ERROR,
-                    "Request validation failed",
-                    {"validation_errors": validation_errors},
-                    user_message="Please check your request format and try again.",
-                    request_id=request_id,
-                ).dict(),
-            )
 
         # Transform request to backend format with error handling
         try:
@@ -383,7 +313,9 @@ async def chat_process_compatibility(
         logger.warning(f"[{request_id}] Pydantic validation error: {e}")
         raise HTTPException(
             status_code=400,
-            detail=create_validation_error_response(e.errors(), request_id).dict(),
+            detail=create_web_ui_validation_error_response(
+                e.errors(), request_id
+            ).dict(),
         )
 
     except ValueError as e:
@@ -606,7 +538,9 @@ async def memory_query_compatibility(
         logger.warning(f"[{request_id}] Pydantic validation error in memory query: {e}")
         raise HTTPException(
             status_code=400,
-            detail=create_validation_error_response(e.errors(), request_id).dict(),
+            detail=create_web_ui_validation_error_response(
+                e.errors(), request_id
+            ).dict(),
         )
 
     except ValueError as e:
@@ -713,7 +647,7 @@ async def memory_store_compatibility(
             logger.warning(
                 f"[{request_id}] Memory store validation failed: {len(validation_errors)} errors"
             )
-            error_response = create_validation_error_response(
+            error_response = create_api_validation_error_response(
                 validation_errors,
                 user_message="Please check your memory data and try again.",
                 request_id=request_id,
@@ -963,7 +897,7 @@ async def memory_store_compatibility(
             )
             for error in e.errors()
         ]
-        error_response = create_validation_error_response(
+        error_response = create_api_validation_error_response(
             validation_details,
             user_message="Request validation failed. Please check your data format.",
             request_id=request_id,
@@ -1085,7 +1019,9 @@ async def execute_plugin_compatibility(
         logger.warning(f"[{request_id}] Validation error in plugin execution: {e}")
         raise HTTPException(
             status_code=400,
-            detail=create_validation_error_response(e.errors(), request_id).dict(),
+            detail=create_web_ui_validation_error_response(
+                e.errors(), request_id
+            ).dict(),
         )
     except Exception as e:
         raise handle_service_error(
