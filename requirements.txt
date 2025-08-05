@@ -4,6 +4,7 @@ pyautogui
 urwid
 prompt_toolkit
 pydantic
+pydantic-settings
 pytest
 transformers
 sentence-transformers
@@ -32,7 +33,7 @@ fitz
 bs4
 plotly
 seaborn
-redis 
+redis
 psycopg
 psycopg2-binary
 asyncpg

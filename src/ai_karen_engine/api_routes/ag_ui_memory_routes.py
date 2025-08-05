@@ -10,7 +10,7 @@ from ai_karen_engine.services.ag_ui_memory_interface import (
 )
 from ai_karen_engine.services.memory_service import WebUIMemoryService
 
-router = APIRouter(prefix="/api/agui/memory", tags=["ag-ui-memory"])
+router = APIRouter(tags=["ag-ui-memory"])
 
 
 @router.post("/query", response_model=AGUIMemoryQueryResponse)
