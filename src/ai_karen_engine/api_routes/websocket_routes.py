@@ -35,7 +35,12 @@ from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ws", tags=["websocket"])
+# Global instances (will be initialized by dependency injection)
+websocket_gateway: Optional[WebSocketGateway] = None
+stream_processor: Optional[StreamProcessor] = None
+chat_orchestrator: Optional[ChatOrchestrator] = None
+
+router = APIRouter(tags=["websocket"])
 
 
 # Request/Response Models

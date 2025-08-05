@@ -26,7 +26,7 @@ app.add_middleware(
 
 # Import and mount LLM routes
 from ai_karen_engine.api_routes.llm_routes import router as llm_router
-app.include_router(llm_router)
+app.include_router(llm_router, prefix="/api/llm")
 
 # Add basic memory and chat endpoints for web UI compatibility
 from fastapi import HTTPException, Request

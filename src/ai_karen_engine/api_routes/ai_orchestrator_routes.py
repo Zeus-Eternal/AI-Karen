@@ -29,7 +29,7 @@ from ai_karen_engine.models.web_api_error_responses import (
 # Temporarily disable auth imports for web UI integration
 # from ..core.auth import get_current_user, get_tenant_id
 
-router = APIRouter(prefix="/api/ai", tags=["ai-orchestrator"])
+router = APIRouter(tags=["ai-orchestrator"])
 
 logger = get_logger(__name__)
 

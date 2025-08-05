@@ -24,7 +24,7 @@ from src.ai_karen_engine.models.shared_types import FlowOutput, AiData
 # Create a test FastAPI app with just the Web UI API router
 if FASTAPI_AVAILABLE:
     test_app = FastAPI()
-    test_app.include_router(router)
+    test_app.include_router(router, prefix="/api")
 else:
     test_app = None
 

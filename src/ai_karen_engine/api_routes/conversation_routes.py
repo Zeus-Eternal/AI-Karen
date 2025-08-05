@@ -42,7 +42,7 @@ from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/conversations", tags=["conversations"])
+router = APIRouter(tags=["conversations"])
 
 
 # Request/Response Models
