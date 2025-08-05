@@ -10,31 +10,27 @@ import mimetypes
 import json
 
 try:
-    from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Query
+    from fastapi import (
+        APIRouter,
+        HTTPException,
+        Depends,
+        UploadFile,
+        File,
+        Form,
+        Query,
+    )
     from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
-except Exception:  # pragma: no cover
-    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
-    def Depends(func):
-        return func
-    def Query(default=None, **_kw):
-        return default
-    def Form(default=None, **_kw):
-        return default
-    def File(default=None, **_kw):
-        return default
-    class UploadFile:
-        pass
-    class FileResponse:
-        pass
-    class StreamingResponse:
-        pass
-    class JSONResponse:
-        pass
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for file attachment routes. Install via `pip install fastapi`."
+    ) from e
 
 try:
     from pydantic import BaseModel, Field
-except Exception:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for file attachment routes. Install via `pip install pydantic`."
+    ) from e
 
 from ai_karen_engine.chat.hook_enabled_file_service import get_hook_enabled_file_service
 from ai_karen_engine.chat.file_attachment_service import (
@@ -62,7 +58,7 @@ from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/files/enhanced", tags=["enhanced-file-attachments"])
+router = APIRouter(tags=["enhanced-file-attachments"])
 
 # Initialize enhanced services
 file_service = get_hook_enabled_file_service()

@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from ai_karen_engine.event_bus import get_event_bus
 from ai_karen_engine.utils.auth import validate_session
 
-router = APIRouter(prefix="/api/events")
+router = APIRouter()
 
 
 class EventOut(BaseModel):

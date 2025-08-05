@@ -7,11 +7,20 @@ from typing import Any, Dict, List, Optional
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
 
 try:
-    from pydantic import BaseModel
-except Exception:  # pragma: no cover - optional dependency
-    from ai_karen_engine.pydantic_stub import BaseModel
+    from fastapi import APIRouter, HTTPException, Request
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for system routes. Install via `pip install fastapi`."
+    ) from e
 
-router = __import__("fastapi").APIRouter()
+try:
+    from pydantic import BaseModel
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for system routes. Install via `pip install pydantic`."
+    ) from e
+
+router = APIRouter()
 
 db = DuckDBClient()
 ANNOUNCE_PATH = Path(__file__).resolve().parents[3] / "data" / "announcements.json"
@@ -49,5 +58,5 @@ def list_announcements(limit: int = 10) -> List[Announcement]:
 def get_profile(user_id: str) -> UserProfile:
     profile = db.get_profile(user_id)
     if profile is None:
-        raise (__import__("fastapi").HTTPException)(status_code=404, detail="Profile not found")
+        raise HTTPException(status_code=404, detail="Profile not found")
     return UserProfile(user_id=user_id, **profile)

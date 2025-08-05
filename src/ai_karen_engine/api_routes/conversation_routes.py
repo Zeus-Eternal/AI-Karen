@@ -5,19 +5,20 @@ FastAPI routes for enhanced conversation management with web UI integration.
 import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
+
 try:
     from fastapi import APIRouter, HTTPException, Depends, Query
-except Exception:  # pragma: no cover
-    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
-    def Depends(func):
-        return func
-    def Query(default=None, **_kw):
-        return default
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for conversation routes. Install via `pip install fastapi`."
+    ) from e
 
 try:
     from pydantic import BaseModel, Field
-except Exception:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for conversation routes. Install via `pip install pydantic`."
+    ) from e
 
 from ai_karen_engine.services.conversation_service import (
     WebUIConversationService,
@@ -42,7 +43,7 @@ from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/conversations", tags=["conversations"])
+router = APIRouter(tags=["conversations"])
 
 
 # Request/Response Models
