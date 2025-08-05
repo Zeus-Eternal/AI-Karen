@@ -181,7 +181,13 @@ class AnalyticsResponse(BaseModel):
 
 
 # Import dependency injection
-from ai_karen_engine.core.dependencies import get_conversation_service
+from ai_karen_engine.core.dependencies import (
+    get_conversation_service,
+    get_current_tenant_id,
+)
+
+# Alias core dependencies for convenience
+get_current_tenant = get_current_tenant_id
 
 
 def _convert_conversation_to_response(conversation) -> ConversationResponse:
@@ -791,9 +797,8 @@ async def get_analytics(
 
 @router.get("/stats")
 async def get_conversation_stats(
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    tenant_id: str = Depends(get_current_tenant),
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Get basic conversation statistics."""
     try:
