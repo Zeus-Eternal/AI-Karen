@@ -143,8 +143,12 @@ class FileAttachmentService:
         
         # File metadata storage
         self._file_metadata: Dict[str, FileMetadata] = {}
-        
+
         logger.info(f"FileAttachmentService initialized with storage: {self.storage_path}")
+
+    def list_files(self) -> Dict[str, FileMetadata]:
+        """Return a copy of stored file metadata."""
+        return dict(self._file_metadata)
     
     def _get_default_extensions(self) -> List[str]:
         """Get default allowed file extensions."""
