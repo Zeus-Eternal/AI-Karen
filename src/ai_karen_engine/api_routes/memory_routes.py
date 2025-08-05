@@ -27,7 +27,7 @@ from ai_karen_engine.services.memory_service import (
     UISource,
 )
 from ai_karen_engine.core.config_manager import AIKarenConfig
-from ai_karen_engine.core.dependencies import get_memory_service, get_current_config
+from ai_karen_engine.core.dependencies import get_memory_service, get_current_config, get_current_user_context
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
@@ -163,16 +163,15 @@ class AnalyticsResponse(BaseModel):
 @router.post("/store", response_model=StoreMemoryResponse)
 async def store_memory(
     request: StoreMemoryRequest,
-    
-    
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """Store a new memory entry."""
     try:
         memory_id = await memory_service.store_web_ui_memory(
-            tenant_id="default",
+            tenant_id=current_user["tenant_id"],
             content=request.content,
-            user_id="anonymous",
+            user_id=current_user["user_id"],
             ui_source=request.ui_source,
             session_id=request.session_id,
             conversation_id=request.conversation_id,
@@ -207,6 +206,7 @@ async def store_memory(
 @router.post("/query", response_model=QueryMemoryResponse)
 async def query_memories(
     request: QueryMemoryRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
     config: AIKarenConfig = Depends(get_current_config),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
@@ -223,7 +223,7 @@ async def query_memories(
         # Create query object
         query = WebUIMemoryQuery(
             text=request.text,
-            user_id="anonymous",
+            user_id=current_user["user_id"],
             session_id=request.session_id,
             conversation_id=request.conversation_id,
             ui_source=request.ui_source,
@@ -238,7 +238,7 @@ async def query_memories(
             include_embeddings=request.include_embeddings
         )
 
-        memories = await memory_service.query_memories("default", query)
+        memories = await memory_service.query_memories(current_user["tenant_id"], query)
 
         # Enforce final limit on returned results
         memories = memories[:limit]
@@ -304,16 +304,15 @@ async def query_memories(
 @router.post("/context", response_model=ContextResponse)
 async def build_context(
     request: BuildContextRequest,
-    
-    
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """Build conversation context from relevant memories."""
     try:
         context = await memory_service.build_conversation_context(
-            tenant_id="default",
+            tenant_id=current_user["tenant_id"],
             query=request.query,
-            user_id="anonymous",
+            user_id=current_user["user_id"],
             session_id=request.session_id,
             conversation_id=request.conversation_id
         )
@@ -338,14 +337,13 @@ async def build_context(
 async def confirm_memory(
     memory_id: str,
     request: ConfirmMemoryRequest,
-    
-    
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """Confirm or reject an AI-generated memory."""
     try:
         success = await memory_service.confirm_memory(
-            tenant_id="default",
+            tenant_id=current_user["tenant_id"],
             memory_id=memory_id,
             confirmed=request.confirmed
         )
@@ -387,14 +385,13 @@ async def confirm_memory(
 async def update_importance(
     memory_id: str,
     request: UpdateImportanceRequest,
-    
-    
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """Update memory importance score."""
     try:
         success = await memory_service.update_memory_importance(
-            tenant_id="default",
+            tenant_id=current_user["tenant_id"],
             memory_id=memory_id,
             importance_score=request.importance_score
         )
@@ -450,14 +447,13 @@ async def update_importance(
 @router.delete("/{memory_id}")
 async def delete_memory(
     memory_id: str,
-    
-    
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """Delete a memory entry."""
     try:
         success = await memory_service.base_manager.delete_memory(
-            tenant_id="default",
+            tenant_id=current_user["tenant_id"],
             memory_id=memory_id
         )
         
@@ -499,8 +495,7 @@ async def get_analytics(
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
     time_range_start: Optional[datetime] = Query(None, description="Start of time range"),
     time_range_end: Optional[datetime] = Query(None, description="End of time range"),
-    
-    
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """Get memory analytics for dashboard."""
@@ -511,10 +506,10 @@ async def get_analytics(
             time_range = (time_range_start, time_range_end)
         
         # Use current user if no user_id specified
-        target_user_id = user_id or "anonymous"
+        target_user_id = user_id or current_user["user_id"]
         
         analytics = await memory_service.get_memory_analytics(
-            tenant_id="default",
+            tenant_id=current_user["tenant_id"],
             user_id=target_user_id,
             time_range=time_range
         )
@@ -537,19 +532,18 @@ async def get_analytics(
 
 @router.get("/stats")
 async def get_memory_stats(
-    
-    
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """Get basic memory statistics."""
     try:
-        stats = await memory_service.base_manager.get_memory_stats("default")
+        stats = await memory_service.base_manager.get_memory_stats(current_user["tenant_id"])
         web_ui_metrics = memory_service.get_metrics()
         
         return {
             "base_stats": stats,
             "web_ui_metrics": web_ui_metrics,
-            "tenant_id": "default"
+            "tenant_id": current_user["tenant_id"]
         }
         
     except Exception as e:
@@ -568,13 +562,12 @@ async def get_memory_stats(
 
 @router.post("/prune-expired")
 async def prune_expired_memories(
-    
-    
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
     memory_service: WebUIMemoryService = Depends(get_memory_service)
 ):
     """Prune expired memories for the tenant."""
     try:
-        pruned_count = await memory_service.base_manager.prune_expired_memories("default")
+        pruned_count = await memory_service.base_manager.prune_expired_memories(current_user["tenant_id"])
         
         return {
             "success": True,
