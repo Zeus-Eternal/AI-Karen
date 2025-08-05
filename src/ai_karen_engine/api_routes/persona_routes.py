@@ -6,20 +6,27 @@ REST endpoints for managing personas, style controls, and user preferences
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.models.persona_models import (
-    Persona, PersonaStyleOverride, ToneEnum, UserPersonaPreferences,
-    VerbosityEnum, LanguageEnum, ChatStyleContext
+    LanguageEnum,
+    PersonaStyleOverride,
+    ToneEnum,
+    VerbosityEnum,
 )
 from ai_karen_engine.services.persona_service import get_persona_service
-from ai_karen_engine.utils.auth import get_current_user_context
 
 router = APIRouter(tags=["personas"])
 
 
+# Alias core dependency for convenience
+get_current_user = get_current_user_context
+
+
 # Request/Response Models
+
 
 class CreatePersonaRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
@@ -135,72 +142,77 @@ class ChatContextResponse(BaseModel):
 
 # Persona Management Endpoints
 
+
 @router.post("/", response_model=PersonaResponse, status_code=status.HTTP_201_CREATED)
 async def create_persona(
     request: CreatePersonaRequest,
-    http_request: Request
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> PersonaResponse:
     """Create a new custom persona"""
-    
-    user_context = get_current_user_context(http_request)
+
+    user_context = current_user
     persona_service = get_persona_service()
-    
+
     try:
         persona = await persona_service.create_persona(
             user_id=user_context["user_id"],
             tenant_id=user_context["tenant_id"],
-            persona_data=request.dict()
+            persona_data=request.dict(),
         )
-        
+
         return PersonaResponse(**persona.dict())
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to create persona")
 
 
 @router.get("/", response_model=List[PersonaResponse])
-async def list_personas(http_request: Request) -> List[PersonaResponse]:
+async def list_personas(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> List[PersonaResponse]:
     """List all available personas for the current user"""
-    
-    user_context = get_current_user_context(http_request)
+
+    user_context = current_user
     persona_service = get_persona_service()
-    
+
     try:
         personas = await persona_service.list_available_personas(
-            user_id=user_context["user_id"],
-            tenant_id=user_context["tenant_id"]
+            user_id=user_context["user_id"], tenant_id=user_context["tenant_id"]
         )
-        
+
         return [PersonaResponse(**persona.dict()) for persona in personas]
-        
-    except Exception as e:
+
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to list personas")
 
 
 @router.get("/{persona_id}", response_model=PersonaResponse)
-async def get_persona(persona_id: str, http_request: Request) -> PersonaResponse:
+async def get_persona(
+    persona_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> PersonaResponse:
     """Get a specific persona by ID"""
-    
-    user_context = get_current_user_context(http_request)
+
+    user_context = current_user
     persona_service = get_persona_service()
-    
+
     try:
         persona = await persona_service.get_persona(
             persona_id=persona_id,
             user_id=user_context["user_id"],
-            tenant_id=user_context["tenant_id"]
+            tenant_id=user_context["tenant_id"],
         )
-        
+
         if not persona:
             raise HTTPException(status_code=404, detail="Persona not found")
-        
+
         return PersonaResponse(**persona.dict())
-        
+
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to get persona")
 
 
@@ -208,177 +220,186 @@ async def get_persona(persona_id: str, http_request: Request) -> PersonaResponse
 async def update_persona(
     persona_id: str,
     request: UpdatePersonaRequest,
-    http_request: Request
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> PersonaResponse:
     """Update an existing persona"""
-    
-    user_context = get_current_user_context(http_request)
+
+    user_context = current_user
     persona_service = get_persona_service()
-    
+
     try:
         # Filter out None values
         updates = {k: v for k, v in request.dict().items() if v is not None}
-        
+
         persona = await persona_service.update_persona(
             user_id=user_context["user_id"],
             tenant_id=user_context["tenant_id"],
             persona_id=persona_id,
-            updates=updates
+            updates=updates,
         )
-        
+
         return PersonaResponse(**persona.dict())
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to update persona")
 
 
 @router.delete("/{persona_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_persona(persona_id: str, http_request: Request):
+async def delete_persona(
+    persona_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
     """Delete a custom persona"""
-    
-    user_context = get_current_user_context(http_request)
+
+    user_context = current_user
     persona_service = get_persona_service()
-    
+
     try:
         success = await persona_service.delete_persona(
             user_id=user_context["user_id"],
             tenant_id=user_context["tenant_id"],
-            persona_id=persona_id
+            persona_id=persona_id,
         )
-        
+
         if not success:
             raise HTTPException(status_code=404, detail="Persona not found")
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to delete persona")
 
 
 # User Preferences Endpoints
 
+
 @router.get("/preferences/me", response_model=PreferencesResponse)
-async def get_my_preferences(http_request: Request) -> PreferencesResponse:
+async def get_my_preferences(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> PreferencesResponse:
     """Get current user's persona preferences"""
-    
-    user_context = get_current_user_context(http_request)
+
+    user_context = current_user
     persona_service = get_persona_service()
-    
+
     try:
         preferences = await persona_service.get_user_preferences(
-            user_id=user_context["user_id"],
-            tenant_id=user_context["tenant_id"]
+            user_id=user_context["user_id"], tenant_id=user_context["tenant_id"]
         )
-        
+
         return PreferencesResponse(**preferences.dict())
-        
-    except Exception as e:
+
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to get preferences")
 
 
 @router.put("/preferences/me", response_model=PreferencesResponse)
 async def update_my_preferences(
     request: UpdatePreferencesRequest,
-    http_request: Request
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> PreferencesResponse:
     """Update current user's persona preferences"""
-    
-    user_context = get_current_user_context(http_request)
+
+    user_context = current_user
     persona_service = get_persona_service()
-    
+
     try:
         # Filter out None values
         updates = {k: v for k, v in request.dict().items() if v is not None}
-        
+
         preferences = await persona_service.update_user_preferences(
             user_id=user_context["user_id"],
             tenant_id=user_context["tenant_id"],
-            updates=updates
+            updates=updates,
         )
-        
+
         return PreferencesResponse(**preferences.dict())
-        
-    except Exception as e:
+
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to update preferences")
 
 
 @router.post("/preferences/switch", response_model=PreferencesResponse)
 async def switch_persona(
     request: SwitchPersonaRequest,
-    http_request: Request
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> PreferencesResponse:
     """Switch the active persona for the current user"""
-    
-    user_context = get_current_user_context(http_request)
+
+    user_context = current_user
     persona_service = get_persona_service()
-    
+
     try:
         preferences = await persona_service.switch_persona(
             user_id=user_context["user_id"],
             tenant_id=user_context["tenant_id"],
-            persona_id=request.persona_id
+            persona_id=request.persona_id,
         )
-        
+
         return PreferencesResponse(**preferences.dict())
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to switch persona")
 
 
 # Style Analysis and Context Endpoints
 
+
 @router.post("/analyze-style", response_model=StyleAnalysisResponse)
 async def analyze_style(
     request: StyleAnalysisRequest,
-    http_request: Request
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> StyleAnalysisResponse:
     """Analyze the style of user text using NLP"""
-    
-    user_context = get_current_user_context(http_request)
+
     persona_service = get_persona_service()
-    
+
     try:
         analysis = await persona_service.analyze_user_style(request.text)
-        
+
         # Generate suggestions based on analysis
         suggestions = []
         if analysis.get("formality_score", 0.5) < 0.3:
-            suggestions.append("Consider using more formal language for professional contexts")
+            suggestions.append(
+                "Consider using more formal language for professional contexts"
+            )
         elif analysis.get("formality_score", 0.5) > 0.8:
-            suggestions.append("You could use more casual language for friendly conversations")
-        
+            suggestions.append(
+                "You could use more casual language for friendly conversations"
+            )
+
         if analysis.get("complexity_score", 0.5) > 0.8:
             suggestions.append("Try breaking down complex ideas into simpler sentences")
-        
+
         return StyleAnalysisResponse(
             detected_tone=analysis.get("detected_tone"),
             formality_score=analysis.get("formality_score", 0.5),
             sentiment_score=analysis.get("sentiment_score", 0.0),
             complexity_score=analysis.get("complexity_score", 0.5),
             emotion_indicators=analysis.get("emotion_indicators", []),
-            suggestions=suggestions
+            suggestions=suggestions,
         )
-        
-    except Exception as e:
+
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to analyze style")
 
 
 @router.post("/chat-context", response_model=ChatContextResponse)
 async def build_chat_context(
     request: ChatContextRequest,
-    http_request: Request
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> ChatContextResponse:
     """Build chat context with persona and style information"""
-    
-    user_context = get_current_user_context(http_request)
+
+    user_context = current_user
     persona_service = get_persona_service()
-    
+
     try:
         context = await persona_service.build_chat_context(
             user_id=user_context["user_id"],
@@ -386,65 +407,70 @@ async def build_chat_context(
             message=request.message,
             conversation_id=request.conversation_id,
             style_override=request.style_override,
-            turn_number=request.turn_number
+            turn_number=request.turn_number,
         )
-        
+
         # Build memory filters
         memory_filters = {}
         if context.memory_persona_filter:
             memory_filters["persona_id"] = context.memory_persona_filter
         if context.memory_tone_filter:
             memory_filters["tone"] = context.memory_tone_filter.value
-        
+
         return ChatContextResponse(
             system_prompt=context.build_system_prompt(),
             effective_tone=context.get_effective_tone(),
             effective_verbosity=context.get_effective_verbosity(),
             effective_language=context.get_effective_language(),
             persona_name=context.persona.name if context.persona else None,
-            memory_filters=memory_filters
+            memory_filters=memory_filters,
         )
-        
-    except Exception as e:
+
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to build chat context")
 
 
 # Health and Status Endpoints
 
+
 @router.get("/health")
 async def persona_health_check():
     """Health check for persona service"""
-    
+
     try:
         persona_service = get_persona_service()
-        
+
         # Test basic functionality
-        system_personas_count = len([p for p in await persona_service.list_available_personas("test", "test") if p.is_system_persona])
-        
+        system_personas_count = len(
+            [
+                p
+                for p in await persona_service.list_available_personas("test", "test")
+                if p.is_system_persona
+            ]
+        )
+
         return {
             "status": "healthy",
             "timestamp": datetime.utcnow().isoformat(),
             "service": "persona-service",
             "system_personas_available": system_personas_count,
-            "nlp_analyzer_available": hasattr(persona_service.nlp_analyzer, 'analyze_style')
+            "nlp_analyzer_available": hasattr(
+                persona_service.nlp_analyzer, "analyze_style"
+            ),
         }
-        
+
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e),
-            "service": "persona-service"
-        }
+        return {"status": "unhealthy", "error": str(e), "service": "persona-service"}
 
 
 @router.get("/system-personas", response_model=List[PersonaResponse])
 async def list_system_personas() -> List[PersonaResponse]:
     """List all built-in system personas (public endpoint)"""
-    
+
     try:
         from ai_karen_engine.models.persona_models import SYSTEM_PERSONAS
-        
+
         return [PersonaResponse(**persona.dict()) for persona in SYSTEM_PERSONAS]
-        
-    except Exception as e:
+
+    except Exception:
         raise HTTPException(status_code=500, detail="Failed to list system personas")

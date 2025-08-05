@@ -1,12 +1,20 @@
-from typing import List
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from ai_karen_engine.core.dependencies import (
+    get_current_tenant_id,
+    get_current_user_context,
+)
 from ai_karen_engine.event_bus import get_event_bus
-from ai_karen_engine.utils.auth import validate_session
 
 router = APIRouter()
+
+
+# Alias core dependencies for convenience
+get_current_user = get_current_user_context
+get_current_tenant = get_current_tenant_id
 
 
 class EventOut(BaseModel):
@@ -17,20 +25,11 @@ class EventOut(BaseModel):
     risk: float
 
 
-def _get_context(request: Request):
-    auth = request.headers.get("authorization")
-    if not auth or not auth.lower().startswith("bearer "):
-        raise HTTPException(status_code=401, detail="missing token")
-    token = auth.split(None, 1)[1]
-    ctx = validate_session(token, request.headers.get("user-agent", ""), request.client.host)
-    if not ctx:
-        raise HTTPException(status_code=401, detail="invalid token")
-    return ctx
-
-
 @router.get("/", response_model=List[EventOut])
-async def consume_events(request: Request) -> List[EventOut]:
-    ctx = _get_context(request)
+async def consume_events(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
+) -> List[EventOut]:
     bus = get_event_bus()
-    events = bus.consume(ctx.get("roles", []), tenant_id=ctx.get("tenant_id"))
+    events = bus.consume(current_user.get("roles", []), tenant_id=tenant_id)
     return [EventOut(**e.__dict__) for e in events]
