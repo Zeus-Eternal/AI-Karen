@@ -47,10 +47,6 @@ logger = get_logger(__name__)
 
 router = APIRouter(tags=["code-execution"])
 
-# Initialize services
-code_execution_service = CodeExecutionService()
-tool_integration_service = ToolIntegrationService()
-
 
 # Authentication dependency
 async def get_current_user(request: Request) -> Dict[str, Any]:
@@ -173,10 +169,15 @@ async def execute_code(
         )
 
 
+
+
 @router.get("/languages")
-async def get_supported_languages():
+async def get_supported_languages(
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
+):
     """Get list of supported programming languages."""
     try:
+        language_configs = code_execution_service.get_language_configs()
         return {
             "supported_languages": [
                 lang.value for lang in code_execution_service.supported_languages
@@ -246,7 +247,10 @@ async def get_execution_history(
 
 
 @router.delete("/execution/{execution_id}")
-async def cancel_execution(execution_id: str):
+async def cancel_execution(
+    execution_id: str,
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
+):
     """Cancel an active code execution."""
     try:
         success = await code_execution_service.cancel_execution(execution_id)
@@ -370,7 +374,10 @@ async def list_tools(
 
 
 @router.get("/tools/{tool_name}")
-async def get_tool_info(tool_name: str):
+async def get_tool_info(
+    tool_name: str,
+    tool_integration_service: ToolIntegrationService = Depends(get_tool_integration_service),
+):
     """Get detailed information about a specific tool."""
     try:
         tool_info = tool_integration_service.get_tool_info(tool_name)
@@ -424,10 +431,10 @@ async def get_tool_execution_history(
             tool_name=tool_name,
             limit=limit
         )
-        
+
         return ExecutionHistoryResponse(
             executions=history,
-            total_count=len(history)
+            total_count=len(history),
         )
 
         return ExecutionHistoryResponse(executions=history, total_count=len(history))
@@ -487,7 +494,10 @@ async def register_custom_tool(tool_definition: ToolDefinition):
 
 
 @router.get("/stats", response_model=ServiceStatsResponse)
-async def get_service_stats():
+async def get_service_stats(
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
+    tool_integration_service: ToolIntegrationService = Depends(get_tool_integration_service),
+):
     """Get code execution and tool integration statistics."""
     try:
         code_stats = code_execution_service.get_service_stats()
