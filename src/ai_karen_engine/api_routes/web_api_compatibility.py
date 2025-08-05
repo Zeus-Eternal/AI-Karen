@@ -53,7 +53,7 @@ from ai_karen_engine.integrations.llm_router import LLMProfileRouter
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api", tags=["web-ui-compatibility"])
+router = APIRouter(tags=["web-ui-compatibility"])
 
 
 def get_request_id(request: Request) -> str:

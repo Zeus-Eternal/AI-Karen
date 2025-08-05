@@ -28,7 +28,7 @@ from ai_karen_engine.core.config_manager import ConfigManager
 
 logger = logging.getLogger("kari.llm_routes")
 
-router = APIRouter(prefix="/api/llm", tags=["llm"])
+router = APIRouter(tags=["llm"])
 
 
 # Request/Response Models

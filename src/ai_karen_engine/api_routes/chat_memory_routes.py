@@ -13,7 +13,7 @@ from ai_karen_engine.services.auth_service import auth_service
 from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/chats", tags=["chat-memory"])
+router = APIRouter(tags=["chat-memory"])
 
 
 # Request/Response Models

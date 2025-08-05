@@ -32,7 +32,7 @@ from ai_karen_engine.utils.auth import validate_session
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/hooks", tags=["hooks"])
+router = APIRouter(tags=["hooks"])
 
 
 # Request/Response Models

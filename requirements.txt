@@ -36,7 +36,7 @@ fitz
 bs4
 plotly
 seaborn
-redis 
+redis
 psycopg
 psycopg2-binary
 asyncpg

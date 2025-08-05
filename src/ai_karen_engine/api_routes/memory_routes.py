@@ -42,7 +42,7 @@ from ai_karen_engine.models.web_api_error_responses import (
 # from ..database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
 
-router = APIRouter(prefix="/api/memory", tags=["memory"])
+router = APIRouter(tags=["memory"])
 
 logger = get_logger(__name__)
 

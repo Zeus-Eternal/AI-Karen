@@ -20,7 +20,7 @@ except ImportError:
 logger = logging.getLogger("kari.api.memory_ag_ui")
 
 # Initialize router
-router = APIRouter(prefix="/api/memory", tags=["memory-ag-ui"])
+router = APIRouter(tags=["memory-ag-ui"])
 
 # Initialize managers
 ag_ui_memory_manager = AGUIMemoryManager()

@@ -58,7 +58,7 @@ from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/files/enhanced", tags=["enhanced-file-attachments"])
+router = APIRouter(tags=["enhanced-file-attachments"])
 
 # Initialize enhanced services
 file_service = get_hook_enabled_file_service()
