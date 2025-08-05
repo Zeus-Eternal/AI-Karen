@@ -34,8 +34,10 @@ from ai_karen_engine.chat.tool_integration_service import (
     ToolIntegrationService,
     ToolExecutionContext,
     ToolExecutionResult,
-    ToolType,
-    ToolStatus
+)
+from ai_karen_engine.chat.dependencies import (
+    get_code_execution_service,
+    get_tool_integration_service,
 )
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
@@ -49,10 +51,6 @@ from ai_karen_engine.core.logging import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/code", tags=["code-execution"])
-
-# Initialize services
-code_execution_service = CodeExecutionService()
-tool_integration_service = ToolIntegrationService()
 
 
 # Request/Response Models
@@ -96,7 +94,10 @@ class ServiceStatsResponse(BaseModel):
 
 
 @router.post("/execute", response_model=CodeExecutionResponse)
-async def execute_code(request: ExecuteCodeRequest):
+async def execute_code(
+    request: ExecuteCodeRequest,
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
+):
     """Execute code with security controls."""
     try:
         # Create execution request
@@ -108,14 +109,14 @@ async def execute_code(request: ExecuteCodeRequest):
             security_level=request.security_level,
             execution_limits=request.execution_limits,
             environment_vars=request.environment_vars,
-            input_data=request.input_data
+            input_data=request.input_data,
         )
-        
+
         # Execute code
         result = await code_execution_service.execute_code(exec_request)
-        
+
         return result
-        
+
     except Exception as e:
         logger.exception("Code execution failed", error=str(e))
         error_response = create_service_error_response(
@@ -130,20 +131,27 @@ async def execute_code(request: ExecuteCodeRequest):
         )
 
 
+
+
 @router.get("/languages")
-async def get_supported_languages():
+async def get_supported_languages(
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
+):
     """Get list of supported programming languages."""
     try:
+        language_configs = code_execution_service.get_language_configs()
         return {
-            "supported_languages": [lang.value for lang in code_execution_service.supported_languages],
+            "supported_languages": [
+                lang.value for lang in code_execution_service.supported_languages
+            ],
             "language_configs": {
                 lang.value: {
                     "executable": config.get("executable"),
                     "file_extension": config.get("file_extension"),
-                    "docker_image": config.get("docker_image")
+                    "docker_image": config.get("docker_image"),
                 }
-                for lang, config in code_execution_service._language_configs.items()
-            }
+                for lang, config in language_configs.items()
+            },
         }
         
     except Exception as e:
@@ -163,16 +171,17 @@ async def get_supported_languages():
 @router.get("/history", response_model=ExecutionHistoryResponse)
 async def get_execution_history(
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
-    limit: int = Query(50, ge=1, le=100, description="Maximum number of executions")
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of executions"),
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
 ):
     """Get code execution history."""
     try:
         # Get execution history from code execution service
         code_history = code_execution_service.get_execution_history(user_id or "", limit)
-        
+
         return ExecutionHistoryResponse(
             executions=code_history,
-            total_count=len(code_history)
+            total_count=len(code_history),
         )
         
     except Exception as e:
@@ -190,7 +199,10 @@ async def get_execution_history(
 
 
 @router.delete("/execution/{execution_id}")
-async def cancel_execution(execution_id: str):
+async def cancel_execution(
+    execution_id: str,
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
+):
     """Cancel an active code execution."""
     try:
         success = await code_execution_service.cancel_execution(execution_id)
@@ -229,7 +241,10 @@ async def cancel_execution(execution_id: str):
 
 
 @router.post("/tools/execute", response_model=ToolExecutionResult)
-async def execute_tool(request: ToolExecuteRequest):
+async def execute_tool(
+    request: ToolExecuteRequest,
+    tool_integration_service: ToolIntegrationService = Depends(get_tool_integration_service),
+):
     """Execute a registered tool."""
     try:
         # Create execution context
@@ -237,16 +252,14 @@ async def execute_tool(request: ToolExecuteRequest):
             user_id=request.user_id,
             conversation_id=request.conversation_id,
             execution_id=str(uuid.uuid4()),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
-        
+
         # Execute tool
         result = await tool_integration_service.execute_tool(
-            request.tool_name,
-            request.parameters,
-            context
+            request.tool_name, request.parameters, context
         )
-        
+
         return result
         
     except Exception as e:
@@ -266,7 +279,12 @@ async def execute_tool(request: ToolExecuteRequest):
 @router.get("/tools", response_model=ToolListResponse)
 async def list_tools(
     category: Optional[str] = Query(None, description="Filter by category"),
-    search: Optional[str] = Query(None, description="Search tools by name or description")
+    search: Optional[str] = Query(
+        None, description="Search tools by name or description"
+    ),
+    tool_integration_service: ToolIntegrationService = Depends(
+        get_tool_integration_service
+    ),
 ):
     """List available tools."""
     try:
@@ -274,13 +292,13 @@ async def list_tools(
             tools = tool_integration_service.search_tools(search)
         else:
             tools = tool_integration_service.get_available_tools(category)
-        
+
         categories = tool_integration_service.get_categories()
-        
+
         return ToolListResponse(
             tools=tools,
             categories=categories,
-            total_count=len(tools)
+            total_count=len(tools),
         )
         
     except Exception as e:
@@ -298,7 +316,10 @@ async def list_tools(
 
 
 @router.get("/tools/{tool_name}")
-async def get_tool_info(tool_name: str):
+async def get_tool_info(
+    tool_name: str,
+    tool_integration_service: ToolIntegrationService = Depends(get_tool_integration_service),
+):
     """Get detailed information about a specific tool."""
     try:
         tool_info = tool_integration_service.get_tool_info(tool_name)
@@ -337,19 +358,18 @@ async def get_tool_info(tool_name: str):
 async def get_tool_execution_history(
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
     tool_name: Optional[str] = Query(None, description="Filter by tool name"),
-    limit: int = Query(50, ge=1, le=100, description="Maximum number of executions")
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of executions"),
+    tool_integration_service: ToolIntegrationService = Depends(get_tool_integration_service),
 ):
     """Get tool execution history."""
     try:
         history = tool_integration_service.get_execution_history(
-            user_id=user_id,
-            tool_name=tool_name,
-            limit=limit
+            user_id=user_id, tool_name=tool_name, limit=limit
         )
-        
+
         return ExecutionHistoryResponse(
             executions=history,
-            total_count=len(history)
+            total_count=len(history),
         )
         
     except Exception as e:
@@ -395,15 +415,18 @@ async def register_custom_tool(tool_definition: ToolDefinition):
 
 
 @router.get("/stats", response_model=ServiceStatsResponse)
-async def get_service_stats():
+async def get_service_stats(
+    code_execution_service: CodeExecutionService = Depends(get_code_execution_service),
+    tool_integration_service: ToolIntegrationService = Depends(get_tool_integration_service),
+):
     """Get code execution and tool integration statistics."""
     try:
         code_stats = code_execution_service.get_service_stats()
         tool_stats = tool_integration_service.get_service_stats()
-        
+
         return ServiceStatsResponse(
             code_execution_stats=code_stats,
-            tool_integration_stats=tool_stats
+            tool_integration_stats=tool_stats,
         )
         
     except Exception as e:
