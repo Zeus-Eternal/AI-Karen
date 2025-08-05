@@ -40,6 +40,7 @@ class UISource(str, Enum):
     STREAMLIT = "streamlit"
     DESKTOP = "desktop"
     API = "api"
+    AG_UI = "ag_ui"
 
 
 @dataclass

@@ -81,6 +81,31 @@ class TestWebUIMemoryService:
         assert metadata["importance_score"] == 5  # default
         assert metadata["ai_generated"] is False
         assert metadata["user_confirmed"] is True
+
+    @pytest.mark.asyncio
+    async def test_store_ag_ui_memory(self, memory_service, mock_base_manager):
+        """Test storing memory from AG-UI source."""
+        tenant_id = str(uuid.uuid4())
+        user_id = str(uuid.uuid4())
+        content = "AG-UI memory entry"
+
+        mock_base_manager.store_memory = AsyncMock(return_value="memory-789")
+        memory_service._update_web_ui_fields = AsyncMock()
+        memory_service._generate_auto_tags = AsyncMock(return_value=[])
+        memory_service._extract_facts = AsyncMock(return_value=[])
+
+        result = await memory_service.store_web_ui_memory(
+            tenant_id=tenant_id,
+            content=content,
+            user_id=user_id,
+            ui_source=UISource.AG_UI,
+            memory_type=MemoryType.GENERAL
+        )
+
+        assert result == "memory-789"
+        call_args = mock_base_manager.store_memory.call_args
+        metadata = call_args.kwargs["metadata"]
+        assert metadata["ui_source"] == "ag_ui"
     
     @pytest.mark.asyncio
     async def test_store_ai_generated_memory(self, memory_service, mock_base_manager):

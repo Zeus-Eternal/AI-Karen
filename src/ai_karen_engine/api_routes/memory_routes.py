@@ -51,7 +51,7 @@ logger = get_logger(__name__)
 class StoreMemoryRequest(BaseModel):
     """Request model for storing memory."""
     content: str = Field(..., description="Memory content")
-    ui_source: UISource = Field(..., description="Source UI")
+    ui_source: UISource = Field(..., description="Source UI (web, streamlit, desktop, api, ag_ui)")
     session_id: Optional[str] = Field(None, description="Session ID")
     conversation_id: Optional[str] = Field(None, description="Conversation ID")
     memory_type: MemoryType = Field(MemoryType.GENERAL, description="Memory type")
@@ -67,7 +67,7 @@ class QueryMemoryRequest(BaseModel):
     text: str = Field(..., description="Query text")
     session_id: Optional[str] = Field(None, description="Session ID")
     conversation_id: Optional[str] = Field(None, description="Conversation ID")
-    ui_source: Optional[UISource] = Field(None, description="Filter by UI source")
+    ui_source: Optional[UISource] = Field(None, description="Filter by UI source (web, streamlit, desktop, api, ag_ui)")
     memory_types: List[MemoryType] = Field(default_factory=list, description="Filter by memory types")
     tags: List[str] = Field(default_factory=list, description="Filter by tags")
     importance_range: Optional[Tuple[int, int]] = Field(None, description="Importance score range")
