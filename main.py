@@ -13,7 +13,6 @@ import secrets
 import ssl
 from datetime import datetime, timezone
 from pathlib import Path
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
@@ -323,13 +322,15 @@ def create_app() -> FastAPI:
         }
 
     @app.get("/metrics", tags=["monitoring"])
-    async def metrics():
-        """Prometheus metrics endpoint with authentication"""
+    async def metrics(api_key: str = Depends(api_key_header)):
+        """Prometheus metrics endpoint requiring X-API-KEY header"""
         if not PROMETHEUS_ENABLED:
             raise HTTPException(
                 status_code=501,
                 detail="Metrics are not enabled",
             )
+        if api_key != settings.secret_key:
+            raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
         return Response(
             content=generate_latest(REGISTRY),
