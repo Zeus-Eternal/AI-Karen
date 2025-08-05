@@ -21,9 +21,9 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["auth"])
 
 
-# Alias core dependencies for convenience
+# Alias core dependencies for clarity
 get_current_user = get_current_user_context
-get_tenant_id = get_current_tenant_id
+get_current_tenant_id_dependency = get_current_tenant_id
 
 COOKIE_NAME = "kari_session"
 
