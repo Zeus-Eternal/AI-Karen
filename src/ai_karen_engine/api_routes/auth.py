@@ -28,6 +28,26 @@ get_tenant_id = get_current_tenant_id
 COOKIE_NAME = "kari_session"
 
 
+def set_session_cookie(
+    response: Response, token: str, max_age: int = 24 * 60 * 60
+) -> None:
+    """Configure the session cookie on the response.
+
+    Args:
+        response: The FastAPI response object.
+        token: Session token to store in the cookie.
+        max_age: Lifetime of the cookie in seconds. Defaults to 24 hours.
+    """
+    response.set_cookie(
+        COOKIE_NAME,
+        token,
+        max_age=max_age,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+    )
+
+
 # Request/Response Models
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -107,15 +127,7 @@ async def register(
         )
 
         # Set secure HttpOnly cookie
-
-        response.set_cookie(
-            COOKIE_NAME,
-            session_data["session_token"],
-            max_age=24 * 60 * 60,  # 24 hours
-            httponly=True,
-            secure=True,
-            samesite="strict",
-        )
+        set_session_cookie(response, session_data["session_token"])
 
         # Convert UserData to dict format
         user_data = {
@@ -200,15 +212,7 @@ async def login(
         )
 
         # Set secure HttpOnly cookie
-
-        response.set_cookie(
-            COOKIE_NAME,
-            session_data["session_token"],
-            max_age=24 * 60 * 60,  # 24 hours
-            httponly=True,
-            secure=True,
-            samesite="strict",
-        )
+        set_session_cookie(response, session_data["session_token"])
 
         logger.info(
             "User logged in",
@@ -330,15 +334,7 @@ async def update_credentials(
         )
 
         # Set new cookie
-
-        response.set_cookie(
-            COOKIE_NAME,
-            session_data["session_token"],
-            max_age=24 * 60 * 60,
-            httponly=True,
-            secure=True,
-            samesite="strict",
-        )
+        set_session_cookie(response, session_data["session_token"])
 
         # Get updated user data
         updated_user = await auth_service.validate_session(
