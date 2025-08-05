@@ -36,10 +36,14 @@ sys.modules.setdefault("integrations", importlib.import_module("ai_karen_engine.
 sys.modules.setdefault("integrations.llm_registry", importlib.import_module("ai_karen_engine.integrations.llm_registry"))
 sys.modules.setdefault("integrations.model_discovery", importlib.import_module("ai_karen_engine.integrations.model_discovery"))
 sys.modules.setdefault("integrations.llm_utils", importlib.import_module("ai_karen_engine.integrations.llm_utils"))
-sys.modules.setdefault("fastapi", importlib.import_module("ai_karen_engine.fastapi_stub"))
-sys.modules.setdefault("fastapi_stub", importlib.import_module("ai_karen_engine.fastapi_stub"))
-sys.modules.setdefault("fastapi.testclient", importlib.import_module("ai_karen_engine.fastapi_stub.testclient"))
-sys.modules.setdefault("pydantic", importlib.import_module("ai_karen_engine.pydantic_stub"))
+# Ensure required runtime dependencies are available
+try:  # pragma: no cover - fail early if missing
+    import fastapi  # noqa: F401
+    import pydantic  # noqa: F401
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(
+        "FastAPI and Pydantic must be installed for tests. Install with `pip install fastapi pydantic`."
+    ) from e
 
 os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "test")
 os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")

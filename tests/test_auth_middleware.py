@@ -1,20 +1,16 @@
 import asyncio
 from types import SimpleNamespace
 
-import ai_karen_engine.fastapi_stub as fastapi_stub
-import ai_karen_engine.pydantic_stub as pydantic_stub
-import sys
+from types import SimpleNamespace
 
-sys.modules.setdefault("fastapi", fastapi_stub)
-sys.modules.setdefault("pydantic", pydantic_stub)
+from fastapi import Response
 
 from ai_karen_engine.middleware.auth import auth_middleware
 from ai_karen_engine.utils.auth import create_session
-from ai_karen_engine.fastapi_stub import Response
 
 
 async def _call_next(request):
-    return Response({"ok": True})
+    return Response(content="ok")
 
 
 def _build_request(path="/plugins", token: str | None = None):

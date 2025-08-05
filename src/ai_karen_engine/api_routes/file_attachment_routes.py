@@ -9,29 +9,27 @@ from typing import List, Optional, Dict, Any
 import mimetypes
 
 try:
-    from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Query
+    from fastapi import (
+        APIRouter,
+        HTTPException,
+        Depends,
+        UploadFile,
+        File,
+        Form,
+        Query,
+    )
     from fastapi.responses import FileResponse, StreamingResponse
-except Exception:  # pragma: no cover
-    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
-    def Depends(func):
-        return func
-    def Query(default=None, **_kw):
-        return default
-    def Form(default=None, **_kw):
-        return default
-    def File(default=None, **_kw):
-        return default
-    class UploadFile:
-        pass
-    class FileResponse:
-        pass
-    class StreamingResponse:
-        pass
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "FastAPI is required for file attachment routes. Install via `pip install fastapi`."
+    ) from e
 
 try:
     from pydantic import BaseModel, Field
-except Exception:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for file attachment routes. Install via `pip install pydantic`."
+    ) from e
 
 from ai_karen_engine.chat.file_attachment_service import (
     FileAttachmentService,

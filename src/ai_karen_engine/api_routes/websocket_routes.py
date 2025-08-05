@@ -13,21 +13,31 @@ import json
 import logging
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Depends, Query, HTTPException
+from fastapi import (
+    APIRouter,
+    WebSocket,
+    WebSocketDisconnect,
+    Request,
+    Depends,
+    Query,
+    HTTPException,
+)
 from fastapi.responses import StreamingResponse
 
 try:
     from sse_starlette.sse import EventSourceResponse
-except ImportError:
+except ImportError:  # pragma: no cover - optional dependency
     # Fallback for EventSourceResponse if sse_starlette is not available
-    class EventSourceResponse:
-        def __init__(self, content): 
+    class EventSourceResponse:  # type: ignore[override]
+        def __init__(self, content):
             self.content = content
 
 try:
     from pydantic import BaseModel, Field
-except ImportError:
-    from ai_karen_engine.pydantic_stub import BaseModel, Field
+except ImportError as e:  # pragma: no cover - runtime dependency
+    raise ImportError(
+        "Pydantic is required for websocket routes. Install via `pip install pydantic`."
+    ) from e
 
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway, WebSocketMessage, MessageType
 from ai_karen_engine.chat.stream_processor import StreamProcessor
