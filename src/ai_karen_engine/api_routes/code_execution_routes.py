@@ -48,7 +48,7 @@ from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/code", tags=["code-execution"])
+router = APIRouter(tags=["code-execution"])
 
 # Initialize services
 code_execution_service = CodeExecutionService()

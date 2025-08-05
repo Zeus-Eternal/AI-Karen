@@ -42,7 +42,7 @@ websocket_gateway: Optional[WebSocketGateway] = None
 stream_processor: Optional[StreamProcessor] = None
 chat_orchestrator: Optional[ChatOrchestrator] = None
 
-router = APIRouter(prefix="/api/ws", tags=["websocket"])
+router = APIRouter(tags=["websocket"])
 
 
 # Request/Response Models

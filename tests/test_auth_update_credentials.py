@@ -36,7 +36,7 @@ def test_login_and_update_credentials(tmp_path, monkeypatch):
     monkeypatch.setattr(auth_manager, "save_users", lambda: None)
 
     app = FastAPI()
-    app.include_router(auth_routes.router)
+    app.include_router(auth_routes.router, prefix="/api/auth")
     client = TestClient(app)
 
     resp = client.post("/api/auth/login", json={"email": "test@example.com", "password": "pass"})
