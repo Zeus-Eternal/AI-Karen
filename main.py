@@ -97,6 +97,11 @@ def configure_logging():
         {
             "version": 1,
             "disable_existing_loggers": False,
+            "filters": {
+                "suppress_invalid_http": {
+                    "()": "ai_karen_engine.server.logging_filters.SuppressInvalidHTTPFilter",
+                },
+            },
             "formatters": {
                 "json": {
                     "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
@@ -112,6 +117,7 @@ def configure_logging():
                     "class": "logging.StreamHandler",
                     "formatter": "json",
                     "stream": "ext://sys.stdout",
+                    "filters": ["suppress_invalid_http"],
                 },
                 "file": {
                     "class": "logging.handlers.RotatingFileHandler",
@@ -119,6 +125,7 @@ def configure_logging():
                     "maxBytes": 10485760,
                     "backupCount": 5,
                     "formatter": "json",
+                    "filters": ["suppress_invalid_http"],
                 },
                 "access": {
                     "class": "logging.handlers.RotatingFileHandler",
@@ -126,6 +133,7 @@ def configure_logging():
                     "maxBytes": 10485760,
                     "backupCount": 5,
                     "formatter": "access",
+                    "filters": ["suppress_invalid_http"],
                 },
                 "error": {
                     "class": "logging.handlers.RotatingFileHandler",
@@ -134,6 +142,7 @@ def configure_logging():
                     "backupCount": 5,
                     "formatter": "json",
                     "level": "ERROR",
+                    "filters": ["suppress_invalid_http"],
                 },
             },
             "loggers": {
