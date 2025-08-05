@@ -9,23 +9,18 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr
 
-from ai_karen_engine.core.dependencies import (
-    get_current_tenant_id,
-    get_current_user_context,
-)
+from ai_karen_engine.core.dependencies import get_current_tenant_id
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.security.auth_manager import verify_totp
 from ai_karen_engine.services.auth_service import auth_service
+from ai_karen_engine.services.auth_utils import COOKIE_NAME, get_current_user
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["auth"])
 
 
 # Alias core dependencies for convenience
-get_current_user = get_current_user_context
 get_current_tenant = get_current_tenant_id
-
-COOKIE_NAME = "kari_session"
 
 
 # Request/Response Models
@@ -235,6 +230,7 @@ async def login(
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_route(
+    request: Request,
     user_data: Dict[str, Any] = Depends(get_current_user),
 ) -> UserResponse:
     """Get current user information"""
