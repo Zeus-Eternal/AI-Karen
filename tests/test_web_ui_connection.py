@@ -18,7 +18,8 @@ def test_web_ui_connection():
     
     try:
         # Import the FastAPI app
-        from ai_karen_engine.fastapi import app
+        from main import create_app
+        app = create_app()
         
         # Create test client
         client = TestClient(app)

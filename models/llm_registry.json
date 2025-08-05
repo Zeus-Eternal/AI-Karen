@@ -58,5 +58,29 @@
     "health_status": "healthy",
     "last_health_check": 1753583566.9024005,
     "error_message": null
+  },
+  {
+    "name": "copilotkit",
+    "provider_class": "CopilotKitProvider",
+    "description": "CopilotKit AI-powered code assistance and contextual suggestions",
+    "supports_streaming": false,
+    "supports_embeddings": true,
+    "requires_api_key": true,
+    "default_model": "gpt-4",
+    "health_status": "unknown",
+    "last_health_check": null,
+    "error_message": null
+  },
+  {
+    "name": "custom_copilotkit",
+    "provider_class": "CopilotKitProvider",
+    "description": "Custom CopilotKit instance",
+    "supports_streaming": false,
+    "supports_embeddings": false,
+    "requires_api_key": false,
+    "default_model": "gpt-3.5-turbo",
+    "health_status": "unknown",
+    "last_health_check": null,
+    "error_message": null
   }
 ]

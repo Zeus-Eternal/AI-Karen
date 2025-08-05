@@ -1,0 +1,55 @@
+{
+  "plugin_api_version": "1.0",
+  "enable_external_workflow": true,
+  "required_roles": [
+    "user",
+    "developer",
+    "reviewer"
+  ],
+  "intent": "review_code",
+  "trusted_ui": false,
+  "module": "ai_karen_engine.plugins.copilotkit_code_reviewer.handler",
+  "name": "copilotkit-code-reviewer",
+  "version": "1.0.0",
+  "description": "CopilotKit-powered code review assistance with comprehensive analysis and suggestions",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "code_analysis",
+  "capabilities": [
+    "code_review",
+    "security_analysis",
+    "performance_analysis",
+    "best_practices_check",
+    "maintainability_assessment"
+  ],
+  "supported_languages": [
+    "python",
+    "javascript",
+    "typescript",
+    "java",
+    "c++",
+    "rust",
+    "go",
+    "php",
+    "ruby"
+  ],
+  "dependencies": {
+    "copilotkit": ">=1.0.0",
+    "ai_karen_engine": ">=1.0.0"
+  },
+  "hooks": {
+    "pre_execution": ["validate_review_request"],
+    "post_execution": ["generate_review_report"],
+    "error_handling": ["fallback_code_analysis"]
+  },
+  "review_categories": [
+    "security",
+    "performance",
+    "maintainability",
+    "readability",
+    "best_practices",
+    "testing",
+    "documentation"
+  ]
+}

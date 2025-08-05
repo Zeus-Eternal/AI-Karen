@@ -30,6 +30,8 @@ from ai_karen_engine.chat.file_attachment_service import FileAttachmentService
 from ai_karen_engine.chat.multimedia_service import MultimediaService
 from ai_karen_engine.chat.code_execution_service import CodeExecutionService
 from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
+from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext, HookExecutionSummary
+# Note: LLM orchestrator import moved to method level to avoid circular dependency
 
 logger = logging.getLogger(__name__)
 
@@ -213,6 +215,43 @@ class ChatOrchestrator:
         context.status = ProcessingStatus.PROCESSING
         
         start_time = time.time()
+        hook_manager = get_hook_manager()
+        
+        # Trigger pre-message hooks
+        pre_message_context = HookContext(
+            hook_type=HookTypes.PRE_MESSAGE,
+            data={
+                "message": request.message,
+                "user_id": request.user_id,
+                "conversation_id": request.conversation_id,
+                "session_id": request.session_id,
+                "timestamp": context.request_timestamp.isoformat(),
+                "correlation_id": context.correlation_id,
+                "attachments": request.attachments,
+                "metadata": request.metadata
+            },
+            user_context={
+                "user_id": request.user_id,
+                "conversation_id": request.conversation_id,
+                "session_id": request.session_id
+            }
+        )
+        
+        try:
+            pre_hook_summary = await hook_manager.trigger_hooks(pre_message_context)
+            logger.debug(f"Pre-message hooks executed: {pre_hook_summary.successful_hooks}/{pre_hook_summary.total_hooks}")
+        except Exception as e:
+            logger.warning(f"Pre-message hooks failed: {e}")
+            # Create empty summary for failed hooks
+            from ai_karen_engine.hooks.models import HookExecutionSummary
+            pre_hook_summary = HookExecutionSummary(
+                hook_type=HookTypes.PRE_MESSAGE,
+                total_hooks=0,
+                successful_hooks=0,
+                failed_hooks=0,
+                total_execution_time_ms=0.0,
+                results=[]
+            )
         
         try:
             # Process with retry logic
@@ -225,11 +264,52 @@ class ChatOrchestrator:
                 self._successful_requests += 1
                 context.status = ProcessingStatus.COMPLETED
                 
+                # Trigger message processed hooks
+                message_processed_context = HookContext(
+                    hook_type=HookTypes.MESSAGE_PROCESSED,
+                    data={
+                        "message": request.message,
+                        "response": result.response,
+                        "user_id": request.user_id,
+                        "conversation_id": request.conversation_id,
+                        "session_id": request.session_id,
+                        "correlation_id": context.correlation_id,
+                        "processing_time": processing_time,
+                        "parsed_message": result.parsed_message.__dict__ if result.parsed_message else None,
+                        "embeddings_count": len(result.embeddings) if result.embeddings else 0,
+                        "context_used": bool(result.context),
+                        "used_fallback": result.used_fallback,
+                        "retry_count": context.retry_count
+                    },
+                    user_context={
+                        "user_id": request.user_id,
+                        "conversation_id": request.conversation_id,
+                        "session_id": request.session_id
+                    }
+                )
+                
+                try:
+                    processed_hook_summary = await hook_manager.trigger_hooks(message_processed_context)
+                    logger.debug(f"Message processed hooks executed: {processed_hook_summary.successful_hooks}/{processed_hook_summary.total_hooks}")
+                except Exception as e:
+                    logger.warning(f"Message processed hooks failed: {e}")
+                    from ai_karen_engine.hooks.models import HookExecutionSummary
+                    processed_hook_summary = HookExecutionSummary(
+                        hook_type=HookTypes.MESSAGE_PROCESSED,
+                        total_hooks=0,
+                        successful_hooks=0,
+                        failed_hooks=0,
+                        total_execution_time_ms=0.0,
+                        results=[]
+                    )
+                
                 # Build metadata with context information
                 metadata = {
                     "parsed_entities": len(result.parsed_message.entities) if result.parsed_message else 0,
                     "embedding_dimension": len(result.embeddings) if result.embeddings else 0,
                     "retry_count": context.retry_count,
+                    "pre_hooks_executed": pre_hook_summary.successful_hooks,
+                    "processed_hooks_executed": processed_hook_summary.successful_hooks,
                     **context.metadata
                 }
                 
@@ -239,6 +319,53 @@ class ChatOrchestrator:
                     metadata["memories_used"] = len(result.context.get("memories", []))
                     metadata["retrieval_time"] = result.context.get("retrieval_time", 0.0)
                     metadata["total_memories_considered"] = result.context.get("total_memories_considered", 0)
+                
+                # Trigger post-message hooks
+                post_message_context = HookContext(
+                    hook_type=HookTypes.POST_MESSAGE,
+                    data={
+                        "message": request.message,
+                        "response": result.response,
+                        "user_id": request.user_id,
+                        "conversation_id": request.conversation_id,
+                        "session_id": request.session_id,
+                        "correlation_id": context.correlation_id,
+                        "processing_time": processing_time,
+                        "metadata": metadata,
+                        "hook_results": {
+                            "pre_message": [r.__dict__ for r in pre_hook_summary.results],
+                            "message_processed": [r.__dict__ for r in processed_hook_summary.results]
+                        }
+                    },
+                    user_context={
+                        "user_id": request.user_id,
+                        "conversation_id": request.conversation_id,
+                        "session_id": request.session_id
+                    }
+                )
+                
+                try:
+                    post_hook_summary = await hook_manager.trigger_hooks(post_message_context)
+                    logger.debug(f"Post-message hooks executed: {post_hook_summary.successful_hooks}/{post_hook_summary.total_hooks}")
+                except Exception as e:
+                    logger.warning(f"Post-message hooks failed: {e}")
+                    from ai_karen_engine.hooks.models import HookExecutionSummary
+                    post_hook_summary = HookExecutionSummary(
+                        hook_type=HookTypes.POST_MESSAGE,
+                        total_hooks=0,
+                        successful_hooks=0,
+                        failed_hooks=0,
+                        total_execution_time_ms=0.0,
+                        results=[]
+                    )
+                
+                # Add hook execution summary to metadata
+                metadata["post_hooks_executed"] = post_hook_summary.successful_hooks
+                metadata["total_hooks_executed"] = (
+                    pre_hook_summary.successful_hooks + 
+                    processed_hook_summary.successful_hooks + 
+                    post_hook_summary.successful_hooks
+                )
                 
                 return ChatResponse(
                     response=result.response or "",
@@ -252,6 +379,43 @@ class ChatOrchestrator:
                 self._failed_requests += 1
                 context.status = ProcessingStatus.FAILED
                 
+                # Trigger message failed hooks
+                message_failed_context = HookContext(
+                    hook_type=HookTypes.MESSAGE_FAILED,
+                    data={
+                        "message": request.message,
+                        "user_id": request.user_id,
+                        "conversation_id": request.conversation_id,
+                        "session_id": request.session_id,
+                        "correlation_id": context.correlation_id,
+                        "processing_time": processing_time,
+                        "error": result.error,
+                        "error_type": result.error_type.value if result.error_type else "unknown",
+                        "retry_count": context.retry_count,
+                        "used_fallback": result.used_fallback
+                    },
+                    user_context={
+                        "user_id": request.user_id,
+                        "conversation_id": request.conversation_id,
+                        "session_id": request.session_id
+                    }
+                )
+                
+                try:
+                    failed_hook_summary = await hook_manager.trigger_hooks(message_failed_context)
+                    logger.debug(f"Message failed hooks executed: {failed_hook_summary.successful_hooks}/{failed_hook_summary.total_hooks}")
+                except Exception as e:
+                    logger.warning(f"Message failed hooks failed: {e}")
+                    from ai_karen_engine.hooks.models import HookExecutionSummary
+                    failed_hook_summary = HookExecutionSummary(
+                        hook_type=HookTypes.MESSAGE_FAILED,
+                        total_hooks=0,
+                        successful_hooks=0,
+                        failed_hooks=0,
+                        total_execution_time_ms=0.0,
+                        results=[]
+                    )
+                
                 # Return error response
                 return ChatResponse(
                     response=f"I apologize, but I encountered an error processing your message: {result.error}",
@@ -262,7 +426,9 @@ class ChatOrchestrator:
                     metadata={
                         "error": result.error,
                         "error_type": result.error_type.value if result.error_type else "unknown",
-                        "retry_count": context.retry_count
+                        "retry_count": context.retry_count,
+                        "pre_hooks_executed": pre_hook_summary.successful_hooks,
+                        "failed_hooks_executed": failed_hook_summary.successful_hooks
                     }
                 )
                 
@@ -295,6 +461,31 @@ class ChatOrchestrator:
         """Process message with streaming response."""
         context.processing_start = datetime.utcnow()
         context.status = ProcessingStatus.PROCESSING
+        hook_manager = get_hook_manager()
+        
+        # Trigger pre-message hooks for streaming
+        pre_message_context = HookContext(
+            hook_type=HookTypes.PRE_MESSAGE,
+            data={
+                "message": request.message,
+                "user_id": request.user_id,
+                "conversation_id": request.conversation_id,
+                "session_id": request.session_id,
+                "timestamp": context.request_timestamp.isoformat(),
+                "correlation_id": context.correlation_id,
+                "attachments": request.attachments,
+                "metadata": request.metadata,
+                "streaming": True
+            },
+            user_context={
+                "user_id": request.user_id,
+                "conversation_id": request.conversation_id,
+                "session_id": request.session_id
+            }
+        )
+        
+        pre_hook_summary = await hook_manager.trigger_hooks(pre_message_context)
+        logger.debug(f"Pre-message hooks executed (streaming): {pre_hook_summary.successful_hooks}/{pre_hook_summary.total_hooks}")
         
         try:
             # Send initial metadata chunk
@@ -305,7 +496,8 @@ class ChatOrchestrator:
                 metadata={
                     "status": "processing",
                     "user_id": context.user_id,
-                    "conversation_id": context.conversation_id
+                    "conversation_id": context.conversation_id,
+                    "pre_hooks_executed": pre_hook_summary.successful_hooks
                 }
             )
             
@@ -672,7 +864,7 @@ class ChatOrchestrator:
         context: Optional[Dict[str, Any]],
         processing_context: ProcessingContext
     ) -> str:
-        """Generate AI response using the processed information."""
+        """Generate AI response using the processed information with CopilotKit integration."""
         # Check for code execution requests
         code_execution_result = await self._handle_code_execution_request(
             message, processing_context
@@ -687,6 +879,66 @@ class ChatOrchestrator:
         if tool_execution_result:
             return tool_execution_result
         
+        # Try to use CopilotKit for enhanced AI response generation
+        try:
+            from ai_karen_engine.llm_orchestrator import get_orchestrator
+            orchestrator = get_orchestrator()
+            
+            # Check if this is a code-related request for CopilotKit code assistance
+            if self._is_code_related_message(message):
+                # Get code suggestions from CopilotKit if available
+                code_suggestions = orchestrator.get_code_suggestions(
+                    message, 
+                    language=self._detect_programming_language(message)
+                )
+                
+                if code_suggestions:
+                    # Use CopilotKit for code-related responses
+                    copilot_response = orchestrator.route_with_copilotkit(
+                        message, 
+                        context=context
+                    )
+                    
+                    # Add code suggestions to the response
+                    if code_suggestions:
+                        suggestions_text = "\n\nCode suggestions:\n"
+                        for i, suggestion in enumerate(code_suggestions[:3], 1):  # Limit to top 3
+                            suggestions_text += f"{i}. {suggestion.get('explanation', 'Code suggestion')}\n"
+                            suggestions_text += f"   ```{suggestion.get('language', 'python')}\n"
+                            suggestions_text += f"   {suggestion.get('content', '')}\n"
+                            suggestions_text += f"   ```\n"
+                        copilot_response += suggestions_text
+                    
+                    return copilot_response
+            
+            # Get contextual suggestions from CopilotKit
+            contextual_suggestions = orchestrator.get_contextual_suggestions(
+                message, 
+                context or {}
+            )
+            
+            # Use CopilotKit for enhanced response generation
+            copilot_response = orchestrator.route_with_copilotkit(
+                message, 
+                context=context
+            )
+            
+            # Add contextual suggestions if available
+            if contextual_suggestions:
+                suggestions_text = "\n\nSuggestions:\n"
+                for i, suggestion in enumerate(contextual_suggestions[:2], 1):  # Limit to top 2
+                    if suggestion.get('actionable', True):
+                        suggestions_text += f"• {suggestion.get('content', 'AI suggestion')}\n"
+                copilot_response += suggestions_text
+            
+            return copilot_response
+            
+        except Exception as e:
+            logger.warning(f"CopilotKit integration failed, falling back to standard response: {e}")
+            # Fall back to standard response generation
+            pass
+        
+        # Standard response generation (fallback)
         # Build context string
         context_info = ""
         if context and context.get("entities"):
@@ -731,6 +983,52 @@ class ChatOrchestrator:
         response += "How can I help you further?"
         
         return response
+    
+    def _is_code_related_message(self, message: str) -> bool:
+        """Determine if a message is code-related."""
+        code_indicators = [
+            "code", "function", "class", "method", "variable", "debug", "error",
+            "syntax", "compile", "import", "export", "def ", "class ", "function ",
+            "```", "python", "javascript", "typescript", "java", "c++", "rust",
+            "go", "php", "ruby", "swift", "kotlin", "scala", "html", "css", "sql",
+            "algorithm", "programming", "coding", "script", "api", "library",
+            "framework", "database", "query", "regex", "json", "xml", "yaml"
+        ]
+        
+        message_lower = message.lower()
+        return any(indicator in message_lower for indicator in code_indicators)
+    
+    def _detect_programming_language(self, message: str) -> str:
+        """Detect the programming language mentioned in the message."""
+        language_patterns = {
+            "python": ["python", "py", "django", "flask", "pandas", "numpy"],
+            "javascript": ["javascript", "js", "node", "react", "vue", "angular"],
+            "typescript": ["typescript", "ts"],
+            "java": ["java", "spring", "maven", "gradle"],
+            "cpp": ["c++", "cpp", "cxx"],
+            "c": ["c language", " c "],
+            "rust": ["rust", "cargo"],
+            "go": ["golang", "go lang"],
+            "php": ["php", "laravel", "symfony"],
+            "ruby": ["ruby", "rails"],
+            "swift": ["swift", "ios"],
+            "kotlin": ["kotlin", "android"],
+            "scala": ["scala"],
+            "html": ["html", "markup"],
+            "css": ["css", "scss", "sass"],
+            "sql": ["sql", "mysql", "postgresql", "sqlite"],
+            "bash": ["bash", "shell", "sh"],
+            "powershell": ["powershell", "ps1"]
+        }
+        
+        message_lower = message.lower()
+        
+        for language, patterns in language_patterns.items():
+            if any(pattern in message_lower for pattern in patterns):
+                return language
+        
+        # Default to Python if no specific language detected
+        return "python"
     
     async def _handle_code_execution_request(
         self,

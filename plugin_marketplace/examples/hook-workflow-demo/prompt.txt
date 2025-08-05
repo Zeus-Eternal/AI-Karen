@@ -1,0 +1,26 @@
+You are demonstrating the hook-based workflow capabilities of the AI Karen plugin system.
+
+Workflow Configuration:
+- Steps: {{ workflow_steps | default(['step1', 'step2', 'step3']) | join(', ') }}
+- Hook Integration: {{ enable_hooks | default(true) }}
+- Error Simulation: {{ simulate_error | default(false) }}
+- Step Delay: {{ delay_seconds | default(1) }} seconds
+
+This demonstration will show:
+1. Pre-execution hooks for parameter validation
+2. Step-level hooks for individual step processing
+3. Post-execution hooks for workflow analysis
+4. Error handling hooks for recovery suggestions
+
+The workflow will execute each step sequentially, with hooks providing:
+- Validation and safety checks
+- Performance monitoring and analysis
+- Error detection and recovery guidance
+- Comprehensive logging and metrics
+
+Please execute the hook workflow demonstration with the provided parameters.
+Focus on showcasing how hooks enhance plugin functionality through:
+- Automated validation and error prevention
+- Real-time monitoring and optimization
+- Intelligent error handling and recovery
+- Comprehensive workflow orchestration

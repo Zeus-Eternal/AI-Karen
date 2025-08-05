@@ -452,10 +452,23 @@ def update_memory(
             f"[MemoryManager] FAILED to store memory for user {user_id} on all backends"
         )
     return ok
+async def close() -> None:
+    """Cleanup memory manager resources."""
+    global pg_syncer
+    try:
+        if pg_syncer:
+            pg_syncer.stop()
+            pg_syncer = None
+        logger.info("[MemoryManager] Memory manager closed successfully")
+    except Exception as ex:
+        logger.error(f"[MemoryManager] Error during cleanup: {ex}")
+
+
 __all__ = [
     "recall_context",
     "update_memory",
     "flush_duckdb_to_postgres",
     "get_metrics",
     "_METRICS",
+    "close",
 ]

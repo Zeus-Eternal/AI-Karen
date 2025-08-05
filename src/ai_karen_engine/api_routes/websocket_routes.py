@@ -13,48 +13,16 @@ import json
 import logging
 from typing import Dict, Any, Optional
 
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Depends, Query, HTTPException
+from fastapi.responses import StreamingResponse
+
 try:
-    from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Depends, Query, HTTPException
-    from fastapi.responses import StreamingResponse
     from sse_starlette.sse import EventSourceResponse
 except ImportError:
-    # Stubs for testing
-    class APIRouter:
-        def __init__(self, **kwargs): 
-            self.routes = []
-            self.on_startup = []
-            self.on_shutdown = []
-            self.middleware = []
-            self.exception_handlers = {}
-            self.dependencies = []
-            self.prefix = kwargs.get('prefix', '')
-            self.tags = kwargs.get('tags', [])
-            self.lifespan_context = None
-        def websocket(self, path: str): return lambda f: f
-        def get(self, path: str, **kwargs): return lambda f: f
-        def post(self, path: str, **kwargs): return lambda f: f
-        def delete(self, path: str, **kwargs): return lambda f: f
-    
-    class WebSocket:
-        def __init__(self): pass
-    
-    class WebSocketDisconnect(Exception):
-        pass
-    
-    class Request:
-        def __init__(self): pass
-    
-    def Depends(func): return func
-    def Query(default=None, **kwargs): return default
-    
-    class HTTPException(Exception):
-        def __init__(self, status_code: int, detail: str): pass
-    
-    class StreamingResponse:
-        def __init__(self, content, **kwargs): pass
-    
+    # Fallback for EventSourceResponse if sse_starlette is not available
     class EventSourceResponse:
-        def __init__(self, content): pass
+        def __init__(self, content): 
+            self.content = content
 
 try:
     from pydantic import BaseModel, Field
@@ -65,6 +33,7 @@ from ai_karen_engine.chat.websocket_gateway import WebSocketGateway, WebSocketMe
 from ai_karen_engine.chat.stream_processor import StreamProcessor
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
 from ai_karen_engine.utils.auth import validate_session
+from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext
 
 logger = logging.getLogger(__name__)
 

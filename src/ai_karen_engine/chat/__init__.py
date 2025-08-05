@@ -28,6 +28,6 @@ __all__ = [
     "RetryConfig",
     "ProcessingStatus",
     "ErrorType",
-    "WebsocketGateway",
+    "WebSocketGateway",
     "StreamProcessor",
 ]

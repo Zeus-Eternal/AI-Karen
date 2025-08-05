@@ -5,12 +5,16 @@ Kari PluginRouter: Ruthless Prompt‐First Plugin Orchestration
 - Local‐only execution by default (no cloud unless manifest demands it)
 """
 
+import asyncio
 import os
 import json
 import inspect
 import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from ai_karen_engine.hooks.hook_mixin import HookMixin
+from ai_karen_engine.hooks.hook_types import HookTypes
 
 # --- Prometheus metrics (optional) -------------------------------------
 try:
@@ -150,11 +154,13 @@ class PluginRecord:
         self.dir_path    = dir_path
 
 
-class PluginRouter:
+class PluginRouter(HookMixin):
     def __init__(self, plugin_root: Path = PLUGIN_ROOT):
+        super().__init__()
         self.plugin_root = plugin_root
         self.schema      = load_schema()
         self.intent_map: Dict[str, PluginRecord] = {}
+        self.name = "plugin_router"
         self.reload()
 
     def _discover_plugins(self) -> Dict[str, PluginRecord]:
@@ -201,7 +207,36 @@ class PluginRouter:
             jinja_env.loader = FileSystemLoader(str(self.plugin_root))
         except NameError:
             pass
+        
+        old_intents = set(self.intent_map.keys())
         self.intent_map = self._discover_plugins()
+        new_intents = set(self.intent_map.keys())
+        
+        # Trigger hooks for loaded/unloaded plugins
+        # Trigger hooks for loaded/unloaded plugins (only if event loop is running)
+        try:
+            loop = asyncio.get_running_loop()
+            for intent in new_intents - old_intents:
+                plugin_record = self.intent_map[intent]
+                asyncio.create_task(self.trigger_hook_safe(
+                    HookTypes.PLUGIN_LOADED,
+                    {
+                        "plugin_intent": intent,
+                        "plugin_manifest": plugin_record.manifest,
+                        "plugin_directory": str(plugin_record.dir_path)
+                    }
+                ))
+            
+            for intent in old_intents - new_intents:
+                asyncio.create_task(self.trigger_hook_safe(
+                    HookTypes.PLUGIN_UNLOADED,
+                    {
+                        "plugin_intent": intent
+                    }
+                ))
+        except RuntimeError:
+            # No event loop running, skip hook triggers
+            pass
 
     def list_intents(self) -> List[str]:
         return list(self.intent_map)
@@ -228,22 +263,111 @@ class PluginRouter:
         if required and not (roles and set(roles).intersection(required)):
             raise AccessDenied(f"Intent '{intent}' requires one of {required}")
 
-        # render prompt
-        template = jinja_env.from_string(rec.manifest.get("prompt", "{{prompt}}"))
-        rendered = template.render(params)
+        # Trigger pre-dispatch hooks
+        dispatch_context = {
+            "intent": intent,
+            "params": params,
+            "roles": roles,
+            "plugin_manifest": rec.manifest,
+            "plugin_directory": str(rec.dir_path),
+            "dispatch_id": f"dispatch_{intent}_{id(params)}"
+        }
+        
+        await self.trigger_hook_safe(
+            HookTypes.PLUGIN_EXECUTION_START,
+            dispatch_context,
+            {"roles": roles} if roles else None
+        )
 
-        # prepare payload
-        payload = {"prompt": rendered, **params}
+        try:
+            # render prompt
+            template = jinja_env.from_string(rec.manifest.get("prompt", "{{prompt}}"))
+            rendered = template.render(params)
 
-        # execute in sandbox or direct
-        if rec.manifest.get("sandbox", True):
-            # run_in_sandbox returns awaitable result
-            return await run_in_sandbox(rec.handler, payload)
-        else:
-            result = rec.handler(payload)
-            if inspect.iscoroutine(result):
-                return await result
+            # prepare payload
+            payload = {"prompt": rendered, **params}
+
+            # Trigger pre-execution hooks with payload
+            pre_execution_context = {
+                "intent": intent,
+                "payload": payload,
+                "rendered_prompt": rendered,
+                "sandbox_enabled": rec.manifest.get("sandbox", True),
+                "plugin_manifest": rec.manifest,
+                "dispatch_id": dispatch_context["dispatch_id"]
+            }
+            
+            await self.trigger_hook_safe(
+                "plugin_pre_execution",
+                pre_execution_context,
+                {"roles": roles} if roles else None
+            )
+
+            # execute in sandbox or direct
+            if rec.manifest.get("sandbox", True):
+                # run_in_sandbox returns awaitable result
+                result = await run_in_sandbox(rec.handler, payload)
+            else:
+                result = rec.handler(payload)
+                if inspect.iscoroutine(result):
+                    result = await result
+
+            # Trigger post-execution hooks with results
+            post_execution_context = {
+                "intent": intent,
+                "payload": payload,
+                "result": result,
+                "success": True,
+                "plugin_manifest": rec.manifest,
+                "dispatch_id": dispatch_context["dispatch_id"],
+                "execution_mode": "sandbox" if rec.manifest.get("sandbox", True) else "direct"
+            }
+            
+            await self.trigger_hook_safe(
+                "plugin_post_execution",
+                post_execution_context,
+                {"roles": roles} if roles else None
+            )
+
             return result
+
+        except Exception as ex:
+            # Trigger error hooks
+            error_context = {
+                "intent": intent,
+                "params": params,
+                "error": str(ex),
+                "error_type": type(ex).__name__,
+                "plugin_manifest": rec.manifest,
+                "dispatch_id": dispatch_context["dispatch_id"],
+                "recovery_actions": self._get_dispatch_recovery_actions(ex, intent)
+            }
+            
+            await self.trigger_hook_safe(
+                "plugin_dispatch_error",
+                error_context,
+                {"roles": roles} if roles else None
+            )
+            raise
+    
+    def _get_dispatch_recovery_actions(self, error: Exception, intent: str) -> list[str]:
+        """Generate recovery actions for dispatch errors."""
+        actions = []
+        
+        if isinstance(error, AccessDenied):
+            actions.append("Check user roles and permissions")
+            actions.append("Request elevated access if needed")
+        elif isinstance(error, FileNotFoundError):
+            actions.append("Verify plugin files exist")
+            actions.append("Check plugin directory structure")
+        elif "sandbox" in str(error).lower():
+            actions.append("Check sandbox configuration")
+            actions.append("Verify resource limits")
+        else:
+            actions.append(f"Check plugin '{intent}' configuration")
+            actions.append("Review plugin logs for details")
+        
+        return actions
 
 
 # --- Singleton accessor -------------------------------------------------

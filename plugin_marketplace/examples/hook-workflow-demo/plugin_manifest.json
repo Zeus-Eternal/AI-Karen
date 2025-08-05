@@ -1,0 +1,39 @@
+{
+  "plugin_api_version": "1.0",
+  "intent": "hook_workflow_demo",
+  "enable_external_workflow": true,
+  "workflow_slug": "hook_demo_workflow",
+  "required_roles": ["user"],
+  "trusted_ui": false,
+  "sandbox": true,
+  "description": "Demonstrates hook-based workflow capabilities in the plugin system",
+  "author": "AI Karen Team",
+  "version": "1.0.0",
+  "category": "examples",
+  "tags": ["hooks", "workflow", "demo", "orchestration"],
+  "dependencies": {
+    "system_services": [],
+    "external_apis": [],
+    "python_packages": []
+  },
+  "permissions": {
+    "data_access": ["read"],
+    "system_access": [],
+    "network_access": []
+  },
+  "resource_limits": {
+    "max_memory_mb": 64,
+    "max_cpu_percent": 5,
+    "max_execution_time_seconds": 10
+  },
+  "monitoring": {
+    "enable_metrics": true,
+    "enable_logging": true,
+    "log_level": "INFO"
+  },
+  "hooks": {
+    "pre_execution": ["validate_workflow_params"],
+    "post_execution": ["log_workflow_completion"],
+    "error_handling": ["handle_workflow_error"]
+  }
+}

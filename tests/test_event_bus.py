@@ -32,7 +32,7 @@ def test_in_memory_bus(monkeypatch):
     bus = eb.get_event_bus()
     assert isinstance(bus, eb.EventBus)
 
-    eid = bus.publish("caps", "test", {"a": 1})
+    eid = bus.publish("caps", "test", {"a": 1}, roles=["admin"])
     events = bus.consume()
     assert len(events) == 1
     assert events[0].id == eid
@@ -52,7 +52,7 @@ def test_redis_bus(monkeypatch):
     bus = eb.get_event_bus()
     assert isinstance(bus, eb.RedisEventBus)
 
-    eid = bus.publish("caps", "ping", {"x": 2})
+    eid = bus.publish("caps", "ping", {"x": 2}, roles=["admin"])
     events = bus.consume()
     assert len(events) == 1
     assert events[0].id == eid

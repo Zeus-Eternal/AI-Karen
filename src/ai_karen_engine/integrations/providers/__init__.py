@@ -7,11 +7,13 @@ from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvide
 from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvider
 from ai_karen_engine.integrations.providers.gemini_provider import GeminiProvider
 from ai_karen_engine.integrations.providers.deepseek_provider import DeepseekProvider
+from ai_karen_engine.integrations.providers.copilotkit_provider import CopilotKitProvider
 
 __all__ = [
     "HuggingFaceProvider",
     "OllamaProvider", 
     "OpenAIProvider",
     "GeminiProvider",
-    "DeepseekProvider"
+    "DeepseekProvider",
+    "CopilotKitProvider"
 ]
