@@ -1,7 +1,9 @@
 from typing import Dict, Any
 
+import asyncio
+
 try:
-    from fastapi import APIRouter, HTTPException
+    from fastapi import APIRouter, Depends, HTTPException
 except ImportError as e:  # pragma: no cover - runtime dependency
     raise ImportError(
         "FastAPI is required for user routes. Install via `pip install fastapi`."
@@ -15,6 +17,7 @@ except ImportError as e:  # pragma: no cover - runtime dependency
     ) from e
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
+from ai_karen_engine.core.dependencies import get_current_user_context
 
 router = APIRouter()
 
@@ -29,15 +32,22 @@ class UserProfile(BaseModel):
 
 
 @router.get("/users/{user_id}/profile", response_model=UserProfile)
-async def get_profile(user_id: str) -> UserProfile:
-    profile = db.get_profile(user_id)
+async def get_profile(
+    user_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
+) -> UserProfile:
+    profile = await asyncio.to_thread(db.get_profile, user_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     return UserProfile(user_id=user_id, **profile)
 
 
 @router.put("/users/{user_id}/profile", response_model=UserProfile)
-async def save_profile(user_id: str, profile: UserProfile) -> UserProfile:
+async def save_profile(
+    user_id: str,
+    profile: UserProfile,
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
+) -> UserProfile:
     data = profile.dict(exclude={"user_id"})
-    db.save_profile(user_id, data)
+    await asyncio.to_thread(db.save_profile, user_id, data)
     return UserProfile(user_id=user_id, **data)
