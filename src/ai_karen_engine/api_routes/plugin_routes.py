@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 
 from ai_karen_engine.services.plugin_service import PluginService
-# Note: PluginInfo, PluginExecutionRequest, PluginExecutionResult, PluginStatus 
+# Note: PluginInfo, PluginExecutionRequest, PluginExecutionResult, PluginStatus
 # classes need to be implemented in the plugin service
 from ai_karen_engine.core.dependencies import get_plugin_service
 from ai_karen_engine.core.logging import get_logger
@@ -23,18 +23,36 @@ from ai_karen_engine.models.web_api_error_responses import (
     create_generic_error_response,
     get_http_status_for_error_code,
 )
-# Temporarily disable auth imports for web UI integration
+from ai_karen_engine.services.auth_service import auth_service
 
 router = APIRouter(prefix="/api/plugins", tags=["plugins"])
 
 
-def get_current_user() -> Dict[str, Any]:
-    """Retrieve current user context.
+async def get_current_user(request: Request) -> Dict[str, Any]:
+    """Retrieve current user context from the session or authorization header."""
 
-    This is a placeholder implementation that always returns an admin user.
-    In production, this should extract the user from the request/session.
-    """
-    return {"user_id": "admin", "roles": ["admin"], "tenant_id": "default"}
+    # Try session cookie first
+    session_token = request.cookies.get("kari_session")
+
+    # Fallback to Authorization header
+    if not session_token:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header.split(" ", 1)[1]
+
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    user_data = await auth_service.validate_session(
+        session_token=session_token,
+        ip_address=request.client.host if request.client else "unknown",
+        user_agent=request.headers.get("user-agent", ""),
+    )
+
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    return user_data
 
 logger = get_logger(__name__)
 
