@@ -249,13 +249,13 @@ async def get_current_tenant(
     return current_user["tenant_id"]
 
 
-@router.post("/update_credentials", response_model=LoginResponse)
-async def update_credentials(
-    req: UpdateCredentialsRequest, request: Request, response: Response
-) -> LoginResponse:
-    """Update user credentials"""
+async def get_session_user(request: Request) -> Dict[str, Any]:
+    """Retrieve user data from session cookie.
 
-    # Get current user
+    This helper reads the session cookie, validates it using the
+    authentication service, and returns the associated user data.
+    """
+
     session_token = request.cookies.get(COOKIE_NAME)
     if not session_token:
         raise HTTPException(status_code=401, detail="Missing authentication token")
@@ -268,6 +268,20 @@ async def update_credentials(
 
     if not user_data:
         raise HTTPException(status_code=401, detail="Invalid session")
+
+    # Store the session token for callers that need it (e.g., logout)
+    user_data["session_token"] = session_token
+    return user_data
+
+
+@router.post("/update_credentials", response_model=LoginResponse)
+async def update_credentials(
+    req: UpdateCredentialsRequest,
+    request: Request,
+    response: Response,
+    user_data: Dict[str, Any] = Depends(get_session_user),
+) -> LoginResponse:
+    """Update user credentials"""
 
     try:
         # Update password if provided
@@ -363,13 +377,15 @@ async def update_credentials(
 
 
 @router.post("/logout")
-async def logout(request: Request, response: Response) -> Dict[str, str]:
+async def logout(
+    request: Request,
+    response: Response,
+    user_data: Dict[str, Any] = Depends(get_session_user),
+) -> Dict[str, str]:
     """Logout user and invalidate session"""
 
-    session_token = request.cookies.get(COOKIE_NAME)
-
+    session_token = user_data.get("session_token")
     if session_token:
-        # Invalidate session
         await auth_service.invalidate_session(session_token)
 
     # Clear cookie
