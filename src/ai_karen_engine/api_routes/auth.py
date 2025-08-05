@@ -13,7 +13,7 @@ from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.security.auth_manager import verify_totp
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 # Session cookie configuration
 COOKIE_NAME = "kari_session"

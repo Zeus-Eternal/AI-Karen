@@ -59,7 +59,7 @@ from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/files", tags=["file-attachments"])
+router = APIRouter(tags=["file-attachments"])
 
 # Initialize services
 file_service = FileAttachmentService()
