@@ -257,6 +257,13 @@ async def get_current_user_route(
     return UserResponse(**user_data)
 
 
+async def get_current_tenant(
+    current_user: UserResponse = Depends(get_current_user),
+) -> str:
+    """Dependency to retrieve the current tenant ID."""
+    return current_user.tenant_id
+
+
 @router.post("/update_credentials", response_model=LoginResponse)
 async def update_credentials(
   
@@ -477,4 +484,3 @@ async def auth_health_check():
             "service": "auth",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-  

@@ -2,7 +2,6 @@
 FastAPI routes for Tool service integration.
 """
 
-import uuid
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
@@ -23,7 +22,6 @@ except ImportError as e:  # pragma: no cover - runtime dependency
 from ai_karen_engine.services.tool_service import (
     ToolService,
     ToolInput,
-    ToolOutput,
     BaseTool
 )
 from ai_karen_engine.core.dependencies import get_tool_service
@@ -146,8 +144,8 @@ async def get_tool_info(
 async def execute_tool(
     tool_name: str,
     request: ExecuteToolRequest,
-    
-    
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
     tool_service: ToolService = Depends(get_tool_service)
 ):
     """Execute a tool with given parameters."""
@@ -272,7 +270,8 @@ async def get_tool_metrics(
 async def register_tool(
     tool_name: str,
     tool_class: str,
-    
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    tenant_id: str = Depends(get_current_tenant),
     tool_service: ToolService = Depends(get_tool_service)
 ):
     """Register a new tool (admin only)."""
