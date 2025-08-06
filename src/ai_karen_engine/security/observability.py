@@ -48,25 +48,18 @@ except ImportError:
     def generate_latest(registry=None): return b""
 
 from .models import (
-    AuthContext, AuthAnalysisResult, RiskLevel, SecurityActionType,
-    ThreatAnalysis, BehavioralAnalysis, NLPFeatures, EmbeddingAnalysis
+    AuthContext,
+    AuthAnalysisResult,
+    RiskLevel,
+    SecurityActionType,
+    ThreatAnalysis,
+    BehavioralAnalysis,
+    NLPFeatures,
+    EmbeddingAnalysis,
+    AuthEventType,
 )
 
 logger = logging.getLogger(__name__)
-
-
-class AuthEventType(Enum):
-    """Types of authentication events for metrics collection."""
-    LOGIN_ATTEMPT = "login_attempt"
-    LOGIN_SUCCESS = "login_success"
-    LOGIN_FAILURE = "login_failure"
-    LOGIN_BLOCKED = "login_blocked"
-    TWO_FA_REQUIRED = "two_fa_required"
-    ANOMALY_DETECTED = "anomaly_detected"
-    THREAT_DETECTED = "threat_detected"
-    PROFILE_UPDATED = "profile_updated"
-    ML_ANALYSIS_COMPLETED = "ml_analysis_completed"
-    ML_ANALYSIS_FAILED = "ml_analysis_failed"
 
 
 class AlertSeverity(Enum):
