@@ -210,19 +210,54 @@ class AuthService:
         self,
         config: Optional[AuthConfig] = None,
         metrics_hook: Optional[Callable[[str, Dict[str, Any]], None]] = None,
+        core_authenticator: Optional[Any] = None,
+        security_enhancer: Optional[SecurityEnhancer] = None,
+        intelligence_engine: Optional[IntelligentAuthService] = None,
+        session_store: Optional[Any] = None,
     ) -> None:
+        """Create a new :class:`AuthService` instance.
+
+        Parameters
+        ----------
+        config:
+            Authentication configuration options.
+        metrics_hook:
+            Optional callback used by :class:`SecurityEnhancer` to emit metrics.
+        core_authenticator:
+            Pluggable authenticator responsible for user management and
+            credential verification.  If omitted, a production or in-memory
+            authenticator is created based on ``config``.
+        security_enhancer:
+            Optional security enhancer instance handling rate limiting and
+            audit logging.
+        intelligence_engine:
+            Engine performing behavioural analysis of login attempts.
+        session_store:
+            Storage backend used for session management.  Defaults to the
+            ``core_authenticator`` if it provides the required methods.
+        """
+
         self.config = config or AuthConfig()
-        self.basic_service = BasicAuthService()
-        self.production_service: Optional[ProductionAuthService] = (
-            ProductionAuthService() if self.config.features.use_database else None
+
+        # Dependency injection defaults
+        self.core_authenticator = core_authenticator or (
+            ProductionAuthService() if self.config.features.use_database else BasicAuthService()
         )
+        self.session_store = session_store or self.core_authenticator
+
         self.intelligent_service: Optional[IntelligentAuthService] = (
-            IntelligentAuthService()
-            if self.config.features.enable_intelligent_checks
-            else None
+            intelligence_engine
+            if intelligence_engine is not None
+            else (
+                IntelligentAuthService()
+                if self.config.features.enable_intelligent_checks
+                else None
+            )
         )
-        self.security_enhancer: Optional[SecurityEnhancer] = None
-        if (
+
+        if security_enhancer is not None:
+            self.security_enhancer = security_enhancer
+        elif (
             self.config.features.enable_rate_limiter
             or self.config.features.enable_audit_logging
         ):
@@ -239,6 +274,8 @@ class AuthService:
             self.security_enhancer = SecurityEnhancer(
                 rate_limiter=rate_limiter, audit_logger=audit_logger
             )
+        else:
+            self.security_enhancer = None
 
     async def create_user(
         self,
@@ -251,18 +288,7 @@ class AuthService:
     ) -> UserData:
         """Create a new user using the configured backend."""
 
-        if self.production_service:
-            user = await self.production_service.create_user(
-                email=email,
-                password=password,
-                full_name=full_name,
-                roles=roles,
-                tenant_id=tenant_id,
-                preferences=preferences,
-            )
-            return self._to_user_data(user)
-
-        user = await self.basic_service.create_user(
+        user = await self.core_authenticator.create_user(
             email=email,
             password=password,
             full_name=full_name,
@@ -285,20 +311,12 @@ class AuthService:
             if not self.security_enhancer.allow_auth_attempt(email):
                 return None
 
-        if self.production_service:
-            user = await self.production_service.authenticate_user(
-                email=email,
-                password=password,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
-        else:
-            user = await self.basic_service.authenticate_user(
-                email=email,
-                password=password,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
+        user = await self.core_authenticator.authenticate_user(
+            email=email,
+            password=password,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
 
         if not user:
             if self.security_enhancer:
@@ -339,20 +357,12 @@ class AuthService:
     ) -> SessionData:
         """Create a session using the configured backend."""
 
-        if self.production_service:
-            session = await self.production_service.create_session(
-                user_id=user_id,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                device_fingerprint=device_fingerprint,
-            )
-        else:
-            session = await self.basic_service.create_session(
-                user_id=user_id,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                device_fingerprint=device_fingerprint,
-            )
+        session = await self.session_store.create_session(
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            device_fingerprint=device_fingerprint,
+        )
 
         return self._to_session_data(session)
 
@@ -364,18 +374,11 @@ class AuthService:
     ) -> Optional[UserData]:
         """Validate a session token and return associated user data."""
 
-        if self.production_service:
-            user = await self.production_service.validate_session(
-                session_token=session_token,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
-        else:
-            user = await self.basic_service.validate_session(
-                session_token=session_token,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
+        user = await self.session_store.validate_session(
+            session_token=session_token,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
 
         if not user:
             return None
@@ -385,10 +388,76 @@ class AuthService:
     async def invalidate_session(self, session_token: str) -> bool:
         """Invalidate a session token if supported by the backend."""
 
-        if self.production_service:
-            return await self.production_service.invalidate_session(session_token)
+        if hasattr(self.session_store, "invalidate_session"):
+            return await self.session_store.invalidate_session(session_token)
+        return False
 
-        return await self.basic_service.invalidate_session(session_token)
+    async def refresh_token(
+        self,
+        refresh_token: str,
+        ip_address: str = "unknown",
+        user_agent: str = "",
+    ) -> Optional[SessionData]:
+        """Exchange a refresh token for a new session.
+
+        Parameters
+        ----------
+        refresh_token:
+            Previously issued refresh token.
+        ip_address:
+            Client IP address associated with the request.
+        user_agent:
+            User agent string for auditing purposes.
+
+        Returns
+        -------
+        Optional[SessionData]
+            Newly issued session bundle or ``None`` if refresh fails.
+        """
+
+        if hasattr(self.session_store, "refresh_token"):
+            session = await self.session_store.refresh_token(
+                refresh_token=refresh_token,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            if session:
+                return self._to_session_data(session)
+        return None
+
+    async def update_password(self, user_id: str, new_password: str) -> bool:
+        """Update the password for an existing user."""
+
+        if hasattr(self.core_authenticator, "update_user_password"):
+            return await self.core_authenticator.update_user_password(
+                user_id=user_id, new_password=new_password
+            )
+        if hasattr(self.core_authenticator, "update_password"):
+            return await self.core_authenticator.update_password(
+                user_id=user_id, new_password=new_password
+            )
+        return False
+
+    async def reset_password(self, token: str, new_password: str) -> bool:
+        """Reset a user's password using a reset token."""
+
+        if hasattr(self.core_authenticator, "verify_password_reset_token"):
+            return await self.core_authenticator.verify_password_reset_token(
+                token=token, new_password=new_password
+            )
+        if hasattr(self.core_authenticator, "reset_password"):
+            return await self.core_authenticator.reset_password(
+                token=token, new_password=new_password
+            )
+        return False
+
+    def log_event(
+        self, event: str, data: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Record an authentication related event."""
+
+        if self.security_enhancer:
+            self.security_enhancer.log_event(event, data)
 
     # ------------------------------------------------------------------
     # Internal helpers
