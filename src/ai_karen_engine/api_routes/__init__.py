@@ -1,10 +1,7 @@
 """Modular API route collection for Kari."""
 
-try:
-    from fastapi import APIRouter
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "FastAPI is required for API routes. Install via `pip install fastapi`."
-    ) from e
+from ai_karen_engine.utils.dependency_checks import import_fastapi
+
+APIRouter = import_fastapi("APIRouter")
 
 router = APIRouter()

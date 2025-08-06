@@ -5,20 +5,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
+from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
-try:
-    from fastapi import APIRouter, HTTPException
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "FastAPI is required for system routes. Install via `pip install fastapi`."
-    ) from e
-
-try:
-    from pydantic import BaseModel
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "Pydantic is required for system routes. Install via `pip install pydantic`."
-    ) from e
+APIRouter, HTTPException = import_fastapi("APIRouter", "HTTPException")
+BaseModel = import_pydantic("BaseModel")
 
 router = APIRouter()
 

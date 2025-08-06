@@ -1,19 +1,10 @@
 from datetime import datetime
 from typing import List
 
-try:
-    from fastapi import APIRouter
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "FastAPI is required for announcement routes. Install via `pip install fastapi`."
-    ) from e
+from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
-try:
-    from pydantic import BaseModel
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "Pydantic is required for announcement routes. Install via `pip install pydantic`."
-    ) from e
+APIRouter = import_fastapi("APIRouter")
+BaseModel = import_pydantic("BaseModel")
 
 router = APIRouter()
 

@@ -3,35 +3,32 @@ FastAPI routes for enhanced conversation management with web UI integration.
 """
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-try:
-    from fastapi import APIRouter, HTTPException, Depends, Query
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "FastAPI is required for conversation routes. Install via `pip install fastapi`."
-    ) from e
-
-try:
-    from pydantic import BaseModel, Field
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "Pydantic is required for conversation routes. Install via `pip install pydantic`."
-    ) from e
-
-from ai_karen_engine.services.conversation_service import (
-    WebUIConversationService,
-    ConversationPriority,
-    UISource
+from ai_karen_engine.core.dependencies import (
+    get_conversation_service,
+    get_current_tenant_id,
 )
+from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.conversation_manager import MessageRole
 from ai_karen_engine.models.web_api_error_responses import (
     WebAPIErrorCode,
-    create_service_error_response,
     create_generic_error_response,
+    create_service_error_response,
     get_http_status_for_error_code,
 )
-from ai_karen_engine.core.logging import get_logger
+from ai_karen_engine.services.conversation_service import (
+    ConversationPriority,
+    UISource,
+    WebUIConversationService,
+)
+from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
+
+APIRouter, Depends, HTTPException, Query = import_fastapi(
+    "APIRouter", "Depends", "HTTPException", "Query"
+)
+BaseModel, Field = import_pydantic("BaseModel", "Field")
+
 # from ..database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
 
@@ -43,30 +40,43 @@ router = APIRouter(tags=["conversations"])
 # Request/Response Models
 class CreateConversationRequest(BaseModel):
     """Request model for creating conversation."""
+
     session_id: str = Field(..., description="Session ID")
-    ui_source: UISource = Field(..., description="Source UI (web, streamlit, desktop, api, ag_ui)")
+    ui_source: UISource = Field(
+        ..., description="Source UI (web, streamlit, desktop, api, ag_ui)"
+    )
     title: Optional[str] = Field(None, description="Conversation title")
     initial_message: Optional[str] = Field(None, description="Initial user message")
     user_settings: Optional[Dict[str, Any]] = Field(None, description="User settings")
     ui_context: Optional[Dict[str, Any]] = Field(None, description="UI context data")
     tags: Optional[List[str]] = Field(None, description="Initial tags")
-    priority: ConversationPriority = Field(ConversationPriority.NORMAL, description="Conversation priority")
+    priority: ConversationPriority = Field(
+        ConversationPriority.NORMAL, description="Conversation priority"
+    )
 
 
 class AddMessageRequest(BaseModel):
     """Request model for adding message."""
+
     role: MessageRole = Field(..., description="Message role")
     content: str = Field(..., description="Message content")
-    ui_source: UISource = Field(..., description="Source UI (web, streamlit, desktop, api, ag_ui)")
+    ui_source: UISource = Field(
+        ..., description="Source UI (web, streamlit, desktop, api, ag_ui)"
+    )
     metadata: Optional[Dict[str, Any]] = Field(None, description="Message metadata")
-    ai_confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="AI confidence score")
-    processing_time_ms: Optional[int] = Field(None, description="Processing time in milliseconds")
+    ai_confidence: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="AI confidence score"
+    )
+    processing_time_ms: Optional[int] = Field(
+        None, description="Processing time in milliseconds"
+    )
     tokens_used: Optional[int] = Field(None, description="Tokens used")
     model_used: Optional[str] = Field(None, description="Model used for generation")
 
 
 class BuildContextRequest(BaseModel):
     """Request model for building conversation context."""
+
     current_message: str = Field(..., description="Current message for context")
     include_memories: bool = Field(True, description="Include memory context")
     include_insights: bool = Field(True, description="Include AI insights")
@@ -74,21 +84,25 @@ class BuildContextRequest(BaseModel):
 
 class UpdateUIContextRequest(BaseModel):
     """Request model for updating UI context."""
+
     ui_context: Dict[str, Any] = Field(..., description="UI context data")
 
 
 class UpdateAIInsightsRequest(BaseModel):
     """Request model for updating AI insights."""
+
     ai_insights: Dict[str, Any] = Field(..., description="AI insights data")
 
 
 class AddTagsRequest(BaseModel):
     """Request model for adding tags."""
+
     tags: List[str] = Field(..., description="Tags to add")
 
 
 class MessageResponse(BaseModel):
     """Response model for messages."""
+
     id: str
     role: str
     content: str
@@ -108,6 +122,7 @@ class MessageResponse(BaseModel):
 
 class ConversationResponse(BaseModel):
     """Response model for conversations."""
+
     id: str
     user_id: str
     title: Optional[str]
@@ -133,6 +148,7 @@ class ConversationResponse(BaseModel):
 
 class CreateConversationResponse(BaseModel):
     """Response model for creating conversation."""
+
     conversation: ConversationResponse
     success: bool
     message: str
@@ -140,12 +156,14 @@ class CreateConversationResponse(BaseModel):
 
 class AddMessageResponse(BaseModel):
     """Response model for adding message."""
+
     message: MessageResponse
     success: bool
 
 
 class ContextResponse(BaseModel):
     """Response model for conversation context."""
+
     conversation_summary: Dict[str, Any]
     recent_messages: List[Dict[str, Any]]
     relevant_memories: Dict[str, List[Dict[str, Any]]]
@@ -158,6 +176,7 @@ class ContextResponse(BaseModel):
 
 class ConversationListResponse(BaseModel):
     """Response model for conversation list."""
+
     conversations: List[ConversationResponse]
     total_count: int
     has_more: bool
@@ -165,6 +184,7 @@ class ConversationListResponse(BaseModel):
 
 class AnalyticsResponse(BaseModel):
     """Response model for conversation analytics."""
+
     total_conversations: int
     active_conversations: int
     recent_conversations_7d: int
@@ -180,12 +200,6 @@ class AnalyticsResponse(BaseModel):
     metrics: Dict[str, Any]
 
 
-# Import dependency injection
-from ai_karen_engine.core.dependencies import (
-    get_conversation_service,
-    get_current_tenant_id,
-)
-
 # Alias core dependencies for convenience
 get_current_tenant = get_current_tenant_id
 
@@ -193,28 +207,30 @@ get_current_tenant = get_current_tenant_id
 def _convert_conversation_to_response(conversation) -> ConversationResponse:
     """Convert conversation to response model."""
     conversation_dict = conversation.to_dict()
-    
+
     # Convert messages
     messages = []
     for msg_data in conversation_dict["messages"]:
-        messages.append(MessageResponse(
-            id=msg_data["id"],
-            role=msg_data["role"],
-            content=msg_data["content"],
-            timestamp=msg_data["timestamp"],
-            metadata=msg_data["metadata"],
-            function_call=msg_data.get("function_call"),
-            function_response=msg_data.get("function_response"),
-            ui_source=msg_data.get("ui_source"),
-            ai_confidence=msg_data.get("ai_confidence"),
-            processing_time_ms=msg_data.get("processing_time_ms"),
-            tokens_used=msg_data.get("tokens_used"),
-            model_used=msg_data.get("model_used"),
-            user_feedback=msg_data.get("user_feedback"),
-            edited=msg_data.get("edited", False),
-            edit_history=msg_data.get("edit_history", [])
-        ))
-    
+        messages.append(
+            MessageResponse(
+                id=msg_data["id"],
+                role=msg_data["role"],
+                content=msg_data["content"],
+                timestamp=msg_data["timestamp"],
+                metadata=msg_data["metadata"],
+                function_call=msg_data.get("function_call"),
+                function_response=msg_data.get("function_response"),
+                ui_source=msg_data.get("ui_source"),
+                ai_confidence=msg_data.get("ai_confidence"),
+                processing_time_ms=msg_data.get("processing_time_ms"),
+                tokens_used=msg_data.get("tokens_used"),
+                model_used=msg_data.get("model_used"),
+                user_feedback=msg_data.get("user_feedback"),
+                edited=msg_data.get("edited", False),
+                edit_history=msg_data.get("edit_history", []),
+            )
+        )
+
     return ConversationResponse(
         id=conversation_dict["id"],
         user_id=conversation_dict["user_id"],
@@ -236,22 +252,20 @@ def _convert_conversation_to_response(conversation) -> ConversationResponse:
         status=conversation_dict["status"],
         priority=conversation_dict["priority"],
         context_memories=conversation_dict["context_memories"],
-        proactive_suggestions=conversation_dict["proactive_suggestions"]
+        proactive_suggestions=conversation_dict["proactive_suggestions"],
     )
 
 
 @router.post("/create", response_model=CreateConversationResponse)
 async def create_conversation(
     request: CreateConversationRequest,
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Create a new conversation with web UI features."""
     try:
         conversation = await conversation_service.create_web_ui_conversation(
             tenant_id="00000000-0000-0000-0000-000000000001",  # Default tenant UUID
-            user_id="00000000-0000-0000-0000-000000000002",    # Anonymous user UUID
+            user_id="00000000-0000-0000-0000-000000000002",  # Anonymous user UUID
             session_id=request.session_id,
             ui_source=request.ui_source,
             title=request.title,
@@ -259,37 +273,41 @@ async def create_conversation(
             user_settings=request.user_settings,
             ui_context=request.ui_context,
             tags=request.tags,
-            priority=request.priority
+            priority=request.priority,
         )
-        
+
         if not conversation:
             error_response = create_service_error_response(
                 service_name="conversation",
                 error=Exception("Failed to create conversation"),
                 error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-                user_message="Failed to create conversation. Please try again."
+                user_message="Failed to create conversation. Please try again.",
             )
             raise HTTPException(
-                status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+                status_code=get_http_status_for_error_code(
+                    WebAPIErrorCode.INTERNAL_SERVER_ERROR
+                ),
                 detail=error_response.dict(),
             )
-        
+
         return CreateConversationResponse(
             conversation=_convert_conversation_to_response(conversation),
             success=True,
-            message="Conversation created successfully"
+            message="Conversation created successfully",
         )
-        
+
     except Exception as e:
         logger.exception("Failed to create conversation", error=str(e))
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to create conversation. Please try again."
+            user_message="Failed to create conversation. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -298,32 +316,30 @@ async def create_conversation(
 async def get_conversation(
     conversation_id: str,
     include_context: bool = Query(True, description="Include context data"),
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Get conversation by ID with web UI features."""
     try:
         conversation = await conversation_service.get_web_ui_conversation(
             tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
-            include_context=include_context
+            include_context=include_context,
         )
-        
+
         if not conversation:
             error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
                 message="Conversation not found",
                 user_message="The requested conversation could not be found.",
-                details={"conversation_id": conversation_id}
+                details={"conversation_id": conversation_id},
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
                 detail=error_response.dict(),
             )
-        
+
         return _convert_conversation_to_response(conversation)
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -332,10 +348,12 @@ async def get_conversation(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to get conversation. Please try again."
+            user_message="Failed to get conversation. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -344,9 +362,7 @@ async def get_conversation(
 async def add_message(
     conversation_id: str,
     request: AddMessageRequest,
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Add a message to conversation with web UI features."""
     try:
@@ -360,21 +376,23 @@ async def add_message(
             ai_confidence=request.ai_confidence,
             processing_time_ms=request.processing_time_ms,
             tokens_used=request.tokens_used,
-            model_used=request.model_used
+            model_used=request.model_used,
         )
-        
+
         if not message:
             error_response = create_service_error_response(
                 service_name="conversation",
                 error=Exception("Failed to add message"),
                 error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-                user_message="Failed to add message to conversation. Please try again."
+                user_message="Failed to add message to conversation. Please try again.",
             )
             raise HTTPException(
-                status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+                status_code=get_http_status_for_error_code(
+                    WebAPIErrorCode.INTERNAL_SERVER_ERROR
+                ),
                 detail=error_response.dict(),
             )
-        
+
         message_dict = message.to_dict()
         message_response = MessageResponse(
             id=message_dict["id"],
@@ -391,14 +409,11 @@ async def add_message(
             model_used=message_dict.get("model_used"),
             user_feedback=message_dict.get("user_feedback"),
             edited=message_dict.get("edited", False),
-            edit_history=message_dict.get("edit_history", [])
+            edit_history=message_dict.get("edit_history", []),
         )
-        
-        return AddMessageResponse(
-            message=message_response,
-            success=True
-        )
-        
+
+        return AddMessageResponse(message=message_response, success=True)
+
     except HTTPException:
         raise
     except Exception as e:
@@ -407,10 +422,12 @@ async def add_message(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to add message to conversation. Please try again."
+            user_message="Failed to add message to conversation. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -419,9 +436,7 @@ async def add_message(
 async def build_context(
     conversation_id: str,
     request: BuildContextRequest,
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Build comprehensive conversation context."""
     try:
@@ -430,21 +445,23 @@ async def build_context(
             conversation_id=conversation_id,
             current_message=request.current_message,
             include_memories=request.include_memories,
-            include_insights=request.include_insights
+            include_insights=request.include_insights,
         )
-        
+
         return ContextResponse(**context)
-        
+
     except Exception as e:
         logger.exception("Failed to build context", error=str(e))
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to build conversation context. Please try again."
+            user_message="Failed to build conversation context. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -453,35 +470,30 @@ async def build_context(
 async def update_ui_context(
     conversation_id: str,
     request: UpdateUIContextRequest,
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Update conversation UI context."""
     try:
         success = await conversation_service.update_conversation_ui_context(
             tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
-            ui_context=request.ui_context
+            ui_context=request.ui_context,
         )
-        
+
         if not success:
             error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
                 message="Conversation not found or update failed",
                 user_message="The requested conversation could not be found or updated.",
-                details={"conversation_id": conversation_id}
+                details={"conversation_id": conversation_id},
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
                 detail=error_response.dict(),
             )
-        
-        return {
-            "success": True,
-            "message": "UI context updated successfully"
-        }
-        
+
+        return {"success": True, "message": "UI context updated successfully"}
+
     except HTTPException:
         raise
     except Exception as e:
@@ -490,10 +502,12 @@ async def update_ui_context(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to update UI context. Please try again."
+            user_message="Failed to update UI context. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -502,35 +516,30 @@ async def update_ui_context(
 async def update_ai_insights(
     conversation_id: str,
     request: UpdateAIInsightsRequest,
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Update conversation AI insights."""
     try:
         success = await conversation_service.update_conversation_ai_insights(
             tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
-            ai_insights=request.ai_insights
+            ai_insights=request.ai_insights,
         )
-        
+
         if not success:
             error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
                 message="Conversation not found or update failed",
                 user_message="The requested conversation could not be found or updated.",
-                details={"conversation_id": conversation_id}
+                details={"conversation_id": conversation_id},
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
                 detail=error_response.dict(),
             )
-        
-        return {
-            "success": True,
-            "message": "AI insights updated successfully"
-        }
-        
+
+        return {"success": True, "message": "AI insights updated successfully"}
+
     except HTTPException:
         raise
     except Exception as e:
@@ -539,10 +548,12 @@ async def update_ai_insights(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to update AI insights. Please try again."
+            user_message="Failed to update AI insights. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -551,35 +562,33 @@ async def update_ai_insights(
 async def add_tags(
     conversation_id: str,
     request: AddTagsRequest,
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Add tags to conversation."""
     try:
         success = await conversation_service.add_conversation_tags(
             tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
-            tags=request.tags
+            tags=request.tags,
         )
-        
+
         if not success:
             error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
                 message="Conversation not found or update failed",
                 user_message="The requested conversation could not be found or updated.",
-                details={"conversation_id": conversation_id}
+                details={"conversation_id": conversation_id},
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
                 detail=error_response.dict(),
             )
-        
+
         return {
             "success": True,
-            "message": f"Added {len(request.tags)} tags to conversation"
+            "message": f"Added {len(request.tags)} tags to conversation",
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -588,10 +597,12 @@ async def add_tags(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to add tags to conversation. Please try again."
+            user_message="Failed to add tags to conversation. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -601,9 +612,7 @@ async def list_conversations(
     active_only: bool = Query(True, description="Only return active conversations"),
     limit: int = Query(50, ge=1, le=100, description="Maximum number of conversations"),
     offset: int = Query(0, ge=0, description="Number of conversations to skip"),
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """List conversations for current user."""
     try:
@@ -612,9 +621,9 @@ async def list_conversations(
             user_id="00000000-0000-0000-0000-000000000002",
             active_only=active_only,
             limit=limit,
-            offset=offset
+            offset=offset,
         )
-        
+
         # Convert to web UI conversations
         web_ui_conversations = []
         for conv in conversations:
@@ -622,7 +631,7 @@ async def list_conversations(
             web_ui_data = await conversation_service._get_web_ui_conversation_data(
                 "00000000-0000-0000-0000-000000000001", conv.id
             )
-            
+
             web_ui_conv = await conversation_service._convert_to_web_ui_conversation(
                 conv,
                 web_ui_data.get("session_id"),
@@ -631,27 +640,29 @@ async def list_conversations(
                 web_ui_data.get("tags", []),
                 ConversationPriority(web_ui_data.get("priority", "normal")),
                 web_ui_data.get("summary"),
-                web_ui_data.get("last_ai_response_id")
+                web_ui_data.get("last_ai_response_id"),
             )
-            
+
             web_ui_conversations.append(_convert_conversation_to_response(web_ui_conv))
-        
+
         return ConversationListResponse(
             conversations=web_ui_conversations,
             total_count=len(web_ui_conversations),
-            has_more=len(web_ui_conversations) == limit
+            has_more=len(web_ui_conversations) == limit,
         )
-        
+
     except Exception as e:
         logger.exception("Failed to list conversations", error=str(e))
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to list conversations. Please try again."
+            user_message="Failed to list conversations. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -661,9 +672,7 @@ async def update_conversation(
     conversation_id: str,
     title: Optional[str] = Query(None, description="New title"),
     is_active: Optional[bool] = Query(None, description="Active status"),
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Update conversation properties."""
     try:
@@ -671,26 +680,23 @@ async def update_conversation(
             tenant_id="00000000-0000-0000-0000-000000000001",
             conversation_id=conversation_id,
             title=title,
-            is_active=is_active
+            is_active=is_active,
         )
-        
+
         if not success:
             error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
                 message="Conversation not found or update failed",
                 user_message="The requested conversation could not be found or updated.",
-                details={"conversation_id": conversation_id}
+                details={"conversation_id": conversation_id},
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
                 detail=error_response.dict(),
             )
-        
-        return {
-            "success": True,
-            "message": "Conversation updated successfully"
-        }
-        
+
+        return {"success": True, "message": "Conversation updated successfully"}
+
     except HTTPException:
         raise
     except Exception as e:
@@ -699,10 +705,12 @@ async def update_conversation(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to update conversation. Please try again."
+            user_message="Failed to update conversation. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -710,34 +718,29 @@ async def update_conversation(
 @router.delete("/{conversation_id}")
 async def delete_conversation(
     conversation_id: str,
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Delete a conversation."""
     try:
         success = await conversation_service.base_manager.delete_conversation(
             tenant_id="00000000-0000-0000-0000-000000000001",
-            conversation_id=conversation_id
+            conversation_id=conversation_id,
         )
-        
+
         if not success:
             error_response = create_generic_error_response(
                 error_code=WebAPIErrorCode.NOT_FOUND,
                 message="Conversation not found or deletion failed",
                 user_message="The requested conversation could not be found or deleted.",
-                details={"conversation_id": conversation_id}
+                details={"conversation_id": conversation_id},
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
                 detail=error_response.dict(),
             )
-        
-        return {
-            "success": True,
-            "message": "Conversation deleted successfully"
-        }
-        
+
+        return {"success": True, "message": "Conversation deleted successfully"}
+
     except HTTPException:
         raise
     except Exception as e:
@@ -746,10 +749,12 @@ async def delete_conversation(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to delete conversation. Please try again."
+            user_message="Failed to delete conversation. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -757,11 +762,11 @@ async def delete_conversation(
 @router.get("/analytics", response_model=AnalyticsResponse)
 async def get_analytics(
     user_id: Optional[str] = Query(None, description="Filter by user ID"),
-    time_range_start: Optional[datetime] = Query(None, description="Start of time range"),
+    time_range_start: Optional[datetime] = Query(
+        None, description="Start of time range"
+    ),
     time_range_end: Optional[datetime] = Query(None, description="End of time range"),
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Get conversation analytics for dashboard."""
     try:
@@ -769,28 +774,30 @@ async def get_analytics(
         time_range = None
         if time_range_start and time_range_end:
             time_range = (time_range_start, time_range_end)
-        
+
         # Use current user if no user_id specified
         target_user_id = user_id or "00000000-0000-0000-0000-000000000002"
-        
+
         analytics = await conversation_service.get_conversation_analytics(
             tenant_id="00000000-0000-0000-0000-000000000001",
             user_id=target_user_id,
-            time_range=time_range
+            time_range=time_range,
         )
-        
+
         return AnalyticsResponse(**analytics)
-        
+
     except Exception as e:
         logger.exception("Failed to get analytics", error=str(e))
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to get conversation analytics. Please try again."
+            user_message="Failed to get conversation analytics. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -807,23 +814,25 @@ async def get_conversation_stats(
             "00000000-0000-0000-0000-000000000002",
         )
         web_ui_metrics = conversation_service.get_metrics()
-        
+
         return {
             "base_stats": stats,
             "web_ui_metrics": web_ui_metrics,
             "tenant_id": "00000000-0000-0000-0000-000000000001",
         }
-        
+
     except Exception as e:
         logger.exception("Failed to get stats", error=str(e))
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to get conversation statistics. Please try again."
+            user_message="Failed to get conversation statistics. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -831,33 +840,33 @@ async def get_conversation_stats(
 @router.post("/cleanup-inactive")
 async def cleanup_inactive_conversations(
     days_inactive: int = Query(30, ge=1, description="Days of inactivity threshold"),
-    
-    
-    conversation_service: WebUIConversationService = Depends(get_conversation_service)
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
 ):
     """Mark old conversations as inactive."""
     try:
         count = await conversation_service.base_manager.cleanup_inactive_conversations(
             tenant_id="00000000-0000-0000-0000-000000000001",
-            days_inactive=days_inactive
+            days_inactive=days_inactive,
         )
-        
+
         return {
             "success": True,
             "inactive_count": count,
-            "message": f"Marked {count} conversations as inactive"
+            "message": f"Marked {count} conversations as inactive",
         }
-        
+
     except Exception as e:
         logger.exception("Failed to cleanup conversations", error=str(e))
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
             error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
-            user_message="Failed to cleanup conversations. Please try again."
+            user_message="Failed to cleanup conversations. Please try again.",
         )
         raise HTTPException(
-            status_code=get_http_status_for_error_code(WebAPIErrorCode.INTERNAL_SERVER_ERROR),
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
             detail=error_response.dict(),
         )
 
@@ -869,5 +878,5 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "conversation",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }

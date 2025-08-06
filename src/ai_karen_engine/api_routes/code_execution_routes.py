@@ -6,25 +6,6 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-try:
-    from fastapi import APIRouter, Depends, HTTPException, Query
-except Exception:  # pragma: no cover
-    from ai_karen_engine.fastapi_stub import APIRouter, HTTPException
-
-    def Depends(func):
-        return func
-
-    def Query(default=None, **_kw):
-        return default
-
-
-try:
-    from pydantic import BaseModel, Field
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "Pydantic is required for code execution routes. Install via `pip install pydantic`."
-    ) from e
-
 from ai_karen_engine.chat.code_execution_service import (
     CodeExecutionRequest,
     CodeExecutionResponse,
@@ -46,6 +27,12 @@ from ai_karen_engine.models.web_api_error_responses import (
     create_service_error_response,
     get_http_status_for_error_code,
 )
+from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
+
+APIRouter, Depends, HTTPException, Query = import_fastapi(
+    "APIRouter", "Depends", "HTTPException", "Query"
+)
+BaseModel, Field = import_pydantic("BaseModel", "Field")
 
 logger = get_logger(__name__)
 
