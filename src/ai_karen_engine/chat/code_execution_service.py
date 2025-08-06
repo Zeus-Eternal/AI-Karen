@@ -807,3 +807,50 @@ unset IFS
                 return False
         
         return False
+    
+    async def cleanup(self):
+        """Cleanup service resources."""
+        # Cancel all active executions
+        for execution_id in list(self._active_executions.keys()):
+            await self.cancel_execution(execution_id)
+        
+        # Clear history
+        self._execution_history.clear()
+        self._registered_tools.clear()
+        
+        logger.info("CodeExecutionService cleaned up")
+
+
+# Global service instance
+_code_execution_service: Optional[CodeExecutionService] = None
+
+
+def get_code_execution_service() -> CodeExecutionService:
+    """Get or create the global code execution service instance."""
+    global _code_execution_service
+    
+    if _code_execution_service is None:
+        _code_execution_service = CodeExecutionService()
+    
+    return _code_execution_service
+
+
+def initialize_code_execution_service(
+    sandbox_path: str = "data/sandbox",
+    enable_docker: bool = True,
+    default_limits: Optional[ExecutionLimits] = None,
+    supported_languages: Optional[List[CodeLanguage]] = None,
+    enable_visualization: bool = True
+) -> CodeExecutionService:
+    """Initialize the global code execution service with custom configuration."""
+    global _code_execution_service
+    
+    _code_execution_service = CodeExecutionService(
+        sandbox_path=sandbox_path,
+        enable_docker=enable_docker,
+        default_limits=default_limits,
+        supported_languages=supported_languages,
+        enable_visualization=enable_visualization
+    )
+    
+    return _code_execution_service

@@ -220,6 +220,30 @@ class PluginService:
             return None
         return self.registry.get_plugin(plugin_name)
     
+    async def get_plugin_info(self, plugin_name: str) -> Optional[PluginMetadata]:
+        """Get plugin information by name (async version for API compatibility)."""
+        await self._ensure_initialized()
+        return self.get_plugin(plugin_name)
+    
+    async def list_plugins(
+        self, 
+        category: Optional[str] = None, 
+        enabled_only: bool = False
+    ) -> List[PluginMetadata]:
+        """List plugins with optional filtering."""
+        await self._ensure_initialized()
+        
+        if category:
+            plugins = self.get_plugins_by_category(category)
+        else:
+            plugins = self.get_available_plugins()
+        
+        if enabled_only:
+            # Filter to only enabled plugins (assuming registered plugins are enabled)
+            plugins = [p for p in plugins if p.status == PluginStatus.REGISTERED]
+        
+        return plugins
+    
     def get_plugins_by_category(self, category: str) -> List[PluginMetadata]:
         """Get plugins by category."""
         if not self.initialized or not self.registry:

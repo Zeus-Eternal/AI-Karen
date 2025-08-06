@@ -194,7 +194,7 @@ export function getWebUIConfig(): WebUIConfig {
   return {
     // Backend configuration
     backendUrl,
-    apiKey: process.env.KAREN_API_KEY,
+    apiKey: process.env.KAREN_API_KEY || process.env.NEXT_PUBLIC_KAREN_API_KEY,
     apiTimeout: parseNumberEnv(process.env.KAREN_API_TIMEOUT, 30000),
     maxRetries: parseNumberEnv(process.env.KAREN_API_MAX_RETRIES, 3),
     retryDelay: parseNumberEnv(process.env.KAREN_API_RETRY_DELAY, 1000),

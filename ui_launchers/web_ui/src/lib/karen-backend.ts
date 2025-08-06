@@ -204,8 +204,12 @@ class KarenBackendService {
       ...((options.headers as Record<string, string>) || {}),
     };
 
-    if (this.config.apiKey) {
-      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
+    // Try to get stored session token first
+    const sessionToken = this.getStoredSessionToken();
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+    } else if (this.config.apiKey) {
+      headers['X-API-KEY'] = this.config.apiKey;
     }
 
     let lastError: Error | null = null;
@@ -364,6 +368,81 @@ class KarenBackendService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  // Session token management
+  private getStoredSessionToken(): string | null {
+    try {
+      return sessionStorage.getItem('kari_session_token');
+    } catch {
+      return null;
+    }
+  }
+
+  private storeSessionToken(token: string): void {
+    try {
+      sessionStorage.setItem('kari_session_token', token);
+    } catch (error) {
+      console.warn('Failed to store session token:', error);
+    }
+  }
+
+  private clearSessionToken(): void {
+    try {
+      sessionStorage.removeItem('kari_session_token');
+    } catch (error) {
+      console.warn('Failed to clear session token:', error);
+    }
+  }
+
+  // Auto-authentication for memory operations
+  private async ensureAuthenticated(): Promise<boolean> {
+    // Check if we already have a valid session token
+    const existingToken = this.getStoredSessionToken();
+    if (existingToken) {
+      try {
+        // Verify the token is still valid
+        await this.makeRequest('/api/auth/me', {
+          headers: { Authorization: `Bearer ${existingToken}` }
+        });
+        console.log('Existing session token is valid');
+        return true;
+      } catch (error) {
+        console.log('Existing session token is invalid, clearing it');
+        // Token is invalid, clear it
+        this.clearSessionToken();
+      }
+    }
+
+    // Try to authenticate with a default user for memory operations
+    // This is a fallback for when the UI needs to store memories but user isn't logged in
+    try {
+      console.log('Attempting to authenticate with anonymous user...');
+      const loginResponse = await this.makeRequest<{
+        access_token: string;
+        user: any;
+      }>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: 'anonymous@karen.ai',
+          password: 'anonymous'
+        })
+      });
+
+      console.log('Authentication successful, storing token');
+      this.storeSessionToken(loginResponse.access_token);
+      return true;
+    } catch (error) {
+      console.error('Failed to authenticate for memory operations:', error);
+      if (error instanceof APIError) {
+        console.error('Authentication error details:', {
+          status: error.status,
+          message: error.message,
+          details: error.details
+        });
+      }
+      return false;
+    }
+  }
+
   // Memory Service Integration
   async storeMemory(
     content: string,
@@ -373,20 +452,65 @@ class KarenBackendService {
     sessionId?: string
   ): Promise<string | null> {
     try {
+      // Ensure we're authenticated before attempting to store memory
+      const isAuthenticated = await this.ensureAuthenticated();
+      if (!isAuthenticated) {
+        console.warn('Failed to authenticate for memory storage');
+        return null;
+      }
+
+      // Prepare the request payload for the secure memory endpoint
+      const requestPayload = {
+        content,
+        ui_source: 'web',
+        session_id: sessionId,
+        memory_type: 'general',
+        tags: tags || [],
+        metadata: metadata || {},
+        ai_generated: false
+      };
+
+      console.log('Storing memory with payload:', requestPayload);
+
+      // Use the secure memory storage endpoint with proper authentication
       const response = await this.makeRequest<{ memory_id: string }>('/api/memory/store', {
         method: 'POST',
-        body: JSON.stringify({
-          content,
-          metadata,
-          tags,
-          user_id: userId,
-          session_id: sessionId,
-        }),
+        body: JSON.stringify(requestPayload),
       });
+      
+      console.log('Memory store response:', response);
       return response.memory_id;
     } catch (error) {
       if (error instanceof APIError) {
-        if (error.details?.type === 'SERVICE_UNAVAILABLE') {
+        // Handle authentication errors by trying to re-authenticate
+        if (error.status === 401) {
+          console.warn('Authentication failed, clearing session and retrying...');
+          this.clearSessionToken();
+          
+          // Try to re-authenticate and retry once
+          const isAuthenticated = await this.ensureAuthenticated();
+          if (isAuthenticated) {
+            try {
+              const response = await this.makeRequest<{ memory_id: string }>('/api/memory/store', {
+                method: 'POST',
+                body: JSON.stringify({
+                  content: content,
+                  ui_source: 'web',
+                  session_id: sessionId,
+                  memory_type: 'general',
+                  tags: tags || [],
+                  metadata: metadata || {},
+                  ai_generated: false
+                }),
+              });
+              return response.memory_id;
+            } catch (retryError) {
+              console.error('Failed to store memory after re-authentication:', retryError);
+              return null;
+            }
+          }
+          return null;
+        } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
           console.warn('Memory service unavailable, memory not stored');
           return null;
         } else if (error.details?.type === 'VALIDATION_ERROR') {
@@ -401,11 +525,42 @@ class KarenBackendService {
 
   async queryMemories(query: MemoryQuery): Promise<MemoryEntry[]> {
     try {
-      const response = await this.makeRequest<{ memories: MemoryEntry[] }>('/api/memory/query', {
+      // Ensure we're authenticated before querying memories
+      const isAuthenticated = await this.ensureAuthenticated();
+      if (!isAuthenticated) {
+        console.warn('Failed to authenticate for memory query');
+        return [];
+      }
+
+      // Transform the query to match the backend format
+      const backendQuery = {
+        text: query.text,
+        session_id: query.session_id,
+        tags: query.tags || [],
+        top_k: query.top_k || 5,
+        similarity_threshold: query.similarity_threshold || 0.7,
+        only_user_confirmed: true,
+        only_ai_generated: false,
+      };
+
+      const response = await this.makeRequest<{ memories: any[] }>('/api/memory/query', {
         method: 'POST',
-        body: JSON.stringify(query),
+        body: JSON.stringify(backendQuery),
       });
-      return response.memories || [];
+
+      // Transform the response to match the expected format
+      const memories = (response.memories || []).map(mem => ({
+        id: mem.id,
+        content: mem.content,
+        metadata: mem.metadata || {},
+        timestamp: mem.timestamp,
+        similarity_score: mem.similarity_score,
+        tags: mem.tags || [],
+        user_id: mem.user_id,
+        session_id: mem.session_id,
+      }));
+
+      return memories;
     } catch (error) {
       if (error instanceof APIError) {
         if (error.details?.type === 'MEMORY_ERROR') {
@@ -561,7 +716,7 @@ class KarenBackendService {
     timestamp: string;
   }> {
     try {
-      return await this.makeRequest('/api/health', {}, false);
+      return await this.makeRequest('/health', {}, false);
     } catch (error) {
       console.error('Health check failed:', error);
       return {
@@ -585,6 +740,15 @@ class KarenBackendService {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     try {
+      // Ensure we're authenticated before processing the message
+      const isAuthenticated = await this.ensureAuthenticated();
+      if (!isAuthenticated) {
+        console.warn(`[${requestId}] Failed to authenticate for chat processing`);
+        return {
+          finalResponse: "I'm having trouble connecting to my services right now. Please try again in a moment.",
+        };
+      }
+
       // Log request for debugging
       console.log(`[${requestId}] Processing user message:`, {
         message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
@@ -602,30 +766,49 @@ class KarenBackendService {
         similarity_threshold: 0.7,
       });
 
-      // Prepare context for AI processing using the compatibility layer format
-      const context = {
-        message,
-        conversation_history: conversationHistory.map(msg => ({
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp.toISOString(),
-        })),
-        relevant_memories: relevantMemories.map(mem => ({
-          content: mem.content,
-          similarity_score: mem.similarity_score,
-          tags: mem.tags,
-        })),
-        user_settings: settings,
-        user_id: userId,
-        session_id: sessionId,
-      };
-
-      // Use the compatibility layer endpoint
+      // Use the secure AI orchestrator endpoint with proper authentication
       const startTime = Date.now();
-      const response = await this.makeRequest<HandleUserMessageResult>('/api/chat/process', {
+      const aiResponse = await this.makeRequest<{
+        response: string;
+        requires_plugin: boolean;
+        plugin_to_execute?: string;
+        plugin_parameters?: Record<string, any>;
+        memory_to_store?: Record<string, any>;
+        suggested_actions?: string[];
+        ai_data?: Record<string, any>;
+        proactive_suggestion?: string;
+      }>('/api/ai/conversation-processing', {
         method: 'POST',
-        body: JSON.stringify(context),
+        body: JSON.stringify({
+          prompt: message,
+          conversation_history: conversationHistory.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp.toISOString(),
+          })),
+          user_settings: settings,
+          session_id: sessionId,
+          context: {
+            relevant_memories: relevantMemories.map(mem => ({
+              content: mem.content,
+              similarity_score: mem.similarity_score,
+              tags: mem.tags,
+            })),
+            user_id: userId,
+            session_id: sessionId,
+          },
+          include_memories: true,
+          include_insights: true,
+        }),
       });
+
+      // Transform the AI orchestrator response to match the expected HandleUserMessageResult format
+      const response: HandleUserMessageResult = {
+        finalResponse: aiResponse.response,
+        aiDataForFinalResponse: aiResponse.ai_data,
+        suggestedNewFacts: aiResponse.suggested_actions,
+        proactiveSuggestion: aiResponse.proactive_suggestion,
+      };
       const responseTime = Date.now() - startTime;
 
       // Log successful response for debugging

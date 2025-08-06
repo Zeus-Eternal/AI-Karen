@@ -43,6 +43,7 @@ from ai_karen_engine.api_routes.websocket_routes import router as websocket_rout
 from ai_karen_engine.server.middleware import configure_middleware
 from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS, PLUGIN_MAP
 from ai_karen_engine.server.startup import create_lifespan
+from ai_karen_engine.server.logging_filters import SuppressInvalidHTTPFilter
 
 # --- Configuration Management -------------------------------------------------
 
@@ -373,13 +374,7 @@ if __name__ == "__main__":
 
     import uvicorn  # type: ignore[import-not-found]
 
-    # Create a custom filter to suppress specific uvicorn warnings
-    class SuppressInvalidHTTPFilter(logging.Filter):
-        def filter(self, record: logging.LogRecord) -> bool:
-            # Suppress "Invalid HTTP request received" messages
-            if "Invalid HTTP request received" in record.getMessage():
-                return False
-            return True
+    # Use the imported SuppressInvalidHTTPFilter from logging_filters module
 
     # Apply the filter to all relevant uvicorn loggers immediately
     uvicorn_error_logger = logging.getLogger("uvicorn.error")
