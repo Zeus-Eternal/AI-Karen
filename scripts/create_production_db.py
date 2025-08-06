@@ -14,7 +14,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.client import create_database_tables, db_client
-from ai_karen_engine.security.production_auth_service import production_auth_service
+from ai_karen_engine.security.auth_service import AuthService
+from ai_karen_engine.security.config import AuthConfig, FeatureToggles
+
+auth_service = AuthService(AuthConfig(features=FeatureToggles(use_database=True)))
 
 logger = get_logger(__name__)
 
@@ -39,7 +42,7 @@ async def create_admin_user():
                 return
 
         # Create admin user
-        admin_user = await production_auth_service.create_user(
+        admin_user = await auth_service.create_user(
             email=admin_email,
             password=admin_password,
             full_name="System Administrator",
@@ -102,7 +105,7 @@ async def create_demo_user():
                 return
 
         # Create demo user
-        demo_user = await production_auth_service.create_user(
+        demo_user = await auth_service.create_user(
             email=demo_email,
             password=demo_password,
             full_name="Demo User",

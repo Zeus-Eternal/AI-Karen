@@ -1,22 +1,4 @@
-"""Canonical authentication service for AI Karen.
-
-This module exposes :class:`AuthService` which provides a common interface for
-basic in-memory authentication, production database backed authentication and
-optional intelligent behavioural checks. Behaviour is controlled by an
-:class:`AuthConfig` dataclass.
-
-The service composes existing implementations rather than re-implementing
-logic. When ``use_database`` is ``True`` the
-:class:`~ai_karen_engine.security.production_auth_service.ProductionAuthService`
-will be used for persistence and secure password hashing. Otherwise the
-light-weight in-memory implementation from
-:class:`~ai_karen_engine.services.auth_service.AuthService` is used.
-
-If ``enable_intelligent_checks`` is set, every successful authentication
-attempt is scored by :class:`~ai_karen_engine.security.intelligence_engine.IntelligenceEngine`.
-If the calculated risk exceeds configured thresholds the attempt is blocked
-and ``authenticate_user`` returns ``None``.
-"""
+"""Unified authentication service with layered components."""
 
 from __future__ import annotations
 
@@ -29,40 +11,231 @@ from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
 import bcrypt
+import jwt
 
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.client import get_db_session
-from ai_karen_engine.database.models.auth_models import User, UserSession
+from ai_karen_engine.database.models.auth_models import (
+    PasswordResetToken,
+    User,
+    UserSession,
+)
+from ai_karen_engine.security import auth_manager
 from ai_karen_engine.security.config import AuthConfig
 from ai_karen_engine.security.intelligence_engine import IntelligenceEngine
 from ai_karen_engine.security.models import AuthContext, SessionData, UserData
-from ai_karen_engine.security.production_auth_service import ProductionAuthService
 from ai_karen_engine.security.security_enhancer import (
     AuditLogger,
     RateLimiter,
     SecurityEnhancer,
 )
-from ai_karen_engine.services.auth_service import AuthService as BasicAuthService
-
-# mypy: ignore-errors
-
 
 logger = get_logger(__name__)
 
 
-class CoreAuthenticator:
-    """Simple authentication service using a SQL database backend."""
+# ---------------------------------------------------------------------------
+# Core authentication backends
+# ---------------------------------------------------------------------------
+
+
+class InMemoryAuthenticator:
+    """Authentication backend using the in-memory :mod:`auth_manager`."""
+
+    def __init__(self) -> None:
+        self.secret_key = "change-me"
+        self.algorithm = "HS256"
+        self.access_token_expire_minutes = 30
+        self.refresh_token_expire_days = 7
+        self._active_sessions: Dict[str, Dict[str, Any]] = {}
+
+    async def create_user(
+        self,
+        email: str,
+        password: str,
+        full_name: Optional[str] = None,
+        roles: Optional[List[str]] = None,
+        tenant_id: str = "default",
+        preferences: Optional[Dict[str, Any]] = None,
+    ) -> UserData:
+        auth_manager.create_user(
+            username=email,
+            password=password,
+            roles=roles or ["user"],
+            tenant_id=tenant_id,
+            preferences=preferences or {},
+        )
+        return UserData(
+            user_id=email,
+            email=email,
+            full_name=full_name,
+            roles=roles or ["user"],
+            tenant_id=tenant_id,
+            preferences=preferences or {},
+            two_factor_enabled=False,
+            is_verified=True,
+        )
+
+    async def authenticate_user(
+        self,
+        email: str,
+        password: str,
+        ip_address: str = "unknown",
+        user_agent: str = "",
+    ) -> Optional[UserData]:
+        user_data = auth_manager.authenticate(email, password)
+        if not user_data:
+            return None
+        return UserData(
+            user_id=email,
+            email=email,
+            full_name=user_data.get("full_name"),
+            roles=user_data.get("roles", ["user"]),
+            tenant_id=user_data.get("tenant_id", "default"),
+            preferences=user_data.get("preferences", {}),
+            two_factor_enabled=user_data.get("two_factor_enabled", False),
+            is_verified=user_data.get("is_verified", True),
+        )
+
+    def _generate_access_token(self, user_id: str) -> str:
+        payload = {
+            "user_id": user_id,
+            "exp": datetime.utcnow()
+            + timedelta(minutes=self.access_token_expire_minutes),
+            "iat": datetime.utcnow(),
+            "type": "access",
+        }
+        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+
+    def _generate_refresh_token(self, user_id: str) -> str:
+        payload = {
+            "user_id": user_id,
+            "exp": datetime.utcnow() + timedelta(days=self.refresh_token_expire_days),
+            "iat": datetime.utcnow(),
+            "type": "refresh",
+        }
+        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+
+    async def create_session(
+        self,
+        user_id: str,
+        ip_address: str = "unknown",
+        user_agent: str = "",
+        device_fingerprint: Optional[str] = None,
+    ) -> SessionData:
+        access_token = self._generate_access_token(user_id)
+        refresh_token = self._generate_refresh_token(user_id)
+        session_token = secrets.token_urlsafe(32)
+        session_data = {
+            "user_id": user_id,
+            "ip_address": ip_address,
+            "user_agent": user_agent,
+            "device_fingerprint": device_fingerprint,
+            "created_at": datetime.utcnow().isoformat(),
+            "last_accessed": datetime.utcnow().isoformat(),
+        }
+        self._active_sessions[session_token] = session_data
+        return SessionData(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            session_token=session_token,
+            expires_in=self.access_token_expire_minutes * 60,
+            user_data=None,
+        )
+
+    async def validate_session(
+        self,
+        session_token: str,
+        ip_address: str = "unknown",
+        user_agent: str = "",
+    ) -> Optional[UserData]:
+        try:
+            payload = jwt.decode(session_token, self.secret_key, algorithms=[self.algorithm])
+            user_id = payload.get("user_id")
+            token_type = payload.get("type")
+            if user_id and token_type == "access":
+                user_data = auth_manager._USERS.get(user_id)
+                if user_data:
+                    return UserData(
+                        user_id=user_id,
+                        email=user_id,
+                        full_name=user_data.get("full_name"),
+                        roles=user_data.get("roles", ["user"]),
+                        tenant_id=user_data.get("tenant_id", "default"),
+                        preferences=user_data.get("preferences", {}),
+                        two_factor_enabled=user_data.get("two_factor_enabled", False),
+                        is_verified=user_data.get("is_verified", True),
+                    )
+        except jwt.PyJWTError:
+            pass
+
+        session_data = self._active_sessions.get(session_token)
+        if session_data:
+            user_id = session_data["user_id"]
+            user_data = auth_manager._USERS.get(user_id)
+            if user_data:
+                return UserData(
+                    user_id=user_id,
+                    email=user_id,
+                    full_name=user_data.get("full_name"),
+                    roles=user_data.get("roles", ["user"]),
+                    tenant_id=user_data.get("tenant_id", "default"),
+                    preferences=user_data.get("preferences", {}),
+                    two_factor_enabled=user_data.get("two_factor_enabled", False),
+                    is_verified=user_data.get("is_verified", True),
+                )
+        return None
+
+    async def invalidate_session(self, session_token: str) -> bool:
+        if session_token in self._active_sessions:
+            del self._active_sessions[session_token]
+            return True
+        return False
+
+    async def update_user_password(self, user_id: str, new_password: str) -> bool:
+        try:
+            auth_manager.update_password(user_id, new_password)
+            return True
+        except Exception:
+            return False
+
+    async def update_user_preferences(
+        self, user_id: str, preferences: Dict[str, Any]
+    ) -> bool:
+        if user_id in auth_manager._USERS:
+            auth_manager._USERS[user_id]["preferences"] = preferences
+            auth_manager.save_users()
+            return True
+        return False
+
+    async def create_password_reset_token(
+        self,
+        email: str,
+        ip_address: str = "unknown",
+        user_agent: str = "",
+    ) -> Optional[str]:
+        if email not in auth_manager._USERS:
+            return None
+        return auth_manager.create_password_reset_token(email)
+
+    async def verify_password_reset_token(
+        self, token: str, new_password: str
+    ) -> bool:
+        email = auth_manager.verify_password_reset_token(token)
+        if not email:
+            return False
+        auth_manager.update_password(email, new_password)
+        return True
+
+
+class DatabaseAuthenticator:
+    """Authentication backend using the SQL database."""
 
     session_expire_hours = 24
 
     def hash_password(self, password: str) -> str:
-        """Hash a password using bcrypt."""
-
         return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     def verify_password(self, password: str, hashed_password: str) -> bool:
-        """Verify a password against its bcrypt hash."""
-
         try:
             return bcrypt.checkpw(
                 password.encode("utf-8"), hashed_password.encode("utf-8")
@@ -79,15 +252,11 @@ class CoreAuthenticator:
         tenant_id: str = "default",
         preferences: Optional[Dict[str, Any]] = None,
     ) -> UserData:
-        """Create a new user with a securely hashed password."""
-
         roles = roles or ["user"]
         preferences = preferences or {}
-
         with get_db_session() as db:
             if db.query(User).filter(User.email == email).first():
                 raise ValueError("User already exists")
-
             user = User(
                 email=email,
                 password_hash=self.hash_password(password),
@@ -99,17 +268,15 @@ class CoreAuthenticator:
             db.add(user)
             db.commit()
             db.refresh(user)
-
         return self._to_user_data(user)
 
-    async def authenticate_user(self, email: str, password: str) -> Optional[UserData]:
-        """Authenticate a user by verifying their password."""
-
+    async def authenticate_user(
+        self, email: str, password: str, **_: Any
+    ) -> Optional[UserData]:
         with get_db_session() as db:
             user = db.query(User).filter(User.email == email).first()
             if not user or not self.verify_password(password, user.password_hash):
                 return None
-
         return self._to_user_data(user)
 
     async def create_session(
@@ -119,8 +286,6 @@ class CoreAuthenticator:
         user_agent: str = "",
         device_fingerprint: Optional[str] = None,
     ) -> SessionData:
-        """Create a session for an authenticated user."""
-
         session_token = secrets.token_urlsafe(32)
         refresh_token = secrets.token_urlsafe(32)
         expires_at = datetime.utcnow() + timedelta(hours=self.session_expire_hours)
@@ -147,9 +312,9 @@ class CoreAuthenticator:
             user_data=None,
         )
 
-    async def validate_session(self, session_token: str) -> Optional[UserData]:
-        """Validate a session token and return associated user data."""
-
+    async def validate_session(
+        self, session_token: str, **_: Any
+    ) -> Optional[UserData]:
         with get_db_session() as db:
             session = (
                 db.query(UserSession)
@@ -162,16 +327,12 @@ class CoreAuthenticator:
             )
             if not session:
                 return None
-
             user = db.query(User).filter(User.id == session.user_id).first()
             if not user:
                 return None
-
         return self._to_user_data(user)
 
     async def invalidate_session(self, session_token: str) -> bool:
-        """Invalidate an existing session."""
-
         with get_db_session() as db:
             session = (
                 db.query(UserSession)
@@ -182,11 +343,78 @@ class CoreAuthenticator:
                 return False
             session.is_active = False
             db.commit()
-            return True
+        return True
+
+    async def update_user_password(self, user_id: str, new_password: str) -> bool:
+        with get_db_session() as db:
+            user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+            if not user:
+                return False
+            user.password_hash = self.hash_password(new_password)
+            user.updated_at = datetime.utcnow()
+            db.commit()
+        return True
+
+    async def update_user_preferences(
+        self, user_id: str, preferences: Dict[str, Any]
+    ) -> bool:
+        with get_db_session() as db:
+            user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+            if not user:
+                return False
+            current = json.loads(user.preferences) if user.preferences else {}
+            current.update(preferences)
+            user.preferences = json.dumps(current)
+            user.updated_at = datetime.utcnow()
+            db.commit()
+        return True
+
+    async def create_password_reset_token(
+        self,
+        email: str,
+        ip_address: str = "unknown",
+        user_agent: str = "",
+    ) -> Optional[str]:
+        with get_db_session() as db:
+            user = db.query(User).filter(User.email == email).first()
+            if not user:
+                return None
+            token = secrets.token_urlsafe(32)
+            reset = PasswordResetToken(
+                user_id=user.id,
+                token=token,
+                expires_at=datetime.utcnow() + timedelta(hours=1),
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            db.add(reset)
+            db.commit()
+        return token
+
+    async def verify_password_reset_token(self, token: str, new_password: str) -> bool:
+        with get_db_session() as db:
+            reset = (
+                db.query(PasswordResetToken)
+                .filter(
+                    PasswordResetToken.token == token,
+                    PasswordResetToken.is_used.is_(False),
+                    PasswordResetToken.expires_at > datetime.utcnow(),
+                )
+                .first()
+            )
+            if not reset:
+                return False
+            user = db.query(User).filter(User.id == reset.user_id).first()
+            if not user:
+                return False
+            user.password_hash = self.hash_password(new_password)
+            user.updated_at = datetime.utcnow()
+            reset.is_used = True
+            reset.used_at = datetime.utcnow()
+            db.commit()
+        return True
 
     def _to_user_data(self, user: User) -> UserData:
-        """Convert ORM user model to :class:`UserData`."""
-
         return UserData(
             user_id=str(user.id),
             email=user.email,
@@ -199,6 +427,47 @@ class CoreAuthenticator:
         )
 
 
+class CoreAuthenticator:
+    """Wrapper that selects the appropriate backend implementation."""
+
+    def __init__(self, use_database: bool = False) -> None:
+        self.backend = (
+            DatabaseAuthenticator() if use_database else InMemoryAuthenticator()
+        )
+
+    async def create_user(self, *args, **kwargs):
+        return await self.backend.create_user(*args, **kwargs)
+
+    async def authenticate_user(self, *args, **kwargs):
+        return await self.backend.authenticate_user(*args, **kwargs)
+
+    async def create_session(self, *args, **kwargs):
+        return await self.backend.create_session(*args, **kwargs)
+
+    async def validate_session(self, *args, **kwargs):
+        return await self.backend.validate_session(*args, **kwargs)
+
+    async def invalidate_session(self, *args, **kwargs):
+        return await self.backend.invalidate_session(*args, **kwargs)
+
+    async def update_user_password(self, *args, **kwargs):
+        return await self.backend.update_user_password(*args, **kwargs)
+
+    async def update_user_preferences(self, *args, **kwargs):
+        return await self.backend.update_user_preferences(*args, **kwargs)
+
+    async def create_password_reset_token(self, *args, **kwargs):
+        return await self.backend.create_password_reset_token(*args, **kwargs)
+
+    async def verify_password_reset_token(self, *args, **kwargs):
+        return await self.backend.verify_password_reset_token(*args, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# High level service
+# ---------------------------------------------------------------------------
+
+
 class AuthService:
     """High level authentication façade with optional advanced features."""
 
@@ -206,47 +475,23 @@ class AuthService:
         self,
         config: Optional[AuthConfig] = None,
         metrics_hook: Optional[Callable[[str, Dict[str, Any]], None]] = None,
-        core_authenticator: Optional[Any] = None,
+        core_authenticator: Optional[CoreAuthenticator] = None,
         security_enhancer: Optional[SecurityEnhancer] = None,
-        intelligence_engine: Optional[IntelligentAuthService] = None,
+        intelligence_engine: Optional[IntelligenceEngine] = None,
         session_store: Optional[Any] = None,
     ) -> None:
-        """Create a new :class:`AuthService` instance.
-
-        Parameters
-        ----------
-        config:
-            Authentication configuration options.
-        metrics_hook:
-            Optional callback used by :class:`SecurityEnhancer` to emit metrics.
-        core_authenticator:
-            Pluggable authenticator responsible for user management and
-            credential verification.  If omitted, a production or in-memory
-            authenticator is created based on ``config``.
-        security_enhancer:
-            Optional security enhancer instance handling rate limiting and
-            audit logging.
-        intelligence_engine:
-            Engine performing behavioural analysis of login attempts.
-        session_store:
-            Storage backend used for session management.  Defaults to the
-            ``core_authenticator`` if it provides the required methods.
-        """
-
         self.config = config or AuthConfig()
 
-        # Dependency injection defaults
-        self.core_authenticator = core_authenticator or (
-            ProductionAuthService() if self.config.features.use_database else BasicAuthService()
+        self.core_authenticator = core_authenticator or CoreAuthenticator(
+            self.config.features.use_database
         )
-        
         self.session_store = session_store or self.core_authenticator
 
-        self.intelligent_service: Optional[IntelligentAuthService] = (
+        self.intelligence_engine = (
             intelligence_engine
             if intelligence_engine is not None
             else (
-                IntelligentAuthService()
+                IntelligenceEngine()
                 if self.config.features.enable_intelligent_checks
                 else None
             )
@@ -279,13 +524,11 @@ class AuthService:
         email: str,
         password: str,
         full_name: Optional[str] = None,
-        roles: Optional[list[str]] = None,
+        roles: Optional[List[str]] = None,
         tenant_id: str = "default",
         preferences: Optional[Dict[str, Any]] = None,
     ) -> UserData:
-        """Create a new user using the configured backend."""
-
-        user = await self.core_authenticator.create_user(
+        return await self.core_authenticator.create_user(
             email=email,
             password=password,
             full_name=full_name,
@@ -293,7 +536,6 @@ class AuthService:
             tenant_id=tenant_id,
             preferences=preferences,
         )
-        return self._to_user_data(user)
 
     async def authenticate_user(
         self,
@@ -302,7 +544,6 @@ class AuthService:
         ip_address: str = "unknown",
         user_agent: str = "",
     ) -> Optional[UserData]:
-        """Authenticate a user and optionally run intelligent checks."""
         if self.security_enhancer:
             self.security_enhancer.log_event("login_attempt", {"email": email})
             if not self.security_enhancer.allow_auth_attempt(email):
@@ -320,7 +561,7 @@ class AuthService:
                 self.security_enhancer.log_event("login_failure", {"email": email})
             return None
 
-        user_data = self._to_user_data(user)
+        user_data = user
 
         if self.intelligence_engine:
             context = AuthContext(
@@ -353,16 +594,12 @@ class AuthService:
         user_agent: str = "",
         device_fingerprint: Optional[str] = None,
     ) -> SessionData:
-        """Create a session using the configured backend."""
-
-        session = await self.session_store.create_session(
+        return await self.session_store.create_session(
             user_id=user_id,
             ip_address=ip_address,
             user_agent=user_agent,
             device_fingerprint=device_fingerprint,
         )
-
-        return self._to_session_data(session)
 
     async def validate_session(
         self,
@@ -370,22 +607,13 @@ class AuthService:
         ip_address: str = "unknown",
         user_agent: str = "",
     ) -> Optional[UserData]:
-        """Validate a session token and return associated user data."""
-
-        user = await self.session_store.validate_session(
+        return await self.session_store.validate_session(
             session_token=session_token,
             ip_address=ip_address,
             user_agent=user_agent,
         )
 
-        if not user:
-            return None
-
-        return self._to_user_data(user)
-
     async def invalidate_session(self, session_token: str) -> bool:
-        """Invalidate a session token if supported by the backend."""
-
         if hasattr(self.session_store, "invalidate_session"):
             return await self.session_store.invalidate_session(session_token)
         return False
@@ -396,117 +624,35 @@ class AuthService:
         ip_address: str = "unknown",
         user_agent: str = "",
     ) -> Optional[SessionData]:
-        """Exchange a refresh token for a new session.
-
-        Parameters
-        ----------
-        refresh_token:
-            Previously issued refresh token.
-        ip_address:
-            Client IP address associated with the request.
-        user_agent:
-            User agent string for auditing purposes.
-
-        Returns
-        -------
-        Optional[SessionData]
-            Newly issued session bundle or ``None`` if refresh fails.
-        """
-
         if hasattr(self.session_store, "refresh_token"):
-            session = await self.session_store.refresh_token(
+            return await self.session_store.refresh_token(
                 refresh_token=refresh_token,
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
-            if session:
-                return self._to_session_data(session)
         return None
 
     async def update_password(self, user_id: str, new_password: str) -> bool:
-        """Update the password for an existing user."""
-
         if hasattr(self.core_authenticator, "update_user_password"):
             return await self.core_authenticator.update_user_password(
-                user_id=user_id, new_password=new_password
-            )
-        if hasattr(self.core_authenticator, "update_password"):
-            return await self.core_authenticator.update_password(
                 user_id=user_id, new_password=new_password
             )
         return False
 
     async def reset_password(self, token: str, new_password: str) -> bool:
-        """Reset a user's password using a reset token."""
-
         if hasattr(self.core_authenticator, "verify_password_reset_token"):
             return await self.core_authenticator.verify_password_reset_token(
                 token=token, new_password=new_password
             )
-        if hasattr(self.core_authenticator, "reset_password"):
-            return await self.core_authenticator.reset_password(
-                token=token, new_password=new_password
-            )
         return False
 
-    def log_event(
-        self, event: str, data: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Record an authentication related event."""
-
+    def log_event(self, event: str, data: Optional[Dict[str, Any]] = None) -> None:
         if self.security_enhancer:
             self.security_enhancer.log_event(event, data)
 
-    # ------------------------------------------------------------------
-    # Internal helpers
 
-    def _to_user_data(self, data: Any) -> UserData:
-        """Convert various user representations into :class:`UserData`."""
-
-        if isinstance(data, UserData):
-            return data
-
-        if isinstance(data, dict):
-            return UserData(
-                user_id=str(data.get("user_id") or data.get("id", "")),
-                email=data.get("email", ""),
-                full_name=data.get("full_name"),
-                roles=list(data.get("roles", [])),
-                tenant_id=data.get("tenant_id", "default"),
-                preferences=data.get("preferences", {}),
-                two_factor_enabled=data.get("two_factor_enabled", False),
-                is_verified=data.get("is_verified", True),
-            )
-
-        return UserData(
-            user_id=str(getattr(data, "id", getattr(data, "user_id", ""))),
-            email=getattr(data, "email", ""),
-            full_name=getattr(data, "full_name", None),
-            roles=list(getattr(data, "roles", []) or []),
-            tenant_id=getattr(data, "tenant_id", "default"),
-            preferences=getattr(data, "preferences", {}),
-            two_factor_enabled=getattr(data, "two_factor_enabled", False),
-            is_verified=getattr(data, "is_verified", True),
-        )
-
-    def _to_session_data(
-        self, data: Any, user_data: Optional[UserData] = None
-    ) -> SessionData:
-        """Convert raw session data into :class:`SessionData`."""
-
-        if isinstance(data, SessionData):
-            return data
-
-        if isinstance(data, dict):
-            return SessionData(
-                access_token=data.get("access_token", ""),
-                refresh_token=data.get("refresh_token", ""),
-                session_token=data.get("session_token", ""),
-                expires_in=data.get("expires_in", 0),
-                user_data=user_data,
-            )
-
-        return SessionData("", "", "", 0, user_data)
+auth_service = AuthService()
 
 
-__all__ = ["AuthService", "AuthConfig"]
+__all__ = ["AuthService", "AuthConfig", "auth_service"]
+
