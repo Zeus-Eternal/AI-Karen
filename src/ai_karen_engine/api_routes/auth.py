@@ -3,23 +3,33 @@ Production Authentication Routes
 Real database-backed authentication with secure session management
 """
 import hashlib
+import warnings
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr
 
+from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.core.dependencies import (
     get_current_tenant_id,
     get_current_user_context,
 )
-from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.security.auth_service import get_auth_service
+from ai_karen_engine.security.auth_service import auth_service as auth_service_factory
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["auth"])
-auth_service = get_auth_service()
+auth_service = auth_service_factory()
+
+
+def get_auth_service():  # pragma: no cover - legacy alias
+    warnings.warn(
+        "'get_auth_service' is deprecated. Use 'auth_service()' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return auth_service
 
 
 # Alias core dependencies for clarity
@@ -354,7 +364,9 @@ async def update_credentials(
         )
 
         if not updated_user_data:
-            raise HTTPException(status_code=500, detail="Failed to get updated user data")
+            raise HTTPException(
+                status_code=500, detail="Failed to get updated user data"
+            )
 
         # Create new session (invalidates old one)
         session_data = await auth_service.create_session(

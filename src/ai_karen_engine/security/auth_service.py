@@ -31,9 +31,9 @@ from ai_karen_engine.security.security_enhancer import (
     SecurityEnhancer,
 )
 from ai_karen_engine.security.session_store import (
+    DatabaseSessionStore,
     InMemorySessionStore,
     RedisSessionStore,
-    DatabaseSessionStore,
 )
 
 try:  # pragma: no cover - redis optional at runtime
@@ -724,7 +724,7 @@ class AuthService:
 _auth_service_instance: Optional[AuthService] = None
 
 
-def get_auth_service() -> AuthService:
+def _get_auth_service() -> AuthService:
     """Return a shared :class:`AuthService` instance."""
     global _auth_service_instance
     if _auth_service_instance is None:
@@ -732,15 +732,32 @@ def get_auth_service() -> AuthService:
     return _auth_service_instance
 
 
-def __getattr__(name: str) -> Any:  # pragma: no cover - legacy access
-    if name == "auth_service":
+class _AuthServiceAccessor:
+    """Callable accessor returning the unified auth service."""
+
+    def __call__(self) -> AuthService:
+        return _get_auth_service()
+
+    def __getattr__(self, name: str) -> Any:
         warnings.warn(
-            "'auth_service' direct import is deprecated. Use 'get_auth_service()' instead.",
+            "Direct auth_service usage is deprecated. Call auth_service() instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        return get_auth_service()
-    raise AttributeError(name)
+        return getattr(_get_auth_service(), name)
 
 
-__all__ = ["AuthService", "AuthConfig", "get_auth_service", "auth_service"]
+auth_service = _AuthServiceAccessor()
+
+
+def get_auth_service() -> AuthService:  # pragma: no cover - deprecated
+    """Deprecated accessor for backward compatibility."""
+    warnings.warn(
+        "'get_auth_service' is deprecated. Use 'auth_service()' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _get_auth_service()
+
+
+__all__ = ["AuthService", "AuthConfig", "auth_service", "get_auth_service"]
