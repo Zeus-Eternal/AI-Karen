@@ -14,10 +14,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.client import create_database_tables, db_client
-from ai_karen_engine.security.auth_service import AuthService
-from ai_karen_engine.security.config import AuthConfig, FeatureToggles
+from ai_karen_engine.security.auth_service import get_auth_service
 
-auth_service = AuthService(AuthConfig(features=FeatureToggles(use_database=True)))
+auth_service = get_auth_service()
 
 logger = get_logger(__name__)
 

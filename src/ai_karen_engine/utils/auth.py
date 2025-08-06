@@ -9,7 +9,7 @@ import asyncio
 
 import jwt
 
-from ai_karen_engine.security.auth_service import auth_service
+from ai_karen_engine.security.auth_service import get_auth_service
 from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -41,7 +41,7 @@ def create_session(
         # Use auth service to create session
         loop = asyncio.get_event_loop()
         session_data = loop.run_until_complete(
-            auth_service.create_session(
+            get_auth_service().create_session(
                 user_id=user_id,
                 ip_address=ip,
                 user_agent=user_agent,
@@ -77,7 +77,7 @@ def validate_session(token: str, user_agent: str, ip: str) -> Optional[Dict[str,
         # First try to validate using auth service
         loop = asyncio.get_event_loop()
         user_data = loop.run_until_complete(
-            auth_service.validate_session(
+            get_auth_service().validate_session(
                 session_token=token,
                 ip_address=ip,
                 user_agent=user_agent

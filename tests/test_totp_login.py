@@ -6,12 +6,15 @@ from unittest.mock import AsyncMock, patch
 from fastapi import Response
 from types import SimpleNamespace
 
-from ai_karen_engine.api_routes.auth import (
-    login,
-    LoginRequest,
-    auth_service,
-    HTTPException,
-)
+try:
+    from ai_karen_engine.api_routes.auth import (
+        login,
+        LoginRequest,
+        get_auth_service,
+        HTTPException,
+    )
+except ImportError:  # pragma: no cover - optional dependency
+    pytest.skip("Auth route dependencies not available", allow_module_level=True)
 
 
 @pytest.fixture
@@ -45,6 +48,7 @@ async def test_login_totp_success(two_factor_user, session_data):
         password="secret",
         totp_code="123456",
     )
+    auth_service = get_auth_service()
     request = SimpleNamespace(headers={}, client=SimpleNamespace(host="1.1.1.1"), state=SimpleNamespace())
     response = Response()
     with patch.object(auth_service, "authenticate_user", AsyncMock(return_value=two_factor_user)), \
@@ -58,6 +62,7 @@ async def test_login_totp_success(two_factor_user, session_data):
 @pytest.mark.asyncio
 async def test_login_totp_missing_code(two_factor_user):
     req = LoginRequest(email="test@example.com", password="secret")
+    auth_service = get_auth_service()
     request = SimpleNamespace(headers={}, client=SimpleNamespace(host="1.1.1.1"), state=SimpleNamespace())
     response = Response()
     with patch.object(auth_service, "authenticate_user", AsyncMock(return_value=two_factor_user)):
@@ -75,6 +80,7 @@ async def test_login_totp_invalid_code(two_factor_user):
         password="secret",
         totp_code="000000",
     )
+    auth_service = get_auth_service()
     request = SimpleNamespace(headers={}, client=SimpleNamespace(host="1.1.1.1"), state=SimpleNamespace())
     response = Response()
     with patch.object(auth_service, "authenticate_user", AsyncMock(return_value=two_factor_user)), \

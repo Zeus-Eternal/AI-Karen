@@ -15,10 +15,11 @@ from ai_karen_engine.core.dependencies import (
 )
 from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.security.auth_service import auth_service
+from ai_karen_engine.security.auth_service import get_auth_service
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["auth"])
+auth_service = get_auth_service()
 
 
 # Alias core dependencies for clarity
