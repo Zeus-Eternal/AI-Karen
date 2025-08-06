@@ -58,6 +58,8 @@ class SessionConfig:
 
     session_timeout: timedelta = timedelta(hours=1)
     cookie_name: str = "session"
+    storage_backend: str = "memory"
+    redis_url: Optional[str] = None
 
     @classmethod
     def from_env(cls) -> "SessionConfig":
@@ -73,6 +75,12 @@ class SessionConfig:
         return cls(
             session_timeout=timedelta(seconds=timeout_seconds),
             cookie_name=os.getenv("AUTH_SESSION_COOKIE_NAME", defaults.cookie_name),
+            storage_backend=os.getenv("AUTH_SESSION_BACKEND", defaults.storage_backend),
+            redis_url=os.getenv(
+                "AUTH_SESSION_REDIS_URL",
+                os.getenv("REDIS_URL", defaults.redis_url or ""),
+            )
+            or None,
         )
 
 
@@ -167,6 +175,12 @@ class AuthConfig:
                 )
             ),
             cookie_name=session_data.get("cookie_name", SessionConfig().cookie_name),
+            storage_backend=session_data.get(
+                "storage_backend", SessionConfig().storage_backend
+            ),
+            redis_url=session_data.get(
+                "redis_url", SessionConfig().redis_url
+            ),
         )
 
         feature_cfg = FeatureToggles(

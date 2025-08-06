@@ -12,6 +12,11 @@ class ValidationError(Exception):
     pass
 
 
+class EmailStr(str):
+    """Simple EmailStr stub for compatibility."""
+    pass
+
+
 def Field(
     default: Any = ...,
     *,
