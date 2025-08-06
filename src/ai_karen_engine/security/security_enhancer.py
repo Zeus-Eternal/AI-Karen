@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Security enhancement utilities for authentication services.
 
 This module defines three lightweight components used to harden the
@@ -15,6 +13,8 @@ This module defines three lightweight components used to harden the
     methods for the authentication service.
 """
 
+from __future__ import annotations
+
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
@@ -22,6 +22,8 @@ from datetime import datetime
 from typing import Callable, Deque, Dict, List, Optional
 
 from ai_karen_engine.core.logging import get_logger
+
+# mypy: ignore-errors
 
 logger = get_logger(__name__)
 

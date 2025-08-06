@@ -13,10 +13,9 @@ light-weight in-memory implementation from
 :class:`~ai_karen_engine.services.auth_service.AuthService` is used.
 
 If ``enable_intelligent_checks`` is set, every successful authentication
-attempt is analysed by
-:class:`~ai_karen_engine.security.intelligent_auth_service.IntelligentAuthService`.
-If the analysis decides the attempt should be blocked ``authenticate_user``
-returns ``None``.
+attempt is scored by :class:`~ai_karen_engine.security.intelligence_engine.IntelligenceEngine`.
+If the calculated risk exceeds configured thresholds the attempt is blocked
+and ``authenticate_user`` returns ``None``.
 """
 
 from __future__ import annotations
@@ -35,18 +34,15 @@ from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.client import get_db_session
 from ai_karen_engine.database.models.auth_models import User, UserSession
 from ai_karen_engine.security.config import AuthConfig
-from ai_karen_engine.security.intelligent_auth_service import (
-    AuthContext,
-    IntelligentAuthService,
-)
-from ai_karen_engine.security.models import SessionData, UserData
+from ai_karen_engine.security.intelligence_engine import IntelligenceEngine
+from ai_karen_engine.security.models import AuthContext, SessionData, UserData
 from ai_karen_engine.security.production_auth_service import ProductionAuthService
-from ai_karen_engine.services.auth_service import AuthService as BasicAuthService
 from ai_karen_engine.security.security_enhancer import (
     AuditLogger,
     RateLimiter,
     SecurityEnhancer,
 )
+from ai_karen_engine.services.auth_service import AuthService as BasicAuthService
 
 # mypy: ignore-errors
 
@@ -243,6 +239,7 @@ class AuthService:
         self.core_authenticator = core_authenticator or (
             ProductionAuthService() if self.config.features.use_database else BasicAuthService()
         )
+        
         self.session_store = session_store or self.core_authenticator
 
         self.intelligent_service: Optional[IntelligentAuthService] = (
@@ -325,7 +322,7 @@ class AuthService:
 
         user_data = self._to_user_data(user)
 
-        if self.intelligent_service:
+        if self.intelligence_engine:
             context = AuthContext(
                 email=email,
                 password_hash=hashlib.sha256(password.encode()).hexdigest(),
@@ -334,9 +331,10 @@ class AuthService:
                 timestamp=datetime.utcnow(),
                 request_id=f"{email}:{int(time.time()*1000)}",
             )
-            analysis = await self.intelligent_service.analyze_login_attempt(context)
-            if analysis.should_block:
-                logger.warning("Login attempt blocked by intelligent auth service")
+            risk_score = await self.intelligence_engine.calculate_risk_score(context)
+            thresholds = self.intelligence_engine.config.risk_thresholds
+            if risk_score >= thresholds.high_risk_threshold:
+                logger.warning("Login attempt blocked due to high risk score")
                 if self.security_enhancer:
                     self.security_enhancer.log_event(
                         "login_blocked", {"email": email, "reason": "intelligent"}
