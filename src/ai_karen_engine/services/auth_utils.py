@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, Request, Response, status
 
+from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.services.auth_service import auth_service
 
 # Shared cookie name for authentication sessions
@@ -22,12 +23,17 @@ def set_session_cookie(
     response: Response, session_token: str, max_age: int = 24 * 60 * 60
 ) -> None:
     """Set the authentication session cookie on the response."""
+    secure_flag = (
+        settings.auth.cookie_secure
+        if settings.auth.cookie_secure is not None
+        else settings.environment.lower() == "production"
+    )
     response.set_cookie(
         COOKIE_NAME,
         session_token,
         max_age=max_age,
         httponly=True,
-        secure=True,
+        secure=secure_flag,
         samesite="strict",
     )
 

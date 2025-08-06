@@ -13,6 +13,7 @@ from ai_karen_engine.core.dependencies import (
     get_current_tenant_id,
     get_current_user_context,
 )
+from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.security.auth_manager import verify_totp
 from ai_karen_engine.services.auth_service import auth_service
@@ -38,12 +39,17 @@ def set_session_cookie(
         token: Session token to store in the cookie.
         max_age: Lifetime of the cookie in seconds. Defaults to 24 hours.
     """
+    secure_flag = (
+        settings.auth.cookie_secure
+        if settings.auth.cookie_secure is not None
+        else settings.environment.lower() == "production"
+    )
     response.set_cookie(
         COOKIE_NAME,
         token,
         max_age=max_age,
         httponly=True,
-        secure=True,
+        secure=secure_flag,
         samesite="strict",
     )
 
