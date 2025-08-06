@@ -19,35 +19,12 @@ import secrets
 import time
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
 
 from ai_karen_engine.security import auth_manager
+from ai_karen_engine.security.models import SessionData, UserData
 from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
-
-
-@dataclass
-class UserData:
-    """User data structure"""
-    user_id: str
-    email: str
-    full_name: Optional[str]
-    roles: List[str]
-    tenant_id: str
-    preferences: Dict[str, Any]
-    two_factor_enabled: bool
-    is_verified: bool
-
-
-@dataclass
-class SessionData:
-    """Session data structure"""
-    access_token: str
-    refresh_token: str
-    session_token: str
-    expires_in: int
-    user_data: UserData
 
 
 class AuthService:
@@ -63,66 +40,35 @@ class AuthService:
         # Session storage (in production, this should use Redis)
         self._active_sessions: Dict[str, Dict[str, Any]] = {}
         
+
+
     async def authenticate_user(
         self,
         email: str,
         password: str,
         ip_address: str = "unknown",
-        user_agent: str = ""
-    ) -> Optional[Dict[str, Any]]:
-        """Authenticate user with database"""
-        
+        user_agent: str = "",
+    ) -> Optional[UserData]:
+        """Authenticate user with email and password."""
+
         try:
-            # Import database dependencies
-            import os
-            import bcrypt
-            from sqlalchemy import create_engine, text
-            
-            # Get database URL from environment
-            database_url = os.environ.get('POSTGRES_URL', 'postgresql://karen_user:karen_secure_pass_change_me@localhost:5432/ai_karen')
-            
-            engine = create_engine(database_url)
-            with engine.connect() as connection:
-                # Query user from database
-                result = connection.execute(
-                    text('''
-                        SELECT u.id, u.email, u.password_hash, u.roles, u.preferences, 
-                               u.is_active, u.is_verified, u.tenant_id, t.slug as tenant_slug
-                        FROM users u 
-                        LEFT JOIN tenants t ON u.tenant_id = t.id 
-                        WHERE u.email = :email AND u.is_active = true
-                    '''),
-                    {'email': email}
-                )
-                user_row = result.fetchone()
-                
-                if not user_row:
-                    logger.warning(f"User not found or inactive: {email}")
-                    return None
-                
-                user_id, user_email, password_hash, roles, preferences, is_active, is_verified, tenant_id, tenant_slug = user_row
-                
-                # Verify password
-                if not password_hash or not bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8')):
-                    logger.warning(f"Invalid password for user: {email}")
-                    return None
-                
-                # Convert to our expected format
-                return {
-                    "user_id": str(user_id),
-                    "email": user_email,
-                    "full_name": None,  # Not stored in current schema
-                    "roles": roles or ["user"],
-                    "tenant_id": str(tenant_id),
-                    "preferences": preferences or {},
-                    "two_factor_enabled": False,  # Not implemented yet
-                    "is_verified": is_verified
-                }
-            
+            user_data = auth_manager.authenticate(email, password)
+            if not user_data:
+                return None
+
+            return UserData(
+                user_id=email,
+                email=email,
+                full_name=user_data.get("full_name"),
+                roles=user_data.get("roles", ["user"]),
+                tenant_id=user_data.get("tenant_id", "default"),
+                preferences=user_data.get("preferences", {}),
+                two_factor_enabled=user_data.get("two_factor_enabled", False),
+                is_verified=user_data.get("is_verified", True),
+            )
         except Exception as e:
-            logger.error(f"Database authentication failed for {email}: {e}")
+            logger.error(f"Authentication failed for {email}: {e}")
             return None
-    
     async def create_user(
         self,
         email: str,
@@ -165,106 +111,86 @@ class AuthService:
         user_id: str,
         ip_address: str = "unknown",
         user_agent: str = "",
-        device_fingerprint: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """Create a new session for authenticated user"""
-        
+        device_fingerprint: Optional[str] = None,
+    ) -> SessionData:
+        """Create a new session for authenticated user."""
+
         try:
-            # Generate tokens
             access_token = self._generate_access_token(user_id)
             refresh_token = self._generate_refresh_token(user_id)
             session_token = secrets.token_urlsafe(32)
-            
-            # Store session data
+
             session_data = {
                 "user_id": user_id,
                 "ip_address": ip_address,
                 "user_agent": user_agent,
                 "device_fingerprint": device_fingerprint,
                 "created_at": datetime.utcnow().isoformat(),
-                "last_accessed": datetime.utcnow().isoformat()
+                "last_accessed": datetime.utcnow().isoformat(),
             }
-            
+
             self._active_sessions[session_token] = session_data
-            
-            return {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "session_token": session_token,
-                "expires_in": self.access_token_expire_minutes * 60,
-                "token_type": "bearer"
-            }
-            
+
+            return SessionData(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                session_token=session_token,
+                expires_in=self.access_token_expire_minutes * 60,
+                user_data=None,
+            )
         except Exception as e:
             logger.error(f"Session creation failed for user {user_id}: {e}")
             raise
-    
     async def validate_session(
         self,
         session_token: str,
         ip_address: str = "unknown",
-        user_agent: str = ""
-    ) -> Optional[Dict[str, Any]]:
-        """Validate session token (either session token or JWT) and return user data"""
-        
+        user_agent: str = "",
+    ) -> Optional[UserData]:
+        """Validate session token (either session token or JWT) and return user data."""
+
         try:
-            # First try to validate as JWT token
             try:
                 payload = jwt.decode(session_token, self.secret_key, algorithms=[self.algorithm])
                 user_id = payload.get("user_id")
                 token_type = payload.get("type")
-                
                 if user_id and token_type == "access":
-                    # Get current user data from auth_manager
                     user_data = auth_manager._USERS.get(user_id)
                     if user_data:
-                        return {
-                            "user_id": user_id,
-                            "email": user_id,
-                            "full_name": user_data.get("full_name"),
-                            "roles": user_data.get("roles", ["user"]),
-                            "tenant_id": user_data.get("tenant_id", "default"),
-                            "preferences": user_data.get("preferences", {}),
-                            "two_factor_enabled": user_data.get("two_factor_enabled", False),
-                            "is_verified": user_data.get("is_verified", True)
-                        }
-            except jwt.InvalidTokenError:
-                # Not a JWT token, try as session token
+                        return UserData(
+                            user_id=user_id,
+                            email=user_id,
+                            full_name=user_data.get("full_name"),
+                            roles=user_data.get("roles", ["user"]),
+                            tenant_id=user_data.get("tenant_id", "default"),
+                            preferences=user_data.get("preferences", {}),
+                            two_factor_enabled=user_data.get("two_factor_enabled", False),
+                            is_verified=user_data.get("is_verified", True),
+
+                        )
+            except jwt.PyJWTError:
                 pass
-            
-            # Check if it's a session token
+
             session_data = self._active_sessions.get(session_token)
-            if not session_data:
-                return None
-            
-            user_id = session_data["user_id"]
-            
-            # Get current user data from auth_manager
-            user_data = auth_manager._USERS.get(user_id)
-            if not user_data:
-                # Clean up invalid session
-                self._active_sessions.pop(session_token, None)
-                return None
-            
-            # Update last accessed time
-            session_data["last_accessed"] = datetime.utcnow().isoformat()
-            
-            # Return user data in expected format
-            return {
-                "user_id": user_id,
-                "email": user_id,
-                "full_name": user_data.get("full_name"),
-                "roles": user_data.get("roles", ["user"]),
-                "tenant_id": user_data.get("tenant_id", "default"),
-                "preferences": user_data.get("preferences", {}),
-                "two_factor_enabled": user_data.get("two_factor_enabled", False),
-                "is_verified": user_data.get("is_verified", True)
-            }
-            
+            if session_data:
+                user_id = session_data["user_id"]
+                user_data = auth_manager._USERS.get(user_id)
+                if user_data:
+                    return UserData(
+                        user_id=user_id,
+                        email=user_id,
+                        full_name=user_data.get("full_name"),
+                        roles=user_data.get("roles", ["user"]),
+                        tenant_id=user_data.get("tenant_id", "default"),
+                        preferences=user_data.get("preferences", {}),
+                        two_factor_enabled=user_data.get("two_factor_enabled", False),
+                        is_verified=user_data.get("is_verified", True),
+                    )
+
+            return None
         except Exception as e:
             logger.error(f"Session validation failed: {e}")
             return None
-    
     async def invalidate_session(self, session_token: str) -> bool:
         """Invalidate a session"""
         

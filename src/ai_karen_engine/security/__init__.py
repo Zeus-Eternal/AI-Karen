@@ -1,6 +1,7 @@
 """Security utilities and canonical authentication service."""
 # mypy: ignore-errors
 
-from ai_karen_engine.security.auth_service import AuthService
+from .security_enhancer import AuditLogger, RateLimiter, SecurityEnhancer
 
-__all__ = ["AuthService"]
+__all__ = ["AuditLogger", "RateLimiter", "SecurityEnhancer"]
+
