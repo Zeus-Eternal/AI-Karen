@@ -61,6 +61,9 @@ class InMemoryAuthenticator:
         self.refresh_token_expire_days = int(
             config.jwt.refresh_token_expiry.total_seconds() // 86400
         )
+        self.password_reset_ttl = int(
+            config.jwt.password_reset_token_expiry.total_seconds()
+        )
         self._active_sessions: Dict[str, Dict[str, Any]] = {}
         if hasattr(auth_manager, "_USERS"):
             auth_manager._USERS = {}
@@ -250,7 +253,7 @@ class InMemoryAuthenticator:
     ) -> Optional[str]:
         if email not in auth_manager._USERS:
             return None
-        return auth_manager.create_password_reset_token(email)
+        return auth_manager.create_password_reset_token(email, self.password_reset_ttl)
 
     async def verify_password_reset_token(self, token: str, new_password: str) -> bool:
         email = auth_manager.verify_password_reset_token(token)
@@ -266,6 +269,9 @@ class DatabaseAuthenticator:
     def __init__(self, config: AuthConfig) -> None:
         self.session_expire_hours = int(
             config.session.session_timeout.total_seconds() // 3600
+        )
+        self.password_reset_ttl = int(
+            config.jwt.password_reset_token_expiry.total_seconds()
         )
 
     def hash_password(self, password: str) -> str:
@@ -419,7 +425,8 @@ class DatabaseAuthenticator:
             reset = PasswordResetToken(
                 user_id=user.id,
                 token=token,
-                expires_at=datetime.utcnow() + timedelta(hours=1),
+                expires_at=datetime.utcnow()
+                + timedelta(seconds=self.password_reset_ttl),
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
@@ -562,7 +569,10 @@ class AuthService:
             or self.config.features.enable_audit_logging
         ):
             rate_limiter = (
-                RateLimiter(max_calls=5, period=60)
+                RateLimiter(
+                    max_calls=self.config.rate_limiter.max_calls,
+                    period=self.config.rate_limiter.period_seconds,
+                )
                 if self.config.features.enable_rate_limiter
                 else None
             )
@@ -728,7 +738,7 @@ def _get_auth_service() -> AuthService:
     """Return a shared :class:`AuthService` instance."""
     global _auth_service_instance
     if _auth_service_instance is None:
-        _auth_service_instance = AuthService(AuthConfig.from_env())
+        _auth_service_instance = AuthService(AuthConfig.load())
     return _auth_service_instance
 
 

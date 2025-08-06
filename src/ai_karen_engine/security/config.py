@@ -26,6 +26,7 @@ class JWTConfig:
     algorithm: str = "HS256"
     access_token_expiry: timedelta = timedelta(minutes=15)
     refresh_token_expiry: timedelta = timedelta(days=7)
+    password_reset_token_expiry: timedelta = timedelta(hours=1)
 
     @classmethod
     def from_env(cls) -> "JWTConfig":
@@ -44,11 +45,18 @@ class JWTConfig:
                 str(int(defaults.refresh_token_expiry.total_seconds() // 86400)),
             )
         )
+        reset_hours = int(
+            os.getenv(
+                "AUTH_PASSWORD_RESET_TOKEN_EXPIRE_HOURS",
+                str(int(defaults.password_reset_token_expiry.total_seconds() // 3600)),
+            )
+        )
         return cls(
             secret_key=os.getenv("AUTH_SECRET_KEY", defaults.secret_key),
             algorithm=os.getenv("AUTH_ALGORITHM", defaults.algorithm),
             access_token_expiry=timedelta(minutes=access_minutes),
             refresh_token_expiry=timedelta(days=refresh_days),
+            password_reset_token_expiry=timedelta(hours=reset_hours),
         )
 
 
@@ -123,12 +131,36 @@ class FeatureToggles:
 
 
 @dataclass
+class RateLimiterConfig:
+    """Rate limiter settings."""
+
+    max_calls: int = 5
+    period_seconds: int = 60
+
+    @classmethod
+    def from_env(cls) -> "RateLimiterConfig":
+        defaults = cls()
+        return cls(
+            max_calls=int(
+                os.getenv("AUTH_RATE_LIMIT_MAX_CALLS", str(defaults.max_calls))
+            ),
+            period_seconds=int(
+                os.getenv(
+                    "AUTH_RATE_LIMIT_PERIOD_SECONDS",
+                    str(defaults.period_seconds),
+                )
+            ),
+        )
+
+
+@dataclass
 class AuthConfig:
     """Top level authentication configuration grouping settings."""
 
     jwt: JWTConfig = field(default_factory=JWTConfig)
     session: SessionConfig = field(default_factory=SessionConfig)
     features: FeatureToggles = field(default_factory=FeatureToggles)
+    rate_limiter: RateLimiterConfig = field(default_factory=RateLimiterConfig)
 
     @classmethod
     def from_env(cls) -> "AuthConfig":
@@ -138,6 +170,7 @@ class AuthConfig:
             jwt=JWTConfig.from_env(),
             session=SessionConfig.from_env(),
             features=FeatureToggles.from_env(),
+            rate_limiter=RateLimiterConfig.from_env(),
         )
 
     @classmethod
@@ -149,6 +182,7 @@ class AuthConfig:
         jwt_data = data.get("jwt", {})
         session_data = data.get("session", {})
         feature_data = data.get("features", {})
+        rate_data = data.get("rate_limiter", {})
 
         jwt_cfg = JWTConfig(
             secret_key=jwt_data.get("secret_key", JWTConfig().secret_key),
@@ -163,6 +197,15 @@ class AuthConfig:
                 days=jwt_data.get(
                     "refresh_token_expiry_days",
                     int(JWTConfig().refresh_token_expiry.total_seconds() // 86400),
+                )
+            ),
+            password_reset_token_expiry=timedelta(
+                hours=jwt_data.get(
+                    "password_reset_token_expiry_hours",
+                    int(
+                        JWTConfig().password_reset_token_expiry.total_seconds()
+                        // 3600
+                    ),
                 )
             ),
         )
@@ -202,7 +245,19 @@ class AuthConfig:
             ),
         )
 
-        return cls(jwt=jwt_cfg, session=session_cfg, features=feature_cfg)
+        rate_cfg = RateLimiterConfig(
+            max_calls=rate_data.get("max_calls", RateLimiterConfig().max_calls),
+            period_seconds=rate_data.get(
+                "period_seconds", RateLimiterConfig().period_seconds
+            ),
+        )
+
+        return cls(
+            jwt=jwt_cfg,
+            session=session_cfg,
+            features=feature_cfg,
+            rate_limiter=rate_cfg,
+        )
 
     @classmethod
     def load(cls, file_path: Optional[Union[str, Path]] = None) -> "AuthConfig":
