@@ -31,6 +31,8 @@ class FeatureToggles:
     use_database: bool = False
     enable_intelligent_checks: bool = False
     enable_refresh_tokens: bool = True
+    enable_rate_limiter: bool = False
+    enable_audit_logging: bool = False
 
 
 @dataclass

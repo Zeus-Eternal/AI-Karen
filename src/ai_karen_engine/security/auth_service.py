@@ -27,7 +27,7 @@ import secrets
 import time
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import bcrypt
 
@@ -42,6 +42,11 @@ from ai_karen_engine.security.intelligent_auth_service import (
 from ai_karen_engine.security.models import SessionData, UserData
 from ai_karen_engine.security.production_auth_service import ProductionAuthService
 from ai_karen_engine.services.auth_service import AuthService as BasicAuthService
+from ai_karen_engine.security.security_enhancer import (
+    AuditLogger,
+    RateLimiter,
+    SecurityEnhancer,
+)
 
 # mypy: ignore-errors
 
@@ -201,7 +206,11 @@ class CoreAuthenticator:
 class AuthService:
     """High level authentication façade with optional advanced features."""
 
-    def __init__(self, config: Optional[AuthConfig] = None) -> None:
+    def __init__(
+        self,
+        config: Optional[AuthConfig] = None,
+        metrics_hook: Optional[Callable[[str, Dict[str, Any]], None]] = None,
+    ) -> None:
         self.config = config or AuthConfig()
         self.basic_service = BasicAuthService()
         self.production_service: Optional[ProductionAuthService] = (
@@ -212,6 +221,24 @@ class AuthService:
             if self.config.features.enable_intelligent_checks
             else None
         )
+        self.security_enhancer: Optional[SecurityEnhancer] = None
+        if (
+            self.config.features.enable_rate_limiter
+            or self.config.features.enable_audit_logging
+        ):
+            rate_limiter = (
+                RateLimiter(max_calls=5, period=60)
+                if self.config.features.enable_rate_limiter
+                else None
+            )
+            audit_logger = (
+                AuditLogger(metrics_hook=metrics_hook)
+                if self.config.features.enable_audit_logging
+                else None
+            )
+            self.security_enhancer = SecurityEnhancer(
+                rate_limiter=rate_limiter, audit_logger=audit_logger
+            )
 
     async def create_user(
         self,
@@ -253,6 +280,10 @@ class AuthService:
         user_agent: str = "",
     ) -> Optional[UserData]:
         """Authenticate a user and optionally run intelligent checks."""
+        if self.security_enhancer:
+            self.security_enhancer.log_event("login_attempt", {"email": email})
+            if not self.security_enhancer.allow_auth_attempt(email):
+                return None
 
         if self.production_service:
             user = await self.production_service.authenticate_user(
@@ -270,6 +301,8 @@ class AuthService:
             )
 
         if not user:
+            if self.security_enhancer:
+                self.security_enhancer.log_event("login_failure", {"email": email})
             return None
 
         user_data = self._to_user_data(user)
@@ -286,7 +319,14 @@ class AuthService:
             analysis = await self.intelligent_service.analyze_login_attempt(context)
             if analysis.should_block:
                 logger.warning("Login attempt blocked by intelligent auth service")
+                if self.security_enhancer:
+                    self.security_enhancer.log_event(
+                        "login_blocked", {"email": email, "reason": "intelligent"}
+                    )
                 return None
+
+        if self.security_enhancer:
+            self.security_enhancer.log_event("login_success", {"email": email})
 
         return user_data
 

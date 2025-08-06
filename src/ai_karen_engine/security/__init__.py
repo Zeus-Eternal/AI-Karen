@@ -1,4 +1,7 @@
 """Security utilities and canonical authentication service."""
 # mypy: ignore-errors
 
-__all__: list[str] = []
+from .security_enhancer import AuditLogger, RateLimiter, SecurityEnhancer
+
+__all__ = ["AuditLogger", "RateLimiter", "SecurityEnhancer"]
+
