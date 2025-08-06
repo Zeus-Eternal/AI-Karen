@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 try:
     from fastapi import APIRouter, HTTPException, Query, Path
@@ -89,6 +89,26 @@ class HookListResponse(BaseModel):
     hook_types: List[str] = Field(..., description="Available hook types")
 
 
+# Hook handler for API-registered hooks
+class APIHookHandler:
+    """Handler for API-registered hooks."""
+
+    def __init__(self, hook_type: str, source_type: str, source_name: Optional[str]):
+        self.hook_type = hook_type
+        self.source_type = source_type
+        self.source_name = source_name
+
+    async def __call__(self, context: HookContext) -> Dict[str, Any]:
+        return {
+            "hook_type": self.hook_type,
+            "source_type": self.source_type,
+            "source_name": self.source_name,
+            "executed_at": datetime.now(timezone.utc).isoformat(),
+            "data_keys": list(context.data.keys()),
+            "message": f"API hook {self.hook_type} executed successfully",
+        }
+
+
 # Hook Management Endpoints
 @router.post("/register", response_model=HookRegistrationResponse)
 async def register_hook(
@@ -108,27 +128,20 @@ async def register_hook(
         if not HookTypes.is_valid_type(request.hook_type):
             logger.warning(f"Registering hook with non-standard type: {request.hook_type}")
         
-        # Create a placeholder handler for API-registered hooks
-        # In a real implementation, this would be more sophisticated
-        async def api_hook_handler(context: HookContext) -> Dict[str, Any]:
-            """Placeholder handler for API-registered hooks."""
-            return {
-                "hook_type": request.hook_type,
-                "source_type": request.source_type,
-                "source_name": request.source_name,
-                "executed_at": datetime.utcnow().isoformat(),
-                "data_keys": list(context.data.keys()),
-                "message": f"API hook {request.hook_type} executed successfully"
-            }
-        
+        handler = APIHookHandler(
+            hook_type=request.hook_type,
+            source_type=request.source_type,
+            source_name=request.source_name,
+        )
+
         # Register the hook
         hook_id = await hook_manager.register_hook(
             hook_type=request.hook_type,
-            handler=api_hook_handler,
+            handler=handler,
             priority=request.priority,
             conditions=request.conditions or {},
             source_type=request.source_type,
-            source_name=request.source_name
+            source_name=request.source_name,
         )
         
         # Get the registered hook for response
@@ -145,7 +158,7 @@ async def register_hook(
             source_type=hook_registration.source_type,
             source_name=hook_registration.source_name,
             enabled=hook_registration.enabled,
-            registered_at=datetime.utcnow().isoformat()
+            registered_at=datetime.now(timezone.utc).isoformat()
         )
         
     except Exception as e:
@@ -266,7 +279,7 @@ async def list_hooks(
                 source_type=hook.source_type,
                 source_name=hook.source_name,
                 enabled=hook.enabled,
-                registered_at=datetime.utcnow().isoformat()  # Placeholder - would be actual registration time
+                registered_at=datetime.now(timezone.utc).isoformat()  # Placeholder - would be actual registration time
             ))
         
         return HookListResponse(
@@ -546,7 +559,7 @@ async def hook_system_health():
                 "source_types": summary["source_types"]
             },
             "execution_stats": summary["execution_stats"],
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
     except Exception as e:
@@ -554,5 +567,5 @@ async def hook_system_health():
         return {
             "status": "error",
             "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
