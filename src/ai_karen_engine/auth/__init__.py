@@ -17,22 +17,19 @@ Key Components:
 - exceptions: Unified exception classes for error handling
 """
 
-from .models import (
-    # Core data models
-    UserData,
-    SessionData,
+from ai_karen_engine.security.models import (
     AuthEvent,
-    
-    # Enums
     AuthEventType,
+    SessionData,
+    UserData,
+)
+from .models import (
     SessionStorageType,
     AuthMode,
-    
-    # Additional models
     PasswordResetToken,
     RateLimitInfo,
     SecurityResult,
-    IntelligenceResult
+    IntelligenceResult,
 )
 
 from .config import (
