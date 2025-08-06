@@ -80,7 +80,7 @@ class _SessionRecord:
 class InMemorySessionStore(SessionStore):
     """Simple in-memory session storage."""
 
-    def __init__(self, expire_seconds: int = 3600) -> None:
+    def __init__(self, expire_seconds: int) -> None:
         self.expire_seconds = expire_seconds
         self.sessions: Dict[str, _SessionRecord] = {}
         self.refresh_map: Dict[str, str] = {}
@@ -153,7 +153,7 @@ class InMemorySessionStore(SessionStore):
 class RedisSessionStore(SessionStore):
     """Redis-backed session storage."""
 
-    def __init__(self, redis: Redis, expire_seconds: int = 3600, prefix: str = "sess") -> None:
+    def __init__(self, redis: Redis, expire_seconds: int, prefix: str = "sess") -> None:
         if Redis is None:
             raise RuntimeError("redis library is not available")
         self.redis = redis
@@ -231,7 +231,7 @@ class RedisSessionStore(SessionStore):
 class DatabaseSessionStore(SessionStore):
     """Database-backed session storage using ``UserSession`` model."""
 
-    def __init__(self, expire_seconds: int = 3600) -> None:
+    def __init__(self, expire_seconds: int) -> None:
         self.expire_seconds = expire_seconds
 
     async def create_session(
@@ -321,7 +321,11 @@ class DatabaseSessionStore(SessionStore):
 
     async def invalidate_session(self, session_token: str) -> bool:
         with get_db_session() as db:
-            session = db.query(UserSession).filter(UserSession.session_token == session_token).first()
+            session = (
+                db.query(UserSession)
+                .filter(UserSession.session_token == session_token)
+                .first()
+            )
             if not session:
                 return False
             session.is_active = False
@@ -331,5 +335,7 @@ class DatabaseSessionStore(SessionStore):
 
     async def cleanup(self) -> None:
         with get_db_session() as db:
-            db.query(UserSession).filter(UserSession.expires_at <= datetime.utcnow()).delete()
+            db.query(UserSession).filter(
+                UserSession.expires_at <= datetime.utcnow()
+            ).delete()
             db.commit()
