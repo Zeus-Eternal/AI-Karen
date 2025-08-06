@@ -10,6 +10,7 @@ Chat Memory & Auth Configuration
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 from pydantic import Field
 from pydantic import __version__ as pydantic_version
@@ -102,6 +103,13 @@ class ProductionAuthSettings(BaseSettings):
     # Rate limiting
     login_rate_limit: int = Field(5, description="Login attempts per minute")
     api_rate_limit: int = Field(100, description="API requests per minute")
+
+    # Cookie security
+    cookie_secure: Optional[bool] = Field(
+        None,
+        description="Send session cookies with the 'secure' flag",
+        json_schema_extra={"env": "COOKIE_SECURE"},
+    )
 
     if V2:
         model_config = SettingsConfigDict(
