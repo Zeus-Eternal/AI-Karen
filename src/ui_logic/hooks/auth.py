@@ -8,10 +8,13 @@ Kari UI Auth Hook - Enterprise-Grade Auth & Session Management
 """
 
 import os
-import time
-import hashlib
 from typing import Optional, Dict, Any, List, Callable
 import requests
+from ai_karen_engine.utils.auth import (
+    create_session as _backend_create_session,
+    validate_session as _backend_validate_session,
+    SESSION_DURATION,
+)
 
 try:
     import streamlit as st  # pragma: no cover - optional UI dependency
@@ -33,66 +36,22 @@ def register_current_user_callback(cb: Callable[[], Optional[Dict[str, Any]]]) -
     _CURRENT_USER_CALLBACK = cb
 
 
-# === Security Constants ===
-AUTH_SIGNING_KEY = os.getenv("KARI_AUTH_SIGNING_KEY", "change-me-in-prod")
-SESSION_DURATION = int(os.getenv("KARI_SESSION_DURATION", "3600"))  # 1 hour
 COOKIE_NAME = "kari_session"
-JWT_ALGORITHM = "HS256"
 API_BASE_URL = os.getenv("KARI_API_BASE_URL", "http://localhost:8000")
-
-
-# === Device/Browser Fingerprinting ===
-def _device_fingerprint(user_agent: str, ip: str) -> str:
-    """Hash user agent + IP for device-bound session."""
-    data = f"{user_agent}:{ip}".encode()
-    return hashlib.sha256(data).hexdigest()
-
-
-# === JWT/Session Token Management ===
-def _sign_token(payload: dict) -> str:
-    """HMAC-signed JWT or fallback."""
-    import jwt
-
-    return jwt.encode(payload, AUTH_SIGNING_KEY, algorithm=JWT_ALGORITHM)
-
-
-def _verify_token(token: str) -> Optional[dict]:
-    """Verify JWT signature and expiration."""
-    import jwt
-
-    try:
-        decoded = jwt.decode(token, AUTH_SIGNING_KEY, algorithms=[JWT_ALGORITHM])
-        if decoded.get("exp", 0) < time.time():
-            return None
-        return decoded
-    except Exception:
-        return None
 
 
 def create_session(
     user_id: str, roles: List[str], user_agent: str, ip: str, tenant_id: str
 ) -> str:
-    """Create a session JWT token (device-bound, time-limited)."""
-    now = int(time.time())
-    payload = {
-        "sub": user_id,
-        "roles": roles,
-        "exp": now + SESSION_DURATION,
-        "iat": now,
-        "device": _device_fingerprint(user_agent, ip),
-        "tenant_id": tenant_id,
-    }
-    return _sign_token(payload)
+    """Create a session using the shared auth utilities."""
+    return _backend_create_session(
+        user_id=user_id, roles=roles, user_agent=user_agent, ip=ip, tenant_id=tenant_id
+    )
 
 
 def validate_session(token: str, user_agent: str, ip: str) -> Optional[dict]:
-    """Validate session: signature, expiry, device match."""
-    decoded = _verify_token(token)
-    if not decoded:
-        return None
-    if decoded.get("device") != _device_fingerprint(user_agent, ip):
-        return None
-    return decoded
+    """Validate session token using the shared auth utilities."""
+    return _backend_validate_session(token, user_agent, ip)
 
 
 def token_has_role(token: str, required: List[str], user_agent: str, ip: str) -> bool:

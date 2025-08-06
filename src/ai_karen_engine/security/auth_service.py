@@ -29,6 +29,16 @@ from ai_karen_engine.security.security_enhancer import (
     RateLimiter,
     SecurityEnhancer,
 )
+from ai_karen_engine.security.session_store import (
+    InMemorySessionStore,
+    RedisSessionStore,
+    DatabaseSessionStore,
+)
+
+try:  # pragma: no cover - redis optional at runtime
+    from redis.asyncio import Redis as AsyncRedis
+except Exception:  # pragma: no cover
+    AsyncRedis = None  # type: ignore
 
 logger = get_logger(__name__)
 
@@ -517,7 +527,22 @@ class AuthService:
         self.config = config or AuthConfig.from_env()
 
         self.core_authenticator = core_authenticator or CoreAuthenticator(self.config)
-        self.session_store = session_store or self.core_authenticator
+
+        if session_store is not None:
+            self.session_store = session_store
+        else:
+            expire_seconds = int(self.config.session.session_timeout.total_seconds())
+            backend = (self.config.session.storage_backend or "memory").lower()
+            if backend == "redis":
+                if AsyncRedis is None:
+                    raise RuntimeError("Redis session backend requires redis library")
+                redis_url = self.config.session.redis_url or "redis://localhost:6379/0"
+                redis_client = AsyncRedis.from_url(redis_url)
+                self.session_store = RedisSessionStore(redis_client, expire_seconds)
+            elif backend in {"database", "sql"}:
+                self.session_store = DatabaseSessionStore(expire_seconds)
+            else:
+                self.session_store = InMemorySessionStore(expire_seconds)
 
         self.intelligence_engine = (
             intelligence_engine

@@ -137,7 +137,7 @@ async def register(
 
         # Create session
         session_data = await auth_service.create_session(
-            user_data=user,
+            user_id=user.user_id,
             ip_address=request_meta["ip_address"],
             user_agent=request_meta["user_agent"],
         )
@@ -211,7 +211,7 @@ async def login(
 
         # Create session
         session_data = await auth_service.create_session(
-            user_data=user_data,
+            user_id=user_data.user_id,
             ip_address=request_meta["ip_address"],
             user_agent=request_meta["user_agent"],
         )
@@ -357,7 +357,7 @@ async def update_credentials(
 
         # Create new session (invalidates old one)
         session_data = await auth_service.create_session(
-            user_data=updated_user_data,
+            user_id=updated_user_data.user_id,
             ip_address=request_meta["ip_address"],
             user_agent=request_meta["user_agent"],
         )
