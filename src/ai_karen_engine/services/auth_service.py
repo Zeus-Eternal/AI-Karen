@@ -22,6 +22,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
 from ai_karen_engine.security import auth_manager
+from ai_karen_engine.security.session_store import SessionStore
 from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -60,8 +61,8 @@ class AuthService:
         self.access_token_expire_minutes = 30
         self.refresh_token_expire_days = 7
         
-        # Session storage (in production, this should use Redis)
-        self._active_sessions: Dict[str, Dict[str, Any]] = {}
+        # Session storage (uses in-memory store by default)
+        self.session_store = SessionStore()
         
     async def authenticate_user(
         self,
@@ -157,7 +158,11 @@ class AuthService:
                 "last_accessed": datetime.utcnow().isoformat()
             }
             
-            self._active_sessions[session_token] = session_data
+            await self.session_store.set_session(
+                session_token,
+                session_data,
+                ttl_seconds=self.access_token_expire_minutes * 60,
+            )
             
             return {
                 "access_token": access_token,
@@ -205,7 +210,7 @@ class AuthService:
                 pass
             
             # Check if it's a session token
-            session_data = self._active_sessions.get(session_token)
+            session_data = await self.session_store.get_session(session_token)
             if not session_data:
                 return None
             
@@ -215,7 +220,7 @@ class AuthService:
             user_data = auth_manager._USERS.get(user_id)
             if not user_data:
                 # Clean up invalid session
-                self._active_sessions.pop(session_token, None)
+                await self.session_store.delete_session(session_token)
                 return None
             
             # Update last accessed time
@@ -241,10 +246,7 @@ class AuthService:
         """Invalidate a session"""
         
         try:
-            if session_token in self._active_sessions:
-                del self._active_sessions[session_token]
-                return True
-            return False
+            return await self.session_store.delete_session(session_token)
             
         except Exception as e:
             logger.error(f"Session invalidation failed: {e}")
@@ -348,13 +350,13 @@ class AuthService:
         
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
     
-    def get_active_sessions_count(self) -> int:
+    async def get_active_sessions_count(self) -> int:
         """Get number of active sessions"""
-        return len(self._active_sessions)
-    
-    def get_session_info(self, session_token: str) -> Optional[Dict[str, Any]]:
+        return await self.session_store.count_sessions()
+
+    async def get_session_info(self, session_token: str) -> Optional[Dict[str, Any]]:
         """Get session information"""
-        return self._active_sessions.get(session_token)
+        return await self.session_store.get_session(session_token)
 
 
 # Global service instance

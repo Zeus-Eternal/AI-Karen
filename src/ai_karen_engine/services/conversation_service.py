@@ -31,6 +31,7 @@ from ai_karen_engine.services.memory_service import (
     UISource,
 )
 from ai_karen_engine.database.client import MultiTenantPostgresClient
+from ai_karen_engine.security.session_store import SessionStore
 
 logger = logging.getLogger(__name__)
 
@@ -511,9 +512,8 @@ class WebUIConversationService:
             "session_cleanups": 0
         }
         
-        # Session tracking cache
-        self.active_sessions = {}  # session_id -> session_data
-        self.user_sessions = {}  # user_id -> [session_ids]
+        # Session tracking store
+        self.session_store = SessionStore()
     
     async def create_web_ui_conversation(
         self,
@@ -786,20 +786,19 @@ class WebUIConversationService:
                 "active": True
             }
             
-            # Store in cache for quick access
-            self.active_sessions[session_id] = session_info
-            
-            # Track user sessions
-            if user_id not in self.user_sessions:
-                self.user_sessions[user_id] = []
-            
-            if session_id not in self.user_sessions[user_id]:
-                self.user_sessions[user_id].append(session_id)
-            
+            # Store session
+            await self.session_store.set_session(
+                session_id,
+                session_info,
+                ttl_seconds=self.session_timeout_minutes * 60,
+            )
+
             # Enforce max sessions per user
-            if len(self.user_sessions[user_id]) > self.max_sessions_per_user:
-                oldest_session = self.user_sessions[user_id].pop(0)
-                await self._cleanup_session(oldest_session)
+            user_sessions = await self.session_store.get_sessions_by_user(user_id)
+            if len(user_sessions) > self.max_sessions_per_user:
+                user_sessions.sort(key=lambda s: s.get("created_at"))
+                oldest_session_id = user_sessions[0]["session_id"]
+                await self._cleanup_session(oldest_session_id)
             
             # Update database with session tracking
             async with self.db_client.get_async_session() as session:
@@ -839,10 +838,16 @@ class WebUIConversationService:
     ) -> bool:
         """Update session activity timestamp and data."""
         try:
-            if session_id in self.active_sessions:
-                self.active_sessions[session_id]["last_activity"] = datetime.utcnow()
+            session_info = await self.session_store.get_session(session_id)
+            if session_info:
+                session_info["last_activity"] = datetime.utcnow()
                 if activity_data:
-                    self.active_sessions[session_id]["data"].update(activity_data)
+                    session_info["data"].update(activity_data)
+                await self.session_store.set_session(
+                    session_id,
+                    session_info,
+                    ttl_seconds=self.session_timeout_minutes * 60,
+                )
                 
                 # Update database
                 async with self.db_client.get_async_session() as session:
@@ -874,24 +879,18 @@ class WebUIConversationService:
     ) -> List[Dict[str, Any]]:
         """Get all active sessions for a user."""
         try:
-            user_sessions = []
-            
-            if user_id in self.user_sessions:
-                for session_id in self.user_sessions[user_id]:
-                    if session_id in self.active_sessions:
-                        session_info = self.active_sessions[session_id].copy()
-                        
-                        # Check if session is still active (not timed out)
-                        last_activity = session_info["last_activity"]
-                        timeout_threshold = datetime.utcnow() - timedelta(minutes=self.session_timeout_minutes)
-                        
-                        if last_activity > timeout_threshold:
-                            user_sessions.append(session_info)
-                        else:
-                            # Session timed out, clean it up
-                            await self._cleanup_session(session_id)
-            
-            return user_sessions
+            sessions = await self.session_store.get_sessions_by_user(user_id)
+            active_sessions: List[Dict[str, Any]] = []
+            timeout_threshold = datetime.utcnow() - timedelta(minutes=self.session_timeout_minutes)
+
+            for session_info in sessions:
+                last_activity = session_info["last_activity"]
+                if last_activity > timeout_threshold:
+                    active_sessions.append(session_info)
+                else:
+                    await self._cleanup_session(session_info["session_id"])
+
+            return active_sessions
             
         except Exception as e:
             logger.error(f"Failed to get user active sessions: {e}")
@@ -902,16 +901,13 @@ class WebUIConversationService:
         try:
             cleaned_count = 0
             timeout_threshold = datetime.utcnow() - timedelta(minutes=self.session_timeout_minutes)
-            
-            expired_sessions = []
-            for session_id, session_info in self.active_sessions.items():
-                if session_info["last_activity"] < timeout_threshold:
-                    expired_sessions.append(session_id)
-            
-            for session_id in expired_sessions:
-                await self._cleanup_session(session_id)
-                cleaned_count += 1
-            
+
+            sessions = await self.session_store.list_sessions()
+            for session in sessions:
+                if session["last_activity"] < timeout_threshold:
+                    await self._cleanup_session(session["session_id"])
+                    cleaned_count += 1
+
             self.web_ui_metrics["session_cleanups"] += cleaned_count
             return cleaned_count
             
@@ -922,19 +918,7 @@ class WebUIConversationService:
     async def _cleanup_session(self, session_id: str) -> bool:
         """Clean up a specific session."""
         try:
-            # Remove from cache
-            if session_id in self.active_sessions:
-                user_id = self.active_sessions[session_id]["user_id"]
-                del self.active_sessions[session_id]
-                
-                # Remove from user sessions
-                if user_id in self.user_sessions and session_id in self.user_sessions[user_id]:
-                    self.user_sessions[user_id].remove(session_id)
-                    
-                    # Clean up empty user session lists
-                    if not self.user_sessions[user_id]:
-                        del self.user_sessions[user_id]
-            
+            await self.session_store.delete_session(session_id)
             return True
             
         except Exception as e:
