@@ -14,7 +14,10 @@ from datetime import datetime
 # Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from ai_karen_engine.security.production_auth_service import production_auth_service
+from ai_karen_engine.security.auth_service import AuthService
+from ai_karen_engine.security.config import AuthConfig, FeatureToggles
+
+auth_service = AuthService(AuthConfig(features=FeatureToggles(use_database=True)))
 from ai_karen_engine.database.client import create_database_tables, check_database_health
 from ai_karen_engine.core.logging import get_logger
 
@@ -27,7 +30,7 @@ async def test_user_creation():
     
     try:
         # Create test user
-        test_user = await production_auth_service.create_user(
+        test_user = await auth_service.create_user(
             email="test@karen.ai",
             password="test123",
             full_name="Test User",
@@ -56,7 +59,7 @@ async def test_user_authentication():
     
     try:
         # Test valid credentials
-        user_data = await production_auth_service.authenticate_user(
+        user_data = await auth_service.authenticate_user(
             email="test@karen.ai",
             password="test123",
             ip_address="127.0.0.1",
@@ -81,7 +84,7 @@ async def test_session_management():
     
     try:
         # First authenticate to get user ID
-        user_data = await production_auth_service.authenticate_user(
+        user_data = await auth_service.authenticate_user(
             email="test@karen.ai",
             password="test123",
             ip_address="127.0.0.1",
@@ -93,7 +96,7 @@ async def test_session_management():
             return None
         
         # Create session
-        session_data = await production_auth_service.create_session(
+        session_data = await auth_service.create_session(
             user_id=user_data["user_id"],
             ip_address="127.0.0.1",
             user_agent="test-client"
@@ -102,7 +105,7 @@ async def test_session_management():
         print(f"✅ Session created: {session_data['token_type']}")
         
         # Validate session using JWT token
-        validated_user = await production_auth_service.validate_session(
+        validated_user = await auth_service.validate_session(
             session_token=session_data["access_token"],
             ip_address="127.0.0.1",
             user_agent="test-client"
@@ -126,7 +129,7 @@ async def test_password_reset():
     
     try:
         # Create password reset token
-        reset_token = await production_auth_service.create_password_reset_token(
+        reset_token = await auth_service.create_password_reset_token(
             email="test@karen.ai",
             ip_address="127.0.0.1",
             user_agent="test-client"
@@ -136,7 +139,7 @@ async def test_password_reset():
             print(f"✅ Password reset token created")
             
             # Test password reset
-            success = await production_auth_service.verify_password_reset_token(
+            success = await auth_service.verify_password_reset_token(
                 token=reset_token,
                 new_password="newtest123"
             )
@@ -145,7 +148,7 @@ async def test_password_reset():
                 print("✅ Password reset successful")
                 
                 # Test login with new password
-                user_data = await production_auth_service.authenticate_user(
+                user_data = await auth_service.authenticate_user(
                     email="test@karen.ai",
                     password="newtest123",
                     ip_address="127.0.0.1",
@@ -156,7 +159,7 @@ async def test_password_reset():
                     print("✅ Login with new password successful")
                     
                     # Reset password back for other tests
-                    await production_auth_service.update_user_password(
+                    await auth_service.update_password(
                         user_id=user_data["user_id"],
                         new_password="test123"
                     )

@@ -252,7 +252,6 @@ src/ai_karen_engine/security/intelligent_auth_service.py
 src/ai_karen_engine/security/models.py
 src/ai_karen_engine/security/observability.py
 src/ai_karen_engine/security/penetration_testing.py
-src/ai_karen_engine/security/production_auth_service.py
 src/ai_karen_engine/security/threat_intelligence.py
 src/ai_karen_engine/security/threat_protection.py
 src/ai_karen_engine/security/user_behavioral_profiling.py

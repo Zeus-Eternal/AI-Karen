@@ -25,7 +25,7 @@ from ai_karen_engine.core.service_registry import (
 )
 from ai_karen_engine.core.config_manager import get_config, AIKarenConfig
 from ai_karen_engine.core.health_monitor import get_health_monitor, HealthMonitor
-from ai_karen_engine.services.unified_auth_service import auth_service
+from ai_karen_engine.security.auth_service import auth_service
 
 logger = logging.getLogger(__name__)
 
