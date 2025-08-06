@@ -7,10 +7,10 @@ Provides REST endpoints for tenant, memory, and conversation management.
 import logging
 import os
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 try:
-    from fastapi import APIRouter, HTTPException, Depends, Query, Path, Body
+    from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 except ImportError as e:  # pragma: no cover - runtime dependency
     raise ImportError(
         "FastAPI is required for database routes. Install via `pip install fastapi`."
@@ -23,11 +23,15 @@ except ImportError as e:  # pragma: no cover - runtime dependency
         "Pydantic is required for database routes. Install via `pip install pydantic`."
     ) from e
 
-# DB error classes
-from sqlalchemy.exc import ProgrammingError, OperationalError
 import asyncpg
 
-from ai_karen_engine.database.integration_manager import get_database_manager, DatabaseIntegrationManager
+# DB error classes
+from sqlalchemy.exc import OperationalError, ProgrammingError
+
+from ai_karen_engine.database.integration_manager import (
+    DatabaseIntegrationManager,
+    get_database_manager,
+)
 
 logger = logging.getLogger(__name__)
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
@@ -40,6 +44,7 @@ router = APIRouter(tags=["database"])
 # ------------------------------------------------------------------------------
 class TenantCreateRequest(BaseModel):
     """Request model for creating a tenant."""
+
     name: str = Field(..., min_length=1, max_length=255, description="Tenant name")
     slug: str = Field(..., min_length=1, max_length=100, description="Tenant slug")
     admin_email: str = Field(..., description="Admin user email")
@@ -49,7 +54,9 @@ class TenantCreateRequest(BaseModel):
     @validator("slug")
     def validate_slug(cls, v):
         if not v.replace("-", "").replace("_", "").isalnum():
-            raise ValueError("Slug must contain only alphanumeric characters, hyphens, and underscores")
+            raise ValueError(
+                "Slug must contain only alphanumeric characters, hyphens, and underscores"
+            )
         return v.lower()
 
 
@@ -75,6 +82,25 @@ class TenantStatsResponse(BaseModel):
     created_at: str
 
 
+class OperationResult(BaseModel):
+    """Generic operation result model."""
+
+    success: bool
+    message: Optional[str] = None
+
+
+class TenantData(OperationResult):
+    """Response model containing tenant information."""
+
+    data: Optional[TenantResponse] = None
+
+
+class TenantStatsData(OperationResult):
+    """Response model containing tenant statistics."""
+
+    data: Optional[TenantStatsResponse] = None
+
+
 class MemoryStoreRequest(BaseModel):
     content: str = Field(..., min_length=1, description="Memory content")
     user_id: Optional[str] = Field(None, description="User ID")
@@ -87,7 +113,9 @@ class MemoryQueryRequest(BaseModel):
     query_text: str = Field(..., min_length=1, description="Query text")
     user_id: Optional[str] = Field(None, description="User ID filter")
     top_k: int = Field(10, ge=1, le=100, description="Number of results")
-    similarity_threshold: float = Field(0.7, ge=0.0, le=1.0, description="Similarity threshold")
+    similarity_threshold: float = Field(
+        0.7, ge=0.0, le=1.0, description="Similarity threshold"
+    )
 
 
 class MemoryResponse(BaseModel):
@@ -109,7 +137,9 @@ class ConversationCreateRequest(BaseModel):
 
 
 class MessageAddRequest(BaseModel):
-    role: str = Field(..., description="Message role (user, assistant, system, function)")
+    role: str = Field(
+        ..., description="Message role (user, assistant, system, function)"
+    )
     content: str = Field(..., min_length=1, description="Message content")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Message metadata")
 
@@ -146,7 +176,9 @@ class HealthResponse(BaseModel):
 async def get_db_manager() -> DatabaseIntegrationManager:
     db = await get_database_manager()
     if not getattr(db, "_initialized", False) or not getattr(db, "db_client", None):
-        logger.critical("DatabaseIntegrationManager not initialized or missing db_client!")
+        logger.critical(
+            "DatabaseIntegrationManager not initialized or missing db_client!"
+        )
         raise HTTPException(
             status_code=500,
             detail="Database not initialized. Please check backend setup and run migrations.",
@@ -158,7 +190,9 @@ async def get_db_manager() -> DatabaseIntegrationManager:
 # Schema status endpoint
 # ------------------------------------------------------------------------------
 @router.get("/schema/status", response_model=Dict[str, Any])
-async def schema_status(db_manager: DatabaseIntegrationManager = Depends(get_db_manager)):
+async def schema_status(
+    db_manager: DatabaseIntegrationManager = Depends(get_db_manager),
+):
     """Check that all required tables and migrations have been applied."""
     try:
         result = db_manager.db_client.check_schema()
@@ -172,7 +206,7 @@ async def schema_status(db_manager: DatabaseIntegrationManager = Depends(get_db_
 # ------------------------------------------------------------------------------
 # Tenant Endpoints
 # ------------------------------------------------------------------------------
-@router.post("/tenants", response_model=Dict[str, Any], status_code=201)
+@router.post("/tenants", response_model=TenantData, status_code=201)
 async def create_tenant(
     request: TenantCreateRequest,
     db_manager: DatabaseIntegrationManager = Depends(get_db_manager),
@@ -187,9 +221,17 @@ async def create_tenant(
             settings=request.settings,
         )
         logger.info(f"Created tenant: {td['tenant_id']}")
-        return {"success": True, "message": "Tenant created successfully", "data": td}
+        return TenantData(
+            success=True,
+            message="Tenant created successfully",
+            data=TenantResponse(**td),
+        )
 
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except ValueError as ve:
@@ -200,7 +242,7 @@ async def create_tenant(
         raise HTTPException(500, msg)
 
 
-@router.get("/tenants/{tenant_id}", response_model=Dict[str, Any])
+@router.get("/tenants/{tenant_id}", response_model=TenantData)
 async def get_tenant(
     tenant_id: str = Path(..., description="Tenant ID"),
     db_manager: DatabaseIntegrationManager = Depends(get_db_manager),
@@ -210,11 +252,15 @@ async def get_tenant(
         td = await db_manager.get_tenant(tenant_id)
         if not td:
             raise HTTPException(404, "Tenant not found")
-        return {"success": True, "data": td}
+        return TenantData(success=True, data=TenantResponse(**td))
 
     except HTTPException:
         raise
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except Exception as e:
@@ -223,7 +269,7 @@ async def get_tenant(
         raise HTTPException(500, msg)
 
 
-@router.get("/tenants/{tenant_id}/stats", response_model=Dict[str, Any])
+@router.get("/tenants/{tenant_id}/stats", response_model=TenantStatsData)
 async def get_tenant_stats(
     tenant_id: str = Path(..., description="Tenant ID"),
     db_manager: DatabaseIntegrationManager = Depends(get_db_manager),
@@ -233,11 +279,15 @@ async def get_tenant_stats(
         sd = await db_manager.get_tenant_stats(tenant_id)
         if not sd:
             raise HTTPException(404, "Tenant not found")
-        return {"success": True, "data": sd}
+        return TenantStatsData(success=True, data=TenantStatsResponse(**sd))
 
     except HTTPException:
         raise
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except Exception as e:
@@ -249,7 +299,9 @@ async def get_tenant_stats(
 # ------------------------------------------------------------------------------
 # Memory Endpoints
 # ------------------------------------------------------------------------------
-@router.post("/tenants/{tenant_id}/memories", response_model=Dict[str, Any], status_code=201)
+@router.post(
+    "/tenants/{tenant_id}/memories", response_model=Dict[str, Any], status_code=201
+)
 async def store_memory(
     tenant_id: str = Path(..., description="Tenant ID"),
     request: MemoryStoreRequest = Body(...),
@@ -266,11 +318,19 @@ async def store_memory(
             tags=request.tags,
         )
         if not mid:
-            return {"success": True, "message": "Not surprising enough, skipped", "data": None}
+            return {
+                "success": True,
+                "message": "Not surprising enough, skipped",
+                "data": None,
+            }
         logger.info(f"Stored memory {mid} for tenant {tenant_id}")
         return {"success": True, "message": "Memory stored", "data": {"memory_id": mid}}
 
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except Exception as e:
@@ -297,7 +357,11 @@ async def query_memories(
         logger.info(f"Retrieved {len(mems)} memories for tenant {tenant_id}")
         return {"success": True, "data": {"memories": mems, "count": len(mems)}}
 
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except Exception as e:
@@ -309,7 +373,9 @@ async def query_memories(
 # ------------------------------------------------------------------------------
 # Conversation Endpoints
 # ------------------------------------------------------------------------------
-@router.post("/tenants/{tenant_id}/conversations", response_model=Dict[str, Any], status_code=201)
+@router.post(
+    "/tenants/{tenant_id}/conversations", response_model=Dict[str, Any], status_code=201
+)
 async def create_conversation(
     tenant_id: str = Path(..., description="Tenant ID"),
     request: ConversationCreateRequest = Body(...),
@@ -326,7 +392,11 @@ async def create_conversation(
         logger.info(f"Created conversation {cd['id']} for tenant {tenant_id}")
         return {"success": True, "message": "Conversation created", "data": cd}
 
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except Exception as e:
@@ -335,7 +405,10 @@ async def create_conversation(
         raise HTTPException(500, msg)
 
 
-@router.get("/tenants/{tenant_id}/conversations/{conversation_id}", response_model=Dict[str, Any])
+@router.get(
+    "/tenants/{tenant_id}/conversations/{conversation_id}",
+    response_model=Dict[str, Any],
+)
 async def get_conversation(
     tenant_id: str = Path(..., description="Tenant ID"),
     conversation_id: str = Path(..., description="Conversation ID"),
@@ -352,7 +425,11 @@ async def get_conversation(
 
     except HTTPException:
         raise
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except Exception as e:
@@ -361,7 +438,11 @@ async def get_conversation(
         raise HTTPException(500, msg)
 
 
-@router.post("/tenants/{tenant_id}/conversations/{conversation_id}/messages", response_model=Dict[str, Any], status_code=201)
+@router.post(
+    "/tenants/{tenant_id}/conversations/{conversation_id}/messages",
+    response_model=Dict[str, Any],
+    status_code=201,
+)
 async def add_message(
     tenant_id: str = Path(..., description="Tenant ID"),
     conversation_id: str = Path(..., description="Conversation ID"),
@@ -384,7 +465,11 @@ async def add_message(
 
     except HTTPException:
         raise
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except Exception as e:
@@ -393,7 +478,9 @@ async def add_message(
         raise HTTPException(500, msg)
 
 
-@router.get("/tenants/{tenant_id}/users/{user_id}/conversations", response_model=Dict[str, Any])
+@router.get(
+    "/tenants/{tenant_id}/users/{user_id}/conversations", response_model=Dict[str, Any]
+)
 async def list_conversations(
     tenant_id: str = Path(..., description="Tenant ID"),
     user_id: str = Path(..., description="User ID"),
@@ -407,7 +494,11 @@ async def list_conversations(
         )
         return {"success": True, "data": {"conversations": convs, "count": len(convs)}}
 
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except Exception as e:
@@ -420,7 +511,9 @@ async def list_conversations(
 # Health & Monitoring
 # ------------------------------------------------------------------------------
 @router.get("/health", response_model=Dict[str, Any])
-async def health_check(db_manager: DatabaseIntegrationManager = Depends(get_db_manager)):
+async def health_check(
+    db_manager: DatabaseIntegrationManager = Depends(get_db_manager),
+):
     """Perform comprehensive health check."""
     try:
         hd = await db_manager.health_check()
@@ -450,7 +543,9 @@ async def get_metrics(db_manager: DatabaseIntegrationManager = Depends(get_db_ma
 
 
 @router.post("/maintenance", response_model=Dict[str, Any])
-async def run_maintenance(db_manager: DatabaseIntegrationManager = Depends(get_db_manager)):
+async def run_maintenance(
+    db_manager: DatabaseIntegrationManager = Depends(get_db_manager),
+):
     """Run maintenance tasks."""
     try:
         res = await db_manager.maintenance_tasks()
@@ -521,14 +616,24 @@ async def bulk_store_memories(
                 stored.append(mid)
             else:
                 skipped += 1
-        logger.info(f"Bulk stored {len(stored)} / skipped {skipped} for tenant {tenant_id}")
+        logger.info(
+            f"Bulk stored {len(stored)} / skipped {skipped} for tenant {tenant_id}"
+        )
         return {
             "success": True,
             "message": "Bulk storage completed",
-            "data": {"stored_count": len(stored), "skipped_count": skipped, "stored_ids": stored},
+            "data": {
+                "stored_count": len(stored),
+                "skipped_count": skipped,
+                "stored_ids": stored,
+            },
         }
 
-    except (ProgrammingError, OperationalError, asyncpg.exceptions.UndefinedTableError) as e:
+    except (
+        ProgrammingError,
+        OperationalError,
+        asyncpg.exceptions.UndefinedTableError,
+    ) as e:
         logger.critical(f"Missing DB schema/table: {e}")
         raise HTTPException(500, "Database schema/table missing. Run migrations.")
     except Exception as e:
