@@ -94,7 +94,9 @@ _USERS: Dict[str, Dict[str, Any]] = load_users()
 # token -> email mapping
 EMAIL_VERIFICATION_TOKENS: Dict[str, str] = {}
 PASSWORD_RESET_TOKENS: Dict[str, Dict[str, Any]] = {}
-PASSWORD_RESET_TOKEN_TTL = 3600  # seconds
+DEFAULT_PASSWORD_RESET_TOKEN_TTL = int(
+    os.getenv("AUTH_PASSWORD_RESET_TOKEN_TTL", "3600")
+)
 
 
 def save_users() -> None:
@@ -170,11 +172,12 @@ def mark_user_verified(email: str) -> None:
         save_users()
 
 
-def create_password_reset_token(email: str) -> str:
+def create_password_reset_token(email: str, ttl: int = DEFAULT_PASSWORD_RESET_TOKEN_TTL) -> str:
+    """Create a password reset token with configurable TTL."""
     token = generate_token()
     PASSWORD_RESET_TOKENS[token] = {
         "email": email,
-        "expires": time.time() + PASSWORD_RESET_TOKEN_TTL,
+        "expires": time.time() + ttl,
     }
     return token
 
