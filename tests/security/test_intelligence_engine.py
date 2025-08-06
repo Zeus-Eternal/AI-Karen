@@ -100,7 +100,7 @@ async def test_auth_service_blocks_on_high_risk(monkeypatch: MonkeyPatch) -> Non
     auth = AuthService(config=config)
 
     monkeypatch.setattr(
-        auth.basic_service,
+        auth.core_authenticator,
         "authenticate_user",
         AsyncMock(return_value={"user_id": "1", "email": "user@example.com"}),
     )

@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 from fastapi import HTTPException, Request, Response, status
 
 from ai_karen_engine.core.chat_memory_config import settings
-from ai_karen_engine.security.auth_service import auth_service
+from ai_karen_engine.security.auth_service import get_auth_service
 
 # Shared cookie name for authentication sessions
 COOKIE_NAME = "kari_session"
@@ -47,6 +47,7 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
             detail="Missing authentication token",
         )
 
+    auth_service = get_auth_service()
     user_data = await auth_service.validate_session(
         session_token=session_token,
         ip_address=request.client.host if request.client else "unknown",

@@ -25,7 +25,7 @@ from ai_karen_engine.core.service_registry import (
 )
 from ai_karen_engine.core.config_manager import get_config, AIKarenConfig
 from ai_karen_engine.core.health_monitor import get_health_monitor, HealthMonitor
-from ai_karen_engine.security.auth_service import auth_service
+from ai_karen_engine.security.auth_service import get_auth_service
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ async def get_current_user_context(request: Request) -> Dict[str, Any]:
             session_token = auth_header.split(" ")[1]
     if not session_token:
         raise HTTPException(status_code=401, detail="Authentication required")
+    auth_service = get_auth_service()
     user_data = await auth_service.validate_session(
         session_token=session_token,
         ip_address=request.client.host if request.client else "unknown",

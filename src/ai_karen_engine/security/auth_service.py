@@ -7,6 +7,7 @@ import json
 import secrets
 import time
 import uuid
+import warnings
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
@@ -695,7 +696,26 @@ class AuthService:
             self.security_enhancer.log_event(event, data)
 
 
-auth_service = AuthService(AuthConfig.from_env())
+_auth_service_instance: Optional[AuthService] = None
 
 
-__all__ = ["AuthService", "AuthConfig", "auth_service"]
+def get_auth_service() -> AuthService:
+    """Return a shared :class:`AuthService` instance."""
+    global _auth_service_instance
+    if _auth_service_instance is None:
+        _auth_service_instance = AuthService(AuthConfig.from_env())
+    return _auth_service_instance
+
+
+def __getattr__(name: str) -> Any:  # pragma: no cover - legacy access
+    if name == "auth_service":
+        warnings.warn(
+            "'auth_service' direct import is deprecated. Use 'get_auth_service()' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return get_auth_service()
+    raise AttributeError(name)
+
+
+__all__ = ["AuthService", "AuthConfig", "get_auth_service", "auth_service"]
