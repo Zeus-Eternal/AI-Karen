@@ -109,7 +109,7 @@ class HealthMonitor {
         id: 'backend-unavailable',
         name: 'Backend Unavailable',
         condition: (metrics) => {
-          const healthEndpoint = metrics.endpoints['/api/health'];
+          const healthEndpoint = metrics.endpoints['/health'];
           return healthEndpoint && healthEndpoint.status === 'error';
         },
         message: 'Backend health check is failing',
@@ -120,10 +120,10 @@ class HealthMonitor {
         id: 'chat-endpoint-down',
         name: 'Chat Endpoint Down',
         condition: (metrics) => {
-          const chatEndpoint = metrics.endpoints['/api/chat/process'];
+          const chatEndpoint = metrics.endpoints['/api/ai/conversation-processing'];
           return chatEndpoint && chatEndpoint.status === 'error';
         },
-        message: 'Chat processing endpoint is not responding',
+        message: 'AI conversation processing endpoint is not responding',
         severity: 'high',
         cooldown: 120000, // 2 minutes
       },
@@ -131,10 +131,10 @@ class HealthMonitor {
         id: 'memory-endpoint-down',
         name: 'Memory Endpoint Down',
         condition: (metrics) => {
-          const memoryEndpoint = metrics.endpoints['/api/memory/query'];
+          const memoryEndpoint = metrics.endpoints['/api/memory/store'];
           return memoryEndpoint && memoryEndpoint.status === 'error';
         },
-        message: 'Memory query endpoint is not responding',
+        message: 'Memory storage endpoint is not responding',
         severity: 'medium',
         cooldown: 300000, // 5 minutes
       },
@@ -196,23 +196,23 @@ class HealthMonitor {
 
     try {
       // Check main health endpoint
-      await this.checkEndpoint('/api/health', async () => {
+      await this.checkEndpoint('/health', async () => {
         return await backend.healthCheck();
       });
 
-      // Check chat processing endpoint (lightweight test)
-      await this.checkEndpoint('/api/chat/process', async () => {
+      // Check AI conversation processing endpoint (lightweight test)
+      await this.checkEndpoint('/api/ai/conversation-processing', async () => {
         // We don't want to actually process a message, so we'll just check if the endpoint responds to OPTIONS
-        const response = await fetch(`${webUIConfig.backendUrl}/api/chat/process`, {
+        const response = await fetch(`${webUIConfig.backendUrl}/api/ai/conversation-processing`, {
           method: 'OPTIONS',
           headers: { 'Content-Type': 'application/json' },
         });
         return { status: response.ok ? 'healthy' : 'error' };
       });
 
-      // Check memory query endpoint (lightweight test)
-      await this.checkEndpoint('/api/memory/query', async () => {
-        const response = await fetch(`${webUIConfig.backendUrl}/api/memory/query`, {
+      // Check memory store endpoint (lightweight test)
+      await this.checkEndpoint('/api/memory/store', async () => {
+        const response = await fetch(`${webUIConfig.backendUrl}/api/memory/store`, {
           method: 'OPTIONS',
           headers: { 'Content-Type': 'application/json' },
         });

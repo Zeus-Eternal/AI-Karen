@@ -33,6 +33,11 @@ async def init_ai_services(settings: Any) -> None:
         from ai_karen_engine.integrations.model_discovery import sync_registry
 
         sync_registry()
+        
+        # Initialize the service registry and all services
+        from ai_karen_engine.core.service_registry import initialize_services
+        await initialize_services()
+        
         logger.info("AI services initialized")
     except Exception as e:  # pragma: no cover - defensive
         logger.error("AI services initialization failed: %s", str(e))
@@ -42,9 +47,14 @@ async def init_ai_services(settings: Any) -> None:
 async def cleanup_ai_services() -> None:
     """Cleanup AI resources"""
     try:
+        # Shutdown service registry first
+        from ai_karen_engine.core.service_registry import get_service_registry
+        registry = get_service_registry()
+        await registry.shutdown()
+        
         from ai_karen_engine.core.memory import manager as memory_manager
-
         await memory_manager.close()
+        
         logger.info("AI services cleanup completed")
     except Exception as e:  # pragma: no cover - defensive
         logger.error("AI services cleanup failed: %s", str(e))

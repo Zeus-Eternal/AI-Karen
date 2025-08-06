@@ -18,8 +18,10 @@ from ai_karen_engine.models.web_api_error_responses import (
     get_http_status_for_error_code,
 )
 from ai_karen_engine.services.plugin_service import (
-    PluginExecutionRequest,
     PluginService,
+)
+from ai_karen_engine.services.plugin_execution import (
+    ExecutionRequest,
 )
 
 router = APIRouter(tags=["plugins"])
@@ -239,12 +241,10 @@ async def execute_plugin(
     """Execute a plugin with given parameters."""
     try:
         # Create execution request
-        execution_request = PluginExecutionRequest(
+        execution_request = ExecutionRequest(
             plugin_name=plugin_name,
             parameters=request.parameters,
-            user_id="anonymous",
-            session_id=request.session_id,
-            timeout=request.timeout,
+            timeout_seconds=request.timeout,
         )
 
         # Execute the plugin

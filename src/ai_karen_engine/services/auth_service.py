@@ -70,29 +70,57 @@ class AuthService:
         ip_address: str = "unknown",
         user_agent: str = ""
     ) -> Optional[Dict[str, Any]]:
-        """Authenticate user with email and password"""
+        """Authenticate user with database"""
         
         try:
-            # Use the regular auth_manager for authentication
-            user_data = auth_manager.authenticate(email, password)
+            # Import database dependencies
+            import os
+            import bcrypt
+            from sqlalchemy import create_engine, text
             
-            if not user_data:
-                return None
+            # Get database URL from environment
+            database_url = os.environ.get('POSTGRES_URL', 'postgresql://karen_user:karen_secure_pass_change_me@localhost:5432/ai_karen')
             
-            # Convert to our expected format
-            return {
-                "user_id": email,  # Using email as user_id for now
-                "email": email,
-                "full_name": user_data.get("full_name"),
-                "roles": user_data.get("roles", ["user"]),
-                "tenant_id": user_data.get("tenant_id", "default"),
-                "preferences": user_data.get("preferences", {}),
-                "two_factor_enabled": user_data.get("two_factor_enabled", False),
-                "is_verified": user_data.get("is_verified", True)
-            }
+            engine = create_engine(database_url)
+            with engine.connect() as connection:
+                # Query user from database
+                result = connection.execute(
+                    text('''
+                        SELECT u.id, u.email, u.password_hash, u.roles, u.preferences, 
+                               u.is_active, u.is_verified, u.tenant_id, t.slug as tenant_slug
+                        FROM users u 
+                        LEFT JOIN tenants t ON u.tenant_id = t.id 
+                        WHERE u.email = :email AND u.is_active = true
+                    '''),
+                    {'email': email}
+                )
+                user_row = result.fetchone()
+                
+                if not user_row:
+                    logger.warning(f"User not found or inactive: {email}")
+                    return None
+                
+                user_id, user_email, password_hash, roles, preferences, is_active, is_verified, tenant_id, tenant_slug = user_row
+                
+                # Verify password
+                if not password_hash or not bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8')):
+                    logger.warning(f"Invalid password for user: {email}")
+                    return None
+                
+                # Convert to our expected format
+                return {
+                    "user_id": str(user_id),
+                    "email": user_email,
+                    "full_name": None,  # Not stored in current schema
+                    "roles": roles or ["user"],
+                    "tenant_id": str(tenant_id),
+                    "preferences": preferences or {},
+                    "two_factor_enabled": False,  # Not implemented yet
+                    "is_verified": is_verified
+                }
             
         except Exception as e:
-            logger.error(f"Authentication failed for {email}: {e}")
+            logger.error(f"Database authentication failed for {email}: {e}")
             return None
     
     async def create_user(
