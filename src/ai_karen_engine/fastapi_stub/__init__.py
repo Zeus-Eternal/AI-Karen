@@ -1,3 +1,6 @@
+"""Lightweight FastAPI stub used for testing."""
+# mypy: ignore-errors
+
 import asyncio
 import json
 import re
@@ -28,6 +31,7 @@ class _Route:
             regex = re.sub(r"{(\w+)}", r"(?P<\1>[^/]+)", path)
             self.pattern = re.compile(f"^{regex}$")
 
+
 class FastAPI:
     def __init__(self, *_, **__):
         self.routes = []
@@ -42,6 +46,7 @@ class FastAPI:
         def decorator(func):
             self._middlewares.append(func)
             return func
+
         return decorator
 
     async def _handle_request(self, method, path, json=None, headers=None):
@@ -119,35 +124,49 @@ class FastAPI:
         resp = Response(data)
         content = json.dumps(resp.json()).encode()
         headers = [(b"content-type", b"application/json")]
-        await send({"type": "http.response.start", "status": resp.status_code, "headers": headers})
+        await send(
+            {
+                "type": "http.response.start",
+                "status": resp.status_code,
+                "headers": headers,
+            }
+        )
         await send({"type": "http.response.body", "body": content})
 
     def get(self, path, **_kw):
         tags = _kw.get("tags")
+
         def decorator(func):
             self.routes.append(_Route("GET", path, func, tags=tags))
             return func
+
         return decorator
 
     def post(self, path, **_kw):
         tags = _kw.get("tags")
+
         def decorator(func):
             self.routes.append(_Route("POST", path, func, tags=tags))
             return func
+
         return decorator
 
     def put(self, path, **_kw):
         tags = _kw.get("tags")
+
         def decorator(func):
             self.routes.append(_Route("PUT", path, func, tags=tags))
             return func
+
         return decorator
 
     def delete(self, path, **_kw):
         tags = _kw.get("tags")
+
         def decorator(func):
             self.routes.append(_Route("DELETE", path, func, tags=tags))
             return func
+
         return decorator
 
     def on_event(self, event: str):
@@ -155,11 +174,13 @@ class FastAPI:
             if event == "startup":
                 self._startup.append(func)
             return func
+
         return decorator
 
     def exception_handler(self, exc):
         def decorator(func):
             return func
+
         return decorator
 
     def include_router(self, router, prefix: str = ""):
@@ -182,31 +203,40 @@ class APIRouter(FastAPI):
 
     def get(self, path, **_kw):
         tags = _kw.get("tags") or self.tags
+
         def decorator(func):
             self.routes.append(_Route("GET", path, func, tags=tags))
             return func
+
         return decorator
 
     def post(self, path, **_kw):
         tags = _kw.get("tags") or self.tags
+
         def decorator(func):
             self.routes.append(_Route("POST", path, func, tags=tags))
             return func
+
         return decorator
 
     def put(self, path, **_kw):
         tags = _kw.get("tags") or self.tags
+
         def decorator(func):
             self.routes.append(_Route("PUT", path, func, tags=tags))
             return func
+
         return decorator
 
     def delete(self, path, **_kw):
         tags = _kw.get("tags") or self.tags
+
         def decorator(func):
             self.routes.append(_Route("DELETE", path, func, tags=tags))
             return func
+
         return decorator
+
 
 class Response:
     def __init__(self, content=None, status_code=200, media_type=None, headers=None):
@@ -259,9 +289,13 @@ def Depends(func):
     return func
 
 
+def Query(default=None, **_kw):
+    """Simplified Query parameter stub."""
+    return default
+
+
 class status:
     HTTP_401_UNAUTHORIZED = 401
-
 
 
 class Request:
@@ -269,6 +303,7 @@ class Request:
         self.client = SimpleNamespace(host=client_host)
         self.headers = {}
         self.cookies = {}
+
 
 class TestClient:
     def __init__(self, app):
@@ -285,7 +320,9 @@ class TestClient:
         resp = Response(
             getattr(data, "_data", data),
             status,
-            media_type=data.headers.get("content-type") if hasattr(data, "headers") else None,
+            media_type=data.headers.get("content-type")
+            if hasattr(data, "headers")
+            else None,
         )
         resp.headers.update(getattr(data, "headers", {}))
         return resp
@@ -296,7 +333,9 @@ class TestClient:
         resp = Response(
             getattr(data, "_data", data),
             status,
-            media_type=data.headers.get("content-type") if hasattr(data, "headers") else None,
+            media_type=data.headers.get("content-type")
+            if hasattr(data, "headers")
+            else None,
         )
         resp.headers.update(getattr(data, "headers", {}))
         return resp

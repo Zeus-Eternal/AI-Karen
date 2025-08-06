@@ -22,11 +22,18 @@ returns ``None``.
 from __future__ import annotations
 
 import hashlib
+import json
+import secrets
 import time
-from datetime import datetime
-from typing import Any, Dict, Optional
+import uuid
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+import bcrypt
 
 from ai_karen_engine.core.logging import get_logger
+from ai_karen_engine.database.client import get_db_session
+from ai_karen_engine.database.models.auth_models import User, UserSession
 from ai_karen_engine.security.config import AuthConfig
 from ai_karen_engine.security.intelligent_auth_service import (
     AuthContext,
@@ -40,6 +47,155 @@ from ai_karen_engine.services.auth_service import AuthService as BasicAuthServic
 
 
 logger = get_logger(__name__)
+
+
+class CoreAuthenticator:
+    """Simple authentication service using a SQL database backend."""
+
+    session_expire_hours = 24
+
+    def hash_password(self, password: str) -> str:
+        """Hash a password using bcrypt."""
+
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+    def verify_password(self, password: str, hashed_password: str) -> bool:
+        """Verify a password against its bcrypt hash."""
+
+        try:
+            return bcrypt.checkpw(
+                password.encode("utf-8"), hashed_password.encode("utf-8")
+            )
+        except ValueError:
+            return False
+
+    async def create_user(
+        self,
+        email: str,
+        password: str,
+        full_name: Optional[str] = None,
+        roles: Optional[List[str]] = None,
+        tenant_id: str = "default",
+        preferences: Optional[Dict[str, Any]] = None,
+    ) -> UserData:
+        """Create a new user with a securely hashed password."""
+
+        roles = roles or ["user"]
+        preferences = preferences or {}
+
+        with get_db_session() as db:
+            if db.query(User).filter(User.email == email).first():
+                raise ValueError("User already exists")
+
+            user = User(
+                email=email,
+                password_hash=self.hash_password(password),
+                full_name=full_name,
+                roles=json.dumps(roles),
+                tenant_id=tenant_id,
+                preferences=json.dumps(preferences),
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        return self._to_user_data(user)
+
+    async def authenticate_user(self, email: str, password: str) -> Optional[UserData]:
+        """Authenticate a user by verifying their password."""
+
+        with get_db_session() as db:
+            user = db.query(User).filter(User.email == email).first()
+            if not user or not self.verify_password(password, user.password_hash):
+                return None
+
+        return self._to_user_data(user)
+
+    async def create_session(
+        self,
+        user_id: str,
+        ip_address: str = "unknown",
+        user_agent: str = "",
+        device_fingerprint: Optional[str] = None,
+    ) -> SessionData:
+        """Create a session for an authenticated user."""
+
+        session_token = secrets.token_urlsafe(32)
+        refresh_token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(hours=self.session_expire_hours)
+        user_uuid = uuid.UUID(user_id)
+
+        with get_db_session() as db:
+            session = UserSession(
+                user_id=user_uuid,
+                session_token=session_token,
+                refresh_token=refresh_token,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                device_fingerprint=device_fingerprint,
+                expires_at=expires_at,
+            )
+            db.add(session)
+            db.commit()
+
+        return SessionData(
+            access_token=session_token,
+            refresh_token=refresh_token,
+            session_token=session_token,
+            expires_in=int((expires_at - datetime.utcnow()).total_seconds()),
+            user_data=None,
+        )
+
+    async def validate_session(self, session_token: str) -> Optional[UserData]:
+        """Validate a session token and return associated user data."""
+
+        with get_db_session() as db:
+            session = (
+                db.query(UserSession)
+                .filter(
+                    UserSession.session_token == session_token,
+                    UserSession.is_active.is_(True),
+                    UserSession.expires_at > datetime.utcnow(),
+                )
+                .first()
+            )
+            if not session:
+                return None
+
+            user = db.query(User).filter(User.id == session.user_id).first()
+            if not user:
+                return None
+
+        return self._to_user_data(user)
+
+    async def invalidate_session(self, session_token: str) -> bool:
+        """Invalidate an existing session."""
+
+        with get_db_session() as db:
+            session = (
+                db.query(UserSession)
+                .filter(UserSession.session_token == session_token)
+                .first()
+            )
+            if not session:
+                return False
+            session.is_active = False
+            db.commit()
+            return True
+
+    def _to_user_data(self, user: User) -> UserData:
+        """Convert ORM user model to :class:`UserData`."""
+
+        return UserData(
+            user_id=str(user.id),
+            email=user.email,
+            full_name=user.full_name,
+            roles=json.loads(user.roles) if user.roles else [],
+            tenant_id=user.tenant_id,
+            preferences=json.loads(user.preferences) if user.preferences else {},
+            two_factor_enabled=user.two_factor_enabled,
+            is_verified=user.is_verified,
+        )
 
 
 class AuthService:
