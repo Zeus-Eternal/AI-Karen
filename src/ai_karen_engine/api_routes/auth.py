@@ -48,6 +48,15 @@ def set_session_cookie(
     )
 
 
+# Request metadata dependency
+async def get_request_meta(request: Request) -> Dict[str, str]:
+    """Extract request metadata like IP address and user agent."""
+    return {
+        "ip_address": request.client.host if request.client else "unknown",
+        "user_agent": request.headers.get("user-agent", ""),
+    }
+
+
 # Request/Response Models
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -103,7 +112,9 @@ class PasswordResetConfirm(BaseModel):
 
 @router.post("/register", response_model=LoginResponse)
 async def register(
-    req: RegisterRequest, request: Request, response: Response
+    req: RegisterRequest,
+    response: Response,
+    request_meta: Dict[str, str] = Depends(get_request_meta),
 ) -> LoginResponse:
     """Register a new user with production database"""
 
@@ -121,8 +132,8 @@ async def register(
         # Create session
         session_data = await auth_service.create_session(
             user_id=user.user_id,
-            ip_address=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent", ""),
+            ip_address=request_meta["ip_address"],
+            user_agent=request_meta["user_agent"],
             device_fingerprint=None,  # Could be implemented later
         )
 
@@ -165,7 +176,9 @@ async def register(
 
 @router.post("/login", response_model=LoginResponse)
 async def login(
-    req: LoginRequest, request: Request, response: Response
+    req: LoginRequest,
+    response: Response,
+    request_meta: Dict[str, str] = Depends(get_request_meta),
 ) -> LoginResponse:
     """Authenticate user with production database"""
 
@@ -174,8 +187,8 @@ async def login(
         user_data = await auth_service.authenticate_user(
             email=req.email,
             password=req.password,
-            ip_address=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent", ""),
+            ip_address=request_meta["ip_address"],
+            user_agent=request_meta["user_agent"],
         )
 
         if not user_data:
@@ -206,8 +219,8 @@ async def login(
         # Create session
         session_data = await auth_service.create_session(
             user_id=user_data["user_id"],
-            ip_address=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent", ""),
+            ip_address=request_meta["ip_address"],
+            user_agent=request_meta["user_agent"],
             device_fingerprint=None,
         )
 
@@ -253,7 +266,9 @@ async def get_tenant_from_user(
     return current_user["tenant_id"]
 
 
-async def get_session_user(request: Request) -> Dict[str, Any]:
+async def get_session_user(
+    request: Request, request_meta: Dict[str, str] = Depends(get_request_meta)
+) -> Dict[str, Any]:
     """Retrieve user data from session cookie.
 
     This helper reads the session cookie, validates it using the
@@ -266,8 +281,8 @@ async def get_session_user(request: Request) -> Dict[str, Any]:
 
     user_data = await auth_service.validate_session(
         session_token=session_token,
-        ip_address=request.client.host if request.client else "unknown",
-        user_agent=request.headers.get("user-agent", ""),
+        ip_address=request_meta["ip_address"],
+        user_agent=request_meta["user_agent"],
     )
 
     if not user_data:
@@ -281,8 +296,8 @@ async def get_session_user(request: Request) -> Dict[str, Any]:
 @router.post("/update_credentials", response_model=LoginResponse)
 async def update_credentials(
     req: UpdateCredentialsRequest,
-    request: Request,
     response: Response,
+    request_meta: Dict[str, str] = Depends(get_request_meta),
     user_data: Dict[str, Any] = Depends(get_session_user),
 ) -> LoginResponse:
     """Update user credentials"""
@@ -297,8 +312,8 @@ async def update_credentials(
             auth_result = await auth_service.authenticate_user(
                 email=user_data["email"],
                 password=req.current_password,
-                ip_address=request.client.host if request.client else "unknown",
-                user_agent=request.headers.get("user-agent", ""),
+                ip_address=request_meta["ip_address"],
+                user_agent=request_meta["user_agent"],
             )
 
             if not auth_result:
@@ -328,8 +343,8 @@ async def update_credentials(
         # Create new session (invalidates old one)
         session_data = await auth_service.create_session(
             user_id=user_data["user_id"],
-            ip_address=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent", ""),
+            ip_address=request_meta["ip_address"],
+            user_agent=request_meta["user_agent"],
             device_fingerprint=None,
         )
 
@@ -339,8 +354,8 @@ async def update_credentials(
         # Get updated user data
         updated_user = await auth_service.validate_session(
             session_token=session_data["session_token"],
-            ip_address=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent", ""),
+            ip_address=request_meta["ip_address"],
+            user_agent=request_meta["user_agent"],
         )
 
         logger.info(
@@ -374,7 +389,6 @@ async def update_credentials(
 
 @router.post("/logout")
 async def logout(
-    request: Request,
     response: Response,
     user_data: Dict[str, Any] = Depends(get_session_user),
 ) -> Dict[str, str]:
@@ -392,15 +406,16 @@ async def logout(
 
 @router.post("/request_password_reset")
 async def request_password_reset(
-    req: PasswordResetRequest, request: Request
+    req: PasswordResetRequest,
+    request_meta: Dict[str, str] = Depends(get_request_meta),
 ) -> Dict[str, str]:
     """Request password reset token"""
 
     try:
         token = await auth_service.create_password_reset_token(
             email=req.email,
-            ip_address=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent", ""),
+            ip_address=request_meta["ip_address"],
+            user_agent=request_meta["user_agent"],
         )
 
         if not token:
