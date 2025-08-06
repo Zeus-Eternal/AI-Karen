@@ -89,6 +89,13 @@ class HookListResponse(BaseModel):
     hook_types: List[str] = Field(..., description="Available hook types")
 
 
+class HookUnregisterResponse(BaseModel):
+    """Response model for hook unregistration."""
+    success: bool = Field(..., description="Whether the hook was successfully unregistered")
+    message: str = Field(..., description="Details about the unregistration result")
+    hook_id: str = Field(..., description="ID of the unregistered hook")
+
+
 # Hook Management Endpoints
 @router.post("/register", response_model=HookRegistrationResponse)
 async def register_hook(
@@ -153,7 +160,7 @@ async def register_hook(
         raise HTTPException(status_code=500, detail=f"Failed to register hook: {str(e)}")
 
 
-@router.delete("/unregister/{hook_id}")
+@router.delete("/unregister/{hook_id}", response_model=HookUnregisterResponse)
 async def unregister_hook(
     hook_id: str = Path(..., description="Hook ID to unregister"),
     # session: dict = Depends(validate_session)  # Temporarily disabled for web UI integration
@@ -177,11 +184,11 @@ async def unregister_hook(
         
         logger.info(f"Hook unregistered via API: {hook_id}")
         
-        return {
-            "success": True,
-            "message": f"Hook {hook_id} unregistered successfully",
-            "hook_id": hook_id
-        }
+        return HookUnregisterResponse(
+            success=True,
+            message=f"Hook {hook_id} unregistered successfully",
+            hook_id=hook_id
+        )
         
     except HTTPException:
         raise
