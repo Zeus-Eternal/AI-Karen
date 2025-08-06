@@ -13,6 +13,7 @@ from ai_karen_engine.core.dependencies import (
     get_current_tenant_id,
     get_current_user_context,
 )
+from ai_karen_engine.core.error_handler import handle_api_errors
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.security.auth_manager import verify_totp
 from ai_karen_engine.services.auth_service import auth_service
@@ -102,139 +103,104 @@ class PasswordResetConfirm(BaseModel):
 
 
 @router.post("/register", response_model=LoginResponse)
+@handle_api_errors("Registration failed")
 async def register(
     req: RegisterRequest, request: Request, response: Response
 ) -> LoginResponse:
     """Register a new user with production database"""
 
-    try:
-        # Create user
-        user = await auth_service.create_user(
-            email=req.email,
-            password=req.password,
-            full_name=req.full_name,
-            roles=req.roles,
-            tenant_id=req.tenant_id,
-            preferences=req.preferences,
-        )
+    user = await auth_service.create_user(
+        email=req.email,
+        password=req.password,
+        full_name=req.full_name,
+        roles=req.roles,
+        tenant_id=req.tenant_id,
+        preferences=req.preferences,
+    )
 
-        # Create session
-        session_data = await auth_service.create_session(
-            user_id=user.user_id,
-            ip_address=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent", ""),
-            device_fingerprint=None,  # Could be implemented later
-        )
+    session_data = await auth_service.create_session(
+        user_id=user.user_id,
+        ip_address=request.client.host if request.client else "unknown",
+        user_agent=request.headers.get("user-agent", ""),
+        device_fingerprint=None,
+    )
 
-        # Set secure HttpOnly cookie
-        set_session_cookie(response, session_data["session_token"])
+    set_session_cookie(response, session_data["session_token"])
 
-        # Convert UserData to dict format
-        user_data = {
-            "user_id": user.user_id,
-            "email": user.email,
-            "full_name": user.full_name,
-            "roles": user.roles,
-            "tenant_id": user.tenant_id,
-            "preferences": user.preferences,
-            "two_factor_enabled": user.two_factor_enabled,
-            "is_verified": user.is_verified,
-        }
+    user_data = {
+        "user_id": user.user_id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "roles": user.roles,
+        "tenant_id": user.tenant_id,
+        "preferences": user.preferences,
+        "two_factor_enabled": user.two_factor_enabled,
+        "is_verified": user.is_verified,
+    }
 
-        logger.info(
-            "User registered",
-            extra={"user_id": user.user_id},
-        )
-        return LoginResponse(
-            access_token=session_data["access_token"],
-            refresh_token=session_data["refresh_token"],
-            expires_in=session_data["expires_in"],
-            user=user_data,
-        )
-
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(
-            "Registration failed",
-            error=str(e),
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-        raise HTTPException(status_code=500, detail="Registration failed")
+    logger.info("User registered", extra={"user_id": user.user_id})
+    return LoginResponse(
+        access_token=session_data["access_token"],
+        refresh_token=session_data["refresh_token"],
+        expires_in=session_data["expires_in"],
+        user=user_data,
+    )
 
 
 @router.post("/login", response_model=LoginResponse)
+@handle_api_errors("Login failed")
 async def login(
     req: LoginRequest, request: Request, response: Response
 ) -> LoginResponse:
     """Authenticate user with production database"""
 
-    try:
-        # Authenticate user
-        user_data = await auth_service.authenticate_user(
-            email=req.email,
-            password=req.password,
-            ip_address=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent", ""),
+    user_data = await auth_service.authenticate_user(
+        email=req.email,
+        password=req.password,
+        ip_address=request.client.host if request.client else "unknown",
+        user_agent=request.headers.get("user-agent", ""),
+    )
+
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
 
-        if not user_data:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
-            )
+    if not user_data["is_verified"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified"
+        )
 
-        # Check if email is verified
-        if not user_data["is_verified"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified"
-            )
+    if user_data["two_factor_enabled"] and not req.totp_code:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Two-factor authentication required",
+        )
 
-        # Handle 2FA if enabled
-        if user_data["two_factor_enabled"] and not req.totp_code:
+    if user_data["two_factor_enabled"]:
+        if not verify_totp(user_data["user_id"], req.totp_code or ""):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Two-factor authentication required",
+                detail="Invalid two-factor code",
             )
 
-        if user_data["two_factor_enabled"]:
-            if not verify_totp(user_data["user_id"], req.totp_code or ""):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid two-factor code",
-                )
+    session_data = await auth_service.create_session(
+        user_id=user_data["user_id"],
+        ip_address=request.client.host if request.client else "unknown",
+        user_agent=request.headers.get("user-agent", ""),
+        device_fingerprint=None,
+    )
 
-        # Create session
-        session_data = await auth_service.create_session(
-            user_id=user_data["user_id"],
-            ip_address=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent", ""),
-            device_fingerprint=None,
-        )
+    set_session_cookie(response, session_data["session_token"])
 
-        # Set secure HttpOnly cookie
-        set_session_cookie(response, session_data["session_token"])
+    logger.info("User logged in", extra={"user_id": user_data["user_id"]})
 
-        logger.info(
-            "User logged in",
-            extra={"user_id": user_data["user_id"]},
-        )
-
-        return LoginResponse(
-            access_token=session_data["access_token"],
-            refresh_token=session_data["refresh_token"],
-            expires_in=session_data["expires_in"],
-            user=user_data,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            "Login failed",
-            error=str(e),
-            timestamp=datetime.now(timezone.utc).isoformat(),
-        )
-        raise HTTPException(status_code=500, detail="Login failed")
+    return LoginResponse(
+        access_token=session_data["access_token"],
+        refresh_token=session_data["refresh_token"],
+        expires_in=session_data["expires_in"],
+        user=user_data,
+    )
 
 
 @router.get("/me", response_model=UserResponse)
