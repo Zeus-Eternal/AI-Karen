@@ -41,12 +41,29 @@ logger = get_logger(__name__)
 class InMemoryAuthenticator:
     """Authentication backend using the in-memory :mod:`auth_manager`."""
 
-    def __init__(self) -> None:
-        self.secret_key = "change-me"
-        self.algorithm = "HS256"
-        self.access_token_expire_minutes = 30
-        self.refresh_token_expire_days = 7
+    def __init__(self, config: AuthConfig) -> None:
+        self.secret_key = config.jwt.secret_key
+        self.algorithm = config.jwt.algorithm
+        self.access_token_expire_minutes = int(
+            config.jwt.access_token_expiry.total_seconds() // 60
+        )
+        self.refresh_token_expire_days = int(
+            config.jwt.refresh_token_expiry.total_seconds() // 86400
+        )
         self._active_sessions: Dict[str, Dict[str, Any]] = {}
+        if hasattr(auth_manager, "_USERS"):
+            auth_manager._USERS = {}
+
+    def hash_password(self, password: str) -> str:
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+    def verify_password(self, password: str, hashed_password: str) -> bool:
+        try:
+            return bcrypt.checkpw(
+                password.encode("utf-8"), hashed_password.encode("utf-8")
+            )
+        except ValueError:
+            return False
 
     async def create_user(
         self,
@@ -97,20 +114,25 @@ class InMemoryAuthenticator:
         )
 
     def _generate_access_token(self, user_id: str) -> str:
+        now = datetime.utcnow()
         payload = {
             "user_id": user_id,
-            "exp": datetime.utcnow()
-            + timedelta(minutes=self.access_token_expire_minutes),
-            "iat": datetime.utcnow(),
+            "exp": int(
+                (now + timedelta(minutes=self.access_token_expire_minutes)).timestamp()
+            ),
+            "iat": int(now.timestamp()),
             "type": "access",
         }
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
 
     def _generate_refresh_token(self, user_id: str) -> str:
+        now = datetime.utcnow()
         payload = {
             "user_id": user_id,
-            "exp": datetime.utcnow() + timedelta(days=self.refresh_token_expire_days),
-            "iat": datetime.utcnow(),
+            "exp": int(
+                (now + timedelta(days=self.refresh_token_expire_days)).timestamp()
+            ),
+            "iat": int(now.timestamp()),
             "type": "refresh",
         }
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
@@ -149,7 +171,9 @@ class InMemoryAuthenticator:
         user_agent: str = "",
     ) -> Optional[UserData]:
         try:
-            payload = jwt.decode(session_token, self.secret_key, algorithms=[self.algorithm])
+            payload = jwt.decode(
+                session_token, self.secret_key, algorithms=[self.algorithm]
+            )
             user_id = payload.get("user_id")
             token_type = payload.get("type")
             if user_id and token_type == "access":
@@ -165,7 +189,7 @@ class InMemoryAuthenticator:
                         two_factor_enabled=user_data.get("two_factor_enabled", False),
                         is_verified=user_data.get("is_verified", True),
                     )
-        except jwt.PyJWTError:
+        except Exception:
             pass
 
         session_data = self._active_sessions.get(session_token)
@@ -217,9 +241,7 @@ class InMemoryAuthenticator:
             return None
         return auth_manager.create_password_reset_token(email)
 
-    async def verify_password_reset_token(
-        self, token: str, new_password: str
-    ) -> bool:
+    async def verify_password_reset_token(self, token: str, new_password: str) -> bool:
         email = auth_manager.verify_password_reset_token(token)
         if not email:
             return False
@@ -230,7 +252,10 @@ class InMemoryAuthenticator:
 class DatabaseAuthenticator:
     """Authentication backend using the SQL database."""
 
-    session_expire_hours = 24
+    def __init__(self, config: AuthConfig) -> None:
+        self.session_expire_hours = int(
+            config.session.session_timeout.total_seconds() // 3600
+        )
 
     def hash_password(self, password: str) -> str:
         return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -430,10 +455,19 @@ class DatabaseAuthenticator:
 class CoreAuthenticator:
     """Wrapper that selects the appropriate backend implementation."""
 
-    def __init__(self, use_database: bool = False) -> None:
+    def __init__(self, config: Optional[AuthConfig] = None) -> None:
+        self.config = config or AuthConfig.from_env()
         self.backend = (
-            DatabaseAuthenticator() if use_database else InMemoryAuthenticator()
+            DatabaseAuthenticator(self.config)
+            if self.config.features.use_database
+            else InMemoryAuthenticator(self.config)
         )
+
+    def hash_password(self, *args, **kwargs):
+        return self.backend.hash_password(*args, **kwargs)
+
+    def verify_password(self, *args, **kwargs):
+        return self.backend.verify_password(*args, **kwargs)
 
     async def create_user(self, *args, **kwargs):
         return await self.backend.create_user(*args, **kwargs)
@@ -480,11 +514,9 @@ class AuthService:
         intelligence_engine: Optional[IntelligenceEngine] = None,
         session_store: Optional[Any] = None,
     ) -> None:
-        self.config = config or AuthConfig()
+        self.config = config or AuthConfig.from_env()
 
-        self.core_authenticator = core_authenticator or CoreAuthenticator(
-            self.config.features.use_database
-        )
+        self.core_authenticator = core_authenticator or CoreAuthenticator(self.config)
         self.session_store = session_store or self.core_authenticator
 
         self.intelligence_engine = (
@@ -572,15 +604,27 @@ class AuthService:
                 timestamp=datetime.utcnow(),
                 request_id=f"{email}:{int(time.time()*1000)}",
             )
-            risk_score = await self.intelligence_engine.calculate_risk_score(context)
-            thresholds = self.intelligence_engine.config.risk_thresholds
-            if risk_score >= thresholds.high_risk_threshold:
-                logger.warning("Login attempt blocked due to high risk score")
-                if self.security_enhancer:
-                    self.security_enhancer.log_event(
-                        "login_blocked", {"email": email, "reason": "intelligent"}
-                    )
-                return None
+            if hasattr(self.intelligence_engine, "calculate_risk_score"):
+                risk_score = await self.intelligence_engine.calculate_risk_score(
+                    context
+                )
+                thresholds = self.intelligence_engine.config.risk_thresholds
+                if risk_score >= thresholds.high_risk_threshold:
+                    logger.warning("Login attempt blocked due to high risk score")
+                    if self.security_enhancer:
+                        self.security_enhancer.log_event(
+                            "login_blocked", {"email": email, "reason": "intelligent"}
+                        )
+                    return None
+            elif hasattr(self.intelligence_engine, "analyze_login_attempt"):
+                analysis = await self.intelligence_engine.analyze_login_attempt(context)
+                if getattr(analysis, "should_block", False):
+                    logger.warning("Login attempt blocked due to intelligent analysis")
+                    if self.security_enhancer:
+                        self.security_enhancer.log_event(
+                            "login_blocked", {"email": email, "reason": "intelligent"}
+                        )
+                    return None
 
         if self.security_enhancer:
             self.security_enhancer.log_event("login_success", {"email": email})
@@ -651,8 +695,7 @@ class AuthService:
             self.security_enhancer.log_event(event, data)
 
 
-auth_service = AuthService()
+auth_service = AuthService(AuthConfig.from_env())
 
 
 __all__ = ["AuthService", "AuthConfig", "auth_service"]
-
