@@ -1,23 +1,14 @@
-from typing import Dict, Any
-
 import asyncio
-
-try:
-    from fastapi import APIRouter, Depends, HTTPException
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "FastAPI is required for user routes. Install via `pip install fastapi`."
-    ) from e
-
-try:
-    from pydantic import BaseModel
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "Pydantic is required for user routes. Install via `pip install pydantic`."
-    ) from e
+from typing import Any, Dict
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
 from ai_karen_engine.core.dependencies import get_current_user_context
+from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
+
+APIRouter, Depends, HTTPException = import_fastapi(
+    "APIRouter", "Depends", "HTTPException"
+)
+BaseModel = import_pydantic("BaseModel")
 
 router = APIRouter()
 
@@ -44,8 +35,12 @@ async def get_profile(
     db: DuckDBClient = Depends(get_db),
 ) -> UserProfile:
     # Only allow access to own profile or for admin roles
-    if current_user.get("user_id") != user_id and "admin" not in current_user.get("roles", []):
-        raise HTTPException(status_code=403, detail="Not authorized to access this profile")
+    if current_user.get("user_id") != user_id and "admin" not in current_user.get(
+        "roles", []
+    ):
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this profile"
+        )
 
     profile = await asyncio.to_thread(db.get_profile, user_id)
     if profile is None:
@@ -61,8 +56,12 @@ async def save_profile(
     db: DuckDBClient = Depends(get_db),
 ) -> UserProfile:
     # Only allow modifications to own profile or for admin roles
-    if current_user.get("user_id") != user_id and "admin" not in current_user.get("roles", []):
-        raise HTTPException(status_code=403, detail="Not authorized to modify this profile")
+    if current_user.get("user_id") != user_id and "admin" not in current_user.get(
+        "roles", []
+    ):
+        raise HTTPException(
+            status_code=403, detail="Not authorized to modify this profile"
+        )
 
     data = profile.dict(exclude={"user_id"})
     await asyncio.to_thread(db.save_profile, user_id, data)

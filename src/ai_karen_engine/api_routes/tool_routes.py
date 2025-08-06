@@ -5,20 +5,6 @@ FastAPI routes for Tool service integration.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-try:
-    from fastapi import APIRouter, Depends, HTTPException, Query
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "FastAPI is required for tool routes. Install via `pip install fastapi`."
-    ) from e
-
-try:
-    from pydantic import BaseModel, Field
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "Pydantic is required for tool routes. Install via `pip install pydantic`."
-    ) from e
-
 from ai_karen_engine.core.dependencies import (
     get_current_tenant_id,
     get_current_user_context,
@@ -26,6 +12,12 @@ from ai_karen_engine.core.dependencies import (
 )
 from ai_karen_engine.core.error_handler import handle_api_exception
 from ai_karen_engine.services.tool_service import BaseTool, ToolInput, ToolService
+from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
+
+APIRouter, Depends, HTTPException, Query = import_fastapi(
+    "APIRouter", "Depends", "HTTPException", "Query"
+)
+BaseModel, Field = import_pydantic("BaseModel", "Field")
 
 router = APIRouter(tags=["tools"])
 

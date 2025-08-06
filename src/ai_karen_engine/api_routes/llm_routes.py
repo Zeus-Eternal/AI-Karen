@@ -11,23 +11,15 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-try:
-    from fastapi import APIRouter, Depends, HTTPException
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "FastAPI is required for LLM routes. Install via `pip install fastapi`."
-    ) from e
-
-try:
-    from pydantic import BaseModel, Field
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "Pydantic is required for LLM routes. Install via `pip install pydantic`."
-    ) from e
-
 from ai_karen_engine.core.config_manager import ConfigManager
 from ai_karen_engine.core.error_handler import handle_api_exception
 from ai_karen_engine.integrations.llm_registry import get_registry
+from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
+
+APIRouter, Depends, HTTPException = import_fastapi(
+    "APIRouter", "Depends", "HTTPException"
+)
+BaseModel, Field = import_pydantic("BaseModel", "Field")
 
 logger = logging.getLogger("kari.llm_routes")
 

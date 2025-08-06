@@ -5,20 +5,6 @@ FastAPI routes for enhanced memory management with web UI integration.
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-try:
-    from fastapi import APIRouter, Depends, HTTPException, Query
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "FastAPI is required for memory routes. Install via `pip install fastapi`."
-    ) from e
-
-try:
-    from pydantic import BaseModel, Field
-except ImportError as e:  # pragma: no cover - runtime dependency
-    raise ImportError(
-        "Pydantic is required for memory routes. Install via `pip install pydantic`."
-    ) from e
-
 from ai_karen_engine.core.config_manager import AIKarenConfig
 from ai_karen_engine.core.dependencies import (
     get_current_config,
@@ -40,6 +26,12 @@ from ai_karen_engine.services.memory_service import (
     WebUIMemoryQuery,
     WebUIMemoryService,
 )
+from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
+
+APIRouter, Depends, HTTPException, Query = import_fastapi(
+    "APIRouter", "Depends", "HTTPException", "Query"
+)
+BaseModel, Field = import_pydantic("BaseModel", "Field")
 
 # from ..database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
