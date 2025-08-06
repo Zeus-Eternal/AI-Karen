@@ -2,7 +2,7 @@
 FastAPI routes for Tool service integration.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 try:
@@ -179,7 +179,7 @@ async def execute_tool(
         )
 
         # Execute the tool
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         result = await tool_service.execute_tool(tool_input)
 
         return ToolExecutionResponse(
@@ -315,7 +315,7 @@ async def health_check(tool_service: ToolService = Depends(get_tool_service)):
             return {
                 "status": "healthy",
                 "service": "tool_service",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "tools_available": len(tool_service.list_tools()),
             }
     except Exception as e:

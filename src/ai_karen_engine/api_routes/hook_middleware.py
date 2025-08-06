@@ -12,7 +12,7 @@ import asyncio
 import logging
 import time
 from typing import Callable, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 try:
     from fastapi import Request, Response
@@ -151,7 +151,7 @@ class HookMiddleware(BaseHTTPMiddleware):
                 "headers": dict(request.headers),
                 "path_params": dict(request.path_params),
                 "body": body,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "client_host": getattr(request.client, 'host', None) if request.client else None,
                 "user_agent": request.headers.get("user-agent"),
                 "content_type": request.headers.get("content-type"),
@@ -164,7 +164,7 @@ class HookMiddleware(BaseHTTPMiddleware):
                 "method": request.method,
                 "url": str(request.url),
                 "path": request.url.path,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "extraction_error": str(e)
             }
     
@@ -177,14 +177,14 @@ class HookMiddleware(BaseHTTPMiddleware):
                 "processing_time": processing_time,
                 "content_type": response.headers.get("content-type"),
                 "content_length": response.headers.get("content-length"),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         except Exception as e:
             logger.warning(f"Failed to extract response info: {e}")
             return {
                 "status_code": getattr(response, 'status_code', 500),
                 "processing_time": processing_time,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "extraction_error": str(e)
             }
     
@@ -220,7 +220,7 @@ class HookMiddleware(BaseHTTPMiddleware):
             return {
                 "hook_type": hook_type,
                 "summary": summary.__dict__,
-                "executed_at": datetime.utcnow().isoformat()
+                "executed_at": datetime.now(timezone.utc).isoformat()
             }
             
         except asyncio.TimeoutError:
@@ -291,7 +291,7 @@ class HookMiddleware(BaseHTTPMiddleware):
                     "api_endpoint": request_info["path"],
                     "http_method": request_info["method"],
                     "pre_hook_results": pre_hook_results,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 },
                 user_context=self._extract_user_context(request_info)
             )

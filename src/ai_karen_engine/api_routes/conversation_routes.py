@@ -2,7 +2,7 @@
 FastAPI routes for enhanced conversation management with web UI integration.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 try:
@@ -869,5 +869,5 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "conversation",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }

@@ -5,7 +5,7 @@ Provides REST API endpoints for managing LLM providers, profiles, and configurat
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -255,7 +255,7 @@ async def save_settings(
         return {
             "success": True,
             "message": "LLM settings saved successfully",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     except Exception as ex:

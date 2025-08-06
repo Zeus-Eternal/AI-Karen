@@ -3,7 +3,7 @@ Persona API Routes
 REST endpoints for managing personas, style controls, and user preferences
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -451,7 +451,7 @@ async def persona_health_check():
 
         return {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "service": "persona-service",
             "system_personas_available": system_personas_count,
             "nlp_analyzer_available": hasattr(

@@ -2,7 +2,7 @@
 Enhanced FastAPI routes for file attachment with AG-UI and hook integration.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 import json
 
@@ -174,7 +174,7 @@ async def enhanced_upload_file(
                 "security_scan_result": result.metadata.security_scan_result.value if result.metadata.security_scan_result else None
             },
             "chart_data": {
-                "upload_time": datetime.utcnow().isoformat(),
+                "upload_time": datetime.now(timezone.utc).isoformat(),
                 "file_size_mb": round(result.metadata.file_size / (1024 * 1024), 2),
                 "file_type": result.metadata.file_type.value
             }

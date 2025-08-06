@@ -2,7 +2,7 @@
 FastAPI routes for AI Orchestrator service integration.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
@@ -106,9 +106,9 @@ async def process_flow(
         )
         
         # Process the flow
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         result = await ai_orchestrator.process_flow(request.flow_type, flow_input)
-        processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         
         return FlowResponse(
             **format_flow_response(result, int(processing_time))
@@ -147,9 +147,9 @@ async def decide_action(
         )
         
         # Process decide action flow
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         result = await ai_orchestrator.decide_action(flow_input)
-        processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         
         return FlowResponse(
             **format_flow_response(result, int(processing_time))
@@ -195,9 +195,9 @@ async def conversation_processing(
         )
         
         # Process conversation flow
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         result = await ai_orchestrator.conversation_processing_flow(flow_input)
-        processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         
         return FlowResponse(
             **format_flow_response(result, int(processing_time))
@@ -297,7 +297,7 @@ async def _generate_starter_prompts(_: Optional[str] = None) -> Dict[str, Any]:
 
     return {
         "prompts": starter_prompts,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -355,13 +355,13 @@ async def health_check(
             return {
                 "status": "healthy",
                 "service": "ai_orchestrator",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
     except Exception as e:
         return {
             "status": "unhealthy",
             "service": "ai_orchestrator",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "error": str(e)
         }
 

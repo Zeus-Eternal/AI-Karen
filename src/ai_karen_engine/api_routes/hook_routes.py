@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 try:
     from fastapi import APIRouter, HTTPException, Query, Path
@@ -116,7 +116,7 @@ async def register_hook(
                 "hook_type": request.hook_type,
                 "source_type": request.source_type,
                 "source_name": request.source_name,
-                "executed_at": datetime.utcnow().isoformat(),
+                "executed_at": datetime.now(timezone.utc).isoformat(),
                 "data_keys": list(context.data.keys()),
                 "message": f"API hook {request.hook_type} executed successfully"
             }
@@ -145,7 +145,7 @@ async def register_hook(
             source_type=hook_registration.source_type,
             source_name=hook_registration.source_name,
             enabled=hook_registration.enabled,
-            registered_at=datetime.utcnow().isoformat()
+            registered_at=datetime.now(timezone.utc).isoformat()
         )
         
     except Exception as e:
@@ -266,7 +266,7 @@ async def list_hooks(
                 source_type=hook.source_type,
                 source_name=hook.source_name,
                 enabled=hook.enabled,
-                registered_at=datetime.utcnow().isoformat()  # Placeholder - would be actual registration time
+                registered_at=datetime.now(timezone.utc).isoformat()  # Placeholder - would be actual registration time
             ))
         
         return HookListResponse(
@@ -546,7 +546,7 @@ async def hook_system_health():
                 "source_types": summary["source_types"]
             },
             "execution_stats": summary["execution_stats"],
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
     except Exception as e:
@@ -554,5 +554,5 @@ async def hook_system_health():
         return {
             "status": "error",
             "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }

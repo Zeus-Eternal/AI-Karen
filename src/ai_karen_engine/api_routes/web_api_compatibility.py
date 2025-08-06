@@ -7,7 +7,7 @@ to the correct backend services with proper request/response transformation.
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import ValidationError
@@ -147,7 +147,7 @@ async def chat_process_compatibility(
             )
 
         # Call AI orchestrator service with timeout and retry logic
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         max_retries = 2
         retry_count = 0
 
@@ -230,7 +230,7 @@ async def chat_process_compatibility(
                     logger.error(f"[{request_id}] AI orchestrator error: {e}")
                     raise
 
-        processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         logger.info(
             f"[{request_id}] Chat processing completed in {processing_time:.2f}ms"
         )
@@ -427,7 +427,7 @@ async def memory_query_compatibility(
             )
 
         # Query memories with timeout and retry logic
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         max_retries = 2
         retry_count = 0
         memories = []
@@ -499,7 +499,7 @@ async def memory_query_compatibility(
                     logger.error(f"[{request_id}] Memory service error: {e}")
                     raise
 
-        query_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        query_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         logger.info(
             f"[{request_id}] Memory query completed in {query_time:.2f}ms, found {len(memories)} memories"
         )
@@ -720,7 +720,7 @@ async def memory_store_compatibility(
                 user_id = None
 
         # Store memory with enhanced error handling
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         memory_id = None
 
         try:
@@ -766,7 +766,7 @@ async def memory_store_compatibility(
                             ai_generated=backend_request.ai_generated,
                         )
                         storage_time = (
-                            datetime.utcnow() - start_time
+                            datetime.now(timezone.utc) - start_time
                         ).total_seconds() * 1000
                         backend_response = {
                             "success": memory_id is not None,
@@ -841,7 +841,7 @@ async def memory_store_compatibility(
                 detail=error_response.dict(),
             )
 
-        storage_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        storage_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
         # Transform response to web UI format
         try:
@@ -984,7 +984,7 @@ async def execute_plugin_compatibility(
         logger.info(f"[{request_id}] Executing plugin: {request.plugin_name}")
 
         # Execute plugin
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         result = (
             await plugin_service.execute_plugin(
                 request.plugin_name,
@@ -996,7 +996,7 @@ async def execute_plugin_compatibility(
             else {"error": "Plugin service not available"}
         )
 
-        execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        execution_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
         # Create response
         response = WebUIPluginExecuteResponse(
@@ -1171,7 +1171,7 @@ async def health_check_compatibility(http_request: Request):
                 get_ai_orchestrator_service()
                 services["ai_orchestrator"] = {
                     "status": "healthy",
-                    "last_check": datetime.utcnow().isoformat(),
+                    "last_check": datetime.now(timezone.utc).isoformat(),
                     "uptime": 100.0,
                     "error_count": 0,
                     "success_count": 1,
@@ -1183,7 +1183,7 @@ async def health_check_compatibility(http_request: Request):
                 )
                 services["ai_orchestrator"] = {
                     "status": "unhealthy",
-                    "last_check": datetime.utcnow().isoformat(),
+                    "last_check": datetime.now(timezone.utc).isoformat(),
                     "uptime": 0.0,
                     "error_count": 1,
                     "success_count": 0,
@@ -1199,7 +1199,7 @@ async def health_check_compatibility(http_request: Request):
                 get_memory_service()
                 services["memory_service"] = {
                     "status": "healthy",
-                    "last_check": datetime.utcnow().isoformat(),
+                    "last_check": datetime.now(timezone.utc).isoformat(),
                     "uptime": 100.0,
                     "error_count": 0,
                     "success_count": 1,
@@ -1211,7 +1211,7 @@ async def health_check_compatibility(http_request: Request):
                 )
                 services["memory_service"] = {
                     "status": "unhealthy",
-                    "last_check": datetime.utcnow().isoformat(),
+                    "last_check": datetime.now(timezone.utc).isoformat(),
                     "uptime": 0.0,
                     "error_count": 1,
                     "success_count": 0,
@@ -1227,7 +1227,7 @@ async def health_check_compatibility(http_request: Request):
                 get_plugin_service()
                 services["plugin_service"] = {
                     "status": "healthy",
-                    "last_check": datetime.utcnow().isoformat(),
+                    "last_check": datetime.now(timezone.utc).isoformat(),
                     "uptime": 100.0,
                     "error_count": 0,
                     "success_count": 1,
@@ -1239,7 +1239,7 @@ async def health_check_compatibility(http_request: Request):
                 )
                 services["plugin_service"] = {
                     "status": "unhealthy",
-                    "last_check": datetime.utcnow().isoformat(),
+                    "last_check": datetime.now(timezone.utc).isoformat(),
                     "uptime": 0.0,
                     "error_count": 1,
                     "success_count": 0,
@@ -1256,7 +1256,7 @@ async def health_check_compatibility(http_request: Request):
                 # Simple connectivity test
                 services["database"] = {
                     "status": "healthy",
-                    "last_check": datetime.utcnow().isoformat(),
+                    "last_check": datetime.now(timezone.utc).isoformat(),
                     "uptime": 100.0,
                     "error_count": 0,
                     "success_count": 1,
@@ -1266,7 +1266,7 @@ async def health_check_compatibility(http_request: Request):
                 logger.error(f"[{request_id}] Database health check failed: {db_error}")
                 services["database"] = {
                     "status": "unhealthy",
-                    "last_check": datetime.utcnow().isoformat(),
+                    "last_check": datetime.now(timezone.utc).isoformat(),
                     "uptime": 0.0,
                     "error_count": 1,
                     "success_count": 0,
@@ -1288,7 +1288,7 @@ async def health_check_compatibility(http_request: Request):
             backend_health = {
                 "status": overall_status,
                 "services": services,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "uptime": 3600.0,  # Default uptime
                 "total_services": len(services),
                 "healthy_services": healthy_count,
@@ -1456,9 +1456,9 @@ async def trigger_health_check(http_request: Request):
             health_monitor = get_health_monitor()
 
             # Trigger immediate health check for all services
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
             results = await health_monitor.check_all_services()
-            check_duration = (datetime.utcnow() - start_time).total_seconds() * 1000
+            check_duration = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
             # Format results for web UI
             formatted_results = {}
@@ -1477,7 +1477,7 @@ async def trigger_health_check(http_request: Request):
             response = {
                 "message": "Health check completed successfully",
                 "check_duration_ms": round(check_duration, 2),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "overall_status": health_summary["overall_status"],
                 "services_checked": len(results),
                 "results": formatted_results,
@@ -1495,7 +1495,7 @@ async def trigger_health_check(http_request: Request):
             )
 
             # Manual health checks as fallback
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
             results = {}
 
             # Check critical services manually
@@ -1524,7 +1524,7 @@ async def trigger_health_check(http_request: Request):
                         "status": "healthy",
                         "message": f"{service_name} is available",
                         "response_time": 0.1,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                         "error": None,
                     }
 
@@ -1533,11 +1533,11 @@ async def trigger_health_check(http_request: Request):
                         "status": "unhealthy",
                         "message": f"{service_name} check failed: {str(e)}",
                         "response_time": 0.0,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                         "error": str(e),
                     }
 
-            check_duration = (datetime.utcnow() - start_time).total_seconds() * 1000
+            check_duration = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
             healthy_count = sum(1 for r in results.values() if r["status"] == "healthy")
             unhealthy_count = len(results) - healthy_count
@@ -1550,7 +1550,7 @@ async def trigger_health_check(http_request: Request):
             response = {
                 "message": "Manual health check completed",
                 "check_duration_ms": round(check_duration, 2),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "overall_status": overall_status,
                 "services_checked": len(results),
                 "results": results,

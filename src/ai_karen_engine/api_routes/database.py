@@ -6,7 +6,7 @@ Provides REST endpoints for tenant, memory, and conversation management.
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 
 try:
@@ -432,7 +432,7 @@ async def health_check(db_manager: DatabaseIntegrationManager = Depends(get_db_m
             "data": {
                 "status": "unhealthy",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         }
 
