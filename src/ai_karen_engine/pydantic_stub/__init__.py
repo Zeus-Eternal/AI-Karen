@@ -3,6 +3,8 @@ from __future__ import annotations
 # mypy: ignore-errors
 from typing import Any, Optional
 
+__version__ = "1.10"
+
 
 class ValidationError(Exception):
     """Pydantic validation error stub."""
