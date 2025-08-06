@@ -11,8 +11,43 @@ import json
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Any, Union
+from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
+
+
+@dataclass
+class UserData:
+    """Basic user profile returned by authentication flows."""
+
+    user_id: str
+    email: str
+    full_name: Optional[str] = None
+    roles: List[str] = field(default_factory=list)
+    tenant_id: str = "default"
+    preferences: Dict[str, Any] = field(default_factory=dict)
+    two_factor_enabled: bool = False
+    is_verified: bool = True
+
+
+@dataclass
+class SessionData:
+    """Session token bundle issued after authentication."""
+
+    access_token: str
+    refresh_token: str
+    session_token: str
+    expires_in: int
+    user_data: Optional[UserData] = None
+
+
+@dataclass
+class AuthEvent:
+    """Represents an authentication related event."""
+
+    event_type: str
+    user: UserData
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class RiskLevel(Enum):
