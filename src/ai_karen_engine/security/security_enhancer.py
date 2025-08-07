@@ -23,6 +23,7 @@ from datetime import datetime
 from typing import Callable, Deque, Dict, List, Optional
 
 from ai_karen_engine.core.logging import get_logger
+from ai_karen_engine.auth.monitoring import metrics_hook as monitoring_metrics_hook
 
 # mypy: ignore-errors
 
@@ -71,7 +72,7 @@ class AuditLogger:
 
     def __init__(
         self,
-        metrics_hook: Optional[Callable[[str, Dict[str, object]], None]] = None,
+        metrics_hook: Optional[Callable[[str, Dict[str, object]], None]] = monitoring_metrics_hook,
     ) -> None:
         self.metrics_hook = metrics_hook
         self.events: List[AuditEvent] = []

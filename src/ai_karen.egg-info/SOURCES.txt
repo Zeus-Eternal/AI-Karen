@@ -240,15 +240,12 @@ src/ai_karen_engine/security/compliance.py
 src/ai_karen_engine/security/comprehensive_anomaly_engine.py
 src/ai_karen_engine/security/config_manager.py
 src/ai_karen_engine/security/credential_analyzer.py
-src/ai_karen_engine/security/dashboard_integration.py
 src/ai_karen_engine/security/device_fingerprint_analyzer.py
 src/ai_karen_engine/security/embedding_clustering.py
 src/ai_karen_engine/security/geolocation_analyzer.py
-src/ai_karen_engine/security/health_monitor.py
 src/ai_karen_engine/security/incident_response.py
 src/ai_karen_engine/security/intelligent_auth_base.py
 src/ai_karen_engine/security/models.py
-src/ai_karen_engine/security/observability.py
 src/ai_karen_engine/security/penetration_testing.py
 src/ai_karen_engine/security/threat_intelligence.py
 src/ai_karen_engine/security/threat_protection.py
@@ -396,7 +393,6 @@ tests/test_approve_endpoint.py
 tests/test_async_contracts.py
 tests/test_attack_pattern_detector.py
 tests/test_auth_middleware.py
-tests/test_auth_observability.py
 tests/test_auth_update_credentials.py
 tests/test_automation_job_encryption.py
 tests/test_autonomous_agent.py
@@ -413,7 +409,6 @@ tests/test_condition_evaluation.py
 tests/test_config_manager.py
 tests/test_core_infrastructure.py
 tests/test_credential_analyzer.py
-tests/test_dashboard_integration.py
 tests/test_database_client_enhancement.py
 tests/test_database_config.py
 tests/test_database_integration.py
@@ -438,7 +433,6 @@ tests/test_extensions.py
 tests/test_feature_flags.py
 tests/test_geolocation_analyzer.py
 tests/test_gpu_training.py
-tests/test_health_monitor.py
 tests/test_ice_integration.py
 tests/test_ice_multi_hop.py
 tests/test_imports.py

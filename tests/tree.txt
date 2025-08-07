@@ -387,7 +387,6 @@ AI-Karen
     │   │   │   ├── dependencies.py
     │   │   │   ├── echo_core.py
     │   │   │   ├── embedding_manager.py
-    │   │   │   ├── health_monitor.py
     │   │   │   ├── intent_engine.py
     │   │   │   ├── mesh_planner.py
     │   │   │   ├── migration_executor.py
