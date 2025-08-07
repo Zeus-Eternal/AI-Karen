@@ -36,9 +36,9 @@ The `.env` loader supports simple `KEY=value` pairs and updates `os.environ` bef
 
 ### Feature toggles
 - `AUTH_USE_DATABASE` – enable database backed auth.
-- `AUTH_ENABLE_INTELLIGENT_CHECKS` – activate advanced checks.
+- `AUTH_ENABLE_INTELLIGENT_AUTH` – activate advanced checks. Legacy name `AUTH_ENABLE_INTELLIGENT_CHECKS` is still supported.
 - `AUTH_ENABLE_REFRESH_TOKENS` – allow refresh tokens.
-- `AUTH_ENABLE_RATE_LIMITER` – enable rate limiting.
+- `AUTH_ENABLE_RATE_LIMITING` – enable rate limiting. Legacy name `AUTH_ENABLE_RATE_LIMITER` is still supported.
 - `AUTH_ENABLE_AUDIT_LOGGING` – enable audit logs.
 
 ### Rate limiter
@@ -48,4 +48,3 @@ The `.env` loader supports simple `KEY=value` pairs and updates `os.environ` bef
 ## Validation
 
 `AuthConfig.validate()` ensures `AUTH_SECRET_KEY` is provided and that a Redis URL is supplied when the session backend is set to `redis`. A `ValueError` is raised if validation fails.
-
