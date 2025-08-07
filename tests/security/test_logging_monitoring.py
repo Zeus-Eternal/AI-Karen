@@ -1,6 +1,4 @@
 import logging
-import re
-
 import pytest
 from prometheus_client import CollectorRegistry
 
@@ -27,9 +25,13 @@ async def test_audit_logging_and_metrics(caplog):
         assert user is not None
         assert await service.authenticate_user("log@example.com", "wrong") is None
 
-    messages = [r.getMessage() for r in caplog.records]
-    assert any(re.match(r"AUTH EVENT login_success", m) for m in messages)
-    assert any(re.match(r"AUTH EVENT login_failure", m) for m in messages)
+    events = [
+        r.context["event"]
+        for r in caplog.records
+        if hasattr(r, "context") and "event" in r.context
+    ]
+    assert "login_success" in events
+    assert "login_failure" in events
 
     assert registry.get_sample_value("kari_auth_success_total") == 1
     failure_total = registry.get_sample_value("kari_auth_failure_total")

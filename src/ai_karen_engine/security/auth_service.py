@@ -17,21 +17,25 @@ import jwt
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.client import get_db_session
 from ai_karen_engine.database.models.auth_models import (
-    PasswordResetToken,
     EmailVerificationToken,
+    PasswordResetToken,
     User,
     UserSession,
 )
 from ai_karen_engine.security import auth_manager
+from ai_karen_engine.security.auth_metrics import metrics_hook as default_metrics_hook
 from ai_karen_engine.security.config import AuthConfig
 from ai_karen_engine.security.intelligence_engine import IntelligenceEngine
 from ai_karen_engine.security.models import AuthContext, SessionData, UserData
+from ai_karen_engine.security.observability import (
+    AuthEventType,
+    AuthObservabilityService,
+)
 from ai_karen_engine.security.security_enhancer import (
     AuditLogger,
     RateLimiter,
     SecurityEnhancer,
 )
-from ai_karen_engine.security.auth_metrics import metrics_hook as default_metrics_hook
 from ai_karen_engine.security.session_store import (
     DatabaseSessionStore,
     InMemorySessionStore,
@@ -620,8 +624,12 @@ class AuthService:
         security_enhancer: Optional[SecurityEnhancer] = None,
         intelligence_engine: Optional[IntelligenceEngine] = None,
         session_store: Optional[Any] = None,
+        observability_service: Optional[AuthObservabilityService] = None,
     ) -> None:
         self.config = config or AuthConfig.from_env()
+
+        metrics_hook = metrics_hook or default_metrics_hook
+        self.metrics_hook = metrics_hook
 
         self.core_authenticator = core_authenticator or CoreAuthenticator(self.config)
 
@@ -665,7 +673,6 @@ class AuthService:
                 if self.config.features.enable_rate_limiter
                 else None
             )
-            metrics_hook = metrics_hook or default_metrics_hook
             audit_logger = (
                 AuditLogger(metrics_hook=metrics_hook)
                 if self.config.features.enable_audit_logging
@@ -676,6 +683,8 @@ class AuthService:
             )
         else:
             self.security_enhancer = None
+
+        self.observability = observability_service
 
     async def create_user(
         self,
@@ -702,10 +711,27 @@ class AuthService:
         ip_address: str = "unknown",
         user_agent: str = "",
     ) -> Optional[UserData]:
+        context = AuthContext(
+            email=email,
+            password_hash=hashlib.sha256(password.encode()).hexdigest(),
+            client_ip=ip_address,
+            user_agent=user_agent,
+            timestamp=datetime.utcnow(),
+            request_id=f"{email}:{int(time.time()*1000)}",
+        )
+
         if self.security_enhancer:
             self.security_enhancer.log_event("login_attempt", {"email": email})
             if not self.security_enhancer.allow_auth_attempt(email):
+                if self.metrics_hook:
+                    self.metrics_hook("login_blocked", {"email": email})
+                if self.observability:
+                    self.observability.record_auth_event(
+                        context, event_type=AuthEventType.LOGIN_BLOCKED
+                    )
                 return None
+        elif self.metrics_hook:
+            self.metrics_hook("login_attempt", {"email": email})
 
         start_time = time.perf_counter()
         user = await self.core_authenticator.authenticate_user(
@@ -722,19 +748,21 @@ class AuthService:
                     "login_failure",
                     {"email": email, "processing_time": duration},
                 )
+            elif self.metrics_hook:
+                self.metrics_hook(
+                    "login_failure", {"email": email, "processing_time": duration}
+                )
+            if self.observability:
+                self.observability.record_auth_event(
+                    context,
+                    event_type=AuthEventType.LOGIN_FAILURE,
+                    processing_time_ms=duration * 1000,
+                )
             return None
 
         user_data = user
 
         if self.intelligence_engine:
-            context = AuthContext(
-                email=email,
-                password_hash=hashlib.sha256(password.encode()).hexdigest(),
-                client_ip=ip_address,
-                user_agent=user_agent,
-                timestamp=datetime.utcnow(),
-                request_id=f"{email}:{int(time.time()*1000)}",
-            )
             if hasattr(self.intelligence_engine, "calculate_risk_score"):
                 risk_score = await self.intelligence_engine.calculate_risk_score(
                     context
@@ -742,35 +770,77 @@ class AuthService:
                 thresholds = self.intelligence_engine.config.risk_thresholds
                 if risk_score >= thresholds.high_risk_threshold:
                     logger.warning("Login attempt blocked due to high risk score")
+                    duration = time.perf_counter() - start_time
                     if self.security_enhancer:
                         self.security_enhancer.log_event(
                             "login_blocked",
                             {
                                 "email": email,
                                 "reason": "intelligent",
-                                "processing_time": time.perf_counter() - start_time,
+                                "processing_time": duration,
                             },
+                        )
+                    elif self.metrics_hook:
+                        self.metrics_hook(
+                            "login_blocked",
+                            {
+                                "email": email,
+                                "reason": "intelligent",
+                                "processing_time": duration,
+                            },
+                        )
+                    if self.observability:
+                        self.observability.record_auth_event(
+                            context,
+                            event_type=AuthEventType.LOGIN_BLOCKED,
+                            processing_time_ms=duration * 1000,
                         )
                     return None
             elif hasattr(self.intelligence_engine, "analyze_login_attempt"):
                 analysis = await self.intelligence_engine.analyze_login_attempt(context)
                 if getattr(analysis, "should_block", False):
                     logger.warning("Login attempt blocked due to intelligent analysis")
+                    duration = time.perf_counter() - start_time
                     if self.security_enhancer:
                         self.security_enhancer.log_event(
                             "login_blocked",
                             {
                                 "email": email,
                                 "reason": "intelligent",
-                                "processing_time": time.perf_counter() - start_time,
+                                "processing_time": duration,
                             },
+                        )
+                    elif self.metrics_hook:
+                        self.metrics_hook(
+                            "login_blocked",
+                            {
+                                "email": email,
+                                "reason": "intelligent",
+                                "processing_time": duration,
+                            },
+                        )
+                    if self.observability:
+                        self.observability.record_auth_event(
+                            context,
+                            event_type=AuthEventType.LOGIN_BLOCKED,
+                            processing_time_ms=duration * 1000,
                         )
                     return None
 
+        duration = time.perf_counter() - start_time
         if self.security_enhancer:
             self.security_enhancer.log_event(
-                "login_success",
-                {"email": email, "processing_time": time.perf_counter() - start_time},
+                "login_success", {"email": email, "processing_time": duration}
+            )
+        elif self.metrics_hook:
+            self.metrics_hook(
+                "login_success", {"email": email, "processing_time": duration}
+            )
+        if self.observability:
+            self.observability.record_auth_event(
+                context,
+                event_type=AuthEventType.LOGIN_SUCCESS,
+                processing_time_ms=duration * 1000,
             )
 
         return user_data
@@ -910,14 +980,4 @@ class _AuthServiceAccessor:
 auth_service = _AuthServiceAccessor()
 
 
-def get_auth_service() -> AuthService:  # pragma: no cover - deprecated
-    """Deprecated accessor for backward compatibility."""
-    warnings.warn(
-        "'get_auth_service' is deprecated. Use 'auth_service()' instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _get_auth_service()
-
-
-__all__ = ["AuthService", "AuthConfig", "auth_service", "get_auth_service"]
+__all__ = ["AuthService", "AuthConfig", "auth_service"]
