@@ -17,6 +17,83 @@ from uuid import uuid4
 
 from .config import AuthConfig
 from .models import AuthEvent, AuthEventType, SessionData, UserData
+from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
+
+try:  # pragma: no cover - optional dependency
+    from prometheus_client import Counter, Histogram, CollectorRegistry
+except Exception:  # pragma: no cover
+    class _DummyMetric:
+        def inc(self, amount: int = 1) -> None:  # pragma: no cover
+            pass
+
+        def observe(self, value: float) -> None:  # pragma: no cover
+            pass
+
+    Counter = Histogram = _DummyMetric  # type: ignore
+    CollectorRegistry = object  # type: ignore
+
+AUTH_SUCCESS = None
+AUTH_FAILURE = None
+AUTH_PROCESSING_TIME = None
+
+
+def init_auth_metrics(
+    registry: CollectorRegistry | None = PROM_REGISTRY,
+    force: bool = False,
+):
+    """Initialize authentication metrics."""
+    global AUTH_SUCCESS, AUTH_FAILURE, AUTH_PROCESSING_TIME
+    if not force:
+        if AUTH_SUCCESS is not None:
+            return AUTH_SUCCESS, AUTH_FAILURE, AUTH_PROCESSING_TIME
+        if registry is not None:
+            existing = getattr(registry, "_names_to_collectors", {})  # type: ignore[attr-defined]
+            auth_success = existing.get("kari_auth_success_total")
+            if auth_success is not None:
+                AUTH_SUCCESS = auth_success
+                AUTH_FAILURE = existing.get("kari_auth_failure_total")
+                AUTH_PROCESSING_TIME = existing.get("kari_auth_processing_seconds")
+                return AUTH_SUCCESS, AUTH_FAILURE, AUTH_PROCESSING_TIME
+
+    try:
+        AUTH_SUCCESS = Counter(
+            "kari_auth_success_total",
+            "Total successful authentication events",
+            registry=registry,
+        )
+        AUTH_FAILURE = Counter(
+            "kari_auth_failure_total",
+            "Total failed authentication events",
+            registry=registry,
+        )
+        AUTH_PROCESSING_TIME = Histogram(
+            "kari_auth_processing_seconds",
+            "Time spent processing authentication events",
+            registry=registry,
+        )
+    except ValueError:
+        if registry is not None:
+            existing = getattr(registry, "_names_to_collectors", {})  # type: ignore[attr-defined]
+            AUTH_SUCCESS = existing.get("kari_auth_success_total")
+            AUTH_FAILURE = existing.get("kari_auth_failure_total")
+            AUTH_PROCESSING_TIME = existing.get("kari_auth_processing_seconds")
+    return AUTH_SUCCESS, AUTH_FAILURE, AUTH_PROCESSING_TIME
+
+
+# Initialize metrics with default registry at import time
+init_auth_metrics()
+
+
+def metrics_hook(event: str, data: Dict[str, object]) -> None:
+    """Forward authentication events to Prometheus metrics."""
+    duration = float(data.get("processing_time", 0) or 0)
+    if event == "login_success":
+        AUTH_SUCCESS.inc()
+        AUTH_PROCESSING_TIME.observe(duration)
+    elif event in {"login_failure", "login_blocked", "rate_limit_exceeded"}:
+        AUTH_FAILURE.inc()
+        if duration:
+            AUTH_PROCESSING_TIME.observe(duration)
 
 
 @dataclass
