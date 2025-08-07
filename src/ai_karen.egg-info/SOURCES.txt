@@ -234,7 +234,6 @@ src/ai_karen_engine/security/adaptive_learning.py
 src/ai_karen_engine/security/anomaly_detector.py
 src/ai_karen_engine/security/attack_pattern_detector.py
 src/ai_karen_engine/security/auth_manager.py
-src/ai_karen_engine/security/auth_middleware.py
 src/ai_karen_engine/security/behavioral_embedding.py
 src/ai_karen_engine/security/campaign_analyzer.py
 src/ai_karen_engine/security/compliance.py
@@ -248,7 +247,6 @@ src/ai_karen_engine/security/geolocation_analyzer.py
 src/ai_karen_engine/security/health_monitor.py
 src/ai_karen_engine/security/incident_response.py
 src/ai_karen_engine/security/intelligent_auth_base.py
-src/ai_karen_engine/security/intelligent_auth_service.py
 src/ai_karen_engine/security/models.py
 src/ai_karen_engine/security/observability.py
 src/ai_karen_engine/security/penetration_testing.py
@@ -447,7 +445,6 @@ tests/test_imports.py
 tests/test_intelligent_auth_base.py
 tests/test_intelligent_auth_models.py
 tests/test_intelligent_auth_router.py
-tests/test_intelligent_auth_service.py
 tests/test_intelligent_suggestions.py
 tests/test_intent_engine.py
 tests/test_llama_client.py
