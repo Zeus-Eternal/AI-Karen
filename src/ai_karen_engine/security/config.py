@@ -7,7 +7,12 @@ import os
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any
+
+try:
+    import yaml  # type: ignore
+except ImportError:  # pragma: no cover - yaml is optional
+    yaml = None
 
 
 def _env_bool(value: Optional[str], default: bool) -> bool:
@@ -16,6 +21,19 @@ def _env_bool(value: Optional[str], default: bool) -> bool:
     if value is None:
         return default
     return value.lower() in {"1", "true", "yes"}
+
+
+def _load_env_file(file_path: Union[str, Path]) -> None:
+    """Simple .env file parser that updates os.environ."""
+
+    for line in Path(file_path).read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
 
 
 @dataclass
@@ -174,10 +192,8 @@ class AuthConfig:
         )
 
     @classmethod
-    def from_file(cls, file_path: Union[str, Path]) -> "AuthConfig":
-        """Load configuration from a JSON file."""
-
-        data = json.loads(Path(file_path).read_text())
+    def _from_mapping(cls, data: Dict[str, Any]) -> "AuthConfig":
+        """Create configuration from a mapping structure."""
 
         jwt_data = data.get("jwt", {})
         session_data = data.get("session", {})
@@ -260,9 +276,81 @@ class AuthConfig:
         )
 
     @classmethod
-    def load(cls, file_path: Optional[Union[str, Path]] = None) -> "AuthConfig":
-        """Load configuration from file or environment variables."""
+    def from_file(cls, file_path: Union[str, Path]) -> "AuthConfig":
+        """Load configuration from a JSON or YAML file."""
 
-        if file_path and Path(file_path).exists():
-            return cls.from_file(file_path)
+        path = Path(file_path)
+        suffix = path.suffix.lower()
+        if suffix == ".json":
+            data = json.loads(path.read_text() or "{}")
+        elif suffix in {".yaml", ".yml"}:
+            if yaml is None:
+                raise ValueError("PyYAML is required to load YAML configuration")
+            data = yaml.safe_load(path.read_text()) or {}
+        else:
+            raise ValueError(f"Unsupported configuration format: {suffix}")
+
+        return cls._from_mapping(data)
+
+    @classmethod
+    def from_env_file(cls, file_path: Union[str, Path]) -> "AuthConfig":
+        """Load configuration from a .env file."""
+
+        _load_env_file(file_path)
         return cls.from_env()
+
+    def validate(self) -> None:
+        """Validate mandatory settings and raise clear errors."""
+
+        errors = []
+        if not self.jwt.secret_key or self.jwt.secret_key == "change-me":
+            errors.append("AUTH_SECRET_KEY must be set")
+
+        if self.session.storage_backend == "redis" and not self.session.redis_url:
+            errors.append(
+                "AUTH_SESSION_REDIS_URL required when storage_backend='redis'"
+            )
+
+        if errors:
+            raise ValueError("Invalid authentication configuration: " + "; ".join(errors))
+
+    @classmethod
+    def load(
+        cls,
+        file_path: Optional[Union[str, Path]] = None,
+        env: Optional[str] = None,
+    ) -> "AuthConfig":
+        """Load configuration from .env, JSON, YAML, or environment variables."""
+
+        path: Optional[Path] = None
+        if file_path:
+            path = Path(file_path)
+        else:
+            env = env or os.getenv("APP_ENV") or os.getenv("ENV")
+            candidates = []
+            if env:
+                candidates = [
+                    Path(f".env.{env}"),
+                    Path(f"auth_config.{env}.json"),
+                    Path(f"auth_config.{env}.yaml"),
+                    Path(f"auth_config.{env}.yml"),
+                ]
+            else:
+                candidates = [
+                    Path(".env"),
+                    Path("auth_config.json"),
+                    Path("auth_config.yaml"),
+                    Path("auth_config.yml"),
+                ]
+            path = next((p for p in candidates if p.exists()), None)
+
+        if path and path.exists():
+            if path.suffix.lower() == ".env":
+                config = cls.from_env_file(path)
+            else:
+                config = cls.from_file(path)
+        else:
+            config = cls.from_env()
+
+        config.validate()
+        return config
