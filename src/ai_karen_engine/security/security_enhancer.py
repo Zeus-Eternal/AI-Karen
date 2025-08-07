@@ -80,7 +80,10 @@ class AuditLogger:
         record = AuditEvent(event=event, data=data or {}, timestamp=datetime.utcnow())
         self.events.append(record)
         logger.info(
-            f"AUTH EVENT {event} {json.dumps(record.data, sort_keys=True)}"
+            "AUTH EVENT",
+            event=event,
+            timestamp=record.timestamp.isoformat(),
+            **record.data,
         )
         if self.metrics_hook:
             self.metrics_hook(event, record.data)

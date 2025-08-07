@@ -1,21 +1,12 @@
 {
-  "admin@kari.ai": {
-    "password": "5a4072a6c884169311ca87838378465a:b9fe45ac985104733c78077990a60a5a05b136008c8c051781f1fea370fa952b",
-    "roles": [
-      "admin",
-      "dev",
-      "user"
-    ],
-    "is_verified": true,
-    "two_factor_enabled": false,
-    "totp_secret": null
-  },
-  "user@kari.ai": {
-    "password": "c1fa08613b3bb485bb0ccc8c246158ef:4e286b5de1ae993471016ace83e4fec96aabab6252880c7cdbdd12f32188b3f0",
+  "obs@example.com": {
+    "password": "ef98ea0679e0a7d3659f9848d81d05fd:6532182569261bfc9c9c25ea7d3a2ca3ccdb06616b81c5f245a936d07270577b",
     "roles": [
       "user"
     ],
-    "is_verified": true,
+    "tenant_id": "default",
+    "preferences": {},
+    "is_verified": false,
     "two_factor_enabled": false,
     "totp_secret": null
   }

@@ -160,7 +160,8 @@ async def register(
 
         logger.info(
             "User registered",
-            extra={"user_id": user.user_id},
+            event="register_success",
+            user_id=user.user_id,
         )
         return LoginResponse(
             access_token=session_data.access_token,
@@ -174,6 +175,7 @@ async def register(
     except Exception as e:
         logger.error(
             "Registration failed",
+            event="register_failed",
             error=str(e),
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
@@ -234,7 +236,8 @@ async def login(
 
         logger.info(
             "User logged in",
-            extra={"user_id": user_data.user_id},
+            event="login_success",
+            user_id=user_data.user_id,
         )
 
         return LoginResponse(
@@ -249,6 +252,7 @@ async def login(
     except Exception as e:
         logger.error(
             "Login failed",
+            event="login_failed",
             error=str(e),
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
@@ -382,7 +386,8 @@ async def update_credentials(
 
         logger.info(
             "User credentials updated",
-            extra={"user_id": user_data["user_id"]},
+            event="credentials_updated",
+            user_id=user_data["user_id"],
         )
 
         return LoginResponse(
@@ -397,6 +402,7 @@ async def update_credentials(
     except Exception as e:
         logger.error(
             "Failed to update credentials",
+            event="credentials_update_failed",
             error=str(e),
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
@@ -416,6 +422,12 @@ async def logout(
 
     # Clear cookie
     response.delete_cookie(COOKIE_NAME)
+
+    logger.info(
+        "User logged out",
+        event="logout",
+        user_id=user_data.get("user_id"),
+    )
 
     return {"detail": "Logged out successfully"}
 
@@ -442,7 +454,8 @@ async def request_password_reset(
         hashed_email = hashlib.sha256(req.email.encode()).hexdigest()
         logger.info(
             "Password reset token generated",
-            extra={"hashed_email": hashed_email},
+            event="password_reset_token",
+            hashed_email=hashed_email,
         )
 
         return {"detail": "Password reset link sent"}
@@ -450,6 +463,7 @@ async def request_password_reset(
     except Exception as e:
         logger.error(
             "Password reset request failed",
+            event="password_reset_request_failed",
             error=str(e),
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
@@ -475,6 +489,7 @@ async def reset_password(req: PasswordResetConfirm) -> Dict[str, str]:
     except Exception as e:
         logger.error(
             "Password reset failed",
+            event="password_reset_failed",
             error=str(e),
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
@@ -498,6 +513,7 @@ async def auth_health_check():
     except Exception as e:
         logger.error(
             "Auth health check failed",
+            event="auth_health_failed",
             error=str(e),
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
