@@ -69,14 +69,9 @@ Instead of creating a compatibility layer, all existing code was updated to use 
 The migration followed this pattern for each file:
 
 ```python
-# OLD (deprecated)
-from ai_karen_engine.security.auth_service import auth_service
-service = auth_service()  # Sync call
-result = await service.some_method()
-
-# NEW (unified)
-from ai_karen_engine.auth import get_auth_service
-service = await get_auth_service()  # Async call
+# Unified auth service usage:
+from ai_karen_engine.auth.service import get_auth_service
+service = await get_auth_service()
 result = await service.some_method()
 ```
 

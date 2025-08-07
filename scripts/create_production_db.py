@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
+"""Production Database Setup Script.
+
+Creates all necessary tables and initial data for production deployment.
 """
-Production Database Setup Script
-Creates all necessary tables and initial data for production deployment
-"""
+
+# mypy: ignore-errors
 
 import asyncio
 import os
 import sys
-from datetime import datetime
 
 # Add the src directory to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.database.client import create_database_tables, db_client
-from ai_karen_engine.security.auth_service import auth_service as auth_service_factory
+from ai_karen_engine.auth.service import AuthService, get_auth_service  # noqa: E402
+from ai_karen_engine.core.logging import get_logger  # noqa: E402
+from ai_karen_engine.database.client import (  # noqa: E402
+    create_database_tables,
+    db_client,
+)
 
-auth_service = auth_service_factory()
+auth_service: AuthService | None = None
 
 logger = get_logger(__name__)
 
@@ -189,6 +193,9 @@ async def main():
 
     # Create admin user
     print("3. Creating admin user...")
+    global auth_service
+    if auth_service is None:
+        auth_service = await get_auth_service()
     await create_admin_user()
 
     # Create demo user

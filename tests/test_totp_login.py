@@ -1,15 +1,17 @@
 """Tests for TOTP validation during login."""
 
+# mypy: ignore-errors
+
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-import pytest
-from fastapi import Response
+import pytest  # type: ignore[import-not-found]
+from fastapi import Response  # type: ignore[import-not-found]
 
 try:
-    from ai_karen_engine.api_routes.auth import HTTPException, LoginRequest, login
-    from ai_karen_engine.security.auth_service import (
-        auth_service as auth_service_factory,
+    from ai_karen_engine.api_routes.auth import (  # type: ignore[import-not-found]
+        LoginRequest,
+        login,
     )
 except ImportError:  # pragma: no cover - optional dependency
     pytest.skip("Auth route dependencies not available", allow_module_level=True)
@@ -46,13 +48,15 @@ async def test_login_totp_success(two_factor_user, session_data):
         password="secret",
         totp_code="123456",
     )
-    auth_service = auth_service_factory()
+    auth_service = SimpleNamespace(
+        authenticate_user=AsyncMock(return_value=two_factor_user),
+        create_session=AsyncMock(return_value=session_data),
+    )
     response = Response()
     request_meta = {"ip_address": "1.1.1.1", "user_agent": ""}
-    with patch.object(
-        auth_service, "authenticate_user", AsyncMock(return_value=two_factor_user)
-    ), patch.object(
-        auth_service, "create_session", AsyncMock(return_value=session_data)
+    with patch(
+        "ai_karen_engine.api_routes.auth.get_auth_service_instance",
+        AsyncMock(return_value=auth_service),
     ):
         result = await login(req, response, request_meta)
 
@@ -62,13 +66,15 @@ async def test_login_totp_success(two_factor_user, session_data):
 @pytest.mark.asyncio
 async def test_login_totp_missing_code(two_factor_user, session_data):
     req = LoginRequest(email="test@example.com", password="secret")
-    auth_service = auth_service_factory()
+    auth_service = SimpleNamespace(
+        authenticate_user=AsyncMock(return_value=two_factor_user),
+        create_session=AsyncMock(return_value=session_data),
+    )
     response = Response()
     request_meta = {"ip_address": "1.1.1.1", "user_agent": ""}
-    with patch.object(
-        auth_service, "authenticate_user", AsyncMock(return_value=two_factor_user)
-    ), patch.object(
-        auth_service, "create_session", AsyncMock(return_value=session_data)
+    with patch(
+        "ai_karen_engine.api_routes.auth.get_auth_service_instance",
+        AsyncMock(return_value=auth_service),
     ):
         result = await login(req, response, request_meta)
 
@@ -82,13 +88,15 @@ async def test_login_totp_invalid_code(two_factor_user, session_data):
         password="secret",
         totp_code="000000",
     )
-    auth_service = auth_service_factory()
+    auth_service = SimpleNamespace(
+        authenticate_user=AsyncMock(return_value=two_factor_user),
+        create_session=AsyncMock(return_value=session_data),
+    )
     response = Response()
     request_meta = {"ip_address": "1.1.1.1", "user_agent": ""}
-    with patch.object(
-        auth_service, "authenticate_user", AsyncMock(return_value=two_factor_user)
-    ), patch.object(
-        auth_service, "create_session", AsyncMock(return_value=session_data)
+    with patch(
+        "ai_karen_engine.api_routes.auth.get_auth_service_instance",
+        AsyncMock(return_value=auth_service),
     ):
         result = await login(req, response, request_meta)
 
