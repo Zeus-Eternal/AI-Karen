@@ -3,7 +3,6 @@ Production Authentication Routes
 Real database-backed authentication with secure session management
 """
 import hashlib
-import warnings
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -16,23 +15,11 @@ from ai_karen_engine.core.dependencies import (
     get_current_user_context,
 )
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.security.auth_service import (
-    AuthService,
-    auth_service as auth_service_factory,
-)
+from ai_karen_engine.security.auth_service import AuthService, auth_service
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["auth"])
-auth_service: AuthService = auth_service_factory()
-
-
-def get_auth_service():  # pragma: no cover - legacy alias
-    warnings.warn(
-        "'get_auth_service' is deprecated. Use 'auth_service()' instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return auth_service
+auth_service: AuthService = auth_service()
 
 
 # Alias core dependencies for clarity
