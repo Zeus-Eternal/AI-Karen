@@ -37,7 +37,7 @@ await service.invalidate_session(session.session_id)
 
 - `AUTH_SECRET_KEY` – secret used to sign tokens.
 - `AUTH_SESSION_BACKEND` – storage backend such as `memory` or `redis`.
-- `AUTH_ENABLE_RATE_LIMITER` – enable request throttling.
+- `AUTH_ENABLE_RATE_LIMITING` – enable request throttling. Legacy name `AUTH_ENABLE_RATE_LIMITER` is still supported.
 - `AUTH_ENABLE_AUDIT_LOGGING` – record authentication events.
 
 ## Extension Points
@@ -75,6 +75,6 @@ Use these steps to replace legacy authentication calls with the unified `AuthSer
 
 - Use strong, rotated values for `AUTH_SECRET_KEY` and store them in a secrets manager.
 - Always serve authentication endpoints over HTTPS.
-- Enable `AUTH_ENABLE_RATE_LIMITER` and audit logging to detect abuse.
+- Enable `AUTH_ENABLE_RATE_LIMITING` and audit logging to detect abuse.
 - Grant minimal permissions to service accounts and avoid embedding secrets in source control.
 - Regularly purge expired sessions and monitor authentication metrics.
