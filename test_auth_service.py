@@ -259,7 +259,7 @@ class TestAuthService:
         with patch.object(auth_service.core_auth, 'validate_session', new_callable=AsyncMock) as mock_validate:
             mock_validate.return_value = sample_user_data
             
-            with patch.object(auth_service.core_auth.session_store, 'get_session', new_callable=AsyncMock) as mock_get_session:
+            with patch.object(auth_service.core_auth.session_manager.store, 'get_session', new_callable=AsyncMock) as mock_get_session:
                 mock_session = SessionData(
                     session_token="test-token",
                     access_token="access-token",
@@ -277,7 +277,7 @@ class TestAuthService:
                         "warnings": []
                     }
                     
-                    with patch.object(auth_service.core_auth.session_store, 'update_session', new_callable=AsyncMock) as mock_update:
+                    with patch.object(auth_service.core_auth.session_manager.store, 'update_session', new_callable=AsyncMock) as mock_update:
                         result = await auth_service.validate_session(
                             session_token="test-token",
                             ip_address="192.168.1.2",
@@ -297,7 +297,7 @@ class TestAuthService:
         with patch.object(auth_service.core_auth, 'validate_session', new_callable=AsyncMock) as mock_validate:
             mock_validate.return_value = sample_user_data
             
-            with patch.object(auth_service.core_auth.session_store, 'get_session', new_callable=AsyncMock) as mock_get_session:
+            with patch.object(auth_service.core_auth.session_manager.store, 'get_session', new_callable=AsyncMock) as mock_get_session:
                 mock_session = SessionData(
                     session_token="test-token",
                     access_token="access-token",
@@ -333,7 +333,7 @@ class TestAuthService:
         with patch.object(auth_service.core_auth, 'invalidate_session', new_callable=AsyncMock) as mock_invalidate:
             mock_invalidate.return_value = True
             
-            with patch.object(auth_service.core_auth.session_store, 'get_session', new_callable=AsyncMock) as mock_get_session:
+            with patch.object(auth_service.core_auth.session_manager.store, 'get_session', new_callable=AsyncMock) as mock_get_session:
                 mock_session = SessionData(
                     session_token="test-token",
                     access_token="access-token",
