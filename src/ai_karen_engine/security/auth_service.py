@@ -18,6 +18,7 @@ from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.client import get_db_session
 from ai_karen_engine.database.models.auth_models import (
     PasswordResetToken,
+    EmailVerificationToken,
     User,
     UserSession,
 )
@@ -236,14 +237,29 @@ class InMemoryAuthenticator:
         except Exception:
             return False
 
+    async def update_user_profile(
+        self,
+        user_id: str,
+        *,
+        full_name: Optional[str] = None,
+        preferences: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        if user_id not in auth_manager._USERS:
+            return False
+        user = auth_manager._USERS[user_id]
+        if full_name is not None:
+            user["full_name"] = full_name
+        if preferences is not None:
+            current = user.get("preferences", {})
+            current.update(preferences)
+            user["preferences"] = current
+        auth_manager.save_users()
+        return True
+
     async def update_user_preferences(
         self, user_id: str, preferences: Dict[str, Any]
     ) -> bool:
-        if user_id in auth_manager._USERS:
-            auth_manager._USERS[user_id]["preferences"] = preferences
-            auth_manager.save_users()
-            return True
-        return False
+        return await self.update_user_profile(user_id, preferences=preferences)
 
     async def create_password_reset_token(
         self,
@@ -260,6 +276,18 @@ class InMemoryAuthenticator:
         if not email:
             return False
         auth_manager.update_password(email, new_password)
+        return True
+
+    async def create_email_verification_token(self, email: str) -> Optional[str]:
+        if email not in auth_manager._USERS:
+            return None
+        return auth_manager.create_email_verification_token(email)
+
+    async def verify_email_token(self, token: str) -> bool:
+        email = auth_manager.verify_email_token(token)
+        if not email:
+            return False
+        auth_manager.mark_user_verified(email)
         return True
 
 
@@ -397,19 +425,31 @@ class DatabaseAuthenticator:
             db.commit()
         return True
 
-    async def update_user_preferences(
-        self, user_id: str, preferences: Dict[str, Any]
+    async def update_user_profile(
+        self,
+        user_id: str,
+        *,
+        full_name: Optional[str] = None,
+        preferences: Optional[Dict[str, Any]] = None,
     ) -> bool:
         with get_db_session() as db:
             user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
             if not user:
                 return False
-            current = json.loads(user.preferences) if user.preferences else {}
-            current.update(preferences)
-            user.preferences = json.dumps(current)
+            if full_name is not None:
+                user.full_name = full_name
+            if preferences is not None:
+                current = json.loads(user.preferences) if user.preferences else {}
+                current.update(preferences)
+                user.preferences = json.dumps(current)
             user.updated_at = datetime.utcnow()
             db.commit()
         return True
+
+    async def update_user_preferences(
+        self, user_id: str, preferences: Dict[str, Any]
+    ) -> bool:
+        return await self.update_user_profile(user_id, preferences=preferences)
 
     async def create_password_reset_token(
         self,
@@ -454,6 +494,45 @@ class DatabaseAuthenticator:
             user.updated_at = datetime.utcnow()
             reset.is_used = True
             reset.used_at = datetime.utcnow()
+            db.commit()
+        return True
+
+    async def create_email_verification_token(self, email: str) -> Optional[str]:
+        with get_db_session() as db:
+            user = db.query(User).filter(User.email == email).first()
+            if not user:
+                return None
+            token = secrets.token_urlsafe(32)
+            verify = EmailVerificationToken(
+                user_id=user.id,
+                token=token,
+                expires_at=datetime.utcnow()
+                + timedelta(seconds=self.password_reset_ttl),
+            )
+            db.add(verify)
+            db.commit()
+        return token
+
+    async def verify_email_token(self, token: str) -> bool:
+        with get_db_session() as db:
+            verify = (
+                db.query(EmailVerificationToken)
+                .filter(
+                    EmailVerificationToken.token == token,
+                    EmailVerificationToken.is_used.is_(False),
+                    EmailVerificationToken.expires_at > datetime.utcnow(),
+                )
+                .first()
+            )
+            if not verify:
+                return False
+            user = db.query(User).filter(User.id == verify.user_id).first()
+            if not user:
+                return False
+            user.is_verified = True
+            user.updated_at = datetime.utcnow()
+            verify.is_used = True
+            verify.used_at = datetime.utcnow()
             db.commit()
         return True
 
@@ -505,6 +584,9 @@ class CoreAuthenticator:
     async def update_user_password(self, *args, **kwargs):
         return await self.backend.update_user_password(*args, **kwargs)
 
+    async def update_user_profile(self, *args, **kwargs):
+        return await self.backend.update_user_profile(*args, **kwargs)
+
     async def update_user_preferences(self, *args, **kwargs):
         return await self.backend.update_user_preferences(*args, **kwargs)
 
@@ -513,6 +595,12 @@ class CoreAuthenticator:
 
     async def verify_password_reset_token(self, *args, **kwargs):
         return await self.backend.verify_password_reset_token(*args, **kwargs)
+
+    async def create_email_verification_token(self, *args, **kwargs):
+        return await self.backend.create_email_verification_token(*args, **kwargs)
+
+    async def verify_email_token(self, *args, **kwargs):
+        return await self.backend.verify_email_token(*args, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -723,6 +811,48 @@ class AuthService:
         if hasattr(self.core_authenticator, "verify_password_reset_token"):
             return await self.core_authenticator.verify_password_reset_token(
                 token=token, new_password=new_password
+            )
+        return False
+
+    async def request_password_reset(
+        self,
+        email: str,
+        ip_address: str = "unknown",
+        user_agent: str = "",
+    ) -> Optional[str]:
+        if hasattr(self.core_authenticator, "create_password_reset_token"):
+            token = await self.core_authenticator.create_password_reset_token(
+                email=email, ip_address=ip_address, user_agent=user_agent
+            )
+            if token and self.security_enhancer:
+                self.security_enhancer.log_event(
+                    "password_reset_requested", {"email": email}
+                )
+            return token
+        return None
+
+    async def request_email_verification(self, email: str) -> Optional[str]:
+        if hasattr(self.core_authenticator, "create_email_verification_token"):
+            return await self.core_authenticator.create_email_verification_token(
+                email=email
+            )
+        return None
+
+    async def verify_email(self, token: str) -> bool:
+        if hasattr(self.core_authenticator, "verify_email_token"):
+            return await self.core_authenticator.verify_email_token(token=token)
+        return False
+
+    async def update_user_profile(
+        self,
+        user_id: str,
+        *,
+        full_name: Optional[str] = None,
+        preferences: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        if hasattr(self.core_authenticator, "update_user_profile"):
+            return await self.core_authenticator.update_user_profile(
+                user_id=user_id, full_name=full_name, preferences=preferences
             )
         return False
 
