@@ -1,22 +1,20 @@
 """
-Unified Authentication Exception Classes
+Unified exception classes for the consolidated authentication service.
 
-This module provides a comprehensive set of exception classes for the consolidated
-authentication system, ensuring consistent error handling across all authentication
-operations and components.
+This module provides consistent error handling across all authentication
+operations, replacing the fragmented exception handling in different
+auth services.
 """
 
-from __future__ import annotations
-
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 
 class AuthError(Exception):
     """
     Base authentication error class.
     
-    All authentication-related exceptions inherit from this class to provide
-    consistent error handling and categorization.
+    All authentication-related exceptions inherit from this base class
+    to provide consistent error handling across the consolidated service.
     """
     
     def __init__(
@@ -24,17 +22,8 @@ class AuthError(Exception):
         message: str,
         error_code: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
-        user_message: Optional[str] = None
-    ):
-        """
-        Initialize authentication error.
-        
-        Args:
-            message: Technical error message for logging
-            error_code: Unique error code for programmatic handling
-            details: Additional error details for debugging
-            user_message: User-friendly error message (if different from technical message)
-        """
+        user_message: Optional[str] = None,
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.error_code = error_code or self.__class__.__name__
@@ -48,30 +37,46 @@ class AuthError(Exception):
             "error_code": self.error_code,
             "message": self.message,
             "user_message": self.user_message,
-            "details": self.details
+            "details": self.details,
         }
     
     def __str__(self) -> str:
-        """String representation of the error."""
-        if self.error_code:
-            return f"[{self.error_code}] {self.message}"
-        return self.message
+        return f"{self.error_code}: {self.message}"
+
+
+class AuthenticationError(AuthError):
+    """Base class for authentication-related errors."""
+    pass
+
+
+class AuthorizationError(AuthError):
+    """Base class for authorization-related errors."""
+    pass
+
+
+class ConfigurationError(AuthError):
+    """Base class for configuration-related errors."""
+    pass
+
+
+class ValidationError(AuthError):
+    """Base class for data validation errors."""
+    pass
 
 
 # Authentication Errors
 
-class InvalidCredentialsError(AuthError):
-    """Raised when user provides invalid credentials."""
+class InvalidCredentialsError(AuthenticationError):
+    """Raised when user credentials are invalid."""
     
     def __init__(
         self,
         message: str = "Invalid email or password",
         email: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="INVALID_CREDENTIALS",
+            message=message,
             user_message="Invalid email or password",
             **kwargs
         )
@@ -79,40 +84,38 @@ class InvalidCredentialsError(AuthError):
             self.details["email"] = email
 
 
-class UserNotFoundError(AuthError):
-    """Raised when user account is not found."""
+class UserNotFoundError(AuthenticationError):
+    """Raised when a user is not found."""
     
     def __init__(
         self,
-        message: str = "User account not found",
-        email: Optional[str] = None,
+        message: str = "User not found",
         user_id: Optional[str] = None,
+        email: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="USER_NOT_FOUND",
-            user_message="User account not found",
+            message=message,
+            user_message="User not found",
             **kwargs
         )
-        if email:
-            self.details["email"] = email
         if user_id:
             self.details["user_id"] = user_id
+        if email:
+            self.details["email"] = email
 
 
-class UserAlreadyExistsError(AuthError):
+class UserAlreadyExistsError(AuthenticationError):
     """Raised when attempting to create a user that already exists."""
     
     def __init__(
         self,
-        message: str = "User account already exists",
+        message: str = "User already exists",
         email: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="USER_ALREADY_EXISTS",
+            message=message,
             user_message="An account with this email already exists",
             **kwargs
         )
@@ -120,64 +123,94 @@ class UserAlreadyExistsError(AuthError):
             self.details["email"] = email
 
 
-class AccountLockedError(AuthError):
-    """Raised when user account is locked due to security reasons."""
+class AccountLockedError(AuthenticationError):
+    """Raised when a user account is locked due to failed attempts."""
     
     def __init__(
         self,
         message: str = "Account is temporarily locked",
         locked_until: Optional[str] = None,
-        reason: Optional[str] = None,
+        failed_attempts: Optional[int] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="ACCOUNT_LOCKED",
-            user_message="Your account is temporarily locked due to security reasons",
+            message=message,
+            user_message="Account is temporarily locked due to too many failed login attempts",
             **kwargs
         )
         if locked_until:
             self.details["locked_until"] = locked_until
-        if reason:
-            self.details["reason"] = reason
+        if failed_attempts is not None:
+            self.details["failed_attempts"] = failed_attempts
 
 
-class AccountDisabledError(AuthError):
-    """Raised when user account is disabled."""
+class AccountDisabledError(AuthenticationError):
+    """Raised when a user account is disabled."""
     
     def __init__(
         self,
-        message: str = "User account is disabled",
-        reason: Optional[str] = None,
+        message: str = "Account is disabled",
+        user_id: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="ACCOUNT_DISABLED",
-            user_message="Your account has been disabled",
+            message=message,
+            user_message="This account has been disabled",
             **kwargs
         )
-        if reason:
-            self.details["reason"] = reason
+        if user_id:
+            self.details["user_id"] = user_id
 
 
-class EmailNotVerifiedError(AuthError):
-    """Raised when user email is not verified."""
+class EmailNotVerifiedError(AuthenticationError):
+    """Raised when a user's email is not verified."""
     
     def __init__(
         self,
         message: str = "Email address not verified",
         email: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="EMAIL_NOT_VERIFIED",
+            message=message,
             user_message="Please verify your email address before logging in",
             **kwargs
         )
         if email:
             self.details["email"] = email
+
+
+class TwoFactorRequiredError(AuthenticationError):
+    """Raised when two-factor authentication is required."""
+    
+    def __init__(
+        self,
+        message: str = "Two-factor authentication required",
+        user_id: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="Two-factor authentication is required",
+            **kwargs
+        )
+        if user_id:
+            self.details["user_id"] = user_id
+
+
+class InvalidTwoFactorCodeError(AuthenticationError):
+    """Raised when an invalid two-factor authentication code is provided."""
+    
+    def __init__(
+        self,
+        message: str = "Invalid two-factor authentication code",
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="Invalid two-factor authentication code",
+            **kwargs
+        )
 
 
 # Session Errors
@@ -187,65 +220,82 @@ class SessionError(AuthError):
     pass
 
 
-class InvalidSessionError(SessionError):
-    """Raised when session token is invalid."""
-    
-    def __init__(
-        self,
-        message: str = "Invalid session token",
-        session_token: Optional[str] = None,
-        **kwargs
-    ):
-        super().__init__(
-            message,
-            error_code="INVALID_SESSION",
-            user_message="Your session is invalid. Please log in again",
-            **kwargs
-        )
-        if session_token:
-            # Don't include full token in details for security
-            self.details["session_token_prefix"] = session_token[:8] + "..."
-
-
 class SessionExpiredError(SessionError):
-    """Raised when session has expired."""
+    """Raised when a session has expired."""
     
     def __init__(
         self,
         message: str = "Session has expired",
-        expired_at: Optional[str] = None,
+        session_token: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="SESSION_EXPIRED",
+            message=message,
             user_message="Your session has expired. Please log in again",
             **kwargs
         )
-        if expired_at:
-            self.details["expired_at"] = expired_at
+        if session_token:
+            self.details["session_token"] = session_token
 
 
-class SessionLimitExceededError(SessionError):
-    """Raised when user exceeds maximum number of concurrent sessions."""
+class SessionNotFoundError(SessionError):
+    """Raised when a session is not found."""
+    
+    def __init__(
+        self,
+        message: str = "Session not found",
+        session_token: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="Invalid session. Please log in again",
+            **kwargs
+        )
+        if session_token:
+            self.details["session_token"] = session_token
+
+
+class SessionInvalidatedError(SessionError):
+    """Raised when a session has been invalidated."""
+    
+    def __init__(
+        self,
+        message: str = "Session has been invalidated",
+        session_token: Optional[str] = None,
+        reason: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="Your session is no longer valid. Please log in again",
+            **kwargs
+        )
+        if session_token:
+            self.details["session_token"] = session_token
+        if reason:
+            self.details["reason"] = reason
+
+
+class MaxSessionsExceededError(SessionError):
+    """Raised when maximum number of sessions per user is exceeded."""
     
     def __init__(
         self,
         message: str = "Maximum number of sessions exceeded",
+        user_id: Optional[str] = None,
         max_sessions: Optional[int] = None,
-        current_sessions: Optional[int] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="SESSION_LIMIT_EXCEEDED",
-            user_message="You have too many active sessions. Please log out from other devices",
+            message=message,
+            user_message="Maximum number of active sessions exceeded",
             **kwargs
         )
-        if max_sessions:
+        if user_id:
+            self.details["user_id"] = user_id
+        if max_sessions is not None:
             self.details["max_sessions"] = max_sessions
-        if current_sessions:
-            self.details["current_sessions"] = current_sessions
 
 
 # Token Errors
@@ -256,18 +306,17 @@ class TokenError(AuthError):
 
 
 class InvalidTokenError(TokenError):
-    """Raised when JWT token is invalid."""
+    """Raised when a token is invalid."""
     
     def __init__(
         self,
         message: str = "Invalid token",
         token_type: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="INVALID_TOKEN",
-            user_message="Invalid authentication token",
+            message=message,
+            user_message="Invalid or malformed token",
             **kwargs
         )
         if token_type:
@@ -275,41 +324,39 @@ class InvalidTokenError(TokenError):
 
 
 class TokenExpiredError(TokenError):
-    """Raised when JWT token has expired."""
+    """Raised when a token has expired."""
     
     def __init__(
         self,
         message: str = "Token has expired",
         token_type: Optional[str] = None,
-        expired_at: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="TOKEN_EXPIRED",
-            user_message="Authentication token has expired",
+            message=message,
+            user_message="Token has expired",
             **kwargs
         )
         if token_type:
             self.details["token_type"] = token_type
-        if expired_at:
-            self.details["expired_at"] = expired_at
 
 
-class TokenMalformedError(TokenError):
-    """Raised when JWT token is malformed."""
+class TokenNotFoundError(TokenError):
+    """Raised when a token is not found."""
     
     def __init__(
         self,
-        message: str = "Token is malformed",
+        message: str = "Token not found",
+        token_type: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="TOKEN_MALFORMED",
-            user_message="Invalid authentication token format",
+            message=message,
+            user_message="Token not found or already used",
             **kwargs
         )
+        if token_type:
+            self.details["token_type"] = token_type
 
 
 # Security Errors
@@ -326,41 +373,18 @@ class RateLimitExceededError(SecurityError):
         self,
         message: str = "Rate limit exceeded",
         retry_after: Optional[int] = None,
-        limit_type: Optional[str] = None,
+        limit: Optional[int] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="RATE_LIMIT_EXCEEDED",
+            message=message,
             user_message="Too many requests. Please try again later",
             **kwargs
         )
-        if retry_after:
+        if retry_after is not None:
             self.details["retry_after"] = retry_after
-        if limit_type:
-            self.details["limit_type"] = limit_type
-
-
-class SecurityBlockError(SecurityError):
-    """Raised when request is blocked by security system."""
-    
-    def __init__(
-        self,
-        message: str = "Request blocked by security system",
-        block_reason: Optional[str] = None,
-        risk_score: Optional[float] = None,
-        **kwargs
-    ):
-        super().__init__(
-            message,
-            error_code="SECURITY_BLOCK",
-            user_message="Access denied for security reasons",
-            **kwargs
-        )
-        if block_reason:
-            self.details["block_reason"] = block_reason
-        if risk_score:
-            self.details["risk_score"] = risk_score
+        if limit is not None:
+            self.details["limit"] = limit
 
 
 class SuspiciousActivityError(SecurityError):
@@ -370,392 +394,399 @@ class SuspiciousActivityError(SecurityError):
         self,
         message: str = "Suspicious activity detected",
         activity_type: Optional[str] = None,
-        confidence: Optional[float] = None,
+        risk_score: Optional[float] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="SUSPICIOUS_ACTIVITY",
-            user_message="Unusual activity detected. Additional verification may be required",
+            message=message,
+            user_message="Suspicious activity detected. Please verify your identity",
             **kwargs
         )
         if activity_type:
             self.details["activity_type"] = activity_type
-        if confidence:
-            self.details["confidence"] = confidence
+        if risk_score is not None:
+            self.details["risk_score"] = risk_score
 
 
-class GeolocationBlockError(SecurityError):
-    """Raised when request is blocked due to geolocation restrictions."""
+class IntelligentAuthBlockError(SecurityError):
+    """Raised when intelligent authentication system blocks a request."""
     
     def __init__(
         self,
-        message: str = "Access blocked from this location",
-        country: Optional[str] = None,
-        region: Optional[str] = None,
-        **kwargs
-    ):
-        super().__init__(
-            message,
-            error_code="GEOLOCATION_BLOCK",
-            user_message="Access is not allowed from your current location",
-            **kwargs
-        )
-        if country:
-            self.details["country"] = country
-        if region:
-            self.details["region"] = region
-
-
-class IPBlockedError(SecurityError):
-    """Raised when request comes from a blocked IP address."""
-    
-    def __init__(
-        self,
-        message: str = "IP address is blocked",
-        ip_address: Optional[str] = None,
+        message: str = "Request blocked by intelligent authentication",
         block_reason: Optional[str] = None,
+        risk_score: Optional[float] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="IP_BLOCKED",
-            user_message="Access denied from this IP address",
+            message=message,
+            user_message="Authentication request blocked for security reasons",
             **kwargs
         )
-        if ip_address:
-            self.details["ip_address"] = ip_address
         if block_reason:
             self.details["block_reason"] = block_reason
+        if risk_score is not None:
+            self.details["risk_score"] = risk_score
 
 
-# Password Errors
-
-class PasswordError(AuthError):
-    """Base class for password-related errors."""
-    pass
-
-
-class WeakPasswordError(PasswordError):
-    """Raised when password doesn't meet security requirements."""
+class AnomalyDetectedError(SecurityError):
+    """Raised when an anomaly is detected in authentication patterns."""
     
     def __init__(
         self,
-        message: str = "Password does not meet security requirements",
-        requirements: Optional[List[str]] = None,
+        message: str = "Authentication anomaly detected",
+        anomaly_type: Optional[str] = None,
+        anomaly_types: Optional[List[str]] = None,
+        confidence: Optional[float] = None,
+        risk_score: Optional[float] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="WEAK_PASSWORD",
-            user_message="Password does not meet security requirements",
+            message=message,
+            user_message="Unusual authentication pattern detected",
+            **kwargs
+        )
+        if anomaly_type:
+            self.details["anomaly_type"] = anomaly_type
+        if anomaly_types:
+            self.details["anomaly_types"] = anomaly_types
+        if confidence is not None:
+            self.details["confidence"] = confidence
+        if risk_score is not None:
+            self.details["risk_score"] = risk_score
+
+
+# Authorization Errors
+
+class InsufficientPermissionsError(AuthorizationError):
+    """Raised when user lacks required permissions."""
+    
+    def __init__(
+        self,
+        message: str = "Insufficient permissions",
+        required_permission: Optional[str] = None,
+        user_roles: Optional[list] = None,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="You don't have permission to perform this action",
+            **kwargs
+        )
+        if required_permission:
+            self.details["required_permission"] = required_permission
+        if user_roles:
+            self.details["user_roles"] = user_roles
+
+
+class TenantAccessDeniedError(AuthorizationError):
+    """Raised when user tries to access resources from different tenant."""
+    
+    def __init__(
+        self,
+        message: str = "Access denied to tenant resources",
+        user_tenant: Optional[str] = None,
+        requested_tenant: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="Access denied to requested resources",
+            **kwargs
+        )
+        if user_tenant:
+            self.details["user_tenant"] = user_tenant
+        if requested_tenant:
+            self.details["requested_tenant"] = requested_tenant
+
+
+# Validation Errors
+
+class PasswordValidationError(ValidationError):
+    """Raised when password doesn't meet requirements."""
+    
+    def __init__(
+        self,
+        message: str = "Password doesn't meet requirements",
+        requirements: Optional[list] = None,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="Password doesn't meet security requirements",
             **kwargs
         )
         if requirements:
             self.details["requirements"] = requirements
 
 
-class PasswordReuseError(PasswordError):
-    """Raised when user tries to reuse a recent password."""
+class EmailValidationError(ValidationError):
+    """Raised when email format is invalid."""
     
     def __init__(
         self,
-        message: str = "Password has been used recently",
+        message: str = "Invalid email format",
+        email: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="PASSWORD_REUSE",
-            user_message="You cannot reuse a recent password",
+            message=message,
+            user_message="Please enter a valid email address",
             **kwargs
         )
+        if email:
+            self.details["email"] = email
 
 
-class InvalidPasswordResetTokenError(PasswordError):
-    """Raised when password reset token is invalid or expired."""
+class UserDataValidationError(ValidationError):
+    """Raised when user data validation fails."""
     
     def __init__(
         self,
-        message: str = "Invalid or expired password reset token",
+        message: str = "User data validation failed",
+        field: Optional[str] = None,
+        value: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="INVALID_RESET_TOKEN",
-            user_message="Password reset link is invalid or has expired",
+            message=message,
+            user_message="Invalid user data provided",
             **kwargs
         )
-
-
-# Two-Factor Authentication Errors
-
-class TwoFactorError(AuthError):
-    """Base class for two-factor authentication errors."""
-    pass
-
-
-class TwoFactorRequiredError(TwoFactorError):
-    """Raised when two-factor authentication is required."""
-    
-    def __init__(
-        self,
-        message: str = "Two-factor authentication required",
-        methods: Optional[List[str]] = None,
-        **kwargs
-    ):
-        super().__init__(
-            message,
-            error_code="TWO_FACTOR_REQUIRED",
-            user_message="Two-factor authentication is required",
-            **kwargs
-        )
-        if methods:
-            self.details["available_methods"] = methods
-
-
-class InvalidTwoFactorCodeError(TwoFactorError):
-    """Raised when two-factor authentication code is invalid."""
-    
-    def __init__(
-        self,
-        message: str = "Invalid two-factor authentication code",
-        **kwargs
-    ):
-        super().__init__(
-            message,
-            error_code="INVALID_2FA_CODE",
-            user_message="Invalid two-factor authentication code",
-            **kwargs
-        )
-
-
-class TwoFactorSetupRequiredError(TwoFactorError):
-    """Raised when two-factor authentication setup is required."""
-    
-    def __init__(
-        self,
-        message: str = "Two-factor authentication setup required",
-        **kwargs
-    ):
-        super().__init__(
-            message,
-            error_code="2FA_SETUP_REQUIRED",
-            user_message="Please set up two-factor authentication",
-            **kwargs
-        )
+        if field:
+            self.details["field"] = field
+        if value:
+            self.details["value"] = value
 
 
 # Configuration Errors
 
-class ConfigurationError(AuthError):
-    """Raised when there's a configuration error."""
+class InvalidConfigurationError(ConfigurationError):
+    """Raised when authentication configuration is invalid."""
     
     def __init__(
         self,
-        message: str = "Authentication service configuration error",
-        config_key: Optional[str] = None,
+        message: str = "Invalid authentication configuration",
+        config_field: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="CONFIGURATION_ERROR",
-            user_message="Service configuration error",
+            message=message,
+            user_message="Authentication service configuration error",
             **kwargs
         )
-        if config_key:
-            self.details["config_key"] = config_key
+        if config_field:
+            self.details["config_field"] = config_field
 
 
-class DatabaseConnectionError(AuthError):
+class MissingConfigurationError(ConfigurationError):
+    """Raised when required configuration is missing."""
+    
+    def __init__(
+        self,
+        message: str = "Required configuration missing",
+        missing_field: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="Authentication service configuration error",
+            **kwargs
+        )
+        if missing_field:
+            self.details["missing_field"] = missing_field
+
+
+# Database Errors
+
+class DatabaseError(AuthError):
+    """Base class for database-related errors."""
+    pass
+
+
+class DatabaseConnectionError(DatabaseError):
     """Raised when database connection fails."""
     
     def __init__(
         self,
         message: str = "Database connection failed",
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="DATABASE_CONNECTION_ERROR",
+            message=message,
             user_message="Service temporarily unavailable",
             **kwargs
         )
 
 
-class RedisConnectionError(AuthError):
-    """Raised when Redis connection fails."""
+class DatabaseOperationError(DatabaseError):
+    """Raised when database operation fails."""
     
     def __init__(
         self,
-        message: str = "Redis connection failed",
+        message: str = "Database operation failed",
+        operation: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="REDIS_CONNECTION_ERROR",
+            message=message,
             user_message="Service temporarily unavailable",
             **kwargs
         )
+        if operation:
+            self.details["operation"] = operation
 
 
-# Intelligence Layer Errors
+class MigrationError(DatabaseError):
+    """Raised when database migration fails."""
+    
+    def __init__(
+        self,
+        message: str = "Database migration failed",
+        migration_step: Optional[str] = None,
+        source_database: Optional[str] = None,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="Database migration failed",
+            **kwargs
+        )
+        if migration_step:
+            self.details["migration_step"] = migration_step
+        if source_database:
+            self.details["source_database"] = source_database
 
-class IntelligenceError(AuthError):
-    """Base class for intelligence layer errors."""
+
+# Service Errors
+
+class ServiceError(AuthError):
+    """Base class for service-related errors."""
     pass
 
 
-class MLServiceUnavailableError(IntelligenceError):
-    """Raised when ML service is unavailable."""
+class ServiceUnavailableError(ServiceError):
+    """Raised when authentication service is unavailable."""
     
     def __init__(
         self,
-        message: str = "Machine learning service unavailable",
+        message: str = "Authentication service unavailable",
+        **kwargs
+    ) -> None:
+        super().__init__(
+            message=message,
+            user_message="Authentication service is temporarily unavailable",
+            **kwargs
+        )
+
+
+class ExternalServiceError(ServiceError):
+    """Raised when external service dependency fails."""
+    
+    def __init__(
+        self,
+        message: str = "External service error",
         service_name: Optional[str] = None,
         **kwargs
-    ):
+    ) -> None:
         super().__init__(
-            message,
-            error_code="ML_SERVICE_UNAVAILABLE",
-            user_message="Authentication service temporarily degraded",
+            message=message,
+            user_message="Service temporarily unavailable",
             **kwargs
         )
         if service_name:
             self.details["service_name"] = service_name
 
 
-class AnalysisTimeoutError(IntelligenceError):
-    """Raised when analysis takes too long."""
-    
-    def __init__(
-        self,
-        message: str = "Authentication analysis timed out",
-        timeout_seconds: Optional[float] = None,
-        **kwargs
-    ):
-        super().__init__(
-            message,
-            error_code="ANALYSIS_TIMEOUT",
-            user_message="Authentication is taking longer than expected",
-            **kwargs
-        )
-        if timeout_seconds:
-            self.details["timeout_seconds"] = timeout_seconds
+# Utility functions for exception handling
 
-
-class InsufficientDataError(IntelligenceError):
-    """Raised when there's insufficient data for analysis."""
-    
-    def __init__(
-        self,
-        message: str = "Insufficient data for analysis",
-        data_type: Optional[str] = None,
-        **kwargs
-    ):
-        super().__init__(
-            message,
-            error_code="INSUFFICIENT_DATA",
-            user_message="Unable to complete security analysis",
-            **kwargs
-        )
-        if data_type:
-            self.details["data_type"] = data_type
-
-
-# Utility Functions
-
-def get_user_friendly_message(error: Exception) -> str:
-    """
-    Get user-friendly error message from any exception.
-    
-    Args:
-        error: Exception instance
-        
-    Returns:
-        User-friendly error message
-    """
-    if isinstance(error, AuthError):
-        return error.user_message
-    
-    # Default messages for common exception types
-    error_messages = {
-        "ConnectionError": "Service temporarily unavailable",
-        "TimeoutError": "Request timed out. Please try again",
-        "ValueError": "Invalid input provided",
-        "KeyError": "Required information missing",
-        "PermissionError": "Access denied"
-    }
-    
-    error_type = type(error).__name__
-    return error_messages.get(error_type, "An unexpected error occurred")
-
-
-def categorize_error(error: Exception) -> str:
-    """
-    Categorize error for logging and monitoring purposes.
-    
-    Args:
-        error: Exception instance
-        
-    Returns:
-        Error category string
-    """
-    if isinstance(error, (InvalidCredentialsError, UserNotFoundError)):
-        return "authentication"
-    elif isinstance(error, (SessionError, TokenError)):
-        return "session"
-    elif isinstance(error, SecurityError):
-        return "security"
-    elif isinstance(error, PasswordError):
-        return "password"
-    elif isinstance(error, TwoFactorError):
-        return "two_factor"
-    elif isinstance(error, (ConfigurationError, DatabaseConnectionError, RedisConnectionError)):
-        return "infrastructure"
-    elif isinstance(error, IntelligenceError):
-        return "intelligence"
-    else:
-        return "unknown"
-
-
-def is_retryable_error(error: Exception) -> bool:
-    """
-    Determine if an error is retryable.
-    
-    Args:
-        error: Exception instance
-        
-    Returns:
-        True if error is retryable, False otherwise
-    """
-    # Retryable errors are typically infrastructure-related
-    retryable_errors = (
-        DatabaseConnectionError,
-        RedisConnectionError,
-        MLServiceUnavailableError,
-        AnalysisTimeoutError
-    )
-    
-    return isinstance(error, retryable_errors)
-
-
-def should_log_error(error: Exception) -> bool:
-    """
-    Determine if an error should be logged.
-    
-    Args:
-        error: Exception instance
-        
-    Returns:
-        True if error should be logged, False otherwise
-    """
-    # Don't log common user errors to avoid log spam
-    user_errors = (
+def is_user_error(exception: Exception) -> bool:
+    """Check if an exception represents a user error (4xx) vs system error (5xx)."""
+    user_error_types = (
         InvalidCredentialsError,
         UserNotFoundError,
+        UserAlreadyExistsError,
+        AccountLockedError,
+        AccountDisabledError,
+        EmailNotVerifiedError,
+        TwoFactorRequiredError,
+        InvalidTwoFactorCodeError,
         SessionExpiredError,
+        SessionNotFoundError,
+        SessionInvalidatedError,
+        MaxSessionsExceededError,
         InvalidTokenError,
-        WeakPasswordError
+        TokenExpiredError,
+        TokenNotFoundError,
+        RateLimitExceededError,
+        InsufficientPermissionsError,
+        TenantAccessDeniedError,
+        PasswordValidationError,
+        EmailValidationError,
+        UserDataValidationError,
     )
+    return isinstance(exception, user_error_types)
+
+
+def get_http_status_code(exception: Exception) -> int:
+    """Get appropriate HTTP status code for an authentication exception."""
+    if isinstance(exception, (
+        InvalidCredentialsError,
+        UserNotFoundError,
+        InvalidTokenError,
+        TokenExpiredError,
+        TokenNotFoundError,
+        SessionExpiredError,
+        SessionNotFoundError,
+        SessionInvalidatedError,
+    )):
+        return 401  # Unauthorized
     
-    return not isinstance(error, user_errors)
+    elif isinstance(exception, (
+        InsufficientPermissionsError,
+        TenantAccessDeniedError,
+        AccountDisabledError,
+    )):
+        return 403  # Forbidden
+    
+    elif isinstance(exception, (
+        UserAlreadyExistsError,
+        PasswordValidationError,
+        EmailValidationError,
+        UserDataValidationError,
+        InvalidTwoFactorCodeError,
+    )):
+        return 400  # Bad Request
+    
+    elif isinstance(exception, (
+        AccountLockedError,
+        RateLimitExceededError,
+        SuspiciousActivityError,
+        IntelligentAuthBlockError,
+        AnomalyDetectedError,
+        MaxSessionsExceededError,
+    )):
+        return 429  # Too Many Requests
+    
+    elif isinstance(exception, (
+        EmailNotVerifiedError,
+        TwoFactorRequiredError,
+    )):
+        return 422  # Unprocessable Entity
+    
+    elif isinstance(exception, (
+        DatabaseConnectionError,
+        DatabaseOperationError,
+        ServiceUnavailableError,
+        ExternalServiceError,
+    )):
+        return 503  # Service Unavailable
+    
+    elif isinstance(exception, (
+        InvalidConfigurationError,
+        MissingConfigurationError,
+    )):
+        return 500  # Internal Server Error
+    
+    else:
+        return 500  # Internal Server Error (default)

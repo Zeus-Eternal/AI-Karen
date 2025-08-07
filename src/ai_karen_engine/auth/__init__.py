@@ -1,59 +1,47 @@
 """
-Unified Authentication System
+Unified authentication system for AI Karen.
 
-This package provides a consolidated authentication system that replaces the
-scattered authentication services throughout the codebase with a single,
-well-designed service that handles all authentication scenarios cleanly.
-
-The system is organized into layers:
-- Core authentication layer (basic user auth, session management)
-- Security enhancement layer (rate limiting, audit logging, session validation)
-- Intelligence layer (behavioral analysis, anomaly detection, risk scoring)
-- Storage layer (database operations, session storage, configuration management)
+This package provides a consolidated authentication service that replaces
+the fragmented authentication services throughout the codebase with a
+single, well-designed system.
 
 Key Components:
 - models: Unified data models (UserData, SessionData, AuthEvent)
 - config: Comprehensive configuration system (AuthConfig)
-- exceptions: Unified exception classes for error handling
+- exceptions: Unified exception hierarchy for error handling
+
+Usage:
+    from ai_karen_engine.auth import AuthConfig, UserData, SessionData
+    from ai_karen_engine.auth.exceptions import InvalidCredentialsError
+    
+    config = AuthConfig.from_env()
+    # Use the unified models and configuration
 """
 
-from ai_karen_engine.security.models import (
-    AuthEvent,
-    AuthEventType,
-    SessionData,
-    UserData,
-)
-from .models import (
-    SessionStorageType,
-    AuthMode,
-    PasswordResetToken,
-    RateLimitInfo,
-    SecurityResult,
-    IntelligenceResult,
-)
-
 from .config import (
-    # Main configuration
     AuthConfig,
-    
-    # Component configurations
     DatabaseConfig,
-    RedisConfig,
-    TokenConfig,
+    JWTConfig,
     SessionConfig,
     SecurityConfig,
     IntelligenceConfig,
-    LoggingConfig,
-    
-    # Predefined configurations
-    get_development_config,
-    get_testing_config,
-    get_production_config
+    FeatureToggles,
+)
+
+from .models import (
+    UserData,
+    SessionData,
+    AuthEvent,
+    AuthEventType,
 )
 
 from .exceptions import (
     # Base exceptions
     AuthError,
+    AuthenticationError,
+    AuthorizationError,
+    ConfigurationError,
+    ValidationError,
     
     # Authentication errors
     InvalidCredentialsError,
@@ -62,127 +50,189 @@ from .exceptions import (
     AccountLockedError,
     AccountDisabledError,
     EmailNotVerifiedError,
+    TwoFactorRequiredError,
+    InvalidTwoFactorCodeError,
     
     # Session errors
     SessionError,
-    InvalidSessionError,
     SessionExpiredError,
-    SessionLimitExceededError,
+    SessionNotFoundError,
+    SessionInvalidatedError,
+    MaxSessionsExceededError,
     
     # Token errors
     TokenError,
     InvalidTokenError,
     TokenExpiredError,
-    TokenMalformedError,
+    TokenNotFoundError,
     
     # Security errors
     SecurityError,
     RateLimitExceededError,
-    SecurityBlockError,
     SuspiciousActivityError,
-    GeolocationBlockError,
-    IPBlockedError,
+    IntelligentAuthBlockError,
+    AnomalyDetectedError,
     
-    # Password errors
-    PasswordError,
-    WeakPasswordError,
-    PasswordReuseError,
-    InvalidPasswordResetTokenError,
+    # Authorization errors
+    InsufficientPermissionsError,
+    TenantAccessDeniedError,
     
-    # Two-factor authentication errors
-    TwoFactorError,
-    TwoFactorRequiredError,
-    InvalidTwoFactorCodeError,
-    TwoFactorSetupRequiredError,
+    # Validation errors
+    PasswordValidationError,
+    EmailValidationError,
+    UserDataValidationError,
     
     # Configuration errors
-    ConfigurationError,
-    DatabaseConnectionError,
-    RedisConnectionError,
+    InvalidConfigurationError,
+    MissingConfigurationError,
     
-    # Intelligence layer errors
-    IntelligenceError,
-    MLServiceUnavailableError,
-    AnalysisTimeoutError,
-    InsufficientDataError,
+    # Database errors
+    DatabaseError,
+    DatabaseConnectionError,
+    DatabaseOperationError,
+    
+    # Service errors
+    ServiceError,
+    ServiceUnavailableError,
+    ExternalServiceError,
     
     # Utility functions
-    get_user_friendly_message,
-    categorize_error,
-    is_retryable_error,
-    should_log_error
+    is_user_error,
+    get_http_status_code,
+)
+
+from .security import (
+    SecurityEnhancer,
+    RateLimiter,
+    AuditLogger,
+    SessionValidator,
+)
+
+from .intelligence import (
+    IntelligenceEngine,
+    AnomalyDetector,
+    BehavioralAnalyzer,
+    RiskScorer,
+    LoginAttempt,
+    BehavioralPattern,
+    AnomalyResult,
+    IntelligenceResult,
+)
+
+from .service import (
+    AuthService,
+    create_auth_service,
+    get_auth_service,
+    get_production_auth_service,
+    get_intelligent_auth_service,
+    get_unified_auth_service,
 )
 
 __version__ = "1.0.0"
-__author__ = "AI Karen Engine Team"
-__description__ = "Unified Authentication System for AI Karen Engine"
+__author__ = "AI Karen Team"
+__description__ = "Unified authentication system for AI Karen"
 
-# Package metadata
 __all__ = [
+    # Configuration
+    "AuthConfig",
+    "DatabaseConfig", 
+    "JWTConfig",
+    "SessionConfig",
+    "SecurityConfig",
+    "IntelligenceConfig",
+    "FeatureToggles",
+    
     # Models
     "UserData",
     "SessionData", 
     "AuthEvent",
     "AuthEventType",
-    "SessionStorageType",
-    "AuthMode",
-    "PasswordResetToken",
-    "RateLimitInfo",
-    "SecurityResult",
+    
+    # Security components
+    "SecurityEnhancer",
+    "RateLimiter",
+    "AuditLogger",
+    "SessionValidator",
+    
+    # Intelligence components
+    "IntelligenceEngine",
+    "AnomalyDetector",
+    "BehavioralAnalyzer",
+    "RiskScorer",
+    "LoginAttempt",
+    "BehavioralPattern",
+    "AnomalyResult",
     "IntelligenceResult",
     
-    # Configuration
-    "AuthConfig",
-    "DatabaseConfig",
-    "RedisConfig",
-    "TokenConfig",
-    "SessionConfig",
-    "SecurityConfig",
-    "IntelligenceConfig",
-    "LoggingConfig",
-    "get_development_config",
-    "get_testing_config",
-    "get_production_config",
+    # Main service interface
+    "AuthService",
+    "create_auth_service",
+    "get_auth_service",
+    "get_production_auth_service",
+    "get_intelligent_auth_service",
+    "get_unified_auth_service",
     
-    # Exceptions
+    # Base exceptions
     "AuthError",
+    "AuthenticationError",
+    "AuthorizationError",
+    "ConfigurationError",
+    "ValidationError",
+    
+    # Authentication errors
     "InvalidCredentialsError",
     "UserNotFoundError",
     "UserAlreadyExistsError",
     "AccountLockedError",
     "AccountDisabledError",
     "EmailNotVerifiedError",
+    "TwoFactorRequiredError",
+    "InvalidTwoFactorCodeError",
+    
+    # Session errors
     "SessionError",
-    "InvalidSessionError",
     "SessionExpiredError",
-    "SessionLimitExceededError",
+    "SessionNotFoundError",
+    "SessionInvalidatedError",
+    "MaxSessionsExceededError",
+    
+    # Token errors
     "TokenError",
     "InvalidTokenError",
     "TokenExpiredError",
-    "TokenMalformedError",
+    "TokenNotFoundError",
+    
+    # Security errors
     "SecurityError",
     "RateLimitExceededError",
-    "SecurityBlockError",
     "SuspiciousActivityError",
-    "GeolocationBlockError",
-    "IPBlockedError",
-    "PasswordError",
-    "WeakPasswordError",
-    "PasswordReuseError",
-    "InvalidPasswordResetTokenError",
-    "TwoFactorError",
-    "TwoFactorRequiredError",
-    "InvalidTwoFactorCodeError",
-    "TwoFactorSetupRequiredError",
-    "ConfigurationError",
+    "IntelligentAuthBlockError",
+    "AnomalyDetectedError",
+    
+    # Authorization errors
+    "InsufficientPermissionsError",
+    "TenantAccessDeniedError",
+    
+    # Validation errors
+    "PasswordValidationError",
+    "EmailValidationError",
+    "UserDataValidationError",
+    
+    # Configuration errors
+    "InvalidConfigurationError",
+    "MissingConfigurationError",
+    
+    # Database errors
+    "DatabaseError",
     "DatabaseConnectionError",
-    "RedisConnectionError",
-    "IntelligenceError",
-    "MLServiceUnavailableError",
-    "AnalysisTimeoutError",
-    "InsufficientDataError",
-    "get_user_friendly_message",
-    "categorize_error",
-    "is_retryable_error",
-    "should_log_error"
+    "DatabaseOperationError",
+    
+    # Service errors
+    "ServiceError",
+    "ServiceUnavailableError",
+    "ExternalServiceError",
+    
+    # Utility functions
+    "is_user_error",
+    "get_http_status_code",
 ]

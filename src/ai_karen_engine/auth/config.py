@@ -1,647 +1,687 @@
 """
-Unified Authentication Configuration System
+Unified configuration system for the consolidated authentication service.
 
-This module provides comprehensive configuration management for the consolidated
-authentication service, supporting different authentication modes and deployment
-scenarios through a single, well-structured configuration system.
+This module provides comprehensive configuration options for different
+authentication modes, replacing the fragmented configuration across
+multiple auth services.
 """
 
 from __future__ import annotations
 
-import os
 import json
+import os
 from dataclasses import dataclass, field
 from datetime import timedelta
-from typing import Dict, List, Optional, Any, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from .models import AuthMode, SessionStorageType
+try:
+    import yaml  # type: ignore
+except ImportError:  # pragma: no cover - yaml is optional
+    yaml = None
+
+
+def _env_bool(value: Optional[str], default: bool) -> bool:
+    """Convert environment string to boolean with a default."""
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(value: Optional[str], default: int) -> int:
+    """Convert environment string to integer with a default."""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _env_float(value: Optional[str], default: float) -> float:
+    """Convert environment string to float with a default."""
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _load_env_file(file_path: Union[str, Path]) -> None:
+    """Simple .env file parser that updates os.environ."""
+    for line in Path(file_path).read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
 
 
 @dataclass
 class DatabaseConfig:
-    """Database configuration for authentication storage."""
-    url: str = ""
-    pool_size: int = 10
-    max_overflow: int = 20
-    pool_timeout: int = 30
-    pool_recycle: int = 3600
-    echo: bool = False
+    """Database connection and settings configuration."""
     
-    def __post_init__(self):
-        """Set default database URL from environment if not provided."""
-        if not self.url:
-            self.url = os.environ.get(
-                'POSTGRES_URL',
-                'postgresql://karen_user:karen_secure_pass_change_me@localhost:5432/ai_karen'
-            )
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "url": self.url,
-            "pool_size": self.pool_size,
-            "max_overflow": self.max_overflow,
-            "pool_timeout": self.pool_timeout,
-            "pool_recycle": self.pool_recycle,
-            "echo": self.echo
-        }
+    database_url: str = "sqlite:///auth.db"
+    connection_pool_size: int = 10
+    connection_pool_max_overflow: int = 20
+    connection_timeout_seconds: int = 30
+    query_timeout_seconds: int = 30
+    enable_query_logging: bool = False
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> DatabaseConfig:
-        """Create instance from dictionary."""
-        return cls(**data)
+    def from_env(cls) -> "DatabaseConfig":
+        """Create configuration from environment variables."""
+        return cls(
+            database_url=os.getenv("AUTH_DATABASE_URL", cls().database_url),
+            connection_pool_size=_env_int(os.getenv("AUTH_DB_POOL_SIZE"), cls().connection_pool_size),
+            connection_pool_max_overflow=_env_int(os.getenv("AUTH_DB_POOL_MAX_OVERFLOW"), cls().connection_pool_max_overflow),
+            connection_timeout_seconds=_env_int(os.getenv("AUTH_DB_CONNECTION_TIMEOUT"), cls().connection_timeout_seconds),
+            query_timeout_seconds=_env_int(os.getenv("AUTH_DB_QUERY_TIMEOUT"), cls().query_timeout_seconds),
+            enable_query_logging=_env_bool(os.getenv("AUTH_DB_ENABLE_QUERY_LOGGING"), cls().enable_query_logging),
+        )
 
 
 @dataclass
-class RedisConfig:
-    """Redis configuration for session storage and caching."""
-    url: str = ""
-    host: str = "localhost"
-    port: int = 6379
-    db: int = 0
-    password: Optional[str] = None
-    ssl: bool = False
-    max_connections: int = 50
-    socket_timeout: int = 5
-    socket_connect_timeout: int = 5
+class JWTConfig:
+    """JWT token configuration for access and refresh tokens."""
     
-    def __post_init__(self):
-        """Set default Redis URL from environment if not provided."""
-        if not self.url:
-            self.url = os.environ.get('REDIS_URL', f'redis://{self.host}:{self.port}/{self.db}')
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "url": self.url,
-            "host": self.host,
-            "port": self.port,
-            "db": self.db,
-            "password": self.password,
-            "ssl": self.ssl,
-            "max_connections": self.max_connections,
-            "socket_timeout": self.socket_timeout,
-            "socket_connect_timeout": self.socket_connect_timeout
-        }
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> RedisConfig:
-        """Create instance from dictionary."""
-        return cls(**data)
-
-
-@dataclass
-class TokenConfig:
-    """JWT token configuration."""
-    secret_key: str = ""
+    secret_key: str = "change-me-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 30
     password_reset_token_expire_hours: int = 1
-    
-    def __post_init__(self):
-        """Set default secret key from environment if not provided."""
-        if not self.secret_key:
-            self.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
-            if self.secret_key == 'your-secret-key-change-in-production':
-                import warnings
-                warnings.warn(
-                    "Using default secret key! Set SECRET_KEY environment variable in production.",
-                    UserWarning
-                )
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "secret_key": self.secret_key,
-            "algorithm": self.algorithm,
-            "access_token_expire_minutes": self.access_token_expire_minutes,
-            "refresh_token_expire_days": self.refresh_token_expire_days,
-            "password_reset_token_expire_hours": self.password_reset_token_expire_hours
-        }
+    email_verification_token_expire_hours: int = 24
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> TokenConfig:
-        """Create instance from dictionary."""
-        return cls(**data)
+    def from_env(cls) -> "JWTConfig":
+        """Create configuration from environment variables."""
+        return cls(
+            secret_key=os.getenv("AUTH_SECRET_KEY", cls().secret_key),
+            algorithm=os.getenv("AUTH_JWT_ALGORITHM", cls().algorithm),
+            access_token_expire_minutes=_env_int(os.getenv("AUTH_ACCESS_TOKEN_EXPIRE_MINUTES"), cls().access_token_expire_minutes),
+            refresh_token_expire_days=_env_int(os.getenv("AUTH_REFRESH_TOKEN_EXPIRE_DAYS"), cls().refresh_token_expire_days),
+            password_reset_token_expire_hours=_env_int(os.getenv("AUTH_PASSWORD_RESET_TOKEN_EXPIRE_HOURS"), cls().password_reset_token_expire_hours),
+            email_verification_token_expire_hours=_env_int(os.getenv("AUTH_EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS"), cls().email_verification_token_expire_hours),
+        )
+    
+    @property
+    def access_token_expiry(self) -> timedelta:
+        """Get access token expiry as timedelta."""
+        return timedelta(minutes=self.access_token_expire_minutes)
+    
+    @property
+    def refresh_token_expiry(self) -> timedelta:
+        """Get refresh token expiry as timedelta."""
+        return timedelta(days=self.refresh_token_expire_days)
+    
+    @property
+    def password_reset_token_expiry(self) -> timedelta:
+        """Get password reset token expiry as timedelta."""
+        return timedelta(hours=self.password_reset_token_expire_hours)
+    
+    @property
+    def email_verification_token_expiry(self) -> timedelta:
+        """Get email verification token expiry as timedelta."""
+        return timedelta(hours=self.email_verification_token_expire_hours)
 
 
 @dataclass
 class SessionConfig:
     """Session management configuration."""
-    storage_type: SessionStorageType = SessionStorageType.DATABASE
-    expire_hours: int = 24
-    max_sessions_per_user: int = 5
-    cleanup_interval_minutes: int = 60
-    extend_on_activity: bool = True
-    secure_cookies: bool = True
-    same_site: str = "lax"  # "strict", "lax", or "none"
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "storage_type": self.storage_type.value,
-            "expire_hours": self.expire_hours,
-            "max_sessions_per_user": self.max_sessions_per_user,
-            "cleanup_interval_minutes": self.cleanup_interval_minutes,
-            "extend_on_activity": self.extend_on_activity,
-            "secure_cookies": self.secure_cookies,
-            "same_site": self.same_site
-        }
+    session_timeout_hours: int = 24
+    max_sessions_per_user: int = 5
+    storage_type: str = "database"  # "database", "redis", "memory"
+    redis_url: Optional[str] = None
+    cookie_name: str = "auth_session"
+    cookie_secure: bool = True
+    cookie_httponly: bool = True
+    cookie_samesite: str = "lax"  # "strict", "lax", "none"
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> SessionConfig:
-        """Create instance from dictionary."""
-        storage_type = SessionStorageType(data.get("storage_type", "database"))
+    def from_env(cls) -> "SessionConfig":
+        """Create configuration from environment variables."""
         return cls(
-            storage_type=storage_type,
-            expire_hours=data.get("expire_hours", 24),
-            max_sessions_per_user=data.get("max_sessions_per_user", 5),
-            cleanup_interval_minutes=data.get("cleanup_interval_minutes", 60),
-            extend_on_activity=data.get("extend_on_activity", True),
-            secure_cookies=data.get("secure_cookies", True),
-            same_site=data.get("same_site", "lax")
+            session_timeout_hours=_env_int(os.getenv("AUTH_SESSION_TIMEOUT_HOURS"), cls().session_timeout_hours),
+            max_sessions_per_user=_env_int(os.getenv("AUTH_MAX_SESSIONS_PER_USER"), cls().max_sessions_per_user),
+            storage_type=os.getenv("AUTH_SESSION_STORAGE_TYPE", cls().storage_type),
+            redis_url=os.getenv("AUTH_SESSION_REDIS_URL") or os.getenv("REDIS_URL"),
+            cookie_name=os.getenv("AUTH_SESSION_COOKIE_NAME", cls().cookie_name),
+            cookie_secure=_env_bool(os.getenv("AUTH_SESSION_COOKIE_SECURE"), cls().cookie_secure),
+            cookie_httponly=_env_bool(os.getenv("AUTH_SESSION_COOKIE_HTTPONLY"), cls().cookie_httponly),
+            cookie_samesite=os.getenv("AUTH_SESSION_COOKIE_SAMESITE", cls().cookie_samesite),
         )
+    
+    @property
+    def session_timeout(self) -> timedelta:
+        """Get session timeout as timedelta."""
+        return timedelta(hours=self.session_timeout_hours)
 
 
 @dataclass
 class SecurityConfig:
     """Security enhancement configuration."""
-    enable_rate_limiting: bool = True
-    enable_audit_logging: bool = True
-    enable_session_validation: bool = True
-    enable_ip_whitelist: bool = False
-    enable_geolocation_blocking: bool = False
     
-    # Rate limiting settings
+    # Rate limiting
+    enable_rate_limiting: bool = True
     max_failed_attempts: int = 5
     lockout_duration_minutes: int = 15
     rate_limit_window_minutes: int = 15
+    rate_limit_max_requests: int = 10
     
-    # Password policy
+    # Password security
     min_password_length: int = 8
-    require_uppercase: bool = True
-    require_lowercase: bool = True
-    require_numbers: bool = True
-    require_special_chars: bool = True
-    password_history_count: int = 5
+    require_password_complexity: bool = True
+    password_hash_rounds: int = 12
     
     # Session security
-    require_https: bool = True
-    validate_user_agent: bool = True
+    enable_session_validation: bool = True
     validate_ip_address: bool = False
-    max_session_idle_minutes: int = 30
+    validate_user_agent: bool = False
+    enable_device_fingerprinting: bool = False
     
-    # Allowed/blocked lists
-    ip_whitelist: List[str] = field(default_factory=list)
-    ip_blacklist: List[str] = field(default_factory=list)
-    blocked_countries: List[str] = field(default_factory=list)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "enable_rate_limiting": self.enable_rate_limiting,
-            "enable_audit_logging": self.enable_audit_logging,
-            "enable_session_validation": self.enable_session_validation,
-            "enable_ip_whitelist": self.enable_ip_whitelist,
-            "enable_geolocation_blocking": self.enable_geolocation_blocking,
-            "max_failed_attempts": self.max_failed_attempts,
-            "lockout_duration_minutes": self.lockout_duration_minutes,
-            "rate_limit_window_minutes": self.rate_limit_window_minutes,
-            "min_password_length": self.min_password_length,
-            "require_uppercase": self.require_uppercase,
-            "require_lowercase": self.require_lowercase,
-            "require_numbers": self.require_numbers,
-            "require_special_chars": self.require_special_chars,
-            "password_history_count": self.password_history_count,
-            "require_https": self.require_https,
-            "validate_user_agent": self.validate_user_agent,
-            "validate_ip_address": self.validate_ip_address,
-            "max_session_idle_minutes": self.max_session_idle_minutes,
-            "ip_whitelist": self.ip_whitelist,
-            "ip_blacklist": self.ip_blacklist,
-            "blocked_countries": self.blocked_countries
-        }
+    # Audit logging
+    enable_audit_logging: bool = True
+    log_successful_logins: bool = True
+    log_failed_logins: bool = True
+    log_security_events: bool = True
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> SecurityConfig:
-        """Create instance from dictionary."""
+    def from_env(cls) -> "SecurityConfig":
+        """Create configuration from environment variables."""
         return cls(
-            enable_rate_limiting=data.get("enable_rate_limiting", True),
-            enable_audit_logging=data.get("enable_audit_logging", True),
-            enable_session_validation=data.get("enable_session_validation", True),
-            enable_ip_whitelist=data.get("enable_ip_whitelist", False),
-            enable_geolocation_blocking=data.get("enable_geolocation_blocking", False),
-            max_failed_attempts=data.get("max_failed_attempts", 5),
-            lockout_duration_minutes=data.get("lockout_duration_minutes", 15),
-            rate_limit_window_minutes=data.get("rate_limit_window_minutes", 15),
-            min_password_length=data.get("min_password_length", 8),
-            require_uppercase=data.get("require_uppercase", True),
-            require_lowercase=data.get("require_lowercase", True),
-            require_numbers=data.get("require_numbers", True),
-            require_special_chars=data.get("require_special_chars", True),
-            password_history_count=data.get("password_history_count", 5),
-            require_https=data.get("require_https", True),
-            validate_user_agent=data.get("validate_user_agent", True),
-            validate_ip_address=data.get("validate_ip_address", False),
-            max_session_idle_minutes=data.get("max_session_idle_minutes", 30),
-            ip_whitelist=data.get("ip_whitelist", []),
-            ip_blacklist=data.get("ip_blacklist", []),
-            blocked_countries=data.get("blocked_countries", [])
+            enable_rate_limiting=_env_bool(os.getenv("AUTH_ENABLE_RATE_LIMITING"), cls().enable_rate_limiting),
+            max_failed_attempts=_env_int(os.getenv("AUTH_MAX_FAILED_ATTEMPTS"), cls().max_failed_attempts),
+            lockout_duration_minutes=_env_int(os.getenv("AUTH_LOCKOUT_DURATION_MINUTES"), cls().lockout_duration_minutes),
+            rate_limit_window_minutes=_env_int(os.getenv("AUTH_RATE_LIMIT_WINDOW_MINUTES"), cls().rate_limit_window_minutes),
+            rate_limit_max_requests=_env_int(os.getenv("AUTH_RATE_LIMIT_MAX_REQUESTS"), cls().rate_limit_max_requests),
+            min_password_length=_env_int(os.getenv("AUTH_MIN_PASSWORD_LENGTH"), cls().min_password_length),
+            require_password_complexity=_env_bool(os.getenv("AUTH_REQUIRE_PASSWORD_COMPLEXITY"), cls().require_password_complexity),
+            password_hash_rounds=_env_int(os.getenv("AUTH_PASSWORD_HASH_ROUNDS"), cls().password_hash_rounds),
+            enable_session_validation=_env_bool(os.getenv("AUTH_ENABLE_SESSION_VALIDATION"), cls().enable_session_validation),
+            validate_ip_address=_env_bool(os.getenv("AUTH_VALIDATE_IP_ADDRESS"), cls().validate_ip_address),
+            validate_user_agent=_env_bool(os.getenv("AUTH_VALIDATE_USER_AGENT"), cls().validate_user_agent),
+            enable_device_fingerprinting=_env_bool(os.getenv("AUTH_ENABLE_DEVICE_FINGERPRINTING"), cls().enable_device_fingerprinting),
+            enable_audit_logging=_env_bool(os.getenv("AUTH_ENABLE_AUDIT_LOGGING"), cls().enable_audit_logging),
+            log_successful_logins=_env_bool(os.getenv("AUTH_LOG_SUCCESSFUL_LOGINS"), cls().log_successful_logins),
+            log_failed_logins=_env_bool(os.getenv("AUTH_LOG_FAILED_LOGINS"), cls().log_failed_logins),
+            log_security_events=_env_bool(os.getenv("AUTH_LOG_SECURITY_EVENTS"), cls().log_security_events),
         )
 
 
 @dataclass
 class IntelligenceConfig:
-    """Intelligence layer configuration for ML-based authentication."""
-    enable_behavioral_analysis: bool = False
+    """Intelligence layer configuration for advanced authentication features."""
+    
+    # Feature toggles
+    enable_intelligent_auth: bool = False
     enable_anomaly_detection: bool = False
-    enable_risk_scoring: bool = False
-    enable_threat_intelligence: bool = False
+    enable_behavioral_analysis: bool = False
+    enable_threat_detection: bool = False
     
-    # Risk thresholds
-    low_risk_threshold: float = 0.3
-    medium_risk_threshold: float = 0.6
-    high_risk_threshold: float = 0.8
-    critical_risk_threshold: float = 0.95
-    
-    # Processing limits
-    max_processing_time_seconds: float = 5.0
-    enable_async_processing: bool = True
-    fallback_on_timeout: bool = True
-    fallback_risk_score: float = 0.0
+    # Risk scoring
+    risk_threshold_low: float = 0.3
+    risk_threshold_medium: float = 0.6
+    risk_threshold_high: float = 0.8
     
     # ML model settings
-    model_cache_size: int = 1000
-    model_cache_ttl_minutes: int = 60
-    batch_processing_size: int = 32
+    model_update_interval_hours: int = 24
+    min_training_samples: int = 100
+    enable_online_learning: bool = False
     
-    # Feature flags
-    enable_geolocation_analysis: bool = True
-    enable_device_fingerprinting: bool = True
-    enable_user_profiling: bool = True
-    enable_attack_pattern_detection: bool = True
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "enable_behavioral_analysis": self.enable_behavioral_analysis,
-            "enable_anomaly_detection": self.enable_anomaly_detection,
-            "enable_risk_scoring": self.enable_risk_scoring,
-            "enable_threat_intelligence": self.enable_threat_intelligence,
-            "low_risk_threshold": self.low_risk_threshold,
-            "medium_risk_threshold": self.medium_risk_threshold,
-            "high_risk_threshold": self.high_risk_threshold,
-            "critical_risk_threshold": self.critical_risk_threshold,
-            "max_processing_time_seconds": self.max_processing_time_seconds,
-            "enable_async_processing": self.enable_async_processing,
-            "fallback_on_timeout": self.fallback_on_timeout,
-            "fallback_risk_score": self.fallback_risk_score,
-            "model_cache_size": self.model_cache_size,
-            "model_cache_ttl_minutes": self.model_cache_ttl_minutes,
-            "batch_processing_size": self.batch_processing_size,
-            "enable_geolocation_analysis": self.enable_geolocation_analysis,
-            "enable_device_fingerprinting": self.enable_device_fingerprinting,
-            "enable_user_profiling": self.enable_user_profiling,
-            "enable_attack_pattern_detection": self.enable_attack_pattern_detection
-        }
+    # Behavioral analysis
+    behavioral_window_days: int = 30
+    location_sensitivity: float = 0.5
+    time_sensitivity: float = 0.3
+    device_sensitivity: float = 0.7
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> IntelligenceConfig:
-        """Create instance from dictionary."""
+    def from_env(cls) -> "IntelligenceConfig":
+        """Create configuration from environment variables."""
         return cls(
-            enable_behavioral_analysis=data.get("enable_behavioral_analysis", False),
-            enable_anomaly_detection=data.get("enable_anomaly_detection", False),
-            enable_risk_scoring=data.get("enable_risk_scoring", False),
-            enable_threat_intelligence=data.get("enable_threat_intelligence", False),
-            low_risk_threshold=data.get("low_risk_threshold", 0.3),
-            medium_risk_threshold=data.get("medium_risk_threshold", 0.6),
-            high_risk_threshold=data.get("high_risk_threshold", 0.8),
-            critical_risk_threshold=data.get("critical_risk_threshold", 0.95),
-            max_processing_time_seconds=data.get("max_processing_time_seconds", 5.0),
-            enable_async_processing=data.get("enable_async_processing", True),
-            fallback_on_timeout=data.get("fallback_on_timeout", True),
-            fallback_risk_score=data.get("fallback_risk_score", 0.0),
-            model_cache_size=data.get("model_cache_size", 1000),
-            model_cache_ttl_minutes=data.get("model_cache_ttl_minutes", 60),
-            batch_processing_size=data.get("batch_processing_size", 32),
-            enable_geolocation_analysis=data.get("enable_geolocation_analysis", True),
-            enable_device_fingerprinting=data.get("enable_device_fingerprinting", True),
-            enable_user_profiling=data.get("enable_user_profiling", True),
-            enable_attack_pattern_detection=data.get("enable_attack_pattern_detection", True)
+            enable_intelligent_auth=_env_bool(os.getenv("AUTH_ENABLE_INTELLIGENT_AUTH"), cls().enable_intelligent_auth),
+            enable_anomaly_detection=_env_bool(os.getenv("AUTH_ENABLE_ANOMALY_DETECTION"), cls().enable_anomaly_detection),
+            enable_behavioral_analysis=_env_bool(os.getenv("AUTH_ENABLE_BEHAVIORAL_ANALYSIS"), cls().enable_behavioral_analysis),
+            enable_threat_detection=_env_bool(os.getenv("AUTH_ENABLE_THREAT_DETECTION"), cls().enable_threat_detection),
+            risk_threshold_low=_env_float(os.getenv("AUTH_RISK_THRESHOLD_LOW"), cls().risk_threshold_low),
+            risk_threshold_medium=_env_float(os.getenv("AUTH_RISK_THRESHOLD_MEDIUM"), cls().risk_threshold_medium),
+            risk_threshold_high=_env_float(os.getenv("AUTH_RISK_THRESHOLD_HIGH"), cls().risk_threshold_high),
+            model_update_interval_hours=_env_int(os.getenv("AUTH_MODEL_UPDATE_INTERVAL_HOURS"), cls().model_update_interval_hours),
+            min_training_samples=_env_int(os.getenv("AUTH_MIN_TRAINING_SAMPLES"), cls().min_training_samples),
+            enable_online_learning=_env_bool(os.getenv("AUTH_ENABLE_ONLINE_LEARNING"), cls().enable_online_learning),
+            behavioral_window_days=_env_int(os.getenv("AUTH_BEHAVIORAL_WINDOW_DAYS"), cls().behavioral_window_days),
+            location_sensitivity=_env_float(os.getenv("AUTH_LOCATION_SENSITIVITY"), cls().location_sensitivity),
+            time_sensitivity=_env_float(os.getenv("AUTH_TIME_SENSITIVITY"), cls().time_sensitivity),
+            device_sensitivity=_env_float(os.getenv("AUTH_DEVICE_SENSITIVITY"), cls().device_sensitivity),
         )
 
 
 @dataclass
-class LoggingConfig:
-    """Logging and monitoring configuration."""
+class MonitoringConfig:
+    """Monitoring and metrics configuration."""
+    
+    # Feature toggles
+    enable_monitoring: bool = True
+    enable_metrics: bool = True
+    enable_alerting: bool = True
     enable_structured_logging: bool = True
-    log_level: str = "INFO"
-    log_format: str = "json"  # "json" or "text"
     
-    # Event logging
-    log_successful_logins: bool = True
-    log_failed_logins: bool = True
-    log_session_events: bool = True
-    log_security_events: bool = True
-    log_admin_actions: bool = True
+    # Metrics settings
+    metrics_retention_hours: int = 24
+    metrics_aggregation_interval_seconds: int = 60
+    max_metrics_points: int = 10000
     
-    # Performance logging
-    log_slow_operations: bool = True
+    # Alerting settings
+    alert_cooldown_minutes: int = 5
+    max_alerts_history: int = 1000
+    enable_email_alerts: bool = False
+    email_alert_recipients: List[str] = field(default_factory=list)
+    
+    # Performance monitoring
+    enable_performance_tracking: bool = True
     slow_operation_threshold_ms: float = 1000.0
+    track_user_activity: bool = True
     
-    # Sensitive data handling
-    mask_passwords: bool = True
-    mask_tokens: bool = True
-    mask_personal_info: bool = True
-    
-    # Log retention
-    max_log_age_days: int = 90
-    max_log_size_mb: int = 100
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "enable_structured_logging": self.enable_structured_logging,
-            "log_level": self.log_level,
-            "log_format": self.log_format,
-            "log_successful_logins": self.log_successful_logins,
-            "log_failed_logins": self.log_failed_logins,
-            "log_session_events": self.log_session_events,
-            "log_security_events": self.log_security_events,
-            "log_admin_actions": self.log_admin_actions,
-            "log_slow_operations": self.log_slow_operations,
-            "slow_operation_threshold_ms": self.slow_operation_threshold_ms,
-            "mask_passwords": self.mask_passwords,
-            "mask_tokens": self.mask_tokens,
-            "mask_personal_info": self.mask_personal_info,
-            "max_log_age_days": self.max_log_age_days,
-            "max_log_size_mb": self.max_log_size_mb
-        }
+    # Log settings
+    log_level: str = "INFO"
+    structured_log_format: str = "json"
+    enable_request_logging: bool = True
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> LoggingConfig:
-        """Create instance from dictionary."""
+    def from_env(cls) -> "MonitoringConfig":
+        """Create configuration from environment variables."""
+        email_recipients = os.getenv("AUTH_ALERT_EMAIL_RECIPIENTS", "")
+        recipients = [r.strip() for r in email_recipients.split(",") if r.strip()] if email_recipients else []
+        
         return cls(
-            enable_structured_logging=data.get("enable_structured_logging", True),
-            log_level=data.get("log_level", "INFO"),
-            log_format=data.get("log_format", "json"),
-            log_successful_logins=data.get("log_successful_logins", True),
-            log_failed_logins=data.get("log_failed_logins", True),
-            log_session_events=data.get("log_session_events", True),
-            log_security_events=data.get("log_security_events", True),
-            log_admin_actions=data.get("log_admin_actions", True),
-            log_slow_operations=data.get("log_slow_operations", True),
-            slow_operation_threshold_ms=data.get("slow_operation_threshold_ms", 1000.0),
-            mask_passwords=data.get("mask_passwords", True),
-            mask_tokens=data.get("mask_tokens", True),
-            mask_personal_info=data.get("mask_personal_info", True),
-            max_log_age_days=data.get("max_log_age_days", 90),
-            max_log_size_mb=data.get("max_log_size_mb", 100)
+            enable_monitoring=_env_bool(os.getenv("AUTH_ENABLE_MONITORING"), cls().enable_monitoring),
+            enable_metrics=_env_bool(os.getenv("AUTH_ENABLE_METRICS"), cls().enable_metrics),
+            enable_alerting=_env_bool(os.getenv("AUTH_ENABLE_ALERTING"), cls().enable_alerting),
+            enable_structured_logging=_env_bool(os.getenv("AUTH_ENABLE_STRUCTURED_LOGGING"), cls().enable_structured_logging),
+            metrics_retention_hours=_env_int(os.getenv("AUTH_METRICS_RETENTION_HOURS"), cls().metrics_retention_hours),
+            metrics_aggregation_interval_seconds=_env_int(os.getenv("AUTH_METRICS_AGGREGATION_INTERVAL"), cls().metrics_aggregation_interval_seconds),
+            max_metrics_points=_env_int(os.getenv("AUTH_MAX_METRICS_POINTS"), cls().max_metrics_points),
+            alert_cooldown_minutes=_env_int(os.getenv("AUTH_ALERT_COOLDOWN_MINUTES"), cls().alert_cooldown_minutes),
+            max_alerts_history=_env_int(os.getenv("AUTH_MAX_ALERTS_HISTORY"), cls().max_alerts_history),
+            enable_email_alerts=_env_bool(os.getenv("AUTH_ENABLE_EMAIL_ALERTS"), cls().enable_email_alerts),
+            email_alert_recipients=recipients,
+            enable_performance_tracking=_env_bool(os.getenv("AUTH_ENABLE_PERFORMANCE_TRACKING"), cls().enable_performance_tracking),
+            slow_operation_threshold_ms=_env_float(os.getenv("AUTH_SLOW_OPERATION_THRESHOLD_MS"), cls().slow_operation_threshold_ms),
+            track_user_activity=_env_bool(os.getenv("AUTH_TRACK_USER_ACTIVITY"), cls().track_user_activity),
+            log_level=os.getenv("AUTH_LOG_LEVEL", cls().log_level),
+            structured_log_format=os.getenv("AUTH_STRUCTURED_LOG_FORMAT", cls().structured_log_format),
+            enable_request_logging=_env_bool(os.getenv("AUTH_ENABLE_REQUEST_LOGGING"), cls().enable_request_logging),
+        )
+
+
+@dataclass
+class FeatureToggles:
+    """Feature toggles for enabling/disabling authentication components."""
+    
+    # Core features
+    use_database: bool = True
+    enable_refresh_tokens: bool = True
+    enable_password_reset: bool = True
+    enable_email_verification: bool = True
+    enable_two_factor_auth: bool = False
+    
+    # Security features
+    enable_security_features: bool = True
+    enable_rate_limiting: bool = True
+    enable_audit_logging: bool = True
+    enable_session_validation: bool = True
+    
+    # Intelligence features
+    enable_intelligent_auth: bool = False
+    enable_anomaly_detection: bool = False
+    enable_behavioral_analysis: bool = False
+    
+    # Advanced features
+    enable_multi_tenant: bool = True
+    enable_role_based_access: bool = True
+    enable_user_preferences: bool = True
+    
+    @classmethod
+    def from_env(cls) -> "FeatureToggles":
+        """Create configuration from environment variables."""
+        return cls(
+            use_database=_env_bool(os.getenv("AUTH_USE_DATABASE"), cls().use_database),
+            enable_refresh_tokens=_env_bool(os.getenv("AUTH_ENABLE_REFRESH_TOKENS"), cls().enable_refresh_tokens),
+            enable_password_reset=_env_bool(os.getenv("AUTH_ENABLE_PASSWORD_RESET"), cls().enable_password_reset),
+            enable_email_verification=_env_bool(os.getenv("AUTH_ENABLE_EMAIL_VERIFICATION"), cls().enable_email_verification),
+            enable_two_factor_auth=_env_bool(os.getenv("AUTH_ENABLE_TWO_FACTOR_AUTH"), cls().enable_two_factor_auth),
+            enable_security_features=_env_bool(os.getenv("AUTH_ENABLE_SECURITY_FEATURES"), cls().enable_security_features),
+            enable_rate_limiting=_env_bool(os.getenv("AUTH_ENABLE_RATE_LIMITING"), cls().enable_rate_limiting),
+            enable_audit_logging=_env_bool(os.getenv("AUTH_ENABLE_AUDIT_LOGGING"), cls().enable_audit_logging),
+            enable_session_validation=_env_bool(os.getenv("AUTH_ENABLE_SESSION_VALIDATION"), cls().enable_session_validation),
+            enable_intelligent_auth=_env_bool(os.getenv("AUTH_ENABLE_INTELLIGENT_AUTH"), cls().enable_intelligent_auth),
+            enable_anomaly_detection=_env_bool(os.getenv("AUTH_ENABLE_ANOMALY_DETECTION"), cls().enable_anomaly_detection),
+            enable_behavioral_analysis=_env_bool(os.getenv("AUTH_ENABLE_BEHAVIORAL_ANALYSIS"), cls().enable_behavioral_analysis),
+            enable_multi_tenant=_env_bool(os.getenv("AUTH_ENABLE_MULTI_TENANT"), cls().enable_multi_tenant),
+            enable_role_based_access=_env_bool(os.getenv("AUTH_ENABLE_ROLE_BASED_ACCESS"), cls().enable_role_based_access),
+            enable_user_preferences=_env_bool(os.getenv("AUTH_ENABLE_USER_PREFERENCES"), cls().enable_user_preferences),
         )
 
 
 @dataclass
 class AuthConfig:
     """
-    Comprehensive authentication configuration for the unified auth service.
+    Comprehensive authentication configuration for the consolidated service.
     
-    This configuration system supports different authentication modes and
-    deployment scenarios through a single, well-structured configuration.
+    This replaces all the fragmented configuration classes across different
+    auth services with a single, unified configuration system.
     """
-    # Core settings
-    auth_mode: AuthMode = AuthMode.ENHANCED
-    service_name: str = "unified-auth-service"
-    service_version: str = "1.0.0"
-    debug: bool = False
     
-    # Component configurations
+    # Core configuration sections
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
-    redis: RedisConfig = field(default_factory=RedisConfig)
-    tokens: TokenConfig = field(default_factory=TokenConfig)
-    sessions: SessionConfig = field(default_factory=SessionConfig)
+    jwt: JWTConfig = field(default_factory=JWTConfig)
+    session: SessionConfig = field(default_factory=SessionConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
     intelligence: IntelligenceConfig = field(default_factory=IntelligenceConfig)
-    logging: LoggingConfig = field(default_factory=LoggingConfig)
+    monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
+    features: FeatureToggles = field(default_factory=FeatureToggles)
     
-    # Feature flags based on auth mode
-    enable_security_features: bool = True
-    enable_intelligent_auth: bool = False
-    enable_production_features: bool = False
-    
-    def __post_init__(self):
-        """Configure features based on auth mode."""
-        if self.auth_mode == AuthMode.BASIC:
-            self.enable_security_features = False
-            self.enable_intelligent_auth = False
-            self.enable_production_features = False
-        elif self.auth_mode == AuthMode.ENHANCED:
-            self.enable_security_features = True
-            self.enable_intelligent_auth = False
-            self.enable_production_features = False
-        elif self.auth_mode == AuthMode.INTELLIGENT:
-            self.enable_security_features = True
-            self.enable_intelligent_auth = True
-            self.enable_production_features = False
-        elif self.auth_mode == AuthMode.PRODUCTION:
-            self.enable_security_features = True
-            self.enable_intelligent_auth = True
-            self.enable_production_features = True
-            
-            # Enable production-specific settings
-            self.security.require_https = True
-            self.sessions.secure_cookies = True
-            self.logging.log_level = "WARNING"
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "auth_mode": self.auth_mode.value,
-            "service_name": self.service_name,
-            "service_version": self.service_version,
-            "debug": self.debug,
-            "database": self.database.to_dict(),
-            "redis": self.redis.to_dict(),
-            "tokens": self.tokens.to_dict(),
-            "sessions": self.sessions.to_dict(),
-            "security": self.security.to_dict(),
-            "intelligence": self.intelligence.to_dict(),
-            "logging": self.logging.to_dict(),
-            "enable_security_features": self.enable_security_features,
-            "enable_intelligent_auth": self.enable_intelligent_auth,
-            "enable_production_features": self.enable_production_features
-        }
+    # Service metadata
+    service_name: str = "consolidated-auth-service"
+    service_version: str = "1.0.0"
+    environment: str = "development"
+    debug: bool = False
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> AuthConfig:
-        """Create instance from dictionary."""
-        auth_mode = AuthMode(data.get("auth_mode", "enhanced"))
-        
-        return cls(
-            auth_mode=auth_mode,
-            service_name=data.get("service_name", "unified-auth-service"),
-            service_version=data.get("service_version", "1.0.0"),
-            debug=data.get("debug", False),
-            database=DatabaseConfig.from_dict(data.get("database", {})),
-            redis=RedisConfig.from_dict(data.get("redis", {})),
-            tokens=TokenConfig.from_dict(data.get("tokens", {})),
-            sessions=SessionConfig.from_dict(data.get("sessions", {})),
-            security=SecurityConfig.from_dict(data.get("security", {})),
-            intelligence=IntelligenceConfig.from_dict(data.get("intelligence", {})),
-            logging=LoggingConfig.from_dict(data.get("logging", {})),
-            enable_security_features=data.get("enable_security_features", True),
-            enable_intelligent_auth=data.get("enable_intelligent_auth", False),
-            enable_production_features=data.get("enable_production_features", False)
-        )
-    
-    @classmethod
-    def from_env(cls) -> AuthConfig:
+    def from_env(cls) -> "AuthConfig":
         """Create configuration from environment variables."""
-        auth_mode_str = os.environ.get('AUTH_MODE', 'enhanced').lower()
-        auth_mode = AuthMode.ENHANCED
-        
-        if auth_mode_str == 'basic':
-            auth_mode = AuthMode.BASIC
-        elif auth_mode_str == 'intelligent':
-            auth_mode = AuthMode.INTELLIGENT
-        elif auth_mode_str == 'production':
-            auth_mode = AuthMode.PRODUCTION
-        
-        config = cls(
-            auth_mode=auth_mode,
-            service_name=os.environ.get('AUTH_SERVICE_NAME', 'unified-auth-service'),
-            service_version=os.environ.get('AUTH_SERVICE_VERSION', '1.0.0'),
-            debug=os.environ.get('AUTH_DEBUG', 'false').lower() == 'true'
+        return cls(
+            database=DatabaseConfig.from_env(),
+            jwt=JWTConfig.from_env(),
+            session=SessionConfig.from_env(),
+            security=SecurityConfig.from_env(),
+            intelligence=IntelligenceConfig.from_env(),
+            monitoring=MonitoringConfig.from_env(),
+            features=FeatureToggles.from_env(),
+            service_name=os.getenv("AUTH_SERVICE_NAME", cls().service_name),
+            service_version=os.getenv("AUTH_SERVICE_VERSION", cls().service_version),
+            environment=os.getenv("AUTH_ENVIRONMENT", cls().environment),
+            debug=_env_bool(os.getenv("AUTH_DEBUG"), cls().debug),
         )
-        
-        # Override specific settings from environment
-        if 'AUTH_ENABLE_SECURITY' in os.environ:
-            config.enable_security_features = os.environ['AUTH_ENABLE_SECURITY'].lower() == 'true'
-        
-        if 'AUTH_ENABLE_INTELLIGENCE' in os.environ:
-            config.enable_intelligent_auth = os.environ['AUTH_ENABLE_INTELLIGENCE'].lower() == 'true'
-        
-        if 'AUTH_ENABLE_PRODUCTION' in os.environ:
-            config.enable_production_features = os.environ['AUTH_ENABLE_PRODUCTION'].lower() == 'true'
-        
-        return config
     
     @classmethod
-    def load_from_file(cls, file_path: Union[str, Path]) -> AuthConfig:
-        """Load configuration from JSON file."""
-        with open(file_path, 'r') as f:
-            data = json.load(f)
+    def from_dict(cls, data: Dict[str, Any]) -> "AuthConfig":
+        """Create configuration from a dictionary."""
+        return cls(
+            database=DatabaseConfig(**data.get("database", {})),
+            jwt=JWTConfig(**data.get("jwt", {})),
+            session=SessionConfig(**data.get("session", {})),
+            security=SecurityConfig(**data.get("security", {})),
+            intelligence=IntelligenceConfig(**data.get("intelligence", {})),
+            monitoring=MonitoringConfig(**data.get("monitoring", {})),
+            features=FeatureToggles(**data.get("features", {})),
+            service_name=data.get("service_name", cls().service_name),
+            service_version=data.get("service_version", cls().service_version),
+            environment=data.get("environment", cls().environment),
+            debug=data.get("debug", cls().debug),
+        )
+    
+    @classmethod
+    def from_file(cls, file_path: Union[str, Path]) -> "AuthConfig":
+        """Load configuration from a JSON or YAML file."""
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Configuration file not found: {path}")
+        
+        suffix = path.suffix.lower()
+        if suffix == ".json":
+            data = json.loads(path.read_text() or "{}")
+        elif suffix in {".yaml", ".yml"}:
+            if yaml is None:
+                raise ValueError("PyYAML is required to load YAML configuration")
+            data = yaml.safe_load(path.read_text()) or {}
+        else:
+            raise ValueError(f"Unsupported configuration format: {suffix}")
+        
         return cls.from_dict(data)
     
-    def save_to_file(self, file_path: Union[str, Path]) -> None:
-        """Save configuration to JSON file."""
-        path = Path(file_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'w') as f:
-            json.dump(self.to_dict(), f, indent=2)
+    @classmethod
+    def from_env_file(cls, file_path: Union[str, Path]) -> "AuthConfig":
+        """Load configuration from a .env file."""
+        _load_env_file(file_path)
+        return cls.from_env()
     
-    def validate(self) -> List[str]:
-        """Validate configuration and return list of errors."""
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert configuration to dictionary."""
+        return {
+            "database": {
+                "database_url": self.database.database_url,
+                "connection_pool_size": self.database.connection_pool_size,
+                "connection_pool_max_overflow": self.database.connection_pool_max_overflow,
+                "connection_timeout_seconds": self.database.connection_timeout_seconds,
+                "query_timeout_seconds": self.database.query_timeout_seconds,
+                "enable_query_logging": self.database.enable_query_logging,
+            },
+            "jwt": {
+                "secret_key": self.jwt.secret_key,
+                "algorithm": self.jwt.algorithm,
+                "access_token_expire_minutes": self.jwt.access_token_expire_minutes,
+                "refresh_token_expire_days": self.jwt.refresh_token_expire_days,
+                "password_reset_token_expire_hours": self.jwt.password_reset_token_expire_hours,
+                "email_verification_token_expire_hours": self.jwt.email_verification_token_expire_hours,
+            },
+            "session": {
+                "session_timeout_hours": self.session.session_timeout_hours,
+                "max_sessions_per_user": self.session.max_sessions_per_user,
+                "storage_type": self.session.storage_type,
+                "redis_url": self.session.redis_url,
+                "cookie_name": self.session.cookie_name,
+                "cookie_secure": self.session.cookie_secure,
+                "cookie_httponly": self.session.cookie_httponly,
+                "cookie_samesite": self.session.cookie_samesite,
+            },
+            "security": {
+                "enable_rate_limiting": self.security.enable_rate_limiting,
+                "max_failed_attempts": self.security.max_failed_attempts,
+                "lockout_duration_minutes": self.security.lockout_duration_minutes,
+                "rate_limit_window_minutes": self.security.rate_limit_window_minutes,
+                "rate_limit_max_requests": self.security.rate_limit_max_requests,
+                "min_password_length": self.security.min_password_length,
+                "require_password_complexity": self.security.require_password_complexity,
+                "password_hash_rounds": self.security.password_hash_rounds,
+                "enable_session_validation": self.security.enable_session_validation,
+                "validate_ip_address": self.security.validate_ip_address,
+                "validate_user_agent": self.security.validate_user_agent,
+                "enable_device_fingerprinting": self.security.enable_device_fingerprinting,
+                "enable_audit_logging": self.security.enable_audit_logging,
+                "log_successful_logins": self.security.log_successful_logins,
+                "log_failed_logins": self.security.log_failed_logins,
+                "log_security_events": self.security.log_security_events,
+            },
+            "intelligence": {
+                "enable_intelligent_auth": self.intelligence.enable_intelligent_auth,
+                "enable_anomaly_detection": self.intelligence.enable_anomaly_detection,
+                "enable_behavioral_analysis": self.intelligence.enable_behavioral_analysis,
+                "enable_threat_detection": self.intelligence.enable_threat_detection,
+                "risk_threshold_low": self.intelligence.risk_threshold_low,
+                "risk_threshold_medium": self.intelligence.risk_threshold_medium,
+                "risk_threshold_high": self.intelligence.risk_threshold_high,
+                "model_update_interval_hours": self.intelligence.model_update_interval_hours,
+                "min_training_samples": self.intelligence.min_training_samples,
+                "enable_online_learning": self.intelligence.enable_online_learning,
+                "behavioral_window_days": self.intelligence.behavioral_window_days,
+                "location_sensitivity": self.intelligence.location_sensitivity,
+                "time_sensitivity": self.intelligence.time_sensitivity,
+                "device_sensitivity": self.intelligence.device_sensitivity,
+            },
+            "monitoring": {
+                "enable_monitoring": self.monitoring.enable_monitoring,
+                "enable_metrics": self.monitoring.enable_metrics,
+                "enable_alerting": self.monitoring.enable_alerting,
+                "enable_structured_logging": self.monitoring.enable_structured_logging,
+                "metrics_retention_hours": self.monitoring.metrics_retention_hours,
+                "metrics_aggregation_interval_seconds": self.monitoring.metrics_aggregation_interval_seconds,
+                "max_metrics_points": self.monitoring.max_metrics_points,
+                "alert_cooldown_minutes": self.monitoring.alert_cooldown_minutes,
+                "max_alerts_history": self.monitoring.max_alerts_history,
+                "enable_email_alerts": self.monitoring.enable_email_alerts,
+                "email_alert_recipients": self.monitoring.email_alert_recipients,
+                "enable_performance_tracking": self.monitoring.enable_performance_tracking,
+                "slow_operation_threshold_ms": self.monitoring.slow_operation_threshold_ms,
+                "track_user_activity": self.monitoring.track_user_activity,
+                "log_level": self.monitoring.log_level,
+                "structured_log_format": self.monitoring.structured_log_format,
+                "enable_request_logging": self.monitoring.enable_request_logging,
+            },
+            "features": {
+                "use_database": self.features.use_database,
+                "enable_refresh_tokens": self.features.enable_refresh_tokens,
+                "enable_password_reset": self.features.enable_password_reset,
+                "enable_email_verification": self.features.enable_email_verification,
+                "enable_two_factor_auth": self.features.enable_two_factor_auth,
+                "enable_security_features": self.features.enable_security_features,
+                "enable_rate_limiting": self.features.enable_rate_limiting,
+                "enable_audit_logging": self.features.enable_audit_logging,
+                "enable_session_validation": self.features.enable_session_validation,
+                "enable_intelligent_auth": self.features.enable_intelligent_auth,
+                "enable_anomaly_detection": self.features.enable_anomaly_detection,
+                "enable_behavioral_analysis": self.features.enable_behavioral_analysis,
+                "enable_multi_tenant": self.features.enable_multi_tenant,
+                "enable_role_based_access": self.features.enable_role_based_access,
+                "enable_user_preferences": self.features.enable_user_preferences,
+            },
+            "service_name": self.service_name,
+            "service_version": self.service_version,
+            "environment": self.environment,
+            "debug": self.debug,
+        }
+    
+    def validate(self) -> None:
+        """Validate configuration and raise errors for invalid settings."""
         errors = []
         
-        # Validate database URL
-        if not self.database.url:
-            errors.append("Database URL is required")
+        # JWT validation
+        if not self.jwt.secret_key or self.jwt.secret_key == "change-me-in-production":
+            if self.environment in ("production", "prod"):
+                errors.append("JWT secret key must be set in production")
         
-        # Validate secret key
-        if not self.tokens.secret_key or self.tokens.secret_key == 'your-secret-key-change-in-production':
-            if self.auth_mode in [AuthMode.PRODUCTION, AuthMode.INTELLIGENT]:
-                errors.append("Secure secret key is required for production/intelligent mode")
+        if self.jwt.access_token_expire_minutes <= 0:
+            errors.append("Access token expiry must be positive")
         
-        # Validate Redis configuration if using Redis session storage
-        if self.sessions.storage_type == SessionStorageType.REDIS:
-            if not self.redis.url and not self.redis.host:
-                errors.append("Redis configuration is required when using Redis session storage")
+        if self.jwt.refresh_token_expire_days <= 0:
+            errors.append("Refresh token expiry must be positive")
         
-        # Validate risk thresholds
-        thresholds = [
-            self.intelligence.low_risk_threshold,
-            self.intelligence.medium_risk_threshold,
-            self.intelligence.high_risk_threshold,
-            self.intelligence.critical_risk_threshold
-        ]
+        # Session validation
+        if self.session.storage_type == "redis" and not self.session.redis_url:
+            errors.append("Redis URL required when session storage type is 'redis'")
         
-        if not all(0.0 <= t <= 1.0 for t in thresholds):
-            errors.append("Risk thresholds must be between 0.0 and 1.0")
+        if self.session.session_timeout_hours <= 0:
+            errors.append("Session timeout must be positive")
         
-        if not all(thresholds[i] <= thresholds[i+1] for i in range(len(thresholds)-1)):
-            errors.append("Risk thresholds must be in ascending order")
-        
-        # Validate token expiration times
-        if self.tokens.access_token_expire_minutes <= 0:
-            errors.append("Access token expiration must be positive")
-        
-        if self.tokens.refresh_token_expire_days <= 0:
-            errors.append("Refresh token expiration must be positive")
-        
-        # Validate session configuration
-        if self.sessions.expire_hours <= 0:
-            errors.append("Session expiration must be positive")
-        
-        if self.sessions.max_sessions_per_user <= 0:
+        if self.session.max_sessions_per_user <= 0:
             errors.append("Max sessions per user must be positive")
         
-        return errors
-    
-    def is_valid(self) -> bool:
-        """Check if configuration is valid."""
-        return len(self.validate()) == 0
+        # Security validation
+        if self.security.max_failed_attempts <= 0:
+            errors.append("Max failed attempts must be positive")
+        
+        if self.security.lockout_duration_minutes <= 0:
+            errors.append("Lockout duration must be positive")
+        
+        if self.security.min_password_length < 4:
+            errors.append("Minimum password length must be at least 4")
+        
+        if not (4 <= self.security.password_hash_rounds <= 20):
+            errors.append("Password hash rounds must be between 4 and 20")
+        
+        # Intelligence validation
+        if not (0.0 <= self.intelligence.risk_threshold_low <= 1.0):
+            errors.append("Risk threshold low must be between 0.0 and 1.0")
+        
+        if not (0.0 <= self.intelligence.risk_threshold_medium <= 1.0):
+            errors.append("Risk threshold medium must be between 0.0 and 1.0")
+        
+        if not (0.0 <= self.intelligence.risk_threshold_high <= 1.0):
+            errors.append("Risk threshold high must be between 0.0 and 1.0")
+        
+        if self.intelligence.risk_threshold_low >= self.intelligence.risk_threshold_medium:
+            errors.append("Risk threshold low must be less than medium")
+        
+        if self.intelligence.risk_threshold_medium >= self.intelligence.risk_threshold_high:
+            errors.append("Risk threshold medium must be less than high")
+        
+        # Database validation
+        if self.features.use_database and not self.database.database_url:
+            errors.append("Database URL required when use_database is enabled")
+        
+        if errors:
+            raise ValueError("Invalid authentication configuration:\n" + "\n".join(f"- {error}" for error in errors))
     
     def get_mode_description(self) -> str:
-        """Get description of current authentication mode."""
-        descriptions = {
-            AuthMode.BASIC: "Basic username/password authentication",
-            AuthMode.ENHANCED: "Enhanced authentication with security features",
-            AuthMode.INTELLIGENT: "Intelligent authentication with ML-based analysis",
-            AuthMode.PRODUCTION: "Full production authentication with all features"
-        }
-        return descriptions.get(self.auth_mode, "Unknown mode")
-
-
-# Predefined configurations for common scenarios
-
-def get_development_config() -> AuthConfig:
-    """Get configuration optimized for development."""
-    config = AuthConfig(
-        auth_mode=AuthMode.ENHANCED,
-        debug=True
-    )
-    config.security.require_https = False
-    config.sessions.secure_cookies = False
-    config.logging.log_level = "DEBUG"
-    return config
-
-
-def get_testing_config() -> AuthConfig:
-    """Get configuration optimized for testing."""
-    config = AuthConfig(
-        auth_mode=AuthMode.BASIC,
-        debug=True
-    )
-    config.database.url = "sqlite:///test_auth.db"
-    config.sessions.storage_type = SessionStorageType.MEMORY
-    config.security.enable_rate_limiting = False
-    config.logging.log_level = "WARNING"
-    return config
-
-
-def get_production_config() -> AuthConfig:
-    """Get configuration optimized for production."""
-    config = AuthConfig(
-        auth_mode=AuthMode.PRODUCTION,
-        debug=False
-    )
-    config.security.require_https = True
-    config.sessions.secure_cookies = True
-    config.sessions.storage_type = SessionStorageType.REDIS
-    config.logging.log_level = "WARNING"
-    config.intelligence.enable_behavioral_analysis = True
-    config.intelligence.enable_anomaly_detection = True
-    config.intelligence.enable_risk_scoring = True
-    return config
+        """Get a description of the current authentication mode."""
+        modes = []
+        
+        if self.features.use_database:
+            modes.append("database-backed")
+        else:
+            modes.append("in-memory")
+        
+        if self.features.enable_security_features:
+            modes.append("security-enhanced")
+        
+        if self.features.enable_intelligent_auth:
+            modes.append("intelligent")
+        
+        if self.features.enable_two_factor_auth:
+            modes.append("2FA-enabled")
+        
+        return f"Consolidated auth service ({', '.join(modes)})"
+    
+    @classmethod
+    def load(
+        cls,
+        file_path: Optional[Union[str, Path]] = None,
+        env: Optional[str] = None,
+    ) -> "AuthConfig":
+        """
+        Load configuration from various sources with automatic detection.
+        
+        Priority order:
+        1. Explicit file_path if provided
+        2. Environment-specific files (.env.{env}, auth_config.{env}.json, etc.)
+        3. Default files (.env, auth_config.json, etc.)
+        4. Environment variables only
+        """
+        path: Optional[Path] = None
+        
+        if file_path:
+            path = Path(file_path)
+        else:
+            env = env or os.getenv("AUTH_ENV") or os.getenv("APP_ENV") or os.getenv("ENV")
+            candidates = []
+            
+            if env:
+                candidates.extend([
+                    Path(f".env.{env}"),
+                    Path(f"auth_config.{env}.json"),
+                    Path(f"auth_config.{env}.yaml"),
+                    Path(f"auth_config.{env}.yml"),
+                ])
+            
+            candidates.extend([
+                Path(".env"),
+                Path("auth_config.json"),
+                Path("auth_config.yaml"),
+                Path("auth_config.yml"),
+            ])
+            
+            path = next((p for p in candidates if p.exists()), None)
+        
+        if path and path.exists():
+            if path.suffix.lower() == ".env":
+                config = cls.from_env_file(path)
+            else:
+                config = cls.from_file(path)
+        else:
+            config = cls.from_env()
+        
+        config.validate()
+        return config

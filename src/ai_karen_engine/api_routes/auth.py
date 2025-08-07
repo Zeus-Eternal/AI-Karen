@@ -16,23 +16,28 @@ from ai_karen_engine.core.dependencies import (
     get_current_user_context,
 )
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.security.auth_service import (
-    AuthService,
-    auth_service as auth_service_factory,
+from ai_karen_engine.auth import AuthService, get_auth_service
+from ai_karen_engine.auth.exceptions import (
+    AuthError,
+    InvalidCredentialsError,
+    AccountLockedError,
+    SessionExpiredError,
+    RateLimitExceededError,
 )
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["auth"])
-auth_service: AuthService = auth_service_factory()
+
+# Global auth service instance (will be initialized lazily)
+auth_service_instance: AuthService = None
 
 
-def get_auth_service():  # pragma: no cover - legacy alias
-    warnings.warn(
-        "'get_auth_service' is deprecated. Use 'auth_service()' instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return auth_service
+async def get_auth_service_instance() -> AuthService:
+    """Get the auth service instance, initializing it if necessary."""
+    global auth_service_instance
+    if auth_service_instance is None:
+        auth_service_instance = await get_auth_service()
+    return auth_service_instance
 
 
 # Alias core dependencies for clarity
@@ -139,6 +144,7 @@ async def register(
 
     try:
         # Create user
+        auth_service = await get_auth_service_instance()
         user = await auth_service.create_user(
             email=req.email,
             password=req.password,
@@ -184,6 +190,12 @@ async def register(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except RateLimitExceededError as e:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)
+        )
+    except AuthError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(
             "Registration failed",
@@ -203,6 +215,7 @@ async def login(
 
     try:
         # Authenticate user
+        auth_service = await get_auth_service_instance()
         user_data = await auth_service.authenticate_user(
             email=req.email,
             password=req.password,
@@ -257,6 +270,18 @@ async def login(
             user=user_dict,
         )
 
+    except InvalidCredentialsError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
+    except AccountLockedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED, detail=str(e)
+        )
+    except RateLimitExceededError as e:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -297,18 +322,27 @@ async def get_session_user(
     if not session_token:
         raise HTTPException(status_code=401, detail="Missing authentication token")
 
-    user_data = await auth_service.validate_session(
-        session_token=session_token,
-        ip_address=request_meta["ip_address"],
-        user_agent=request_meta["user_agent"],
-    )
+    try:
+        auth_service = await get_auth_service_instance()
+        user_data = await auth_service.validate_session(
+            session_token=session_token,
+            ip_address=request_meta["ip_address"],
+            user_agent=request_meta["user_agent"],
+        )
 
-    if not user_data:
+        if not user_data:
+            raise HTTPException(status_code=401, detail="Invalid session")
+
+        # Store the session token for callers that need it (e.g., logout)
+        user_data["session_token"] = session_token
+        return user_data
+        
+    except SessionExpiredError:
+        raise HTTPException(status_code=401, detail="Session expired")
+    except AuthError:
         raise HTTPException(status_code=401, detail="Invalid session")
-
-    # Store the session token for callers that need it (e.g., logout)
-    user_data["session_token"] = session_token
-    return user_data
+    except Exception:
+        raise HTTPException(status_code=401, detail="Session validation failed")
 
 
 @router.post("/update_credentials", response_model=LoginResponse)
@@ -327,6 +361,7 @@ async def update_credentials(
                 raise HTTPException(status_code=400, detail="Current password required")
 
             # Verify current password first
+            auth_service = await get_auth_service_instance()
             auth_result = await auth_service.authenticate_user(
                 email=user_data["email"],
                 password=req.current_password,
@@ -425,6 +460,7 @@ async def logout(
 
     session_token = user_data.get("session_token")
     if session_token:
+        auth_service = await get_auth_service_instance()
         await auth_service.invalidate_session(session_token)
 
     # Clear cookie
@@ -441,6 +477,7 @@ async def request_password_reset(
     """Request password reset token"""
 
     try:
+        auth_service = await get_auth_service_instance()
         token = await auth_service.create_password_reset_token(
             email=req.email,
             ip_address=request_meta["ip_address"],
@@ -474,6 +511,7 @@ async def reset_password(req: PasswordResetConfirm) -> Dict[str, str]:
     """Reset password using token"""
 
     try:
+        auth_service = await get_auth_service_instance()
         success = await auth_service.verify_password_reset_token(
             token=req.token, new_password=req.new_password
         )

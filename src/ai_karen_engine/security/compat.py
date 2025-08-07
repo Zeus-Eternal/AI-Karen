@@ -1,73 +1,81 @@
-"""Compatibility shims for legacy authentication APIs.
-
-This module provides thin wrappers that map deprecated helper
-functions from earlier versions of the codebase to the new
-:class:`~ai_karen_engine.security.auth_service.AuthService` factory.
-Each shim emits a :class:`DeprecationWarning` when used to help callers
-migrate to the modern API ``auth_service()``.
 """
+DEPRECATED: This module is deprecated and will be removed.
 
-from __future__ import annotations
+All authentication functionality has been consolidated into the unified
+AuthService in ai_karen_engine.auth. Please update your imports:
+
+OLD:
+    from ai_karen_engine.security.compat import get_auth_service
+    service = get_auth_service()
+
+NEW:
+    from ai_karen_engine.auth import get_auth_service
+    service = await get_auth_service()
+
+The new unified AuthService provides:
+- Better async/await support
+- Comprehensive configuration system
+- Enhanced security features
+- Intelligence-based authentication
+- Unified error handling
+- Better testing and maintainability
+
+For migration help, see the auth service documentation.
+"""
 
 import warnings
 
-from ai_karen_engine.security.auth_service import AuthService, auth_service
+# Emit a clear deprecation warning when this module is imported
+warnings.warn(
+    "ai_karen_engine.security.compat is deprecated. "
+    "Use ai_karen_engine.auth instead. "
+    "See module docstring for migration instructions.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-
-def _deprecated_alias(name: str) -> AuthService:
-    """Return the shared :class:`AuthService` instance with a warning.
-
-    Parameters
-    ----------
-    name:
-        The name of the deprecated accessor that was used.  It is
-        interpolated into the warning message so users know which symbol
-        to replace.
-    """
-
-    warnings.warn(
-        f"'{name}' is deprecated. Use 'auth_service()' instead.",
-        DeprecationWarning,
-        stacklevel=2,
+# Re-export from the new auth module for immediate compatibility
+# This allows existing imports to work while showing the deprecation warning
+try:
+    from ai_karen_engine.auth import (
+        AuthService,
+        get_auth_service,
+        get_production_auth_service,
     )
-    return auth_service()
+    
+    # Note: These are async functions, so direct usage will fail
+    # This is intentional to force users to update their code
+    
+except ImportError:
+    # If the new auth module isn't available, provide stub functions
+    # that raise clear errors
+    def get_auth_service():
+        raise ImportError(
+            "The new unified auth service is not available. "
+            "Please ensure ai_karen_engine.auth is properly installed."
+        )
+    
+    def get_production_auth_service():
+        raise ImportError(
+            "The new unified auth service is not available. "
+            "Please ensure ai_karen_engine.auth is properly installed."
+        )
+    
+    class AuthService:
+        def __init__(self):
+            raise ImportError(
+                "The new unified auth service is not available. "
+                "Please ensure ai_karen_engine.auth is properly installed."
+            )
 
 
-def get_production_auth_service() -> AuthService:
-    """Deprecated accessor for production environments.
-
-    Historically the project offered separate helpers for different
-    environments.  The new unified :func:`auth_service` replaces all of
-    them, but this function remains as a thin shim for older imports.
-    """
-
-    return _deprecated_alias("get_production_auth_service")
-
-
-def get_demo_auth_service() -> AuthService:
-    """Deprecated accessor for demo environments.
-
-    Returns the same shared service instance as
-    :func:`get_production_auth_service` and exists solely for backwards
-    compatibility with older code.  A ``DeprecationWarning`` is emitted
-    when invoked.
-    """
-
-    return _deprecated_alias("get_demo_auth_service")
-
-
-def get_auth_service() -> AuthService:
-    """Generic deprecated accessor.
-
-    This mirrors :func:`auth_service` but is kept to ease the transition
-    for any callers still importing the old name.
-    """
-
-    return _deprecated_alias("get_auth_service")
+# Legacy function names for compatibility (will fail when called due to async)
+get_demo_auth_service = get_production_auth_service  # Same as production for now
 
 
 __all__ = [
-    "get_production_auth_service",
-    "get_demo_auth_service",
+    "AuthService",
     "get_auth_service",
+    "get_production_auth_service", 
+    "get_demo_auth_service",
 ]
