@@ -6,13 +6,10 @@ try:
 except Exception:  # pragma: no cover - fallback for tests
     from ai_karen_engine.fastapi_stub import Request, JSONResponse
 
-from ai_karen_engine.security.auth_service import (
-    AuthService,
-    auth_service as get_auth_service,
-)
+from ai_karen_engine.security.auth_service import AuthService, auth_service
 from ai_karen_engine.security.models import UserData
 
-auth_service_instance: AuthService = get_auth_service()
+auth_service_instance: AuthService = auth_service()
 
 
 async def auth_middleware(request: Request, call_next):
@@ -41,4 +38,3 @@ async def auth_middleware(request: Request, call_next):
         request.state.user = user_data.get("user_id")
         request.state.roles = user_data.get("roles", [])
     return await call_next(request)
-

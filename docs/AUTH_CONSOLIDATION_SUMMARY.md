@@ -17,6 +17,9 @@
    - Kept the database-backed authentication using `auth_service`
    - Removed the complex intelligent authentication and mock user storage
    - Focused on clean, maintainable production code
+4. **Removed Deprecated Compatibility Shims**:
+   - Dropped legacy accessors like `get_production_auth_service` and `get_auth_service`
+   - All code and tests now use the unified `auth_service()` factory
 
 ### Why This Approach Was Chosen
 
@@ -39,7 +42,7 @@ The consolidated `auth.py` now provides:
 
 **Core Endpoints**:
 - `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User authentication  
+- `POST /api/auth/login` - User authentication
 - `GET /api/auth/me` - Get current user info
 - `POST /api/auth/update_credentials` - Update user credentials/preferences
 - `POST /api/auth/logout` - User logout
@@ -59,11 +62,11 @@ The consolidated `auth.py` now provides:
 
 ### Verification Results
 
-✅ **Module Loading**: Auth routes module loads without syntax errors  
-✅ **Import Path**: Main.py can import from consolidated auth.py  
-✅ **No Duplicates**: production_auth_routes.py successfully removed  
-✅ **Test Compatibility**: Existing tests use correct import paths  
-✅ **Documentation**: No stale references to old files  
+✅ **Module Loading**: Auth routes module loads without syntax errors
+✅ **Import Path**: Main.py can import from consolidated auth.py
+✅ **No Duplicates**: production_auth_routes.py successfully removed
+✅ **Test Compatibility**: Existing tests use correct import paths
+✅ **Documentation**: No stale references to old files
 
 ### Next Steps
 

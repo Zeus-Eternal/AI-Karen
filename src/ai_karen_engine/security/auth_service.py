@@ -17,12 +17,13 @@ import jwt
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.client import get_db_session
 from ai_karen_engine.database.models.auth_models import (
-    PasswordResetToken,
     EmailVerificationToken,
+    PasswordResetToken,
     User,
     UserSession,
 )
 from ai_karen_engine.security import auth_manager
+from ai_karen_engine.security.auth_metrics import metrics_hook as default_metrics_hook
 from ai_karen_engine.security.config import AuthConfig
 from ai_karen_engine.security.intelligence_engine import IntelligenceEngine
 from ai_karen_engine.security.models import AuthContext, SessionData, UserData
@@ -31,7 +32,6 @@ from ai_karen_engine.security.security_enhancer import (
     RateLimiter,
     SecurityEnhancer,
 )
-from ai_karen_engine.security.auth_metrics import metrics_hook as default_metrics_hook
 from ai_karen_engine.security.session_store import (
     DatabaseSessionStore,
     InMemorySessionStore,
@@ -910,14 +910,4 @@ class _AuthServiceAccessor:
 auth_service = _AuthServiceAccessor()
 
 
-def get_auth_service() -> AuthService:  # pragma: no cover - deprecated
-    """Deprecated accessor for backward compatibility."""
-    warnings.warn(
-        "'get_auth_service' is deprecated. Use 'auth_service()' instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _get_auth_service()
-
-
-__all__ = ["AuthService", "AuthConfig", "auth_service", "get_auth_service"]
+__all__ = ["AuthService", "AuthConfig", "auth_service"]
