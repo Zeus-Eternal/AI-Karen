@@ -15,6 +15,7 @@ This module defines three lightweight components used to harden the
 
 from __future__ import annotations
 
+import json
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
@@ -78,7 +79,9 @@ class AuditLogger:
     def log_event(self, event: str, data: Optional[Dict[str, object]] = None) -> None:
         record = AuditEvent(event=event, data=data or {}, timestamp=datetime.utcnow())
         self.events.append(record)
-        logger.info(f"AUTH EVENT {event} {record.data}")
+        logger.info(
+            f"AUTH EVENT {event} {json.dumps(record.data, sort_keys=True)}"
+        )
         if self.metrics_hook:
             self.metrics_hook(event, record.data)
 

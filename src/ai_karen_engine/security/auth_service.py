@@ -31,6 +31,7 @@ from ai_karen_engine.security.security_enhancer import (
     RateLimiter,
     SecurityEnhancer,
 )
+from ai_karen_engine.security.auth_metrics import metrics_hook as default_metrics_hook
 from ai_karen_engine.security.session_store import (
     DatabaseSessionStore,
     InMemorySessionStore,
@@ -664,6 +665,7 @@ class AuthService:
                 if self.config.features.enable_rate_limiter
                 else None
             )
+            metrics_hook = metrics_hook or default_metrics_hook
             audit_logger = (
                 AuditLogger(metrics_hook=metrics_hook)
                 if self.config.features.enable_audit_logging
@@ -705,6 +707,7 @@ class AuthService:
             if not self.security_enhancer.allow_auth_attempt(email):
                 return None
 
+        start_time = time.perf_counter()
         user = await self.core_authenticator.authenticate_user(
             email=email,
             password=password,
@@ -713,8 +716,12 @@ class AuthService:
         )
 
         if not user:
+            duration = time.perf_counter() - start_time
             if self.security_enhancer:
-                self.security_enhancer.log_event("login_failure", {"email": email})
+                self.security_enhancer.log_event(
+                    "login_failure",
+                    {"email": email, "processing_time": duration},
+                )
             return None
 
         user_data = user
@@ -737,7 +744,12 @@ class AuthService:
                     logger.warning("Login attempt blocked due to high risk score")
                     if self.security_enhancer:
                         self.security_enhancer.log_event(
-                            "login_blocked", {"email": email, "reason": "intelligent"}
+                            "login_blocked",
+                            {
+                                "email": email,
+                                "reason": "intelligent",
+                                "processing_time": time.perf_counter() - start_time,
+                            },
                         )
                     return None
             elif hasattr(self.intelligence_engine, "analyze_login_attempt"):
@@ -746,12 +758,20 @@ class AuthService:
                     logger.warning("Login attempt blocked due to intelligent analysis")
                     if self.security_enhancer:
                         self.security_enhancer.log_event(
-                            "login_blocked", {"email": email, "reason": "intelligent"}
+                            "login_blocked",
+                            {
+                                "email": email,
+                                "reason": "intelligent",
+                                "processing_time": time.perf_counter() - start_time,
+                            },
                         )
                     return None
 
         if self.security_enhancer:
-            self.security_enhancer.log_event("login_success", {"email": email})
+            self.security_enhancer.log_event(
+                "login_success",
+                {"email": email, "processing_time": time.perf_counter() - start_time},
+            )
 
         return user_data
 
