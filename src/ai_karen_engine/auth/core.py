@@ -4,7 +4,6 @@ Core authentication layer for the consolidated authentication service.
 
 from __future__ import annotations
 
-import secrets
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
@@ -24,7 +23,7 @@ from .exceptions import (
 )
 from .models import AuthEvent, AuthEventType, SessionData, UserData
 from .database import DatabaseClient
-from .session import SessionStore
+from .session import SessionManager
 from .tokens import TokenManager
 
 
@@ -112,8 +111,8 @@ class CoreAuthenticator:
         """Initialize core authenticator with configuration."""
         self.config = config
         self.db_client = DatabaseClient(config.database)
-        self.session_store = SessionStore(config.session)
         self.token_manager = TokenManager(config.jwt)
+        self.session_manager = SessionManager(config.session, self.token_manager)
         self.password_hasher = PasswordHasher(config.security.password_hash_rounds)
         self.password_validator = PasswordValidator(
             min_length=config.security.min_password_length,
@@ -215,22 +214,12 @@ class CoreAuthenticator:
         start_time = datetime.utcnow()
         
         try:
-            session_token = self._generate_session_token()
-            access_token = await self.token_manager.create_access_token(user_data)
-            refresh_token = await self.token_manager.create_refresh_token(user_data)
-            
-            session_data = SessionData(
-                session_token=session_token,
-                access_token=access_token,
-                refresh_token=refresh_token,
-                user_data=user_data,
-                expires_in=int(self.config.jwt.access_token_expiry.total_seconds()),
+            session_data = await self.session_manager.create_session(
+                user_data,
                 ip_address=ip_address,
                 user_agent=user_agent,
                 device_fingerprint=device_fingerprint,
             )
-            
-            await self.session_store.store_session(session_data)
             
             await self._log_auth_event(
                 AuthEventType.SESSION_CREATED,
@@ -238,13 +227,13 @@ class CoreAuthenticator:
                 email=user_data.email,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                session_token=session_token,
+                session_token=session_data.session_token,
                 success=True,
                 start_time=start_time
             )
-            
+
             return session_data
-            
+
         except Exception as e:
             await self._log_auth_event(
                 AuthEventType.SESSION_CREATED,
@@ -264,19 +253,19 @@ class CoreAuthenticator:
             raise SessionNotFoundError()
         
         try:
-            session_data = await self.session_store.get_session(session_token)
+            session_data = await self.session_manager.store.get_session(session_token)
             if not session_data:
                 raise SessionNotFoundError(session_token=session_token)
-            
+
             if session_data.is_expired():
-                await self.session_store.delete_session(session_token)
+                await self.session_manager.delete_session(session_token)
                 raise SessionExpiredError(session_token=session_token)
-            
+
             session_data.update_last_accessed()
-            await self.session_store.update_session(session_data)
-            
+            await self.session_manager.store.update_session(session_data)
+
             return session_data.user_data
-            
+
         except (SessionExpiredError, SessionNotFoundError):
             raise
     
@@ -286,8 +275,8 @@ class CoreAuthenticator:
             return False
         
         try:
-            session_data = await self.session_store.get_session(session_token)
-            deleted = await self.session_store.delete_session(session_token)
+            session_data = await self.session_manager.store.get_session(session_token)
+            deleted = await self.session_manager.delete_session(session_token)
             
             if deleted and session_data:
                 await self._log_auth_event(
@@ -410,10 +399,6 @@ class CoreAuthenticator:
     async def get_user_by_email(self, email: str) -> Optional[UserData]:
         """Get user data by email address."""
         return await self.db_client.get_user_by_email(email)
-    
-    def _generate_session_token(self) -> str:
-        """Generate a secure session token."""
-        return secrets.token_hex(32)
     
     async def _log_auth_event(
         self,

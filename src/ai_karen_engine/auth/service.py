@@ -412,7 +412,7 @@ class AuthService:
             # Apply security validation if enabled
             if self.security_layer:
                 # Get full session data for security validation
-                session_data = await self.core_auth.session_store.get_session(session_token)
+                session_data = await self.core_auth.session_manager.store.get_session(session_token)
                 if session_data:
                     # Validate session security
                     security_result = await self.security_layer.validate_session_security(
@@ -439,7 +439,7 @@ class AuthService:
                         session_data.add_security_flag(flag)
                     
                     # Update session in store
-                    await self.core_auth.session_store.update_session(session_data)
+                    await self.core_auth.session_manager.store.update_session(session_data)
             
             return user_data
             
@@ -476,7 +476,7 @@ class AuthService:
             
             # Log invalidation if security layer is enabled
             if self.security_layer and result:
-                session_data = await self.core_auth.session_store.get_session(session_token)
+                session_data = await self.core_auth.session_manager.store.get_session(session_token)
                 if session_data:
                     await self.security_layer.log_session_event(
                         AuthEventType.SESSION_INVALIDATED,
