@@ -52,7 +52,9 @@ def create_session(
         )
 
         # Return the access token for backward compatibility
-        return session_data["access_token"]
+        if isinstance(session_data, dict):
+            return session_data["access_token"]
+        return session_data.access_token
 
     except Exception as e:
         logger.error(f"Failed to create session using production auth service: {e}")
@@ -86,12 +88,21 @@ def validate_session(token: str, user_agent: str, ip: str) -> Optional[Dict[str,
         )
 
         if user_data:
-            # Convert to legacy format for backward compatibility
+            if isinstance(user_data, dict):
+                return {
+                    "sub": user_data["user_id"],
+                    "roles": user_data["roles"],
+                    "tenant_id": user_data["tenant_id"],
+                    "exp": int(time.time()) + SESSION_DURATION,
+                    "iat": int(time.time()),
+                    "device": _device_fingerprint(user_agent, ip),
+                    "jti": uuid.uuid4().hex,
+                }
             return {
-                "sub": user_data["user_id"],
-                "roles": user_data["roles"],
-                "tenant_id": user_data["tenant_id"],
-                "exp": int(time.time()) + SESSION_DURATION,  # Approximate expiry
+                "sub": user_data.user_id,
+                "roles": list(user_data.roles),
+                "tenant_id": user_data.tenant_id,
+                "exp": int(time.time()) + SESSION_DURATION,
                 "iat": int(time.time()),
                 "device": _device_fingerprint(user_agent, ip),
                 "jti": uuid.uuid4().hex,
