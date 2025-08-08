@@ -24,3 +24,10 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: check-yaml
+  - repo: local
+    hooks:
+      - id: prevent-logs
+        name: Prevent committing log files
+        entry: "bash -c 'if git diff --cached --name-only --diff-filter=ACMRT | grep -E \"\\.log$\"; then echo \"Error: log files detected. Please remove them or add to .gitignore.\"; exit 1; fi'"
+        language: system
+        pass_filenames: false
