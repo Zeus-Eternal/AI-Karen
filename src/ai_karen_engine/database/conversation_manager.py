@@ -18,6 +18,7 @@ from ai_karen_engine.core.embedding_manager import EmbeddingManager
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.memory_manager import MemoryManager, MemoryQuery
 from ai_karen_engine.database.models import TenantConversation, TenantMessage
+from ai_karen_engine.services.usage_service import UsageService
 
 logger = logging.getLogger(__name__)
 
@@ -416,6 +417,11 @@ class ConversationManager:
 
                 await session.commit()
 
+            # Increment usage counter
+            UsageService.increment(
+                "messages", tenant_id=str(tenant_id), user_id=user_id_for_memory
+            )
+
             # Store in memory if it's a user message
             if role == MessageRole.USER and self.memory_manager and user_id_for_memory:
                 await self.memory_manager.store_memory(
@@ -449,6 +455,9 @@ class ConversationManager:
         except Exception as e:
             logger.error(
                 f"Failed to add message to conversation {conversation_id}: {e}"
+            )
+            UsageService.increment(
+                "errors", tenant_id=str(tenant_id), user_id=user_id_for_memory
             )
             return None
 

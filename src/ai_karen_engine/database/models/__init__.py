@@ -575,3 +575,40 @@ class Webhook(Base):
 
     def __repr__(self) -> str:  # pragma: no cover - simple repr
         return f"<Webhook(webhook_id={self.webhook_id}, url='{self.url}')>"
+
+
+class UsageCounter(Base):
+    """Rolling window usage counters for metrics."""
+
+    __tablename__ = "usage_counters"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id = Column(String)
+    user_id = Column(String)
+    metric = Column(String, nullable=False)
+    value = Column(BigInteger, nullable=False, default=0)
+    window_start = Column(DateTime, nullable=False)
+    window_end = Column(DateTime, nullable=False)
+
+    __table_args__ = (
+        Index("idx_usage_counter_metric_window", "metric", "window_start"),
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover - simple repr
+        return f"<UsageCounter(metric={self.metric}, value={self.value})>"
+
+
+class RateLimit(Base):
+    """Rate limit definitions and current usage."""
+
+    __tablename__ = "rate_limits"
+
+    key = Column(String, primary_key=True)
+    limit_name = Column(String)
+    window_sec = Column(Integer)
+    max_count = Column(Integer)
+    current_count = Column(Integer, default=0)
+    window_reset = Column(DateTime)
+
+    def __repr__(self) -> str:  # pragma: no cover - simple repr
+        return f"<RateLimit(key={self.key}, limit={self.limit_name})>"
