@@ -38,10 +38,10 @@ def _resolve_db_client(app, explicit_db_client: Any = None) -> Any:
             return app.state.db_client
         if getattr(app.state, "db", None):
             return app.state.db
-    raise RuntimeError(
-        "ConversationManager requires a db_client. "
-        "Pass db_client to setup_developer_api(...) or set app.state.db_client."
+    logger.warning(
+        "No db_client found for ConversationManager; Developer API will run without persistent chat metrics"
     )
+    return None
 
 
 class KariDevStudioAPI:
@@ -187,7 +187,12 @@ class KariDevStudioAPI:
 
     async def get_chat_metrics(self, user_context: Dict[str, Any], hours: int = 24) -> Dict[str, Any]:
         # Ensure CM exists if later we use it for real metrics
-        self.ensure_conversation_manager()
+        if self._db_client is not None:
+            self.ensure_conversation_manager()
+        else:
+            logger.warning(
+                "get_chat_metrics called without db_client; returning placeholder metrics"
+            )
 
         end = datetime.utcnow()
         start = end - timedelta(hours=hours)
@@ -345,7 +350,12 @@ def setup_developer_api(app, extension_manager: Optional[ExtensionManager] = Non
         resolved_db = _resolve_db_client(app, db_client)
         dev_api = KariDevStudioAPI(conversation_manager=None, db_client=resolved_db)
         # Lazy CM creation so startup doesn’t explode if DB comes online slightly later
-        dev_api.ensure_conversation_manager()
+        if resolved_db is not None:
+            dev_api.ensure_conversation_manager()
+        else:
+            logger.warning(
+                "Developer API initialized without ConversationManager; chat metrics will be unavailable"
+            )
     else:
         dev_api = KariDevStudioAPI(conversation_manager=conversation_manager)
 
