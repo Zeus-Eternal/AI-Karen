@@ -38,6 +38,7 @@ from ai_karen_engine.extensions.resource_monitor import (
 from ai_karen_engine.event_bus import get_event_bus
 from ai_karen_engine.extensions.marketplace_client import MarketplaceClient
 from ai_karen_engine.database.client import get_db_session_context
+from ai_karen_engine.services.usage_service import UsageService
 from ai_karen_engine.database.models import (
     Extension,
     InstalledExtension,
@@ -1145,9 +1146,10 @@ class ExtensionManager(HookMixin):
 
     async def _on_mcp_tool_called(self, context: Dict[str, Any]) -> Dict[str, Any]:
         ext = context.get("extension_name")
-        tool = context.get("tool_name")
-        ms = context.get("execution_time_ms", 0)
-        self.logger.debug("MCP tool %s called by %s in %sms", tool, ext, ms)
+       tool = context.get("tool_name")
+       ms = context.get("execution_time_ms", 0)
+       self.logger.debug("MCP tool %s called by %s in %sms", tool, ext, ms)
+        UsageService.increment("tool_calls")
         return {
             "manager": "extension_manager",
             "action": "mcp_tool_called",

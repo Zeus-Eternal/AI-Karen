@@ -9,6 +9,8 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+from ai_karen_engine.middleware.error_counter import error_counter_middleware
+from ai_karen_engine.middleware.rate_limit import rate_limit_middleware
 from .http_validator import HTTPRequestValidator, ValidationConfig
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,10 @@ def configure_middleware(
     )
 
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    # Register custom middlewares
+    app.middleware("http")(rate_limit_middleware)
+    app.middleware("http")(error_counter_middleware)
 
     @app.middleware("http")
     async def security_headers_middleware(request: Request, call_next):
