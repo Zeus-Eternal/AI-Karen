@@ -233,7 +233,6 @@ src/ai_karen_engine/security/__init__.py
 src/ai_karen_engine/security/adaptive_learning.py
 src/ai_karen_engine/security/anomaly_detector.py
 src/ai_karen_engine/security/attack_pattern_detector.py
-src/ai_karen_engine/security/auth_manager.py
 src/ai_karen_engine/security/behavioral_embedding.py
 src/ai_karen_engine/security/campaign_analyzer.py
 src/ai_karen_engine/security/compliance.py
