@@ -113,7 +113,7 @@ CREATE TABLE conversations (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Web UI integration fields
     session_id VARCHAR(255),
     ui_context JSONB DEFAULT '{}',
@@ -122,13 +122,13 @@ CREATE TABLE conversations (
     summary TEXT,
     tags TEXT[] DEFAULT '{}',
     last_ai_response_id VARCHAR(255),
-    
+
     -- Conversation management fields
     status VARCHAR(50) DEFAULT 'active',
     priority VARCHAR(50) DEFAULT 'normal',
     context_memories JSONB DEFAULT '[]',
     proactive_suggestions TEXT[] DEFAULT '{}',
-    
+
     -- Performance and analytics fields
     message_count INTEGER DEFAULT 0,
     last_message_at TIMESTAMP WITHOUT TIME ZONE,
@@ -162,7 +162,7 @@ CREATE TABLE memory_entries (
     timestamp INTEGER DEFAULT 0,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Web UI integration fields
     ui_source VARCHAR(50),
     conversation_id UUID,
@@ -173,17 +173,17 @@ CREATE TABLE memory_entries (
     last_accessed TIMESTAMP WITHOUT TIME ZONE,
     ai_generated BOOLEAN DEFAULT FALSE,
     user_confirmed BOOLEAN DEFAULT TRUE,
-    
+
     -- Memory classification fields
     category VARCHAR(100),
     subcategory VARCHAR(100),
     confidence_score FLOAT DEFAULT 0.0,
     source_type VARCHAR(50) DEFAULT 'user_input',
-    
+
     -- Memory relationships
     parent_memory_id UUID,
     related_memory_ids UUID[] DEFAULT '{}',
-    
+
     -- Performance fields
     retrieval_count INTEGER DEFAULT 0,
     last_retrieved TIMESTAMP WITHOUT TIME ZONE,
@@ -221,26 +221,26 @@ CREATE TABLE plugin_executions (
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     started_at TIMESTAMP WITHOUT TIME ZONE,
     completed_at TIMESTAMP WITHOUT TIME ZONE,
-    
+
     -- Plugin execution context
     conversation_id UUID,
     session_id VARCHAR(255),
     trigger_type VARCHAR(50) DEFAULT 'manual',
-    
+
     -- Resource usage tracking
     memory_usage_mb INTEGER,
     cpu_usage_percent FLOAT,
     network_requests INTEGER DEFAULT 0,
-    
+
     -- Plugin metadata
     plugin_metadata JSONB DEFAULT '{}',
     execution_context JSONB DEFAULT '{}',
-    
+
     -- Retry and failure handling
     retry_count INTEGER DEFAULT 0,
     max_retries INTEGER DEFAULT 3,
     failure_reason TEXT,
-    
+
     -- Performance metrics
     queue_time_ms INTEGER,
     processing_time_ms INTEGER,
@@ -258,6 +258,35 @@ CREATE INDEX idx_plugin_trigger ON plugin_executions(trigger_type);
 CREATE INDEX idx_plugin_execution_time ON plugin_executions(execution_time_ms);
 CREATE INDEX idx_plugin_user_name ON plugin_executions(user_id, plugin_name);
 
+-- Create hooks table
+CREATE TABLE hooks (
+    hook_id TEXT PRIMARY KEY,
+    hook_type TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    source_name TEXT,
+    priority INT DEFAULT 50,
+    enabled BOOLEAN DEFAULT TRUE,
+    conditions JSONB,
+    registered_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create hook_exec_stats table
+CREATE TABLE hook_exec_stats (
+    id BIGSERIAL PRIMARY KEY,
+    hook_type TEXT,
+    source_name TEXT,
+    executions BIGINT DEFAULT 0,
+    successes BIGINT DEFAULT 0,
+    errors BIGINT DEFAULT 0,
+    timeouts BIGINT DEFAULT 0,
+    avg_duration_ms INT DEFAULT 0,
+    window_start TIMESTAMP WITHOUT TIME ZONE,
+    window_end TIMESTAMP WITHOUT TIME ZONE
+);
+
+-- Create indexes for hook_exec_stats
+CREATE INDEX idx_hook_exec_stats_type_window ON hook_exec_stats(hook_type, window_start);
+
 -- Create audit_logs table
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -270,26 +299,26 @@ CREATE TABLE audit_logs (
     user_agent TEXT,
     correlation_id VARCHAR(255),
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Audit context
     session_id VARCHAR(255),
     tenant_id UUID,
-    
+
     -- Request/Response tracking
     request_method VARCHAR(10),
     request_path TEXT,
     response_status INTEGER,
     response_time_ms INTEGER,
-    
+
     -- Security context
     authentication_method VARCHAR(50),
     authorization_level VARCHAR(50),
     risk_score INTEGER DEFAULT 0,
-    
+
     -- Compliance fields
     data_classification VARCHAR(50),
     retention_period_days INTEGER DEFAULT 2555, -- 7 years default
-    
+
     -- Geolocation
     country_code VARCHAR(2),
     region VARCHAR(100),
@@ -320,15 +349,15 @@ CREATE TABLE chat_memories (
     importance_score INTEGER DEFAULT 5,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP WITHOUT TIME ZONE,
-    
+
     -- Memory relationships
     parent_id UUID,
     thread_id UUID,
-    
+
     -- AI processing
     embedding_vector FLOAT[],
     similarity_threshold FLOAT DEFAULT 0.7,
-    
+
     -- Usage tracking
     access_count INTEGER DEFAULT 0,
     last_accessed TIMESTAMP WITHOUT TIME ZONE
@@ -354,12 +383,12 @@ CREATE TABLE ai_models (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Performance metrics
     average_response_time_ms INTEGER,
     success_rate FLOAT DEFAULT 1.0,
     cost_per_token FLOAT DEFAULT 0.0,
-    
+
     -- Model metadata
     context_window INTEGER,
     max_tokens INTEGER,
@@ -401,21 +430,21 @@ CREATE TABLE analytics_events (
     conversation_id UUID,
     event_data JSONB DEFAULT '{}',
     timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Event context
     ui_source VARCHAR(50),
     user_agent TEXT,
     ip_address INET,
-    
+
     -- Performance data
     response_time_ms INTEGER,
     tokens_used INTEGER,
     cost_cents INTEGER,
-    
+
     -- A/B testing
     experiment_id VARCHAR(255),
     variant VARCHAR(100),
-    
+
     -- Geolocation
     country_code VARCHAR(2),
     timezone VARCHAR(50)
@@ -443,7 +472,7 @@ CREATE TABLE feature_flags (
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_by UUID,
-    
+
     -- Feature flag metadata
     environment VARCHAR(50) DEFAULT 'production',
     category VARCHAR(100),
@@ -468,17 +497,17 @@ CREATE TABLE notifications (
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     read_at TIMESTAMP WITHOUT TIME ZONE,
     expires_at TIMESTAMP WITHOUT TIME ZONE,
-    
+
     -- Notification delivery
     delivery_method VARCHAR(50) DEFAULT 'in_app',
     delivery_status VARCHAR(50) DEFAULT 'pending',
     delivered_at TIMESTAMP WITHOUT TIME ZONE,
-    
+
     -- Notification context
     source_type VARCHAR(100),
     source_id VARCHAR(255),
     priority INTEGER DEFAULT 0,
-    
+
     -- Actions
     action_url TEXT,
     action_label VARCHAR(100)
@@ -493,7 +522,7 @@ CREATE INDEX idx_notification_expires ON notifications(expires_at);
 CREATE INDEX idx_notification_priority ON notifications(priority);
 
 -- Insert default tenant and anonymous user
-INSERT INTO tenants (id, name, slug, subscription_tier, settings, is_active) 
+INSERT INTO tenants (id, name, slug, subscription_tier, settings, is_active)
 VALUES (
     '00000000-0000-0000-0000-000000000001',
     'Default Tenant',
@@ -503,7 +532,7 @@ VALUES (
     TRUE
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO users (id, tenant_id, email, roles, preferences, is_active, is_verified) 
+INSERT INTO users (id, tenant_id, email, roles, preferences, is_active, is_verified)
 VALUES (
     '00000000-0000-0000-0000-000000000002',
     '00000000-0000-0000-0000-000000000001',
@@ -569,7 +598,7 @@ CREATE TRIGGER update_feature_flags_updated_at BEFORE UPDATE ON feature_flags FO
 
 -- Active conversations view
 CREATE VIEW active_conversations AS
-SELECT 
+SELECT
     c.*,
     u.email as user_email,
     t.name as tenant_name
@@ -580,7 +609,7 @@ WHERE c.is_active = TRUE;
 
 -- User statistics view
 CREATE VIEW user_statistics AS
-SELECT 
+SELECT
     u.id,
     u.email,
     u.tenant_id,
@@ -597,7 +626,7 @@ GROUP BY u.id, u.email, u.tenant_id;
 
 -- Memory usage by type view
 CREATE VIEW memory_usage_by_type AS
-SELECT 
+SELECT
     memory_type,
     COUNT(*) as entry_count,
     AVG(importance_score) as avg_importance,
@@ -608,7 +637,7 @@ GROUP BY memory_type;
 
 -- Plugin performance view
 CREATE VIEW plugin_performance AS
-SELECT 
+SELECT
     plugin_name,
     COUNT(*) as execution_count,
     AVG(execution_time_ms) as avg_execution_time,
@@ -648,7 +677,7 @@ CREATE TABLE schema_version (
     description TEXT
 );
 
-INSERT INTO schema_version (version, description) VALUES 
+INSERT INTO schema_version (version, description) VALUES
 ('1.0.0', 'Initial AI Karen database schema with multi-tenant support');
 
 -- Final message

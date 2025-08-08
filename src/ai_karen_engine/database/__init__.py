@@ -1,17 +1,18 @@
+# mypy: ignore-errors
 """Database package for AI-Karen multi-tenant architecture."""
 
-from ai_karen_engine.database.models import (
-    Base,
-    Tenant,
-    User,
-    TenantConversation,
-    TenantMemoryEntry,
-)
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.migrations import MigrationManager
+from ai_karen_engine.database.models import (
+    Base,
+    Tenant,
+    TenantConversation,
+    TenantMemoryEntry,
+    User,
+)
 
 _default_client: Optional[MultiTenantPostgresClient] = None
 _import_error: Optional[Exception] = None
@@ -44,9 +45,10 @@ async def get_postgres_session() -> AsyncGenerator:
     async with client.get_async_session() as session:
         yield session
 
+
 __all__ = [
     "Base",
-    "Tenant", 
+    "Tenant",
     "User",
     "TenantConversation",
     "TenantMemoryEntry",
