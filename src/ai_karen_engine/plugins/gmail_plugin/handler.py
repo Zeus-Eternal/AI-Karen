@@ -8,7 +8,10 @@ import logging
 logger = logging.getLogger(__name__)
 from typing import Any, Dict
 
-from .gmail_service import GmailService
+import os
+
+from ai_karen_engine.plugins.gmail_plugin.client import GmailClient
+from ai_karen_engine.plugins.gmail_plugin.gmail_service import GmailService
 
 
 async def run(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -21,8 +24,12 @@ async def run(params: Dict[str, Any]) -> Dict[str, Any]:
         body: message body (compose_email)
     """
     action = params.get("action")
-    
+
     service = GmailService()
+    client: GmailClient | None = None
+    token = params.get("access_token") or os.getenv("GMAIL_API_TOKEN")
+    if token:
+        client = GmailClient(token)
 
     try:
         if action == "check_unread":
