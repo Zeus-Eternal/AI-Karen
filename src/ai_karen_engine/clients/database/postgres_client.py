@@ -335,15 +335,16 @@ class PostgresClient:
                 # Use tenant-specific schema
                 data_json = json.dumps(result)
                 sql = """
-                    INSERT INTO memory_entries (vector_id, user_id, session_id, content, query, result, timestamp)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (vector_id) DO UPDATE SET
-                    user_id=EXCLUDED.user_id, session_id=EXCLUDED.session_id,
-                    content=EXCLUDED.content, query=EXCLUDED.query, result=EXCLUDED.result, timestamp=EXCLUDED.timestamp
+                    INSERT INTO memory_items (id, scope, kind, content, metadata, created_at)
+                    VALUES (%s, %s, %s, %s, %s, to_timestamp(%s))
+                    ON CONFLICT (id) DO UPDATE SET
+                    scope=EXCLUDED.scope, kind=EXCLUDED.kind,
+                    content=EXCLUDED.content, metadata=EXCLUDED.metadata,
+                    created_at=EXCLUDED.created_at
                 """
                 self.multitenant_client.execute_tenant_query(
-                    sql, tenant_id, 
-                    [str(vector_id), user_id, session_id, query, query, data_json, timestamp]
+                    sql, tenant_id,
+                    [str(vector_id), user_id, session_id, query, data_json, timestamp]
                 )
                 return
             except Exception as e:

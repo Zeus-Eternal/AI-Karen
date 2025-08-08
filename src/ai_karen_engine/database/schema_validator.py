@@ -28,47 +28,43 @@ class DatabaseSchemaValidator:
     def __init__(self, session: AsyncSession):
         self.session = session
     
+
     async def validate_memory_tables(self) -> Optional[WebAPIErrorResponse]:
-        """
-        Validate that memory-related tables exist and have required structure.
-        Returns None if valid, or WebAPIErrorResponse if validation fails.
-        """
+        """Validate that memory-related tables exist and have required structure."""
         try:
-            # Check if memory_entries table exists
-            memory_entries_exists = await self._table_exists("memory_entries")
-            
-            if not memory_entries_exists:
-                logger.warning("memory_entries table does not exist")
+            memory_items_exists = await self._table_exists("memory_items")
+            if not memory_items_exists:
+                logger.warning("memory_items table does not exist")
                 return get_missing_tables_migration_response()
-            
-            # Validate memory_entries table structure
+
             required_columns = [
-                "id", "vector_id", "user_id", "session_id", "content",
-                "query", "embedding_id", "memory_metadata", "ttl",
-                "timestamp", "created_at", "updated_at"
+                "id",
+                "scope",
+                "kind",
+                "content",
+                "embedding",
+                "metadata",
+                "created_at",
             ]
-            
-            missing_columns = await self._get_missing_columns("memory_entries", required_columns)
-            
+            missing_columns = await self._get_missing_columns("memory_items", required_columns)
             if missing_columns:
-                logger.warning(f"memory_entries table missing columns: {missing_columns}")
+                logger.warning(f"memory_items table missing columns: {missing_columns}")
                 return create_database_error_response(
-                    error=Exception(f"memory_entries table missing columns: {', '.join(missing_columns)}"),
+                    error=Exception(
+                        f"memory_items table missing columns: {', '.join(missing_columns)}"
+                    ),
                     operation="schema_validation",
-                    table_name="memory_entries",
-                    user_message="Database schema is outdated. Migration required."
+                    table_name="memory_items",
+                    user_message="Database schema is outdated. Migration required.",
                 )
-            
-            return None  # Validation passed
-            
+            return None
         except Exception as e:
             logger.error(f"Schema validation failed: {e}", exc_info=True)
             return create_database_error_response(
                 error=e,
                 operation="schema_validation",
-                user_message="Database schema validation failed"
+                user_message="Database schema validation failed",
             )
-    
     async def _table_exists(self, table_name: str) -> bool:
         """Check if a table exists in the database."""
         try:
@@ -110,74 +106,39 @@ class DatabaseSchemaValidator:
             logger.error(f"Error checking columns for table {table_name}: {e}")
             return required_columns  # Assume all are missing if we can't check
     
-    async def create_memory_entries_table(self) -> bool:
-        """
-        Create the memory_entries table with all required fields.
-        Returns True if successful, False otherwise.
-        """
+
+    async def create_memory_items_table(self) -> bool:
+        """Create the memory_items table with required fields."""
         try:
-            create_table_sql = text("""
-                CREATE TABLE IF NOT EXISTS memory_entries (
+            create_table_sql = text(
+                """
+                CREATE TABLE IF NOT EXISTS memory_items (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    vector_id VARCHAR(255) NOT NULL,
-                    user_id UUID,
-                    session_id VARCHAR(255),
+                    scope TEXT NOT NULL,
+                    kind TEXT NOT NULL,
                     content TEXT NOT NULL,
-                    query VARCHAR(1000),
-                    result TEXT,
-                    embedding_id VARCHAR(255),
-                    memory_metadata JSONB DEFAULT '{}',
-                    ttl TIMESTAMP,
-                    timestamp INTEGER,
-                    created_at TIMESTAMP DEFAULT NOW(),
-                    updated_at TIMESTAMP DEFAULT NOW(),
-                    
-                    -- Web UI integration fields (from migration 003)
-                    ui_source VARCHAR(50),
-                    conversation_id UUID,
-                    memory_type VARCHAR(50) DEFAULT 'general',
-                    tags TEXT[] DEFAULT '{}',
-                    importance_score INTEGER DEFAULT 5,
-                    access_count INTEGER DEFAULT 0,
-                    last_accessed TIMESTAMP,
-                    ai_generated BOOLEAN DEFAULT FALSE,
-                    user_confirmed BOOLEAN DEFAULT TRUE,
-                    
-                    -- Constraints
-                    CONSTRAINT chk_importance_score CHECK (importance_score >= 1 AND importance_score <= 10)
+                    embedding VECTOR(768),
+                    metadata JSONB DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT NOW()
                 );
-            """)
-            
+                """
+            )
             await self.session.execute(create_table_sql)
-            
-            # Create indexes
+
             indexes_sql = [
-                "CREATE INDEX IF NOT EXISTS idx_memory_entries_user_id ON memory_entries(user_id);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_entries_vector_id ON memory_entries(vector_id);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_entries_session_id ON memory_entries(session_id);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_entries_created_at ON memory_entries(created_at);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_ui_source ON memory_entries(ui_source);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_conversation ON memory_entries(conversation_id);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_type ON memory_entries(memory_type);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory_entries USING GIN(tags);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_importance ON memory_entries(importance_score);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_user_conversation ON memory_entries(user_id, conversation_id);",
-                "CREATE INDEX IF NOT EXISTS idx_memory_user_type ON memory_entries(user_id, memory_type);"
+                "CREATE INDEX IF NOT EXISTS idx_memory_items_scope_kind ON memory_items(scope, kind);",
+                "CREATE INDEX IF NOT EXISTS idx_memory_items_embedding ON memory_items USING ivfflat (embedding vector_l2_ops);",
             ]
-            
-            for index_sql in indexes_sql:
-                await self.session.execute(text(index_sql))
-            
+            for stmt in indexes_sql:
+                await self.session.execute(text(stmt))
+
             await self.session.commit()
-            
-            logger.info("Successfully created memory_entries table with indexes")
+            logger.info("Successfully created memory_items table with indexes")
             return True
-            
         except Exception as e:
-            logger.error(f"Failed to create memory_entries table: {e}", exc_info=True)
+            logger.error(f"Failed to create memory_items table: {e}", exc_info=True)
             await self.session.rollback()
             return False
-    
     async def create_conversations_table(self) -> bool:
         """
         Create the conversations table if it doesn't exist.
@@ -235,13 +196,13 @@ class DatabaseSchemaValidator:
         created_tables = []
         
         try:
-            # Check and create memory_entries table
-            if not await self._table_exists("memory_entries"):
-                if await self.create_memory_entries_table():
-                    created_tables.append("memory_entries")
-                    logger.info("Auto-created memory_entries table")
+            # Check and create memory_items table
+            if not await self._table_exists("memory_items"):
+                if await self.create_memory_items_table():
+                    created_tables.append("memory_items")
+                    logger.info("Auto-created memory_items table")
                 else:
-                    logger.error("Failed to auto-create memory_entries table")
+                    logger.error("Failed to auto-create memory_items table")
                     return False, created_tables
             
             # Check and create conversations table
@@ -291,37 +252,16 @@ async def validate_and_migrate_schema(session: AsyncSession) -> Optional[WebAPIE
 
 
 def get_database_migration_sql() -> str:
-    """Get the complete SQL for creating all required tables."""
-    return """
--- Create memory_entries table
-CREATE TABLE IF NOT EXISTS memory_entries (
+"""
+-- Create memory_items table
+CREATE TABLE IF NOT EXISTS memory_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    vector_id VARCHAR(255) NOT NULL,
-    user_id UUID,
-    session_id VARCHAR(255),
+    scope TEXT NOT NULL,
+    kind TEXT NOT NULL,
     content TEXT NOT NULL,
-    query VARCHAR(1000),
-    result TEXT,
-    embedding_id VARCHAR(255),
-    memory_metadata JSONB DEFAULT '{}',
-    ttl TIMESTAMP,
-    timestamp INTEGER,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    
-    -- Web UI integration fields
-    ui_source VARCHAR(50),
-    conversation_id UUID,
-    memory_type VARCHAR(50) DEFAULT 'general',
-    tags TEXT[] DEFAULT '{}',
-    importance_score INTEGER DEFAULT 5,
-    access_count INTEGER DEFAULT 0,
-    last_accessed TIMESTAMP,
-    ai_generated BOOLEAN DEFAULT FALSE,
-    user_confirmed BOOLEAN DEFAULT TRUE,
-    
-    -- Constraints
-    CONSTRAINT chk_importance_score CHECK (importance_score >= 1 AND importance_score <= 10)
+    embedding VECTOR(768),
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Create conversations table
@@ -331,7 +271,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     title VARCHAR(255),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
-    
+
     -- Web UI integration fields
     session_id VARCHAR(255),
     ui_context JSONB DEFAULT '{}',
@@ -342,23 +282,10 @@ CREATE TABLE IF NOT EXISTS conversations (
     last_ai_response_id VARCHAR(255)
 );
 
--- Create indexes for memory_entries
-CREATE INDEX IF NOT EXISTS idx_memory_entries_user_id ON memory_entries(user_id);
-CREATE INDEX IF NOT EXISTS idx_memory_entries_vector_id ON memory_entries(vector_id);
-CREATE INDEX IF NOT EXISTS idx_memory_entries_session_id ON memory_entries(session_id);
-CREATE INDEX IF NOT EXISTS idx_memory_entries_created_at ON memory_entries(created_at);
-CREATE INDEX IF NOT EXISTS idx_memory_ui_source ON memory_entries(ui_source);
-CREATE INDEX IF NOT EXISTS idx_memory_conversation ON memory_entries(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_memory_type ON memory_entries(memory_type);
-CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory_entries USING GIN(tags);
-CREATE INDEX IF NOT EXISTS idx_memory_importance ON memory_entries(importance_score);
-CREATE INDEX IF NOT EXISTS idx_memory_user_conversation ON memory_entries(user_id, conversation_id);
-CREATE INDEX IF NOT EXISTS idx_memory_user_type ON memory_entries(user_id, memory_type);
+-- Create indexes for memory_items
+CREATE INDEX IF NOT EXISTS idx_memory_items_scope_kind ON memory_items(scope, kind);
+CREATE INDEX IF NOT EXISTS idx_memory_items_embedding ON memory_items USING ivfflat (embedding vector_l2_ops);
 
 -- Create indexes for conversations
 CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON conversations(created_at);
-CREATE INDEX IF NOT EXISTS idx_conversation_session ON conversations(session_id);
-CREATE INDEX IF NOT EXISTS idx_conversation_tags ON conversations USING GIN(tags);
-CREATE INDEX IF NOT EXISTS idx_conversation_user_session ON conversations(user_id, session_id);
 """

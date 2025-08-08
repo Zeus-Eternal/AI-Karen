@@ -49,21 +49,21 @@ class TenantConfig:
             "basic": {
                 "max_users": 5,
                 "max_conversations": 100,
-                "max_memory_entries": 1000,
+                "max_memory_items": 1000,
                 "max_plugins": 10,
                 "storage_mb": 100
             },
             "pro": {
                 "max_users": 50,
                 "max_conversations": 1000,
-                "max_memory_entries": 10000,
+                "max_memory_items": 10000,
                 "max_plugins": 50,
                 "storage_mb": 1000
             },
             "enterprise": {
                 "max_users": -1,  # unlimited
                 "max_conversations": -1,
-                "max_memory_entries": -1,
+                "max_memory_items": -1,
                 "max_plugins": -1,
                 "storage_mb": -1
             }
@@ -77,7 +77,7 @@ class TenantStats:
     tenant_id: str
     user_count: int
     conversation_count: int
-    memory_entry_count: int
+    memory_item_count: int
     plugin_execution_count: int
     storage_used_mb: float
     last_activity: Optional[datetime]
@@ -89,7 +89,7 @@ class TenantStats:
             "tenant_id": self.tenant_id,
             "user_count": self.user_count,
             "conversation_count": self.conversation_count,
-            "memory_entry_count": self.memory_entry_count,
+            "memory_item_count": self.memory_item_count,
             "plugin_execution_count": self.plugin_execution_count,
             "storage_used_mb": self.storage_used_mb,
             "last_activity": self.last_activity.isoformat() if self.last_activity else None,
@@ -357,7 +357,7 @@ class TenantManager:
                 queries = {
                     "user_count": f"SELECT COUNT(*) FROM users WHERE tenant_id = '{tenant_id}'",
                     "conversation_count": f"SELECT COUNT(*) FROM {schema_name}.conversations",
-                    "memory_entry_count": f"SELECT COUNT(*) FROM {schema_name}.memory_entries",
+                    "memory_item_count": f"SELECT COUNT(*) FROM {schema_name}.memory_items",
                     "plugin_execution_count": f"SELECT COUNT(*) FROM {schema_name}.plugin_executions"
                 }
                 
@@ -382,7 +382,7 @@ class TenantManager:
                     SELECT MAX(created_at) FROM (
                         SELECT created_at FROM {schema_name}.conversations
                         UNION ALL
-                        SELECT created_at FROM {schema_name}.memory_entries
+                        SELECT created_at FROM {schema_name}.memory_items
                         UNION ALL
                         SELECT created_at FROM {schema_name}.plugin_executions
                     ) activities
@@ -394,7 +394,7 @@ class TenantManager:
                     tenant_id=tenant_id_str,
                     user_count=stats_data["user_count"],
                     conversation_count=stats_data["conversation_count"],
-                    memory_entry_count=stats_data["memory_entry_count"],
+                    memory_item_count=stats_data["memory_item_count"],
                     plugin_execution_count=stats_data["plugin_execution_count"],
                     storage_used_mb=storage_used_mb,
                     last_activity=last_activity,
@@ -471,7 +471,7 @@ class TenantManager:
         resource_map = {
             "users": ("user_count", "max_users"),
             "conversations": ("conversation_count", "max_conversations"),
-            "memory_entries": ("memory_entry_count", "max_memory_entries"),
+            "memory_items": ("memory_item_count", "max_memory_items"),
             "storage": ("storage_used_mb", "storage_mb")
         }
         

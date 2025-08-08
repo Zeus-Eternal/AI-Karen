@@ -11,6 +11,7 @@ from ai_karen_engine.database.models import (
     Base,
     Tenant,
     TenantConversation,
+    TenantMemoryItem,
     TenantMemoryEntry,
     User,
 )
@@ -52,6 +53,7 @@ __all__ = [
     "Tenant",
     "User",
     "TenantConversation",
+    "TenantMemoryItem",
     "TenantMemoryEntry",
     "AuditLog",
     "MultiTenantPostgresClient",
