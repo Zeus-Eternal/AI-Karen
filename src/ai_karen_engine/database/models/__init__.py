@@ -16,7 +16,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    cast,
     desc,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -93,7 +92,6 @@ class TenantConversation(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), nullable=False)
     title = Column(String(255))
-    messages = Column(JSON, default=[])
     conversation_metadata = Column(JSON, default={})
     is_active = Column(Boolean, default=True, server_default=expression.true())
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -198,6 +196,56 @@ class TenantMemoryEntry(Base):
 
     def __repr__(self):
         return f"<TenantMemoryEntry(id={self.id}, vector_id='{self.vector_id}', user_id={self.user_id})>"
+
+
+class TenantMessage(Base):
+    """Individual message within a conversation."""
+
+    __tablename__ = "messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversation_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role = Column(String(50), nullable=False)
+    content = Column(Text, nullable=False)
+    message_metadata = Column(JSON, default={})
+    function_call = Column(JSON)
+    function_response = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_message_conversation_time", "conversation_id", "created_at"),
+    )
+
+    def __repr__(self):
+        return f"<TenantMessage(id={self.id}, conversation_id={self.conversation_id}, role='{self.role}')>"
+
+
+class TenantMessageTool(Base):
+    """Tool execution associated with a message."""
+
+    __tablename__ = "message_tools"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    message_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    tool_name = Column(String(255), nullable=False)
+    arguments = Column(JSON, default={})
+    result = Column(JSON)
+    latency_ms = Column(Integer)
+    status = Column(String(50))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (Index("idx_message_tool_message", "message_id"),)
+
+    def __repr__(self):
+        return f"<TenantMessageTool(id={self.id}, message_id={self.message_id}, tool='{self.tool_name}')>"
 
     def add_tag(self, tag: str):
         """Add a tag to the memory entry."""
