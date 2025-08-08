@@ -13,7 +13,7 @@ Updated the default password from `pswd123` to `password123` (11 characters) to 
 
 ### Files Updated:
 1. **Backend Configuration:**
-   - `src/ai_karen_engine/security/auth_manager.py` - Updated default admin and user passwords
+   - `src/ai_karen_engine/auth/service.py` - Updated default admin and user passwords
    - `src/ai_karen_engine/services/user_service.py` - Updated demo user passwords
 
 2. **Documentation:**
