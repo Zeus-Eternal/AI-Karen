@@ -14,6 +14,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, relationship
@@ -39,13 +40,19 @@ class AuthUser(Base):
     two_factor_enabled = Column(Boolean, default=False, nullable=False)
     two_factor_secret = Column(String(32))
     created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime, default=func.now(), onupdate=func.now(), nullable=False
+    )
     last_login_at = Column(DateTime)
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime)
 
-    sessions = relationship("AuthSession", back_populates="user", cascade="all, delete-orphan")
-    chat_memories = relationship("ChatMemory", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship(
+        "AuthSession", back_populates="user", cascade="all, delete-orphan"
+    )
+    chat_memories = relationship(
+        "ChatMemory", back_populates="user", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("idx_auth_user_email_active", "email", "is_active"),
@@ -63,7 +70,9 @@ class AuthSession(Base):
     __tablename__ = "auth_sessions"
 
     session_token = Column(String, primary_key=True)
-    user_id = Column(String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False
+    )
     access_token = Column(String, nullable=False)
     refresh_token = Column(String, nullable=False)
     expires_in = Column(Integer, nullable=False)
@@ -87,7 +96,9 @@ class AuthSession(Base):
     )
 
     def __repr__(self) -> str:  # pragma: no cover - simple repr
-        return f"<AuthSession(session_token={self.session_token}, user_id={self.user_id})>"
+        return (
+            f"<AuthSession(session_token={self.session_token}, user_id={self.user_id})>"
+        )
 
 
 class AuthProvider(Base):
@@ -104,7 +115,11 @@ class AuthProvider(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
-    identities = relationship("UserIdentity", back_populates="provider", cascade="all, delete-orphan")
+    identities = relationship(
+        "UserIdentity", back_populates="provider", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (Index("idx_auth_providers_tenant", "tenant_id"),)
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<AuthProvider(provider_id={self.provider_id})>"
@@ -116,14 +131,25 @@ class UserIdentity(Base):
     __tablename__ = "user_identities"
 
     identity_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False)
-    provider_id = Column(String, ForeignKey("auth_providers.provider_id"), nullable=False)
+    user_id = Column(
+        String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False
+    )
+    provider_id = Column(
+        String, ForeignKey("auth_providers.provider_id"), nullable=False
+    )
     provider_user = Column(String, nullable=False)
     metadata = Column(JSONB)
     created_at = Column(DateTime, default=func.now())
 
     user = relationship("AuthUser")
     provider = relationship("AuthProvider", back_populates="identities")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider_id", "provider_user", name="uq_user_identity_provider"
+        ),
+        Index("idx_user_identity_user", "user_id"),
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<UserIdentity(identity_id={self.identity_id}, user_id={self.user_id})>"
@@ -135,7 +161,9 @@ class ChatMemory(Base):
     __tablename__ = "chat_memories"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False
+    )
     chat_id = Column(String(36), nullable=False, index=True)
     short_term_days = Column(Integer, default=1, nullable=False)
     long_term_days = Column(Integer, default=30, nullable=False)
@@ -145,7 +173,9 @@ class ChatMemory(Base):
     last_summarized_at = Column(DateTime)
     current_token_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime, default=func.now(), onupdate=func.now(), nullable=False
+    )
 
     user = relationship("AuthUser", back_populates="chat_memories")
 
@@ -164,7 +194,9 @@ class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False
+    )
     token = Column(String(255), unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False, nullable=False)
@@ -188,7 +220,9 @@ class EmailVerificationToken(Base):
     __tablename__ = "email_verification_tokens"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False
+    )
     token = Column(String(255), unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
     is_used = Column(Boolean, default=False, nullable=False)
