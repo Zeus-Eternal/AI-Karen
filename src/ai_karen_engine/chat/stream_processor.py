@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import json
 from typing import Optional
 
 
@@ -98,13 +99,31 @@ class StreamProcessor:
         """Create a Server-Sent Events stream."""
         # This would be implemented with actual SSE functionality
         # For now, return a mock response
-        from fastapi.responses import StreamingResponse
-        
+        try:
+            from fastapi.responses import StreamingResponse  # type: ignore
+        except Exception:  # pragma: no cover - fallback for test stubs
+            class StreamingResponse:  # type: ignore
+                def __init__(self, iterator, media_type="application/octet-stream", headers=None):
+                    self.body_iterator = iterator
+                    self.media_type = media_type
+                    self.headers = {"content-type": media_type}
+                    if headers:
+                        for k, v in headers.items():
+                            self.headers[k.lower()] = v
+
         async def generate():
-            yield "data: {\"type\": \"start\", \"message\": \"Stream started\"}\n\n"
-            yield "data: {\"type\": \"end\", \"message\": \"Stream ended\"}\n\n"
-        
-        return StreamingResponse(generate(), media_type="text/plain")
+            start_event = json.dumps({"type": "start", "message": "Stream started"})
+            yield f"data: {start_event}\n\n"
+            end_event = json.dumps({"type": "end", "message": "Stream ended"})
+            yield f"data: {end_event}\n\n"
+
+        headers = {
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+        return StreamingResponse(
+            generate(), media_type="text/event-stream", headers=headers
+        )
     
     async def create_http_stream(self, chat_request, http_request):
         """Create an HTTP streaming response."""
