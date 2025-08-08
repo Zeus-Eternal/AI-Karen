@@ -2,32 +2,33 @@
 Integration test for the intelligence layer with the consolidated auth system.
 """
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 
 from ai_karen_engine.auth import (
     AuthConfig,
-    IntelligenceEngine,
-    UserData,
     AuthEvent,
     AuthEventType,
+    IntelligenceEngine,
     LoginAttempt,
+    UserData,
 )
 
 
 @pytest.mark.asyncio
 async def test_intelligence_integration():
     """Test that the intelligence engine integrates properly with the auth system."""
-    
+
     # Create configuration with intelligence enabled
     config = AuthConfig()
     config.intelligence.enable_intelligent_auth = True
     config.intelligence.enable_anomaly_detection = True
     config.intelligence.enable_behavioral_analysis = True
-    
+
     # Create intelligence engine
     engine = IntelligenceEngine(config)
-    
+
     # Create sample user data
     user_data = UserData(
         user_id="test-user-123",
@@ -36,7 +37,7 @@ async def test_intelligence_integration():
         is_active=True,
         is_verified=True,
     )
-    
+
     # Create sample login attempt
     attempt = LoginAttempt(
         user_id=user_data.user_id,
@@ -47,7 +48,7 @@ async def test_intelligence_integration():
         device_fingerprint="device-123",
         geolocation={"latitude": 40.7128, "longitude": -74.0060, "city": "New York"},
     )
-    
+
     # Create sample historical events
     historical_events = []
     base_time = datetime.utcnow() - timedelta(days=30)
@@ -67,15 +68,15 @@ async def test_intelligence_integration():
                     "geolocation": {
                         "latitude": 40.7128 + (i % 3) * 0.01,
                         "longitude": -74.0060 + (i % 3) * 0.01,
-                        "city": "New York"
-                    }
-                }
+                        "city": "New York",
+                    },
+                },
             )
         )
-    
+
     # Test intelligence analysis
     result = await engine.analyze_login_attempt(attempt, user_data, historical_events)
-    
+
     # Verify the result
     assert result is not None
     assert 0.0 <= result.risk_score <= 1.0
@@ -83,7 +84,7 @@ async def test_intelligence_integration():
     assert isinstance(result.should_block, bool)
     assert isinstance(result.recommendations, list)
     assert result.processing_time_ms > 0
-    
+
     # Test risk score calculation
     context = {
         "ip_address": "192.168.1.100",
@@ -91,10 +92,10 @@ async def test_intelligence_integration():
         "device_fingerprint": "device-123",
         "geolocation": {"latitude": 40.7128, "longitude": -74.0060},
     }
-    
+
     risk_score = await engine.calculate_risk_score(user_data, context)
     assert 0.0 <= risk_score <= 1.0
-    
+
     print(f"✅ Intelligence integration test passed!")
     print(f"   Risk Score: {result.risk_score:.3f}")
     print(f"   Risk Level: {result.risk_level}")
@@ -105,4 +106,5 @@ async def test_intelligence_integration():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(test_intelligence_integration())
