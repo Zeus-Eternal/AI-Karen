@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from cryptography.fernet import Fernet
 
+import logging
 import os
 
 
 ENCRYPTION_KEY = os.getenv("KARI_JOB_ENC_KEY")
 if not ENCRYPTION_KEY:
-    raise RuntimeError("KARI_JOB_ENC_KEY must be set in the environment!")
+    ENCRYPTION_KEY = Fernet.generate_key()
+    logging.getLogger(__name__).warning(
+        "KARI_JOB_ENC_KEY not set; generated ephemeral key"
+    )
 
 _fernet = Fernet(
     ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY
