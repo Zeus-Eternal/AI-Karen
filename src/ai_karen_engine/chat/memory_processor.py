@@ -129,40 +129,40 @@ class MemoryProcessor:
         self.max_context_memories = max_context_memories
         self.recency_weight = recency_weight
         
-        # Preference detection patterns
+        # Preference detection patterns (compiled once)
         self.preference_patterns = [
-            (r"I (like|love|prefer|enjoy|adore) (.+)", "positive_preference"),
-            (r"I (don't like|hate|dislike|can't stand|despise) (.+)", "negative_preference"),
-            (r"My favorite (.+) is (.+)", "favorite"),
-            (r"I usually (.+)", "habit"),
-            (r"I always (.+)", "habit"),
-            (r"I never (.+)", "negative_habit"),
-            (r"I tend to (.+)", "tendency"),
-            (r"I'm (good|bad|terrible|excellent) at (.+)", "skill_assessment"),
-            (r"I work (at|for|with) (.+)", "work_info"),
-            (r"I live in (.+)", "location_info"),
-            (r"My (.+) is (.+)", "personal_info"),
-            (r"I am (.+)", "identity_info"),
-            (r"I have (.+)", "possession_info"),
-            (r"I want to (.+)", "goal"),
-            (r"I need to (.+)", "need"),
-            (r"I'm planning to (.+)", "plan"),
-            (r"I'm interested in (.+)", "interest"),
-            (r"I believe (.+)", "belief"),
-            (r"I think (.+)", "opinion")
+            (re.compile(r"I (like|love|prefer|enjoy|adore) (.+)", re.IGNORECASE), "positive_preference"),
+            (re.compile(r"I (don't like|hate|dislike|can't stand|despise) (.+)", re.IGNORECASE), "negative_preference"),
+            (re.compile(r"My favorite (.+) is (.+)", re.IGNORECASE), "favorite"),
+            (re.compile(r"I usually (.+)", re.IGNORECASE), "habit"),
+            (re.compile(r"I always (.+)", re.IGNORECASE), "habit"),
+            (re.compile(r"I never (.+)", re.IGNORECASE), "negative_habit"),
+            (re.compile(r"I tend to (.+)", re.IGNORECASE), "tendency"),
+            (re.compile(r"I'm (good|bad|terrible|excellent) at (.+)", re.IGNORECASE), "skill_assessment"),
+            (re.compile(r"I work (at|for|with) (.+)", re.IGNORECASE), "work_info"),
+            (re.compile(r"I live in (.+)", re.IGNORECASE), "location_info"),
+            (re.compile(r"My (.+) is (.+)", re.IGNORECASE), "personal_info"),
+            (re.compile(r"I am (.+)", re.IGNORECASE), "identity_info"),
+            (re.compile(r"I have (.+)", re.IGNORECASE), "possession_info"),
+            (re.compile(r"I want to (.+)", re.IGNORECASE), "goal"),
+            (re.compile(r"I need to (.+)", re.IGNORECASE), "need"),
+            (re.compile(r"I'm planning to (.+)", re.IGNORECASE), "plan"),
+            (re.compile(r"I'm interested in (.+)", re.IGNORECASE), "interest"),
+            (re.compile(r"I believe (.+)", re.IGNORECASE), "belief"),
+            (re.compile(r"I think (.+)", re.IGNORECASE), "opinion")
         ]
-        
-        # Fact extraction patterns
+
+        # Fact extraction patterns (compiled once)
         self.fact_patterns = [
-            (r"(.+) is (.+)", "is_relationship"),
-            (r"(.+) has (.+)", "has_relationship"),
-            (r"(.+) can (.+)", "capability"),
-            (r"(.+) will (.+)", "future_fact"),
-            (r"(.+) was (.+)", "past_fact"),
-            (r"(.+) happened (.+)", "event"),
-            (r"(.+) costs (.+)", "cost_info"),
-            (r"(.+) takes (.+) time", "duration_info"),
-            (r"(.+) is located (.+)", "location_fact")
+            (re.compile(r"(.+) is (.+)", re.IGNORECASE), "is_relationship"),
+            (re.compile(r"(.+) has (.+)", re.IGNORECASE), "has_relationship"),
+            (re.compile(r"(.+) can (.+)", re.IGNORECASE), "capability"),
+            (re.compile(r"(.+) will (.+)", re.IGNORECASE), "future_fact"),
+            (re.compile(r"(.+) was (.+)", re.IGNORECASE), "past_fact"),
+            (re.compile(r"(.+) happened (.+)", re.IGNORECASE), "event"),
+            (re.compile(r"(.+) costs (.+)", re.IGNORECASE), "cost_info"),
+            (re.compile(r"(.+) takes (.+) time", re.IGNORECASE), "duration_info"),
+            (re.compile(r"(.+) is located (.+)", re.IGNORECASE), "location_fact")
         ]
         
         # Processing metrics
@@ -414,41 +414,43 @@ class MemoryProcessor:
         memories = []
         
         for pattern, preference_type in self.preference_patterns:
-            matches = re.finditer(pattern, message, re.IGNORECASE)
-            for match in matches:
-                # Extract the preference content
-                if len(match.groups()) >= 2:
-                    preference_content = match.group(2).strip()
-                    full_match = match.group(0)
-                else:
-                    preference_content = match.group(1).strip()
-                    full_match = match.group(0)
-                
-                # Skip very short or generic preferences
-                if len(preference_content) < 3:
-                    continue
-                
-                # Determine confidence based on pattern strength
-                confidence = ConfidenceLevel.HIGH
-                if preference_type in ["tendency", "opinion"]:
-                    confidence = ConfidenceLevel.MEDIUM
-                
-                memory = ExtractedMemory(
-                    content=full_match,
-                    memory_type=MemoryType.PREFERENCE,
-                    confidence=confidence,
-                    source_message=message,
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                    embedding=embeddings,
-                    metadata={
-                        "preference_type": preference_type,
-                        "preference_content": preference_content,
-                        "extraction_method": "pattern_matching"
-                    },
-                    extraction_method="pattern_matching"
-                )
-                memories.append(memory)
+            match = pattern.match(message)
+            if not match:
+                continue
+
+            # Extract the preference content
+            if len(match.groups()) >= 2:
+                preference_content = match.group(2).strip()
+                full_match = match.group(0)
+            else:
+                preference_content = match.group(1).strip()
+                full_match = match.group(0)
+
+            # Skip very short or generic preferences
+            if len(preference_content) < 3:
+                continue
+
+            # Determine confidence based on pattern strength
+            confidence = ConfidenceLevel.HIGH
+            if preference_type in ["tendency", "opinion"]:
+                confidence = ConfidenceLevel.MEDIUM
+
+            memory = ExtractedMemory(
+                content=full_match,
+                memory_type=MemoryType.PREFERENCE,
+                confidence=confidence,
+                source_message=message,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                embedding=embeddings,
+                metadata={
+                    "preference_type": preference_type,
+                    "preference_content": preference_content,
+                    "extraction_method": "pattern_matching"
+                },
+                extraction_method="pattern_matching",
+            )
+            memories.append(memory)
         
         return memories
     
@@ -464,43 +466,45 @@ class MemoryProcessor:
         memories = []
         
         for pattern, fact_type in self.fact_patterns:
-            matches = re.finditer(pattern, message, re.IGNORECASE)
-            for match in matches:
-                full_match = match.group(0).strip()
-                
-                # Skip very short facts
-                if len(full_match) < 5:
-                    continue
-                
-                # Extract subject and object if available
-                subject = match.group(1).strip() if len(match.groups()) >= 1 else ""
-                obj = match.group(2).strip() if len(match.groups()) >= 2 else ""
-                
-                # Determine confidence based on fact type
-                if fact_type in ["is_relationship", "has_relationship"]:
-                    confidence = ConfidenceLevel.HIGH
-                elif fact_type in ["capability", "future_fact", "past_fact"]:
-                    confidence = ConfidenceLevel.MEDIUM
-                else:
-                    confidence = ConfidenceLevel.MEDIUM
-                
-                memory = ExtractedMemory(
-                    content=full_match,
-                    memory_type=MemoryType.FACT,
-                    confidence=confidence,
-                    source_message=message,
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                    embedding=embeddings,
-                    metadata={
-                        "fact_type": fact_type,
-                        "subject": subject,
-                        "object": obj,
-                        "extraction_method": "pattern_matching"
-                    },
-                    extraction_method="pattern_matching"
-                )
-                memories.append(memory)
+            match = pattern.match(message)
+            if not match:
+                continue
+
+            full_match = match.group(0).strip()
+
+            # Skip very short facts
+            if len(full_match) < 5:
+                continue
+
+            # Extract subject and object if available
+            subject = match.group(1).strip() if len(match.groups()) >= 1 else ""
+            obj = match.group(2).strip() if len(match.groups()) >= 2 else ""
+
+            # Determine confidence based on fact type
+            if fact_type in ["is_relationship", "has_relationship"]:
+                confidence = ConfidenceLevel.HIGH
+            elif fact_type in ["capability", "future_fact", "past_fact"]:
+                confidence = ConfidenceLevel.MEDIUM
+            else:
+                confidence = ConfidenceLevel.MEDIUM
+
+            memory = ExtractedMemory(
+                content=full_match,
+                memory_type=MemoryType.FACT,
+                confidence=confidence,
+                source_message=message,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                embedding=embeddings,
+                metadata={
+                    "fact_type": fact_type,
+                    "subject": subject,
+                    "object": obj,
+                    "extraction_method": "pattern_matching"
+                },
+                extraction_method="pattern_matching",
+            )
+            memories.append(memory)
         
         return memories
     

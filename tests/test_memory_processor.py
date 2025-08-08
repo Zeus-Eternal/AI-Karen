@@ -105,6 +105,13 @@ class TestMemoryProcessor:
             max_context_memories=10,
             recency_weight=0.3
         )
+
+    def test_compiled_patterns(self, memory_processor):
+        """Ensure regex patterns are compiled once and reusable."""
+        import re
+
+        for pattern, _ in memory_processor.preference_patterns + memory_processor.fact_patterns:
+            assert isinstance(pattern, re.Pattern)
     
     @pytest.mark.asyncio
     async def test_extract_entity_memories(self, memory_processor, sample_parsed_message, sample_embeddings):
