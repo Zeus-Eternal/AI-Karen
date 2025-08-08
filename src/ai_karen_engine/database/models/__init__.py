@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 """SQLAlchemy models for multi-tenant AI-Karen platform."""
 
+import hashlib
 import json
 import uuid
 from datetime import datetime
@@ -455,3 +456,56 @@ class LLMRequest(Base):
 
     def __repr__(self) -> str:
         return f"<LLMRequest(provider={self.provider_name}, model={self.model}, cost={self.cost})>"
+
+
+class File(Base):
+    """Stored file metadata and location."""
+
+    __tablename__ = "files"
+
+    file_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, index=True)
+    owner_user_id = Column(
+        String, ForeignKey("auth_users.user_id", ondelete="SET NULL"), nullable=True
+    )
+    name = Column(String)
+    mime_type = Column(String)
+    bytes = Column(BigInteger)
+    storage_uri = Column(String)
+    sha256 = Column(String, nullable=False)
+    metadata = Column(JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    owner = relationship("AuthUser")
+
+    def __repr__(self) -> str:  # pragma: no cover - simple repr
+        return f"<File(file_id={self.file_id}, name={self.name})>"
+
+
+class Webhook(Base):
+    """Registered webhook endpoints for event notifications."""
+
+    __tablename__ = "webhooks"
+
+    webhook_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, index=True)
+    url = Column(String, nullable=False)
+    _secret = Column("secret", String)
+    events = Column(JSONB, nullable=False, default=list)
+    enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def secret(self) -> str | None:
+        return self._secret
+
+    @secret.setter
+    def secret(self, value: str | None) -> None:
+        if value is None:
+            self._secret = None
+        else:
+            self._secret = hashlib.sha256(value.encode()).hexdigest()
+
+    def __repr__(self) -> str:  # pragma: no cover - simple repr
+        return f"<Webhook(webhook_id={self.webhook_id}, url='{self.url}')>"

@@ -3,6 +3,7 @@ Tests for advanced chat features: file attachments and code execution.
 """
 
 import asyncio
+import hashlib
 import pytest
 import tempfile
 from pathlib import Path
@@ -68,13 +69,14 @@ class TestFileAttachmentService:
         
         # Upload file
         result = await file_service.upload_file(request, test_content)
-        
+
         # Verify result
         assert result.success is True
         assert result.file_id != ""
         assert result.metadata.original_filename == "test.txt"
         assert result.metadata.file_type == FileType.DOCUMENT
         assert result.metadata.file_size == len(test_content)
+        assert result.metadata.file_hash == hashlib.sha256(test_content).hexdigest()
     
     @pytest.mark.asyncio
     async def test_file_upload_validation_failure(self, file_service):
@@ -126,10 +128,11 @@ class TestFileAttachmentService:
         assert file_info.file_id == upload_result.file_id
         assert file_info.processing_status in [ProcessingStatus.PROCESSING, ProcessingStatus.COMPLETED]
     
-    def test_storage_stats(self, file_service):
+    @pytest.mark.asyncio
+    async def test_storage_stats(self, file_service):
         """Test storage statistics."""
-        stats = file_service.get_storage_stats()
-        
+        stats = await file_service.get_storage_stats()
+
         assert "total_files" in stats
         assert "total_size_bytes" in stats
         assert "files_by_type" in stats
@@ -499,7 +502,7 @@ if __name__ == "__main__":
     print("Testing FileAttachmentService...")
     with tempfile.TemporaryDirectory() as temp_dir:
         service = FileAttachmentService(storage_path=temp_dir)
-        stats = service.get_storage_stats()
+        stats = asyncio.run(service.get_storage_stats())
         print(f"  Storage stats: {stats}")
     
     # Test multimedia service

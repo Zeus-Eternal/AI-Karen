@@ -244,7 +244,7 @@ async def download_file(file_id: str):
             )
 
         # Get file metadata for proper response
-        metadata = file_service.list_files().get(file_id)
+        metadata = await file_service.get_metadata(file_id)
         if not metadata:
             filename = f"file_{file_id}"
             mime_type = "application/octet-stream"
@@ -346,7 +346,7 @@ async def process_multimedia(file_id: str, request: MultimediaProcessingRequest)
             )
 
         # Get file metadata to determine media type
-        metadata = file_service.list_files().get(file_id)
+        metadata = await file_service.get_metadata(file_id)
         if not metadata:
             error_response = create_service_error_response(
                 service_name="multimedia",
@@ -435,7 +435,8 @@ async def list_files(
         # Get all files from service
         all_files = []
 
-        for file_id, metadata in file_service.list_files().items():
+        files_dict = await file_service.list_files()
+        for file_id, metadata in files_dict.items():
             # Apply filters
             if file_type and metadata.file_type != file_type:
                 continue
@@ -556,7 +557,7 @@ async def get_multimedia_capabilities():
 async def get_file_storage_stats():
     """Get file storage statistics."""
     try:
-        stats = file_service.get_storage_stats()
+        stats = await file_service.get_storage_stats()
 
         return {"storage_stats": stats, "service_status": "operational"}
 

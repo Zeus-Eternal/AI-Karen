@@ -244,7 +244,8 @@ async def enhanced_list_files(
         # Get all files from service
         all_files = []
 
-        for file_id, metadata in file_service._file_metadata.items():
+        files_dict = await file_service.list_files()
+        for file_id, metadata in files_dict.items():
             # Apply filters
             if file_type and metadata.file_type != file_type:
                 continue
@@ -423,7 +424,7 @@ async def enhanced_process_multimedia(
             )
 
         # Get file metadata to determine media type
-        metadata = file_service._file_metadata.get(file_id)
+        metadata = await file_service.get_metadata(file_id)
         if not metadata:
             error_response = create_service_error_response(
                 service_name="enhanced_multimedia",
@@ -511,10 +512,11 @@ async def get_file_statistics_dashboard():
     """Get comprehensive file statistics for AG-UI dashboard."""
     try:
         # Get storage stats
-        storage_stats = file_service.get_storage_stats()
+        storage_stats = await file_service.get_storage_stats()
 
         # Calculate additional statistics
-        all_files = list(file_service._file_metadata.values())
+        files_dict = await file_service.list_files()
+        all_files = list(files_dict.values())
 
         # Processing status distribution
         status_distribution = {}
