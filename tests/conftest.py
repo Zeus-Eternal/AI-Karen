@@ -1,12 +1,8 @@
 # mypy: ignore-errors
 """Shared pytest configuration."""
 import importlib
-import os
 import sys
 import types
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 # Prefer the real `requests` package when available to support
 # libraries that rely on its internal structure. Fall back to the
 # lightweight stub only if `requests` cannot be imported.

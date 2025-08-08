@@ -13,17 +13,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.ai_karen_engine.auth.config import SessionConfig, JWTConfig
-from src.ai_karen_engine.auth.exceptions import DatabaseOperationError, SessionError
-from src.ai_karen_engine.auth.models import SessionData, UserData
-from src.ai_karen_engine.auth.session import (
+from ai_karen_engine.auth.config import SessionConfig, JWTConfig
+from ai_karen_engine.auth.exceptions import DatabaseOperationError, SessionError
+from ai_karen_engine.auth.models import SessionData, UserData
+from ai_karen_engine.auth.session import (
     SessionManager,
     SessionStore,
     DatabaseSessionBackend,
     RedisSessionBackend,
     MemorySessionBackend
 )
-from src.ai_karen_engine.auth.tokens import TokenManager
+from ai_karen_engine.auth.tokens import TokenManager
 
 
 @pytest.fixture

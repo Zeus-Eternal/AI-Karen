@@ -6,12 +6,8 @@ Tests the comprehensive health check implementation for task 3.
 
 import asyncio
 import sys
-import os
 import time
 from datetime import datetime
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 try:
     from ai_karen_engine.database.client import (

@@ -20,8 +20,8 @@ try:
 except ImportError:
     pytest.skip("FastAPI not available", allow_module_level=True)
 
-from src.ai_karen_engine.auth.models import UserData, SessionData, AuthEvent, AuthEventType
-from src.ai_karen_engine.auth.exceptions import (
+from ai_karen_engine.auth.models import UserData, SessionData, AuthEvent, AuthEventType
+from ai_karen_engine.auth.exceptions import (
     InvalidCredentialsError,
     AccountLockedError,
     SessionExpiredError,
@@ -80,9 +80,9 @@ class TestAuthRoutesIntegration:
         app = FastAPI()
         
         # Mock the auth service getter at module level
-        with patch('src.ai_karen_engine.api_routes.auth.get_auth_service_instance') as mock_get_service:
+        with patch('ai_karen_engine.api_routes.auth.get_auth_service_instance') as mock_get_service:
             mock_get_service.return_value = mock_auth_service
-            from src.ai_karen_engine.api_routes.auth import router
+            from ai_karen_engine.api_routes.auth import router
             app.include_router(router, prefix="/api/auth")
         
         return app
@@ -247,7 +247,7 @@ class TestAuthRoutesIntegration:
             "is_verified": True
         }
         
-        with patch('src.ai_karen_engine.api_routes.auth.get_current_user', 
+        with patch('ai_karen_engine.api_routes.auth.get_current_user',
                   return_value=user_data):
             response = client.get("/api/auth/me")
         
@@ -265,7 +265,7 @@ class TestAuthRoutesIntegration:
         mock_auth_service.create_session.return_value = mock_auth_service.sample_session
         
         # Mock session validation
-        with patch('src.ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
+        with patch('ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
             mock_get_session.return_value = {
                 "user_id": "test-user-123",
                 "email": "test@example.com",
@@ -285,7 +285,7 @@ class TestAuthRoutesIntegration:
 
     def test_update_credentials_missing_current_password(self, client, mock_auth_service):
         """Test credential update without current password."""
-        with patch('src.ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
+        with patch('ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
             mock_get_session.return_value = {
                 "user_id": "test-user-123",
                 "email": "test@example.com"
@@ -302,7 +302,7 @@ class TestAuthRoutesIntegration:
         """Test credential update with wrong current password."""
         mock_auth_service.authenticate_user.return_value = None  # Wrong password
         
-        with patch('src.ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
+        with patch('ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
             mock_get_session.return_value = {
                 "user_id": "test-user-123",
                 "email": "test@example.com"
@@ -320,7 +320,7 @@ class TestAuthRoutesIntegration:
         """Test successful logout."""
         mock_auth_service.invalidate_session.return_value = True
         
-        with patch('src.ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
+        with patch('ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
             mock_get_session.return_value = {
                 "user_id": "test-user-123",
                 "session_token": "test-token"
@@ -423,9 +423,9 @@ class TestAuthMiddlewareIntegration:
             return {"message": "Access granted"}
         
         # Mock the middleware auth service
-        with patch('src.ai_karen_engine.middleware.auth.get_auth_service', 
+        with patch('ai_karen_engine.middleware.auth.get_auth_service',
                   return_value=mock_auth_service):
-            from src.ai_karen_engine.middleware.auth import auth_middleware
+            from ai_karen_engine.middleware.auth import auth_middleware
             app.middleware("http")(auth_middleware)
         
         return app
@@ -495,9 +495,9 @@ class TestAuthErrorHandling:
         """Create test app for error testing."""
         app = FastAPI()
         
-        with patch('src.ai_karen_engine.api_routes.auth.get_auth_service_instance', 
+        with patch('ai_karen_engine.api_routes.auth.get_auth_service_instance',
                   return_value=mock_auth_service):
-            from src.ai_karen_engine.api_routes.auth import router
+            from ai_karen_engine.api_routes.auth import router
             app.include_router(router, prefix="/api/auth")
         
         return app
@@ -535,7 +535,7 @@ class TestAuthErrorHandling:
         """Test session expired error handling."""
         mock_auth_service.validate_session.side_effect = SessionExpiredError("Session expired")
         
-        with patch('src.ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
+        with patch('ai_karen_engine.api_routes.auth.get_session_user') as mock_get_session:
             mock_get_session.side_effect = Exception("Session validation failed")
             
             response = client.post("/api/auth/logout")

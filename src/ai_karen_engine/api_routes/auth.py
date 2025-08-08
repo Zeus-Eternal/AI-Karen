@@ -16,7 +16,7 @@ from ai_karen_engine.core.dependencies import (
     get_current_user_context,
 )
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.auth import AuthService, get_auth_service
+from ai_karen_engine.auth.service import AuthService, get_auth_service
 from ai_karen_engine.auth.exceptions import (
     AuthError,
     InvalidCredentialsError,
