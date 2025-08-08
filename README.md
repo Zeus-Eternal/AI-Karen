@@ -309,12 +309,14 @@ helm install ai-karen ./charts/kari/ \
 | `POSTGRES_DB` | PostgreSQL database | `ai_karen` |
 | `POSTGRES_HOST` | PostgreSQL host | `postgres` |
 | `POSTGRES_PORT` | PostgreSQL port | `5433` |
+| `DATABASE_URL` | Database connection URL | **required** |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `ELASTICSEARCH_URL` | Elasticsearch URL | `http://localhost:9200` |
 | `MILVUS_HOST` | Milvus host | `localhost` |
 | `MILVUS_PORT` | Milvus port | `19530` |
-| `JWT_SECRET_KEY` | JWT signing key | `your-secret-key` |
+| `SECRET_KEY` | Application secret key | **required** |
 | `ENABLE_SELF_REFACTOR` | Enable self-refactoring | `false` |
+| `DEBUG` | Enable debug features and docs | `false` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `KARI_CORS_ORIGINS` | Comma-separated list of allowed CORS origins | `*` |
 | `KARI_CORS_METHODS` | Allowed CORS HTTP methods (comma-separated or `*`) | `*` |

@@ -27,13 +27,20 @@ Be sure to provision PostgreSQL, Redis and any vector stores before installing t
 
 Runtime settings are controlled via environment variables or the `config.json` file. Review `config/README.md` for parameter descriptions.
 
-### Required `SECRET_KEY`
+### Required Environment Variables
 
-For security, the server **requires** a secret key for signing tokens. Set it via the `SECRET_KEY` environment variable or in a `.env` file before starting the application:
+For security and database connectivity, the server **requires** certain settings to be supplied via environment variables. Set them before starting the application:
 
 ```bash
 export SECRET_KEY="your-production-secret"
+export DATABASE_URL="postgresql://user:pass@host:5432/dbname"
 ```
 
-Deployments without this value will fail to start.
+Deployments missing these values will fail to start.
+
+Debug features are disabled by default. To enable interactive docs and hot reload, set:
+
+```bash
+export DEBUG=true
+```
 
