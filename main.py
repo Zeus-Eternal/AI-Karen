@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     secret_key: str = Field(..., env="SECRET_KEY")
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
-    database_url: str = "postgresql://user:password@localhost:5432/kari_prod"
+    database_url: str = Field(..., env="DATABASE_URL")
     kari_cors_origins: str = Field(
         default="http://localhost:8010,http://127.0.0.1:8010,http://localhost:3000",
         alias="cors_origins",
@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     prometheus_enabled: bool = True
     https_redirect: bool = False
     rate_limit: str = "100/minute"
-    debug: bool = True
+    debug: bool = Field(False, env="DEBUG")
     plugin_dir: str = "/app/plugins"
     llm_refresh_interval: int = 3600
 

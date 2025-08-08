@@ -37,3 +37,23 @@ export SECRET_KEY="your-production-secret"
 
 Deployments without this value will fail to start.
 
+### Required `DATABASE_URL`
+
+The server does not include default database credentials. Provide a full connection string through the `DATABASE_URL` environment variable:
+
+```bash
+export DATABASE_URL="postgresql://USER:PASS@HOST:PORT/DBNAME"
+```
+
+Startup will fail fast if this setting is missing.
+
+### Optional `DEBUG`
+
+Development features such as interactive docs are disabled by default. To enable them, set:
+
+```bash
+export DEBUG=true
+```
+
+Omit this variable for production deployments.
+
