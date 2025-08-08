@@ -16,7 +16,7 @@ import numpy as np
 from sqlalchemy import text, select, delete
 
 from ai_karen_engine.database.client import MultiTenantPostgresClient
-from ai_karen_engine.database.models import TenantMemoryEntry
+from ai_karen_engine.database.models import TenantMemoryItem
 from ai_karen_engine.core.milvus_client import MilvusClient
 from ai_karen_engine.core.embedding_manager import EmbeddingManager
 
@@ -24,18 +24,16 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class MemoryEntry:
-    """Represents a memory entry with all associated data."""
+class MemoryItem:
+    """Represents a memory item with all associated data."""
 
     id: str
     content: str
     embedding: Optional[np.ndarray] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+    scope: Optional[str] = None
+    kind: Optional[str] = None
     timestamp: float = field(default_factory=time.time)
-    ttl: Optional[datetime] = None
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
     similarity_score: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -44,13 +42,14 @@ class MemoryEntry:
             "id": self.id,
             "content": self.content,
             "metadata": self.metadata,
+            "scope": self.scope,
+            "kind": self.kind,
             "timestamp": self.timestamp,
-            "ttl": self.ttl.isoformat() if self.ttl else None,
-            "user_id": self.user_id,
-            "session_id": self.session_id,
-            "tags": self.tags,
             "similarity_score": self.similarity_score,
         }
+
+# Backwards compatibility alias
+MemoryEntry = MemoryItem
 
 
 @dataclass
@@ -58,9 +57,8 @@ class MemoryQuery:
     """Represents a memory query with all parameters."""
 
     text: str
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
+    scope: Optional[str] = None
+    kind: Optional[str] = None
     metadata_filter: Dict[str, Any] = field(default_factory=dict)
     time_range: Optional[Tuple[datetime, datetime]] = None
     top_k: int = 10
@@ -71,9 +69,8 @@ class MemoryQuery:
         """Convert to dictionary for logging."""
         return {
             "text": self.text[:100] + "..." if len(self.text) > 100 else self.text,
-            "user_id": self.user_id,
-            "session_id": self.session_id,
-            "tags": self.tags,
+            "scope": self.scope,
+            "kind": self.kind,
             "metadata_filter": self.metadata_filter,
             "time_range": (
                 [t.isoformat() for t in self.time_range] if self.time_range else None
@@ -135,25 +132,21 @@ class MemoryManager:
         self,
         tenant_id: Union[str, uuid.UUID],
         content: str,
-        user_id: Optional[str] = None,
-        session_id: Optional[str] = None,
+        scope: str,
+        kind: str,
         metadata: Optional[Dict[str, Any]] = None,
-        tags: Optional[List[str]] = None,
-        ttl_hours: Optional[int] = None,
     ) -> str:
-        """Store a memory entry with vector embedding.
+        """Store a memory item with vector embedding.
 
         Args:
             tenant_id: Tenant ID
             content: Memory content
-            user_id: User ID
-            session_id: Session ID
+            scope: Logical scope for the memory
+            kind: Kind/type of memory
             metadata: Additional metadata
-            tags: Memory tags
-            ttl_hours: Time to live in hours
 
         Returns:
-            Memory entry ID
+            Memory item ID
         """
         start_time = time.time()
 
@@ -171,19 +164,9 @@ class MemoryManager:
             )
             embedding_time = time.time() - embedding_start
 
-            # Normalize user ID if provided
-            normalized_user_id = None
-            if user_id:
-                try:
-                    normalized_user_id = str(uuid.UUID(str(user_id)))
-                except (ValueError, AttributeError, TypeError):
-                    logger.warning(
-                        f"Invalid user_id '{user_id}' - storing memory without user reference"
-                    )
-
             # Check for surprise (novelty)
             is_surprising = await self._check_surprise(
-                tenant_id, embedding, normalized_user_id
+                tenant_id, embedding, scope, kind
             )
             if not is_surprising:
                 logger.debug(
@@ -193,31 +176,23 @@ class MemoryManager:
 
             # Create memory entry
             memory_id = str(uuid.uuid4())
-            ttl = datetime.utcnow() + timedelta(
-                hours=ttl_hours or self.default_ttl_hours
-            )
-
-            memory_entry = MemoryEntry(
+            memory_entry = MemoryItem(
                 id=memory_id,
                 content=content,
                 embedding=embedding,
                 metadata=metadata or {},
+                scope=scope,
+                kind=kind,
                 timestamp=time.time(),
-                ttl=ttl,
-                user_id=normalized_user_id,
-                session_id=session_id,
-                tags=tags or [],
             )
 
             # Store in vector database
             collection_name = self._get_collection_name(tenant_id)
             vector_metadata = {
                 "memory_id": memory_id,
-                "user_id": normalized_user_id or "",
-                "session_id": session_id or "",
+                "scope": scope,
+                "kind": kind,
                 "timestamp": memory_entry.timestamp,
-                "ttl": int(ttl.timestamp()),
-                "tags": json.dumps(tags or []),
             }
 
             # Add additional metadata
@@ -232,28 +207,14 @@ class MemoryManager:
 
             # Store metadata in Postgres
             async with self.db_client.get_async_session() as session:
-
-                memory_metadata = {
-                    "tags": tags or [],
-                    "embedding_model": getattr(
-                        self.embedding_manager, "model_name", "default"
-                    ),
-                }
-                if metadata:
-                    memory_metadata.update(metadata)
-
-                memory_record = TenantMemoryEntry(
+                memory_record = TenantMemoryItem(
                     id=uuid.UUID(memory_id),
-                    vector_id=memory_id,
-                    user_id=(
-                        uuid.UUID(normalized_user_id) if normalized_user_id else None
-                    ),
-                    session_id=session_id,
+                    scope=scope,
+                    kind=kind,
                     content=content,
-                    embedding_id=memory_id,
-                    memory_metadata=memory_metadata,
-                    ttl=ttl,
-                    timestamp=int(memory_entry.timestamp),
+                    embedding=embedding.tolist(),
+                    metadata=metadata or {},
+                    created_at=datetime.utcnow(),
                 )
 
                 session.add(memory_record)
@@ -407,8 +368,8 @@ class MemoryManager:
             # Delete from Postgres
             async with self.db_client.get_async_session() as session:
                 await session.execute(
-                    delete(TenantMemoryEntry).where(
-                        TenantMemoryEntry.vector_id == memory_id
+                    delete(TenantMemoryItem).where(
+                        TenantMemoryItem.id == uuid.UUID(memory_id)
                     )
                 )
                 await session.commit()
@@ -431,57 +392,9 @@ class MemoryManager:
             return False
 
     async def prune_expired_memories(self, tenant_id: Union[str, uuid.UUID]) -> int:
-        """Prune expired memories for a tenant.
-
-        Args:
-            tenant_id: Tenant ID
-
-        Returns:
-            Number of memories pruned
-        """
-        try:
-            now = datetime.utcnow()
-
-            # Get expired memory IDs from Postgres
-            async with self.db_client.get_async_session() as session:
-                result = await session.execute(
-                    select(TenantMemoryEntry.vector_id).where(
-                        TenantMemoryEntry.ttl < now
-                    )
-                )
-                expired_ids = [row[0] for row in result.fetchall()]
-
-            if not expired_ids:
-                return 0
-
-            # Delete from vector database
-            collection_name = self._get_collection_name(tenant_id)
-            for memory_id in expired_ids:
-                await self.milvus_client.delete(
-                    collection_name=collection_name,
-                    filter_expr=f"memory_id == '{memory_id}'",
-                )
-
-            # Delete from Postgres
-            async with self.db_client.get_async_session() as session:
-                await session.execute(
-                    delete(TenantMemoryEntry).where(TenantMemoryEntry.ttl < now)
-                )
-                await session.commit()
-
-            # Delete from Elasticsearch
-            if self.elasticsearch_client:
-                for memory_id in expired_ids:
-                    await self._delete_from_elasticsearch(tenant_id, memory_id)
-
-            logger.info(
-                f"Pruned {len(expired_ids)} expired memories for tenant {tenant_id}"
-            )
-            return len(expired_ids)
-
-        except Exception as e:
-            logger.error(f"Failed to prune memories for tenant {tenant_id}: {e}")
-            return 0
+        """Placeholder for API compatibility; memory_items have no TTL."""
+        logger.info("prune_expired_memories called but not applicable for memory_items")
+        return 0
 
     async def get_memory_stats(
         self, tenant_id: Union[str, uuid.UUID]
@@ -498,44 +411,37 @@ class MemoryManager:
             async with self.db_client.get_async_session() as session:
                 # Total memories
                 total_result = await session.execute(
-                    select(TenantMemoryEntry).where(TenantMemoryEntry.id.isnot(None))
+                    select(TenantMemoryItem).where(TenantMemoryItem.id.isnot(None))
                 )
                 total_count = len(total_result.fetchall())
 
-                # Memories by user
-                user_result = await session.execute(
+                # Memories by scope and kind
+                scope_result = await session.execute(
                     text(
                         f"""
-                        SELECT user_id, COUNT(*) as count
-                        FROM {self.db_client.get_tenant_schema_name(tenant_id)}.memory_entries
-                        GROUP BY user_id
+                        SELECT scope, kind, COUNT(*) as count
+                        FROM {self.db_client.get_tenant_schema_name(tenant_id)}.memory_items
+                        GROUP BY scope, kind
                     """
                     )
                 )
-                user_counts = {str(row[0]): row[1] for row in user_result.fetchall()}
+                scope_counts = {
+                    (row[0], row[1]): row[2] for row in scope_result.fetchall()
+                }
 
                 # Recent activity (last 24 hours)
                 recent_cutoff = datetime.utcnow() - timedelta(hours=24)
                 recent_result = await session.execute(
-                    select(TenantMemoryEntry).where(
-                        TenantMemoryEntry.created_at > recent_cutoff
+                    select(TenantMemoryItem).where(
+                        TenantMemoryItem.created_at > recent_cutoff
                     )
                 )
                 recent_count = len(recent_result.fetchall())
 
-                # Expired memories
-                expired_result = await session.execute(
-                    select(TenantMemoryEntry).where(
-                        TenantMemoryEntry.ttl < datetime.utcnow()
-                    )
-                )
-                expired_count = len(expired_result.fetchall())
-
                 return {
                     "total_memories": total_count,
-                    "memories_by_user": user_counts,
+                    "memories_by_scope_kind": scope_counts,
                     "recent_memories_24h": recent_count,
-                    "expired_memories": expired_count,
                     "collection_name": self._get_collection_name(tenant_id),
                     "metrics": self.metrics.copy(),
                 }
@@ -552,7 +458,8 @@ class MemoryManager:
         self,
         tenant_id: Union[str, uuid.UUID],
         embedding: np.ndarray,
-        user_id: Optional[str] = None,
+        scope: Optional[str] = None,
+        kind: Optional[str] = None,
     ) -> bool:
         """Check if content is surprising enough to store."""
         if self.disable_surprise_check:
@@ -561,11 +468,16 @@ class MemoryManager:
             collection_name = self._get_collection_name(tenant_id)
 
             # Search for similar content
+            metadata = {}
+            if scope:
+                metadata["scope"] = scope
+            if kind:
+                metadata["kind"] = kind
             results = await self.milvus_client.search(
                 collection_name=collection_name,
                 query_vectors=[embedding.tolist()],
                 top_k=1,
-                metadata_filter={"user_id": user_id} if user_id else None,
+                metadata_filter=metadata or None,
             )
 
             if not results or not results[0]:
@@ -583,14 +495,13 @@ class MemoryManager:
         """Build metadata filter for vector search."""
         metadata_filter = {}
 
-        if query.user_id:
-            metadata_filter["user_id"] = query.user_id
+        if query.scope:
+            metadata_filter["scope"] = query.scope
 
-        if query.session_id:
-            metadata_filter["session_id"] = query.session_id
+        if query.kind:
+            metadata_filter["kind"] = query.kind
 
         # For the in-memory MilvusClient, we'll use simple key-value matching
-        # More complex filters like time ranges and TTL will be handled in post-processing
 
         return metadata_filter if metadata_filter else None
 
@@ -599,36 +510,29 @@ class MemoryManager:
         tenant_id: Union[str, uuid.UUID],
         memory_ids: List[str],
         include_embeddings: bool = False,
-    ) -> List[MemoryEntry]:
+    ) -> List[MemoryItem]:
         """Get full memory entries from Postgres."""
         try:
             async with self.db_client.get_async_session() as session:
                 result = await session.execute(
-                    select(TenantMemoryEntry).where(
-                        TenantMemoryEntry.vector_id.in_(memory_ids)
+                    select(TenantMemoryItem).where(
+                        TenantMemoryItem.id.in_(memory_ids)
                     )
                 )
 
-                memories = []
+                memories: List[MemoryItem] = []
                 for row in result.fetchall():
-                    memory = MemoryEntry(
-                        id=row.vector_id,
+                    memory = MemoryItem(
+                        id=str(row.id),
                         content=row.content,
-                        metadata=row.memory_metadata or {},
-                        timestamp=row.timestamp or time.time(),
-                        ttl=row.ttl,
-                        user_id=str(row.user_id) if row.user_id else None,
-                        session_id=row.session_id,
-                        tags=(
-                            row.memory_metadata.get("tags", [])
-                            if row.memory_metadata
-                            else []
-                        ),
+                        metadata=row.metadata or {},
+                        scope=row.scope,
+                        kind=row.kind,
+                        timestamp=row.created_at.timestamp() if row.created_at else time.time(),
                     )
 
-                    if include_embeddings:
-                        # Get embedding from vector database if needed
-                        pass  # Implementation depends on Milvus client capabilities
+                    if include_embeddings and row.embedding is not None:
+                        memory.embedding = np.array(row.embedding)
 
                     memories.append(memory)
 
@@ -651,10 +555,6 @@ class MemoryManager:
                 for m in filtered
                 if all(m.metadata.get(k) == v for k, v in query.metadata_filter.items())
             ]
-
-        # Filter by tags
-        if query.tags:
-            filtered = [m for m in filtered if any(tag in m.tags for tag in query.tags)]
 
         return filtered
 
@@ -758,9 +658,8 @@ class MemoryManager:
                 "content": memory.content,
                 "metadata": memory.metadata,
                 "timestamp": memory.timestamp,
-                "user_id": memory.user_id,
-                "session_id": memory.session_id,
-                "tags": memory.tags,
+                "scope": memory.scope,
+                "kind": memory.kind,
             }
 
             await self.elasticsearch_client.index(

@@ -16,6 +16,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Float,
     desc,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -145,57 +146,28 @@ class TenantConversation(Base):
         self.ai_insights.update(insights_data)
 
 
-class TenantMemoryEntry(Base):
-    """Base model for tenant-specific memory entries."""
+class TenantMemoryItem(Base):
+    """Base model for tenant-specific memory items."""
 
-    __tablename__ = "memory_entries"
+    __tablename__ = "memory_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    vector_id = Column(String(255), nullable=False)
-    user_id = Column(UUID(as_uuid=True), nullable=False)
-    session_id = Column(String(255))
+    scope = Column(String(255), nullable=False)
+    kind = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)
-    query = Column(Text)
-    result = Column(JSON)
-    embedding_id = Column(String(255))
-    memory_metadata = Column(JSON, default={})
-    ttl = Column(DateTime)
-    timestamp = Column(Integer, default=0)
+    embedding = Column(ARRAY(Float), nullable=True)
+    metadata = Column(JSON, default={})
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Web UI integration fields
-    ui_source = Column(String(50))  # Source UI (web, streamlit, desktop)
-    conversation_id = Column(UUID(as_uuid=True))  # Link to conversation
-    memory_type = Column(
-        String(50), default="general"
-    )  # Type of memory (fact, preference, context)
-    tags = Column(ARRAY(String), default=[])  # Memory tags for categorization
-    importance_score = Column(Integer, default=5)  # Importance score (1-10)
-    access_count = Column(Integer, default=0)  # How many times this memory was accessed
-    last_accessed = Column(DateTime)  # When this memory was last accessed
-    ai_generated = Column(
-        Boolean, default=False
-    )  # Whether this memory was AI-generated
-    user_confirmed = Column(Boolean, default=True)  # Whether user confirmed this memory
 
     __table_args__ = (
-        Index("idx_memory_vector", "vector_id"),
-        Index("idx_memory_user", "user_id"),
-        Index("idx_memory_session", "session_id"),
-        Index("idx_memory_created", "created_at"),
-        Index("idx_memory_ttl", "ttl"),
-        Index("idx_memory_ui_source", "ui_source"),
-        Index("idx_memory_conversation", "conversation_id"),
-        Index("idx_memory_type", "memory_type"),
-        Index("idx_memory_tags", "tags"),
-        Index("idx_memory_importance", "importance_score"),
-        Index("idx_memory_user_conversation", "user_id", "conversation_id"),
-        Index("idx_memory_user_type", "user_id", "memory_type"),
+        Index("idx_memory_items_scope_kind", "scope", "kind"),
     )
 
     def __repr__(self):
-        return f"<TenantMemoryEntry(id={self.id}, vector_id='{self.vector_id}', user_id={self.user_id})>"
+        return f"<TenantMemoryItem(id={self.id}, scope='{self.scope}', kind='{self.kind}')>"
+
+# Backwards compatibility alias
+TenantMemoryEntry = TenantMemoryItem
 
 
 class TenantMessage(Base):

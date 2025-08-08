@@ -369,7 +369,7 @@ else:
             # Check tables
             expected_tables = [
                 "conversations",
-                "memory_entries",
+                "memory_items",
                 "plugin_executions",
                 "audit_log",
             ]
