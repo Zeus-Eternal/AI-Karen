@@ -23,6 +23,8 @@ import uuid
 import importlib.util
 import multiprocessing
 import threading
+import inspect
+import queue
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, TimeoutError
 
 from pydantic import BaseModel, ConfigDict, Field, validator
@@ -85,6 +87,7 @@ class SecurityPolicy:
         "len", "str", "int", "float", "bool", "list", "dict", "tuple",
         "set", "range", "enumerate", "zip", "map", "filter", "sorted",
         "min", "max", "sum", "abs", "round", "print"
+        , "Exception", "BaseException", "type"
     ])
 
 
@@ -117,6 +120,7 @@ class ExecutionResult:
     started_at: datetime = field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+    terminated: bool = False
 
 
 class PluginSandbox:
@@ -247,6 +251,7 @@ class PluginExecutionEngine:
         
         # Execution tracking
         self.active_executions: Dict[str, ExecutionResult] = {}
+        self.execution_workers: Dict[str, Dict[str, Any]] = {}
         self.execution_history: List[ExecutionResult] = []
         self.max_history_size = 1000
         
@@ -283,6 +288,8 @@ class PluginExecutionEngine:
         
         # Track active execution
         self.active_executions[request.request_id] = result
+        # Placeholder for worker tracking
+        self.execution_workers[request.request_id] = {}
         
         try:
             # Validate plugin exists and is registered
@@ -305,56 +312,87 @@ class PluginExecutionEngine:
             # Execute plugin based on mode
             result.status = ExecutionStatus.RUNNING
             start_time = time.time()
-            
+
             if request.execution_mode == ExecutionMode.DIRECT:
-                plugin_result = await self._execute_direct(
+                coro = self._execute_direct(
                     plugin_metadata, sanitized_params, resource_limits, security_policy
                 )
             elif request.execution_mode == ExecutionMode.THREAD:
-                plugin_result = await self._execute_in_thread(
-                    plugin_metadata, sanitized_params, resource_limits, security_policy, request.timeout_seconds
+                coro = self._execute_in_thread(
+                    request.request_id,
+                    plugin_metadata,
+                    sanitized_params,
+                    resource_limits,
+                    security_policy,
+                    request.timeout_seconds,
                 )
             elif request.execution_mode == ExecutionMode.PROCESS:
-                plugin_result = await self._execute_in_process(
-                    plugin_metadata, sanitized_params, resource_limits, security_policy, request.timeout_seconds
+                coro = self._execute_in_process(
+                    request.request_id,
+                    plugin_metadata,
+                    sanitized_params,
+                    resource_limits,
+                    security_policy,
+                    request.timeout_seconds,
                 )
             else:  # SANDBOX mode
-                plugin_result = await self._execute_in_sandbox(
-                    plugin_metadata, sanitized_params, resource_limits, security_policy, request.timeout_seconds
+                coro = self._execute_in_sandbox(
+                    request.request_id,
+                    plugin_metadata,
+                    sanitized_params,
+                    resource_limits,
+                    security_policy,
+                    request.timeout_seconds,
                 )
-            
+
+            task = asyncio.create_task(coro)
+            self.execution_workers[request.request_id]["task"] = task
+
+            try:
+                plugin_result = await asyncio.wait_for(task, timeout=request.timeout_seconds)
+            except asyncio.CancelledError:
+                result.status = ExecutionStatus.CANCELLED
+                result.error = "Execution cancelled"
+                raise
+
             # Calculate execution time
             execution_time = time.time() - start_time
-            
+
             # Validate and sanitize output
             sanitized_result = await self._validate_and_sanitize_output(
                 plugin_result, plugin_metadata, resource_limits
             )
-            
+
             # Update result
             result.status = ExecutionStatus.COMPLETED
             result.result = sanitized_result
             result.execution_time = execution_time
             result.completed_at = datetime.utcnow()
-            
+
             # Update metrics
             self.metrics["executions_successful"] += 1
-            
+
         except TimeoutError:
             result.status = ExecutionStatus.TIMEOUT
             result.error = f"Plugin execution timed out after {request.timeout_seconds} seconds"
             self.metrics["executions_timeout"] += 1
-            
+
+        except asyncio.CancelledError:
+            # Cancellation already handled
+            pass
+
         except Exception as e:
-            result.status = ExecutionStatus.FAILED
-            result.error = str(e)
-            result.metadata["traceback"] = traceback.format_exc()
-            self.metrics["executions_failed"] += 1
-            logger.error(f"Plugin execution failed: {e}")
+            if result.status != ExecutionStatus.CANCELLED:
+                result.status = ExecutionStatus.FAILED
+                result.error = str(e)
+                result.metadata["traceback"] = traceback.format_exc()
+                self.metrics["executions_failed"] += 1
+                logger.error(f"Plugin execution failed: {e}")
         
         finally:
             # Clean up active execution
             self.active_executions.pop(request.request_id, None)
+            self.execution_workers.pop(request.request_id, None)
             
             # Add to history
             self._add_to_history(result)
@@ -383,8 +421,18 @@ class PluginExecutionEngine:
         # Get entry point function
         entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
         
-        # Execute with sandbox
-        with PluginSandbox(resource_limits, security_policy):
+        use_sandbox = (
+            security_policy.blocked_imports
+            or security_policy.allow_imports is not None
+            or set(security_policy.allowed_builtins) != set(__builtins__.keys())
+        )
+        if use_sandbox:
+            with PluginSandbox(resource_limits, security_policy):
+                if asyncio.iscoroutinefunction(entry_point):
+                    return await entry_point(parameters)
+                else:
+                    return entry_point(parameters)
+        else:
             if asyncio.iscoroutinefunction(entry_point):
                 return await entry_point(parameters)
             else:
@@ -392,80 +440,142 @@ class PluginExecutionEngine:
     
     async def _execute_in_thread(
         self,
+        request_id: str,
         plugin_metadata: PluginMetadata,
         parameters: Dict[str, Any],
         resource_limits: ResourceLimits,
         security_policy: SecurityPolicy,
-        timeout_seconds: int
+        timeout_seconds: int,
     ) -> Any:
         """Execute plugin in a separate thread."""
+
+        result_queue: "queue.Queue[tuple]" = queue.Queue()
+        cancel_event = threading.Event()
+
         def thread_execution():
-            # Load plugin module
-            plugin_module = self._load_plugin_module_sync(plugin_metadata)
-            entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
-            
-            # Execute with sandbox
-            with PluginSandbox(resource_limits, security_policy):
-                return entry_point(parameters)
-        
-        # Execute in thread pool with timeout
-        loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(self.thread_pool, thread_execution)
-        
+            try:
+                plugin_module = self._load_plugin_module_sync(plugin_metadata)
+                entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
+                use_sandbox = (
+                    security_policy.blocked_imports
+                    or security_policy.allow_imports is not None
+                    or set(security_policy.allowed_builtins)
+                    != set(__builtins__.keys())
+                )
+                if use_sandbox:
+                    with PluginSandbox(resource_limits, security_policy):
+                        if "cancel_event" in inspect.signature(entry_point).parameters:
+                            res = entry_point(parameters, cancel_event=cancel_event)
+                        else:
+                            res = entry_point(parameters)
+                else:
+                    if "cancel_event" in inspect.signature(entry_point).parameters:
+                        res = entry_point(parameters, cancel_event=cancel_event)
+                    else:
+                        res = entry_point(parameters)
+                result_queue.put(("result", res))
+            except Exception as e:
+                result_queue.put(("error", e, traceback.format_exc()))
+
+        thread = threading.Thread(target=thread_execution, daemon=True)
+        thread.start()
+        self.execution_workers[request_id].update(
+            {"type": "thread", "thread": thread, "cancel_event": cancel_event}
+        )
+
+        loop = asyncio.get_running_loop()
         try:
-            return await asyncio.wait_for(future, timeout=timeout_seconds)
+            outcome = await asyncio.wait_for(
+                loop.run_in_executor(None, result_queue.get), timeout=timeout_seconds
+            )
+            if outcome[0] == "error":
+                raise outcome[1]
+            return outcome[1]
         except asyncio.TimeoutError:
             raise TimeoutError(f"Plugin execution timed out after {timeout_seconds} seconds")
+        finally:
+            thread.join(timeout=1)
     
     async def _execute_in_process(
         self,
+        request_id: str,
         plugin_metadata: PluginMetadata,
         parameters: Dict[str, Any],
         resource_limits: ResourceLimits,
         security_policy: SecurityPolicy,
-        timeout_seconds: int
+        timeout_seconds: int,
     ) -> Any:
         """Execute plugin in a separate process."""
-        def process_execution():
+
+        result_queue: multiprocessing.Queue = multiprocessing.Queue()
+        cancel_event = multiprocessing.Event()
+
+        def process_execution(q: multiprocessing.Queue, cancel_event: multiprocessing.Event):
             try:
-                # Load plugin module
                 plugin_module = self._load_plugin_module_sync(plugin_metadata)
                 entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
-                
-                # Execute with sandbox
-                with PluginSandbox(resource_limits, security_policy):
-                    return entry_point(parameters)
+                use_sandbox = (
+                    security_policy.blocked_imports
+                    or security_policy.allow_imports is not None
+                    or set(security_policy.allowed_builtins)
+                    != set(__builtins__.keys())
+                )
+                if use_sandbox:
+                    with PluginSandbox(resource_limits, security_policy):
+                        if "cancel_event" in inspect.signature(entry_point).parameters:
+                            res = entry_point(parameters, cancel_event=cancel_event)
+                        else:
+                            res = entry_point(parameters)
+                else:
+                    if "cancel_event" in inspect.signature(entry_point).parameters:
+                        res = entry_point(parameters, cancel_event=cancel_event)
+                    else:
+                        res = entry_point(parameters)
+                q.put(("result", res))
             except Exception as e:
-                return {"error": str(e), "traceback": traceback.format_exc()}
-        
-        # Execute in process pool with timeout
-        loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(self.process_pool, process_execution)
-        
+                q.put(("error", str(e), traceback.format_exc()))
+
+        process = multiprocessing.Process(
+            target=process_execution, args=(result_queue, cancel_event)
+        )
+        process.start()
+        self.execution_workers[request_id].update(
+            {
+                "type": "process",
+                "process": process,
+                "cancel_event": cancel_event,
+                "queue": result_queue,
+            }
+        )
+
+        loop = asyncio.get_running_loop()
         try:
-            result = await asyncio.wait_for(future, timeout=timeout_seconds)
-            
-            # Check if result contains error
-            if isinstance(result, dict) and "error" in result:
-                raise Exception(result["error"])
-            
-            return result
+            outcome = await asyncio.wait_for(
+                loop.run_in_executor(None, result_queue.get), timeout=timeout_seconds
+            )
+            if outcome[0] == "error":
+                raise Exception(outcome[1])
+            return outcome[1]
         except asyncio.TimeoutError:
             raise TimeoutError(f"Plugin execution timed out after {timeout_seconds} seconds")
+        finally:
+            if process.is_alive():
+                process.join(timeout=0)
     
     async def _execute_in_sandbox(
         self,
+        request_id: str,
         plugin_metadata: PluginMetadata,
         parameters: Dict[str, Any],
         resource_limits: ResourceLimits,
         security_policy: SecurityPolicy,
-        timeout_seconds: int
+        timeout_seconds: int,
     ) -> Any:
         """Execute plugin in enhanced sandbox mode."""
         # For now, use process execution as the sandbox
         # In a production environment, this could use containers or more advanced sandboxing
         return await self._execute_in_process(
-            plugin_metadata, parameters, resource_limits, security_policy, timeout_seconds
+            request_id, plugin_metadata, parameters, resource_limits, security_policy, timeout_seconds
         )
     
     async def _load_plugin_module(self, plugin_metadata: PluginMetadata):
@@ -559,15 +669,50 @@ class PluginExecutionEngine:
         """
         if request_id not in self.active_executions:
             return False
-        
+
+        result = self.active_executions[request_id]
+        worker = self.execution_workers.get(request_id, {})
+        termination_success = False
+
         try:
-            result = self.active_executions[request_id]
+            # Cancel asyncio task if present
+            task: Optional[asyncio.Task] = worker.get("task")
+            if task is not None:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                except Exception as e:
+                    logger.error(f"Error awaiting cancelled task: {e}")
+
+            if worker.get("type") == "thread":
+                event: threading.Event = worker.get("cancel_event")
+                thread: threading.Thread = worker.get("thread")
+                if event and thread:
+                    event.set()
+                    thread.join(timeout=1)
+                    termination_success = not thread.is_alive()
+            elif worker.get("type") == "process":
+                event: multiprocessing.Event = worker.get("cancel_event")
+                process: multiprocessing.Process = worker.get("process")
+                if event and process:
+                    event.set()
+                    process.join(timeout=1)
+                    if process.is_alive():
+                        process.terminate()
+                        process.join(timeout=1)
+                    termination_success = not process.is_alive()
+
             result.status = ExecutionStatus.CANCELLED
             result.completed_at = datetime.utcnow()
-            
-            # TODO: Implement actual cancellation logic for threads/processes
-            
-            return True
+            result.terminated = termination_success
+            result.metadata["termination_success"] = termination_success
+
+            if not termination_success:
+                logger.warning(f"Termination of execution {request_id} may have failed")
+
+            return termination_success
         except Exception as e:
             logger.error(f"Failed to cancel execution {request_id}: {e}")
             return False
