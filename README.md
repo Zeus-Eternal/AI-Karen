@@ -88,6 +88,10 @@ AI-Karen is a comprehensive, production-ready AI platform designed for enterpris
 git clone <repository-url>
 cd AI-Karen
 
+# Configure environment variables
+cp .env.example .env
+# Edit .env and set required values (see [docs/environment-variables.md](docs/environment-variables.md))
+
 # Install Python dependencies
 ./scripts/install.sh
 
