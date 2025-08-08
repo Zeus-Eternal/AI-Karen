@@ -11,8 +11,21 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, Union
 
+from sqlalchemy.exc import SQLAlchemyError
+
+from ai_karen_engine.database.client import get_db_session_context
+from ai_karen_engine.database.models import LLMProvider, LLMRequest
+from ai_karen_engine.integrations.providers.deepseek_provider import DeepseekProvider
+from ai_karen_engine.integrations.providers.gemini_provider import GeminiProvider
+from ai_karen_engine.integrations.providers.huggingface_provider import (
+    HuggingFaceProvider,
+)
+from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvider
+from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvider
+
 try:
-    from prometheus_client import Counter, Histogram, CollectorRegistry
+    from prometheus_client import CollectorRegistry, Counter, Histogram
+
     PROM_REGISTRY = CollectorRegistry()
     _LLM_COUNT = Counter(
         "llm_requests_total",
@@ -28,6 +41,7 @@ try:
     )
     METRICS_ENABLED = True
 except Exception:  # pragma: no cover - optional dep
+
     class _DummyMetric:
         def labels(self, **kwargs):
             return self
@@ -43,6 +57,7 @@ except Exception:  # pragma: no cover - optional dep
     _LLM_COUNT = _LLM_LATENCY = _DummyMetric()
 
 logger = logging.getLogger("kari.llm_utils")
+
 
 # ========== Exceptions ==========
 class LLMError(Exception):
@@ -60,8 +75,11 @@ class GenerationFailed(LLMError):
 class EmbeddingFailed(LLMError):
     pass
 
+
 # ========== Metrics/Observability (Stub for Prometheus) ==========
-def record_llm_metric(event: str, duration: float, success: bool, provider: str, **extra) -> None:
+def record_llm_metric(
+    event: str, duration: float, success: bool, provider: str, **extra
+) -> None:
     """Record a metric for an LLM event.
 
     Parameters
@@ -85,12 +103,16 @@ def record_llm_metric(event: str, duration: float, success: bool, provider: str,
     label_success = "true" if success else "false"
     try:
         _LLM_COUNT.labels(event=event, provider=provider, success=label_success).inc()
-        _LLM_LATENCY.labels(event=event, provider=provider, success=label_success).observe(duration)
+        _LLM_LATENCY.labels(
+            event=event, provider=provider, success=label_success
+        ).observe(duration)
     except Exception:  # pragma: no cover - safety guard
         logger.info("Prometheus metrics disabled or failed")
 
+
 def trace_llm_event(event: str, correlation_id: str, meta: Dict[str, Any]):
     logger.info(f"[TRACE] event={event} correlation_id={correlation_id} meta={meta}")
+
 
 # ========== Provider Base ==========
 class LLMProviderBase:
@@ -100,31 +122,28 @@ class LLMProviderBase:
     def embed(self, text: Union[str, List[str]], **kwargs) -> List[float]:
         raise NotImplementedError
 
-# Import enhanced providers
-from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvider
-from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvider
-from ai_karen_engine.integrations.providers.gemini_provider import GeminiProvider
-from ai_karen_engine.integrations.providers.deepseek_provider import DeepseekProvider
-from ai_karen_engine.integrations.providers.huggingface_provider import HuggingFaceProvider
 
 # ========== Main Utility Class ==========
+
 
 class LLMUtils:
     """
     Centralized interface for all LLM operations—preferred for dependency injection.
     """
+
     def __init__(
         self,
         providers: Optional[Dict[str, LLMProviderBase]] = None,
         default: str = "ollama",
-        use_registry: bool = True
+        use_registry: bool = True,
     ):
         self.use_registry = use_registry
         self.default = default
-        
+
         if use_registry:
             # Use registry for provider management (import here to avoid circular import)
             from ai_karen_engine.integrations.llm_registry import get_registry
+
             self.registry = get_registry()
             self.providers = {}  # Cache for instantiated providers
         else:
@@ -135,40 +154,44 @@ class LLMUtils:
                     "openai": OpenAIProvider(),
                     "gemini": GeminiProvider(),
                     "deepseek": DeepseekProvider(),
-                    "huggingface": HuggingFaceProvider()
+                    "huggingface": HuggingFaceProvider(),
                 }
             self.providers = providers
             self.registry = None
 
     def get_provider(self, provider: Optional[str] = None) -> LLMProviderBase:
         provider_name = provider or self.default
-        
+
         if self.use_registry:
             # Get provider from registry
             if provider_name in self.providers:
                 return self.providers[provider_name]
-            
+
             # Create provider instance via registry
             provider_instance = self.registry.get_provider(provider_name)
             if not provider_instance:
-                raise ProviderNotAvailable(f"Provider '{provider_name}' not available in registry.")
-            
+                raise ProviderNotAvailable(
+                    f"Provider '{provider_name}' not available in registry."
+                )
+
             # Cache the instance
             self.providers[provider_name] = provider_instance
             return provider_instance
         else:
             # Legacy mode
             if provider_name not in self.providers:
-                raise ProviderNotAvailable(f"Provider '{provider_name}' not registered.")
+                raise ProviderNotAvailable(
+                    f"Provider '{provider_name}' not registered."
+                )
             return self.providers[provider_name]
-    
+
     def list_available_providers(self) -> List[str]:
         """Get list of available providers."""
         if self.use_registry:
             return self.registry.get_available_providers()
         else:
             return list(self.providers.keys())
-    
+
     def health_check_provider(self, provider: str) -> Dict[str, Any]:
         """Perform health check on a specific provider."""
         if self.use_registry:
@@ -177,13 +200,13 @@ class LLMUtils:
             # Basic health check for legacy mode
             try:
                 provider_instance = self.get_provider(provider)
-                if hasattr(provider_instance, 'health_check'):
+                if hasattr(provider_instance, "health_check"):
                     return provider_instance.health_check()
                 else:
                     return {"status": "healthy", "message": "Provider available"}
             except Exception as ex:
                 return {"status": "unhealthy", "error": str(ex)}
-    
+
     def health_check_all(self) -> Dict[str, Dict[str, Any]]:
         """Perform health check on all providers."""
         if self.use_registry:
@@ -193,8 +216,10 @@ class LLMUtils:
             for provider_name in self.providers.keys():
                 results[provider_name] = self.health_check_provider(provider_name)
             return results
-    
-    def auto_select_provider(self, requirements: Optional[Dict[str, Any]] = None) -> Optional[str]:
+
+    def auto_select_provider(
+        self, requirements: Optional[Dict[str, Any]] = None
+    ) -> Optional[str]:
         """Automatically select best available provider."""
         if self.use_registry:
             return self.registry.auto_select_provider(requirements)
@@ -203,13 +228,45 @@ class LLMUtils:
             available = self.list_available_providers()
             return available[0] if available else None
 
+    def _record_request(
+        self,
+        provider_name: str,
+        model: Optional[str],
+        usage: Dict[str, Any],
+        latency: float,
+        user_ctx: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Persist request metrics for cost reporting."""
+        try:
+            with get_db_session_context() as session:
+                provider_rec = (
+                    session.query(LLMProvider).filter_by(name=provider_name).first()
+                )
+                provider_id = provider_rec.id if provider_rec else None
+                req = LLMRequest(
+                    provider_id=provider_id,
+                    provider_name=provider_name,
+                    model=model,
+                    tenant_id=(user_ctx or {}).get("tenant_id"),
+                    user_id=(user_ctx or {}).get("user_id"),
+                    prompt_tokens=usage.get("prompt_tokens"),
+                    completion_tokens=usage.get("completion_tokens"),
+                    total_tokens=usage.get("total_tokens"),
+                    cost=usage.get("cost"),
+                    latency_ms=int(latency * 1000),
+                )
+                session.add(req)
+                session.commit()
+        except SQLAlchemyError:
+            logger.exception("Failed to record LLM request")
+
     def generate_text(
         self,
         prompt: str,
         provider: Optional[str] = None,
         trace_id: Optional[str] = None,
         user_ctx: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         provider_obj = self.get_provider(provider)
         trace_id = trace_id or str(uuid.uuid4())
@@ -224,7 +281,16 @@ class LLMUtils:
         trace_llm_event("generate_text_start", trace_id, meta)
         try:
             out = provider_obj.generate_text(prompt, **kwargs)
-            meta["duration"] = time.time() - t0
+            duration = time.time() - t0
+            usage = getattr(provider_obj, "last_usage", {})
+            self._record_request(
+                provider or self.default,
+                kwargs.get("model") or getattr(provider_obj, "model", None),
+                usage,
+                duration,
+                user_ctx,
+            )
+            meta["duration"] = duration
             trace_llm_event("generate_text_success", trace_id, meta)
             return out
         except Exception as ex:
@@ -237,7 +303,8 @@ class LLMUtils:
         text: Union[str, List[str]],
         provider: Optional[str] = None,
         trace_id: Optional[str] = None,
-        **kwargs
+        user_ctx: Optional[Dict[str, Any]] = None,
+        **kwargs,
     ) -> List[float]:
         provider_obj = self.get_provider(provider)
         trace_id = trace_id or str(uuid.uuid4())
@@ -250,7 +317,16 @@ class LLMUtils:
         trace_llm_event("embed_start", trace_id, meta)
         try:
             out = provider_obj.embed(text, **kwargs)
-            meta["duration"] = time.time() - t0
+            duration = time.time() - t0
+            usage = getattr(provider_obj, "last_usage", {})
+            self._record_request(
+                provider or self.default,
+                kwargs.get("model") or getattr(provider_obj, "model", None),
+                usage,
+                duration,
+                user_ctx,
+            )
+            meta["duration"] = duration
             trace_llm_event("embed_success", trace_id, meta)
             return out
         except Exception as ex:
@@ -258,30 +334,32 @@ class LLMUtils:
             trace_llm_event("embed_error", trace_id, meta)
             raise EmbeddingFailed(f"Provider '{provider}' failed: {ex}")
 
+
 # ========== Prompt-First Plugin API ==========
 def get_llm_manager(
     providers: Optional[Dict[str, LLMProviderBase]] = None,
     default: str = "ollama",
-    use_registry: bool = True
+    use_registry: bool = True,
 ) -> LLMUtils:
     return LLMUtils(providers, default=default, use_registry=use_registry)
+
 
 def generate_text(
     prompt: str,
     provider: Optional[str] = None,
     user_ctx: Optional[Dict[str, Any]] = None,
-    **kwargs
+    **kwargs,
 ) -> str:
     mgr = get_llm_manager()
     return mgr.generate_text(prompt, provider=provider, user_ctx=user_ctx, **kwargs)
 
+
 def embed_text(
-    text: Union[str, List[str]],
-    provider: Optional[str] = None,
-    **kwargs
+    text: Union[str, List[str]], provider: Optional[str] = None, **kwargs
 ) -> List[float]:
     mgr = get_llm_manager()
     return mgr.embed(text, provider=provider, **kwargs)
+
 
 # ========== __all__ ==========
 __all__ = [

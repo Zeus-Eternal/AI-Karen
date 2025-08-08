@@ -1,8 +1,10 @@
 # mypy: ignore-errors
 """SQLAlchemy models for multi-tenant AI-Karen platform."""
 
+import json
 import uuid
 from datetime import datetime
+from typing import Any, Dict
 
 from sqlalchemy import (
     JSON,
@@ -11,17 +13,24 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
+    Numeric,
     String,
     Text,
-    Float,
     desc,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import expression
+
+from ai_karen_engine.automation_manager.encryption_utils import (
+    decrypt_data,
+    encrypt_data,
+)
 
 Base = declarative_base()
 
@@ -159,12 +168,11 @@ class TenantMemoryItem(Base):
     metadata = Column(JSON, default={})
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_memory_items_scope_kind", "scope", "kind"),
-    )
+    __table_args__ = (Index("idx_memory_items_scope_kind", "scope", "kind"),)
 
     def __repr__(self):
         return f"<TenantMemoryItem(id={self.id}, scope='{self.scope}', kind='{self.kind}')>"
+
 
 # Backwards compatibility alias
 TenantMemoryEntry = TenantMemoryItem
@@ -340,9 +348,7 @@ class ExtensionUsage(Base):
 
     extension = relationship("Extension", back_populates="usage")
 
-    __table_args__ = (
-        Index("idx_ext_usage_name_time", "name", desc("sampled_at")),
-    )
+    __table_args__ = (Index("idx_ext_usage_name_time", "name", desc("sampled_at")),)
 
     def __repr__(self):
         return f"<ExtensionUsage(name={self.name}, sampled_at={self.sampled_at})>"
@@ -393,3 +399,59 @@ class HookExecutionStat(Base):
 
     def __repr__(self):
         return f"<HookExecutionStat(id={self.id}, hook_type='{self.hook_type}')>"
+
+
+class LLMProvider(Base):
+    """Registered LLM provider with encrypted configuration."""
+
+    __tablename__ = "llm_providers"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), unique=True, nullable=False)
+    provider_type = Column(String(50), nullable=False)
+    _config = Column("encrypted_config", LargeBinary, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    requests = relationship("LLMRequest", back_populates="provider")
+
+    @property
+    def config(self) -> Dict[str, Any]:
+        data = decrypt_data(self._config)
+        return json.loads(data) if data else {}
+
+    @config.setter
+    def config(self, value: Dict[str, Any]) -> None:
+        self._config = encrypt_data(json.dumps(value))
+
+    def __repr__(self) -> str:
+        return f"<LLMProvider(name={self.name}, type={self.provider_type})>"
+
+
+class LLMRequest(Base):
+    """LLM invocation metrics for cost tracking."""
+
+    __tablename__ = "llm_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    provider_id = Column(UUID(as_uuid=True), ForeignKey("llm_providers.id"))
+    provider_name = Column(String(100), nullable=False)
+    model = Column(String(100))
+    tenant_id = Column(String, index=True)
+    user_id = Column(String, index=True)
+    prompt_tokens = Column(Integer)
+    completion_tokens = Column(Integer)
+    total_tokens = Column(Integer)
+    cost = Column(Numeric(10, 4))
+    latency_ms = Column(Integer)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    provider = relationship("LLMProvider", back_populates="requests")
+
+    __table_args__ = (
+        Index("idx_llm_requests_provider_time", "provider_name", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<LLMRequest(provider={self.provider_name}, model={self.model}, cost={self.cost})>"
