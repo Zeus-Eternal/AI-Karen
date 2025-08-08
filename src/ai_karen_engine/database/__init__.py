@@ -7,6 +7,7 @@ from typing import AsyncGenerator, Optional
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.migrations import MigrationManager
 from ai_karen_engine.database.models import (
+    AuditLog,
     Base,
     Tenant,
     TenantConversation,
@@ -52,6 +53,7 @@ __all__ = [
     "User",
     "TenantConversation",
     "TenantMemoryEntry",
+    "AuditLog",
     "MultiTenantPostgresClient",
     "MigrationManager",
     "get_postgres_session",

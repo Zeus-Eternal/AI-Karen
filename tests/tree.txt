@@ -17,7 +17,7 @@ AI-Karen
     │   │       ├── 004_create_memory_entries_table.sql
     │   │       ├── 005_create_conversations_table.sql
     │   │       ├── 006_create_plugin_executions_table.sql
-    │   │       └── 007_create_audit_logs_table.sql
+    │   │       └── 007_create_audit_log_table.sql
     │   └── announcements.json
     ├── docker
     │   └── database
@@ -70,7 +70,7 @@ AI-Karen
     │       │   │   ├── 004_create_memory_entries_table.sql
     │       │   │   ├── 005_create_conversations_table.sql
     │       │   │   ├── 006_create_plugin_executions_table.sql
-    │       │   │   └── 007_create_audit_logs_table.sql
+    │       │   │   └── 007_create_audit_log_table.sql
     │       │   └── .gitkeep
     │       ├── scripts
     │       │   ├── .gitkeep

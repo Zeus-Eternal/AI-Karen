@@ -17,8 +17,9 @@ from sqlalchemy import (
     String,
     Text,
     cast,
+    desc,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import expression
 
@@ -40,7 +41,9 @@ class Tenant(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    users = relationship("AuthUser", back_populates="tenant", cascade="all, delete-orphan")
+    users = relationship(
+        "AuthUser", back_populates="tenant", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("idx_tenant_slug", "slug"),
@@ -66,7 +69,11 @@ class AuthUser(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    tenant = relationship("Tenant", back_populates="users", primaryjoin="AuthUser.tenant_id==cast(Tenant.id, String)")
+    tenant = relationship(
+        "Tenant",
+        back_populates="users",
+        primaryjoin="AuthUser.tenant_id==cast(Tenant.id, String)",
+    )
 
     __table_args__ = (
         Index("idx_auth_user_tenant", "tenant_id"),
@@ -252,32 +259,27 @@ class TenantPluginExecution(Base):
         return f"<TenantPluginExecution(id={self.id}, plugin_name='{self.plugin_name}', status='{self.status}')>"
 
 
-class TenantAuditLog(Base):
-    """Base model for tenant-specific audit logging."""
+class AuditLog(Base):
+    """Audit logging records for tenant and user activity."""
 
-    __tablename__ = "audit_logs"
+    __tablename__ = "audit_log"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True))
-    action = Column(String(255), nullable=False)
-    resource_type = Column(String(100))
-    resource_id = Column(String(255))
-    details = Column(JSON, default={})
-    ip_address = Column(String(45))  # IPv6 compatible
+    event_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id = Column(String)
+    user_id = Column(String)
+    actor_type = Column(String)
+    action = Column(String, nullable=False)
+    resource_type = Column(String)
+    resource_id = Column(String)
+    ip_address = Column(String)
     user_agent = Column(Text)
-    correlation_id = Column(String(255))
+    details = Column(JSONB)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_audit_user", "user_id"),
-        Index("idx_audit_action", "action"),
-        Index("idx_audit_resource", "resource_type", "resource_id"),
-        Index("idx_audit_created", "created_at"),
-        Index("idx_audit_correlation", "correlation_id"),
-    )
+    __table_args__ = (Index("idx_audit_tenant_time", "tenant_id", desc("created_at")),)
 
     def __repr__(self):
-        return f"<TenantAuditLog(id={self.id}, action='{self.action}', user_id={self.user_id})>"
+        return f"<AuditLog(event_id={self.event_id}, action='{self.action}', tenant_id={self.tenant_id})>"
 
 
 class Hook(Base):
