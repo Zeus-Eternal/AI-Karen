@@ -198,9 +198,14 @@ class ExtensionManager(HookMixin):
             
             # Check dependencies
             dependency_status = self.registry.check_dependencies(manifest)
-            missing_deps = [dep for dep, available in dependency_status.items() if not available]
+            missing_deps = [
+                dep for dep, (available, _) in dependency_status.items() if not available
+            ]
             if missing_deps:
-                raise RuntimeError(f"Missing dependencies: {missing_deps}")
+                messages = {
+                    dep: msg for dep, (avail, msg) in dependency_status.items() if not avail
+                }
+                raise RuntimeError(f"Missing dependencies: {messages}")
             
             # Load extension module
             extension_instance = await self._load_extension_module(extension_dir, manifest)

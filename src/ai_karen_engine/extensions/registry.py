@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionRecord, ExtensionStatus
 
@@ -179,37 +179,109 @@ class ExtensionRegistry:
             if tag in ext.manifest.tags
         ]
     
-    def check_dependencies(self, manifest: ExtensionManifest) -> Dict[str, bool]:
+    def check_dependencies(self, manifest: ExtensionManifest) -> Dict[str, Tuple[bool, str]]:
         """
         Check if extension dependencies are satisfied.
-        
+
         Args:
             manifest: Extension manifest to check
-            
+
         Returns:
-            Dictionary mapping dependency names to availability status
+            Dictionary mapping dependency identifiers to tuples of
+            (is_satisfied, message)
         """
-        dependency_status = {}
-        
+        from packaging.version import Version
+        from packaging.specifiers import SpecifierSet
+        from ai_karen_engine.services.plugin_registry import (
+            get_plugin_registry,
+            PluginStatus,
+        )
+
+        dependency_status: Dict[str, tuple] = {}
+
+        def _parse_specifier(spec: str) -> SpecifierSet:
+            """Convert caret (^) requirements to standard specifiers."""
+            if spec.startswith("^"):
+                base = Version(spec[1:])
+                if base.major > 0:
+                    upper = Version(f"{base.major + 1}.0.0")
+                elif base.minor > 0:
+                    upper = Version(f"0.{base.minor + 1}.0")
+                else:
+                    upper = Version(f"0.0.{base.micro + 1}")
+                spec = f">={base},<{upper}"
+            return SpecifierSet(spec)
+
         # Check extension dependencies
         for dep in manifest.dependencies.extensions:
-            # Parse version requirement if present (e.g., "extension@^1.0.0")
-            if "@" in dep:
-                dep_name = dep.split("@", 1)[0]
-            else:
-                dep_name = dep
-            
-            # Check if dependency is available
+            dep_name, version_spec = (dep.split("@", 1) + [None])[:2]
             dep_extension = self.get_extension(dep_name)
-            if dep_extension and dep_extension.status == ExtensionStatus.ACTIVE:
-                # TODO: Add version compatibility checking
-                dependency_status[dep] = True
+
+            if not dep_extension or dep_extension.status != ExtensionStatus.ACTIVE:
+                dependency_status[dep] = (
+                    False,
+                    f"Extension {dep_name} is not installed or inactive",
+                )
+                continue
+
+            if version_spec:
+                try:
+                    spec_set = _parse_specifier(version_spec)
+                    installed_version = Version(dep_extension.manifest.version)
+                    if not spec_set.contains(installed_version, prereleases=True):
+                        dependency_status[dep] = (
+                            False,
+                            f"Extension {dep_name} version {dep_extension.manifest.version} does not satisfy requirement {version_spec}",
+                        )
+                        continue
+                except Exception as exc:  # pragma: no cover - defensive
+                    dependency_status[dep] = (
+                        False,
+                        f"Invalid version specification '{version_spec}': {exc}",
+                    )
+                    continue
+
+            dependency_status[dep] = (True, "ok")
+
+        # Check plugin dependencies
+        plugin_registry = get_plugin_registry()
+        for plugin_name in manifest.dependencies.plugins:
+            metadata = plugin_registry.plugins.get(plugin_name)
+            if metadata and metadata.status == PluginStatus.ACTIVE:
+                dependency_status[f"plugin:{plugin_name}"] = (True, "ok")
             else:
-                dependency_status[dep] = False
-        
-        # TODO: Check plugin dependencies
-        # TODO: Check system service dependencies
-        
+                dependency_status[f"plugin:{plugin_name}"] = (
+                    False,
+                    f"Plugin {plugin_name} is not installed or inactive",
+                )
+
+        # Check system service dependencies
+        service_modules = {
+            "postgres": ["psycopg", "psycopg2"],
+            "redis": ["redis"],
+            "elasticsearch": ["elasticsearch"],
+            "milvus": ["pymilvus"],
+        }
+
+        for service in manifest.dependencies.system_services:
+            modules = service_modules.get(service, [])
+            available = False
+            for module_name in modules:
+                try:
+                    __import__(module_name)
+                    available = True
+                    break
+                except ImportError:
+                    continue
+
+            if available:
+                dependency_status[f"service:{service}"] = (True, "ok")
+            else:
+                dependency_status[f"service:{service}"] = (
+                    False,
+                    f"System service {service} is not available",
+                )
+
         return dependency_status
     
     def to_dict(self) -> Dict[str, Any]:
