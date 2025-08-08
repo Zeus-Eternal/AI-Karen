@@ -5,7 +5,7 @@ Integration test for the intelligence layer with the consolidated auth system.
 import pytest
 from datetime import datetime, timedelta
 
-from src.ai_karen_engine.auth import (
+from ai_karen_engine.auth import (
     AuthConfig,
     IntelligenceEngine,
     UserData,

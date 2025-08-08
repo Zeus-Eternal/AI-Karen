@@ -6,11 +6,6 @@ and have consistent error handling and response formats.
 """
 
 import pytest
-import sys
-import os
-
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 def test_auth_routes_use_unified_service():
     """Test that auth routes are using the unified AuthService."""
@@ -29,7 +24,7 @@ def test_auth_routes_use_unified_service():
             content = f.read()
             
         # Verify it imports from the unified auth service
-        assert "from ai_karen_engine.auth import AuthService, get_auth_service" in content
+        assert "from ai_karen_engine.auth.service import AuthService, get_auth_service" in content
         assert "from ai_karen_engine.auth.exceptions import" in content
         
         # Verify it has proper error handling for auth exceptions
@@ -52,7 +47,7 @@ def test_auth_middleware_uses_unified_service():
             content = f.read()
             
         # Verify it imports from the unified auth service
-        assert "from ai_karen_engine.auth import AuthService, get_auth_service" in content
+        assert "from ai_karen_engine.auth.service import AuthService, get_auth_service" in content
         assert "from ai_karen_engine.auth.exceptions import" in content
         
         # Verify it has proper error handling

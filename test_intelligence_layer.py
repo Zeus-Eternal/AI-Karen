@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import List, Dict, Any
 
-from src.ai_karen_engine.auth.intelligence import (
+from ai_karen_engine.auth.intelligence import (
     IntelligenceEngine,
     AnomalyDetector,
     BehavioralAnalyzer,
@@ -20,8 +20,8 @@ from src.ai_karen_engine.auth.intelligence import (
     AnomalyResult,
     IntelligenceResult,
 )
-from src.ai_karen_engine.auth.config import AuthConfig, IntelligenceConfig
-from src.ai_karen_engine.auth.models import UserData, AuthEvent, AuthEventType
+from ai_karen_engine.auth.config import AuthConfig, IntelligenceConfig
+from ai_karen_engine.auth.models import UserData, AuthEvent, AuthEventType
 
 
 @pytest.fixture

@@ -11,9 +11,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.ai_karen_engine.auth import (
-    AuthService,
-    AuthConfig,
+from ai_karen_engine.auth.service import AuthService, AuthConfig
+from ai_karen_engine.auth import (
     UserData,
     SessionData,
     AuthEvent,
@@ -603,11 +602,11 @@ class TestAuthServiceFactoryFunctions:
         config = AuthConfig()
         config.database.database_url = "sqlite:///:memory:"
         
-        with patch('src.ai_karen_engine.auth.service.AuthService') as MockAuthService:
+        with patch('ai_karen_engine.auth.service.AuthService') as MockAuthService:
             mock_service = AsyncMock()
             MockAuthService.return_value = mock_service
             
-            from src.ai_karen_engine.auth.service import create_auth_service
+            from ai_karen_engine.auth.service import create_auth_service
             
             result = await create_auth_service(config)
             
@@ -618,16 +617,16 @@ class TestAuthServiceFactoryFunctions:
     @pytest.mark.asyncio
     async def test_get_auth_service_creates_global_instance(self):
         """Test that get_auth_service creates and reuses global instance."""
-        from src.ai_karen_engine.auth.service import get_auth_service, _global_auth_service
-        
+        from ai_karen_engine.auth.service import get_auth_service, _global_auth_service
+
         # Reset global instance
-        import src.ai_karen_engine.auth.service as service_module
+        import ai_karen_engine.auth.service as service_module
         service_module._global_auth_service = None
         
         config = AuthConfig()
         config.database.database_url = "sqlite:///:memory:"
         
-        with patch('src.ai_karen_engine.auth.service.create_auth_service') as mock_create:
+        with patch('ai_karen_engine.auth.service.create_auth_service') as mock_create:
             mock_service = AsyncMock()
             mock_create.return_value = mock_service
             
@@ -645,13 +644,13 @@ class TestAuthServiceFactoryFunctions:
     @pytest.mark.asyncio
     async def test_get_production_auth_service(self):
         """Test getting production-configured AuthService."""
-        from src.ai_karen_engine.auth.service import get_production_auth_service
+        from ai_karen_engine.auth.service import get_production_auth_service
         
-        with patch('src.ai_karen_engine.auth.service.AuthConfig.load') as mock_load:
+        with patch('ai_karen_engine.auth.service.AuthConfig.load') as mock_load:
             mock_config = AuthConfig()
             mock_load.return_value = mock_config
             
-            with patch('src.ai_karen_engine.auth.service.create_auth_service') as mock_create:
+            with patch('ai_karen_engine.auth.service.create_auth_service') as mock_create:
                 mock_service = AsyncMock()
                 mock_create.return_value = mock_service
                 
@@ -668,13 +667,13 @@ class TestAuthServiceFactoryFunctions:
     @pytest.mark.asyncio
     async def test_get_intelligent_auth_service(self):
         """Test getting intelligence-enabled AuthService."""
-        from src.ai_karen_engine.auth.service import get_intelligent_auth_service
+        from ai_karen_engine.auth.service import get_intelligent_auth_service
         
-        with patch('src.ai_karen_engine.auth.service.AuthConfig.load') as mock_load:
+        with patch('ai_karen_engine.auth.service.AuthConfig.load') as mock_load:
             mock_config = AuthConfig()
             mock_load.return_value = mock_config
             
-            with patch('src.ai_karen_engine.auth.service.create_auth_service') as mock_create:
+            with patch('ai_karen_engine.auth.service.create_auth_service') as mock_create:
                 mock_service = AsyncMock()
                 mock_create.return_value = mock_service
                 

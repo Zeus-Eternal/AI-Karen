@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 from fastapi import HTTPException, Request, Response, status
 
 from ai_karen_engine.core.chat_memory_config import settings
-from ai_karen_engine.auth import get_auth_service
+from ai_karen_engine.auth.service import get_auth_service
 
 # Shared cookie name for authentication sessions
 COOKIE_NAME = "kari_session"

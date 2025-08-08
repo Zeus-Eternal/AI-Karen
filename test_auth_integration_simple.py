@@ -12,11 +12,11 @@ from datetime import datetime, timezone
 # Test that the auth routes are properly importing and using the unified AuthService
 def test_auth_routes_import_unified_service():
     """Test that auth routes import the unified AuthService."""
-    with patch('src.ai_karen_engine.auth.get_auth_service') as mock_get_service:
+    with patch('ai_karen_engine.auth.service.get_auth_service') as mock_get_service:
         mock_get_service.return_value = AsyncMock()
-        
+
         # Import should work without errors
-        from src.ai_karen_engine.api_routes import auth
+        from ai_karen_engine.api_routes import auth
         
         # Check that the route module has the expected functions
         assert hasattr(auth, 'get_auth_service_instance')
@@ -28,11 +28,11 @@ def test_auth_routes_import_unified_service():
 
 def test_auth_middleware_import_unified_service():
     """Test that auth middleware imports the unified AuthService."""
-    with patch('src.ai_karen_engine.auth.get_auth_service') as mock_get_service:
+    with patch('ai_karen_engine.auth.service.get_auth_service') as mock_get_service:
         mock_get_service.return_value = AsyncMock()
-        
+
         # Import should work without errors
-        from src.ai_karen_engine.middleware import auth
+        from ai_karen_engine.middleware import auth
         
         # Check that the middleware has the expected functions
         assert hasattr(auth, 'auth_middleware')
@@ -41,7 +41,7 @@ def test_auth_middleware_import_unified_service():
 
 def test_auth_routes_error_handling_imports():
     """Test that auth routes import the correct exception types."""
-    from src.ai_karen_engine.api_routes.auth import (
+    from ai_karen_engine.api_routes.auth import (
         InvalidCredentialsError,
         AccountLockedError,
         SessionExpiredError,
@@ -59,7 +59,7 @@ def test_auth_routes_error_handling_imports():
 
 def test_auth_middleware_error_handling_imports():
     """Test that auth middleware imports the correct exception types."""
-    from src.ai_karen_engine.middleware.auth import (
+    from ai_karen_engine.middleware.auth import (
         AuthError,
         SessionExpiredError,
         RateLimitExceededError
@@ -73,7 +73,7 @@ def test_auth_middleware_error_handling_imports():
 
 def test_auth_routes_consistent_response_format():
     """Test that auth routes have consistent response models."""
-    from src.ai_karen_engine.api_routes.auth import (
+    from ai_karen_engine.api_routes.auth import (
         LoginResponse,
         UserResponse,
         LoginRequest,
@@ -97,11 +97,11 @@ def test_auth_routes_consistent_response_format():
 
 def test_core_dependencies_use_unified_service():
     """Test that core dependencies use the unified AuthService."""
-    with patch('src.ai_karen_engine.auth.get_auth_service') as mock_get_service:
+    with patch('ai_karen_engine.auth.service.get_auth_service') as mock_get_service:
         mock_service = AsyncMock()
         mock_get_service.return_value = mock_service
         
-        from src.ai_karen_engine.core.dependencies import get_current_user_context
+        from ai_karen_engine.core.dependencies import get_current_user_context
         
         # Function should be available
         assert get_current_user_context
@@ -110,7 +110,7 @@ def test_core_dependencies_use_unified_service():
 @pytest.mark.asyncio
 async def test_auth_service_integration_in_dependencies():
     """Test that dependencies properly integrate with AuthService."""
-    from src.ai_karen_engine.core.dependencies import get_current_user_context
+    from ai_karen_engine.core.dependencies import get_current_user_context
     from fastapi import Request
     
     # Mock request with session cookie
@@ -129,7 +129,7 @@ async def test_auth_service_integration_in_dependencies():
     }
     mock_auth_service.validate_session.return_value = mock_user_data
     
-    with patch('src.ai_karen_engine.auth.get_auth_service', return_value=mock_auth_service):
+    with patch('ai_karen_engine.auth.service.get_auth_service', return_value=mock_auth_service):
         # Should be able to get user context
         user_context = await get_current_user_context(mock_request)
         
@@ -146,7 +146,7 @@ async def test_auth_service_integration_in_dependencies():
 
 def test_auth_routes_have_proper_status_codes():
     """Test that auth routes define proper HTTP status codes."""
-    from src.ai_karen_engine.api_routes.auth import status
+    from ai_karen_engine.api_routes.auth import status
     
     # Verify status codes are imported
     assert hasattr(status, 'HTTP_401_UNAUTHORIZED')
@@ -157,7 +157,7 @@ def test_auth_routes_have_proper_status_codes():
 
 def test_middleware_has_proper_response_format():
     """Test that middleware returns consistent JSON responses."""
-    from src.ai_karen_engine.middleware.auth import JSONResponse
+    from ai_karen_engine.middleware.auth import JSONResponse
     
     # Verify JSONResponse is available
     assert JSONResponse
@@ -165,7 +165,7 @@ def test_middleware_has_proper_response_format():
 
 def test_auth_routes_logging_integration():
     """Test that auth routes have proper logging setup."""
-    from src.ai_karen_engine.api_routes.auth import logger
+    from ai_karen_engine.api_routes.auth import logger
     
     # Verify logger is available
     assert logger
@@ -175,7 +175,7 @@ def test_auth_routes_logging_integration():
 
 def test_auth_configuration_integration():
     """Test that auth routes integrate with configuration."""
-    from src.ai_karen_engine.api_routes.auth import settings
+    from ai_karen_engine.api_routes.auth import settings
     
     # Verify settings are available
     assert settings
@@ -184,7 +184,7 @@ def test_auth_configuration_integration():
 
 def test_session_cookie_configuration():
     """Test that session cookie configuration is properly set up."""
-    from src.ai_karen_engine.api_routes.auth import set_session_cookie, COOKIE_NAME
+    from ai_karen_engine.api_routes.auth import set_session_cookie, COOKIE_NAME
     
     # Verify cookie functions and constants are available
     assert set_session_cookie

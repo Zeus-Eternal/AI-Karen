@@ -6,12 +6,9 @@ Test script to verify Task 1 implementation:
 - Base exception classes for unified error handling
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from datetime import datetime, timedelta
-from src.ai_karen_engine.auth import (
+from ai_karen_engine.auth import (
     # Data models
     UserData, SessionData, AuthEvent,
     AuthEventType, SessionStorageType, AuthMode,

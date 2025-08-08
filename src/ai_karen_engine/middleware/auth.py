@@ -6,7 +6,7 @@ try:
 except Exception:  # pragma: no cover - fallback for tests
     from ai_karen_engine.fastapi_stub import Request, JSONResponse
 
-from ai_karen_engine.auth import AuthService, get_auth_service
+from ai_karen_engine.auth.service import AuthService, get_auth_service
 from ai_karen_engine.auth.models import UserData
 from ai_karen_engine.auth.exceptions import (
     AuthError,

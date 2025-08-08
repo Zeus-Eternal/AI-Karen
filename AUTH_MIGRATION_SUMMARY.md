@@ -13,24 +13,24 @@ Instead of creating a compatibility layer, all existing code was updated to use 
 ### Files Updated:
 
 1. **`src/ai_karen_engine/services/auth_utils.py`**
-   - Updated import: `from ai_karen_engine.auth import get_auth_service`
+   - Updated import: `from ai_karen_engine.auth.service import get_auth_service`
    - Fixed async usage: `service = await get_auth_service()`
 
 2. **`src/ai_karen_engine/utils/auth.py`**
-   - Updated import: `from ai_karen_engine.auth import get_auth_service`
+   - Updated import: `from ai_karen_engine.auth.service import get_auth_service`
    - Fixed async usage in session creation and validation
 
 3. **`src/ai_karen_engine/middleware/auth.py`**
-   - Updated import: `from ai_karen_engine.auth import AuthService, get_auth_service`
+   - Updated import: `from ai_karen_engine.auth.service import AuthService, get_auth_service`
    - Added lazy initialization of auth service instance
    - Fixed async middleware to properly await auth service
 
 4. **`src/ai_karen_engine/core/dependencies.py`**
-   - Updated import: `from ai_karen_engine.auth import get_auth_service`
+   - Updated import: `from ai_karen_engine.auth.service import get_auth_service`
    - Fixed async usage: `service = await get_auth_service()`
 
 5. **`src/ai_karen_engine/api_routes/auth.py`**
-   - Updated import: `from ai_karen_engine.auth import AuthService, get_auth_service`
+   - Updated import: `from ai_karen_engine.auth.service import AuthService, get_auth_service`
    - Added `get_auth_service_instance()` helper for lazy initialization
    - Updated all auth service calls to use the new async pattern
 

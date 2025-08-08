@@ -16,12 +16,16 @@ from unittest.mock import patch
 
 import pytest
 
-from src.ai_karen_engine.auth.config import DatabaseConfig
-from src.ai_karen_engine.auth.connection_pool import ConnectionPool, QueryOptimizer
-from src.ai_karen_engine.auth.database_schema import DatabaseSchemaManager
-from src.ai_karen_engine.auth.exceptions import DatabaseConnectionError, DatabaseOperationError, MigrationError
-from src.ai_karen_engine.auth.migration_utils import AuthDataMigrator
-from src.ai_karen_engine.auth.models import UserData
+from ai_karen_engine.auth.config import DatabaseConfig
+from ai_karen_engine.auth.connection_pool import ConnectionPool, QueryOptimizer
+from ai_karen_engine.auth.database_schema import DatabaseSchemaManager
+from ai_karen_engine.auth.exceptions import (
+    DatabaseConnectionError,
+    DatabaseOperationError,
+    MigrationError,
+)
+from ai_karen_engine.auth.migration_utils import AuthDataMigrator
+from ai_karen_engine.auth.models import UserData
 
 
 class TestDatabaseSchemaManager:

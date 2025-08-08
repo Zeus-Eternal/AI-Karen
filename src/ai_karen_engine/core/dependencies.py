@@ -28,7 +28,7 @@ from ai_karen_engine.core.service_registry import (
     WebUIMemoryService,
     get_service_registry,
 )
-from ai_karen_engine.auth import get_auth_service
+from ai_karen_engine.auth.service import get_auth_service
 
 logger = logging.getLogger(__name__)
 

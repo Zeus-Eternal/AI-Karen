@@ -16,10 +16,9 @@ from typing import Dict, Any, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Import the auth modules
-from src.ai_karen_engine.auth.service import AuthService
-from src.ai_karen_engine.auth.config import AuthConfig
-from src.ai_karen_engine.auth.models import UserData, AuthEvent, AuthEventType
-from src.ai_karen_engine.auth.exceptions import (
+from ai_karen_engine.auth.service import AuthService, AuthConfig
+from ai_karen_engine.auth.models import UserData, AuthEvent, AuthEventType
+from ai_karen_engine.auth.exceptions import (
     UserNotFoundError,
     InvalidTokenError,
     TokenExpiredError,
@@ -482,8 +481,8 @@ class TestTokenManagerEnhancements:
     @pytest.fixture
     def token_manager(self):
         """Create a test token manager instance."""
-        from src.ai_karen_engine.auth.config import JWTConfig
-        from src.ai_karen_engine.auth.tokens import TokenManager
+        from ai_karen_engine.auth.config import JWTConfig
+        from ai_karen_engine.auth.tokens import TokenManager
         
         config = JWTConfig()
         config.secret_key = "test-secret-key-for-testing-only"
@@ -620,8 +619,8 @@ class TestDatabaseTokenStorage:
     @pytest.fixture
     def db_client(self):
         """Create a test database client."""
-        from src.ai_karen_engine.auth.config import DatabaseConfig
-        from src.ai_karen_engine.auth.database import DatabaseClient
+        from ai_karen_engine.auth.config import DatabaseConfig
+        from ai_karen_engine.auth.database import DatabaseClient
         
         config = DatabaseConfig()
         config.database_url = "sqlite:///:memory:"  # In-memory database for testing

@@ -16,7 +16,7 @@ import tempfile
 from datetime import datetime, timedelta
 
 # Import the unified auth components
-from src.ai_karen_engine.auth import (
+from ai_karen_engine.auth import (
     AccountLockedError,
     AuthConfig,
     AuthEvent,

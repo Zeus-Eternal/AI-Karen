@@ -17,7 +17,7 @@ from uuid import uuid4
 import pytest
 
 # Import the auth components
-from src.ai_karen_engine.auth import (
+from ai_karen_engine.auth import (
     AuthConfig,
     AuthEventType,
     DatabaseConfig,
@@ -32,7 +32,7 @@ from src.ai_karen_engine.auth import (
     UserData,
     UserNotFoundError,
 )
-from src.ai_karen_engine.auth.core import CoreAuthenticator, PasswordHasher, PasswordValidator
+from ai_karen_engine.auth.core import CoreAuthenticator, PasswordHasher, PasswordValidator
 
 
 class TestPasswordHasher:
@@ -343,7 +343,7 @@ class TestCoreAuthenticator:
                 )
         
         # Next attempt should be blocked due to lockout
-        from src.ai_karen_engine.auth.exceptions import AccountLockedError
+        from ai_karen_engine.auth.exceptions import AccountLockedError
         with pytest.raises(AccountLockedError):
             await core_auth.authenticate_user(
                 email=sample_user_data.email,

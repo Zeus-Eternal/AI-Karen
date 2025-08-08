@@ -6,7 +6,7 @@ The Auth Service centralizes authentication, session management, and security ch
 
 ### Getting an instance
 ```python
-from ai_karen_engine.auth import AuthService, get_auth_service
+from ai_karen_engine.auth.service import AuthService, get_auth_service
 
 service = await get_auth_service()
 ```
@@ -54,7 +54,7 @@ await service.invalidate_session(session.session_id)
 Use these steps to replace legacy authentication calls with the unified `AuthService`:
 
 1. **Update Imports**
-   - Replace `from old_auth import AuthClient` with `from ai_karen_engine.auth import AuthService, get_auth_service`.
+   - Replace `from old_auth import AuthClient` with `from ai_karen_engine.auth.service import AuthService, get_auth_service`.
 2. **Use the Factory**
    - Instead of instantiating services directly, call `await get_auth_service()` to reuse the shared instance.
 3. **Map Old Methods**

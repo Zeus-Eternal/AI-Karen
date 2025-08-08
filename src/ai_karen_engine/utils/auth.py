@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 import jwt
 
 from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.auth import get_auth_service
+from ai_karen_engine.auth.service import get_auth_service
 
 logger = get_logger(__name__)
 
