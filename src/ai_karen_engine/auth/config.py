@@ -878,7 +878,7 @@ class AuthConfig:
             path = next((p for p in candidates if p.exists()), None)
 
         if path and path.exists():
-            if path.suffix.lower() == ".env":
+            if path.name.lower() == ".env" or path.suffix.lower() == ".env":
                 config = cls.from_env_file(path)
             else:
                 config = cls.from_file(path)

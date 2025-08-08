@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 """Shared pytest configuration."""
 import importlib
+import os
 import sys
 import types
 # Prefer the real `requests` package when available to support

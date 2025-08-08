@@ -45,23 +45,47 @@ async def get_current_config() -> AIKarenConfig:
 
 # Authentication dependencies
 async def get_current_user_context(request: Request) -> Dict[str, Any]:
-    """Get authenticated user context from session token."""
+    """Get authenticated user context from session token or JWT access token."""
+    # First try to get session token from cookie
     session_token = request.cookies.get("kari_session")
-    if not session_token:
-        auth_header = request.headers.get("authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            session_token = auth_header.split(" ")[1]
-    if not session_token:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    service = await get_auth_service()
-    user_data = await service.validate_session(
-        session_token=session_token,
-        ip_address=request.client.host if request.client else "unknown",
-        user_agent=request.headers.get("user-agent", ""),
-    )
-    if not user_data:
-        raise HTTPException(status_code=401, detail="Invalid or expired session")
-    return user_data
+    if session_token:
+        # Use session-based authentication
+        service = await get_auth_service()
+        user_data = await service.validate_session(
+            session_token=session_token,
+            ip_address=request.client.host if request.client else "unknown",
+            user_agent=request.headers.get("user-agent", ""),
+        )
+        if user_data:
+            return user_data
+    
+    # Try JWT access token from Authorization header
+    auth_header = request.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        access_token = auth_header.split(" ")[1]
+        try:
+            service = await get_auth_service()
+            # Use the token manager to validate JWT access token
+            token_payload = await service.core_auth.token_manager.validate_access_token(access_token)
+            
+            # Convert JWT payload to user data format
+            user_data = {
+                "user_id": token_payload.get("sub"),
+                "email": token_payload.get("email"),
+                "full_name": token_payload.get("full_name"),
+                "roles": token_payload.get("roles", []),
+                "tenant_id": token_payload.get("tenant_id"),
+                "preferences": token_payload.get("preferences", {}),
+                "two_factor_enabled": token_payload.get("two_factor_enabled", False),
+                "is_verified": token_payload.get("is_verified", False),
+                "is_active": token_payload.get("is_active", True),
+            }
+            return user_data
+        except Exception:
+            # JWT validation failed, continue to raise auth error
+            pass
+    
+    raise HTTPException(status_code=401, detail="Authentication required")
 
 
 async def get_current_user_id(

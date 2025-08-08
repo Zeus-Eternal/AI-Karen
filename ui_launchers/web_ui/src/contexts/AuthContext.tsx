@@ -25,17 +25,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading: true,
   });
 
-  // Initialize auth state using cookie-based session
+  // Initialize auth state using JWT tokens or session
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const currentUser = await authService.getCurrentUser();
-        setAuthState({
-          user: currentUser,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-      } catch {
+        // Check if we have a stored JWT token
+        const accessToken = localStorage.getItem('karen_access_token');
+        
+        if (accessToken) {
+          // We have a token, try to get current user
+          const currentUser = await authService.getCurrentUser();
+          setAuthState({
+            user: currentUser,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        } else {
+          // No token, user is not authenticated
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+        }
+      } catch (error) {
+        // Token might be expired or invalid, clear it and set unauthenticated
+        localStorage.removeItem('karen_access_token');
+        localStorage.removeItem('karen_refresh_token');
         setAuthState({
           user: null,
           isAuthenticated: false,
@@ -52,6 +68,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthState(prev => ({ ...prev, isLoading: true }));
       
       const loginResponse = await authService.login(credentials);
+      
+      // Store JWT tokens in localStorage
+      if (loginResponse.access_token) {
+        localStorage.setItem('karen_access_token', loginResponse.access_token);
+      }
+      if (loginResponse.refresh_token) {
+        localStorage.setItem('karen_refresh_token', loginResponse.refresh_token);
+      }
       
       // Create user object from login response
       const user: User = {
@@ -109,6 +133,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = (): void => {
     authService.logout();
+    
+    // Clear JWT tokens from localStorage
+    localStorage.removeItem('karen_access_token');
+    localStorage.removeItem('karen_refresh_token');
+    
     setAuthState({
       user: null,
       isAuthenticated: false,

@@ -371,6 +371,13 @@ class KarenBackendService {
   // Session token management
   private getStoredSessionToken(): string | null {
     try {
+      // First try to get the token from AuthContext (localStorage)
+      const authToken = localStorage.getItem('karen_access_token');
+      if (authToken) {
+        return authToken;
+      }
+      
+      // Fallback to the old sessionStorage token
       return sessionStorage.getItem('kari_session_token');
     } catch {
       return null;
@@ -379,6 +386,9 @@ class KarenBackendService {
 
   private storeSessionToken(token: string): void {
     try {
+      // Store in localStorage to match AuthContext behavior
+      localStorage.setItem('karen_access_token', token);
+      // Also keep the old sessionStorage for backward compatibility
       sessionStorage.setItem('kari_session_token', token);
     } catch (error) {
       console.warn('Failed to store session token:', error);
@@ -387,6 +397,9 @@ class KarenBackendService {
 
   private clearSessionToken(): void {
     try {
+      // Clear from both storage locations
+      localStorage.removeItem('karen_access_token');
+      localStorage.removeItem('karen_refresh_token');
       sessionStorage.removeItem('kari_session_token');
     } catch (error) {
       console.warn('Failed to clear session token:', error);

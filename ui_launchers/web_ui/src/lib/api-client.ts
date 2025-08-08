@@ -105,12 +105,23 @@ export class ApiClient {
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
       try {
+        // Add JWT token to headers if available
+        const headers = {
+          ...this.config.defaultHeaders,
+          ...request.headers,
+        };
+        
+        // Add Authorization header with JWT token if available
+        if (typeof window !== 'undefined') {
+          const accessToken = localStorage.getItem('karen_access_token');
+          if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+          }
+        }
+
         const response = await fetch(url, {
           method,
-          headers: {
-            ...this.config.defaultHeaders,
-            ...request.headers,
-          },
+          headers,
           body: request.body ? JSON.stringify(request.body) : undefined,
           signal: controller.signal,
           credentials: 'include', // Include cookies for authentication
