@@ -70,3 +70,9 @@ src/ai_karen_engine/services/ai_orchestrator-bak.py
 .fuse_hidden0004897500000004
 main copy.py
 main copy 2.py
+
+# log files
+*.log
+server.log
+server_debug.log
+backend.log
