@@ -38,7 +38,12 @@ from ai_karen_engine.extensions.resource_monitor import (
 from ai_karen_engine.event_bus import get_event_bus
 from ai_karen_engine.extensions.marketplace_client import MarketplaceClient
 from ai_karen_engine.database.client import get_db_session_context
-from ai_karen_engine.database.models import Extension
+from ai_karen_engine.database.models import (
+    Extension,
+    InstalledExtension,
+    ExtensionInstallEvent,
+    MarketplaceExtension,
+)
 
 
 class ExtensionManager(HookMixin):
@@ -550,17 +555,17 @@ class ExtensionManager(HookMixin):
         version: str,
         source: str = "local",
         path: Optional[str] = None,
+        user_id: Optional[str] = None,
+        action: str = "install",
     ) -> bool:
-        """
-        Install an extension from local path or marketplace.
-        """
+        """Install an extension from local path or marketplace and record the event."""
         self.logger.info("Installing extension %s from %s", extension_id, source)
+        dest = self.extension_root / extension_id
         try:
             if source == "local":
                 if not path:
                     raise ValueError("path required for local install")
                 src = Path(path)
-                dest = self.extension_root / extension_id
                 if dest.exists():
                     self.logger.warning("Extension already installed: %s", extension_id)
                     return False
@@ -569,6 +574,57 @@ class ExtensionManager(HookMixin):
                 await self.marketplace_client.download_extension(
                     extension_id, version, self.extension_root
                 )
+
+            try:
+                with get_db_session_context() as session:
+                    mp = session.get(MarketplaceExtension, extension_id)
+                    if not mp:
+                        mp = MarketplaceExtension(
+                            extension_id=extension_id, latest_version=version
+                        )
+                        session.add(mp)
+                    else:
+                        mp.latest_version = version
+                        mp.updated_at = datetime.utcnow()
+
+                    installed = (
+                        session.query(InstalledExtension)
+                        .filter_by(extension_id=extension_id)
+                        .one_or_none()
+                    )
+                    if installed:
+                        installed.version = version
+                        installed.installed_by = user_id
+                        installed.installed_at = datetime.utcnow()
+                        installed.source = source
+                        installed.directory = str(dest)
+                    else:
+                        session.add(
+                            InstalledExtension(
+                                extension_id=extension_id,
+                                version=version,
+                                installed_by=user_id,
+                                installed_at=datetime.utcnow(),
+                                source=source,
+                                directory=str(dest),
+                            )
+                        )
+
+                    session.add(
+                        ExtensionInstallEvent(
+                            extension_id=extension_id,
+                            action=action,
+                            version=version,
+                            user_id=user_id,
+                            occurred_at=datetime.utcnow(),
+                        )
+                    )
+                    session.commit()
+            except Exception as db_error:  # pragma: no cover - optional DB
+                self.logger.debug(
+                    "Failed to record installation for %s: %s", extension_id, db_error
+                )
+
             return True
         except Exception as e:
             self.logger.error(
@@ -582,12 +638,13 @@ class ExtensionManager(HookMixin):
         version: str,
         source: str = "local",
         path: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> bool:
-        """
-        Update an installed extension (remove + install).
-        """
-        await self.remove_extension(name)
-        return await self.install_extension(name, version, source, path)
+        """Update an installed extension (remove + install)."""
+        await self.remove_extension(name, user_id=user_id)
+        return await self.install_extension(
+            name, version, source, path, user_id=user_id, action="upgrade"
+        )
 
     async def enable_extension(self, name: str) -> Optional[ExtensionRecord]:
         """
@@ -604,16 +661,40 @@ class ExtensionManager(HookMixin):
         if self.registry.get_extension(name):
             await self.unload_extension(name)
 
-    async def remove_extension(self, name: str) -> bool:
-        """
-        Remove an extension from disk and registry.
-        """
+    async def remove_extension(self, name: str, user_id: Optional[str] = None) -> bool:
+        """Remove an extension from disk and registry."""
         try:
             if self.registry.get_extension(name):
                 await self.unload_extension(name)
             ext_dir = await self._find_extension_directory(name)
             if ext_dir and ext_dir.exists():
                 shutil.rmtree(ext_dir)
+
+            try:
+                with get_db_session_context() as session:
+                    installed = (
+                        session.query(InstalledExtension)
+                        .filter_by(extension_id=name)
+                        .one_or_none()
+                    )
+                    version = installed.version if installed else None
+                    if installed:
+                        session.delete(installed)
+                    session.add(
+                        ExtensionInstallEvent(
+                            extension_id=name,
+                            action="remove",
+                            version=version,
+                            user_id=user_id,
+                            occurred_at=datetime.utcnow(),
+                        )
+                    )
+                    session.commit()
+            except Exception as db_error:  # pragma: no cover - optional DB
+                self.logger.debug(
+                    "Failed to record removal for %s: %s", name, db_error
+                )
+
             return True
         except Exception as e:
             self.logger.error("Failed to remove extension %s: %s", name, e, exc_info=True)

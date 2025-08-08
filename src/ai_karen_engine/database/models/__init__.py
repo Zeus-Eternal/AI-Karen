@@ -355,6 +355,72 @@ class ExtensionUsage(Base):
         return f"<ExtensionUsage(name={self.name}, sampled_at={self.sampled_at})>"
 
 
+class MarketplaceExtension(Base):
+    """Metadata for extensions available in the marketplace."""
+
+    __tablename__ = "marketplace_extensions"
+
+    extension_id = Column(String, primary_key=True)
+    latest_version = Column(String)
+    title = Column(String)
+    author = Column(String)
+    summary = Column(Text)
+    metadata = Column(JSONB)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    installs = relationship("InstalledExtension", back_populates="extension")
+
+    def __repr__(self):
+        return f"<MarketplaceExtension(id={self.extension_id}, version={self.latest_version})>"
+
+
+class InstalledExtension(Base):
+    """Records of installed extensions per instance."""
+
+    __tablename__ = "installed_extensions"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    extension_id = Column(
+        String, ForeignKey("marketplace_extensions.extension_id", ondelete="SET NULL")
+    )
+    version = Column(String)
+    installed_by = Column(
+        String, ForeignKey("auth_users.user_id", ondelete="SET NULL"), nullable=True
+    )
+    installed_at = Column(DateTime, default=datetime.utcnow)
+    source = Column(String)
+    directory = Column(String)
+
+    extension = relationship("MarketplaceExtension", back_populates="installs")
+    installer = relationship("AuthUser")
+
+    def __repr__(self):
+        return f"<InstalledExtension(extension_id={self.extension_id}, version={self.version})>"
+
+
+class ExtensionInstallEvent(Base):
+    """History of extension installation actions."""
+
+    __tablename__ = "extension_install_events"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    extension_id = Column(
+        String, ForeignKey("marketplace_extensions.extension_id", ondelete="SET NULL")
+    )
+    action = Column(String, nullable=False)
+    version = Column(String)
+    user_id = Column(
+        String, ForeignKey("auth_users.user_id", ondelete="SET NULL"), nullable=True
+    )
+    occurred_at = Column(DateTime, default=datetime.utcnow)
+
+    extension = relationship("MarketplaceExtension")
+    user = relationship("AuthUser")
+
+    def __repr__(self):
+        return f"<ExtensionInstallEvent(extension_id={self.extension_id}, action={self.action})>"
+
+
 class Hook(Base):
     """Registered hook metadata."""
 

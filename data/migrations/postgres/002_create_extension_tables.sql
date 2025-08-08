@@ -105,3 +105,35 @@ CREATE TRIGGER extension_config_update_timestamp
     BEFORE UPDATE ON extension_config
     FOR EACH ROW
     EXECUTE FUNCTION update_extension_config_timestamp();
+
+-- Marketplace extension metadata
+CREATE TABLE IF NOT EXISTS marketplace_extensions (
+    extension_id TEXT PRIMARY KEY,
+    latest_version TEXT,
+    title TEXT,
+    author TEXT,
+    summary TEXT,
+    metadata JSONB,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Installed extension records
+CREATE TABLE IF NOT EXISTS installed_extensions (
+    id SERIAL PRIMARY KEY,
+    extension_id TEXT REFERENCES marketplace_extensions(extension_id) ON DELETE SET NULL,
+    version TEXT,
+    installed_by TEXT REFERENCES auth_users(user_id) ON DELETE SET NULL,
+    installed_at TIMESTAMP DEFAULT NOW(),
+    source TEXT,
+    directory TEXT
+);
+
+-- Installation history
+CREATE TABLE IF NOT EXISTS extension_install_events (
+    id SERIAL PRIMARY KEY,
+    extension_id TEXT REFERENCES marketplace_extensions(extension_id) ON DELETE SET NULL,
+    action VARCHAR(20) NOT NULL,
+    version TEXT,
+    user_id TEXT REFERENCES auth_users(user_id) ON DELETE SET NULL,
+    occurred_at TIMESTAMP DEFAULT NOW()
+);
