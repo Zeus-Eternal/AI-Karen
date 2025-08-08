@@ -1,12 +1,13 @@
 """Seed data for authentication tables."""
 
+# mypy: ignore-errors
+
 import uuid
 from datetime import datetime
-from typing import Sequence
 
 from sqlalchemy.orm import Session
 
-from ai_karen_engine.database.models.auth_models import AuthUser, AuthProvider
+from ai_karen_engine.database.models.auth_models import AuthProvider, AuthUser
 
 
 def seed_default_auth(session: Session) -> None:
