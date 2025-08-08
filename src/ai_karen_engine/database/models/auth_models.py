@@ -1,8 +1,8 @@
 """Authentication related SQLAlchemy models."""
 
+# mypy: ignore-errors
+
 import uuid
-from datetime import datetime
-from typing import Any, Dict, List
 
 from sqlalchemy import (
     Boolean,
@@ -236,3 +236,66 @@ class EmailVerificationToken(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<EmailVerificationToken(id={self.id}, user_id={self.user_id})>"
+
+
+class Role(Base):
+    """RBAC role definition."""
+
+    __tablename__ = "roles"
+
+    role_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    permissions = relationship(
+        "RolePermission", back_populates="role", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name", name="uq_role_tenant_name"),
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover - simple repr
+        return f"<Role(role_id={self.role_id}, name={self.name}, tenant_id={self.tenant_id})>"
+
+
+class RolePermission(Base):
+    """Mapping of roles to permissions and scopes."""
+
+    __tablename__ = "role_permissions"
+
+    role_id = Column(
+        String, ForeignKey("roles.role_id", ondelete="CASCADE"), primary_key=True
+    )
+    permission = Column(String, primary_key=True)
+    scope = Column(String, primary_key=True, default="*")
+
+    role = relationship("Role", back_populates="permissions")
+
+    def __repr__(self) -> str:  # pragma: no cover - simple repr
+        return f"<RolePermission(role_id={self.role_id}, permission={self.permission}, scope={self.scope})>"
+
+
+class ApiKey(Base):
+    """API keys for programmatic access (hashed)."""
+
+    __tablename__ = "api_keys"
+
+    key_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, index=True)
+    user_id = Column(
+        String, ForeignKey("auth_users.user_id", ondelete="SET NULL"), nullable=True
+    )
+    hashed_key = Column(String, nullable=False, unique=True)
+    name = Column(String)
+    scopes = Column(JSONB, nullable=False, default=list)
+    last_used_at = Column(DateTime)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    expires_at = Column(DateTime)
+
+    user = relationship("AuthUser")
+
+    def __repr__(self) -> str:  # pragma: no cover - simple repr
+        return f"<ApiKey(key_id={self.key_id}, tenant_id={self.tenant_id})>"

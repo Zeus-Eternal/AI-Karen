@@ -1,5 +1,8 @@
 """Bootstrap seed helpers for authentication tables."""
 
-from .auth_seed import seed_default_auth
+# mypy: ignore-errors
 
-__all__ = ["seed_default_auth"]
+from .auth_seed import seed_default_auth
+from .rbac_seed import seed_default_roles
+
+__all__ = ["seed_default_auth", "seed_default_roles"]
