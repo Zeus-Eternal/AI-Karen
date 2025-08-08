@@ -512,6 +512,21 @@ async def setup_default_health_checks() -> None:
             return {"status": "healthy", "message": "Memory Service OK"}
         except Exception as e:
             return {"status": "unhealthy", "message": f"Memory Service error: {str(e)}"}
+
+    async def check_extensions():
+        try:
+            from ai_karen_engine.extensions import get_extension_manager
+            manager = get_extension_manager()
+            if not manager:
+                return {"status": "unhealthy", "message": "Extension manager not initialized"}
+            summary = manager.get_health_summary()
+            return {
+                "status": summary.get("overall_status", "healthy"),
+                "message": "Extension system health",
+                "details": summary,
+            }
+        except Exception as e:
+            return {"status": "unhealthy", "message": f"Extension system error: {str(e)}"}
     
     # Register health checks
     monitor.register_health_check("database", check_database, interval=30, critical=True)
@@ -519,5 +534,6 @@ async def setup_default_health_checks() -> None:
     monitor.register_health_check("vector_db", check_vector_db, interval=60, critical=True)
     monitor.register_health_check("ai_orchestrator", check_ai_orchestrator, interval=30, critical=True)
     monitor.register_health_check("memory_service", check_memory_service, interval=30, critical=True)
+    monitor.register_health_check("extensions", check_extensions, interval=30, critical=False)
     
     logger.info("Default health checks configured")

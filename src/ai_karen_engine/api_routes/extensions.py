@@ -167,4 +167,16 @@ async def get_registry_summary(user: Dict[str, Any] = Depends(get_current_user))
     return extension_manager.registry.to_dict()
 
 
+@router.get("/extensions/health")
+async def get_extensions_health(user: Dict[str, Any] = Depends(get_current_user)):
+    """Get overall health summary for extensions."""
+    extension_manager = get_extension_manager()
+    if not extension_manager:
+        raise HTTPException(
+            status_code=503,
+            detail="Extension manager not initialized",
+        )
+    return extension_manager.get_health_summary()
+
+
 __all__ = ["router"]
