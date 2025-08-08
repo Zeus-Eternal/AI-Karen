@@ -1,4 +1,4 @@
--- AI Karen Database Schema: AG-UI + Copilot-ready Chat Core
+-- Initial schema for AG-UI + Copilot-ready chat core
 
 CREATE TABLE auth_users (
   user_id           TEXT PRIMARY KEY,
