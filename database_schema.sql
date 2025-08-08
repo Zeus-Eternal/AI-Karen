@@ -107,45 +107,50 @@ CREATE TABLE audit_log (
 CREATE INDEX idx_audit_tenant_time ON audit_log(tenant_id, created_at DESC);
 
 CREATE TABLE conversations (
-  convo_id       TEXT PRIMARY KEY,
-  tenant_id      TEXT,
-  owner_user_id  TEXT REFERENCES auth_users(user_id) ON DELETE SET NULL,
-  title          TEXT,
-  metadata       JSONB DEFAULT '{}'::jsonb,   -- tags, pinned, channel
-  created_at     TIMESTAMP DEFAULT now(),
-  updated_at     TIMESTAMP DEFAULT now(),
-  archived_at    TIMESTAMP
+  id                UUID PRIMARY KEY,
+  user_id           UUID NOT NULL,
+  title             TEXT,
+  conversation_metadata JSONB DEFAULT '{}'::jsonb,
+  is_active         BOOLEAN DEFAULT TRUE,
+  created_at        TIMESTAMP DEFAULT now(),
+  updated_at        TIMESTAMP DEFAULT now(),
+  session_id        TEXT,
+  ui_context        JSONB DEFAULT '{}'::jsonb,
+  ai_insights       JSONB DEFAULT '{}'::jsonb,
+  user_settings     JSONB DEFAULT '{}'::jsonb,
+  summary           TEXT,
+  tags              TEXT[],
+  last_ai_response_id TEXT
 );
 
-CREATE INDEX idx_conversations_owner ON conversations(owner_user_id, updated_at DESC);
+CREATE INDEX idx_conversation_user ON conversations(user_id);
+CREATE INDEX idx_conversation_created ON conversations(created_at);
+CREATE INDEX idx_conversation_active ON conversations(is_active);
+CREATE INDEX idx_conversation_session ON conversations(session_id);
+CREATE INDEX idx_conversation_tags ON conversations USING gin(tags);
+CREATE INDEX idx_conversation_user_session ON conversations(user_id, session_id);
 
 CREATE TABLE messages (
-  message_id     TEXT PRIMARY KEY,
-  convo_id       TEXT NOT NULL REFERENCES conversations(convo_id) ON DELETE CASCADE,
-  tenant_id      TEXT,
-  role           TEXT NOT NULL,               -- user|assistant|tool|system
-  content        TEXT NOT NULL,               -- fallback plain text
-  content_json   JSONB,                       -- rich: blocks, tool-calls
-  parent_id      TEXT REFERENCES messages(message_id) ON DELETE SET NULL,
-  model          TEXT,
-  latency_ms     INT,
-  token_input    INT,
-  token_output   INT,
-  cost_usd       NUMERIC(10,4),
-  error          TEXT,
-  created_at     TIMESTAMP DEFAULT now()
+  id               UUID PRIMARY KEY,
+  conversation_id  UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  role             TEXT NOT NULL,
+  content          TEXT NOT NULL,
+  metadata         JSONB DEFAULT '{}'::jsonb,
+  function_call    JSONB,
+  function_response JSONB,
+  created_at       TIMESTAMP DEFAULT now()
 );
 
-CREATE INDEX idx_messages_convo_time ON messages(convo_id, created_at);
+CREATE INDEX idx_messages_convo_time ON messages(conversation_id, created_at);
 
 CREATE TABLE message_tools (
   id           BIGSERIAL PRIMARY KEY,
-  message_id   TEXT NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
+  message_id   UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
   tool_name    TEXT NOT NULL,
   arguments    JSONB,
   result       JSONB,
   latency_ms   INT,
-  status       TEXT,                        -- ok|error|timeout
+  status       TEXT,
   created_at   TIMESTAMP DEFAULT now()
 );
 
