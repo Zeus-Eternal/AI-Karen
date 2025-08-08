@@ -48,6 +48,7 @@ CREATE TABLE auth_providers (
   tenant_id     TEXT,
   type          TEXT NOT NULL,           -- oauth|saml|oidc
   config        JSONB NOT NULL,
+  metadata      JSONB DEFAULT '{}'::jsonb,
   enabled       BOOLEAN DEFAULT TRUE,
   created_at    TIMESTAMP DEFAULT now(),
   updated_at    TIMESTAMP DEFAULT now()
@@ -65,9 +66,10 @@ CREATE TABLE user_identities (
 CREATE TABLE roles (
   role_id     TEXT PRIMARY KEY,
   tenant_id   TEXT,
-  name        TEXT UNIQUE NOT NULL,
+  name        TEXT NOT NULL,
   description TEXT,
-  created_at  TIMESTAMP DEFAULT now()
+  created_at  TIMESTAMP DEFAULT now(),
+  UNIQUE (tenant_id, name)
 );
 
 CREATE TABLE role_permissions (
@@ -86,8 +88,12 @@ CREATE TABLE api_keys (
   scopes       JSONB NOT NULL,           -- ["chat:write","files:read"]
   last_used_at TIMESTAMP,
   created_at   TIMESTAMP DEFAULT now(),
-  expires_at   TIMESTAMP
+  expires_at   TIMESTAMP,
+  UNIQUE (hashed_key)
 );
+
+CREATE UNIQUE INDEX idx_roles_tenant_name ON roles(tenant_id, name);
+CREATE UNIQUE INDEX idx_api_keys_hashed_key ON api_keys(hashed_key);
 
 CREATE TABLE audit_log (
   event_id      BIGSERIAL PRIMARY KEY,
@@ -106,47 +112,54 @@ CREATE TABLE audit_log (
 CREATE INDEX idx_audit_tenant_time ON audit_log(tenant_id, created_at DESC);
 
 CREATE TABLE conversations (
-  convo_id       TEXT PRIMARY KEY,
-  tenant_id      TEXT,
-  owner_user_id  TEXT REFERENCES auth_users(user_id) ON DELETE SET NULL,
-  title          TEXT,
-  metadata       JSONB DEFAULT '{}'::jsonb,   -- tags, pinned, channel
-  created_at     TIMESTAMP DEFAULT now(),
-  updated_at     TIMESTAMP DEFAULT now(),
-  archived_at    TIMESTAMP
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  title TEXT,
+  conversation_metadata JSONB DEFAULT '{}'::jsonb,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT now(),
+  updated_at TIMESTAMP DEFAULT now(),
+  session_id TEXT,
+  ui_context JSONB DEFAULT '{}'::jsonb,
+  ai_insights JSONB DEFAULT '{}'::jsonb,
+  user_settings JSONB DEFAULT '{}'::jsonb,
+  summary TEXT,
+  tags TEXT[],
+  last_ai_response_id TEXT
 );
 
-CREATE INDEX idx_conversations_owner ON conversations(owner_user_id, updated_at DESC);
+CREATE INDEX idx_conversation_user ON conversations(user_id);
+CREATE INDEX idx_conversation_created ON conversations(created_at);
+CREATE INDEX idx_conversation_active ON conversations(is_active);
+CREATE INDEX idx_conversation_session ON conversations(session_id);
+CREATE INDEX idx_conversation_tags ON conversations(tags);
+CREATE INDEX idx_conversation_user_session ON conversations(user_id, session_id);
 
 CREATE TABLE messages (
-  message_id     TEXT PRIMARY KEY,
-  convo_id       TEXT NOT NULL REFERENCES conversations(convo_id) ON DELETE CASCADE,
-  tenant_id      TEXT,
-  role           TEXT NOT NULL,               -- user|assistant|tool|system
-  content        TEXT NOT NULL,               -- fallback plain text
-  content_json   JSONB,                       -- rich: blocks, tool-calls
-  parent_id      TEXT REFERENCES messages(message_id) ON DELETE SET NULL,
-  model          TEXT,
-  latency_ms     INT,
-  token_input    INT,
-  token_output   INT,
-  cost_usd       NUMERIC(10,4),
-  error          TEXT,
-  created_at     TIMESTAMP DEFAULT now()
+  id UUID PRIMARY KEY,
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  message_metadata JSONB DEFAULT '{}'::jsonb,
+  function_call JSONB,
+  function_response JSONB,
+  created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE INDEX idx_messages_convo_time ON messages(convo_id, created_at);
+CREATE INDEX idx_messages_convo_time ON messages(conversation_id, created_at);
 
 CREATE TABLE message_tools (
-  id           BIGSERIAL PRIMARY KEY,
-  message_id   TEXT NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
-  tool_name    TEXT NOT NULL,
-  arguments    JSONB,
-  result       JSONB,
-  latency_ms   INT,
-  status       TEXT,                        -- ok|error|timeout
-  created_at   TIMESTAMP DEFAULT now()
+  id BIGSERIAL PRIMARY KEY,
+  message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  tool_name TEXT NOT NULL,
+  arguments JSONB,
+  result JSONB,
+  latency_ms INT,
+  status TEXT,
+  created_at TIMESTAMP DEFAULT now()
 );
+
+CREATE INDEX idx_message_tools_message ON message_tools(message_id);
 
 CREATE TABLE memory_items (
   memory_id     TEXT PRIMARY KEY,
@@ -216,28 +229,32 @@ CREATE TABLE hook_exec_stats (
 );
 
 CREATE TABLE llm_providers (
-  provider_id   TEXT PRIMARY KEY,          -- ollama|openai|anthropic|gemini
-  tenant_id     TEXT,
-  config        JSONB NOT NULL,            -- endpoints, models, api keys (encrypted)
-  enabled       BOOLEAN DEFAULT TRUE,
-  created_at    TIMESTAMP DEFAULT now(),
-  updated_at    TIMESTAMP DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) UNIQUE NOT NULL,
+  provider_type VARCHAR(50) NOT NULL,
+  encrypted_config BYTEA NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE llm_requests (
-  id             BIGSERIAL PRIMARY KEY,
-  provider_id    TEXT REFERENCES llm_providers(provider_id) ON DELETE SET NULL,
-  model          TEXT,
-  user_id        TEXT,
-  convo_id       TEXT,
-  prompt_tokens  INT,
-  completion_tokens INT,
-  latency_ms     INT,
-  cost_usd       NUMERIC(10,4),
-  status         TEXT,                     -- ok|error|rate_limited
-  error          TEXT,
-  created_at     TIMESTAMP DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider_id UUID REFERENCES llm_providers(id) ON DELETE SET NULL,
+  provider_name VARCHAR(100) NOT NULL,
+  model VARCHAR(100),
+  tenant_id VARCHAR(255),
+  user_id VARCHAR(255),
+  prompt_tokens INTEGER,
+  completion_tokens INTEGER,
+  total_tokens INTEGER,
+  cost NUMERIC(10,4),
+  latency_ms INTEGER,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_llm_requests_provider_time ON llm_requests(provider_name, created_at);
+CREATE INDEX idx_llm_requests_tenant_time ON llm_requests(tenant_id, created_at);
 
 CREATE TABLE files (
   file_id       TEXT PRIMARY KEY,
