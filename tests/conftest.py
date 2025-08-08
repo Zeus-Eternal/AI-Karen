@@ -3,6 +3,7 @@
 import importlib
 import sys
 import types
+import os
 # Prefer the real `requests` package when available to support
 # libraries that rely on its internal structure. Fall back to the
 # lightweight stub only if `requests` cannot be imported.
