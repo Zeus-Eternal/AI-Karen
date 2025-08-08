@@ -6,6 +6,7 @@ resource management, and timeout controls.
 """
 
 import asyncio
+import builtins
 import logging
 import os
 import resource
@@ -23,6 +24,7 @@ import uuid
 import importlib.util
 import multiprocessing
 import threading
+import types
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, TimeoutError
 
 from pydantic import BaseModel, ConfigDict, Field, validator
@@ -121,12 +123,12 @@ class ExecutionResult:
 
 class PluginSandbox:
     """Secure plugin execution sandbox."""
-    
+
     def __init__(self, resource_limits: ResourceLimits, security_policy: SecurityPolicy):
         self.resource_limits = resource_limits
         self.security_policy = security_policy
         self.original_modules = {}
-        self.restricted_builtins = {}
+        self.allowed_builtins: Dict[str, Any] = {}
     
     def __enter__(self):
         """Enter sandbox context."""
@@ -167,68 +169,46 @@ class PluginSandbox:
     
     def _setup_import_restrictions(self):
         """Set up import restrictions."""
-        # Store original import function
-        self.original_import = __builtins__['__import__']
-        
+        self.original_import = builtins.__import__
+
         def restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
             """Restricted import function."""
-            # Check if module is blocked
             if name in self.security_policy.blocked_imports:
                 raise ImportError(f"Import of '{name}' is not allowed in sandbox")
-            
-            # Check if module is explicitly allowed
+
             if self.security_policy.allow_imports:
                 allowed = False
                 for allowed_pattern in self.security_policy.allow_imports:
                     if name.startswith(allowed_pattern):
                         allowed = True
                         break
-                
                 if not allowed:
                     raise ImportError(f"Import of '{name}' is not allowed in sandbox")
-            
+
             return self.original_import(name, globals, locals, fromlist, level)
-        
-        # Replace import function
-        __builtins__['__import__'] = restricted_import
-    
+
+        self._restricted_import = restricted_import
+
     def _setup_builtin_restrictions(self):
         """Set up builtin function restrictions."""
-        # Store original builtins
-        self.original_builtins = dict(__builtins__)
-        
-        # Create restricted builtins
-        restricted_builtins = {}
+        allowed = {}
         for name in self.security_policy.allowed_builtins:
-            if name in self.original_builtins:
-                restricted_builtins[name] = self.original_builtins[name]
-        
-        # Add safe versions of potentially dangerous functions
+            if hasattr(builtins, name):
+                allowed[name] = getattr(builtins, name)
+
         if not self.security_policy.allow_file_system:
-            restricted_builtins['open'] = self._restricted_open
-        
-        # Replace builtins
-        __builtins__.clear()
-        __builtins__.update(restricted_builtins)
+            allowed['open'] = self._restricted_open
+
+        allowed['__import__'] = getattr(self, '_restricted_import', builtins.__import__)
+        self.allowed_builtins = allowed
     
     def _restricted_open(self, *args, **kwargs):
         """Restricted open function."""
         raise PermissionError("File system access is not allowed in sandbox")
-    
+
     def _restore_environment(self):
         """Restore original environment."""
-        try:
-            # Restore import function
-            if hasattr(self, 'original_import'):
-                __builtins__['__import__'] = self.original_import
-            
-            # Restore builtins
-            if hasattr(self, 'original_builtins'):
-                __builtins__.clear()
-                __builtins__.update(self.original_builtins)
-                
-        except Exception as e:
-            logger.error(f"Failed to restore environment: {e}")
+        pass
 
 
 class PluginExecutionEngine:
@@ -384,11 +364,20 @@ class PluginExecutionEngine:
         entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
         
         # Execute with sandbox
-        with PluginSandbox(resource_limits, security_policy):
+        with PluginSandbox(resource_limits, security_policy) as sandbox:
+            func_globals = dict(entry_point.__globals__)
+            func_globals['__builtins__'] = sandbox.allowed_builtins
+            restricted = types.FunctionType(
+                entry_point.__code__,
+                func_globals,
+                name=entry_point.__name__,
+                argdefs=entry_point.__defaults__,
+                closure=entry_point.__closure__,
+            )
             if asyncio.iscoroutinefunction(entry_point):
-                return await entry_point(parameters)
+                return await restricted(parameters)
             else:
-                return entry_point(parameters)
+                return restricted(parameters)
     
     async def _execute_in_thread(
         self,
@@ -405,8 +394,17 @@ class PluginExecutionEngine:
             entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
             
             # Execute with sandbox
-            with PluginSandbox(resource_limits, security_policy):
-                return entry_point(parameters)
+            with PluginSandbox(resource_limits, security_policy) as sandbox:
+                func_globals = dict(entry_point.__globals__)
+                func_globals['__builtins__'] = sandbox.allowed_builtins
+                restricted = types.FunctionType(
+                    entry_point.__code__,
+                    func_globals,
+                    name=entry_point.__name__,
+                    argdefs=entry_point.__defaults__,
+                    closure=entry_point.__closure__,
+                )
+                return restricted(parameters)
         
         # Execute in thread pool with timeout
         loop = asyncio.get_event_loop()
@@ -433,8 +431,17 @@ class PluginExecutionEngine:
                 entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
                 
                 # Execute with sandbox
-                with PluginSandbox(resource_limits, security_policy):
-                    return entry_point(parameters)
+                with PluginSandbox(resource_limits, security_policy) as sandbox:
+                    func_globals = dict(entry_point.__globals__)
+                    func_globals['__builtins__'] = sandbox.allowed_builtins
+                    restricted = types.FunctionType(
+                        entry_point.__code__,
+                        func_globals,
+                        name=entry_point.__name__,
+                        argdefs=entry_point.__defaults__,
+                        closure=entry_point.__closure__,
+                    )
+                    return restricted(parameters)
             except Exception as e:
                 return {"error": str(e), "traceback": traceback.format_exc()}
         
