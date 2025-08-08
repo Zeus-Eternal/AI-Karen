@@ -21,6 +21,11 @@ from typing import Any, Dict, List, Optional, Union, BinaryIO
 import json
 
 try:
+    import aiofiles  # type: ignore
+except Exception:  # pragma: no cover - fallback if aiofiles missing
+    aiofiles = None
+
+try:
     from pydantic import BaseModel, Field
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
@@ -116,6 +121,7 @@ class FileAttachmentService:
     - Image recognition and processing
     - Security scanning and validation
     - Thumbnail and preview generation
+    - Non-blocking asynchronous file saving
     """
     
     def __init__(
@@ -215,7 +221,7 @@ class FileAttachmentService:
         request: FileUploadRequest,
         file_content: bytes
     ) -> FileUploadResponse:
-        """Upload and process a file attachment."""
+        """Upload and process a file attachment using non-blocking I/O."""
         try:
             # Validate file
             is_valid, validation_message = self._validate_file(
@@ -257,17 +263,43 @@ class FileAttachmentService:
                 file_hash=file_hash,
                 processing_status=ProcessingStatus.PROCESSING
             )
-            
-            # Store file
-            with open(file_path, 'wb') as f:
-                f.write(file_content)
-            
+
+            # Store file using non-blocking I/O
+            try:
+                if aiofiles:
+                    async with aiofiles.open(file_path, 'wb') as f:  # type: ignore
+                        await f.write(file_content)
+                else:  # pragma: no cover - fallback to thread
+                    def _write_file() -> None:
+                        with open(file_path, 'wb') as f:
+                            f.write(file_content)
+
+                    await asyncio.to_thread(_write_file)
+            except OSError as e:
+                logger.error(f"Failed to store file {file_id}: {e}", exc_info=True)
+                return FileUploadResponse(
+                    file_id="",
+                    processing_status=ProcessingStatus.FAILED,
+                    metadata=FileMetadata(
+                        filename="",
+                        original_filename=request.filename,
+                        file_size=request.file_size,
+                        mime_type=request.content_type,
+                        file_type=FileType.UNKNOWN,
+                        file_hash="",
+                        processing_status=ProcessingStatus.FAILED,
+                    ),
+                    success=False,
+                    message=f"File storage failed: {str(e)}",
+                )
+
             # Store metadata
             self._file_metadata[file_id] = metadata
-            
+
             # Start background processing
-            asyncio.create_task(self._process_file(file_id, file_path, metadata))
-            
+            task = asyncio.create_task(self._process_file(file_id, file_path, metadata))
+            task.add_done_callback(self._handle_task_exception)
+
             return FileUploadResponse(
                 file_id=file_id,
                 processing_status=ProcessingStatus.PROCESSING,
@@ -293,7 +325,15 @@ class FileAttachmentService:
                 success=False,
                 message=f"File upload failed: {str(e)}"
             )
-    
+
+    @staticmethod
+    def _handle_task_exception(task: asyncio.Task) -> None:
+        """Log exceptions from background tasks."""
+        try:
+            task.result()
+        except Exception as e:  # pragma: no cover - log only
+            logger.error(f"Background task failed: {e}", exc_info=True)
+
     async def _process_file(
         self,
         file_id: str,
