@@ -653,7 +653,9 @@ try:
 except Exception:  # pragma: no cover
     _FASTAPI_AVAILABLE = False
     # Stubs to avoid NameErrors if imported without FastAPI context
-    Depends = object  # type: ignore
+    def Depends(*_args: Any, **_kwargs: Any) -> None:  # type: ignore
+        """Fallback stub for fastapi.Depends when FastAPI isn't installed."""
+        return None
     HTTPException = Exception  # type: ignore
     Request = object  # type: ignore
     status = type("status", (), {"HTTP_401_UNAUTHORIZED": 401, "HTTP_403_FORBIDDEN": 403})  # type: ignore
