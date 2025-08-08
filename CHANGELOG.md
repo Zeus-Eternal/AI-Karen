@@ -20,16 +20,16 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Scheduler and reasoning engine cleanup
 
- 
 
- 
- 
+
+
+
 ## [0.4.2] - 2025-06-22
 ### Added
 - ChatHub with slash commands, short-term NeuroVault memory and metrics
 - Expanded feature guide and memory docs with ChatHub details
 
- 
+
 ## [0.4.3] - 2025-06-22
 ### Added
 - LLM registry and `llm_manager` plugin with `/models` API
@@ -43,7 +43,7 @@ All notable changes to this project will be documented in this file.
 - MeshPlanner Neo4j integration and plugin chaining
 - Documentation updates for mesh_arch and event_bus
 
- 
+
 
 ## [0.3.0] - 2025-05-10
 - EchoCore integration with reflection tokens
@@ -53,3 +53,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.1.0] - 2025-03-01
 - Initial skeleton with FastAPI and example plugin
+
+## [0.4.5] - 2025-08-08
+### Fixed
+- Developer API no longer requires a database connection and falls back to placeholder metrics when no `db_client` is provided.
