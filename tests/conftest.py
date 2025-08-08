@@ -4,7 +4,7 @@ import importlib
 import os
 import sys
 import types
-import os
+
 # Prefer the real `requests` package when available to support
 # libraries that rely on its internal structure. Fall back to the
 # lightweight stub only if `requests` cannot be imported.
@@ -43,19 +43,54 @@ sys.modules.setdefault(
     "fastapi.testclient",
     importlib.import_module("ai_karen_engine.fastapi_stub.testclient"),
 )
-sys.modules.setdefault(
-    "pydantic", importlib.import_module("ai_karen_engine.pydantic_stub")
+fastapi_exceptions_stub = types.SimpleNamespace(RequestValidationError=Exception)
+sys.modules.setdefault("fastapi.exceptions", fastapi_exceptions_stub)
+fastapi_security_stub = types.SimpleNamespace(
+    APIKeyHeader=object, OAuth2PasswordBearer=object
 )
+sys.modules.setdefault("fastapi.security", fastapi_security_stub)
+try:
+    import pydantic as _pydantic  # type: ignore
+
+    sys.modules.setdefault("pydantic", _pydantic)
+except Exception:
+    sys.modules.setdefault(
+        "pydantic", importlib.import_module("ai_karen_engine.pydantic_stub")
+    )
+
+try:
+    import pydantic_settings as _pydantic_settings  # type: ignore
+
+    sys.modules.setdefault("pydantic_settings", _pydantic_settings)
+except Exception:
+    pydantic_settings_stub = types.SimpleNamespace(
+        BaseSettings=importlib.import_module(
+            "ai_karen_engine.pydantic_stub"
+        ).BaseSettings,
+        SettingsConfigDict=dict,
+    )
+    sys.modules.setdefault("pydantic_settings", pydantic_settings_stub)
 
 
 # Alias installed-style packages for tests
 sys.modules.setdefault("ai_karen_engine", importlib.import_module("ai_karen_engine"))
 sys.modules.setdefault("ui_logic", importlib.import_module("ui_logic"))
 sys.modules.setdefault("services", importlib.import_module("ai_karen_engine.services"))
-sys.modules.setdefault("integrations", importlib.import_module("ai_karen_engine.integrations"))
-sys.modules.setdefault("integrations.llm_registry", importlib.import_module("ai_karen_engine.integrations.llm_registry"))
-sys.modules.setdefault("integrations.model_discovery", importlib.import_module("ai_karen_engine.integrations.model_discovery"))
-sys.modules.setdefault("integrations.llm_utils", importlib.import_module("ai_karen_engine.integrations.llm_utils"))
+sys.modules.setdefault(
+    "integrations", importlib.import_module("ai_karen_engine.integrations")
+)
+sys.modules.setdefault(
+    "integrations.llm_registry",
+    importlib.import_module("ai_karen_engine.integrations.llm_registry"),
+)
+sys.modules.setdefault(
+    "integrations.model_discovery",
+    importlib.import_module("ai_karen_engine.integrations.model_discovery"),
+)
+sys.modules.setdefault(
+    "integrations.llm_utils",
+    importlib.import_module("ai_karen_engine.integrations.llm_utils"),
+)
 # Ensure required runtime dependencies are available
 try:  # pragma: no cover - fail early if missing
     import fastapi  # noqa: F401
@@ -69,6 +104,8 @@ os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "test")
 os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")
 os.environ.setdefault("KARI_JOB_SIGNING_KEY", "test")
 os.environ.setdefault("DUCKDB_PATH", ":memory:")
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("SECRET_KEY", "test")
 
 # Lightweight LLMOrchestrator stub to avoid heavyweight dependencies
 llm_stub = types.ModuleType("ai_karen_engine.llm_orchestrator")

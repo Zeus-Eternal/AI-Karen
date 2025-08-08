@@ -274,6 +274,7 @@ responses = SimpleNamespace(
     JSONResponse=JSONResponse,
     Response=Response,
     PlainTextResponse=PlainTextResponse,
+    StreamingResponse=Response,
 )
 sys.modules["fastapi.responses"] = responses  # type: ignore[assignment]
 
@@ -292,6 +293,22 @@ def Depends(func):
 def Query(default=None, **_kw):
     """Simplified Query parameter stub."""
     return default
+
+
+def File(default=None, **_kw):
+    """Simplified File parameter stub."""
+    return default
+
+
+def Form(default=None, **_kw):
+    """Simplified Form parameter stub."""
+    return default
+
+
+class UploadFile:
+    def __init__(self, filename: str = "", file=None):
+        self.filename = filename
+        self.file = file
 
 
 class status:

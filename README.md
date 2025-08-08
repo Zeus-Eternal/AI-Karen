@@ -210,6 +210,8 @@ pip install -r requirements.txt
 pre-commit install
 
 # Set environment variables
+export DATABASE_URL=postgresql://user:pass@localhost:5432/ai_karen
+export SECRET_KEY=change_me
 export POSTGRES_USER=karen_user
 export POSTGRES_PASSWORD=karen_secure_pass_change_me
 export POSTGRES_DB=ai_karen
@@ -220,6 +222,8 @@ export ELASTICSEARCH_URL=http://localhost:9200
 export MILVUS_HOST=localhost
 export MILVUS_PORT=19530
 ```
+
+Debug mode is disabled by default; set `DEBUG=true` to enable verbose logging during development.
 
 ### Development Commands
 
