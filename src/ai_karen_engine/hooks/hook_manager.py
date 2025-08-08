@@ -305,26 +305,53 @@ class HookManager:
             f"{total_execution_time:.2f}ms total"
         )
 
-        # Persist execution statistics
-        timeout_count = sum(1 for r in results if r.error and "timed out" in r.error)
+        # Persist execution statistics grouped by source
         try:
-            with get_db_session_context() as session:
-                stat = HookExecutionStat(
-                    hook_type=hook_type,
-                    executions=len(results),
-                    successes=successful_hooks,
-                    errors=failed_hooks,
-                    timeouts=timeout_count,
-                    avg_duration_ms=int(total_execution_time / len(results))
-                    if results
-                    else 0,
-                    window_start=datetime.utcnow(),
-                    window_end=datetime.utcnow(),
+            stats_by_source: Dict[str, Dict[str, float]] = {}
+            for hook_reg, result in zip(filtered_hooks, results):
+                src = hook_reg.source_name or "unknown"
+                data = stats_by_source.setdefault(
+                    src,
+                    {
+                        "executions": 0,
+                        "successes": 0,
+                        "errors": 0,
+                        "timeouts": 0,
+                        "total_duration": 0.0,
+                    },
                 )
-                session.add(stat)
+                data["executions"] += 1
+                if result.success:
+                    data["successes"] += 1
+                else:
+                    data["errors"] += 1
+                    if result.error and "timed out" in result.error:
+                        data["timeouts"] += 1
+                data["total_duration"] += result.execution_time_ms
+
+            with get_db_session_context() as session:
+                for source_name, data in stats_by_source.items():
+                    stat = HookExecutionStat(
+                        hook_type=hook_type,
+                        source_name=source_name,
+                        executions=data["executions"],
+                        successes=data["successes"],
+                        errors=data["errors"],
+                        timeouts=data["timeouts"],
+                        avg_duration_ms=int(
+                            data["total_duration"] / data["executions"]
+                        )
+                        if data["executions"]
+                        else 0,
+                        window_start=datetime.utcnow(),
+                        window_end=datetime.utcnow(),
+                    )
+                    session.add(stat)
                 session.commit()
         except Exception as db_error:
-            self.logger.debug(f"Failed to record hook execution stats: {db_error}")
+            self.logger.debug(
+                f"Failed to record hook execution stats: {db_error}"
+            )
 
         return summary
 

@@ -302,6 +302,52 @@ class AuditLog(Base):
         return f"<AuditLog(event_id={self.event_id}, action='{self.action}', tenant_id={self.tenant_id})>"
 
 
+class Extension(Base):
+    """Registered extension metadata."""
+
+    __tablename__ = "extensions"
+
+    name = Column(String, primary_key=True)
+    version = Column(String, nullable=False)
+    category = Column(String)
+    capabilities = Column(JSONB)
+    directory = Column(String)
+    status = Column(String, nullable=False)
+    error_msg = Column(Text)
+    loaded_at = Column(DateTime)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+    usage = relationship("ExtensionUsage", back_populates="extension")
+
+    def __repr__(self):
+        return f"<Extension(name={self.name}, status='{self.status}')>"
+
+
+class ExtensionUsage(Base):
+    """Sampled resource usage metrics for extensions."""
+
+    __tablename__ = "extension_usage"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    name = Column(String, ForeignKey("extensions.name", ondelete="CASCADE"))
+    memory_mb = Column(Float)
+    cpu_percent = Column(Float)
+    disk_mb = Column(Float)
+    network_sent = Column(BigInteger)
+    network_recv = Column(BigInteger)
+    uptime_seconds = Column(BigInteger)
+    sampled_at = Column(DateTime, default=datetime.utcnow)
+
+    extension = relationship("Extension", back_populates="usage")
+
+    __table_args__ = (
+        Index("idx_ext_usage_name_time", "name", desc("sampled_at")),
+    )
+
+    def __repr__(self):
+        return f"<ExtensionUsage(name={self.name}, sampled_at={self.sampled_at})>"
+
+
 class Hook(Base):
     """Registered hook metadata."""
 

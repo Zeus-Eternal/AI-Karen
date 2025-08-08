@@ -11,6 +11,7 @@ import logging
 import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from datetime import datetime
 
 from ai_karen_engine.plugins.router import PluginRouter
 
@@ -36,6 +37,8 @@ from ai_karen_engine.extensions.resource_monitor import (
 )
 from ai_karen_engine.event_bus import get_event_bus
 from ai_karen_engine.extensions.marketplace_client import MarketplaceClient
+from ai_karen_engine.database.client import get_db_session_context
+from ai_karen_engine.database.models import Extension
 
 
 class ExtensionManager(HookMixin):
@@ -248,6 +251,30 @@ class ExtensionManager(HookMixin):
 
                 self.logger.info("Extension %s loaded and initialized", name)
 
+                # Persist extension metadata
+                try:
+                    with get_db_session_context() as session:
+                        caps = getattr(manifest, "capabilities", None)
+                        caps_dict = caps.dict() if hasattr(caps, "dict") else caps
+                        session.merge(
+                            Extension(
+                                name=manifest.name,
+                                version=manifest.version,
+                                category=getattr(manifest, "category", None),
+                                capabilities=caps_dict,
+                                directory=str(extension_dir),
+                                status=record.status.value,
+                                error_msg=record.error_message,
+                                loaded_at=datetime.utcnow(),
+                                updated_at=datetime.utcnow(),
+                            )
+                        )
+                        session.commit()
+                except Exception as db_error:
+                    self.logger.debug(
+                        "Failed to persist extension %s: %s", name, db_error
+                    )
+
             except Exception as e:
                 self.registry.update_status(name, ExtensionStatus.ERROR, str(e))
                 raise RuntimeError(f"Extension initialization failed: {e}") from e
@@ -323,6 +350,20 @@ class ExtensionManager(HookMixin):
                 self.logger.debug("Event publish failed: %s", exc)
 
             self.logger.info("Extension %s unloaded", name)
+
+            # Update persistence
+            try:
+                with get_db_session_context() as session:
+                    ext = session.get(Extension, name)
+                    if ext:
+                        ext.status = ExtensionStatus.INACTIVE.value
+                        ext.error_msg = None
+                        ext.updated_at = datetime.utcnow()
+                        session.commit()
+            except Exception as db_error:
+                self.logger.debug(
+                    "Failed to update extension %s: %s", name, db_error
+                )
 
         except Exception as e:
             self.logger.error("Failed to unload extension %s: %s", name, e, exc_info=True)

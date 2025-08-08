@@ -24,6 +24,8 @@ except ImportError:
 
 from ai_karen_engine.extensions.models import ExtensionRecord, ExtensionStatus
 from ai_karen_engine.hooks.hook_types import HookTypes
+from ai_karen_engine.database.client import get_db_session_context
+from ai_karen_engine.database.models import ExtensionUsage
 
 
 class HealthStatus(Enum):
@@ -250,6 +252,28 @@ class ResourceMonitor:
                         network_bytes_recv=network_bytes_recv,
                         uptime_seconds=uptime_seconds,
                     )
+
+            # Persist usage sample
+            try:
+                usage = self.extension_usage.get(name)
+                if usage:
+                    with get_db_session_context() as session:
+                        session.add(
+                            ExtensionUsage(
+                                name=name,
+                                memory_mb=usage.memory_mb,
+                                cpu_percent=usage.cpu_percent,
+                                disk_mb=usage.disk_mb,
+                                network_sent=usage.network_bytes_sent,
+                                network_recv=usage.network_bytes_recv,
+                                uptime_seconds=int(usage.uptime_seconds),
+                            )
+                        )
+                        session.commit()
+            except Exception as db_error:
+                self.logger.debug(
+                    "Failed to record usage for %s: %s", name, db_error
+                )
 
             # Check limits
             await self._check_resource_limits(name)
