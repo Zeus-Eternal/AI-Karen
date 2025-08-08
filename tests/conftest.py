@@ -4,6 +4,7 @@ import importlib
 import os
 import sys
 import types
+
 # Prefer the real `requests` package when available to support
 # libraries that rely on its internal structure. Fall back to the
 # lightweight stub only if `requests` cannot be imported.
@@ -51,10 +52,21 @@ sys.modules.setdefault(
 sys.modules.setdefault("ai_karen_engine", importlib.import_module("ai_karen_engine"))
 sys.modules.setdefault("ui_logic", importlib.import_module("ui_logic"))
 sys.modules.setdefault("services", importlib.import_module("ai_karen_engine.services"))
-sys.modules.setdefault("integrations", importlib.import_module("ai_karen_engine.integrations"))
-sys.modules.setdefault("integrations.llm_registry", importlib.import_module("ai_karen_engine.integrations.llm_registry"))
-sys.modules.setdefault("integrations.model_discovery", importlib.import_module("ai_karen_engine.integrations.model_discovery"))
-sys.modules.setdefault("integrations.llm_utils", importlib.import_module("ai_karen_engine.integrations.llm_utils"))
+sys.modules.setdefault(
+    "integrations", importlib.import_module("ai_karen_engine.integrations")
+)
+sys.modules.setdefault(
+    "integrations.llm_registry",
+    importlib.import_module("ai_karen_engine.integrations.llm_registry"),
+)
+sys.modules.setdefault(
+    "integrations.model_discovery",
+    importlib.import_module("ai_karen_engine.integrations.model_discovery"),
+)
+sys.modules.setdefault(
+    "integrations.llm_utils",
+    importlib.import_module("ai_karen_engine.integrations.llm_utils"),
+)
 # Ensure required runtime dependencies are available
 try:  # pragma: no cover - fail early if missing
     import fastapi  # noqa: F401
@@ -64,7 +76,7 @@ except Exception as e:  # pragma: no cover
         "FastAPI and Pydantic must be installed for tests. Install with `pip install fastapi pydantic`."
     ) from e
 
-os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "test")
+os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "0123456789abcdef0123456789abcdef")
 os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")
 os.environ.setdefault("KARI_JOB_SIGNING_KEY", "test")
 os.environ.setdefault("DUCKDB_PATH", ":memory:")
