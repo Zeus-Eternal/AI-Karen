@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS extension_registry (
     updated_at TIMESTAMP DEFAULT NOW(),
     tenant_id VARCHAR(255), -- NULL for global extensions
     installed_by VARCHAR(255),
-    
+
     CONSTRAINT extension_status_check CHECK (status IN ('inactive', 'loading', 'active', 'error', 'unloading'))
 );
 
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS extension_permissions (
     permission VARCHAR(255) NOT NULL,
     granted_at TIMESTAMP DEFAULT NOW(),
     granted_by VARCHAR(255),
-    
+
     FOREIGN KEY (extension_name) REFERENCES extension_registry(name) ON DELETE CASCADE,
     UNIQUE(extension_name, tenant_id, user_id, permission)
 );
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS extension_config (
     config_value JSONB NOT NULL,
     updated_at TIMESTAMP DEFAULT NOW(),
     updated_by VARCHAR(255),
-    
+
     FOREIGN KEY (extension_name) REFERENCES extension_registry(name) ON DELETE CASCADE,
     UNIQUE(extension_name, tenant_id, config_key)
 );
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS extension_metrics (
     metric_value FLOAT NOT NULL,
     metadata JSONB,
     timestamp TIMESTAMP DEFAULT NOW(),
-    
+
     FOREIGN KEY (extension_name) REFERENCES extension_registry(name) ON DELETE CASCADE
 );
 
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS extension_audit_log (
     action VARCHAR(100) NOT NULL,
     details JSONB,
     timestamp TIMESTAMP DEFAULT NOW(),
-    
+
     FOREIGN KEY (extension_name) REFERENCES extension_registry(name) ON DELETE CASCADE
 );
 
@@ -126,14 +126,4 @@ CREATE TABLE IF NOT EXISTS installed_extensions (
     installed_at TIMESTAMP DEFAULT NOW(),
     source TEXT,
     directory TEXT
-);
-
--- Installation history
-CREATE TABLE IF NOT EXISTS extension_install_events (
-    id SERIAL PRIMARY KEY,
-    extension_id TEXT REFERENCES marketplace_extensions(extension_id) ON DELETE SET NULL,
-    action VARCHAR(20) NOT NULL,
-    version TEXT,
-    user_id TEXT REFERENCES auth_users(user_id) ON DELETE SET NULL,
-    occurred_at TIMESTAMP DEFAULT NOW()
 );

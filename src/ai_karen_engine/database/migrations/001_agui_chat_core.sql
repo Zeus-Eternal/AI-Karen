@@ -283,15 +283,6 @@ CREATE TABLE installed_extensions (
   directory     TEXT
 );
 
-CREATE TABLE extension_install_events (
-  id            BIGSERIAL PRIMARY KEY,
-  extension_id  TEXT REFERENCES marketplace_extensions(extension_id) ON DELETE SET NULL,
-  action        TEXT NOT NULL,             -- install|upgrade|remove
-  version       TEXT,
-  user_id       TEXT REFERENCES auth_users(user_id) ON DELETE SET NULL,
-  occurred_at   TIMESTAMP DEFAULT now()
-);
-
 CREATE TABLE usage_counters (
   id           BIGSERIAL PRIMARY KEY,
   tenant_id    TEXT,
