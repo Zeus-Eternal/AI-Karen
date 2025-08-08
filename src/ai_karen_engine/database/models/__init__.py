@@ -16,6 +16,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    cast,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import declarative_base, relationship
@@ -39,7 +40,7 @@ class Tenant(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
+    users = relationship("AuthUser", back_populates="tenant", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_tenant_slug", "slug"),
@@ -50,13 +51,13 @@ class Tenant(Base):
         return f"<Tenant(id={self.id}, name='{self.name}', slug='{self.slug}')>"
 
 
-class User(Base):
+class AuthUser(Base):
     """User model with tenant association."""
 
-    __tablename__ = "users"
+    __tablename__ = "auth_users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    user_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String)
     email = Column(String(255), nullable=False)
     roles = Column(ARRAY(String), default=[])
     preferences = Column(JSON, default={})
@@ -65,18 +66,16 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
-    tenant = relationship("Tenant", back_populates="users")
+    tenant = relationship("Tenant", back_populates="users", primaryjoin="AuthUser.tenant_id==cast(Tenant.id, String)")
 
     __table_args__ = (
-        Index("idx_user_tenant", "tenant_id"),
-        Index("idx_user_email", "email"),
-        Index("idx_user_tenant_email", "tenant_id", "email", unique=True),
-        Index("idx_user_active", "is_active"),
+        Index("idx_auth_user_tenant", "tenant_id"),
+        Index("idx_auth_user_email", "email"),
+        Index("idx_auth_user_active", "is_active"),
     )
 
     def __repr__(self):
-        return f"<User(id={self.id}, email='{self.email}', tenant_id={self.tenant_id})>"
+        return f"<AuthUser(user_id={self.user_id}, email='{self.email}', tenant_id={self.tenant_id})>"
 
 
 class TenantConversation(Base):

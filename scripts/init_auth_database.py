@@ -90,7 +90,7 @@ def run_python_migration():
         from sqlalchemy.orm import sessionmaker
         
         # Import models to ensure they're registered
-        from src.ai_karen_engine.database.models.auth_models import Base, User
+        from src.ai_karen_engine.database.models.auth_models import Base, AuthUser
         import bcrypt
         import uuid
         from datetime import datetime
@@ -107,7 +107,7 @@ def run_python_migration():
         
         with SessionLocal() as session:
             # Check if test user exists
-            existing_user = session.query(User).filter(User.email == 'test@example.com').first()
+            existing_user = session.query(AuthUser).filter(AuthUser.email == 'test@example.com').first()
             
             if not existing_user:
                 print("👤 Creating test user...")
@@ -115,14 +115,14 @@ def run_python_migration():
                 # Create test user
                 hashed_password = bcrypt.hashpw('testpassword'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 
-                test_user = User(
-                    id=str(uuid.uuid4()),
+                test_user = AuthUser(
+                    user_id=str(uuid.uuid4()),
                     email='test@example.com',
                     full_name='Test User',
                     password_hash=hashed_password,
                     is_active=True,
                     is_verified=True,
-                    roles='["user"]',
+                    roles=['user'],
                     tenant_id='default',
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow()
@@ -138,7 +138,7 @@ def run_python_migration():
                 print("ℹ️  Test user already exists: test@example.com")
             
             # Check if admin user exists
-            existing_admin = session.query(User).filter(User.email == 'admin@example.com').first()
+            existing_admin = session.query(AuthUser).filter(AuthUser.email == 'admin@example.com').first()
             
             if not existing_admin:
                 print("👑 Creating admin user...")
@@ -146,14 +146,14 @@ def run_python_migration():
                 # Create admin user
                 hashed_password = bcrypt.hashpw('adminpassword'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 
-                admin_user = User(
-                    id=str(uuid.uuid4()),
+                admin_user = AuthUser(
+                    user_id=str(uuid.uuid4()),
                     email='admin@example.com',
                     full_name='Admin User',
                     password_hash=hashed_password,
                     is_active=True,
                     is_verified=True,
-                    roles='["admin", "user"]',
+                    roles=['admin', 'user'],
                     tenant_id='default',
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow()
@@ -169,9 +169,9 @@ def run_python_migration():
                 print("ℹ️  Admin user already exists: admin@example.com")
             
             # Show user statistics
-            user_count = session.query(User).count()
-            active_users = session.query(User).filter(User.is_active == True).count()
-            verified_users = session.query(User).filter(User.is_verified == True).count()
+            user_count = session.query(AuthUser).count()
+            active_users = session.query(AuthUser).filter(AuthUser.is_active == True).count()
+            verified_users = session.query(AuthUser).filter(AuthUser.is_verified == True).count()
             
             print(f"\n📊 Database Statistics:")
             print(f"   👥 Total users: {user_count}")

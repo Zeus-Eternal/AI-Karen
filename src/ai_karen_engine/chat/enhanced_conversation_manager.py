@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ai_karen_engine.database.client import MultiTenantPostgresClient
-from ai_karen_engine.database.models import TenantConversation, User
+from ai_karen_engine.database.models import TenantConversation, AuthUser
 from ai_karen_engine.chat.conversation_models import (
     Conversation, ChatMessage, ConversationFolder, ConversationTemplate,
     ConversationFilters, ConversationSearchResult, ConversationExportOptions,

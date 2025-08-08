@@ -16,7 +16,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 try:
-    from src.ai_karen_engine.database.models import Tenant, User, TenantConversation, TenantMemoryEntry
+    from src.ai_karen_engine.database.models import Tenant, AuthUser, TenantConversation, TenantMemoryEntry
     from src.ai_karen_engine.database.client import MultiTenantPostgresClient
     from src.ai_karen_engine.database.migrations import MigrationManager
     from src.ai_karen_engine.clients.database.postgres_client import PostgresClient
@@ -63,10 +63,10 @@ def demo_models():
     print(f"  Settings: {tenant.settings}")
     
     # Create user
-    user_id = uuid.uuid4()
-    user = User(
-        id=user_id,
-        tenant_id=tenant_id,
+    user_id = str(uuid.uuid4())
+    user = AuthUser(
+        user_id=user_id,
+        tenant_id=str(tenant_id),
         email="admin@acme-corp.com",
         roles=["tenant_admin", "user_manager"],
         preferences={"language": "en", "timezone": "UTC"},
@@ -74,7 +74,7 @@ def demo_models():
     )
     
     print(f"\nCreated User: {user}")
-    print(f"  ID: {user.id}")
+    print(f"  ID: {user.user_id}")
     print(f"  Email: {user.email}")
     print(f"  Roles: {user.roles}")
     print(f"  Tenant ID: {user.tenant_id}")

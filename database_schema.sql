@@ -48,6 +48,7 @@ CREATE TABLE auth_providers (
   tenant_id     TEXT,
   type          TEXT NOT NULL,           -- oauth|saml|oidc
   config        JSONB NOT NULL,
+  metadata      JSONB DEFAULT '{}'::jsonb,
   enabled       BOOLEAN DEFAULT TRUE,
   created_at    TIMESTAMP DEFAULT now(),
   updated_at    TIMESTAMP DEFAULT now()
