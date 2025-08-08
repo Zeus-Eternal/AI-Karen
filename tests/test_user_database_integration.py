@@ -200,7 +200,7 @@ def test_database_integration():
     
     try:
         from ai_karen_engine.database.client import MultiTenantPostgresClient
-        from ai_karen_engine.database.models import User, Tenant
+        from ai_karen_engine.database.models import AuthUser, Tenant
         
         # Initialize database client
         db_client = MultiTenantPostgresClient()

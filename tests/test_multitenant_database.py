@@ -9,7 +9,7 @@ from datetime import datetime
 
 # Test imports
 try:
-    from src.ai_karen_engine.database.models import Base, Tenant, User, TenantConversation, TenantMemoryEntry
+    from src.ai_karen_engine.database.models import Base, Tenant, AuthUser, TenantConversation, TenantMemoryEntry
     from src.ai_karen_engine.database.client import MultiTenantPostgresClient
     from src.ai_karen_engine.database.migrations import MigrationManager
     from src.ai_karen_engine.clients.database.postgres_client import PostgresClient
@@ -44,19 +44,19 @@ class TestMultiTenantModels:
         assert tenant.settings == {}
     
     def test_user_model_creation(self):
-        """Test User model creation and relationships."""
-        tenant_id = uuid.uuid4()
-        user_id = uuid.uuid4()
-        
-        user = User(
-            id=user_id,
+        """Test AuthUser model creation and relationships."""
+        tenant_id = "tenant-123"
+        user_id = str(uuid.uuid4())
+
+        user = AuthUser(
+            user_id=user_id,
             tenant_id=tenant_id,
             email="test@example.com",
             roles=["end_user", "analyst"],
-            is_active=True  # Explicitly set for testing
+            is_active=True,
         )
-        
-        assert user.id == user_id
+
+        assert user.user_id == user_id
         assert user.tenant_id == tenant_id
         assert user.email == "test@example.com"
         assert user.roles == ["end_user", "analyst"]

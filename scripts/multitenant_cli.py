@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 try:
     from src.ai_karen_engine.database.client import MultiTenantPostgresClient
     from src.ai_karen_engine.database.migrations import MigrationManager
-    from src.ai_karen_engine.database.models import Tenant, User
+    from src.ai_karen_engine.database.models import Tenant, AuthUser
 except ImportError as e:
     print(f"Error importing modules: {e}")
     print("Please ensure all dependencies are installed.")

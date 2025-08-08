@@ -1,5 +1,5 @@
 """
-User Service for AI Karen Engine.
+AuthUser Service for AI Karen Engine.
 Provides comprehensive user management with database integration,
 authentication, and LLM system integration.
 """
@@ -16,7 +16,7 @@ from sqlalchemy import and_, or_, desc
 
 from ai_karen_engine.core.services.base import BaseService, ServiceConfig
 from ai_karen_engine.database.client import MultiTenantPostgresClient
-from ai_karen_engine.database.models import User, Tenant, TenantConversation, TenantMemoryEntry
+from ai_karen_engine.database.models import AuthUser, Tenant, TenantConversation, TenantMemoryEntry
 from ai_karen_engine.utils.auth import create_session, validate_session
 
 
@@ -57,7 +57,7 @@ class UserService(BaseService):
     async def initialize(self) -> None:
         """Initialize the user service."""
         try:
-            self.logger.info("Initializing User Service")
+            self.logger.info("Initializing AuthUser Service")
             
             # Ensure shared tables exist
             self.db_client.create_shared_tables()
@@ -66,18 +66,18 @@ class UserService(BaseService):
             await self._ensure_default_tenant()
             
             self._initialized = True
-            self.logger.info("User Service initialized successfully")
+            self.logger.info("AuthUser Service initialized successfully")
         except Exception as e:
-            self.logger.error(f"Failed to initialize User Service: {e}")
+            self.logger.error(f"Failed to initialize AuthUser Service: {e}")
             raise
 
     async def start(self) -> None:
         if not self._initialized:
             raise RuntimeError("Service not initialized")
-        self.logger.info("User Service started")
+        self.logger.info("AuthUser Service started")
 
     async def stop(self) -> None:
-        self.logger.info("User Service stopped")
+        self.logger.info("AuthUser Service stopped")
 
     async def health_check(self) -> bool:
         """Check if the user service is healthy."""
@@ -88,7 +88,7 @@ class UserService(BaseService):
                 session.execute(text("SELECT 1"))
             return True
         except Exception as e:
-            self.logger.error(f"User service health check failed: {e}")
+            self.logger.error(f"AuthUser service health check failed: {e}")
             return False
 
     @contextmanager
@@ -127,7 +127,7 @@ class UserService(BaseService):
             self.logger.error(f"Failed to ensure default tenant: {e}")
             raise
 
-    # User Management Methods
+    # AuthUser Management Methods
 
     async def create_user(
         self,
@@ -135,18 +135,18 @@ class UserService(BaseService):
         roles: Optional[List[str]] = None,
         preferences: Optional[Dict[str, Any]] = None,
         tenant_id: Optional[Union[str, uuid.UUID]] = None
-    ) -> User:
+    ) -> AuthUser:
         """
         Create a new user.
         
         Args:
-            email: User email address
+            email: AuthUser email address
             roles: List of user roles (defaults to ["user"])
-            preferences: User preferences dictionary
+            preferences: AuthUser preferences dictionary
             tenant_id: Tenant ID (defaults to default tenant)
             
         Returns:
-            Created User instance
+            Created AuthUser instance
             
         Raises:
             UserAlreadyExistsError: If user already exists
@@ -168,14 +168,14 @@ class UserService(BaseService):
                         raise TenantNotFoundError(f"Tenant {tenant_id} not found")
 
                 # Check if user already exists
-                existing_user = session.query(User).filter(
-                    and_(User.email == email, User.tenant_id == tenant_id)
+                existing_user = session.query(AuthUser).filter(
+                    and_(AuthUser.email == email, AuthUser.tenant_id == tenant_id)
                 ).first()
                 if existing_user:
-                    raise UserAlreadyExistsError(f"User {email} already exists in tenant {tenant_id}")
+                    raise UserAlreadyExistsError(f"AuthUser {email} already exists in tenant {tenant_id}")
 
                 # Create user
-                user = User(
+                user = AuthUser(
                     tenant_id=tenant_id,
                     email=email,
                     roles=roles or ["user"],
@@ -195,7 +195,7 @@ class UserService(BaseService):
         except (UserAlreadyExistsError, TenantNotFoundError):
             raise
         except IntegrityError as e:
-            raise UserAlreadyExistsError(f"User {email} already exists") from e
+            raise UserAlreadyExistsError(f"AuthUser {email} already exists") from e
         except Exception as e:
             self.logger.error(f"Failed to create user {email}: {e}")
             raise UserServiceError(f"Failed to create user: {e}") from e
@@ -204,16 +204,16 @@ class UserService(BaseService):
         self,
         user_id: Union[str, uuid.UUID],
         tenant_id: Optional[Union[str, uuid.UUID]] = None
-    ) -> User:
+    ) -> AuthUser:
         """
         Get user by ID.
         
         Args:
-            user_id: User ID
+            user_id: AuthUser ID
             tenant_id: Optional tenant ID for additional filtering
             
         Returns:
-            User instance
+            AuthUser instance
             
         Raises:
             UserNotFoundError: If user doesn't exist
@@ -225,13 +225,13 @@ class UserService(BaseService):
                 tenant_id = uuid.UUID(tenant_id)
 
             with self._get_session() as session:
-                query = session.query(User).filter(User.id == user_id)
+                query = session.query(AuthUser).filter(AuthUser.id == user_id)
                 if tenant_id:
-                    query = query.filter(User.tenant_id == tenant_id)
+                    query = query.filter(AuthUser.tenant_id == tenant_id)
                 
                 user = query.first()
                 if not user:
-                    raise UserNotFoundError(f"User {user_id} not found")
+                    raise UserNotFoundError(f"AuthUser {user_id} not found")
                 
                 return user
                 
@@ -245,16 +245,16 @@ class UserService(BaseService):
         self,
         email: str,
         tenant_id: Optional[Union[str, uuid.UUID]] = None
-    ) -> User:
+    ) -> AuthUser:
         """
         Get user by email.
         
         Args:
-            email: User email address
+            email: AuthUser email address
             tenant_id: Optional tenant ID for filtering
             
         Returns:
-            User instance
+            AuthUser instance
             
         Raises:
             UserNotFoundError: If user doesn't exist
@@ -264,18 +264,18 @@ class UserService(BaseService):
                 tenant_id = uuid.UUID(tenant_id)
 
             with self._get_session() as session:
-                query = session.query(User).filter(User.email == email)
+                query = session.query(AuthUser).filter(AuthUser.email == email)
                 if tenant_id:
-                    query = query.filter(User.tenant_id == tenant_id)
+                    query = query.filter(AuthUser.tenant_id == tenant_id)
                 else:
                     # Default to default tenant if not specified
                     default_tenant = session.query(Tenant).filter_by(slug="default").first()
                     if default_tenant:
-                        query = query.filter(User.tenant_id == default_tenant.id)
+                        query = query.filter(AuthUser.tenant_id == default_tenant.id)
                 
                 user = query.first()
                 if not user:
-                    raise UserNotFoundError(f"User {email} not found")
+                    raise UserNotFoundError(f"AuthUser {email} not found")
                 
                 return user
                 
@@ -289,16 +289,16 @@ class UserService(BaseService):
         self,
         user_id: Union[str, uuid.UUID],
         preferences: Dict[str, Any]
-    ) -> User:
+    ) -> AuthUser:
         """
         Update user preferences.
         
         Args:
-            user_id: User ID
+            user_id: AuthUser ID
             preferences: New preferences dictionary
             
         Returns:
-            Updated User instance
+            Updated AuthUser instance
             
         Raises:
             UserNotFoundError: If user doesn't exist
@@ -308,9 +308,9 @@ class UserService(BaseService):
                 user_id = uuid.UUID(user_id)
 
             with self._get_session() as session:
-                user = session.query(User).filter(User.id == user_id).first()
+                user = session.query(AuthUser).filter(AuthUser.id == user_id).first()
                 if not user:
-                    raise UserNotFoundError(f"User {user_id} not found")
+                    raise UserNotFoundError(f"AuthUser {user_id} not found")
                 
                 # Merge preferences
                 current_preferences = user.preferences or {}
@@ -334,14 +334,14 @@ class UserService(BaseService):
         Update user's last login timestamp.
         
         Args:
-            user_id: User ID
+            user_id: AuthUser ID
         """
         try:
             if isinstance(user_id, str):
                 user_id = uuid.UUID(user_id)
 
             with self._get_session() as session:
-                user = session.query(User).filter(User.id == user_id).first()
+                user = session.query(AuthUser).filter(AuthUser.id == user_id).first()
                 if user:
                     user.last_login = datetime.utcnow()
                     user.updated_at = datetime.utcnow()
@@ -365,9 +365,9 @@ class UserService(BaseService):
         Authenticate user and create session.
         
         Args:
-            email: User email
-            password: User password (for demo purposes)
-            user_agent: User agent string
+            email: AuthUser email
+            password: AuthUser password (for demo purposes)
+            user_agent: AuthUser agent string
             ip: Client IP address
             tenant_slug: Tenant slug
             
@@ -436,11 +436,11 @@ class UserService(BaseService):
         
         Args:
             token: JWT session token
-            user_agent: User agent string
+            user_agent: AuthUser agent string
             ip: Client IP address
             
         Returns:
-            User context if valid, None otherwise
+            AuthUser context if valid, None otherwise
         """
         try:
             # Validate JWT token
@@ -477,7 +477,7 @@ class UserService(BaseService):
         Get user's LLM preferences for conversation processing.
         
         Args:
-            user_id: User ID
+            user_id: AuthUser ID
             
         Returns:
             LLM preferences dictionary
@@ -517,7 +517,7 @@ class UserService(BaseService):
         Save user conversation to database.
         
         Args:
-            user_id: User ID
+            user_id: AuthUser ID
             session_id: Session ID
             messages: Conversation messages
             title: Optional conversation title
@@ -626,7 +626,7 @@ class UserService(BaseService):
         Get user's conversations.
         
         Args:
-            user_id: User ID
+            user_id: AuthUser ID
             limit: Maximum number of conversations to return
             offset: Offset for pagination
             
@@ -690,8 +690,8 @@ class UserService(BaseService):
         """Get user service metrics."""
         try:
             with self._get_session() as session:
-                total_users = session.query(User).count()
-                active_users = session.query(User).filter(User.is_active == True).count()
+                total_users = session.query(AuthUser).count()
+                active_users = session.query(AuthUser).filter(AuthUser.is_active == True).count()
                 total_tenants = session.query(Tenant).count()
                 
                 return {

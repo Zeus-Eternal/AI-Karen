@@ -9,7 +9,7 @@ os.environ['DATABASE_URL'] = 'postgresql://karen_user:karen_secure_pass_change_m
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from src.ai_karen_engine.database.models.auth_models import User
+from src.ai_karen_engine.database.models.auth_models import AuthUser
 import bcrypt
 import uuid
 from datetime import datetime
@@ -25,7 +25,7 @@ def create_test_user():
         
         with SessionLocal() as session:
             # Check if test user already exists
-            existing_user = session.query(User).filter(User.email == 'test@example.com').first()
+            existing_user = session.query(AuthUser).filter(AuthUser.email == 'test@example.com').first()
             
             if existing_user:
                 print("✓ Test user already exists")
@@ -34,13 +34,15 @@ def create_test_user():
             # Create test user
             hashed_password = bcrypt.hashpw('testpassword'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             
-            test_user = User(
-                id=str(uuid.uuid4()),
+            test_user = AuthUser(
+                user_id=str(uuid.uuid4()),
                 email='test@example.com',
-                username='testuser',
+                full_name='Test User',
                 password_hash=hashed_password,
                 is_active=True,
                 is_verified=True,
+                roles=['user'],
+                tenant_id='default',
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )

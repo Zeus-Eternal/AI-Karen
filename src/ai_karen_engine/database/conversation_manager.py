@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ai_karen_engine.database.client import MultiTenantPostgresClient
-from ai_karen_engine.database.models import TenantConversation, User
+from ai_karen_engine.database.models import TenantConversation, AuthUser
 from ai_karen_engine.database.memory_manager import MemoryManager, MemoryQuery
 from ai_karen_engine.core.embedding_manager import EmbeddingManager
 
