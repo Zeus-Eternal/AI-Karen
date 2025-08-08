@@ -20,6 +20,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, BinaryIO
 import json
 
+from sqlalchemy import select
+
+from ai_karen_engine.database import get_postgres_session
+from ai_karen_engine.database.models import File as FileModel
+from ai_karen_engine.services.webhook_service import dispatch_webhook
+
 try:
     from pydantic import BaseModel, Field
 except ImportError:
@@ -146,9 +152,74 @@ class FileAttachmentService:
 
         logger.info(f"FileAttachmentService initialized with storage: {self.storage_path}")
 
-    def list_files(self) -> Dict[str, FileMetadata]:
-        """Return a copy of stored file metadata."""
-        return dict(self._file_metadata)
+    async def list_files(self) -> Dict[str, FileMetadata]:
+        """Return stored file metadata, including database entries."""
+        files: Dict[str, FileMetadata] = dict(self._file_metadata)
+
+        try:
+            async with get_postgres_session() as session:
+                result = await session.execute(select(FileModel))
+                for db_file in result.scalars():
+                    if db_file.file_id in files:
+                        continue
+                    meta = db_file.metadata or {}
+                    files[db_file.file_id] = FileMetadata(
+                        filename=Path(db_file.storage_uri).name if db_file.storage_uri else db_file.name,
+                        original_filename=db_file.name,
+                        file_size=db_file.bytes or 0,
+                        mime_type=db_file.mime_type or "application/octet-stream",
+                        file_type=self._determine_file_type(db_file.name, db_file.mime_type or ""),
+                        file_hash=db_file.sha256,
+                        upload_timestamp=db_file.created_at or datetime.utcnow(),
+                        processing_status=ProcessingStatus(
+                            meta.get("processing_status", ProcessingStatus.PENDING.value)
+                        ),
+                        security_scan_result=SecurityScanResult(
+                            meta.get("security_scan_result", SecurityScanResult.SAFE.value)
+                        ),
+                        extracted_content=meta.get("extracted_content"),
+                        analysis_results=meta.get("analysis_results", {}),
+                        thumbnail_path=meta.get("thumbnail_path"),
+                        preview_available=meta.get("preview_available", False),
+                    )
+        except Exception as e:  # pragma: no cover - database optional
+            logger.warning("Failed to load files from database: %s", e)
+
+        return files
+
+    async def get_metadata(self, file_id: str) -> Optional[FileMetadata]:
+        """Retrieve metadata for a single file."""
+        if file_id in self._file_metadata:
+            return self._file_metadata[file_id]
+
+        try:
+            async with get_postgres_session() as session:
+                db_file = await session.get(FileModel, file_id)
+                if not db_file:
+                    return None
+                meta = db_file.metadata or {}
+                return FileMetadata(
+                    filename=Path(db_file.storage_uri).name if db_file.storage_uri else db_file.name,
+                    original_filename=db_file.name,
+                    file_size=db_file.bytes or 0,
+                    mime_type=db_file.mime_type or "application/octet-stream",
+                    file_type=self._determine_file_type(db_file.name, db_file.mime_type or ""),
+                    file_hash=db_file.sha256,
+                    upload_timestamp=db_file.created_at or datetime.utcnow(),
+                    processing_status=ProcessingStatus(
+                        meta.get("processing_status", ProcessingStatus.PENDING.value)
+                    ),
+                    security_scan_result=SecurityScanResult(
+                        meta.get("security_scan_result", SecurityScanResult.SAFE.value)
+                    ),
+                    extracted_content=meta.get("extracted_content"),
+                    analysis_results=meta.get("analysis_results", {}),
+                    thumbnail_path=meta.get("thumbnail_path"),
+                    preview_available=meta.get("preview_available", False),
+                )
+        except Exception as e:  # pragma: no cover - database optional
+            logger.warning("Failed to fetch file metadata from database: %s", e)
+            return None
     
     def _get_default_extensions(self) -> List[str]:
         """Get default allowed file extensions."""
@@ -261,13 +332,42 @@ class FileAttachmentService:
             # Store file
             with open(file_path, 'wb') as f:
                 f.write(file_content)
-            
-            # Store metadata
+
+            # Store metadata in memory
             self._file_metadata[file_id] = metadata
-            
+
+            # Persist metadata to database
+            try:
+                async with get_postgres_session() as session:
+                    db_file = FileModel(
+                        file_id=file_id,
+                        owner_user_id=request.user_id,
+                        name=request.filename,
+                        mime_type=request.content_type,
+                        bytes=len(file_content),
+                        storage_uri=str(file_path),
+                        sha256=file_hash,
+                        metadata={
+                            "description": request.description,
+                            "tags": request.metadata.get("tags", []),
+                            "processing_status": metadata.processing_status.value,
+                        },
+                    )
+                    session.add(db_file)
+                    await session.commit()
+            except Exception as db_exc:  # pragma: no cover - database optional
+                logger.warning("Failed to persist file metadata: %s", db_exc)
+
+            # Dispatch webhook asynchronously
+            asyncio.create_task(
+                dispatch_webhook(
+                    "file.uploaded", {"file_id": file_id, "user_id": request.user_id}
+                )
+            )
+
             # Start background processing
             asyncio.create_task(self._process_file(file_id, file_path, metadata))
-            
+
             return FileUploadResponse(
                 file_id=file_id,
                 processing_status=ProcessingStatus.PROCESSING,
@@ -303,40 +403,63 @@ class FileAttachmentService:
         """Process uploaded file in background."""
         try:
             logger.info(f"Starting processing for file {file_id}")
-            
+
             # Security scan
             if self.enable_security_scan:
                 scan_result = await self._security_scan(file_path)
                 metadata.security_scan_result = scan_result
-                
+
                 if scan_result == SecurityScanResult.MALICIOUS:
                     await self._quarantine_file(file_id, file_path, "Malicious file detected")
                     return
-            
+
             # Content extraction
             if self.enable_content_extraction:
                 extracted_content = await self._extract_content(file_path, metadata.file_type)
                 metadata.extracted_content = extracted_content
-            
+
             # Image analysis
             if self.enable_image_analysis and metadata.file_type == FileType.IMAGE:
                 analysis_results = await self._analyze_image(file_path)
                 metadata.analysis_results.update(analysis_results)
-            
+
             # Generate thumbnail
             thumbnail_path = await self._generate_thumbnail(file_path, metadata.file_type)
             if thumbnail_path:
                 metadata.thumbnail_path = str(thumbnail_path)
                 metadata.preview_available = True
-            
+
             # Update processing status
             metadata.processing_status = ProcessingStatus.COMPLETED
             logger.info(f"File processing completed for {file_id}")
-            
+
         except Exception as e:
             logger.error(f"File processing failed for {file_id}: {e}", exc_info=True)
             metadata.processing_status = ProcessingStatus.FAILED
             metadata.analysis_results["error"] = str(e)
+
+        finally:
+            self._file_metadata[file_id] = metadata
+            try:
+                async with get_postgres_session() as session:
+                    db_file = await session.get(FileModel, file_id)
+                    if db_file:
+                        db_meta = db_file.metadata or {}
+                        db_meta.update(
+                            {
+                                "processing_status": metadata.processing_status.value,
+                                "security_scan_result": metadata.security_scan_result.value,
+                                "extracted_content": metadata.extracted_content,
+                                "analysis_results": metadata.analysis_results,
+                                "thumbnail_path": metadata.thumbnail_path,
+                                "preview_available": metadata.preview_available,
+                            }
+                        )
+                        db_file.metadata = db_meta
+                        session.add(db_file)
+                        await session.commit()
+            except Exception as db_exc:  # pragma: no cover - optional DB
+                logger.warning("Failed to update file metadata: %s", db_exc)
     
     async def _security_scan(self, file_path: Path) -> SecurityScanResult:
         """Perform security scan on uploaded file."""
@@ -561,11 +684,31 @@ class FileAttachmentService:
         try:
             quarantine_path = self.storage_path / "quarantine" / file_path.name
             file_path.rename(quarantine_path)
-            
+
             # Update metadata
             if file_id in self._file_metadata:
                 self._file_metadata[file_id].processing_status = ProcessingStatus.QUARANTINED
                 self._file_metadata[file_id].analysis_results["quarantine_reason"] = reason
+
+            try:
+                async with get_postgres_session() as session:
+                    db_file = await session.get(FileModel, file_id)
+                    if db_file:
+                        db_meta = db_file.metadata or {}
+                        db_meta.update(
+                            {
+                                "processing_status": ProcessingStatus.QUARANTINED.value,
+                                "analysis_results": {
+                                    **db_meta.get("analysis_results", {}),
+                                    "quarantine_reason": reason,
+                                },
+                            }
+                        )
+                        db_file.metadata = db_meta
+                        session.add(db_file)
+                        await session.commit()
+            except Exception as db_exc:  # pragma: no cover - optional DB
+                logger.warning("Failed to update quarantined file metadata: %s", db_exc)
             
             logger.warning(f"File {file_id} quarantined: {reason}")
             
@@ -574,11 +717,10 @@ class FileAttachmentService:
     
     async def get_file_info(self, file_id: str) -> Optional[FileProcessingResult]:
         """Get file processing information."""
-        if file_id not in self._file_metadata:
+        metadata = await self.get_metadata(file_id)
+        if not metadata:
             return None
-        
-        metadata = self._file_metadata[file_id]
-        
+
         return FileProcessingResult(
             file_id=file_id,
             processing_status=metadata.processing_status,
@@ -588,87 +730,89 @@ class FileAttachmentService:
             preview_url=f"/api/files/{file_id}/preview" if metadata.preview_available else None,
             error_message=metadata.analysis_results.get("error")
         )
-    
+
     async def get_file_content(self, file_id: str) -> Optional[bytes]:
         """Get file content by ID."""
-        if file_id not in self._file_metadata:
+        metadata = await self.get_metadata(file_id)
+        if not metadata:
             return None
-        
-        metadata = self._file_metadata[file_id]
+
         file_path = self.storage_path / "files" / metadata.filename
-        
+
         try:
             with open(file_path, 'rb') as f:
                 return f.read()
         except Exception as e:
             logger.error(f"Failed to read file {file_id}: {e}")
             return None
-    
+
     async def get_thumbnail(self, file_id: str) -> Optional[bytes]:
         """Get file thumbnail by ID."""
-        if file_id not in self._file_metadata:
+        metadata = await self.get_metadata(file_id)
+        if not metadata or not metadata.thumbnail_path:
             return None
-        
-        metadata = self._file_metadata[file_id]
-        if not metadata.thumbnail_path:
-            return None
-        
+
         try:
             with open(metadata.thumbnail_path, 'rb') as f:
                 return f.read()
         except Exception as e:
             logger.error(f"Failed to read thumbnail for {file_id}: {e}")
             return None
-    
+
     async def delete_file(self, file_id: str) -> bool:
         """Delete file and associated data."""
-        if file_id not in self._file_metadata:
+        metadata = await self.get_metadata(file_id)
+        if not metadata:
             return False
-        
+
         try:
-            metadata = self._file_metadata[file_id]
-            
             # Delete main file
             file_path = self.storage_path / "files" / metadata.filename
             if file_path.exists():
                 file_path.unlink()
-            
+
             # Delete thumbnail
             if metadata.thumbnail_path:
                 thumbnail_path = Path(metadata.thumbnail_path)
                 if thumbnail_path.exists():
                     thumbnail_path.unlink()
-            
-            # Remove metadata
-            del self._file_metadata[file_id]
-            
+
+            if file_id in self._file_metadata:
+                del self._file_metadata[file_id]
+
+            try:
+                async with get_postgres_session() as session:
+                    db_file = await session.get(FileModel, file_id)
+                    if db_file:
+                        await session.delete(db_file)
+                        await session.commit()
+            except Exception as db_exc:  # pragma: no cover - optional DB
+                logger.warning("Failed to remove file %s from database: %s", file_id, db_exc)
+
             logger.info(f"File {file_id} deleted successfully")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to delete file {file_id}: {e}")
             return False
-    
-    def get_storage_stats(self) -> Dict[str, Any]:
+
+    async def get_storage_stats(self) -> Dict[str, Any]:
         """Get storage statistics."""
         try:
-            total_files = len(self._file_metadata)
-            total_size = sum(
-                metadata.file_size for metadata in self._file_metadata.values()
-            )
-            
-            files_by_type = {}
-            files_by_status = {}
-            
-            for metadata in self._file_metadata.values():
-                # Count by type
+            files = await self.list_files()
+            total_files = len(files)
+            total_size = sum(metadata.file_size for metadata in files.values())
+
+            files_by_type: Dict[str, int] = {}
+            files_by_status: Dict[str, int] = {}
+
+            for metadata in files.values():
                 file_type = metadata.file_type.value
                 files_by_type[file_type] = files_by_type.get(file_type, 0) + 1
-                
-                # Count by status
+
                 status = metadata.processing_status.value
                 files_by_status[status] = files_by_status.get(status, 0) + 1
-            
+
             return {
                 "total_files": total_files,
                 "total_size_bytes": total_size,
@@ -678,7 +822,7 @@ class FileAttachmentService:
                 "storage_path": str(self.storage_path),
                 "max_file_size_mb": round(self.max_file_size / (1024 * 1024), 2)
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to get storage stats: {e}")
             return {"error": str(e)}

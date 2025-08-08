@@ -516,20 +516,23 @@ class TestEnhancedFileRoutes:
             "hook_results": {"plugin_analysis": {"test": "data"}},
             "features": {"has_thumbnail": True}
         })
-        mock._file_metadata = {
+        file_dict = {
             "test_123": FileMetadata(
                 filename="test.jpg",
                 original_filename="test_image.jpg",
                 file_size=1024,
                 mime_type="image/jpeg",
                 file_type=FileType.IMAGE,
-                file_hash="hash123"
+                file_hash="hash123",
             )
         }
-        mock.get_storage_stats = Mock(return_value={
+        mock.list_files = AsyncMock(return_value=file_dict)
+        mock.get_storage_stats = AsyncMock(return_value={
             "total_files": 5,
             "total_size_mb": 10.5,
-            "files_by_type": {"image": 3, "document": 2}
+            "files_by_type": {"image": 3, "document": 2},
+            "files_by_status": {"processing": 5},
+            "total_size_bytes": 0,
         })
         return mock
     
