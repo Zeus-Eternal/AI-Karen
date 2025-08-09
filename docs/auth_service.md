@@ -1,6 +1,6 @@
 # Auth Service
 
-The Auth Service centralizes authentication, session management, and security checks for Kari. It provides a single interface used by routes, middleware, and extensions.
+The Auth Service centralizes authentication, session management, and security checks for Kari. It provides a single interface used by routes, middleware, and extensions. Deployment steps are covered in the [Auth Service Deployment Guide](auth_service_deployment.md), and removal of legacy modules is detailed in the [Auth Service Migration Guide](auth_service_migration.md).
 
 ## API Usage
 
@@ -48,6 +48,44 @@ await service.invalidate_session(session.session_id)
 - **Intelligence Layer** – integrate behavioral analysis or adaptive learning engines.
 - **Metrics Hook** – receive callbacks for login attempts and session activity.
 - **Custom Authenticators** – swap out the core authenticator or session store for alternative implementations.
+
+## AuthMonitor
+
+`AuthMonitor` provides real-time visibility into authentication activity. It records every login attempt,
+session validation, and security event with rich context such as user identifiers and IP addresses. The
+monitor runs asynchronously and can be attached to `AuthService` by default, or injected into custom
+deployments for advanced monitoring workflows.
+
+```python
+from ai_karen_engine.auth.monitoring import AuthMonitor
+
+monitor = AuthMonitor(config)
+service = AuthService(config, monitor=monitor)
+```
+
+AuthMonitor supports configurable log levels and structured output, making it suitable for production
+deployments that require audit trails and incident investigation.
+
+## Metrics Exposure
+
+Authentication metrics are emitted through a `metrics_hook` and surfaced alongside the platform's
+standard observability endpoints. When the API server is running, counters such as
+`auth_login_success_total` and `auth_login_failure_total` appear under `/metrics` and are available for
+Prometheus scraping. The retention window and aggregation interval can be tuned with
+`AUTH_METRICS_RETENTION_HOURS` and `AUTH_METRICS_AGGREGATION_INTERVAL`.
+
+## Structured Logging
+
+The service emits JSON-formatted logs that capture event metadata including user IDs, IP addresses,
+and processing time. Logging behavior is controlled through environment variables:
+
+- `AUTH_STRUCTURED_LOG_FORMAT` – set to `json` or `text`.
+- `AUTH_LOG_SUCCESSFUL_LOGINS` – log successful authentications.
+- `AUTH_LOG_FAILED_LOGINS` – capture failed attempts.
+- `AUTH_LOG_SECURITY_EVENTS` – record security-related events.
+
+Structured logging integrates with centralized log processors and allows filtering by fields such as
+`event_type`, `success`, or `risk_score` for faster debugging.
 
 ## Migration Guide
 

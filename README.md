@@ -609,6 +609,9 @@ See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt
 - [Database Documentation](docker/database/README.md) - Multi-database setup
 - [Plugin Documentation](plugin_marketplace/README.md) - Plugin development guide
 - [Extension Documentation](extensions/README.md) - Extension system overview
+- [Auth Service](docs/auth_service.md) - Core authentication service overview
+- [Auth Service Deployment Guide](docs/auth_service_deployment.md) - Environment setup and configuration loading
+- [Auth Service Migration Guide](docs/auth_service_migration.md) - Removal of legacy security modules
 
 ### Architecture Guides
 - [API Reference](docs/api_reference.md) - Complete API documentation
