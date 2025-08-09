@@ -381,11 +381,20 @@ class AuthService:
             SecurityError: Session creation blocked by security measures
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.SESSION_CREATED,
+            success=False,
+            user_id=user_data.user_id,
+            email=user_data.email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details={"stage": "start"},
+        )
 
         start_time = datetime.utcnow()
 
         try:
-            # Create session through core authenticator
             session_data = await self.core_auth.create_session(
                 user_data=user_data,
                 ip_address=ip_address,
@@ -394,13 +403,10 @@ class AuthService:
                 **kwargs,
             )
 
-            # Add geolocation if provided
             if geolocation:
                 session_data.geolocation = geolocation
 
-            # Apply security enhancements if enabled
             if self.security_layer:
-                # Validate session security
                 security_result = await self.security_layer.validate_session_security(
                     session=session_data,
                     current_ip=ip_address,
@@ -408,11 +414,10 @@ class AuthService:
                     request_context=request_context,
                 )
 
-                # Update session with security information
                 session_data.risk_score = security_result["risk_score"]
                 for flag in security_result["security_flags"]:
                     session_data.add_security_flag(flag)
-
+                    
                 # Log session creation
                 await self.security_layer.log_session_event(
                     AuthEventType.SESSION_CREATED, session_data, success=True
@@ -487,32 +492,48 @@ class AuthService:
             SecurityError: Session validation failed security checks
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.SESSION_VALIDATED,
+            success=False,
+            session_token=session_token,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details={"stage": "start"},
+        )
 
         try:
-            # Validate session through core authenticator
             user_data = await self.core_auth.validate_session(session_token, **kwargs)
 
             if not user_data:
+                await self._record_auth_event(
+                    event_type=AuthEventType.SESSION_VALIDATED,
+                    success=False,
+                    start_time=start_time,
+                    session_token=session_token,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    error_message="session_not_found",
+                )
+                await self._record_performance_metric(
+                    "validate_session",
+                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    False,
+                )
                 return None
 
-            # Apply security validation if enabled
             if self.security_layer:
-                # Get full session data for security validation
                 session_data = await self.core_auth.session_manager.store.get_session(
                     session_token
                 )
                 if session_data:
-                    # Validate session security
-                    security_result = (
-                        await self.security_layer.validate_session_security(
-                            session=session_data,
-                            current_ip=ip_address,
-                            current_user_agent=user_agent,
-                            request_context=request_context,
-                        )
+                    security_result = await self.security_layer.validate_session_security(
+                        session=session_data,
+                        current_ip=ip_address,
+                        current_user_agent=user_agent,
+                        request_context=request_context,
                     )
 
-                    # Check if session should be blocked
                     if not security_result["valid"]:
                         await self.invalidate_session(
                             session_token, reason="security_validation_failed"
@@ -522,21 +543,62 @@ class AuthService:
                             details=security_result,
                         )
 
-                    # Update session with new security information
                     session_data.risk_score = security_result["risk_score"]
                     for flag in security_result["security_flags"]:
                         session_data.add_security_flag(flag)
 
-                    # Update session in store
                     await self.core_auth.session_manager.store.update_session(
                         session_data
                     )
 
+            await self._record_auth_event(
+                event_type=AuthEventType.SESSION_VALIDATED,
+                success=True,
+                start_time=start_time,
+                user_id=user_data.user_id,
+                email=user_data.email,
+                session_token=session_token,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            await self._record_performance_metric(
+                "validate_session",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                True,
+            )
             return user_data
 
-        except (SessionExpiredError, SessionNotFoundError):
+        except (SessionExpiredError, SessionNotFoundError) as e:
+            await self._record_auth_event(
+                event_type=AuthEventType.SESSION_VALIDATED,
+                success=False,
+                start_time=start_time,
+                session_token=session_token,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+            )
+            await self._record_performance_metric(
+                "validate_session",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             raise
         except Exception as e:
+            await self._record_auth_event(
+                event_type=AuthEventType.SESSION_VALIDATED,
+                success=False,
+                start_time=start_time,
+                session_token=session_token,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+            )
+            await self._record_performance_metric(
+                "validate_session",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             self.logger.error(f"Session validation error: {e}")
             raise SecurityError(f"Session validation failed: {e}")
 
@@ -555,15 +617,21 @@ class AuthService:
             True if session was invalidated, False otherwise
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.LOGOUT,
+            success=False,
+            session_token=session_token,
+            details={"stage": "start", "reason": reason},
+        )
 
         start_time = datetime.utcnow()
 
         try:
-            # Invalidate through core authenticator
             result = await self.core_auth.invalidate_session(
                 session_token, reason=reason, **kwargs
             )
-
+            
             session_data = None
 
             # Log invalidation if security layer is enabled
@@ -652,13 +720,11 @@ class AuthService:
         start_time = datetime.utcnow()
 
         try:
-            # Check rate limiting for user creation if security layer enabled
             if self.security_layer:
                 await self.security_layer.check_rate_limit(
                     ip_address=ip_address, event_type="user_creation"
                 )
 
-            # Create user through core authenticator
             user_data = await self.core_auth.create_user(
                 email=email,
                 password=password,
@@ -667,7 +733,6 @@ class AuthService:
                 roles=roles,
                 **kwargs,
             )
-
             # Record auth event
             await self._record_auth_event(
                 event_type=AuthEventType.USER_CREATED,
@@ -736,14 +801,13 @@ class AuthService:
         start_time = datetime.utcnow()
 
         try:
-            # Update password through core authenticator
             result = await self.core_auth.update_user_password(
                 user_id=user_id,
                 new_password=new_password,
                 current_password=current_password,
                 **kwargs,
             )
-
+              
             user_data = await self.core_auth.get_user_by_id(user_id) if result else None
 
             await self._record_auth_event(
@@ -762,6 +826,11 @@ class AuthService:
                 "update_user_password", processing_time, result
             )
 
+            await self._record_performance_metric(
+                "update_user_password",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                result,
+            )
             return result
 
         except Exception as e:
@@ -808,22 +877,53 @@ class AuthService:
             True if preferences were updated successfully
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.USER_UPDATED,
+            success=False,
+            user_id=user_id,
+            details={"stage": "start", "action": "preferences_update"},
+        )
 
         try:
             user_data = await self.core_auth.get_user_by_id(user_id)
             if not user_data:
                 raise UserNotFoundError(user_id=user_id)
 
-            # Update preferences
             user_data.preferences.update(preferences)
             user_data.updated_at = datetime.utcnow()
 
-            # Save updated user data
             await self.core_auth.db_client.update_user(user_data)
 
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_UPDATED,
+                success=True,
+                start_time=start_time,
+                user_id=user_id,
+                email=user_data.email,
+                details={"action": "preferences_update"},
+            )
+            await self._record_performance_metric(
+                "update_user_preferences",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                True,
+            )
             return True
 
         except Exception as e:
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_UPDATED,
+                success=False,
+                start_time=start_time,
+                user_id=user_id,
+                error_message=str(e),
+                details={"action": "preferences_update"},
+            )
+            await self._record_performance_metric(
+                "update_user_preferences",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             self.logger.error(f"Failed to update user preferences: {e}")
             raise
 
@@ -843,26 +943,35 @@ class AuthService:
             Password reset token if user exists, None otherwise
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.PASSWORD_RESET_REQUESTED,
+            success=False,
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details={"stage": "start"},
+        )
 
         try:
-            # Check if user exists
             user_data = await self.core_auth.get_user_by_email(email)
             if not user_data:
-                # Don't reveal that user doesn't exist - still log the attempt
-                if self.security_layer:
-                    await self.security_layer.log_auth_event(
-                        AuthEvent(
-                            event_type=AuthEventType.PASSWORD_RESET_REQUESTED,
-                            email=email,
-                            ip_address=ip_address,
-                            user_agent=user_agent,
-                            success=False,
-                            error_message="User not found",
-                        )
-                    )
+                await self._record_auth_event(
+                    event_type=AuthEventType.PASSWORD_RESET_REQUESTED,
+                    success=False,
+                    start_time=start_time,
+                    email=email,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    error_message="User not found",
+                )
+                await self._record_performance_metric(
+                    "create_password_reset_token",
+                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    False,
+                )
                 return None
 
-            # Check rate limiting if security layer enabled
             if self.security_layer:
                 await self.security_layer.check_rate_limit(
                     ip_address=ip_address,
@@ -870,7 +979,6 @@ class AuthService:
                     event_type="password_reset_request",
                 )
 
-            # Create reset token with database storage
             reset_token = await self.core_auth.token_manager.create_password_reset_token_with_storage(
                 user_data=user_data,
                 db_client=self.core_auth.db_client,
@@ -878,25 +986,54 @@ class AuthService:
                 user_agent=user_agent,
             )
 
-            # Log password reset request
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.PASSWORD_RESET_REQUESTED,
-                        user_id=user_data.user_id,
-                        email=email,
-                        tenant_id=user_data.tenant_id,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=True,
-                    )
-                )
-
+            await self._record_auth_event(
+                event_type=AuthEventType.PASSWORD_RESET_REQUESTED,
+                success=True,
+                start_time=start_time,
+                user_id=user_data.user_id,
+                email=email,
+                tenant_id=user_data.tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            await self._record_performance_metric(
+                "create_password_reset_token",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                True,
+            )
             return reset_token
 
         except RateLimitExceededError:
+            await self._record_auth_event(
+                event_type=AuthEventType.PASSWORD_RESET_REQUESTED,
+                success=False,
+                start_time=start_time,
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message="rate_limit_exceeded",
+            )
+            await self._record_performance_metric(
+                "create_password_reset_token",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             raise
         except Exception as e:
+            await self._record_auth_event(
+                event_type=AuthEventType.PASSWORD_RESET_REQUESTED,
+                success=False,
+                start_time=start_time,
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+            )
+            await self._record_performance_metric(
+                "create_password_reset_token",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             self.logger.error(f"Failed to create password reset token: {e}")
             return None
 
@@ -922,64 +1059,75 @@ class AuthService:
             True if password was reset successfully
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.PASSWORD_RESET_COMPLETED,
+            success=False,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details={"stage": "start"},
+        )
 
         try:
-            # Verify and use the reset token with database storage
             user_data = await self.core_auth.token_manager.verify_password_reset_token_with_storage(
                 token=token, db_client=self.core_auth.db_client
             )
             if not user_data:
-                # Log failed password reset attempt
-                if self.security_layer:
-                    await self.security_layer.log_auth_event(
-                        AuthEvent(
-                            event_type=AuthEventType.PASSWORD_RESET_COMPLETED,
-                            ip_address=ip_address,
-                            user_agent=user_agent,
-                            success=False,
-                            error_message="Invalid or expired token",
-                        )
-                    )
+                await self._record_auth_event(
+                    event_type=AuthEventType.PASSWORD_RESET_COMPLETED,
+                    success=False,
+                    start_time=start_time,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    error_message="Invalid or expired token",
+                )
+                await self._record_performance_metric(
+                    "verify_password_reset_token",
+                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    False,
+                )
                 return False
 
-            # Update the password (without requiring current password for reset)
             await self.update_user_password(
                 user_id=user_data.user_id,
                 new_password=new_password,
-                current_password=None,  # No current password required for reset
+                current_password=None,
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
 
-            # Log successful password reset
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.PASSWORD_RESET_COMPLETED,
-                        user_id=user_data.user_id,
-                        email=user_data.email,
-                        tenant_id=user_data.tenant_id,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=True,
-                    )
-                )
-
+            await self._record_auth_event(
+                event_type=AuthEventType.PASSWORD_RESET_COMPLETED,
+                success=True,
+                start_time=start_time,
+                user_id=user_data.user_id,
+                email=user_data.email,
+                tenant_id=user_data.tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            await self._record_performance_metric(
+                "verify_password_reset_token",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                True,
+            )
             return True
 
         except Exception as e:
+            await self._record_auth_event(
+                event_type=AuthEventType.PASSWORD_RESET_COMPLETED,
+                success=False,
+                start_time=start_time,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+            )
+            await self._record_performance_metric(
+                "verify_password_reset_token",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             self.logger.error(f"Password reset verification failed: {e}")
-            # Log failed password reset attempt
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.PASSWORD_RESET_COMPLETED,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=False,
-                        error_message=str(e),
-                    )
-                )
             return False
 
     async def create_email_verification_token(
@@ -998,19 +1146,40 @@ class AuthService:
             Email verification token if user exists, None otherwise
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.USER_UPDATED,
+            success=False,
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details={"stage": "start", "action": "email_verification_requested"},
+        )
 
         try:
-            # Get user data
             user_data = await self.core_auth.get_user_by_id(user_id)
             if not user_data:
                 raise UserNotFoundError(user_id=user_id)
 
-            # Check if user is already verified
             if user_data.is_verified:
                 self.logger.info(f"User {user_id} is already verified")
+                await self._record_auth_event(
+                    event_type=AuthEventType.USER_UPDATED,
+                    success=False,
+                    start_time=start_time,
+                    user_id=user_id,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    error_message="already_verified",
+                    details={"action": "email_verification_requested"},
+                )
+                await self._record_performance_metric(
+                    "create_email_verification_token",
+                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    False,
+                )
                 return None
 
-            # Check rate limiting if security layer enabled
             if self.security_layer:
                 await self.security_layer.check_rate_limit(
                     ip_address=ip_address,
@@ -1018,7 +1187,6 @@ class AuthService:
                     event_type="email_verification_request",
                 )
 
-            # Create verification token with database storage
             verification_token = await self.core_auth.token_manager.create_email_verification_token_with_storage(
                 user_data=user_data,
                 db_client=self.core_auth.db_client,
@@ -1026,26 +1194,57 @@ class AuthService:
                 user_agent=user_agent,
             )
 
-            # Log email verification request
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.USER_UPDATED,  # Using existing event type
-                        user_id=user_data.user_id,
-                        email=user_data.email,
-                        tenant_id=user_data.tenant_id,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=True,
-                        details={"action": "email_verification_requested"},
-                    )
-                )
-
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_UPDATED,
+                success=True,
+                start_time=start_time,
+                user_id=user_data.user_id,
+                email=user_data.email,
+                tenant_id=user_data.tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                details={"action": "email_verification_requested"},
+            )
+            await self._record_performance_metric(
+                "create_email_verification_token",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                True,
+            )
             return verification_token
 
         except RateLimitExceededError:
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_UPDATED,
+                success=False,
+                start_time=start_time,
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message="rate_limit_exceeded",
+                details={"action": "email_verification_requested"},
+            )
+            await self._record_performance_metric(
+                "create_email_verification_token",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             raise
         except Exception as e:
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_UPDATED,
+                success=False,
+                start_time=start_time,
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+                details={"action": "email_verification_requested"},
+            )
+            await self._record_performance_metric(
+                "create_email_verification_token",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             self.logger.error(f"Failed to create email verification token: {e}")
             return None
 
@@ -1065,63 +1264,74 @@ class AuthService:
             True if email was verified successfully
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.USER_UPDATED,
+            success=False,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details={"stage": "start", "action": "email_verification"},
+        )
 
         try:
-            # Verify and use the verification token with database storage
             user_data = await self.core_auth.token_manager.verify_email_verification_token_with_storage(
                 token=token, db_client=self.core_auth.db_client
             )
             if not user_data:
-                # Log failed email verification attempt
-                if self.security_layer:
-                    await self.security_layer.log_auth_event(
-                        AuthEvent(
-                            event_type=AuthEventType.USER_UPDATED,
-                            ip_address=ip_address,
-                            user_agent=user_agent,
-                            success=False,
-                            error_message="Invalid or expired verification token",
-                            details={"action": "email_verification_failed"},
-                        )
-                    )
+                await self._record_auth_event(
+                    event_type=AuthEventType.USER_UPDATED,
+                    success=False,
+                    start_time=start_time,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    error_message="Invalid or expired verification token",
+                    details={"action": "email_verification_failed"},
+                )
+                await self._record_performance_metric(
+                    "verify_email_address",
+                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    False,
+                )
                 return False
 
-            # Mark user as verified
             user_data.is_verified = True
             user_data.updated_at = datetime.utcnow()
             await self.core_auth.db_client.update_user(user_data)
 
-            # Log successful email verification
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.USER_UPDATED,
-                        user_id=user_data.user_id,
-                        email=user_data.email,
-                        tenant_id=user_data.tenant_id,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=True,
-                        details={"action": "email_verified"},
-                    )
-                )
-
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_UPDATED,
+                success=True,
+                start_time=start_time,
+                user_id=user_data.user_id,
+                email=user_data.email,
+                tenant_id=user_data.tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                details={"action": "email_verified"},
+            )
+            await self._record_performance_metric(
+                "verify_email_address",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                True,
+            )
             return True
 
         except Exception as e:
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_UPDATED,
+                success=False,
+                start_time=start_time,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+                details={"action": "email_verification_failed"},
+            )
+            await self._record_performance_metric(
+                "verify_email_address",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             self.logger.error(f"Email verification failed: {e}")
-            # Log failed email verification attempt
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.USER_UPDATED,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=False,
-                        error_message=str(e),
-                        details={"action": "email_verification_failed"},
-                    )
-                )
             return False
 
     async def update_user_profile(
@@ -1148,62 +1358,67 @@ class AuthService:
             True if profile was updated successfully
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.PROFILE_UPDATED,
+            success=False,
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details={"stage": "start"},
+        )
 
         try:
             user_data = await self.core_auth.get_user_by_id(user_id)
             if not user_data:
                 raise UserNotFoundError(user_id=user_id)
 
-            # Track what was updated for logging
             updates = {}
-
-            # Update full name if provided
             if full_name is not None:
                 user_data.full_name = full_name
                 updates["full_name"] = full_name
 
-            # Update preferences if provided
             if preferences is not None:
                 user_data.preferences.update(preferences)
                 updates["preferences"] = list(preferences.keys())
 
-            # Update timestamp
             user_data.updated_at = datetime.utcnow()
-
-            # Save updated user data
             await self.core_auth.db_client.update_user(user_data)
 
-            # Log profile update if security layer enabled
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.PROFILE_UPDATED,
-                        user_id=user_id,
-                        email=user_data.email,
-                        tenant_id=user_data.tenant_id,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=True,
-                        details={"updates": updates},
-                    )
-                )
-
+            await self._record_auth_event(
+                event_type=AuthEventType.PROFILE_UPDATED,
+                success=True,
+                start_time=start_time,
+                user_id=user_id,
+                email=user_data.email,
+                tenant_id=user_data.tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                details={"updates": updates},
+            )
+            await self._record_performance_metric(
+                "update_user_profile",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                True,
+            )
             return True
 
         except Exception as e:
+            await self._record_auth_event(
+                event_type=AuthEventType.PROFILE_UPDATED,
+                success=False,
+                start_time=start_time,
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+            )
+            await self._record_performance_metric(
+                "update_user_profile",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             self.logger.error(f"Failed to update user profile: {e}")
-            # Log failed profile update
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.PROFILE_UPDATED,
-                        user_id=user_id,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=False,
-                        error_message=str(e),
-                    )
-                )
             raise
 
     async def deactivate_user(
@@ -1228,54 +1443,61 @@ class AuthService:
             True if user was deactivated successfully
         """
         await self.initialize()
+        start_time = datetime.utcnow()
+        await self._record_auth_event(
+            event_type=AuthEventType.USER_DEACTIVATED,
+            success=False,
+            user_id=user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            details={"stage": "start", "reason": reason},
+        )
 
         try:
             user_data = await self.core_auth.get_user_by_id(user_id)
             if not user_data:
                 raise UserNotFoundError(user_id=user_id)
 
-            # Deactivate user
             user_data.is_active = False
             user_data.updated_at = datetime.utcnow()
 
-            # Save updated user data
             await self.core_auth.db_client.update_user(user_data)
 
-            # Invalidate all user sessions
-            # Note: This would require additional session management functionality
-            # For now, we'll just log the deactivation
-
-            # Log user deactivation if security layer enabled
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.USER_DEACTIVATED,
-                        user_id=user_id,
-                        email=user_data.email,
-                        tenant_id=user_data.tenant_id,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=True,
-                        details={"reason": reason},
-                    )
-                )
-
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_DEACTIVATED,
+                success=True,
+                start_time=start_time,
+                user_id=user_id,
+                email=user_data.email,
+                tenant_id=user_data.tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                details={"reason": reason},
+            )
+            await self._record_performance_metric(
+                "deactivate_user",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                True,
+            )
             return True
 
         except Exception as e:
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_DEACTIVATED,
+                success=False,
+                start_time=start_time,
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+                details={"reason": reason},
+            )
+            await self._record_performance_metric(
+                "deactivate_user",
+                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                False,
+            )
             self.logger.error(f"Failed to deactivate user: {e}")
-            # Log failed deactivation
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.USER_DEACTIVATED,
-                        user_id=user_id,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=False,
-                        error_message=str(e),
-                    )
-                )
             raise
 
     async def get_service_stats(self) -> Dict[str, Any]:
