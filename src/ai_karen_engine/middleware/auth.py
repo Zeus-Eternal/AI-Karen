@@ -19,7 +19,7 @@ from ai_karen_engine.auth.exceptions import (
 from ai_karen_engine.auth.models import UserData
 from ai_karen_engine.auth.service import AuthService, get_auth_service
 from ai_karen_engine.database.client import get_db_session_context
-from ai_karen_engine.database.models.auth_models import ApiKey, Role, RolePermission
+from ai_karen_engine.database.models import ApiKey, Role, RolePermission
 
 # Global auth service instance (will be initialized lazily)
 auth_service_instance: AuthService = None

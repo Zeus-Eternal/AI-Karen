@@ -4,29 +4,17 @@
 
 import asyncio
 import hashlib
-import importlib.util
 import uuid
 from contextlib import contextmanager
-from pathlib import Path
 from types import SimpleNamespace
 
 from fastapi import Response
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from ai_karen_engine.database.models import ApiKey, Base, Role, RolePermission
 from ai_karen_engine.middleware.auth import auth_middleware
 from ai_karen_engine.utils.auth import create_session
-
-spec = importlib.util.spec_from_file_location(
-    "auth_models", Path("src/ai_karen_engine/database/models/auth_models.py")
-)
-auth_models = importlib.util.module_from_spec(spec)
-assert spec.loader is not None
-spec.loader.exec_module(auth_models)
-ApiKey = auth_models.ApiKey
-Base = auth_models.Base
-Role = auth_models.Role
-RolePermission = auth_models.RolePermission
 
 
 async def _call_next(request):
