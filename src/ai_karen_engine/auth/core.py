@@ -114,12 +114,19 @@ class CoreAuthenticator:
         self.config = config
         self.db_client = AuthDatabaseClient(config.database)
         self.token_manager = TokenManager(config.jwt)
-        self.session_manager = SessionManager(config.session, self.token_manager, self.db_client)
+        self.session_manager = SessionManager(
+            config.session, self.token_manager, self.db_client
+        )
         self.password_hasher = PasswordHasher(config.security.password_hash_rounds)
         self.password_validator = PasswordValidator(
             min_length=config.security.min_password_length,
             require_complexity=config.security.require_password_complexity,
         )
+
+    async def initialize(self) -> None:
+        """Initialize core authenticator components."""
+        await self.db_client.initialize_schema()
+        self.session_manager._start_cleanup_task()
 
     async def authenticate_user(
         self,

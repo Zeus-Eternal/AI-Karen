@@ -8,10 +8,9 @@ single entry point for all authentication operations.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from .config import AuthConfig
 from .core import CoreAuthenticator
@@ -92,6 +91,10 @@ class AuthService:
         self.logger.info("Initializing AuthService components...")
 
         try:
+            # Initialize core authentication layer
+            await self.core_auth.initialize()
+            self.logger.info("Core authentication layer initialized")
+
             # Initialize intelligence layer if present
             if self.intelligence_layer:
                 await self.intelligence_layer.initialize()
@@ -417,7 +420,7 @@ class AuthService:
                 session_data.risk_score = security_result["risk_score"]
                 for flag in security_result["security_flags"]:
                     session_data.add_security_flag(flag)
-                    
+
                 # Log session creation
                 await self.security_layer.log_session_event(
                     AuthEventType.SESSION_CREATED, session_data, success=True
@@ -527,11 +530,13 @@ class AuthService:
                     session_token
                 )
                 if session_data:
-                    security_result = await self.security_layer.validate_session_security(
-                        session=session_data,
-                        current_ip=ip_address,
-                        current_user_agent=user_agent,
-                        request_context=request_context,
+                    security_result = (
+                        await self.security_layer.validate_session_security(
+                            session=session_data,
+                            current_ip=ip_address,
+                            current_user_agent=user_agent,
+                            request_context=request_context,
+                        )
                     )
 
                     if not security_result["valid"]:
@@ -631,7 +636,7 @@ class AuthService:
             result = await self.core_auth.invalidate_session(
                 session_token, reason=reason, **kwargs
             )
-            
+
             session_data = None
 
             # Log invalidation if security layer is enabled
@@ -746,9 +751,7 @@ class AuthService:
             )
 
             processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-            await self._record_performance_metric(
-                "create_user", processing_time, True
-            )
+            await self._record_performance_metric("create_user", processing_time, True)
 
             return user_data
 
@@ -764,9 +767,7 @@ class AuthService:
                 user_agent=user_agent,
                 error_message=str(e),
             )
-            await self._record_performance_metric(
-                "create_user", processing_time, False
-            )
+            await self._record_performance_metric("create_user", processing_time, False)
             raise
 
     async def update_user_password(
@@ -807,7 +808,7 @@ class AuthService:
                 current_password=current_password,
                 **kwargs,
             )
-              
+
             user_data = await self.core_auth.get_user_by_id(user_id) if result else None
 
             await self._record_auth_event(
