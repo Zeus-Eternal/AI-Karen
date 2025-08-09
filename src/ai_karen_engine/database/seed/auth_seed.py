@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from ai_karen_engine.database.models.auth_models import AuthProvider, AuthUser
+from ai_karen_engine.database.models import AuthProvider, AuthUser
 
 
 def seed_default_auth(session: Session) -> None:

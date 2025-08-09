@@ -34,7 +34,7 @@ async def create_admin_user():
 
         # Check if admin user already exists
         with db_client.session_scope() as session:
-            from ai_karen_engine.database.models.auth_models import AuthUser
+            from ai_karen_engine.database.models import AuthUser
 
             existing_admin = (
                 session.query(AuthUser).filter(AuthUser.email == admin_email).first()
@@ -73,9 +73,13 @@ async def create_admin_user():
 
         # Mark admin as verified
         with db_client.session_scope() as session:
-            from ai_karen_engine.database.models.auth_models import AuthUser
+            from ai_karen_engine.database.models import AuthUser
 
-            admin_db_user = session.query(AuthUser).filter(AuthUser.user_id == admin_user.id).first()
+            admin_db_user = (
+                session.query(AuthUser)
+                .filter(AuthUser.user_id == admin_user.id)
+                .first()
+            )
             if admin_db_user:
                 admin_db_user.is_verified = True
                 session.commit()
@@ -99,9 +103,11 @@ async def create_demo_user():
 
         # Check if demo user already exists
         with db_client.session_scope() as session:
-            from ai_karen_engine.database.models.auth_models import AuthUser
+            from ai_karen_engine.database.models import AuthUser
 
-            existing_demo = session.query(AuthUser).filter(AuthUser.email == demo_email).first()
+            existing_demo = (
+                session.query(AuthUser).filter(AuthUser.email == demo_email).first()
+            )
 
             if existing_demo:
                 logger.info("Demo user already exists")
@@ -136,9 +142,11 @@ async def create_demo_user():
 
         # Mark demo user as verified
         with db_client.session_scope() as session:
-            from ai_karen_engine.database.models.auth_models import AuthUser
+            from ai_karen_engine.database.models import AuthUser
 
-            demo_db_user = session.query(AuthUser).filter(AuthUser.user_id == demo_user.id).first()
+            demo_db_user = (
+                session.query(AuthUser).filter(AuthUser.user_id == demo_user.id).first()
+            )
             if demo_db_user:
                 demo_db_user.is_verified = True
                 session.commit()

@@ -64,7 +64,7 @@ ps aux | grep python | grep main.py
    ```bash
    # Start backend
    python main.py
-   
+
    # Or with specific host/port
    python main.py --host 0.0.0.0 --port 8000
    ```
@@ -73,7 +73,7 @@ ps aux | grep python | grep main.py
    ```bash
    # Check environment variables
    export KAREN_BACKEND_URL=http://localhost:8000
-   
+
    # Update .env file
    echo "KAREN_BACKEND_URL=http://localhost:8000" >> .env
    ```
@@ -90,10 +90,10 @@ ps aux | grep python | grep main.py
    ```bash
    # Check container status
    docker-compose ps
-   
+
    # Check container logs
    docker-compose logs api
-   
+
    # Restart containers
    docker-compose restart api
    ```
@@ -132,7 +132,7 @@ grep -r "allow_origins" main.py
    ```bash
    # Add Web UI origin to CORS configuration
    export KAREN_CORS_ORIGINS="http://localhost:9002,http://127.0.0.1:9002"
-   
+
    # Update .env file
    echo "KAREN_CORS_ORIGINS=http://localhost:9002,http://127.0.0.1:9002" >> .env
    ```
@@ -141,7 +141,7 @@ grep -r "allow_origins" main.py
    ```bash
    # Add external IP to CORS origins
    export KAREN_CORS_ORIGINS="http://localhost:9002,http://10.105.235.209:9002"
-   
+
    # For dynamic external IP detection
    export KAREN_EXTERNAL_HOST=10.105.235.209
    ```
@@ -151,7 +151,7 @@ grep -r "allow_origins" main.py
    # Update docker-compose.yml environment
    environment:
      - KAREN_CORS_ORIGINS=http://localhost:9002,http://127.0.0.1:9002
-   
+
    # Restart containers
    docker-compose restart api
    ```
@@ -160,7 +160,7 @@ grep -r "allow_origins" main.py
    ```python
    # Verify in main.py
    from fastapi.middleware.cors import CORSMiddleware
-   
+
    app.add_middleware(
        CORSMiddleware,
        allow_origins=["http://localhost:9002", "http://127.0.0.1:9002"],
@@ -204,7 +204,7 @@ ss -an | grep :8000
    ```bash
    # Update health check timeout
    export KAREN_HEALTH_CHECK_TIMEOUT=10000
-   
+
    # Update API client timeout
    export KAREN_HTTP_TIMEOUT=30000
    ```
@@ -214,10 +214,10 @@ ss -an | grep :8000
    # Check system resources
    top
    htop
-   
+
    # Check disk I/O
    iostat -x 1
-   
+
    # Check memory usage
    free -h
    ```
@@ -227,7 +227,7 @@ ss -an | grep :8000
    # Check Docker network
    docker network ls
    docker network inspect ai-karen-net
-   
+
    # Recreate network
    docker-compose down
    docker-compose up -d
@@ -290,11 +290,11 @@ echo $AUTH_ALGORITHM
    ```bash
    # Initialize user database
    python scripts/init_db_schema.py
-   
+
    # Create test user
    python -c "
-   from src.ai_karen_engine.database.auth_models import create_user
-   create_user('test', 'test@example.com', 'testpassword')
+   from ai_karen_engine.database.models import AuthUser
+   print(AuthUser.__tablename__)
    "
    ```
 
@@ -338,7 +338,7 @@ docker port ai-karen-web-ui
        container_name: ai-karen-api
        networks:
          - ai-karen-net
-     
+
      web-ui:
        environment:
          - KAREN_BACKEND_URL=http://api:8000  # Use service name
@@ -405,10 +405,10 @@ nmap -p 8000 10.105.235.209
    ```bash
    # Allow backend port
    sudo ufw allow 8000/tcp
-   
+
    # Allow Web UI port
    sudo ufw allow 9002/tcp
-   
+
    # Check firewall status
    sudo ufw status verbose
    ```
@@ -425,7 +425,7 @@ nmap -p 8000 10.105.235.209
    # Set external host
    export KAREN_EXTERNAL_HOST=10.105.235.209
    export KAREN_EXTERNAL_BACKEND_PORT=8000
-   
+
    # Update CORS for external access
    export KAREN_CORS_ORIGINS="http://10.105.235.209:9002,http://localhost:9002"
    ```
@@ -532,12 +532,12 @@ def check_environment_variables():
         'KAREN_ENVIRONMENT',
         'KAREN_NETWORK_MODE'
     ]
-    
+
     missing_vars = []
     for var in required_vars:
         if not os.getenv(var):
             missing_vars.append(var)
-    
+
     if missing_vars:
         print(f"✗ Missing environment variables: {', '.join(missing_vars)}")
         return False
@@ -548,7 +548,7 @@ def check_environment_variables():
 def check_backend_connectivity():
     """Check backend connectivity"""
     backend_url = os.getenv('KAREN_BACKEND_URL', 'http://localhost:8000')
-    
+
     try:
         response = requests.get(f"{backend_url}/health", timeout=5)
         if response.status_code == 200:
@@ -565,17 +565,17 @@ def check_cors_configuration():
     """Check CORS configuration"""
     backend_url = os.getenv('KAREN_BACKEND_URL', 'http://localhost:8000')
     web_ui_url = os.getenv('KAREN_WEB_UI_URL', 'http://localhost:9002')
-    
+
     try:
         headers = {
             'Origin': web_ui_url,
             'Access-Control-Request-Method': 'GET',
             'Access-Control-Request-Headers': 'Content-Type'
         }
-        
-        response = requests.options(f"{backend_url}/api/auth/login", 
+
+        response = requests.options(f"{backend_url}/api/auth/login",
                                   headers=headers, timeout=5)
-        
+
         if 'Access-Control-Allow-Origin' in response.headers:
             print("✓ CORS configuration valid")
             return True
@@ -590,18 +590,18 @@ def main():
     """Run all configuration checks"""
     print("AI Karen Configuration Validation")
     print("=" * 40)
-    
+
     checks = [
         check_environment_variables,
         check_backend_connectivity,
         check_cors_configuration
     ]
-    
+
     results = []
     for check in checks:
         results.append(check())
         print()
-    
+
     if all(results):
         print("✓ All configuration checks passed!")
         sys.exit(0)

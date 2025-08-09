@@ -7,7 +7,7 @@ from typing import Dict, List
 
 from sqlalchemy.orm import Session
 
-from ai_karen_engine.database.models.auth_models import Role, RolePermission
+from ai_karen_engine.database.models import Role, RolePermission
 
 DEFAULT_ROLES: Dict[str, List[str]] = {
     "admin": ["*"],
