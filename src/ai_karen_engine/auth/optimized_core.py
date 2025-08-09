@@ -32,8 +32,9 @@ from .optimized_session import OptimizedSessionManager
 from .tokens import TokenManager
 
 try:
-    from sqlalchemy import text
     import json
+
+    from sqlalchemy import text
 except ImportError:
     text = None
     import json
@@ -42,7 +43,7 @@ except ImportError:
 class OptimizedPasswordHasher:
     """
     Optimized password hashing with PostgreSQL-aware performance tuning.
-    
+
     Includes adaptive hashing and efficient verification patterns.
     """
 
@@ -73,10 +74,12 @@ class OptimizedPasswordHasher:
         except (ValueError, TypeError):
             return False
 
-    def verify_password_batch(self, password_hash_pairs: List[Tuple[str, str]]) -> List[bool]:
+    def verify_password_batch(
+        self, password_hash_pairs: List[Tuple[str, str]]
+    ) -> List[bool]:
         """
         Batch password verification for improved performance.
-        
+
         Useful for bulk operations or when verifying multiple passwords.
         """
         results = []
@@ -99,7 +102,7 @@ class OptimizedPasswordHasher:
 class OptimizedCoreAuthenticator:
     """
     PostgreSQL-optimized core authentication with high-performance operations.
-    
+
     Features:
     - Batch operations for improved throughput
     - Optimized database queries with proper indexing
@@ -111,15 +114,17 @@ class OptimizedCoreAuthenticator:
         """Initialize optimized core authenticator."""
         self.config = config
         self.logger = logging.getLogger(f"{__name__}.OptimizedCoreAuthenticator")
-        
+
         # Initialize optimized components
         self.db_client = OptimizedAuthDatabaseClient(config.database)
         self.token_manager = TokenManager(config.jwt)
         self.session_manager = OptimizedSessionManager(
             config.session, self.token_manager, self.db_client
         )
-        self.password_hasher = OptimizedPasswordHasher(config.security.password_hash_rounds)
-        
+        self.password_hasher = OptimizedPasswordHasher(
+            config.security.password_hash_rounds
+        )
+
         # Performance tracking
         self._operation_times: Dict[str, List[float]] = {}
         self._initialized = False
@@ -131,11 +136,11 @@ class OptimizedCoreAuthenticator:
 
         try:
             # Initialize database schema with optimizations
-            await self.db_client.initialize_optimized_schema()
-            
+            await self.db_client.initialize_schema()
+
             # Start session manager background tasks
             await self.session_manager.start_background_tasks()
-            
+
             self._initialized = True
             self.logger.info("Optimized core authenticator initialized successfully")
 
@@ -153,7 +158,7 @@ class OptimizedCoreAuthenticator:
     ) -> Optional[UserData]:
         """
         Authenticate user with PostgreSQL optimizations.
-        
+
         Uses efficient queries and proper indexing for maximum performance.
         """
         start_time = datetime.utcnow()
@@ -165,8 +170,10 @@ class OptimizedCoreAuthenticator:
 
             # Use optimized user lookup with active user filtering
             async with self.db_client.session_factory() as session:
-                result = await session.execute(text("""
-                    SELECT 
+                result = await session.execute(
+                    text(
+                        """
+                    SELECT
                         u.user_id, u.email, u.full_name, u.roles, u.tenant_id, u.preferences,
                         u.is_verified, u.is_active, u.created_at, u.updated_at, u.last_login_at,
                         u.failed_login_attempts, u.locked_until, u.two_factor_enabled, u.two_factor_secret,
@@ -174,8 +181,11 @@ class OptimizedCoreAuthenticator:
                     FROM auth_users u
                     JOIN auth_password_hashes p ON u.user_id = p.user_id
                     WHERE u.email = :email AND u.is_active = true
-                """), {"email": email})
-                
+                """
+                    ),
+                    {"email": email},
+                )
+
                 row = result.fetchone()
                 if not row:
                     await self._log_failed_auth(
@@ -236,7 +246,7 @@ class OptimizedCoreAuthenticator:
     ) -> UserData:
         """
         Create user with PostgreSQL UPSERT optimization.
-        
+
         Uses ON CONFLICT for atomic operations and better performance.
         """
         start_time = datetime.utcnow()
@@ -287,7 +297,7 @@ class OptimizedCoreAuthenticator:
     ) -> SessionData:
         """
         Create session with optimized PostgreSQL operations.
-        
+
         Includes automatic cleanup and efficient storage.
         """
         start_time = datetime.utcnow()
@@ -319,7 +329,7 @@ class OptimizedCoreAuthenticator:
     ) -> Optional[UserData]:
         """
         Validate session with optimized database queries.
-        
+
         Uses JOIN operations for efficient validation.
         """
         start_time = datetime.utcnow()
@@ -344,7 +354,7 @@ class OptimizedCoreAuthenticator:
     ) -> Dict[str, Optional[UserData]]:
         """
         Batch validate multiple sessions for improved performance.
-        
+
         Uses efficient batch queries to validate multiple sessions at once.
         """
         start_time = datetime.utcnow()
@@ -352,16 +362,18 @@ class OptimizedCoreAuthenticator:
 
         try:
             results = {}
-            
+
             # Process in batches to avoid overwhelming the database
             batch_size = 50
             for i in range(0, len(session_tokens), batch_size):
-                batch = session_tokens[i:i + batch_size]
-                
+                batch = session_tokens[i : i + batch_size]
+
                 # Use batch query for validation
                 async with self.db_client.session_factory() as session:
-                    result = await session.execute(text("""
-                        SELECT 
+                    result = await session.execute(
+                        text(
+                            """
+                        SELECT
                             s.session_token,
                             u.user_id, u.email, u.full_name, u.roles, u.tenant_id, u.preferences,
                             u.is_verified, u.is_active, u.created_at, u.updated_at, u.last_login_at,
@@ -372,7 +384,10 @@ class OptimizedCoreAuthenticator:
                         AND s.is_active = true
                         AND u.is_active = true
                         AND (s.created_at + INTERVAL '1 second' * s.expires_in) > NOW()
-                    """), {"tokens": batch})
+                    """
+                        ),
+                        {"tokens": batch},
+                    )
 
                     # Process results
                     valid_sessions = {}
@@ -400,7 +415,7 @@ class OptimizedCoreAuthenticator:
     ) -> Optional[UserData]:
         """
         Get user by email with role filtering using JSONB queries.
-        
+
         Uses PostgreSQL's JSONB operators for efficient role-based lookups.
         """
         start_time = datetime.utcnow()
@@ -425,7 +440,7 @@ class OptimizedCoreAuthenticator:
     ) -> int:
         """
         Bulk update user preferences using PostgreSQL JSONB operations.
-        
+
         Efficiently updates multiple users' preferences in batch.
         """
         start_time = datetime.utcnow()
@@ -448,7 +463,7 @@ class OptimizedCoreAuthenticator:
     async def get_performance_metrics(self) -> Dict[str, Any]:
         """Get performance metrics for monitoring."""
         metrics = {}
-        
+
         for operation, times in self._operation_times.items():
             if times:
                 metrics[operation] = {
@@ -456,7 +471,9 @@ class OptimizedCoreAuthenticator:
                     "avg_ms": sum(times) / len(times),
                     "min_ms": min(times),
                     "max_ms": max(times),
-                    "p95_ms": sorted(times)[int(len(times) * 0.95)] if len(times) > 20 else max(times),
+                    "p95_ms": sorted(times)[int(len(times) * 0.95)]
+                    if len(times) > 20
+                    else max(times),
                 }
 
         # Add database statistics
@@ -504,22 +521,27 @@ class OptimizedCoreAuthenticator:
         try:
             async with self.db_client.session_factory() as session:
                 # Use atomic increment operation
-                result = await session.execute(text("""
-                    UPDATE auth_users 
+                result = await session.execute(
+                    text(
+                        """
+                    UPDATE auth_users
                     SET failed_login_attempts = failed_login_attempts + 1,
-                        locked_until = CASE 
-                            WHEN failed_login_attempts + 1 >= :max_attempts 
+                        locked_until = CASE
+                            WHEN failed_login_attempts + 1 >= :max_attempts
                             THEN NOW() + INTERVAL ':lockout_minutes minutes'
                             ELSE locked_until
                         END,
                         updated_at = NOW()
                     WHERE user_id = :user_id
                     RETURNING failed_login_attempts, locked_until
-                """), {
-                    "user_id": user_data.user_id,
-                    "max_attempts": self.config.security.max_failed_attempts,
-                    "lockout_minutes": self.config.security.lockout_duration_minutes,
-                })
+                """
+                    ),
+                    {
+                        "user_id": user_data.user_id,
+                        "max_attempts": self.config.security.max_failed_attempts,
+                        "lockout_minutes": self.config.security.lockout_duration_minutes,
+                    },
+                )
 
                 row = result.fetchone()
                 if row:
@@ -531,32 +553,44 @@ class OptimizedCoreAuthenticator:
         except Exception as e:
             self.logger.error(f"Failed to increment failed attempts: {e}")
 
-    async def _handle_successful_auth(self, user_data: UserData, password_hash: str) -> None:
+    async def _handle_successful_auth(
+        self, user_data: UserData, password_hash: str
+    ) -> None:
         """Handle successful authentication updates."""
         try:
             async with self.db_client.session_factory() as session:
                 # Reset failed attempts and update last login
-                await session.execute(text("""
-                    UPDATE auth_users 
+                await session.execute(
+                    text(
+                        """
+                    UPDATE auth_users
                     SET failed_login_attempts = 0,
                         locked_until = NULL,
                         last_login_at = NOW(),
                         updated_at = NOW()
                     WHERE user_id = :user_id
-                """), {"user_id": user_data.user_id})
+                """
+                    ),
+                    {"user_id": user_data.user_id},
+                )
 
                 # Check if password needs rehashing
                 if self.password_hasher.needs_rehash(password_hash):
                     new_hash = self.password_hasher.hash_password(password_hash)
-                    await session.execute(text("""
-                        UPDATE auth_password_hashes 
+                    await session.execute(
+                        text(
+                            """
+                        UPDATE auth_password_hashes
                         SET password_hash = :password_hash,
                             updated_at = NOW()
                         WHERE user_id = :user_id
-                    """), {
-                        "user_id": user_data.user_id,
-                        "password_hash": new_hash,
-                    })
+                    """
+                        ),
+                        {
+                            "user_id": user_data.user_id,
+                            "password_hash": new_hash,
+                        },
+                    )
 
                 await session.commit()
 
@@ -570,12 +604,17 @@ class OptimizedCoreAuthenticator:
             self.logger.error(f"Failed to handle successful auth: {e}")
 
     async def _log_failed_auth(
-        self, email: str, ip_address: str, user_agent: str, reason: str, start_time: datetime
+        self,
+        email: str,
+        ip_address: str,
+        user_agent: str,
+        reason: str,
+        start_time: datetime,
     ) -> None:
         """Log failed authentication attempt."""
         try:
             processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-            
+
             # Log to database if audit logging is enabled
             if self.config.security.enable_audit_logging:
                 event = AuthEvent(
@@ -596,7 +635,7 @@ class OptimizedCoreAuthenticator:
         """Record operation time for performance monitoring."""
         if operation not in self._operation_times:
             self._operation_times[operation] = []
-        
+
         # Keep only recent measurements (last 1000)
         times = self._operation_times[operation]
         times.append(time_ms)

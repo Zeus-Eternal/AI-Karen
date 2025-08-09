@@ -132,10 +132,11 @@ docker compose up -d postgres redis elasticsearch milvus
 
 ### 3. Initialize Databases
 
+The authentication service automatically initializes its PostgreSQL schema on
+startup. For other components, run:
+
 ```bash
 
-# Initialize PostgreSQL schema
-docker compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/001_create_tables.sql
 # Create memory_entries table
 docker compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/004_create_memory_entries_table.sql
 
