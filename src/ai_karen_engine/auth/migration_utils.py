@@ -341,7 +341,7 @@ class AuthDataMigrator:
             try:
                 # Check if session already exists
                 target_cursor.execute(
-                    "SELECT session_token FROM auth_sessions WHERE session_token = ?",
+                    "SELECT session_id FROM auth_sessions WHERE session_id = ?",
                     (session_row["session_token"],),
                 )
                 if target_cursor.fetchone():
@@ -440,7 +440,7 @@ class AuthDataMigrator:
 
                 # Check if session already exists
                 target_cursor.execute(
-                    "SELECT session_token FROM auth_sessions WHERE session_token = ?",
+                    "SELECT session_id FROM auth_sessions WHERE session_id = ?",
                     (session_token,),
                 )
                 if target_cursor.fetchone():
@@ -545,7 +545,7 @@ class AuthDataMigrator:
                     """
                     INSERT INTO auth_events (
                         event_id, event_type, timestamp, user_id, email, tenant_id,
-                        ip_address, user_agent, request_id, session_token, success,
+                        ip_address, user_agent, request_id, session_id, success,
                         error_message, details, risk_score, security_flags,
                         blocked_by_security, processing_time_ms, service_version
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

@@ -114,7 +114,7 @@ class DatabaseClient:
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS auth_sessions (
-                    session_token TEXT PRIMARY KEY,
+                    session_id TEXT PRIMARY KEY,
                     user_id TEXT NOT NULL,
                     access_token TEXT NOT NULL,
                     refresh_token TEXT NOT NULL,
@@ -215,7 +215,7 @@ class DatabaseClient:
                     ip_address TEXT NOT NULL DEFAULT 'unknown',
                     user_agent TEXT NOT NULL DEFAULT '',
                     request_id TEXT,
-                    session_token TEXT,
+                    session_id TEXT,
                     success BOOLEAN NOT NULL,
                     error_message TEXT,
                     details TEXT NOT NULL DEFAULT '{}',
@@ -842,7 +842,7 @@ class DatabaseClient:
                 """
                 INSERT INTO auth_events (
                     event_id, event_type, timestamp, user_id, email, tenant_id,
-                    ip_address, user_agent, request_id, session_token, success,
+                    ip_address, user_agent, request_id, session_id, success,
                     error_message, details, risk_score, security_flags,
                     blocked_by_security, processing_time_ms, service_version
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

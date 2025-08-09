@@ -70,7 +70,7 @@ class AuthUser(Base):
 
     __tablename__ = "auth_users"
 
-    user_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
     full_name = Column(String(255))
     password_hash = Column(String(255))
@@ -116,7 +116,9 @@ class TenantConversation(Base):
 
     __tablename__ = "conversations"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(
+        "conversation_id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id = Column(UUID(as_uuid=True), nullable=False)
     title = Column(String(255))
     conversation_metadata = Column(JSON, default={})
@@ -200,10 +202,10 @@ class TenantMessage(Base):
 
     __tablename__ = "messages"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column("message_id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     conversation_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("conversations.id", ondelete="CASCADE"),
+        ForeignKey("conversations.conversation_id", ondelete="CASCADE"),
         nullable=False,
     )
     role = Column(String(50), nullable=False)
@@ -226,10 +228,12 @@ class TenantMessageTool(Base):
 
     __tablename__ = "message_tools"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(
+        "message_tool_id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     message_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("messages.id", ondelete="CASCADE"),
+        ForeignKey("messages.message_id", ondelete="CASCADE"),
         nullable=False,
     )
     tool_name = Column(String(255), nullable=False)
@@ -401,7 +405,9 @@ class InstalledExtension(Base):
     )
     version = Column(String)
     installed_by = Column(
-        String, ForeignKey("auth_users.user_id", ondelete="SET NULL"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey("auth_users.user_id", ondelete="SET NULL"),
+        nullable=True,
     )
     installed_at = Column(DateTime, default=datetime.utcnow)
     source = Column(String)
@@ -525,7 +531,9 @@ class File(Base):
     file_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String, index=True)
     owner_user_id = Column(
-        String, ForeignKey("auth_users.user_id", ondelete="SET NULL"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey("auth_users.user_id", ondelete="SET NULL"),
+        nullable=True,
     )
     name = Column(String)
     mime_type = Column(String)
@@ -612,9 +620,13 @@ class AuthSession(Base):
 
     __tablename__ = "auth_sessions"
 
-    session_token = Column(String, primary_key=True)
+    session_token = Column(
+        "session_id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id = Column(
-        String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("auth_users.user_id", ondelete="CASCADE"),
+        nullable=False,
     )
     access_token = Column(String, nullable=False)
     refresh_token = Column(String, nullable=False)
@@ -673,9 +685,11 @@ class UserIdentity(Base):
 
     __tablename__ = "user_identities"
 
-    identity_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    identity_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(
-        String, ForeignKey("auth_users.user_id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("auth_users.user_id", ondelete="CASCADE"),
+        nullable=False,
     )
     provider_id = Column(
         String, ForeignKey("auth_providers.provider_id"), nullable=False
@@ -829,7 +843,9 @@ class ApiKey(Base):
     key_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String, index=True)
     user_id = Column(
-        String, ForeignKey("auth_users.user_id", ondelete="SET NULL"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey("auth_users.user_id", ondelete="SET NULL"),
+        nullable=True,
     )
     hashed_key = Column(String, nullable=False, unique=True)
     name = Column(String)
