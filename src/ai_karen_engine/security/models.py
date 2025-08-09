@@ -25,6 +25,7 @@ class AuthEventType(Enum):
     LOGIN_BLOCKED = "login_blocked"
     LOGOUT = "logout"
     SESSION_CREATED = "session_created"
+    SESSION_VALIDATED = "session_validated"
     SESSION_EXPIRED = "session_expired"
     SESSION_INVALIDATED = "session_invalidated"
     PASSWORD_RESET_REQUESTED = "password_reset_requested"
