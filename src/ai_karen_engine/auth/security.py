@@ -13,12 +13,13 @@ import logging
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from uuid import uuid4
 
 from .config import AuthConfig
 from .exceptions import RateLimitExceededError, SecurityError, SessionError
 from .models import AuthEvent, AuthEventType, SessionData, UserData
+from .monitoring import metrics_hook as monitoring_metrics_hook
 
 
 class RateLimiter:
@@ -265,14 +266,20 @@ class RateLimiter:
 class AuditLogger:
     """
     Comprehensive authentication event logging for security monitoring.
-    
+
     Provides structured logging of all authentication events with
-    configurable output formats and security-focused event tracking.
+    configurable output formats, security-focused event tracking and
+    optional metrics forwarding.
     """
-    
-    def __init__(self, config: AuthConfig):
+
+    def __init__(
+        self,
+        config: AuthConfig,
+        metrics_hook: Optional[Callable[[str, Dict[str, Any]], None]] = monitoring_metrics_hook,
+    ):
         self.config = config
         self.security_config = config.security
+        self.metrics_hook = metrics_hook
         
         # Set up structured logging
         self.logger = logging.getLogger(f"{__name__}.audit")
@@ -336,6 +343,16 @@ class AuditLogger:
         # Store security events for monitoring
         if self._is_security_event(event):
             self._store_security_event(log_data)
+
+        # Forward to metrics hook if available
+        if self.metrics_hook:
+            try:
+                self.metrics_hook(
+                    event.event_type.value,
+                    {"processing_time_ms": event.processing_time_ms},
+                )
+            except Exception:  # pragma: no cover - metrics are best effort
+                self.logger.debug("Metrics hook failed", exc_info=True)
     
     def _should_log_event(self, event: AuthEvent) -> bool:
         """Determine if an event should be logged based on configuration."""
@@ -835,20 +852,24 @@ class SessionValidator:
 class SecurityEnhancer:
     """
     Main security enhancement layer that orchestrates all security components.
-    
+
     This class provides the unified interface for all security features
     including rate limiting, audit logging, and session validation.
     """
-    
-    def __init__(self, config: AuthConfig):
+
+    def __init__(
+        self,
+        config: AuthConfig,
+        metrics_hook: Optional[Callable[[str, Dict[str, Any]], None]] = monitoring_metrics_hook,
+    ):
         self.config = config
         self.security_config = config.security
-        
+
         # Initialize security components
         self.rate_limiter = RateLimiter(config)
-        self.audit_logger = AuditLogger(config)
+        self.audit_logger = AuditLogger(config, metrics_hook=metrics_hook)
         self.session_validator = SessionValidator(config)
-        
+
         self.logger = logging.getLogger(__name__)
     
     async def check_request_security(
