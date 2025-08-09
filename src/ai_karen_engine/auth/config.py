@@ -64,7 +64,7 @@ def _load_env_file(file_path: Union[str, Path]) -> None:
 class DatabaseConfig:
     """Database connection and settings configuration."""
 
-    database_url: str = "sqlite:///auth.db"
+    database_url: str = "postgresql+asyncpg://karen_user:karen_secure_pass_change_me@localhost:5432/ai_karen"
     connection_pool_size: int = 10
     connection_pool_max_overflow: int = 20
     connection_timeout_seconds: int = 30
@@ -74,8 +74,20 @@ class DatabaseConfig:
     @classmethod
     def from_env(cls) -> "DatabaseConfig":
         """Create configuration from environment variables."""
+        # Use PostgreSQL environment variables with fallbacks
+        database_url = (
+            os.getenv("AUTH_DATABASE_URL") or 
+            os.getenv("POSTGRES_URL") or 
+            os.getenv("DATABASE_URL") or 
+            cls().database_url
+        )
+        
+        # Ensure async driver is used for PostgreSQL
+        if database_url.startswith("postgresql://"):
+            database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        
         return cls(
-            database_url=os.getenv("AUTH_DATABASE_URL", cls().database_url),
+            database_url=database_url,
             connection_pool_size=_env_int(
                 os.getenv("AUTH_DB_POOL_SIZE"), cls().connection_pool_size
             ),
@@ -158,7 +170,7 @@ class SessionConfig:
 
     session_timeout_hours: int = 24
     max_sessions_per_user: int = 5
-    storage_type: str = "database"  # "database", "redis", "memory"
+    storage_type: str = "database"  # "database" (PostgreSQL), "redis", "memory"
     redis_url: Optional[str] = None
     cookie_name: str = "auth_session"
     cookie_secure: bool = True

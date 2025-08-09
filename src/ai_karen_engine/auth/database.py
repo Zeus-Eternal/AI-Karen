@@ -1,333 +1,281 @@
 """
-Database client for the consolidated authentication service.
+Unified PostgreSQL database client for the consolidated authentication service.
 
 This module provides database operations for user data storage and retrieval,
-session management, and audit logging.
+session management, and audit logging using PostgreSQL exclusively.
 """
 
 from __future__ import annotations
 
 import json
-import sqlite3
+import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
 from uuid import uuid4
+
+try:
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+    from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+    from sqlalchemy.pool import AsyncAdaptedQueuePool
+except ImportError:
+    # Fallback for environments without SQLAlchemy
+    create_engine = None
+    create_async_engine = None
+    AsyncSession = None
+    async_sessionmaker = None
+    IntegrityError = Exception
+    SQLAlchemyError = Exception
+    AsyncAdaptedQueuePool = None
+    text = None
 
 from .config import DatabaseConfig
 from .exceptions import DatabaseConnectionError, DatabaseOperationError
 from .models import AuthEvent, UserData
 
 
-class DatabaseClient:
+class AuthDatabaseClient:
     """
-    Database client for authentication operations.
-
-    Supports SQLite for development and can be extended for PostgreSQL
-    and other databases in production.
+    Unified PostgreSQL database client for authentication operations.
+    
+    This client exclusively uses PostgreSQL for all authentication data,
+    replacing the previous dual SQLite/PostgreSQL architecture.
     """
 
     def __init__(self, config: DatabaseConfig) -> None:
-        """Initialize database client with configuration."""
+        """Initialize PostgreSQL database client with configuration."""
         self.config = config
-        self.connection: Optional[sqlite3.Connection] = None
-        self._setup_database()
+        self.logger = logging.getLogger(f"{__name__}.AuthDatabaseClient")
+        
+        if not create_async_engine:
+            raise DatabaseConnectionError(
+                "SQLAlchemy is required for PostgreSQL operations. "
+                "Please install with: pip install sqlalchemy[asyncio] asyncpg"
+            )
+        
+        # Create async engine for PostgreSQL
+        self.engine = create_async_engine(
+            config.database_url,
+            poolclass=AsyncAdaptedQueuePool,
+            pool_size=config.connection_pool_size,
+            max_overflow=config.connection_pool_max_overflow,
+            pool_timeout=config.connection_timeout_seconds,
+            echo=config.enable_query_logging,
+        )
+        
+        # Create session factory
+        self.session_factory = async_sessionmaker(
+            self.engine,
+            class_=AsyncSession,
+            expire_on_commit=False
+        )
+        
+        self.logger.info("PostgreSQL AuthDatabaseClient initialized")
 
-    def _setup_database(self) -> None:
-        """Set up database connection and create tables if needed."""
+    async def initialize_schema(self) -> None:
+        """Initialize PostgreSQL schema with authentication tables."""
         try:
-            # Parse database URL
-            parsed = urlparse(self.config.database_url)
+            async with self.engine.begin() as conn:
+                # Create users table
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS auth_users (
+                        user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        email VARCHAR(255) UNIQUE NOT NULL,
+                        full_name VARCHAR(255),
+                        roles JSONB DEFAULT '[]'::jsonb,
+                        tenant_id UUID NOT NULL,
+                        preferences JSONB DEFAULT '{}'::jsonb,
+                        is_verified BOOLEAN DEFAULT false,
+                        is_active BOOLEAN DEFAULT true,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        last_login_at TIMESTAMP WITH TIME ZONE,
+                        failed_login_attempts INTEGER DEFAULT 0,
+                        locked_until TIMESTAMP WITH TIME ZONE,
+                        two_factor_enabled BOOLEAN DEFAULT false,
+                        two_factor_secret VARCHAR(255)
+                    )
+                """))
 
-            if parsed.scheme == "sqlite":
-                # Extract path from URL (remove leading slash for relative paths)
-                db_path = (
-                    parsed.path.lstrip("/")
-                    if parsed.path.startswith("/")
-                    else parsed.path
-                )
+                # Create password hashes table
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS auth_password_hashes (
+                        user_id UUID PRIMARY KEY REFERENCES auth_users(user_id) ON DELETE CASCADE,
+                        password_hash VARCHAR(255) NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                    )
+                """))
 
-                # Create directory if it doesn't exist
-                Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+                # Create sessions table
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS auth_sessions (
+                        session_token VARCHAR(255) PRIMARY KEY,
+                        user_id UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
+                        access_token TEXT NOT NULL,
+                        refresh_token TEXT NOT NULL,
+                        expires_in INTEGER NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        last_accessed TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        ip_address INET,
+                        user_agent TEXT,
+                        device_fingerprint VARCHAR(255),
+                        geolocation JSONB,
+                        risk_score FLOAT DEFAULT 0.0,
+                        security_flags JSONB DEFAULT '[]'::jsonb,
+                        is_active BOOLEAN DEFAULT true,
+                        invalidated_at TIMESTAMP WITH TIME ZONE,
+                        invalidation_reason VARCHAR(255)
+                    )
+                """))
 
-                # Connect to SQLite database
-                self.connection = sqlite3.connect(
-                    db_path,
-                    timeout=self.config.connection_timeout_seconds,
-                    check_same_thread=False,
-                )
-                self.connection.row_factory = sqlite3.Row
+                # Create authentication providers table
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS auth_providers (
+                        provider_id VARCHAR(255) PRIMARY KEY,
+                        tenant_id UUID,
+                        type VARCHAR(100) NOT NULL,
+                        config JSONB NOT NULL,
+                        metadata JSONB DEFAULT '{}'::jsonb,
+                        enabled BOOLEAN DEFAULT true,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                    )
+                """))
 
-                # Create tables
-                self._create_tables()
-            else:
-                raise DatabaseConnectionError(
-                    f"Unsupported database scheme: {parsed.scheme}"
-                )
+                # Create user identities table
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS user_identities (
+                        identity_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
+                        provider_id VARCHAR(255) NOT NULL REFERENCES auth_providers(provider_id),
+                        provider_user VARCHAR(255) NOT NULL,
+                        metadata JSONB,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        UNIQUE (provider_id, provider_user)
+                    )
+                """))
+
+                # Create password reset tokens table
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS auth_password_reset_tokens (
+                        token_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
+                        token_hash VARCHAR(255) NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        used_at TIMESTAMP WITH TIME ZONE,
+                        ip_address INET,
+                        user_agent TEXT
+                    )
+                """))
+
+                # Create email verification tokens table
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS auth_email_verification_tokens (
+                        token_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        user_id UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
+                        token_hash VARCHAR(255) NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        used_at TIMESTAMP WITH TIME ZONE,
+                        ip_address INET,
+                        user_agent TEXT
+                    )
+                """))
+
+                # Create auth events table
+                await conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS auth_events (
+                        event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        event_type VARCHAR(100) NOT NULL,
+                        timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        user_id UUID,
+                        email VARCHAR(255),
+                        tenant_id UUID,
+                        ip_address INET,
+                        user_agent TEXT,
+                        request_id VARCHAR(255),
+                        session_token VARCHAR(255),
+                        success BOOLEAN NOT NULL,
+                        error_message TEXT,
+                        details JSONB DEFAULT '{}'::jsonb,
+                        risk_score FLOAT DEFAULT 0.0,
+                        security_flags JSONB DEFAULT '[]'::jsonb,
+                        blocked_by_security BOOLEAN DEFAULT false,
+                        processing_time_ms FLOAT DEFAULT 0.0,
+                        service_version VARCHAR(100) DEFAULT 'consolidated-auth-v1'
+                    )
+                """))
+
+                # Create indexes
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_users_email ON auth_users(email)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_users_tenant ON auth_users(tenant_id)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_sessions_active ON auth_sessions(is_active) WHERE is_active = true"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_user_identities_user ON user_identities(user_id)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_password_reset_tokens_user ON auth_password_reset_tokens(user_id)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_password_reset_tokens_expires ON auth_password_reset_tokens(expires_at)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_email_verification_tokens_user ON auth_email_verification_tokens(user_id)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_email_verification_tokens_expires ON auth_email_verification_tokens(expires_at)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_events_user ON auth_events(user_id)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_events_type ON auth_events(event_type)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_events_timestamp ON auth_events(timestamp)"))
+
+            self.logger.info("PostgreSQL schema initialized successfully")
 
         except Exception as e:
-            raise DatabaseConnectionError(f"Failed to connect to database: {e}")
-
-    def _create_tables(self) -> None:
-        """Create database tables if they don't exist."""
-        try:
-            cursor = self.connection.cursor()
-
-            # Users table
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS auth_users (
-                    user_id TEXT PRIMARY KEY,
-                    email TEXT UNIQUE NOT NULL,
-                    full_name TEXT,
-                    roles TEXT NOT NULL,
-                    tenant_id TEXT NOT NULL DEFAULT 'default',
-                    preferences TEXT NOT NULL DEFAULT '{}',
-                    is_verified BOOLEAN NOT NULL DEFAULT 1,
-                    is_active BOOLEAN NOT NULL DEFAULT 1,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    last_login_at TEXT,
-                    failed_login_attempts INTEGER NOT NULL DEFAULT 0,
-                    locked_until TEXT,
-                    two_factor_enabled BOOLEAN NOT NULL DEFAULT 0,
-                    two_factor_secret TEXT
-                )
-            """
-            )
-
-            # Password hashes table (separate for security)
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS auth_password_hashes (
-                    user_id TEXT PRIMARY KEY,
-                    password_hash TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES auth_users (user_id) ON DELETE CASCADE
-                )
-            """
-            )
-
-            # Sessions table
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS auth_sessions (
-                    session_id TEXT PRIMARY KEY,
-                    user_id TEXT NOT NULL,
-                    access_token TEXT NOT NULL,
-                    refresh_token TEXT NOT NULL,
-                    expires_in INTEGER NOT NULL,
-                    created_at TEXT NOT NULL,
-                    last_accessed TEXT NOT NULL,
-                    ip_address TEXT NOT NULL DEFAULT 'unknown',
-                    user_agent TEXT NOT NULL DEFAULT '',
-                    device_fingerprint TEXT,
-                    geolocation TEXT,
-                    risk_score REAL NOT NULL DEFAULT 0.0,
-                    security_flags TEXT NOT NULL DEFAULT '[]',
-                    is_active BOOLEAN NOT NULL DEFAULT 1,
-                    invalidated_at TEXT,
-                    invalidation_reason TEXT,
-                    FOREIGN KEY (user_id) REFERENCES auth_users (user_id) ON DELETE CASCADE
-                )
-            """
-            )
-
-            # Authentication providers
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS auth_providers (
-                    provider_id TEXT PRIMARY KEY,
-                    tenant_id TEXT,
-                    type TEXT NOT NULL,
-                    config TEXT NOT NULL,
-                    metadata TEXT NOT NULL DEFAULT '{}',
-                    enabled BOOLEAN NOT NULL DEFAULT 1,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                )
-            """
-            )
-
-            # External user identities
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS user_identities (
-                    identity_id TEXT PRIMARY KEY,
-                    user_id TEXT NOT NULL,
-                    provider_id TEXT NOT NULL,
-                    provider_user TEXT NOT NULL,
-                    metadata TEXT,
-                    created_at TEXT NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES auth_users (user_id) ON DELETE CASCADE,
-                    FOREIGN KEY (provider_id) REFERENCES auth_providers (provider_id),
-                    UNIQUE (provider_id, provider_user)
-                )
-            """
-            )
-
-            # Password reset tokens table
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS auth_password_reset_tokens (
-                    token_id TEXT PRIMARY KEY,
-                    user_id TEXT NOT NULL,
-                    token_hash TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL,
-                    used_at TEXT,
-                    ip_address TEXT NOT NULL DEFAULT 'unknown',
-                    user_agent TEXT NOT NULL DEFAULT '',
-                    FOREIGN KEY (user_id) REFERENCES auth_users (user_id) ON DELETE CASCADE
-                )
-            """
-            )
-
-            # Email verification tokens table
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS auth_email_verification_tokens (
-                    token_id TEXT PRIMARY KEY,
-                    user_id TEXT NOT NULL,
-                    token_hash TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL,
-                    used_at TEXT,
-                    ip_address TEXT NOT NULL DEFAULT 'unknown',
-                    user_agent TEXT NOT NULL DEFAULT '',
-                    FOREIGN KEY (user_id) REFERENCES auth_users (user_id) ON DELETE CASCADE
-                )
-            """
-            )
-
-            # Auth events table for audit logging
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS auth_events (
-                    event_id TEXT PRIMARY KEY,
-                    event_type TEXT NOT NULL,
-                    timestamp TEXT NOT NULL,
-                    user_id TEXT,
-                    email TEXT,
-                    tenant_id TEXT,
-                    ip_address TEXT NOT NULL DEFAULT 'unknown',
-                    user_agent TEXT NOT NULL DEFAULT '',
-                    request_id TEXT,
-                    session_id TEXT,
-                    success BOOLEAN NOT NULL,
-                    error_message TEXT,
-                    details TEXT NOT NULL DEFAULT '{}',
-                    risk_score REAL NOT NULL DEFAULT 0.0,
-                    security_flags TEXT NOT NULL DEFAULT '[]',
-                    blocked_by_security BOOLEAN NOT NULL DEFAULT 0,
-                    processing_time_ms REAL NOT NULL DEFAULT 0.0,
-                    service_version TEXT NOT NULL DEFAULT 'consolidated-auth-v1'
-                )
-            """
-            )
-
-            # Create indexes for performance
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_users_email ON auth_users (email)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_users_tenant ON auth_users (tenant_id)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions (user_id)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_sessions_active ON auth_sessions (is_active)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_user_identity_user ON user_identities (user_id)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_password_reset_tokens_user ON auth_password_reset_tokens (user_id)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_password_reset_tokens_expires ON auth_password_reset_tokens (expires_at)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_email_verification_tokens_user ON auth_email_verification_tokens (user_id)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_email_verification_tokens_expires ON auth_email_verification_tokens (expires_at)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_events_user ON auth_events (user_id)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_events_type ON auth_events (event_type)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_auth_events_timestamp ON auth_events (timestamp)"
-            )
-
-            self.connection.commit()
-
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to create tables: {e}", operation="create_tables"
-            )
+            self.logger.error(f"Failed to initialize schema: {e}")
+            raise DatabaseConnectionError(f"Schema initialization failed: {e}")
 
     async def create_user(self, user_data: UserData, password_hash: str) -> None:
-        """Create a new user with password hash."""
+        """Create a new user with password hash in PostgreSQL."""
         try:
-            cursor = self.connection.cursor()
+            async with self.session_factory() as session:
+                # Insert user data
+                await session.execute(text("""
+                    INSERT INTO auth_users (
+                        user_id, email, full_name, roles, tenant_id, preferences,
+                        is_verified, is_active, created_at, updated_at, last_login_at,
+                        failed_login_attempts, locked_until, two_factor_enabled, two_factor_secret
+                    ) VALUES (
+                        :user_id, :email, :full_name, :roles, :tenant_id, :preferences,
+                        :is_verified, :is_active, :created_at, :updated_at, :last_login_at,
+                        :failed_login_attempts, :locked_until, :two_factor_enabled, :two_factor_secret
+                    )
+                """), {
+                    "user_id": user_data.user_id,
+                    "email": user_data.email,
+                    "full_name": user_data.full_name,
+                    "roles": json.dumps(user_data.roles),
+                    "tenant_id": user_data.tenant_id,
+                    "preferences": json.dumps(user_data.preferences),
+                    "is_verified": user_data.is_verified,
+                    "is_active": user_data.is_active,
+                    "created_at": user_data.created_at,
+                    "updated_at": user_data.updated_at,
+                    "last_login_at": user_data.last_login_at,
+                    "failed_login_attempts": user_data.failed_login_attempts,
+                    "locked_until": user_data.locked_until,
+                    "two_factor_enabled": user_data.two_factor_enabled,
+                    "two_factor_secret": user_data.two_factor_secret,
+                })
 
-            # Insert user data
-            cursor.execute(
-                """
-                INSERT INTO auth_users (
-                    user_id, email, full_name, roles, tenant_id, preferences,
-                    is_verified, is_active, created_at, updated_at, last_login_at,
-                    failed_login_attempts, locked_until, two_factor_enabled, two_factor_secret
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    user_data.user_id,
-                    user_data.email,
-                    user_data.full_name,
-                    json.dumps(user_data.roles),
-                    user_data.tenant_id,
-                    json.dumps(user_data.preferences),
-                    user_data.is_verified,
-                    user_data.is_active,
-                    user_data.created_at.isoformat(),
-                    user_data.updated_at.isoformat(),
-                    user_data.last_login_at.isoformat()
-                    if user_data.last_login_at
-                    else None,
-                    user_data.failed_login_attempts,
-                    user_data.locked_until.isoformat()
-                    if user_data.locked_until
-                    else None,
-                    user_data.two_factor_enabled,
-                    user_data.two_factor_secret,
-                ),
-            )
+                # Insert password hash
+                await session.execute(text("""
+                    INSERT INTO auth_password_hashes (user_id, password_hash, created_at, updated_at)
+                    VALUES (:user_id, :password_hash, :created_at, :updated_at)
+                """), {
+                    "user_id": user_data.user_id,
+                    "password_hash": password_hash,
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                })
 
-            # Insert password hash
-            cursor.execute(
-                """
-                INSERT INTO auth_password_hashes (user_id, password_hash, created_at, updated_at)
-                VALUES (?, ?, ?, ?)
-            """,
-                (
-                    user_data.user_id,
-                    password_hash,
-                    datetime.utcnow().isoformat(),
-                    datetime.utcnow().isoformat(),
-                ),
-            )
+                await session.commit()
 
-            self.connection.commit()
-
-        except sqlite3.IntegrityError as e:
-            if "UNIQUE constraint failed" in str(e):
+        except IntegrityError as e:
+            if "duplicate key" in str(e).lower():
                 raise DatabaseOperationError(
                     "User already exists", operation="create_user"
                 )
@@ -335,22 +283,23 @@ class DatabaseClient:
                 f"Database integrity error: {e}", operation="create_user"
             )
         except Exception as e:
-            self.connection.rollback()
             raise DatabaseOperationError(
                 f"Failed to create user: {e}", operation="create_user"
             )
 
     async def get_user_by_id(self, user_id: str) -> Optional[UserData]:
-        """Get user data by user ID."""
+        """Get user data by user ID from PostgreSQL."""
         try:
-            cursor = self.connection.cursor()
-            cursor.execute("SELECT * FROM auth_users WHERE user_id = ?", (user_id,))
-            row = cursor.fetchone()
+            async with self.session_factory() as session:
+                result = await session.execute(text("""
+                    SELECT * FROM auth_users WHERE user_id = :user_id
+                """), {"user_id": user_id})
+                
+                row = result.fetchone()
+                if not row:
+                    return None
 
-            if not row:
-                return None
-
-            return self._row_to_user_data(row)
+                return self._row_to_user_data(row)
 
         except Exception as e:
             raise DatabaseOperationError(
@@ -358,16 +307,18 @@ class DatabaseClient:
             )
 
     async def get_user_by_email(self, email: str) -> Optional[UserData]:
-        """Get user data by email address."""
+        """Get user data by email address from PostgreSQL."""
         try:
-            cursor = self.connection.cursor()
-            cursor.execute("SELECT * FROM auth_users WHERE email = ?", (email,))
-            row = cursor.fetchone()
+            async with self.session_factory() as session:
+                result = await session.execute(text("""
+                    SELECT * FROM auth_users WHERE email = :email
+                """), {"email": email})
+                
+                row = result.fetchone()
+                if not row:
+                    return None
 
-            if not row:
-                return None
-
-            return self._row_to_user_data(row)
+                return self._row_to_user_data(row)
 
         except Exception as e:
             raise DatabaseOperationError(
@@ -375,59 +326,53 @@ class DatabaseClient:
             )
 
     async def update_user(self, user_data: UserData) -> None:
-        """Update user data."""
+        """Update user data in PostgreSQL."""
         try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                UPDATE auth_users SET
-                    email = ?, full_name = ?, roles = ?, tenant_id = ?, preferences = ?,
-                    is_verified = ?, is_active = ?, updated_at = ?, last_login_at = ?,
-                    failed_login_attempts = ?, locked_until = ?, two_factor_enabled = ?,
-                    two_factor_secret = ?
-                WHERE user_id = ?
-            """,
-                (
-                    user_data.email,
-                    user_data.full_name,
-                    json.dumps(user_data.roles),
-                    user_data.tenant_id,
-                    json.dumps(user_data.preferences),
-                    user_data.is_verified,
-                    user_data.is_active,
-                    user_data.updated_at.isoformat(),
-                    user_data.last_login_at.isoformat()
-                    if user_data.last_login_at
-                    else None,
-                    user_data.failed_login_attempts,
-                    user_data.locked_until.isoformat()
-                    if user_data.locked_until
-                    else None,
-                    user_data.two_factor_enabled,
-                    user_data.two_factor_secret,
-                    user_data.user_id,
-                ),
-            )
+            async with self.session_factory() as session:
+                await session.execute(text("""
+                    UPDATE auth_users SET
+                        email = :email, full_name = :full_name, roles = :roles, 
+                        tenant_id = :tenant_id, preferences = :preferences,
+                        is_verified = :is_verified, is_active = :is_active, 
+                        updated_at = :updated_at, last_login_at = :last_login_at,
+                        failed_login_attempts = :failed_login_attempts, 
+                        locked_until = :locked_until, two_factor_enabled = :two_factor_enabled,
+                        two_factor_secret = :two_factor_secret
+                    WHERE user_id = :user_id
+                """), {
+                    "email": user_data.email,
+                    "full_name": user_data.full_name,
+                    "roles": json.dumps(user_data.roles),
+                    "tenant_id": user_data.tenant_id,
+                    "preferences": json.dumps(user_data.preferences),
+                    "is_verified": user_data.is_verified,
+                    "is_active": user_data.is_active,
+                    "updated_at": user_data.updated_at,
+                    "last_login_at": user_data.last_login_at,
+                    "failed_login_attempts": user_data.failed_login_attempts,
+                    "locked_until": user_data.locked_until,
+                    "two_factor_enabled": user_data.two_factor_enabled,
+                    "two_factor_secret": user_data.two_factor_secret,
+                    "user_id": user_data.user_id,
+                })
 
-            self.connection.commit()
+                await session.commit()
 
         except Exception as e:
-            self.connection.rollback()
             raise DatabaseOperationError(
                 f"Failed to update user: {e}", operation="update_user"
             )
 
     async def get_user_password_hash(self, user_id: str) -> Optional[str]:
-        """Get password hash for a user."""
+        """Get password hash for a user from PostgreSQL."""
         try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                "SELECT password_hash FROM auth_password_hashes WHERE user_id = ?",
-                (user_id,),
-            )
-            row = cursor.fetchone()
-
-            return row["password_hash"] if row else None
+            async with self.session_factory() as session:
+                result = await session.execute(text("""
+                    SELECT password_hash FROM auth_password_hashes WHERE user_id = :user_id
+                """), {"user_id": user_id})
+                
+                row = result.fetchone()
+                return row.password_hash if row else None
 
         except Exception as e:
             raise DatabaseOperationError(
@@ -435,491 +380,97 @@ class DatabaseClient:
             )
 
     async def update_user_password_hash(self, user_id: str, password_hash: str) -> None:
-        """Update password hash for a user."""
+        """Update password hash for a user in PostgreSQL."""
         try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                UPDATE auth_password_hashes SET password_hash = ?, updated_at = ?
-                WHERE user_id = ?
-            """,
-                (password_hash, datetime.utcnow().isoformat(), user_id),
-            )
+            async with self.session_factory() as session:
+                await session.execute(text("""
+                    UPDATE auth_password_hashes 
+                    SET password_hash = :password_hash, updated_at = :updated_at
+                    WHERE user_id = :user_id
+                """), {
+                    "password_hash": password_hash,
+                    "updated_at": datetime.utcnow(),
+                    "user_id": user_id,
+                })
 
-            self.connection.commit()
+                await session.commit()
 
         except Exception as e:
-            self.connection.rollback()
             raise DatabaseOperationError(
                 f"Failed to update password hash: {e}", operation="update_password_hash"
             )
 
-    async def get_auth_provider(self, provider_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch authentication provider configuration."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                "SELECT * FROM auth_providers WHERE provider_id = ?", (provider_id,)
-            )
-            row = cursor.fetchone()
-            if not row:
-                return None
-            return {
-                "provider_id": row["provider_id"],
-                "tenant_id": row["tenant_id"],
-                "type": row["type"],
-                "config": json.loads(row["config"]),
-                "metadata": json.loads(row["metadata"]),
-                "enabled": bool(row["enabled"]),
-                "created_at": datetime.fromisoformat(row["created_at"]),
-                "updated_at": datetime.fromisoformat(row["updated_at"]),
-            }
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to get auth provider: {e}", operation="get_auth_provider"
-            )
-
-    async def upsert_auth_provider(
-        self,
-        provider_id: str,
-        provider_type: str,
-        config: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None,
-        tenant_id: str = "default",
-        enabled: bool = True,
-    ) -> None:
-        """Insert or update an authentication provider."""
-        try:
-            cursor = self.connection.cursor()
-            now = datetime.utcnow().isoformat()
-            cursor.execute(
-                """
-                INSERT INTO auth_providers (
-                    provider_id, tenant_id, type, config, metadata, enabled, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(provider_id) DO UPDATE SET
-                    tenant_id=excluded.tenant_id,
-                    type=excluded.type,
-                    config=excluded.config,
-                    metadata=excluded.metadata,
-                    enabled=excluded.enabled,
-                    updated_at=excluded.updated_at
-                """,
-                (
-                    provider_id,
-                    tenant_id,
-                    provider_type,
-                    json.dumps(config),
-                    json.dumps(metadata or {}),
-                    enabled,
-                    now,
-                    now,
-                ),
-            )
-            self.connection.commit()
-        except Exception as e:
-            self.connection.rollback()
-            raise DatabaseOperationError(
-                f"Failed to upsert auth provider: {e}", operation="upsert_auth_provider"
-            )
-
-    async def get_user_identity(
-        self, provider_id: str, provider_user: str
-    ) -> Optional[Dict[str, Any]]:
-        """Get a user identity mapping for a provider."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                "SELECT * FROM user_identities WHERE provider_id = ? AND provider_user = ?",
-                (provider_id, provider_user),
-            )
-            row = cursor.fetchone()
-            if not row:
-                return None
-            return {
-                "identity_id": row["identity_id"],
-                "user_id": row["user_id"],
-                "provider_id": row["provider_id"],
-                "provider_user": row["provider_user"],
-                "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
-                "created_at": datetime.fromisoformat(row["created_at"]),
-            }
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to get user identity: {e}", operation="get_user_identity"
-            )
-
-    async def link_user_identity(
-        self,
-        user_id: str,
-        provider_id: str,
-        provider_user: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """Create a mapping between user and external provider identity."""
-        try:
-            existing = await self.get_user_identity(provider_id, provider_user)
-            cursor = self.connection.cursor()
-            if existing:
-                cursor.execute(
-                    "UPDATE user_identities SET user_id = ?, metadata = ? WHERE identity_id = ?",
-                    (
-                        user_id,
-                        json.dumps(metadata or existing["metadata"]),
-                        existing["identity_id"],
-                    ),
-                )
-                self.connection.commit()
-                existing["user_id"] = user_id
-                existing["metadata"] = metadata or existing["metadata"]
-                return existing
-
-            identity_id = str(uuid4())
-            cursor.execute(
-                """
-                INSERT INTO user_identities (
-                    identity_id, user_id, provider_id, provider_user, metadata, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    identity_id,
-                    user_id,
-                    provider_id,
-                    provider_user,
-                    json.dumps(metadata or {}),
-                    datetime.utcnow().isoformat(),
-                ),
-            )
-            self.connection.commit()
-            return {
-                "identity_id": identity_id,
-                "user_id": user_id,
-                "provider_id": provider_id,
-                "provider_user": provider_user,
-                "metadata": metadata or {},
-            }
-        except Exception as e:
-            self.connection.rollback()
-            raise DatabaseOperationError(
-                f"Failed to link user identity: {e}", operation="link_user_identity"
-            )
-
-    async def store_password_reset_token(
-        self,
-        token_id: str,
-        user_id: str,
-        token_hash: str,
-        expires_at: datetime,
-        ip_address: str = "unknown",
-        user_agent: str = "",
-    ) -> None:
-        """Store a password reset token."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                INSERT INTO auth_password_reset_tokens (
-                    token_id, user_id, token_hash, created_at, expires_at, ip_address, user_agent
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    token_id,
-                    user_id,
-                    token_hash,
-                    datetime.utcnow().isoformat(),
-                    expires_at.isoformat(),
-                    ip_address,
-                    user_agent,
-                ),
-            )
-
-            self.connection.commit()
-
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to store password reset token: {e}",
-                operation="store_password_reset_token",
-            )
-
-    async def get_password_reset_token(self, token_id: str) -> Optional[Dict[str, Any]]:
-        """Get password reset token data."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                SELECT * FROM auth_password_reset_tokens
-                WHERE token_id = ? AND used_at IS NULL
-            """,
-                (token_id,),
-            )
-            row = cursor.fetchone()
-
-            if not row:
-                return None
-
-            return {
-                "token_id": row["token_id"],
-                "user_id": row["user_id"],
-                "token_hash": row["token_hash"],
-                "created_at": datetime.fromisoformat(row["created_at"]),
-                "expires_at": datetime.fromisoformat(row["expires_at"]),
-                "used_at": datetime.fromisoformat(row["used_at"])
-                if row["used_at"]
-                else None,
-                "ip_address": row["ip_address"],
-                "user_agent": row["user_agent"],
-            }
-
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to get password reset token: {e}",
-                operation="get_password_reset_token",
-            )
-
-    async def mark_password_reset_token_used(self, token_id: str) -> None:
-        """Mark a password reset token as used."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                UPDATE auth_password_reset_tokens SET used_at = ?
-                WHERE token_id = ?
-            """,
-                (datetime.utcnow().isoformat(), token_id),
-            )
-
-            self.connection.commit()
-
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to mark password reset token as used: {e}",
-                operation="mark_password_reset_token_used",
-            )
-
-    async def cleanup_expired_password_reset_tokens(self) -> int:
-        """Clean up expired password reset tokens."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                DELETE FROM auth_password_reset_tokens
-                WHERE expires_at < ?
-            """,
-                (datetime.utcnow().isoformat(),),
-            )
-
-            deleted_count = cursor.rowcount
-            self.connection.commit()
-            return deleted_count
-
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to cleanup expired password reset tokens: {e}",
-                operation="cleanup_expired_password_reset_tokens",
-            )
-
-    async def store_email_verification_token(
-        self,
-        token_id: str,
-        user_id: str,
-        token_hash: str,
-        expires_at: datetime,
-        ip_address: str = "unknown",
-        user_agent: str = "",
-    ) -> None:
-        """Store an email verification token."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                INSERT INTO auth_email_verification_tokens (
-                    token_id, user_id, token_hash, created_at, expires_at, ip_address, user_agent
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    token_id,
-                    user_id,
-                    token_hash,
-                    datetime.utcnow().isoformat(),
-                    expires_at.isoformat(),
-                    ip_address,
-                    user_agent,
-                ),
-            )
-
-            self.connection.commit()
-
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to store email verification token: {e}",
-                operation="store_email_verification_token",
-            )
-
-    async def get_email_verification_token(
-        self, token_id: str
-    ) -> Optional[Dict[str, Any]]:
-        """Get email verification token data."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                SELECT * FROM auth_email_verification_tokens
-                WHERE token_id = ? AND used_at IS NULL
-            """,
-                (token_id,),
-            )
-            row = cursor.fetchone()
-
-            if not row:
-                return None
-
-            return {
-                "token_id": row["token_id"],
-                "user_id": row["user_id"],
-                "token_hash": row["token_hash"],
-                "created_at": datetime.fromisoformat(row["created_at"]),
-                "expires_at": datetime.fromisoformat(row["expires_at"]),
-                "used_at": datetime.fromisoformat(row["used_at"])
-                if row["used_at"]
-                else None,
-                "ip_address": row["ip_address"],
-                "user_agent": row["user_agent"],
-            }
-
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to get email verification token: {e}",
-                operation="get_email_verification_token",
-            )
-
-    async def mark_email_verification_token_used(self, token_id: str) -> None:
-        """Mark an email verification token as used."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                UPDATE auth_email_verification_tokens SET used_at = ?
-                WHERE token_id = ?
-            """,
-                (datetime.utcnow().isoformat(), token_id),
-            )
-
-            self.connection.commit()
-
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to mark email verification token as used: {e}",
-                operation="mark_email_verification_token_used",
-            )
-
-    async def cleanup_expired_email_verification_tokens(self) -> int:
-        """Clean up expired email verification tokens."""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                DELETE FROM auth_email_verification_tokens
-                WHERE expires_at < ?
-            """,
-                (datetime.utcnow().isoformat(),),
-            )
-
-            deleted_count = cursor.rowcount
-            self.connection.commit()
-            return deleted_count
-
-        except Exception as e:
-            raise DatabaseOperationError(
-                f"Failed to cleanup expired email verification tokens: {e}",
-                operation="cleanup_expired_email_verification_tokens",
-            )
-
     async def store_auth_event(self, event: AuthEvent) -> None:
-        """Store an authentication event for audit logging."""
+        """Store authentication event in PostgreSQL."""
         try:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                """
-                INSERT INTO auth_events (
-                    event_id, event_type, timestamp, user_id, email, tenant_id,
-                    ip_address, user_agent, request_id, session_id, success,
-                    error_message, details, risk_score, security_flags,
-                    blocked_by_security, processing_time_ms, service_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    event.event_id,
-                    event.event_type.value,
-                    event.timestamp.isoformat(),
-                    event.user_id,
-                    event.email,
-                    event.tenant_id,
-                    event.ip_address,
-                    event.user_agent,
-                    event.request_id,
-                    event.session_token,
-                    event.success,
-                    event.error_message,
-                    json.dumps(event.details),
-                    event.risk_score,
-                    json.dumps(event.security_flags),
-                    event.blocked_by_security,
-                    event.processing_time_ms,
-                    event.service_version,
-                ),
-            )
+            async with self.session_factory() as session:
+                await session.execute(text("""
+                    INSERT INTO auth_events (
+                        event_id, event_type, timestamp, user_id, email, tenant_id,
+                        ip_address, user_agent, request_id, session_token, success,
+                        error_message, details, risk_score, security_flags,
+                        blocked_by_security, processing_time_ms, service_version
+                    ) VALUES (
+                        :event_id, :event_type, :timestamp, :user_id, :email, :tenant_id,
+                        :ip_address, :user_agent, :request_id, :session_token, :success,
+                        :error_message, :details, :risk_score, :security_flags,
+                        :blocked_by_security, :processing_time_ms, :service_version
+                    )
+                """), {
+                    "event_id": str(uuid4()),
+                    "event_type": event.event_type.value,
+                    "timestamp": event.timestamp,
+                    "user_id": event.user_id,
+                    "email": event.email,
+                    "tenant_id": event.tenant_id,
+                    "ip_address": event.ip_address,
+                    "user_agent": event.user_agent,
+                    "request_id": event.request_id,
+                    "session_token": event.session_token,
+                    "success": event.success,
+                    "error_message": event.error_message,
+                    "details": json.dumps(event.details),
+                    "risk_score": event.risk_score,
+                    "security_flags": json.dumps(event.security_flags),
+                    "blocked_by_security": event.blocked_by_security,
+                    "processing_time_ms": event.processing_time_ms,
+                    "service_version": event.service_version,
+                })
 
-            self.connection.commit()
+                await session.commit()
 
         except Exception as e:
-            # Don't let audit logging failures affect authentication
-            pass
+            self.logger.error(f"Failed to store auth event: {e}")
+            # Don't raise exception for audit logging failures
 
-    def _row_to_user_data(self, row: sqlite3.Row) -> UserData:
+    def _row_to_user_data(self, row) -> UserData:
         """Convert database row to UserData object."""
         return UserData(
-            user_id=row["user_id"],
-            email=row["email"],
-            full_name=row["full_name"],
-            roles=json.loads(row["roles"]),
-            tenant_id=row["tenant_id"],
-            preferences=json.loads(row["preferences"]),
-            is_verified=bool(row["is_verified"]),
-            is_active=bool(row["is_active"]),
-            created_at=datetime.fromisoformat(row["created_at"]),
-            updated_at=datetime.fromisoformat(row["updated_at"]),
-            last_login_at=datetime.fromisoformat(row["last_login_at"])
-            if row["last_login_at"]
-            else None,
-            failed_login_attempts=row["failed_login_attempts"],
-            locked_until=datetime.fromisoformat(row["locked_until"])
-            if row["locked_until"]
-            else None,
-            two_factor_enabled=bool(row["two_factor_enabled"]),
-            two_factor_secret=row["two_factor_secret"],
+            user_id=str(row.user_id),
+            email=row.email,
+            full_name=row.full_name,
+            roles=json.loads(row.roles) if row.roles else [],
+            tenant_id=str(row.tenant_id),
+            preferences=json.loads(row.preferences) if row.preferences else {},
+            is_verified=row.is_verified,
+            is_active=row.is_active,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+            last_login_at=row.last_login_at,
+            failed_login_attempts=row.failed_login_attempts,
+            locked_until=row.locked_until,
+            two_factor_enabled=row.two_factor_enabled,
+            two_factor_secret=row.two_factor_secret,
         )
 
-    async def health_check(self) -> bool:
-        """Perform a health check on the database connection."""
+    async def close(self) -> None:
+        """Close database connections."""
         try:
-            if not self.connection:
-                return False
+            await self.engine.dispose()
+            self.logger.info("PostgreSQL connections closed")
+        except Exception as e:
+            self.logger.error(f"Error closing database connections: {e}")
 
-            # Simple query to test connection
-            cursor = self.connection.cursor()
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-            return True
 
-        except Exception:
-            return False
-
-    def close(self) -> None:
-        """Close database connection."""
-        if self.connection:
-            self.connection.close()
-            self.connection = None
-
-    def __del__(self) -> None:
-        """Cleanup database connection on deletion."""
-        self.close()
+# Maintain backward compatibility
+DatabaseClient = AuthDatabaseClient

@@ -74,7 +74,7 @@ class AuthUser(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     full_name = Column(String(255))
     password_hash = Column(String(255))
-    tenant_id = Column(String)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"))
     roles = Column(JSONB, nullable=False, default=list)
     preferences = Column(JSONB, default=dict)
     is_verified = Column(Boolean, default=False, nullable=False)
@@ -92,7 +92,6 @@ class AuthUser(Base):
     tenant = relationship(
         "Tenant",
         back_populates="users",
-        primaryjoin="AuthUser.tenant_id==cast(Tenant.id, String)",
     )
     sessions = relationship(
         "AuthSession", back_populates="user", cascade="all, delete-orphan"
@@ -184,7 +183,7 @@ class TenantMemoryItem(Base):
     kind = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)
     embedding = Column(ARRAY(Float), nullable=True)
-    metadata = Column(JSON, default={})
+    item_metadata = Column("metadata", JSON, default={})
     created_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (Index("idx_memory_items_scope_kind", "scope", "kind"),)
@@ -385,7 +384,7 @@ class MarketplaceExtension(Base):
     title = Column(String)
     author = Column(String)
     summary = Column(Text)
-    metadata = Column(JSONB)
+    extension_metadata = Column("metadata", JSONB)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     installs = relationship("InstalledExtension", back_populates="extension")
@@ -540,7 +539,7 @@ class File(Base):
     bytes = Column(BigInteger)
     storage_uri = Column(String)
     sha256 = Column(String, nullable=False)
-    metadata = Column(JSONB, default=dict)
+    file_metadata = Column("metadata", JSONB, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("AuthUser")
@@ -665,7 +664,7 @@ class AuthProvider(Base):
     tenant_id = Column(String)
     type = Column(String, nullable=False)
     config = Column(JSONB, nullable=False)
-    metadata = Column(JSONB, default=dict)
+    provider_metadata = Column("metadata", JSONB, default=dict)
     enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -695,7 +694,7 @@ class UserIdentity(Base):
         String, ForeignKey("auth_providers.provider_id"), nullable=False
     )
     provider_user = Column(String, nullable=False)
-    metadata = Column(JSONB)
+    identity_metadata = Column("metadata", JSONB)
     created_at = Column(DateTime, default=func.now())
 
     user = relationship("AuthUser")

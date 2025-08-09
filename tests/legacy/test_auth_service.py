@@ -275,17 +275,23 @@ class TestAuthService:
                     "log_session_event",
                     new_callable=AsyncMock,
                 ) as mock_log:
-                    result = await auth_service.create_session(
-                        user_data=sample_user_data,
-                        ip_address="192.168.1.1",
-                        user_agent="Test Agent",
-                    )
+                    with patch.object(
+                        auth_service,
+                        "_record_auth_event",
+                        new_callable=AsyncMock,
+                    ) as mock_record:
+                        result = await auth_service.create_session(
+                            user_data=sample_user_data,
+                            ip_address="192.168.1.1",
+                            user_agent="Test Agent",
+                        )
 
-                    assert result.session_token == "test-token"
-                    assert result.risk_score == 0.1
-                    mock_create.assert_called_once()
-                    mock_validate.assert_called_once()
-                    mock_log.assert_called_once()
+                        assert result.session_token == "test-token"
+                        assert result.risk_score == 0.1
+                        mock_create.assert_called_once()
+                        mock_validate.assert_called_once()
+                        mock_log.assert_called_once()
+                        mock_record.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_validate_session_success(
@@ -446,12 +452,11 @@ class TestAuthService:
                 auth_service.core_auth, "create_user", new_callable=AsyncMock
             ) as mock_create:
                 mock_create.return_value = mock_user_data
-
                 with patch.object(
-                    auth_service.security_layer,
-                    "log_auth_event",
+                    auth_service,
+                    "_record_auth_event",
                     new_callable=AsyncMock,
-                ) as mock_log:
+                ) as mock_record:
                     result = await auth_service.create_user(
                         email="newuser@example.com",
                         password="secure-password",
@@ -462,7 +467,7 @@ class TestAuthService:
                     assert result == mock_user_data
                     mock_rate_limit.assert_called_once()
                     mock_create.assert_called_once()
-                    mock_log.assert_called_once()
+                    mock_record.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_create_user_already_exists(self, auth_config: AuthConfig):
@@ -480,12 +485,11 @@ class TestAuthService:
                 mock_create.side_effect = UserAlreadyExistsError(
                     email="existing@example.com"
                 )
-
                 with patch.object(
-                    auth_service.security_layer,
-                    "log_auth_event",
+                    auth_service,
+                    "_record_auth_event",
                     new_callable=AsyncMock,
-                ) as mock_log:
+                ) as mock_record:
                     with pytest.raises(UserAlreadyExistsError):
                         await auth_service.create_user(
                             email="existing@example.com",
@@ -493,7 +497,7 @@ class TestAuthService:
                             ip_address="192.168.1.1",
                         )
 
-                    mock_log.assert_called_once()
+                    mock_record.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_update_user_password_success(self, auth_config: AuthConfig):
@@ -513,12 +517,11 @@ class TestAuthService:
                 auth_service.core_auth, "get_user_by_id", new_callable=AsyncMock
             ) as mock_get_user:
                 mock_get_user.return_value = mock_user_data
-
                 with patch.object(
-                    auth_service.security_layer,
-                    "log_auth_event",
+                    auth_service,
+                    "_record_auth_event",
                     new_callable=AsyncMock,
-                ) as mock_log:
+                ) as mock_record:
                     result = await auth_service.update_user_password(
                         user_id="test-user",
                         new_password="new-secure-password",
@@ -528,7 +531,7 @@ class TestAuthService:
 
                     assert result is True
                     mock_update.assert_called_once()
-                    mock_log.assert_called_once()
+                    mock_record.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_user_by_id(

@@ -4,7 +4,7 @@ Create Admin User Script for AI Karen
 Creates a verified admin user account for getting started with the system.
 """
 
-import sqlite3
+import asyncio
 import requests
 import json
 import sys
@@ -56,27 +56,43 @@ def create_admin_user(email: str, password: str, backend_url: str = "http://loca
         print("Verifying admin user in database...")
         
         try:
-            conn = sqlite3.connect('auth.db')
-            cursor = conn.cursor()
-            
-            # Verify the admin account
-            cursor.execute('UPDATE auth_users SET is_verified = 1 WHERE email = ?', (email,))
-            conn.commit()
-            
-            # Check the verification
-            cursor.execute('SELECT email, is_verified, roles FROM auth_users WHERE email = ?', (email,))
-            admin_user = cursor.fetchone()
-            
-            if admin_user and admin_user[1]:  # is_verified
-                print(f"✅ Admin user verified in database!")
-                print(f"   Email: {admin_user[0]}")
-                print(f"   Verified: {bool(admin_user[1])}")
-                print(f"   Roles: {admin_user[2]}")
-            else:
-                print("❌ Failed to verify admin user in database")
-                return False
+            # Updated to use PostgreSQL through the unified auth service
+            async def verify_admin_user():
+                from src.ai_karen_engine.auth.config import AuthConfig
+                from src.ai_karen_engine.auth.database import AuthDatabaseClient
                 
-            conn.close()
+                config = AuthConfig.from_env()
+                db_client = AuthDatabaseClient(config.database)
+                await db_client.initialize_schema()
+                
+                # Verify the admin account
+                async with db_client.session_factory() as session:
+                    from sqlalchemy import text
+                    await session.execute(text("""
+                        UPDATE auth_users SET is_verified = true WHERE email = :email
+                    """), {"email": email})
+                    await session.commit()
+                    
+                    # Check the verification
+                    result = await session.execute(text("""
+                        SELECT email, is_verified, roles FROM auth_users WHERE email = :email
+                    """), {"email": email})
+                    admin_user = result.fetchone()
+                    
+                    if admin_user and admin_user.is_verified:
+                        print(f"✅ Admin user verified in database!")
+                        print(f"   Email: {admin_user.email}")
+                        print(f"   Verified: {admin_user.is_verified}")
+                        print(f"   Roles: {admin_user.roles}")
+                        return True
+                    else:
+                        print("❌ Failed to verify admin user in database")
+                        return False
+            
+            # Run the async verification
+            verification_success = asyncio.run(verify_admin_user())
+            if not verification_success:
+                return False
             
         except Exception as db_error:
             print(f"❌ Database error: {db_error}")

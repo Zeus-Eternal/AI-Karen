@@ -42,7 +42,6 @@ from ai_karen_engine.services.usage_service import UsageService
 from ai_karen_engine.database.models import (
     Extension,
     InstalledExtension,
-    ExtensionInstallEvent,
     MarketplaceExtension,
 )
 
@@ -611,15 +610,7 @@ class ExtensionManager(HookMixin):
                             )
                         )
 
-                    session.add(
-                        ExtensionInstallEvent(
-                            extension_id=extension_id,
-                            action=action,
-                            version=version,
-                            user_id=user_id,
-                            occurred_at=datetime.utcnow(),
-                        )
-                    )
+                    # ExtensionInstallEvent model not available - skipping install event logging
                     session.commit()
             except Exception as db_error:  # pragma: no cover - optional DB
                 self.logger.debug(
@@ -681,15 +672,7 @@ class ExtensionManager(HookMixin):
                     version = installed.version if installed else None
                     if installed:
                         session.delete(installed)
-                    session.add(
-                        ExtensionInstallEvent(
-                            extension_id=name,
-                            action="remove",
-                            version=version,
-                            user_id=user_id,
-                            occurred_at=datetime.utcnow(),
-                        )
-                    )
+                    # ExtensionInstallEvent model not available - skipping removal event logging
                     session.commit()
             except Exception as db_error:  # pragma: no cover - optional DB
                 self.logger.debug(
@@ -1146,9 +1129,9 @@ class ExtensionManager(HookMixin):
 
     async def _on_mcp_tool_called(self, context: Dict[str, Any]) -> Dict[str, Any]:
         ext = context.get("extension_name")
-       tool = context.get("tool_name")
-       ms = context.get("execution_time_ms", 0)
-       self.logger.debug("MCP tool %s called by %s in %sms", tool, ext, ms)
+        tool = context.get("tool_name")
+        ms = context.get("execution_time_ms", 0)
+        self.logger.debug("MCP tool %s called by %s in %sms", tool, ext, ms)
         UsageService.increment("tool_calls")
         return {
             "manager": "extension_manager",

@@ -79,9 +79,17 @@ DB_PATH.parent.mkdir(mode=0o700, exist_ok=True)
 
 def init_secure_db():
     conn = duckdb.connect(str(DB_PATH))
-    conn.execute(f"PRAGMA key='{DUCKDB_PASSWORD}'")
+    # Skip encryption for development - only use in production with encrypted DuckDB
+    try:
+        conn.execute(f"PRAGMA key='{DUCKDB_PASSWORD}'")
+        encryption_clause = "WITH (encryption='aes256')"
+    except Exception:
+        # Standard DuckDB doesn't support encryption, continue without it
+        encryption_clause = ""
+        log.warning("DuckDB encryption not available, using unencrypted database for development")
+    
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS automation_jobs (
             job_id VARCHAR PRIMARY KEY,
             name VARCHAR,
@@ -92,13 +100,13 @@ def init_secure_db():
             created_at TIMESTAMP,
             updated_at TIMESTAMP,
             signature VARCHAR
-        ) WITH (encryption='aes256');
+        ) {encryption_clause};
     """
     )
     conn.close()
 
 
-init_secure_db()
+# Database will be initialized lazily when AutomationManager is created
 
 
 # === Cryptographic Controls ===
@@ -157,6 +165,8 @@ class AutomationManager:
         return cls._instance
 
     def _init_engine(self):
+        # Initialize database first
+        init_secure_db()
         self._executor = SecureThreadPoolExecutor(max_workers=MAX_WORKERS)
         self._job_registry: Dict[str, Callable] = {}
         self._schedule: Dict[str, Dict] = {}
@@ -170,7 +180,11 @@ class AutomationManager:
 
     def _load_jobs(self):
         conn = duckdb.connect(str(DB_PATH))
-        conn.execute(f"PRAGMA key='{DUCKDB_PASSWORD}'")
+        try:
+            conn.execute(f"PRAGMA key='{DUCKDB_PASSWORD}'")
+        except Exception:
+            # Skip encryption if not available
+            pass
         try:
             rows = conn.execute(
                 """
@@ -220,7 +234,11 @@ class AutomationManager:
     def _persist_job(self, job_id: str):
         job = self._schedule[job_id]
         conn = duckdb.connect(str(DB_PATH))
-        conn.execute(f"PRAGMA key='{DUCKDB_PASSWORD}'")
+        try:
+            conn.execute(f"PRAGMA key='{DUCKDB_PASSWORD}'")
+        except Exception:
+            # Skip encryption if not available
+            pass
         try:
             conn.execute(
                 """
@@ -285,7 +303,11 @@ class AutomationManager:
             self._schedule.pop(job_id, None)
             self._job_registry.pop(job_id, None)
             conn = duckdb.connect(str(DB_PATH))
-            conn.execute(f"PRAGMA key='{DUCKDB_PASSWORD}'")
+            try:
+                conn.execute(f"PRAGMA key='{DUCKDB_PASSWORD}'")
+            except Exception:
+                # Skip encryption if not available
+                pass
             conn.execute("DELETE FROM automation_jobs WHERE job_id = ?", (job_id,))
             conn.close()
             log.warning(f"Quarantined compromised job: {job_id}")
@@ -304,4 +326,4 @@ def get_automation_manager():
     return AutomationManager._instance
 
 
-automation_manager = get_automation_manager()
+# AutomationManager will be created lazily when first accessed

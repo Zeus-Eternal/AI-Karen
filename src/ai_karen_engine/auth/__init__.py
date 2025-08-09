@@ -128,6 +128,8 @@ from .service import (
     get_unified_auth_service,
 )
 
+from ai_karen_engine.auth.monitoring import AuthMonitor, metrics_hook
+
 __version__ = "1.0.0"
 __author__ = "AI Karen Team"
 __description__ = "Unified authentication system for AI Karen"
@@ -171,6 +173,10 @@ __all__ = [
     "get_production_auth_service",
     "get_intelligent_auth_service",
     "get_unified_auth_service",
+
+    # Monitoring
+    "AuthMonitor",
+    "metrics_hook",
     
     # Base exceptions
     "AuthError",

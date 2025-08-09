@@ -252,7 +252,7 @@ async def validate_and_migrate_schema(session: AsyncSession) -> Optional[WebAPIE
 
 
 def get_database_migration_sql() -> str:
-"""
+    """
 -- Create memory_items table
 CREATE TABLE IF NOT EXISTS memory_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

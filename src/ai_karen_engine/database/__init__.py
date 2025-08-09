@@ -8,12 +8,12 @@ from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.migrations import MigrationManager
 from ai_karen_engine.database.models import (
     AuditLog,
+    AuthUser,
     Base,
     Tenant,
     TenantConversation,
     TenantMemoryItem,
     TenantMemoryEntry,
-    User,
 )
 
 _default_client: Optional[MultiTenantPostgresClient] = None
@@ -51,7 +51,7 @@ async def get_postgres_session() -> AsyncGenerator:
 __all__ = [
     "Base",
     "Tenant",
-    "User",
+    "AuthUser",
     "TenantConversation",
     "TenantMemoryItem",
     "TenantMemoryEntry",
