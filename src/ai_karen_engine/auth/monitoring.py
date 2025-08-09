@@ -86,13 +86,38 @@ init_auth_metrics()
 
 def metrics_hook(event: str, data: Dict[str, object]) -> None:
     """Forward authentication events to Prometheus metrics."""
-    duration = float(data.get("processing_time", 0) or 0)
-    if event == "login_success":
-        AUTH_SUCCESS.inc()
-        AUTH_PROCESSING_TIME.observe(duration)
-    elif event in {"login_failure", "login_blocked", "rate_limit_exceeded"}:
-        AUTH_FAILURE.inc()
-        if duration:
+    # Support both millisecond and second inputs for processing time
+    duration_ms = data.get("processing_time_ms")
+    duration = data.get("processing_time")
+    if duration_ms is not None:
+        try:
+            duration = float(duration_ms) / 1000.0
+        except Exception:  # pragma: no cover - best effort
+            duration = 0.0
+    else:
+        try:
+            duration = float(duration or 0)
+        except Exception:  # pragma: no cover - best effort
+            duration = 0.0
+
+    # Normalize event names to a consistent set
+    normalized = {
+        "login_failed": "login_failure",
+        "login_failure": "login_failure",
+        "login_success": "login_success",
+        "login_blocked": "login_blocked",
+        "rate_limit_exceeded": "rate_limit_exceeded",
+    }.get(event, event)
+
+    if normalized == "login_success":
+        if AUTH_SUCCESS is not None:
+            AUTH_SUCCESS.inc()
+        if AUTH_PROCESSING_TIME is not None:
+            AUTH_PROCESSING_TIME.observe(duration)
+    elif normalized in {"login_failure", "login_blocked", "rate_limit_exceeded"}:
+        if AUTH_FAILURE is not None:
+            AUTH_FAILURE.inc()
+        if AUTH_PROCESSING_TIME is not None and duration:
             AUTH_PROCESSING_TIME.observe(duration)
 
 
