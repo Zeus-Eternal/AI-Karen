@@ -86,6 +86,13 @@ class AuthDatabaseClient:
         """Initialize PostgreSQL schema with authentication tables."""
         try:
             async with self.engine.begin() as conn:
+                try:
+                    await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
+                except Exception as e:
+                    self.logger.warning(
+                        "Failed to create pgcrypto extension: %s", e
+                    )
+
                 # Create users table
                 await conn.execute(
                     text(
