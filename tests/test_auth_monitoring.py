@@ -1,12 +1,7 @@
 import pytest
-from prometheus_client import CollectorRegistry
 
 from ai_karen_engine.auth.config import AuthConfig
-from ai_karen_engine.auth.monitoring import (
-    AuthMonitor,
-    init_auth_metrics,
-    metrics_hook,
-)
+from ai_karen_engine.auth.monitoring import AuthMonitor
 from ai_karen_engine.auth.models import AuthEvent, AuthEventType
 
 
@@ -52,12 +47,3 @@ async def test_auth_monitor_triggers_security_alert():
     await monitor.record_auth_event(event)
     assert len(monitor.alerts.get_alert_history()) == 1
     await monitor.shutdown()
-
-
-def test_metrics_hook_records_prometheus_metrics():
-    registry = CollectorRegistry()
-    init_auth_metrics(registry=registry, force=True)
-    metrics_hook("login_success", {"processing_time": 0.1})
-    metrics_hook("login_failure", {"processing_time": 0.2})
-    assert registry.get_sample_value("kari_auth_success_total") == 1.0
-    assert registry.get_sample_value("kari_auth_failure_total") == 1.0

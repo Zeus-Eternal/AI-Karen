@@ -1,7 +1,7 @@
 -- Initial schema for AG-UI + Copilot-ready chat core
 
 CREATE TABLE auth_users (
-  user_id           TEXT PRIMARY KEY,
+  user_id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email             TEXT UNIQUE NOT NULL,
   full_name         TEXT,
   password_hash     TEXT,                -- null if SSO-only
@@ -22,8 +22,8 @@ CREATE TABLE auth_users (
 CREATE INDEX idx_auth_users_tenant_email ON auth_users(tenant_id, email);
 
 CREATE TABLE auth_sessions (
-  session_token       TEXT PRIMARY KEY,
-  user_id             TEXT NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
+  session_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
   access_token        TEXT NOT NULL,
   refresh_token       TEXT NOT NULL,
   expires_in          INT NOT NULL,                 -- seconds
@@ -55,8 +55,8 @@ CREATE TABLE auth_providers (
 );
 
 CREATE TABLE user_identities (
-  identity_id   TEXT PRIMARY KEY,
-  user_id       TEXT NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
+  identity_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
   provider_id   TEXT NOT NULL REFERENCES auth_providers(provider_id),
   provider_user TEXT NOT NULL,           -- sub / external id
   metadata      JSONB,
@@ -82,7 +82,7 @@ CREATE TABLE role_permissions (
 CREATE TABLE api_keys (
   key_id       TEXT PRIMARY KEY,
   tenant_id    TEXT,
-  user_id      TEXT REFERENCES auth_users(user_id) ON DELETE SET NULL,
+  user_id      UUID REFERENCES auth_users(user_id) ON DELETE SET NULL,
   hashed_key   TEXT NOT NULL,            -- store a hash only
   name         TEXT,
   scopes       JSONB NOT NULL,           -- ["chat:write","files:read"]
@@ -112,7 +112,7 @@ CREATE TABLE audit_log (
 CREATE INDEX idx_audit_tenant_time ON audit_log(tenant_id, created_at DESC);
 
 CREATE TABLE conversations (
-  id UUID PRIMARY KEY,
+  conversation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   title TEXT,
   conversation_metadata JSONB DEFAULT '{}'::jsonb,
@@ -136,8 +136,8 @@ CREATE INDEX idx_conversation_tags ON conversations(tags);
 CREATE INDEX idx_conversation_user_session ON conversations(user_id, session_id);
 
 CREATE TABLE messages (
-  id UUID PRIMARY KEY,
-  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES conversations(conversation_id) ON DELETE CASCADE,
   role TEXT NOT NULL,
   content TEXT NOT NULL,
   message_metadata JSONB DEFAULT '{}'::jsonb,
@@ -149,8 +149,8 @@ CREATE TABLE messages (
 CREATE INDEX idx_messages_convo_time ON messages(conversation_id, created_at);
 
 CREATE TABLE message_tools (
-  id BIGSERIAL PRIMARY KEY,
-  message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  message_tool_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id UUID NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
   tool_name TEXT NOT NULL,
   arguments JSONB,
   result JSONB,
@@ -259,7 +259,7 @@ CREATE INDEX idx_llm_requests_tenant_time ON llm_requests(tenant_id, created_at)
 CREATE TABLE files (
   file_id       TEXT PRIMARY KEY,
   tenant_id     TEXT,
-  owner_user_id TEXT REFERENCES auth_users(user_id) ON DELETE SET NULL,
+  owner_user_id UUID REFERENCES auth_users(user_id) ON DELETE SET NULL,
   name          TEXT,
   mime_type     TEXT,
   bytes         BIGINT,
@@ -294,7 +294,7 @@ CREATE TABLE installed_extensions (
   id            BIGSERIAL PRIMARY KEY,
   extension_id  TEXT REFERENCES marketplace_extensions(extension_id) ON DELETE SET NULL,
   version       TEXT,
-  installed_by  TEXT REFERENCES auth_users(user_id) ON DELETE SET NULL,
+  installed_by  UUID REFERENCES auth_users(user_id) ON DELETE SET NULL,
   installed_at  TIMESTAMP DEFAULT now(),
   source        TEXT,                      -- local|marketplace
   directory     TEXT
