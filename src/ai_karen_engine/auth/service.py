@@ -382,6 +382,8 @@ class AuthService:
         """
         await self.initialize()
 
+        start_time = datetime.utcnow()
+
         try:
             # Create session through core authenticator
             session_data = await self.core_auth.create_session(
@@ -416,9 +418,45 @@ class AuthService:
                     AuthEventType.SESSION_CREATED, session_data, success=True
                 )
 
+            # Record authentication event
+            await self._record_auth_event(
+                event_type=AuthEventType.SESSION_CREATED,
+                success=True,
+                start_time=start_time,
+                user_id=user_data.user_id,
+                email=user_data.email,
+                tenant_id=user_data.tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                session_token=session_data.session_token,
+                risk_score=session_data.risk_score,
+                security_flags=session_data.security_flags,
+            )
+
+            # Record performance metric
+            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            await self._record_performance_metric(
+                "create_session", processing_time, True
+            )
+
             return session_data
 
         except Exception as e:
+            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            await self._record_auth_event(
+                event_type=AuthEventType.SESSION_CREATED,
+                success=False,
+                start_time=start_time,
+                user_id=user_data.user_id,
+                email=user_data.email,
+                tenant_id=user_data.tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+            )
+            await self._record_performance_metric(
+                "create_session", processing_time, False
+            )
             self.logger.error(f"Failed to create session: {e}")
             raise SecurityError(f"Session creation failed: {e}")
 
@@ -518,11 +556,15 @@ class AuthService:
         """
         await self.initialize()
 
+        start_time = datetime.utcnow()
+
         try:
             # Invalidate through core authenticator
             result = await self.core_auth.invalidate_session(
                 session_token, reason=reason, **kwargs
             )
+
+            session_data = None
 
             # Log invalidation if security layer is enabled
             if self.security_layer and result:
@@ -537,9 +579,40 @@ class AuthService:
                         details={"reason": reason},
                     )
 
+            # Record auth event
+            await self._record_auth_event(
+                event_type=AuthEventType.SESSION_INVALIDATED,
+                success=result,
+                start_time=start_time,
+                user_id=session_data.user_data.user_id if session_data else None,
+                email=session_data.user_data.email if session_data else None,
+                tenant_id=session_data.user_data.tenant_id if session_data else None,
+                ip_address=session_data.ip_address if session_data else "unknown",
+                user_agent=session_data.user_agent if session_data else "",
+                session_token=session_token,
+                details={"reason": reason},
+            )
+
+            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            await self._record_performance_metric(
+                "invalidate_session", processing_time, result
+            )
+
             return result
 
         except Exception as e:
+            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            await self._record_auth_event(
+                event_type=AuthEventType.SESSION_INVALIDATED,
+                success=False,
+                start_time=start_time,
+                session_token=session_token,
+                error_message=str(e),
+                details={"reason": reason},
+            )
+            await self._record_performance_metric(
+                "invalidate_session", processing_time, False
+            )
             self.logger.error(f"Session invalidation error: {e}")
             return False
 
@@ -576,6 +649,7 @@ class AuthService:
             RateLimitExceededError: Too many user creation attempts
         """
         await self.initialize()
+        start_time = datetime.utcnow()
 
         try:
             # Check rate limiting for user creation if security layer enabled
@@ -594,35 +668,40 @@ class AuthService:
                 **kwargs,
             )
 
-            # Log user creation if security layer enabled
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.USER_CREATED,
-                        user_id=user_data.user_id,
-                        email=email,
-                        tenant_id=tenant_id,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=True,
-                    )
-                )
+            # Record auth event
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_CREATED,
+                success=True,
+                start_time=start_time,
+                user_id=user_data.user_id,
+                email=email,
+                tenant_id=tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+
+            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            await self._record_performance_metric(
+                "create_user", processing_time, True
+            )
 
             return user_data
 
         except (UserAlreadyExistsError, RateLimitExceededError) as e:
-            # Log failed attempt
-            if self.security_layer:
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.USER_CREATED,
-                        email=email,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=False,
-                        error_message=str(e),
-                    )
-                )
+            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            await self._record_auth_event(
+                event_type=AuthEventType.USER_CREATED,
+                success=False,
+                start_time=start_time,
+                email=email,
+                tenant_id=tenant_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+            )
+            await self._record_performance_metric(
+                "create_user", processing_time, False
+            )
             raise
 
     async def update_user_password(
@@ -654,6 +733,7 @@ class AuthService:
             PasswordValidationError: New password doesn't meet requirements
         """
         await self.initialize()
+        start_time = datetime.utcnow()
 
         try:
             # Update password through core authenticator
@@ -664,39 +744,43 @@ class AuthService:
                 **kwargs,
             )
 
-            # Log password change if security layer enabled
-            if self.security_layer and result:
-                user_data = await self.core_auth.get_user_by_id(user_id)
-                if user_data:
-                    await self.security_layer.log_auth_event(
-                        AuthEvent(
-                            event_type=AuthEventType.PASSWORD_CHANGED,
-                            user_id=user_id,
-                            email=user_data.email,
-                            tenant_id=user_data.tenant_id,
-                            ip_address=ip_address,
-                            user_agent=user_agent,
-                            success=True,
-                        )
-                    )
+            user_data = await self.core_auth.get_user_by_id(user_id) if result else None
+
+            await self._record_auth_event(
+                event_type=AuthEventType.PASSWORD_CHANGED,
+                success=result,
+                start_time=start_time,
+                user_id=user_id,
+                email=user_data.email if user_data else None,
+                tenant_id=user_data.tenant_id if user_data else None,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+
+            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            await self._record_performance_metric(
+                "update_user_password", processing_time, result
+            )
 
             return result
 
         except Exception as e:
-            # Log failed attempt
-            if self.security_layer:
-                user_data = await self.core_auth.get_user_by_id(user_id)
-                await self.security_layer.log_auth_event(
-                    AuthEvent(
-                        event_type=AuthEventType.PASSWORD_CHANGED,
-                        user_id=user_id,
-                        email=user_data.email if user_data else None,
-                        ip_address=ip_address,
-                        user_agent=user_agent,
-                        success=False,
-                        error_message=str(e),
-                    )
-                )
+            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            user_data = await self.core_auth.get_user_by_id(user_id)
+            await self._record_auth_event(
+                event_type=AuthEventType.PASSWORD_CHANGED,
+                success=False,
+                start_time=start_time,
+                user_id=user_id,
+                email=user_data.email if user_data else None,
+                tenant_id=user_data.tenant_id if user_data else None,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                error_message=str(e),
+            )
+            await self._record_performance_metric(
+                "update_user_password", processing_time, False
+            )
             raise
 
     async def get_user_by_id(self, user_id: str) -> Optional[UserData]:
