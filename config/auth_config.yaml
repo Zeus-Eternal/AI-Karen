@@ -1,0 +1,14 @@
+# Example authentication configuration
+# Contains settings for development and production environments
+
+development:
+  database:
+    database_url: "sqlite:///./dev.db"
+  jwt:
+    secret_key: "dev-secret"
+
+production:
+  database:
+    database_url: "postgresql+asyncpg://user:password@db.example.com/prod"
+  jwt:
+    secret_key: "prod-secret"

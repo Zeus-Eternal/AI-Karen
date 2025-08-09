@@ -624,8 +624,18 @@ class AuthConfig:
         )
 
     @classmethod
-    def from_file(cls, file_path: Union[str, Path]) -> "AuthConfig":
-        """Load configuration from a JSON or YAML file."""
+    def from_file(
+        cls, file_path: Union[str, Path], env: Optional[str] = None
+    ) -> "AuthConfig":
+        """
+        Load configuration for a specific environment from a JSON or YAML file.
+
+        The configuration file may either contain a single configuration mapping
+        or be structured by environment name at the top level. When ``env`` is
+        provided, the corresponding section will be loaded. If the section is
+        missing a ``ValueError`` is raised.
+        """
+
         path = Path(file_path)
         if not path.exists():
             raise FileNotFoundError(f"Configuration file not found: {path}")
@@ -640,7 +650,53 @@ class AuthConfig:
         else:
             raise ValueError(f"Unsupported configuration format: {suffix}")
 
-        return cls.from_dict(data)
+        if env is not None:
+            try:
+                env_data = data[env]
+            except (KeyError, TypeError):
+                raise ValueError(
+                    f"Environment '{env}' not found in configuration file"
+                )
+        else:
+            env_data = data
+
+        if env is not None:
+            missing: List[str] = []
+            if not env_data.get("database", {}).get("database_url"):
+                missing.append("database.database_url")
+            if env in ("production", "prod") and not env_data.get("jwt", {}).get(
+                "secret_key"
+            ):
+                missing.append("jwt.secret_key")
+            if missing:
+                raise ValueError(
+                    f"Missing mandatory fields for environment '{env}': "
+                    + ", ".join(missing)
+                )
+
+        config = cls.from_dict(env_data)
+        config.environment = env or config.environment
+        config.validate()
+        return config
+
+    @classmethod
+    def from_environment(
+        cls, env: str, config_dir: Union[str, Path] = "config"
+    ) -> "AuthConfig":
+        """Load configuration for ``env`` from default config directory."""
+
+        config_dir_path = Path(config_dir)
+        candidates = [
+            config_dir_path / "auth_config.yaml",
+            config_dir_path / "auth_config.yml",
+            config_dir_path / "auth_config.json",
+        ]
+        path = next((p for p in candidates if p.exists()), None)
+        if path is None:
+            raise FileNotFoundError(
+                f"No configuration file found in {config_dir_path}"
+            )
+        return cls.from_file(path, env)
 
     @classmethod
     def from_env_file(cls, file_path: Union[str, Path]) -> "AuthConfig":
@@ -893,7 +949,7 @@ class AuthConfig:
             if path.name.lower() == ".env" or path.suffix.lower() == ".env":
                 config = cls.from_env_file(path)
             else:
-                config = cls.from_file(path)
+                config = cls.from_file(path, env)
         else:
             config = cls.from_env()
 
