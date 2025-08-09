@@ -18,7 +18,6 @@ from .exceptions import DatabaseOperationError, SessionError
 from .models import SessionData, UserData
 from .tokens import TokenManager
 
-
 # =============================================================================
 # Session Manager
 # =============================================================================
@@ -111,7 +110,9 @@ class SessionManager:
         await self.store.update_session(session)
         return session
 
-    async def refresh_session(self, session_token: str, refresh_token: str) -> Optional[SessionData]:
+    async def refresh_session(
+        self, session_token: str, refresh_token: str
+    ) -> Optional[SessionData]:
         """Refresh a session using a refresh token."""
         session = await self.store.get_session(session_token)
         if not session or session.refresh_token != refresh_token:
@@ -119,7 +120,9 @@ class SessionManager:
 
         try:
             await self.token_manager.validate_refresh_token(refresh_token)
-            new_access_token = await self.token_manager.create_access_token(session.user_data)
+            new_access_token = await self.token_manager.create_access_token(
+                session.user_data
+            )
             session.access_token = new_access_token
             session.update_last_accessed()
             await self.store.update_session(session)
@@ -127,7 +130,9 @@ class SessionManager:
         except Exception:
             return None
 
-    async def invalidate_session(self, session_token: str, reason: str = "manual") -> bool:
+    async def invalidate_session(
+        self, session_token: str, reason: str = "manual"
+    ) -> bool:
         """Invalidate a session."""
         session = await self.store.get_session(session_token)
         if not session:
@@ -145,7 +150,10 @@ class SessionManager:
         return await self.store.get_user_sessions(user_id)
 
     async def invalidate_user_sessions(
-        self, user_id: str, exclude_session: Optional[str] = None, reason: str = "user_logout"
+        self,
+        user_id: str,
+        exclude_session: Optional[str] = None,
+        reason: str = "user_logout",
     ) -> int:
         """Invalidate all sessions for a user."""
         sessions = await self.store.get_user_sessions(user_id)
@@ -306,7 +314,9 @@ class DatabaseSessionBackend:
                     return None
                 return self._row_to_session_data(row)
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to get session: {e}", operation="get_session")
+            raise DatabaseOperationError(
+                f"Failed to get session: {e}", operation="get_session"
+            )
 
     async def update_session(self, session_data: SessionData) -> None:
         if not self.db_client:
@@ -366,7 +376,9 @@ class DatabaseSessionBackend:
                 rows = result.fetchall()
                 return [self._row_to_session_data(row) for row in rows]
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to get user sessions: {e}", operation="get_user_sessions")
+            raise DatabaseOperationError(
+                f"Failed to get user sessions: {e}", operation="get_user_sessions"
+            )
 
     async def delete_user_sessions(self, user_id: str) -> int:
         if not self.db_client:
@@ -411,15 +423,19 @@ class DatabaseSessionBackend:
             is_active=bool(row["is_active"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
-            last_login_at=datetime.fromisoformat(row["last_login_at"]) if row["last_login_at"] else None,
+            last_login_at=datetime.fromisoformat(row["last_login_at"])
+            if row["last_login_at"]
+            else None,
             failed_login_attempts=row["failed_login_attempts"],
-            locked_until=datetime.fromisoformat(row["locked_until"]) if row["locked_until"] else None,
+            locked_until=datetime.fromisoformat(row["locked_until"])
+            if row["locked_until"]
+            else None,
             two_factor_enabled=bool(row["two_factor_enabled"]),
             two_factor_secret=row["two_factor_secret"],
         )
 
         return SessionData(
-            session_token=row["session_token"],
+            session_token=row["session_id"],
             access_token=row["access_token"],
             refresh_token=row["refresh_token"],
             user_data=user_data,
@@ -433,7 +449,9 @@ class DatabaseSessionBackend:
             risk_score=row["risk_score"],
             security_flags=json.loads(row["security_flags"]),
             is_active=bool(row["is_active"]),
-            invalidated_at=datetime.fromisoformat(row["invalidated_at"]) if row["invalidated_at"] else None,
+            invalidated_at=datetime.fromisoformat(row["invalidated_at"])
+            if row["invalidated_at"]
+            else None,
             invalidation_reason=row["invalidation_reason"],
         )
 
@@ -461,9 +479,13 @@ class RedisSessionBackend:
                 retry_on_timeout=True,
             )
         except ImportError:
-            raise ImportError("redis package is required for Redis session backend. Install with: pip install redis")
+            raise ImportError(
+                "redis package is required for Redis session backend. Install with: pip install redis"
+            )
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to connect to Redis: {e}", operation="redis_connect")
+            raise DatabaseOperationError(
+                f"Failed to connect to Redis: {e}", operation="redis_connect"
+            )
 
     def _get_session_key(self, session_token: str) -> str:
         return f"auth:session:{session_token}"
@@ -474,7 +496,9 @@ class RedisSessionBackend:
     async def store_session(self, session_data: SessionData) -> None:
         try:
             session_key = self._get_session_key(session_data.session_token)
-            user_sessions_key = self._get_user_sessions_key(session_data.user_data.user_id)
+            user_sessions_key = self._get_user_sessions_key(
+                session_data.user_data.user_id
+            )
 
             session_json = json.dumps(session_data.to_dict())
             ttl_seconds = int(self.config.session_timeout.total_seconds())
@@ -485,7 +509,9 @@ class RedisSessionBackend:
             pipe.expire(user_sessions_key, ttl_seconds)
             await pipe.execute()
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to store session in Redis: {e}", operation="store_session")
+            raise DatabaseOperationError(
+                f"Failed to store session in Redis: {e}", operation="store_session"
+            )
 
     async def get_session(self, session_token: str) -> Optional[SessionData]:
         try:
@@ -495,7 +521,9 @@ class RedisSessionBackend:
                 return None
             return SessionData.from_dict(json.loads(session_json))
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to get session from Redis: {e}", operation="get_session")
+            raise DatabaseOperationError(
+                f"Failed to get session from Redis: {e}", operation="get_session"
+            )
 
     async def update_session(self, session_data: SessionData) -> None:
         try:
@@ -511,7 +539,9 @@ class RedisSessionBackend:
                 ttl_seconds = int(self.config.session_timeout.total_seconds())
                 await self.redis_client.setex(session_key, ttl_seconds, session_json)
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to update session in Redis: {e}", operation="update_session")
+            raise DatabaseOperationError(
+                f"Failed to update session in Redis: {e}", operation="update_session"
+            )
 
     async def delete_session(self, session_token: str) -> bool:
         try:
@@ -528,7 +558,9 @@ class RedisSessionBackend:
             results = await pipe.execute()
             return results[0] > 0
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to delete session from Redis: {e}", operation="delete_session")
+            raise DatabaseOperationError(
+                f"Failed to delete session from Redis: {e}", operation="delete_session"
+            )
 
     async def get_user_sessions(self, user_id: str) -> List[SessionData]:
         try:
@@ -566,7 +598,10 @@ class RedisSessionBackend:
             sessions.sort(key=lambda s: s.last_accessed, reverse=True)
             return sessions
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to get user sessions from Redis: {e}", operation="get_user_sessions")
+            raise DatabaseOperationError(
+                f"Failed to get user sessions from Redis: {e}",
+                operation="get_user_sessions",
+            )
 
     async def delete_user_sessions(self, user_id: str) -> int:
         try:
@@ -583,7 +618,10 @@ class RedisSessionBackend:
 
             return sum(1 for r in results[:-1] if r > 0)
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to delete user sessions from Redis: {e}", operation="delete_user_sessions")
+            raise DatabaseOperationError(
+                f"Failed to delete user sessions from Redis: {e}",
+                operation="delete_user_sessions",
+            )
 
     async def cleanup_expired_sessions(self) -> int:
         # Redis handles key expiry via TTL; orphan set members cleaned during reads.
@@ -670,13 +708,16 @@ class MemorySessionBackend:
 try:
     from fastapi import Depends, HTTPException, Request, status
     from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
     _FASTAPI_AVAILABLE = True
 except Exception:  # pragma: no cover
     _FASTAPI_AVAILABLE = False
+
     # Stubs to avoid NameErrors if imported without FastAPI context
     def Depends(*_args: Any, **_kwargs: Any) -> None:  # type: ignore
         """Fallback stub for fastapi.Depends when FastAPI isn't installed."""
         return None
+
     HTTPException = Exception  # type: ignore
     Request = object  # type: ignore
     status = type("status", (), {"HTTP_401_UNAUTHORIZED": 401, "HTTP_403_FORBIDDEN": 403})  # type: ignore
@@ -689,20 +730,26 @@ _security = HTTPBearer(auto_error=False) if _FASTAPI_AVAILABLE else None  # type
 _session_manager_singleton: Optional[SessionManager] = None
 
 
-def initialize_session_service(config: SessionConfig, token_manager: TokenManager) -> SessionManager:
+def initialize_session_service(
+    config: SessionConfig, token_manager: TokenManager
+) -> SessionManager:
     """
     Initialize the global SessionManager used by FastAPI dependencies.
     Call this once during app startup.
     """
     global _session_manager_singleton
-    _session_manager_singleton = SessionManager(config=config, token_manager=token_manager)
+    _session_manager_singleton = SessionManager(
+        config=config, token_manager=token_manager
+    )
     return _session_manager_singleton
 
 
 def get_session_manager() -> SessionManager:
     """Return the initialized SessionManager or raise a clear error."""
     if _session_manager_singleton is None:
-        raise RuntimeError("Session service not initialized. Call initialize_session_service(...) at startup.")
+        raise RuntimeError(
+            "Session service not initialized. Call initialize_session_service(...) at startup."
+        )
     return _session_manager_singleton
 
 
@@ -722,14 +769,20 @@ def _to_user_data(payload: Any) -> UserData:
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unsupported token payload type.")  # type: ignore
 
 
-async def _extract_user_from_access_token(tm: TokenManager, access_token: str) -> UserData:
+async def _extract_user_from_access_token(
+    tm: TokenManager, access_token: str
+) -> UserData:
     """
     Be flexible with TokenManager APIs:
     - validate_access_token(token)
     - decode_access_token(token)
     - verify_access_token(token)
     """
-    for method_name in ("validate_access_token", "decode_access_token", "verify_access_token"):
+    for method_name in (
+        "validate_access_token",
+        "decode_access_token",
+        "verify_access_token",
+    ):
         if hasattr(tm, method_name):
             method = getattr(tm, method_name)
             try:
@@ -753,12 +806,21 @@ async def get_current_user(
     if not _FASTAPI_AVAILABLE:  # pragma: no cover
         raise RuntimeError("FastAPI is required to use get_current_user.")
 
-    if not creds or not getattr(creds, "scheme", None) or creds.scheme.lower() != "bearer":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing or invalid Authorization header.")
+    if (
+        not creds
+        or not getattr(creds, "scheme", None)
+        or creds.scheme.lower() != "bearer"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid Authorization header.",
+        )
 
     access_token = getattr(creds, "credentials", "") or ""
     if not access_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Empty access token.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Empty access token."
+        )
 
     sm = get_session_manager()
     tm = sm.token_manager
@@ -769,9 +831,17 @@ async def get_current_user(
     if session_token:
         session = await sm.validate_session(session_token)
         if not session:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session.")
-        if getattr(session.user_data, "user_id", None) != getattr(user, "user_id", None):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token user mismatch for session.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired session.",
+            )
+        if getattr(session.user_data, "user_id", None) != getattr(
+            user, "user_id", None
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token user mismatch for session.",
+            )
 
     return user
 
@@ -784,7 +854,11 @@ async def get_current_user_optional(
     if not _FASTAPI_AVAILABLE:  # pragma: no cover
         return None
 
-    if not creds or not getattr(creds, "scheme", None) or creds.scheme.lower() != "bearer":
+    if (
+        not creds
+        or not getattr(creds, "scheme", None)
+        or creds.scheme.lower() != "bearer"
+    ):
         return None
 
     access_token = getattr(creds, "credentials", "") or ""
@@ -804,7 +878,9 @@ async def get_current_user_optional(
         session = await sm.validate_session(session_token)
         if not session:
             return None
-        if getattr(session.user_data, "user_id", None) != getattr(user, "user_id", None):
+        if getattr(session.user_data, "user_id", None) != getattr(
+            user, "user_id", None
+        ):
             return None
 
     return user
@@ -823,7 +899,10 @@ def require_roles(required: Iterable[str]):
     async def _dep(user: UserData = Depends(get_current_user)):  # type: ignore
         roles = set(getattr(user, "roles", []) or [])
         if not required_set.issubset(roles):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient role permissions.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient role permissions.",
+            )
         return user
 
     return _dep
