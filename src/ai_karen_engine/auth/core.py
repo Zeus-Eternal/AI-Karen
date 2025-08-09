@@ -128,7 +128,7 @@ class CoreAuthenticator:
         """Initialize core authenticator components."""
         if self._initialized:
             return
-        await self.db_client.initialize_schema()
+        await self.db_client._ensure_schema()
         self.session_manager._start_cleanup_task()
         self._initialized = True
 

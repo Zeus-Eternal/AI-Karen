@@ -89,8 +89,11 @@ class AuthService:
             return
 
         self.logger.info("Initializing AuthService components...")
-
         try:
+            # Ensure database schema is initialized before other components
+            await self.core_auth.db_client.initialize_schema()
+            self.logger.info("Database schema initialized")
+
             # Initialize core authentication layer
             await self.core_auth.initialize()
             self.logger.info("Core authentication layer initialized")
@@ -109,8 +112,8 @@ class AuthService:
             self.logger.info("AuthService initialization completed successfully")
 
         except Exception as e:
-            self.logger.error(f"Failed to initialize AuthService: {e}")
-            raise ConfigurationError(f"AuthService initialization failed: {e}")
+            self.logger.exception("Failed to initialize AuthService: %s", e)
+            raise ConfigurationError(f"AuthService initialization failed: {e}") from e
 
     async def authenticate_user(
         self,
