@@ -15,13 +15,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ai_karen_engine.database.client import get_db_session_context
 from ai_karen_engine.database.models import LLMProvider, LLMRequest
-from ai_karen_engine.integrations.providers.deepseek_provider import DeepseekProvider
-from ai_karen_engine.integrations.providers.gemini_provider import GeminiProvider
-from ai_karen_engine.integrations.providers.huggingface_provider import (
-    HuggingFaceProvider,
-)
-from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvider
-from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvider
+
+# Lazy imports to avoid circular import issues
+# Providers will be imported when needed in get_provider_class()
 
 try:
     from prometheus_client import CollectorRegistry, Counter, Histogram
@@ -149,6 +145,13 @@ class LLMUtils:
         else:
             # Legacy mode - use provided providers or create default ones
             if providers is None:
+                # Lazy import providers to avoid circular imports
+                from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvider
+                from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvider
+                from ai_karen_engine.integrations.providers.gemini_provider import GeminiProvider
+                from ai_karen_engine.integrations.providers.deepseek_provider import DeepseekProvider
+                from ai_karen_engine.integrations.providers.huggingface_provider import HuggingFaceProvider
+                
                 providers = {
                     "ollama": OllamaProvider(),
                     "openai": OpenAIProvider(),
@@ -369,9 +372,9 @@ __all__ = [
     "EmbeddingFailed",
     "PROM_REGISTRY",
     "LLMProviderBase",
-    "OllamaProvider",
     "LLMUtils",
     "get_llm_manager",
     "generate_text",
     "embed_text",
+    "record_llm_metric",
 ]

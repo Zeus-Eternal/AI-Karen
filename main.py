@@ -7,6 +7,10 @@ Kari FastAPI Server - Production Version
 - Production-grade configuration
 """
 
+# Load environment variables first, before any other imports
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
 import logging.config
 import ssl

@@ -2,77 +2,61 @@
 
 import os
 import sys
+import asyncio
+from dotenv import load_dotenv
 
-# Set the environment variable before importing anything
-os.environ[
-    "POSTGRES_URL"
-] = "postgresql://karen_user:karen_secure_pass_change_me@localhost:5432/ai_karen"
-os.environ[
-    "DATABASE_URL"
-] = "postgresql://karen_user:karen_secure_pass_change_me@localhost:5432/ai_karen"
+# Load environment variables first
+load_dotenv()
 
-import uuid
-from datetime import datetime
+# Add the src directory to the path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-import bcrypt
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from ai_karen_engine.auth.service import get_auth_service
 
-from ai_karen_engine.database.models import AuthUser
-
-
-def create_test_user():
-    """Create a test user for authentication testing"""
-    database_url = os.environ["POSTGRES_URL"]
-    print(f"Creating test user in: {database_url}")
-
+async def create_test_user():
+    """Create test user using the auth service"""
     try:
-        engine = create_engine(database_url)
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-        with SessionLocal() as session:
-            # Check if test user already exists
-            existing_user = (
-                session.query(AuthUser)
-                .filter(AuthUser.email == "test@example.com")
-                .first()
-            )
-
-            if existing_user:
-                print("✓ Test user already exists")
-                return True
-
-            # Create test user
-            hashed_password = bcrypt.hashpw(
-                "testpassword".encode("utf-8"), bcrypt.gensalt()
-            ).decode("utf-8")
-
-            test_user = AuthUser(
-                user_id=str(uuid.uuid4()),
-                email="test@example.com",
-                full_name="Test User",
-                password_hash=hashed_password,
-                is_active=True,
-                is_verified=True,
-                roles=["user"],
-                tenant_id="default",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-
-            session.add(test_user)
-            session.commit()
-
-            print("✓ Test user created successfully")
-            print("  Email: test@example.com")
-            print("  Password: testpassword")
-
+        print("🚀 Creating test user using auth service...")
+        
+        # Get auth service
+        auth_service = await get_auth_service()
+        print("✅ Auth service obtained")
+        
+        # Check if user already exists
+        existing_user = await auth_service.get_user_by_email("test@example.com")
+        if existing_user:
+            print("✅ Test user already exists in auth system")
+            print(f"  User ID: {existing_user.user_id}")
+            print(f"  Email: {existing_user.email}")
+            print(f"  Is verified: {existing_user.is_verified}")
             return True
-
+        
+        # Create test user
+        print("👤 Creating test user...")
+        user_data = await auth_service.create_user(
+            email="test@example.com",
+            password="testpassword",
+            full_name="Test User",
+            tenant_id="default",
+            roles=["user"],
+            ip_address="127.0.0.1",
+            user_agent="setup-script"
+        )
+        
+        print("✅ Test user created successfully!")
+        print(f"  User ID: {user_data.user_id}")
+        print(f"  Email: {user_data.email}")
+        print(f"  Tenant ID: {user_data.tenant_id}")
+        print(f"  Is verified: {user_data.is_verified}")
+        print("  Password: testpassword")
+        
+        return True
+        
     except Exception as e:
-        print(f"✗ Failed to create test user: {e}")
+        print(f"❌ Failed to create test user: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
-
 if __name__ == "__main__":
-    create_test_user()
+    asyncio.run(create_test_user())

@@ -11,7 +11,7 @@ from uuid import uuid4
 import bcrypt
 
 from .config import AuthConfig
-from .database import DatabaseClient
+from .database import AuthDatabaseClient
 from .exceptions import (
     AccountDisabledError,
     AccountLockedError,
@@ -112,9 +112,9 @@ class CoreAuthenticator:
     def __init__(self, config: AuthConfig) -> None:
         """Initialize core authenticator with configuration."""
         self.config = config
-        self.db_client = DatabaseClient(config.database)
+        self.db_client = AuthDatabaseClient(config.database)
         self.token_manager = TokenManager(config.jwt)
-        self.session_manager = SessionManager(config.session, self.token_manager)
+        self.session_manager = SessionManager(config.session, self.token_manager, self.db_client)
         self.password_hasher = PasswordHasher(config.security.password_hash_rounds)
         self.password_validator = PasswordValidator(
             min_length=config.security.min_password_length,
