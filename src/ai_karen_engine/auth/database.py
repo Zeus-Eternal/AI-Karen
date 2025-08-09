@@ -10,13 +10,17 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Optional
 from uuid import uuid4
 
 try:
     from sqlalchemy import create_engine, text
-    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
     from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+    from sqlalchemy.ext.asyncio import (
+        AsyncSession,
+        async_sessionmaker,
+        create_async_engine,
+    )
     from sqlalchemy.pool import AsyncAdaptedQueuePool
 except ImportError:
     # Fallback for environments without SQLAlchemy
@@ -37,7 +41,7 @@ from .models import AuthEvent, UserData
 class AuthDatabaseClient:
     """
     Unified PostgreSQL database client for authentication operations.
-    
+
     This client exclusively uses PostgreSQL for all authentication data,
     replacing the previous dual SQLite/PostgreSQL architecture.
     """
@@ -46,13 +50,13 @@ class AuthDatabaseClient:
         """Initialize PostgreSQL database client with configuration."""
         self.config = config
         self.logger = logging.getLogger(f"{__name__}.AuthDatabaseClient")
-        
+
         if not create_async_engine:
             raise DatabaseConnectionError(
                 "SQLAlchemy is required for PostgreSQL operations. "
                 "Please install with: pip install sqlalchemy[asyncio] asyncpg"
             )
-        
+
         # Create async engine for PostgreSQL
         self.engine = create_async_engine(
             config.database_url,
@@ -62,22 +66,30 @@ class AuthDatabaseClient:
             pool_timeout=config.connection_timeout_seconds,
             echo=config.enable_query_logging,
         )
-        
+
         # Create session factory
         self.session_factory = async_sessionmaker(
-            self.engine,
-            class_=AsyncSession,
-            expire_on_commit=False
+            self.engine, class_=AsyncSession, expire_on_commit=False
         )
-        
+
+        # Track whether the database schema has been initialized
+        self._schema_initialized = False
+
         self.logger.info("PostgreSQL AuthDatabaseClient initialized")
+
+    async def _ensure_schema(self) -> None:
+        """Ensure database schema is initialized before operations."""
+        if not self._schema_initialized:
+            await self.initialize_schema()
 
     async def initialize_schema(self) -> None:
         """Initialize PostgreSQL schema with authentication tables."""
         try:
             async with self.engine.begin() as conn:
                 # Create users table
-                await conn.execute(text("""
+                await conn.execute(
+                    text(
+                        """
                     CREATE TABLE IF NOT EXISTS auth_users (
                         user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         email VARCHAR(255) UNIQUE NOT NULL,
@@ -95,20 +107,28 @@ class AuthDatabaseClient:
                         two_factor_enabled BOOLEAN DEFAULT false,
                         two_factor_secret VARCHAR(255)
                     )
-                """))
+                """
+                    )
+                )
 
                 # Create password hashes table
-                await conn.execute(text("""
+                await conn.execute(
+                    text(
+                        """
                     CREATE TABLE IF NOT EXISTS auth_password_hashes (
                         user_id UUID PRIMARY KEY REFERENCES auth_users(user_id) ON DELETE CASCADE,
                         password_hash VARCHAR(255) NOT NULL,
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                     )
-                """))
+                """
+                    )
+                )
 
                 # Create sessions table
-                await conn.execute(text("""
+                await conn.execute(
+                    text(
+                        """
                     CREATE TABLE IF NOT EXISTS auth_sessions (
                         session_token VARCHAR(255) PRIMARY KEY,
                         user_id UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
@@ -127,10 +147,14 @@ class AuthDatabaseClient:
                         invalidated_at TIMESTAMP WITH TIME ZONE,
                         invalidation_reason VARCHAR(255)
                     )
-                """))
+                """
+                    )
+                )
 
                 # Create authentication providers table
-                await conn.execute(text("""
+                await conn.execute(
+                    text(
+                        """
                     CREATE TABLE IF NOT EXISTS auth_providers (
                         provider_id VARCHAR(255) PRIMARY KEY,
                         tenant_id UUID,
@@ -141,10 +165,14 @@ class AuthDatabaseClient:
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                     )
-                """))
+                """
+                    )
+                )
 
                 # Create user identities table
-                await conn.execute(text("""
+                await conn.execute(
+                    text(
+                        """
                     CREATE TABLE IF NOT EXISTS user_identities (
                         identity_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         user_id UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
@@ -154,10 +182,14 @@ class AuthDatabaseClient:
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                         UNIQUE (provider_id, provider_user)
                     )
-                """))
+                """
+                    )
+                )
 
                 # Create password reset tokens table
-                await conn.execute(text("""
+                await conn.execute(
+                    text(
+                        """
                     CREATE TABLE IF NOT EXISTS auth_password_reset_tokens (
                         token_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         user_id UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
@@ -168,10 +200,14 @@ class AuthDatabaseClient:
                         ip_address INET,
                         user_agent TEXT
                     )
-                """))
+                """
+                    )
+                )
 
                 # Create email verification tokens table
-                await conn.execute(text("""
+                await conn.execute(
+                    text(
+                        """
                     CREATE TABLE IF NOT EXISTS auth_email_verification_tokens (
                         token_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         user_id UUID NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
@@ -182,10 +218,14 @@ class AuthDatabaseClient:
                         ip_address INET,
                         user_agent TEXT
                     )
-                """))
+                """
+                    )
+                )
 
                 # Create auth events table
-                await conn.execute(text("""
+                await conn.execute(
+                    text(
+                        """
                     CREATE TABLE IF NOT EXISTS auth_events (
                         event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         event_type VARCHAR(100) NOT NULL,
@@ -206,22 +246,73 @@ class AuthDatabaseClient:
                         processing_time_ms FLOAT DEFAULT 0.0,
                         service_version VARCHAR(100) DEFAULT 'consolidated-auth-v1'
                     )
-                """))
+                """
+                    )
+                )
 
                 # Create indexes
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_users_email ON auth_users(email)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_users_tenant ON auth_users(tenant_id)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_sessions_active ON auth_sessions(is_active) WHERE is_active = true"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_user_identities_user ON user_identities(user_id)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_password_reset_tokens_user ON auth_password_reset_tokens(user_id)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_password_reset_tokens_expires ON auth_password_reset_tokens(expires_at)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_email_verification_tokens_user ON auth_email_verification_tokens(user_id)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_email_verification_tokens_expires ON auth_email_verification_tokens(expires_at)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_events_user ON auth_events(user_id)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_events_type ON auth_events(event_type)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_auth_events_timestamp ON auth_events(timestamp)"))
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_users_email ON auth_users(email)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_users_tenant ON auth_users(tenant_id)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_sessions_active ON auth_sessions(is_active) WHERE is_active = true"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_user_identities_user ON user_identities(user_id)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_password_reset_tokens_user ON auth_password_reset_tokens(user_id)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_password_reset_tokens_expires ON auth_password_reset_tokens(expires_at)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_email_verification_tokens_user ON auth_email_verification_tokens(user_id)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_email_verification_tokens_expires ON auth_email_verification_tokens(expires_at)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_events_user ON auth_events(user_id)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_events_type ON auth_events(event_type)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_auth_events_timestamp ON auth_events(timestamp)"
+                    )
+                )
 
+            self._schema_initialized = True
             self.logger.info("PostgreSQL schema initialized successfully")
 
         except Exception as e:
@@ -233,7 +324,9 @@ class AuthDatabaseClient:
         try:
             async with self.session_factory() as session:
                 # Insert user data
-                await session.execute(text("""
+                await session.execute(
+                    text(
+                        """
                     INSERT INTO auth_users (
                         user_id, email, full_name, roles, tenant_id, preferences,
                         is_verified, is_active, created_at, updated_at, last_login_at,
@@ -243,34 +336,42 @@ class AuthDatabaseClient:
                         :is_verified, :is_active, :created_at, :updated_at, :last_login_at,
                         :failed_login_attempts, :locked_until, :two_factor_enabled, :two_factor_secret
                     )
-                """), {
-                    "user_id": user_data.user_id,
-                    "email": user_data.email,
-                    "full_name": user_data.full_name,
-                    "roles": json.dumps(user_data.roles),
-                    "tenant_id": user_data.tenant_id,
-                    "preferences": json.dumps(user_data.preferences),
-                    "is_verified": user_data.is_verified,
-                    "is_active": user_data.is_active,
-                    "created_at": user_data.created_at,
-                    "updated_at": user_data.updated_at,
-                    "last_login_at": user_data.last_login_at,
-                    "failed_login_attempts": user_data.failed_login_attempts,
-                    "locked_until": user_data.locked_until,
-                    "two_factor_enabled": user_data.two_factor_enabled,
-                    "two_factor_secret": user_data.two_factor_secret,
-                })
+                """
+                    ),
+                    {
+                        "user_id": user_data.user_id,
+                        "email": user_data.email,
+                        "full_name": user_data.full_name,
+                        "roles": json.dumps(user_data.roles),
+                        "tenant_id": user_data.tenant_id,
+                        "preferences": json.dumps(user_data.preferences),
+                        "is_verified": user_data.is_verified,
+                        "is_active": user_data.is_active,
+                        "created_at": user_data.created_at,
+                        "updated_at": user_data.updated_at,
+                        "last_login_at": user_data.last_login_at,
+                        "failed_login_attempts": user_data.failed_login_attempts,
+                        "locked_until": user_data.locked_until,
+                        "two_factor_enabled": user_data.two_factor_enabled,
+                        "two_factor_secret": user_data.two_factor_secret,
+                    },
+                )
 
                 # Insert password hash
-                await session.execute(text("""
+                await session.execute(
+                    text(
+                        """
                     INSERT INTO auth_password_hashes (user_id, password_hash, created_at, updated_at)
                     VALUES (:user_id, :password_hash, :created_at, :updated_at)
-                """), {
-                    "user_id": user_data.user_id,
-                    "password_hash": password_hash,
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
-                })
+                """
+                    ),
+                    {
+                        "user_id": user_data.user_id,
+                        "password_hash": password_hash,
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow(),
+                    },
+                )
 
                 await session.commit()
 
@@ -291,10 +392,15 @@ class AuthDatabaseClient:
         """Get user data by user ID from PostgreSQL."""
         try:
             async with self.session_factory() as session:
-                result = await session.execute(text("""
+                result = await session.execute(
+                    text(
+                        """
                     SELECT * FROM auth_users WHERE user_id = :user_id
-                """), {"user_id": user_id})
-                
+                """
+                    ),
+                    {"user_id": user_id},
+                )
+
                 row = result.fetchone()
                 if not row:
                     return None
@@ -310,10 +416,15 @@ class AuthDatabaseClient:
         """Get user data by email address from PostgreSQL."""
         try:
             async with self.session_factory() as session:
-                result = await session.execute(text("""
+                result = await session.execute(
+                    text(
+                        """
                     SELECT * FROM auth_users WHERE email = :email
-                """), {"email": email})
-                
+                """
+                    ),
+                    {"email": email},
+                )
+
                 row = result.fetchone()
                 if not row:
                     return None
@@ -329,32 +440,37 @@ class AuthDatabaseClient:
         """Update user data in PostgreSQL."""
         try:
             async with self.session_factory() as session:
-                await session.execute(text("""
+                await session.execute(
+                    text(
+                        """
                     UPDATE auth_users SET
-                        email = :email, full_name = :full_name, roles = :roles, 
+                        email = :email, full_name = :full_name, roles = :roles,
                         tenant_id = :tenant_id, preferences = :preferences,
-                        is_verified = :is_verified, is_active = :is_active, 
+                        is_verified = :is_verified, is_active = :is_active,
                         updated_at = :updated_at, last_login_at = :last_login_at,
-                        failed_login_attempts = :failed_login_attempts, 
+                        failed_login_attempts = :failed_login_attempts,
                         locked_until = :locked_until, two_factor_enabled = :two_factor_enabled,
                         two_factor_secret = :two_factor_secret
                     WHERE user_id = :user_id
-                """), {
-                    "email": user_data.email,
-                    "full_name": user_data.full_name,
-                    "roles": json.dumps(user_data.roles),
-                    "tenant_id": user_data.tenant_id,
-                    "preferences": json.dumps(user_data.preferences),
-                    "is_verified": user_data.is_verified,
-                    "is_active": user_data.is_active,
-                    "updated_at": user_data.updated_at,
-                    "last_login_at": user_data.last_login_at,
-                    "failed_login_attempts": user_data.failed_login_attempts,
-                    "locked_until": user_data.locked_until,
-                    "two_factor_enabled": user_data.two_factor_enabled,
-                    "two_factor_secret": user_data.two_factor_secret,
-                    "user_id": user_data.user_id,
-                })
+                """
+                    ),
+                    {
+                        "email": user_data.email,
+                        "full_name": user_data.full_name,
+                        "roles": json.dumps(user_data.roles),
+                        "tenant_id": user_data.tenant_id,
+                        "preferences": json.dumps(user_data.preferences),
+                        "is_verified": user_data.is_verified,
+                        "is_active": user_data.is_active,
+                        "updated_at": user_data.updated_at,
+                        "last_login_at": user_data.last_login_at,
+                        "failed_login_attempts": user_data.failed_login_attempts,
+                        "locked_until": user_data.locked_until,
+                        "two_factor_enabled": user_data.two_factor_enabled,
+                        "two_factor_secret": user_data.two_factor_secret,
+                        "user_id": user_data.user_id,
+                    },
+                )
 
                 await session.commit()
 
@@ -367,10 +483,15 @@ class AuthDatabaseClient:
         """Get password hash for a user from PostgreSQL."""
         try:
             async with self.session_factory() as session:
-                result = await session.execute(text("""
+                result = await session.execute(
+                    text(
+                        """
                     SELECT password_hash FROM auth_password_hashes WHERE user_id = :user_id
-                """), {"user_id": user_id})
-                
+                """
+                    ),
+                    {"user_id": user_id},
+                )
+
                 row = result.fetchone()
                 return row.password_hash if row else None
 
@@ -383,15 +504,20 @@ class AuthDatabaseClient:
         """Update password hash for a user in PostgreSQL."""
         try:
             async with self.session_factory() as session:
-                await session.execute(text("""
-                    UPDATE auth_password_hashes 
+                await session.execute(
+                    text(
+                        """
+                    UPDATE auth_password_hashes
                     SET password_hash = :password_hash, updated_at = :updated_at
                     WHERE user_id = :user_id
-                """), {
-                    "password_hash": password_hash,
-                    "updated_at": datetime.utcnow(),
-                    "user_id": user_id,
-                })
+                """
+                    ),
+                    {
+                        "password_hash": password_hash,
+                        "updated_at": datetime.utcnow(),
+                        "user_id": user_id,
+                    },
+                )
 
                 await session.commit()
 
@@ -403,8 +529,11 @@ class AuthDatabaseClient:
     async def store_auth_event(self, event: AuthEvent) -> None:
         """Store authentication event in PostgreSQL."""
         try:
+            await self._ensure_schema()
             async with self.session_factory() as session:
-                await session.execute(text("""
+                await session.execute(
+                    text(
+                        """
                     INSERT INTO auth_events (
                         event_id, event_type, timestamp, user_id, email, tenant_id,
                         ip_address, user_agent, request_id, session_token, success,
@@ -416,26 +545,29 @@ class AuthDatabaseClient:
                         :error_message, :details, :risk_score, :security_flags,
                         :blocked_by_security, :processing_time_ms, :service_version
                     )
-                """), {
-                    "event_id": str(uuid4()),
-                    "event_type": event.event_type.value,
-                    "timestamp": event.timestamp,
-                    "user_id": event.user_id,
-                    "email": event.email,
-                    "tenant_id": event.tenant_id,
-                    "ip_address": event.ip_address,
-                    "user_agent": event.user_agent,
-                    "request_id": event.request_id,
-                    "session_token": event.session_token,
-                    "success": event.success,
-                    "error_message": event.error_message,
-                    "details": json.dumps(event.details),
-                    "risk_score": event.risk_score,
-                    "security_flags": json.dumps(event.security_flags),
-                    "blocked_by_security": event.blocked_by_security,
-                    "processing_time_ms": event.processing_time_ms,
-                    "service_version": event.service_version,
-                })
+                """
+                    ),
+                    {
+                        "event_id": str(uuid4()),
+                        "event_type": event.event_type.value,
+                        "timestamp": event.timestamp,
+                        "user_id": event.user_id,
+                        "email": event.email,
+                        "tenant_id": event.tenant_id,
+                        "ip_address": event.ip_address,
+                        "user_agent": event.user_agent,
+                        "request_id": event.request_id,
+                        "session_token": event.session_token,
+                        "success": event.success,
+                        "error_message": event.error_message,
+                        "details": json.dumps(event.details),
+                        "risk_score": event.risk_score,
+                        "security_flags": json.dumps(event.security_flags),
+                        "blocked_by_security": event.blocked_by_security,
+                        "processing_time_ms": event.processing_time_ms,
+                        "service_version": event.service_version,
+                    },
+                )
 
                 await session.commit()
 
