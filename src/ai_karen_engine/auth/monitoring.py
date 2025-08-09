@@ -688,6 +688,8 @@ class AuthMonitor:
             handler = logging.StreamHandler()
             handler.setFormatter(StructuredFormatter())
             self.logger.addHandler(handler)
+        # Prevent duplicate logs from propagating to root logger
+        self.logger.propagate = False
     
     async def record_auth_event(self, event: AuthEvent) -> None:
         """Record an authentication event for monitoring."""

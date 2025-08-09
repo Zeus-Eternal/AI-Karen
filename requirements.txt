@@ -37,6 +37,7 @@ bs4
 plotly
 seaborn
 redis
+fakeredis
 psycopg
 psycopg2-binary
 asyncpg

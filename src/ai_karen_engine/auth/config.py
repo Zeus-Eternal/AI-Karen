@@ -217,6 +217,8 @@ class SecurityConfig:
     lockout_duration_minutes: int = 15
     rate_limit_window_minutes: int = 15
     rate_limit_max_requests: int = 10
+    rate_limit_storage: str = "memory"  # "memory" or "redis"
+    rate_limit_redis_url: Optional[str] = None
 
     # Password security
     min_password_length: int = 8
@@ -255,6 +257,13 @@ class SecurityConfig:
             ),
             rate_limit_max_requests=_env_int(
                 os.getenv("AUTH_RATE_LIMIT_MAX_REQUESTS"), cls().rate_limit_max_requests
+            ),
+            rate_limit_storage=os.getenv(
+                "AUTH_RATE_LIMIT_STORAGE", cls().rate_limit_storage
+            ),
+            rate_limit_redis_url=(
+                os.getenv("AUTH_RATE_LIMIT_REDIS_URL")
+                or os.getenv("REDIS_URL")
             ),
             min_password_length=_env_int(
                 os.getenv("AUTH_MIN_PASSWORD_LENGTH"), cls().min_password_length

@@ -20,6 +20,11 @@ from .config import AuthConfig
 from .exceptions import RateLimitExceededError, SecurityError, SessionError
 from .models import AuthEvent, AuthEventType, SessionData, UserData
 from .monitoring import metrics_hook as monitoring_metrics_hook
+from .rate_limit_store import (
+    InMemoryRateLimitStore,
+    RateLimitStore,
+    RedisRateLimitStore,
+)
 
 
 class RateLimiter:
@@ -30,23 +35,39 @@ class RateLimiter:
     and automatic cleanup of expired entries.
     """
     
-    def __init__(self, config: AuthConfig):
+    def __init__(self, config: AuthConfig, store: Optional[RateLimitStore] = None):
         self.config = config
         self.security_config = config.security
-        
-        # In-memory storage for rate limiting data
-        # In production, this should be backed by Redis for distributed systems
-        self._attempts: Dict[str, List[float]] = defaultdict(list)
-        self._lockouts: Dict[str, float] = {}
+
+        # Configure storage backend
+        if store is not None:
+            self.store = store
+        else:
+            backend = self.security_config.rate_limit_storage
+            if backend == "redis":
+                try:
+                    import redis.asyncio as redis_asyncio  # type: ignore
+
+                    redis_url = (
+                        self.security_config.rate_limit_redis_url
+                        or "redis://localhost:6379/0"
+                    )
+                    client = redis_asyncio.from_url(redis_url, decode_responses=True)
+                    self.store = RedisRateLimitStore(client)
+                except Exception:
+                    self.store = InMemoryRateLimitStore()
+            else:
+                self.store = InMemoryRateLimitStore()
+
         self._cleanup_interval = 300  # 5 minutes
         self._last_cleanup = time.time()
-        
+
         # Rate limiting configuration
         self.max_requests = self.security_config.rate_limit_max_requests
         self.window_minutes = self.security_config.rate_limit_window_minutes
         self.max_failed_attempts = self.security_config.max_failed_attempts
         self.lockout_duration_minutes = self.security_config.lockout_duration_minutes
-        
+
         self.logger = logging.getLogger(__name__)
     
     def _get_identifier(self, ip_address: str, email: Optional[str] = None) -> str:
@@ -58,31 +79,19 @@ class RateLimiter:
             # Use IP address for general rate limiting
             return f"ip:{ip_address}"
     
-    def _cleanup_expired_entries(self) -> None:
+    async def _cleanup_expired_entries(self) -> None:
         """Clean up expired rate limiting entries."""
         current_time = time.time()
-        
+
         # Only cleanup periodically to avoid performance impact
         if current_time - self._last_cleanup < self._cleanup_interval:
             return
-        
+
         window_seconds = self.window_minutes * 60
         cutoff_time = current_time - window_seconds
-        
-        # Clean up expired attempts
-        for identifier in list(self._attempts.keys()):
-            self._attempts[identifier] = [
-                timestamp for timestamp in self._attempts[identifier]
-                if timestamp > cutoff_time
-            ]
-            if not self._attempts[identifier]:
-                del self._attempts[identifier]
-        
-        # Clean up expired lockouts
-        for identifier in list(self._lockouts.keys()):
-            if self._lockouts[identifier] < current_time:
-                del self._lockouts[identifier]
-        
+
+        await self.store.cleanup(current_time, cutoff_time)
+
         self._last_cleanup = current_time
     
     async def check_rate_limit(
@@ -108,49 +117,43 @@ class RateLimiter:
         if not self.security_config.enable_rate_limiting:
             return True
         
-        self._cleanup_expired_entries()
-        
+        await self._cleanup_expired_entries()
+
         identifier = self._get_identifier(ip_address, email)
         current_time = time.time()
-        
+
         # Check if currently locked out
-        if identifier in self._lockouts:
-            if self._lockouts[identifier] > current_time:
-                lockout_remaining = int(self._lockouts[identifier] - current_time)
-                raise RateLimitExceededError(
-                    message=f"Rate limit exceeded for {identifier}",
-                    retry_after=lockout_remaining,
-                    limit=self.max_requests,
-                    details={
-                        "identifier": identifier,
-                        "event_type": event_type,
-                        "lockout_remaining_seconds": lockout_remaining
-                    }
-                )
-            else:
-                # Lockout expired, remove it
-                del self._lockouts[identifier]
-        
+        lockout_until = await self.store.get_lockout(identifier)
+        if lockout_until and lockout_until > current_time:
+            lockout_remaining = int(lockout_until - current_time)
+            raise RateLimitExceededError(
+                message=f"Rate limit exceeded for {identifier}",
+                retry_after=lockout_remaining,
+                limit=self.max_requests,
+                details={
+                    "identifier": identifier,
+                    "event_type": event_type,
+                    "lockout_remaining_seconds": lockout_remaining,
+                },
+            )
+
         # Check rate limit window
         window_seconds = self.window_minutes * 60
         cutoff_time = current_time - window_seconds
-        
+
         # Get recent attempts within the window
-        recent_attempts = [
-            timestamp for timestamp in self._attempts[identifier]
-            if timestamp > cutoff_time
-        ]
-        
+        recent_attempts = await self.store.get_recent_attempts(identifier, cutoff_time)
+
         if len(recent_attempts) >= self.max_requests:
             # Rate limit exceeded, add lockout
             lockout_until = current_time + (self.lockout_duration_minutes * 60)
-            self._lockouts[identifier] = lockout_until
-            
+            await self.store.set_lockout(identifier, lockout_until)
+
             self.logger.warning(
                 f"Rate limit exceeded for {identifier}. "
                 f"Locked out until {datetime.fromtimestamp(lockout_until)}"
             )
-            
+
             raise RateLimitExceededError(
                 message=f"Rate limit exceeded for {identifier}",
                 retry_after=self.lockout_duration_minutes * 60,
@@ -159,10 +162,10 @@ class RateLimiter:
                     "identifier": identifier,
                     "event_type": event_type,
                     "attempts_in_window": len(recent_attempts),
-                    "window_minutes": self.window_minutes
-                }
+                    "window_minutes": self.window_minutes,
+                },
             )
-        
+
         return True
     
     async def record_attempt(
@@ -186,24 +189,23 @@ class RateLimiter:
         
         identifier = self._get_identifier(ip_address, email)
         current_time = time.time()
-        
-        # Record the attempt
-        self._attempts[identifier].append(current_time)
-        
+
+        window_seconds = self.window_minutes * 60
+        await self.store.add_attempt(identifier, current_time, window_seconds)
+
         # For failed attempts, also check if we should lock the account
         if not success and email:
             user_identifier = f"user:{email}"
-            failed_attempts = len([
-                timestamp for timestamp in self._attempts[user_identifier]
-                if timestamp > current_time - (self.window_minutes * 60)
-            ])
-            
-            if failed_attempts >= self.max_failed_attempts:
+            failed_attempts = await self.store.get_recent_attempts(
+                user_identifier, current_time - window_seconds
+            )
+
+            if len(failed_attempts) >= self.max_failed_attempts:
                 lockout_until = current_time + (self.lockout_duration_minutes * 60)
-                self._lockouts[user_identifier] = lockout_until
-                
+                await self.store.set_lockout(user_identifier, lockout_until)
+
                 self.logger.warning(
-                    f"User {email} locked out due to {failed_attempts} failed attempts"
+                    f"User {email} locked out due to {len(failed_attempts)} failed attempts"
                 )
     
     async def is_locked_out(self, ip_address: str, email: Optional[str] = None) -> bool:
@@ -213,10 +215,11 @@ class RateLimiter:
         
         identifier = self._get_identifier(ip_address, email)
         current_time = time.time()
-        
-        if identifier in self._lockouts:
-            return self._lockouts[identifier] > current_time
-        
+
+        lockout_until = await self.store.get_lockout(identifier)
+        if lockout_until:
+            return lockout_until > current_time
+
         return False
     
     async def get_remaining_lockout_time(
@@ -230,33 +233,26 @@ class RateLimiter:
         
         identifier = self._get_identifier(ip_address, email)
         current_time = time.time()
-        
-        if identifier in self._lockouts:
-            remaining = self._lockouts[identifier] - current_time
+
+        lockout_until = await self.store.get_lockout(identifier)
+        if lockout_until:
+            remaining = lockout_until - current_time
             return max(0, int(remaining))
-        
+
         return 0
     
     async def clear_lockout(self, ip_address: str, email: Optional[str] = None) -> None:
         """Clear lockout for an identifier (admin function)."""
         identifier = self._get_identifier(ip_address, email)
-        if identifier in self._lockouts:
-            del self._lockouts[identifier]
-        if identifier in self._attempts:
-            del self._attempts[identifier]
+        await self.store.clear(identifier)
     
     def get_stats(self) -> Dict[str, Any]:
         """Get rate limiting statistics."""
         current_time = time.time()
-        active_lockouts = sum(
-            1 for lockout_time in self._lockouts.values()
-            if lockout_time > current_time
-        )
-        
+        store_stats = self.store.stats(current_time)
+
         return {
-            "total_identifiers_tracked": len(self._attempts),
-            "active_lockouts": active_lockouts,
-            "total_lockouts": len(self._lockouts),
+            **store_stats,
             "max_requests_per_window": self.max_requests,
             "window_minutes": self.window_minutes,
             "lockout_duration_minutes": self.lockout_duration_minutes,
