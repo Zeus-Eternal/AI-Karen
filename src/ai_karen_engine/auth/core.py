@@ -122,11 +122,15 @@ class CoreAuthenticator:
             min_length=config.security.min_password_length,
             require_complexity=config.security.require_password_complexity,
         )
+        self._initialized = False
 
     async def initialize(self) -> None:
         """Initialize core authenticator components."""
+        if self._initialized:
+            return
         await self.db_client.initialize_schema()
         self.session_manager._start_cleanup_task()
+        self._initialized = True
 
     async def authenticate_user(
         self,
