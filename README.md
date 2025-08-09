@@ -30,6 +30,27 @@ AI-Karen is a comprehensive, production-ready AI platform designed for enterpris
 
 ---
 
+## Authentication Configuration
+
+The authentication service relies on the `AuthConfig` class for all
+runtime settings. Configuration can be provided in environment-specific
+YAML or JSON files:
+
+```python
+from ai_karen_engine.auth.config import AuthConfig
+
+# Load from a specific file and environment
+config = AuthConfig.from_file("config/auth_config.yaml", "development")
+
+# Or discover the file in the default ``config/`` directory
+config = AuthConfig.from_environment("production")
+```
+
+Example configuration files are provided in `config/auth_config.yaml`
+and `config/auth_config.json`.
+
+---
+
 ## Architecture
 
 ### System Components
