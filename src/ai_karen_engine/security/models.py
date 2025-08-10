@@ -8,8 +8,10 @@ analysis results, and configuration used by the intelligent authentication syste
 from __future__ import annotations
 
 import json
+import ipaddress
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
+from email.utils import parseaddr
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -476,7 +478,7 @@ class AuthContext:
 
     def validate(self) -> bool:
         """Validate authentication context data."""
-        return (
+        basic_valid = (
             bool(self.email)
             and bool(self.password_hash)
             and bool(self.client_ip)
@@ -486,6 +488,21 @@ class AuthContext:
             and 0.0 <= self.threat_intel_score <= 1.0
             and self.previous_failed_attempts >= 0
         )
+        if not basic_valid:
+            return False
+
+        # Validate email format using standard parsing
+        parsed_email = parseaddr(self.email)[1]
+        if not parsed_email or "@" not in parsed_email:
+            return False
+
+        # Validate client IP address
+        try:
+            ipaddress.ip_address(self.client_ip)
+        except ValueError:
+            return False
+
+        return True
 
 
 @dataclass
