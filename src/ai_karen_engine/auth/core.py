@@ -4,7 +4,7 @@ Core authentication layer for the consolidated authentication service.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
@@ -141,7 +141,7 @@ class CoreAuthenticator:
         **kwargs,
     ) -> Optional[UserData]:
         """Authenticate a user with email and password."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             if not email or not password:
@@ -241,7 +241,7 @@ class CoreAuthenticator:
         **kwargs,
     ) -> Optional[UserData]:
         """Authenticate a user via external identity provider."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         # Ensure provider record exists
         provider = await self.db_client.get_auth_provider(provider_id)
@@ -297,7 +297,7 @@ class CoreAuthenticator:
         **kwargs,
     ) -> SessionData:
         """Create a new authentication session for a user."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             session_data = await self.session_manager.create_session(
@@ -392,7 +392,7 @@ class CoreAuthenticator:
         **kwargs,
     ) -> UserData:
         """Create a new user account."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             if not email or "@" not in email:
@@ -443,7 +443,7 @@ class CoreAuthenticator:
         **kwargs,
     ) -> bool:
         """Update a user's password."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             user_data = await self.db_client.get_user_by_id(user_id)
@@ -466,7 +466,7 @@ class CoreAuthenticator:
             new_hash = self.password_hasher.hash_password(new_password)
             await self.db_client.update_user_password_hash(user_id, new_hash)
 
-            user_data.updated_at = datetime.utcnow()
+            user_data.updated_at = datetime.now(timezone.utc)
             await self.db_client.update_user(user_data)
 
             await self._log_auth_event(

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
@@ -89,9 +89,7 @@ class AuthDatabaseClient:
                 try:
                     await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
                 except Exception as e:
-                    self.logger.warning(
-                        "Failed to create pgcrypto extension: %s", e
-                    )
+                    self.logger.warning("Failed to create pgcrypto extension: %s", e)
 
                 # Create users table
                 await conn.execute(
@@ -375,8 +373,8 @@ class AuthDatabaseClient:
                     {
                         "user_id": user_data.user_id,
                         "password_hash": password_hash,
-                        "created_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow(),
+                        "created_at": datetime.now(timezone.utc),
+                        "updated_at": datetime.now(timezone.utc),
                     },
                 )
 
@@ -521,7 +519,7 @@ class AuthDatabaseClient:
                     ),
                     {
                         "password_hash": password_hash,
-                        "updated_at": datetime.utcnow(),
+                        "updated_at": datetime.now(timezone.utc),
                         "user_id": user_id,
                     },
                 )

@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from .config import SessionConfig
@@ -28,7 +28,9 @@ class SessionManager:
     Complete session management system with token generation, validation, and cleanup.
     """
 
-    def __init__(self, config: SessionConfig, token_manager: TokenManager, db_client=None) -> None:
+    def __init__(
+        self, config: SessionConfig, token_manager: TokenManager, db_client=None
+    ) -> None:
         """Initialize session manager with configuration and token manager."""
         self.config = config
         self.token_manager = token_manager
@@ -248,12 +250,17 @@ class DatabaseSessionBackend:
 
     async def store_session(self, session_data: SessionData) -> None:
         if not self.db_client:
-            raise DatabaseOperationError("Database client not available", operation="store_session")
-        
+            raise DatabaseOperationError(
+                "Database client not available", operation="store_session"
+            )
+
         try:
             async with self.db_client.session_factory() as session:
                 from sqlalchemy import text
-                await session.execute(text("""
+
+                await session.execute(
+                    text(
+                        """
                     INSERT INTO auth_sessions (
                         session_token, user_id, access_token, refresh_token, expires_in,
                         created_at, last_accessed, ip_address, user_agent, device_fingerprint,
@@ -274,41 +281,56 @@ class DatabaseSessionBackend:
                         is_active = EXCLUDED.is_active,
                         invalidated_at = EXCLUDED.invalidated_at,
                         invalidation_reason = EXCLUDED.invalidation_reason
-                """), {
-                    "session_token": session_data.session_token,
-                    "user_id": session_data.user_data.user_id,
-                    "access_token": session_data.access_token,
-                    "refresh_token": session_data.refresh_token,
-                    "expires_in": session_data.expires_in,
-                    "created_at": session_data.created_at,
-                    "last_accessed": session_data.last_accessed,
-                    "ip_address": session_data.ip_address,
-                    "user_agent": session_data.user_agent,
-                    "device_fingerprint": session_data.device_fingerprint,
-                    "geolocation": json.dumps(session_data.geolocation) if session_data.geolocation else None,
-                    "risk_score": session_data.risk_score,
-                    "security_flags": json.dumps(session_data.security_flags),
-                    "is_active": session_data.is_active,
-                    "invalidated_at": session_data.invalidated_at,
-                    "invalidation_reason": session_data.invalidation_reason,
-                })
+                """
+                    ),
+                    {
+                        "session_token": session_data.session_token,
+                        "user_id": session_data.user_data.user_id,
+                        "access_token": session_data.access_token,
+                        "refresh_token": session_data.refresh_token,
+                        "expires_in": session_data.expires_in,
+                        "created_at": session_data.created_at,
+                        "last_accessed": session_data.last_accessed,
+                        "ip_address": session_data.ip_address,
+                        "user_agent": session_data.user_agent,
+                        "device_fingerprint": session_data.device_fingerprint,
+                        "geolocation": json.dumps(session_data.geolocation)
+                        if session_data.geolocation
+                        else None,
+                        "risk_score": session_data.risk_score,
+                        "security_flags": json.dumps(session_data.security_flags),
+                        "is_active": session_data.is_active,
+                        "invalidated_at": session_data.invalidated_at,
+                        "invalidation_reason": session_data.invalidation_reason,
+                    },
+                )
                 await session.commit()
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to store session: {e}", operation="store_session")
+            raise DatabaseOperationError(
+                f"Failed to store session: {e}", operation="store_session"
+            )
 
     async def get_session(self, session_token: str) -> Optional[SessionData]:
         if not self.db_client:
-            raise DatabaseOperationError("Database client not available", operation="get_session")
-        
+            raise DatabaseOperationError(
+                "Database client not available", operation="get_session"
+            )
+
         try:
             async with self.db_client.session_factory() as session:
                 from sqlalchemy import text
-                result = await session.execute(text("""
+
+                result = await session.execute(
+                    text(
+                        """
                     SELECT s.*, u.* FROM auth_sessions s
                     JOIN auth_users u ON s.user_id = u.user_id
                     WHERE s.session_token = :session_token AND s.is_active = true
-                """), {"session_token": session_token})
-                
+                """
+                    ),
+                    {"session_token": session_token},
+                )
+
                 row = result.fetchone()
                 if not row:
                     return None
@@ -320,59 +342,87 @@ class DatabaseSessionBackend:
 
     async def update_session(self, session_data: SessionData) -> None:
         if not self.db_client:
-            raise DatabaseOperationError("Database client not available", operation="update_session")
-        
+            raise DatabaseOperationError(
+                "Database client not available", operation="update_session"
+            )
+
         try:
             async with self.db_client.session_factory() as session:
                 from sqlalchemy import text
-                await session.execute(text("""
+
+                await session.execute(
+                    text(
+                        """
                     UPDATE auth_sessions SET
-                        last_accessed = :last_accessed, risk_score = :risk_score, 
-                        security_flags = :security_flags, is_active = :is_active, 
+                        last_accessed = :last_accessed, risk_score = :risk_score,
+                        security_flags = :security_flags, is_active = :is_active,
                         invalidated_at = :invalidated_at, invalidation_reason = :invalidation_reason
                     WHERE session_token = :session_token
-                """), {
-                    "last_accessed": session_data.last_accessed,
-                    "risk_score": session_data.risk_score,
-                    "security_flags": json.dumps(session_data.security_flags),
-                    "is_active": session_data.is_active,
-                    "invalidated_at": session_data.invalidated_at,
-                    "invalidation_reason": session_data.invalidation_reason,
-                    "session_token": session_data.session_token,
-                })
+                """
+                    ),
+                    {
+                        "last_accessed": session_data.last_accessed,
+                        "risk_score": session_data.risk_score,
+                        "security_flags": json.dumps(session_data.security_flags),
+                        "is_active": session_data.is_active,
+                        "invalidated_at": session_data.invalidated_at,
+                        "invalidation_reason": session_data.invalidation_reason,
+                        "session_token": session_data.session_token,
+                    },
+                )
                 await session.commit()
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to update session: {e}", operation="update_session")
+            raise DatabaseOperationError(
+                f"Failed to update session: {e}", operation="update_session"
+            )
 
     async def delete_session(self, session_token: str) -> bool:
         if not self.db_client:
-            raise DatabaseOperationError("Database client not available", operation="delete_session")
-        
+            raise DatabaseOperationError(
+                "Database client not available", operation="delete_session"
+            )
+
         try:
             async with self.db_client.session_factory() as session:
                 from sqlalchemy import text
-                result = await session.execute(text("""
+
+                result = await session.execute(
+                    text(
+                        """
                     DELETE FROM auth_sessions WHERE session_token = :session_token
-                """), {"session_token": session_token})
+                """
+                    ),
+                    {"session_token": session_token},
+                )
                 await session.commit()
                 return result.rowcount > 0
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to delete session: {e}", operation="delete_session")
+            raise DatabaseOperationError(
+                f"Failed to delete session: {e}", operation="delete_session"
+            )
 
     async def get_user_sessions(self, user_id: str) -> List[SessionData]:
         if not self.db_client:
-            raise DatabaseOperationError("Database client not available", operation="get_user_sessions")
-        
+            raise DatabaseOperationError(
+                "Database client not available", operation="get_user_sessions"
+            )
+
         try:
             async with self.db_client.session_factory() as session:
                 from sqlalchemy import text
-                result = await session.execute(text("""
+
+                result = await session.execute(
+                    text(
+                        """
                     SELECT s.*, u.* FROM auth_sessions s
                     JOIN auth_users u ON s.user_id = u.user_id
                     WHERE s.user_id = :user_id AND s.is_active = true
                     ORDER BY s.last_accessed DESC
-                """), {"user_id": user_id})
-                
+                """
+                    ),
+                    {"user_id": user_id},
+                )
+
                 rows = result.fetchall()
                 return [self._row_to_session_data(row) for row in rows]
         except Exception as e:
@@ -382,34 +432,53 @@ class DatabaseSessionBackend:
 
     async def delete_user_sessions(self, user_id: str) -> int:
         if not self.db_client:
-            raise DatabaseOperationError("Database client not available", operation="delete_user_sessions")
-        
+            raise DatabaseOperationError(
+                "Database client not available", operation="delete_user_sessions"
+            )
+
         try:
             async with self.db_client.session_factory() as session:
                 from sqlalchemy import text
-                result = await session.execute(text("""
+
+                result = await session.execute(
+                    text(
+                        """
                     DELETE FROM auth_sessions WHERE user_id = :user_id
-                """), {"user_id": user_id})
+                """
+                    ),
+                    {"user_id": user_id},
+                )
                 await session.commit()
                 return result.rowcount
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to delete user sessions: {e}", operation="delete_user_sessions")
+            raise DatabaseOperationError(
+                f"Failed to delete user sessions: {e}", operation="delete_user_sessions"
+            )
 
     async def cleanup_expired_sessions(self) -> int:
         if not self.db_client:
-            raise DatabaseOperationError("Database client not available", operation="cleanup_sessions")
-        
+            raise DatabaseOperationError(
+                "Database client not available", operation="cleanup_sessions"
+            )
+
         try:
             async with self.db_client.session_factory() as session:
                 from sqlalchemy import text
-                result = await session.execute(text("""
-                    DELETE FROM auth_sessions 
+
+                result = await session.execute(
+                    text(
+                        """
+                    DELETE FROM auth_sessions
                     WHERE created_at + INTERVAL '1 second' * expires_in < NOW()
-                """))
+                """
+                    )
+                )
                 await session.commit()
                 return result.rowcount
         except Exception as e:
-            raise DatabaseOperationError(f"Failed to cleanup expired sessions: {e}", operation="cleanup_sessions")
+            raise DatabaseOperationError(
+                f"Failed to cleanup expired sessions: {e}", operation="cleanup_sessions"
+            )
 
     def _row_to_session_data(self, row) -> SessionData:
         user_data = UserData(
@@ -650,7 +719,7 @@ class MemorySessionBackend:
 
     def _is_time_expired(self, session: SessionData) -> bool:
         expires_at = session.created_at + timedelta(seconds=session.expires_in)
-        return datetime.utcnow() > expires_at
+        return datetime.now(timezone.utc) > expires_at
 
     async def update_session(self, session_data: SessionData) -> None:
         if session_data.session_token in self.sessions:

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -370,7 +370,7 @@ class DatabaseSchemaManager:
             """,
                 (
                     "1.0.0",
-                    datetime.utcnow().isoformat(),
+                    datetime.now(timezone.utc).isoformat(),
                     "Initial unified authentication schema",
                 ),
             )
@@ -641,7 +641,7 @@ class DatabaseSchemaManager:
                     resource_type,
                     action,
                     description,
-                    datetime.utcnow().isoformat(),
+                    datetime.now(timezone.utc).isoformat(),
                 ),
             )
 
@@ -669,7 +669,12 @@ class DatabaseSchemaManager:
                 (role_name, permission_id, granted_at, granted_by)
                 VALUES (?, ?, ?, ?)
             """,
-                (role_name, permission_id, datetime.utcnow().isoformat(), "system"),
+                (
+                    role_name,
+                    permission_id,
+                    datetime.now(timezone.utc).isoformat(),
+                    "system",
+                ),
             )
 
     def get_schema_version(self) -> Optional[str]:

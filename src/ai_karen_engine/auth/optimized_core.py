@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
@@ -161,7 +161,7 @@ class OptimizedCoreAuthenticator:
 
         Uses efficient queries and proper indexing for maximum performance.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         operation = "authenticate_user_optimized"
 
         try:
@@ -221,7 +221,9 @@ class OptimizedCoreAuthenticator:
             await self._handle_successful_auth(user_data, password_hash)
 
             # Record performance metric
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(operation, processing_time)
 
             self.logger.info(f"Optimized authentication successful for {email}")
@@ -231,7 +233,9 @@ class OptimizedCoreAuthenticator:
             raise
         except Exception as e:
             self.logger.error(f"Optimized authentication error: {e}")
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(f"{operation}_error", processing_time)
             raise
 
@@ -249,7 +253,7 @@ class OptimizedCoreAuthenticator:
 
         Uses ON CONFLICT for atomic operations and better performance.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         operation = "create_user_optimized"
 
         try:
@@ -275,14 +279,18 @@ class OptimizedCoreAuthenticator:
             created_user = await self.db_client.upsert_user(user_data, password_hash)
 
             # Record performance metric
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(operation, processing_time)
 
             self.logger.info(f"Optimized user creation successful for {email}")
             return created_user
 
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(f"{operation}_error", processing_time)
             raise
 
@@ -300,7 +308,7 @@ class OptimizedCoreAuthenticator:
 
         Includes automatic cleanup and efficient storage.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         operation = "create_session_optimized"
 
         try:
@@ -314,13 +322,17 @@ class OptimizedCoreAuthenticator:
             )
 
             # Record performance metric
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(operation, processing_time)
 
             return session_data
 
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(f"{operation}_error", processing_time)
             raise
 
@@ -332,20 +344,24 @@ class OptimizedCoreAuthenticator:
 
         Uses JOIN operations for efficient validation.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         operation = "validate_session_optimized"
 
         try:
             user_data = await self.session_manager.validate_session(session_token)
 
             # Record performance metric
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(operation, processing_time)
 
             return user_data
 
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(f"{operation}_error", processing_time)
             raise
 
@@ -357,7 +373,7 @@ class OptimizedCoreAuthenticator:
 
         Uses efficient batch queries to validate multiple sessions at once.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         operation = "batch_validate_sessions"
 
         try:
@@ -400,13 +416,17 @@ class OptimizedCoreAuthenticator:
                         results[token] = valid_sessions.get(token)
 
             # Record performance metric
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(operation, processing_time)
 
             return results
 
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(f"{operation}_error", processing_time)
             raise
 
@@ -418,20 +438,24 @@ class OptimizedCoreAuthenticator:
 
         Uses PostgreSQL's JSONB operators for efficient role-based lookups.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         operation = "get_user_by_email_with_roles"
 
         try:
             user_data = await self.db_client.get_user_with_roles(email, required_roles)
 
             # Record performance metric
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(operation, processing_time)
 
             return user_data
 
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(f"{operation}_error", processing_time)
             raise
 
@@ -443,20 +467,24 @@ class OptimizedCoreAuthenticator:
 
         Efficiently updates multiple users' preferences in batch.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         operation = "bulk_update_user_preferences"
 
         try:
             count = await self.db_client.bulk_update_user_preferences(updates)
 
             # Record performance metric
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(operation, processing_time)
 
             return count
 
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             self._record_operation_time(f"{operation}_error", processing_time)
             raise
 
@@ -597,8 +625,8 @@ class OptimizedCoreAuthenticator:
                 # Update user data object
                 user_data.failed_login_attempts = 0
                 user_data.locked_until = None
-                user_data.last_login_at = datetime.utcnow()
-                user_data.updated_at = datetime.utcnow()
+                user_data.last_login_at = datetime.now(timezone.utc)
+                user_data.updated_at = datetime.now(timezone.utc)
 
         except Exception as e:
             self.logger.error(f"Failed to handle successful auth: {e}")
@@ -613,7 +641,9 @@ class OptimizedCoreAuthenticator:
     ) -> None:
         """Log failed authentication attempt."""
         try:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
 
             # Log to database if audit logging is enabled
             if self.config.security.enable_audit_logging:

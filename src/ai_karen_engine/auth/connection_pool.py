@@ -13,7 +13,7 @@ import sqlite3
 import threading
 import time
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from queue import Empty, Queue
 from typing import Any, Dict, Generator, List, Optional
@@ -303,7 +303,7 @@ class ConnectionPool:
                     "pool_size": self.pool_size,
                     "available_connections": self.pool.qsize(),
                     "active_connections": len(self.active_connections),
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
             return stats
@@ -333,7 +333,7 @@ class ConnectionPool:
         """Perform health check on the connection pool."""
         health_status = {
             "healthy": True,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "issues": [],
         }
 
@@ -423,7 +423,7 @@ class QueryOptimizer:
         """
         analysis = {
             "query": query,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "execution_time": 0.0,
             "rows_examined": 0,
             "index_usage": [],
@@ -510,7 +510,7 @@ class QueryOptimizer:
         results = {
             "created": [],
             "errors": [],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         try:
