@@ -70,7 +70,7 @@ deployments that require audit trails and incident investigation.
 
 Authentication metrics are emitted through a `metrics_hook` and surfaced alongside the platform's
 standard observability endpoints. When the API server is running, counters such as
-`auth_login_success_total` and `auth_login_failure_total` appear under `/metrics` and are available for
+`auth_login_success_total` and `auth_login_failed_total` appear under `/metrics` and are available for
 Prometheus scraping. The retention window and aggregation interval can be tuned with
 `AUTH_METRICS_RETENTION_HOURS` and `AUTH_METRICS_AGGREGATION_INTERVAL`.
 

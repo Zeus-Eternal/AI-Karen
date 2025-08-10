@@ -21,7 +21,6 @@ class AuthEventType(Enum):
     LOGIN_ATTEMPT = "login_attempt"
     LOGIN_SUCCESS = "login_success"
     LOGIN_FAILED = "login_failed"
-    LOGIN_FAILURE = "login_failure"
     LOGIN_BLOCKED = "login_blocked"
     LOGOUT = "logout"
     SESSION_CREATED = "session_created"

@@ -12,13 +12,13 @@ import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional
 from uuid import uuid4
 
 from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
 
 from .config import AuthConfig
-from .models import AuthEvent, AuthEventType, SessionData, UserData
+from .models import AuthEvent, AuthEventType
 
 try:  # pragma: no cover - optional dependency
     from prometheus_client import CollectorRegistry, Counter, Histogram
@@ -104,8 +104,7 @@ def metrics_hook(event: str, data: Dict[str, object]) -> None:
 
     # Normalize event names to a consistent set
     normalized = {
-        "login_failed": "login_failure",
-        "login_failure": "login_failure",
+        "login_failed": "login_failed",
         "login_success": "login_success",
         "login_blocked": "login_blocked",
         "rate_limit_exceeded": "rate_limit_exceeded",
@@ -116,7 +115,7 @@ def metrics_hook(event: str, data: Dict[str, object]) -> None:
             AUTH_SUCCESS.inc()
         if AUTH_PROCESSING_TIME is not None:
             AUTH_PROCESSING_TIME.observe(duration)
-    elif normalized in {"login_failure", "login_blocked", "rate_limit_exceeded"}:
+    elif normalized in {"login_failed", "login_blocked", "rate_limit_exceeded"}:
         if AUTH_FAILURE is not None:
             AUTH_FAILURE.inc()
         if AUTH_PROCESSING_TIME is not None and duration:
