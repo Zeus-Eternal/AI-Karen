@@ -50,5 +50,6 @@ pyotp
 tenacity
 pytest-asyncio
 bcrypt
+argon2-cffi
 copilotkit
 sse-starlette

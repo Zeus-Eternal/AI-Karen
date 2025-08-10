@@ -94,7 +94,10 @@ class ProductionAuthSettings(BaseSettings):
     refresh_token_expire_days: int = Field(7, description="Refresh token TTL (days)")
 
     # Password hashing
-    password_hash_rounds: int = Field(12, description="Bcrypt rounds")
+    password_hash_rounds: int = Field(12, description="Bcrypt rounds or Argon2 time cost")
+    password_hash_algorithm: str = Field(
+        "bcrypt", description="Password hashing algorithm (bcrypt or argon2)", json_schema_extra={"env": "AUTH_PASSWORD_HASH_ALGORITHM"}
+    )
 
     # Session management
     session_expire_hours: int = Field(24, description="Session expiry (hours)")
