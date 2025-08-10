@@ -14,18 +14,17 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Protocol, runtime_checkable
 from enum import Enum
+from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 from ai_karen_engine.security.models import (
-    AuthContext,
     AuthAnalysisResult,
+    AuthContext,
+    BehavioralAnalysis,
+    EmbeddingAnalysis,
     IntelligentAuthConfig,
     NLPFeatures,
-    EmbeddingAnalysis,
-    BehavioralAnalysis,
     ThreatAnalysis,
-    SecurityAction
 )
 
 logger = logging.getLogger(__name__)
@@ -33,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class ServiceStatus(Enum):
     """Service health status enumeration."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -42,6 +42,7 @@ class ServiceStatus(Enum):
 @dataclass
 class ServiceHealthStatus:
     """Health status information for a service component."""
+
     service_name: str
     status: ServiceStatus
     last_check: datetime
@@ -52,18 +53,19 @@ class ServiceHealthStatus:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'service_name': self.service_name,
-            'status': self.status.value,
-            'last_check': self.last_check.isoformat(),
-            'response_time': self.response_time,
-            'error_message': self.error_message,
-            'metadata': self.metadata
+            "service_name": self.service_name,
+            "status": self.status.value,
+            "last_check": self.last_check.isoformat(),
+            "response_time": self.response_time,
+            "error_message": self.error_message,
+            "metadata": self.metadata,
         }
 
 
 @dataclass
 class IntelligentAuthHealthStatus:
     """Comprehensive health status for intelligent authentication system."""
+
     overall_status: ServiceStatus
     component_statuses: Dict[str, ServiceHealthStatus]
     last_updated: datetime
@@ -72,13 +74,13 @@ class IntelligentAuthHealthStatus:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'overall_status': self.overall_status.value,
-            'component_statuses': {
-                name: status.to_dict() 
+            "overall_status": self.overall_status.value,
+            "component_statuses": {
+                name: status.to_dict()
                 for name, status in self.component_statuses.items()
             },
-            'last_updated': self.last_updated.isoformat(),
-            'processing_metrics': self.processing_metrics
+            "last_updated": self.last_updated.isoformat(),
+            "processing_metrics": self.processing_metrics,
         }
 
     def is_healthy(self) -> bool:
@@ -88,7 +90,8 @@ class IntelligentAuthHealthStatus:
     def get_unhealthy_components(self) -> List[str]:
         """Get list of unhealthy component names."""
         return [
-            name for name, status in self.component_statuses.items()
+            name
+            for name, status in self.component_statuses.items()
             if status.status == ServiceStatus.UNHEALTHY
         ]
 
@@ -96,7 +99,7 @@ class IntelligentAuthHealthStatus:
 @runtime_checkable
 class HealthCheckable(Protocol):
     """Protocol for components that support health checking."""
-    
+
     async def health_check(self) -> ServiceHealthStatus:
         """Perform health check and return status."""
         ...
@@ -105,7 +108,7 @@ class HealthCheckable(Protocol):
 @runtime_checkable
 class Configurable(Protocol):
     """Protocol for components that support configuration updates."""
-    
+
     async def update_config(self, config: Dict[str, Any]) -> bool:
         """Update component configuration."""
         ...
@@ -120,7 +123,7 @@ class BaseIntelligentAuthService(ABC):
         self._health_status = ServiceHealthStatus(
             service_name=self.__class__.__name__,
             status=ServiceStatus.UNKNOWN,
-            last_check=datetime.now()
+            last_check=datetime.now(),
         )
 
     @abstractmethod
@@ -136,18 +139,18 @@ class BaseIntelligentAuthService(ABC):
     async def health_check(self) -> ServiceHealthStatus:
         """Perform health check for this service."""
         start_time = time.time()
-        
+
         try:
             # Perform service-specific health check
             is_healthy = await self._perform_health_check()
-            
+
             self._health_status = ServiceHealthStatus(
                 service_name=self.__class__.__name__,
                 status=ServiceStatus.HEALTHY if is_healthy else ServiceStatus.DEGRADED,
                 last_check=datetime.now(),
-                response_time=time.time() - start_time
+                response_time=time.time() - start_time,
             )
-            
+
         except Exception as e:
             self.logger.error(f"Health check failed for {self.__class__.__name__}: {e}")
             self._health_status = ServiceHealthStatus(
@@ -155,9 +158,9 @@ class BaseIntelligentAuthService(ABC):
                 status=ServiceStatus.UNHEALTHY,
                 last_check=datetime.now(),
                 response_time=time.time() - start_time,
-                error_message=str(e)
+                error_message=str(e),
             )
-        
+
         return self._health_status
 
     @abstractmethod
@@ -170,21 +173,24 @@ class BaseIntelligentAuthService(ABC):
         try:
             old_config = self.config
             self.config = config
-            
+
             # Allow service-specific configuration update logic
             success = await self._handle_config_update(old_config, config)
-            
+
             if not success:
                 self.config = old_config  # Rollback on failure
-                
+
             return success
-            
+
         except Exception as e:
-            self.logger.error(f"Configuration update failed for {self.__class__.__name__}: {e}")
+            self.logger.error(
+                f"Configuration update failed for {self.__class__.__name__}: {e}"
+            )
             return False
 
-    async def _handle_config_update(self, old_config: IntelligentAuthConfig, 
-                                   new_config: IntelligentAuthConfig) -> bool:
+    async def _handle_config_update(
+        self, old_config: IntelligentAuthConfig, new_config: IntelligentAuthConfig
+    ) -> bool:
         """Handle service-specific configuration updates."""
         # Default implementation - subclasses can override
         return True
@@ -213,8 +219,9 @@ class BehavioralEmbeddingInterface(ABC):
         pass
 
     @abstractmethod
-    async def calculate_similarity(self, embedding1: List[float], 
-                                 embedding2: List[float]) -> float:
+    async def calculate_similarity(
+        self, embedding1: List[float], embedding2: List[float]
+    ) -> float:
         """Calculate similarity between two embeddings."""
         pass
 
@@ -228,23 +235,30 @@ class AnomalyDetectorInterface(ABC):
     """Interface for anomaly detection services."""
 
     @abstractmethod
-    async def detect_anomalies(self, context: AuthContext, 
-                             nlp_features: NLPFeatures,
-                             embedding_analysis: EmbeddingAnalysis) -> BehavioralAnalysis:
+    async def detect_anomalies(
+        self,
+        context: AuthContext,
+        nlp_features: NLPFeatures,
+        embedding_analysis: EmbeddingAnalysis,
+    ) -> BehavioralAnalysis:
         """Detect behavioral anomalies in authentication attempt."""
         pass
 
     @abstractmethod
-    async def calculate_risk_score(self, context: AuthContext,
-                                 nlp_features: NLPFeatures,
-                                 embedding_analysis: EmbeddingAnalysis,
-                                 behavioral_analysis: BehavioralAnalysis) -> float:
+    async def calculate_risk_score(
+        self,
+        context: AuthContext,
+        nlp_features: NLPFeatures,
+        embedding_analysis: EmbeddingAnalysis,
+        behavioral_analysis: BehavioralAnalysis,
+    ) -> float:
         """Calculate overall risk score for authentication attempt."""
         pass
 
     @abstractmethod
-    async def learn_from_feedback(self, user_id: str, context: AuthContext,
-                                feedback: Dict[str, Any]) -> None:
+    async def learn_from_feedback(
+        self, user_id: str, context: AuthContext, feedback: Dict[str, Any]
+    ) -> None:
         """Learn from authentication feedback to improve detection."""
         pass
 
@@ -263,7 +277,9 @@ class ThreatIntelligenceInterface(ABC):
         pass
 
     @abstractmethod
-    async def detect_attack_patterns(self, recent_attempts: List[AuthContext]) -> List[str]:
+    async def detect_attack_patterns(
+        self, recent_attempts: List[AuthContext]
+    ) -> List[str]:
         """Detect coordinated attack patterns."""
         pass
 
@@ -277,15 +293,16 @@ class IntelligentAuthServiceInterface(ABC):
         pass
 
     @abstractmethod
-    async def update_user_behavioral_profile(self, user_id: str, 
-                                           context: AuthContext, 
-                                           success: bool) -> None:
+    async def update_user_behavioral_profile(
+        self, user_id: str, context: AuthContext, success: bool
+    ) -> None:
         """Update user's behavioral profile based on login outcome."""
         pass
 
     @abstractmethod
-    async def provide_feedback(self, user_id: str, context: AuthContext,
-                             feedback: Dict[str, Any]) -> None:
+    async def provide_feedback(
+        self, user_id: str, context: AuthContext, feedback: Dict[str, Any]
+    ) -> None:
         """Provide feedback to improve ML models."""
         pass
 
@@ -324,13 +341,15 @@ class ServiceRegistry:
         success = True
         for name, service in self._services.items():
             try:
-                if hasattr(service, 'initialize'):
+                if hasattr(service, "initialize"):
                     result = await service.initialize()
                     if not result:
                         self.logger.error(f"Failed to initialize service: {name}")
                         success = False
                 else:
-                    self.logger.warning(f"Service {name} does not support initialization")
+                    self.logger.warning(
+                        f"Service {name} does not support initialization"
+                    )
             except Exception as e:
                 self.logger.error(f"Error initializing service {name}: {e}")
                 success = False
@@ -342,7 +361,7 @@ class ServiceRegistry:
         """Shutdown all registered services."""
         for name, service in self._services.items():
             try:
-                if hasattr(service, 'shutdown'):
+                if hasattr(service, "shutdown"):
                     await service.shutdown()
                     self.logger.info(f"Shutdown service: {name}")
             except Exception as e:
@@ -353,10 +372,10 @@ class ServiceRegistry:
     async def health_check_all(self) -> Dict[str, ServiceHealthStatus]:
         """Perform health check on all registered services."""
         health_statuses = {}
-        
+
         for name, service in self._services.items():
             try:
-                if hasattr(service, 'health_check'):
+                if hasattr(service, "health_check"):
                     status = await service.health_check()
                     health_statuses[name] = status
                 else:
@@ -365,7 +384,7 @@ class ServiceRegistry:
                         service_name=name,
                         status=ServiceStatus.UNKNOWN,
                         last_check=datetime.now(),
-                        error_message="Health check not supported"
+                        error_message="Health check not supported",
                     )
             except Exception as e:
                 self.logger.error(f"Health check failed for service {name}: {e}")
@@ -373,7 +392,7 @@ class ServiceRegistry:
                     service_name=name,
                     status=ServiceStatus.UNHEALTHY,
                     last_check=datetime.now(),
-                    error_message=str(e)
+                    error_message=str(e),
                 )
 
         return health_statuses
@@ -391,8 +410,7 @@ class ServiceRegistry:
 class HealthMonitor:
     """Health monitoring service for intelligent authentication components."""
 
-    def __init__(self, service_registry: ServiceRegistry, 
-                 check_interval: float = 60.0):
+    def __init__(self, service_registry: ServiceRegistry, check_interval: float = 60.0):
         self.service_registry = service_registry
         self.check_interval = check_interval
         self.logger = logging.getLogger(f"{__name__}.HealthMonitor")
@@ -412,14 +430,14 @@ class HealthMonitor:
     async def stop_monitoring(self) -> None:
         """Stop health monitoring."""
         self._monitoring = False
-        
+
         if self._monitor_task:
             self._monitor_task.cancel()
             try:
                 await self._monitor_task
             except asyncio.CancelledError:
                 pass
-            
+
         self.logger.info("Stopped health monitoring")
 
     async def _monitor_loop(self) -> None:
@@ -437,18 +455,18 @@ class HealthMonitor:
     async def _perform_health_checks(self) -> None:
         """Perform health checks on all services."""
         health_statuses = await self.service_registry.health_check_all()
-        
+
         for name, status in health_statuses.items():
             # Store health history
             if name not in self._health_history:
                 self._health_history[name] = []
-            
+
             self._health_history[name].append(status)
-            
+
             # Keep only recent history (last 100 checks)
             if len(self._health_history[name]) > 100:
                 self._health_history[name] = self._health_history[name][-100:]
-            
+
             # Log unhealthy services
             if status.status == ServiceStatus.UNHEALTHY:
                 self.logger.warning(
@@ -460,17 +478,19 @@ class HealthMonitor:
         # Get latest health status for each service
         component_statuses = {}
         overall_status = ServiceStatus.HEALTHY
-        
+
         for name, history in self._health_history.items():
             if history:
                 latest_status = history[-1]
                 component_statuses[name] = latest_status
-                
+
                 # Determine overall status
                 if latest_status.status == ServiceStatus.UNHEALTHY:
                     overall_status = ServiceStatus.UNHEALTHY
-                elif (latest_status.status == ServiceStatus.DEGRADED and 
-                      overall_status == ServiceStatus.HEALTHY):
+                elif (
+                    latest_status.status == ServiceStatus.DEGRADED
+                    and overall_status == ServiceStatus.HEALTHY
+                ):
                     overall_status = ServiceStatus.DEGRADED
 
         # Calculate processing metrics
@@ -478,19 +498,20 @@ class HealthMonitor:
         for name, history in self._health_history.items():
             if history:
                 response_times = [status.response_time for status in history[-10:]]
-                processing_metrics[f"{name}_avg_response_time"] = (
-                    sum(response_times) / len(response_times)
-                )
+                processing_metrics[f"{name}_avg_response_time"] = sum(
+                    response_times
+                ) / len(response_times)
 
         return IntelligentAuthHealthStatus(
             overall_status=overall_status,
             component_statuses=component_statuses,
             last_updated=datetime.now(),
-            processing_metrics=processing_metrics
+            processing_metrics=processing_metrics,
         )
 
-    def get_health_history(self, service_name: str, 
-                          limit: int = 50) -> List[ServiceHealthStatus]:
+    def get_health_history(
+        self, service_name: str, limit: int = 50
+    ) -> List[ServiceHealthStatus]:
         """Get health history for a specific service."""
         history = self._health_history.get(service_name, [])
         return history[-limit:] if limit > 0 else history
