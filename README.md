@@ -49,6 +49,31 @@ config = AuthConfig.from_environment("production")
 Example configuration files are provided in `config/auth_config.yaml`
 and `config/auth_config.json`.
 
+### Production Authentication Setup
+
+AI-Karen ships with a production-ready authentication stack featuring
+PostgreSQL storage, bcrypt password hashing, JWT token management,
+Redis-backed sessions, and multi-tenant support. See
+[Production Authentication Setup](docs/PRODUCTION_AUTH_SETUP.md) for
+full deployment instructions.
+
+**Environment Variables**
+
+```bash
+cp config/production_auth_config.env .env
+# Edit .env with secure production values
+```
+
+**Migration Script**
+
+Initialize the authentication database schema:
+
+```bash
+python scripts/run_auth_migration.py
+# Optional dry run
+python scripts/run_auth_migration.py --dry-run
+```
+
 ---
 
 ## Architecture
