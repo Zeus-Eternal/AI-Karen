@@ -224,6 +224,7 @@ class SecurityConfig:
     min_password_length: int = 8
     require_password_complexity: bool = True
     password_hash_rounds: int = 12
+    password_hash_algorithm: str = "bcrypt"  # "bcrypt" or "argon2"
 
     # Session security
     enable_session_validation: bool = True
@@ -274,6 +275,9 @@ class SecurityConfig:
             ),
             password_hash_rounds=_env_int(
                 os.getenv("AUTH_PASSWORD_HASH_ROUNDS"), cls().password_hash_rounds
+            ),
+            password_hash_algorithm=os.getenv(
+                "AUTH_PASSWORD_HASH_ALGORITHM", cls().password_hash_algorithm
             ),
             enable_session_validation=_env_bool(
                 os.getenv("AUTH_ENABLE_SESSION_VALIDATION"),
@@ -751,6 +755,7 @@ class AuthConfig:
                 "min_password_length": self.security.min_password_length,
                 "require_password_complexity": self.security.require_password_complexity,
                 "password_hash_rounds": self.security.password_hash_rounds,
+                "password_hash_algorithm": self.security.password_hash_algorithm,
                 "enable_session_validation": self.security.enable_session_validation,
                 "validate_ip_address": self.security.validate_ip_address,
                 "validate_user_agent": self.security.validate_user_agent,
@@ -853,8 +858,11 @@ class AuthConfig:
         if self.security.min_password_length < 4:
             errors.append("Minimum password length must be at least 4")
 
-        if not (4 <= self.security.password_hash_rounds <= 20):
-            errors.append("Password hash rounds must be between 4 and 20")
+        if self.security.password_hash_algorithm == "bcrypt":
+            if not (4 <= self.security.password_hash_rounds <= 20):
+                errors.append("Password hash rounds must be between 4 and 20")
+        elif self.security.password_hash_algorithm != "argon2":
+            errors.append("Unsupported password hash algorithm")
 
         # Intelligence validation
         if not (0.0 <= self.intelligence.risk_threshold_low <= 1.0):

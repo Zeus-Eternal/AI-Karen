@@ -14,6 +14,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import bcrypt
+try:
+    from argon2 import PasswordHasher as Argon2Hasher  # type: ignore
+    from argon2.exceptions import VerificationError  # type: ignore
+except Exception:  # pragma: no cover - argon2 optional
+    Argon2Hasher = None  # type: ignore
+    VerificationError = Exception  # type: ignore
 
 from .config import AuthConfig
 from .exceptions import (
@@ -41,25 +47,32 @@ except ImportError:
 
 
 class OptimizedPasswordHasher:
-    """
-    Optimized password hashing with PostgreSQL-aware performance tuning.
+    """Optimized password hashing supporting bcrypt or argon2."""
 
-    Includes adaptive hashing and efficient verification patterns.
-    """
-
-    def __init__(self, rounds: int = 12) -> None:
+    def __init__(self, rounds: int = 12, algorithm: str = "bcrypt") -> None:
         """Initialize optimized password hasher."""
-        if not (4 <= rounds <= 20):
+        if algorithm not in {"bcrypt", "argon2"}:
+            raise ValueError("Unsupported hash algorithm")
+        if algorithm == "bcrypt" and not (4 <= rounds <= 20):
             raise ValueError("Bcrypt rounds must be between 4 and 20")
         self.rounds = rounds
+        self.algorithm = algorithm
         self.logger = logging.getLogger(f"{__name__}.OptimizedPasswordHasher")
+        if algorithm == "argon2":
+            if Argon2Hasher is None:
+                raise ImportError(
+                    "argon2-cffi is required for argon2 hashing. Install with: pip install argon2-cffi"
+                )
+            self.argon2_hasher = Argon2Hasher(time_cost=rounds)
 
     def hash_password(self, password: str) -> str:
-        """Hash password with optimized bcrypt settings."""
+        """Hash password with optimized settings."""
         if not password:
             raise ValueError("Password cannot be empty")
 
-        # Use optimized salt generation
+        if self.algorithm == "argon2":
+            return self.argon2_hasher.hash(password)
+
         salt = bcrypt.gensalt(rounds=self.rounds)
         hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
         return hashed.decode("utf-8")
@@ -68,6 +81,12 @@ class OptimizedPasswordHasher:
         """Verify password with timing attack protection."""
         if not password or not hashed:
             return False
+
+        if self.algorithm == "argon2":
+            try:
+                return self.argon2_hasher.verify(hashed, password)
+            except VerificationError:
+                return False
 
         try:
             return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
@@ -89,6 +108,11 @@ class OptimizedPasswordHasher:
 
     def needs_rehash(self, hashed: str) -> bool:
         """Check if password hash needs updating."""
+        if self.algorithm == "argon2":
+            try:
+                return self.argon2_hasher.check_needs_rehash(hashed)
+            except Exception:
+                return False
         try:
             parts = hashed.split("$")
             if len(parts) >= 3 and parts[1] == "2b":
@@ -122,7 +146,8 @@ class OptimizedCoreAuthenticator:
             config.session, self.token_manager, self.db_client
         )
         self.password_hasher = OptimizedPasswordHasher(
-            config.security.password_hash_rounds
+            config.security.password_hash_rounds,
+            config.security.password_hash_algorithm,
         )
 
         # Performance tracking

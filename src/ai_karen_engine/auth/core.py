@@ -9,6 +9,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import bcrypt
+try:
+    from argon2 import PasswordHasher as Argon2Hasher  # type: ignore
+    from argon2.exceptions import VerificationError  # type: ignore
+except Exception:  # pragma: no cover - argon2 is optional
+    Argon2Hasher = None  # type: ignore
+    VerificationError = Exception  # type: ignore
 
 from .config import AuthConfig
 from .database import AuthDatabaseClient
@@ -28,18 +34,37 @@ from .tokens import TokenManager
 
 
 class PasswordHasher:
-    """Secure password hashing using bcrypt."""
+    """Secure password hashing supporting bcrypt or argon2."""
 
-    def __init__(self, rounds: int = 12) -> None:
-        """Initialize password hasher with specified bcrypt rounds."""
-        if not (4 <= rounds <= 20):
+    def __init__(self, rounds: int = 12, algorithm: str = "bcrypt") -> None:
+        """Initialize password hasher with specified algorithm.
+
+        Args:
+            rounds: Cost factor for hashing. Interpreted as bcrypt rounds or
+                argon2 time_cost depending on algorithm.
+            algorithm: "bcrypt" (default) or "argon2".
+        """
+        if algorithm not in {"bcrypt", "argon2"}:
+            raise ValueError("Unsupported hash algorithm")
+        if algorithm == "bcrypt" and not (4 <= rounds <= 20):
             raise ValueError("Bcrypt rounds must be between 4 and 20")
         self.rounds = rounds
+        self.algorithm = algorithm
+        if algorithm == "argon2":
+            if Argon2Hasher is None:
+                raise ImportError(
+                    "argon2-cffi is required for argon2 hashing. Install with: pip install argon2-cffi"
+                )
+            # use rounds as time_cost, leave other params defaults
+            self.argon2_hasher = Argon2Hasher(time_cost=rounds)
 
     def hash_password(self, password: str) -> str:
-        """Hash a password using bcrypt."""
+        """Hash a password using the configured algorithm."""
         if not password:
             raise ValueError("Password cannot be empty")
+
+        if self.algorithm == "argon2":
+            return self.argon2_hasher.hash(password)
 
         salt = bcrypt.gensalt(rounds=self.rounds)
         hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
@@ -50,6 +75,12 @@ class PasswordHasher:
         if not password or not hashed:
             return False
 
+        if self.algorithm == "argon2":
+            try:
+                return self.argon2_hasher.verify(hashed, password)
+            except VerificationError:
+                return False
+
         try:
             return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
         except (ValueError, TypeError):
@@ -57,6 +88,12 @@ class PasswordHasher:
 
     def needs_rehash(self, hashed: str) -> bool:
         """Check if a password hash needs to be updated."""
+        if self.algorithm == "argon2":
+            try:
+                return self.argon2_hasher.check_needs_rehash(hashed)
+            except Exception:
+                return False
+
         try:
             parts = hashed.split("$")
             if len(parts) >= 3 and parts[1] == "2b":
@@ -117,7 +154,10 @@ class CoreAuthenticator:
         self.session_manager = SessionManager(
             config.session, self.token_manager, self.db_client
         )
-        self.password_hasher = PasswordHasher(config.security.password_hash_rounds)
+        self.password_hasher = PasswordHasher(
+            config.security.password_hash_rounds,
+            config.security.password_hash_algorithm,
+        )
         self.password_validator = PasswordValidator(
             min_length=config.security.min_password_length,
             require_complexity=config.security.require_password_complexity,
