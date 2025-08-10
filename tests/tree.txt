@@ -260,7 +260,6 @@ AI-Karen
     │   ├── link_checker.py
     │   ├── multitenant_cli.py
     │   ├── performance_comparison.py
-    │   ├── security_testing.py
     │   ├── server_cli.py
     │   ├── start.sh
     │   ├── stop.sh
