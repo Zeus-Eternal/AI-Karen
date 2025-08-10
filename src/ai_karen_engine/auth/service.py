@@ -1725,13 +1725,11 @@ class AuthService:
 
             # Shutdown intelligence layer
             if self.intelligence_layer:
-                # Intelligence layer doesn't have shutdown method yet, but we can add it later
-                pass
+                await self.intelligence_layer.shutdown()
 
             # Shutdown security layer
             if self.security_layer:
-                # Security layer doesn't have shutdown method yet, but we can add it later
-                pass
+                await self.security_layer.shutdown()
 
             self.logger.info("AuthService shutdown completed")
 
