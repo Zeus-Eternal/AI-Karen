@@ -53,6 +53,23 @@ def test_auth_context_validation_failure() -> None:
     assert not context.validate()
 
 
+def test_auth_context_valid_email_and_ip() -> None:
+    context = create_auth_context()
+    assert context.validate()
+
+
+def test_auth_context_invalid_email() -> None:
+    context = create_auth_context()
+    context.email = "invalid-email"
+    assert not context.validate()
+
+
+def test_auth_context_invalid_ip() -> None:
+    context = create_auth_context()
+    context.client_ip = "999.999.999.999"
+    assert not context.validate()
+
+
 def test_intelligent_auth_config_serialization_and_validation() -> None:
     config = IntelligentAuthConfig()
     data = config.to_dict()
