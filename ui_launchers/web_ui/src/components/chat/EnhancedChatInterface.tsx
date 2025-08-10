@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, BarChart3, Grid3X3, Settings, Maximize2, Minimize2 } from 'lucide-react';
-import ChatInterface from './ChatInterface';
+import ModernChatInterface from './ModernChatInterface';
 import { ConversationGrid, ConversationRow } from './ConversationGrid';
 import { ChatAnalyticsChart, ChatAnalyticsData } from './ChatAnalyticsChart';
 import { useHooks } from '@/contexts/HookContext';
@@ -191,7 +191,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   if (!showTabs) {
     return (
       <div className={`${className} ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
-        <ChatInterface />
+        <ModernChatInterface />
       </div>
     );
   }
@@ -240,7 +240,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
             <div className="flex-1 min-h-0">
               <TabsContent value="chat" className="h-full m-0 p-0">
-                <ChatInterface />
+                <ModernChatInterface />
               </TabsContent>
 
               <TabsContent value="conversations" className="h-full m-0 p-4">

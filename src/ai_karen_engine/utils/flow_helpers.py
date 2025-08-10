@@ -45,11 +45,11 @@ def format_flow_response(result: FlowOutput, processing_time_ms: int) -> Dict[st
         "plugin_parameters": result.plugin_parameters,
         "memory_to_store": result.memory_to_store,
         "suggested_actions": result.suggested_actions,
-        "ai_data": result.ai_data,
+        "ai_data": result.ai_data.model_dump() if result.ai_data else None,
         "proactive_suggestion": result.proactive_suggestion,
         "processing_time_ms": processing_time_ms,
-        "model_used": result.ai_data.get("model_used") if result.ai_data else None,
-        "confidence_score": result.ai_data.get("confidence") if result.ai_data else None,
+        "model_used": getattr(result.ai_data, "model_used", None) if result.ai_data else None,
+        "confidence_score": result.ai_data.confidence if result.ai_data else None,
     }
 
 

@@ -13,32 +13,37 @@ class UsageService:
     @staticmethod
     def increment(metric: str, tenant_id: Optional[str] = None, user_id: Optional[str] = None, amount: int = 1) -> None:
         """Increment a usage counter for the current window."""
-        now = datetime.utcnow()
-        window_start = now.replace(minute=0, second=0, microsecond=0)
-        window_end = window_start + timedelta(hours=1)
-        with get_db_session_context() as session:
-            record = (
-                session.query(UsageCounter)
-                .filter_by(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    metric=metric,
-                    window_start=window_start,
-                    window_end=window_end,
-                )
-                .first()
-            )
-            if record:
-                record.value += amount
-            else:
-                session.add(
-                    UsageCounter(
+        try:
+            now = datetime.utcnow()
+            window_start = now.replace(minute=0, second=0, microsecond=0)
+            window_end = window_start + timedelta(hours=1)
+            with get_db_session_context() as session:
+                record = (
+                    session.query(UsageCounter)
+                    .filter_by(
                         tenant_id=tenant_id,
                         user_id=user_id,
                         metric=metric,
-                        value=amount,
                         window_start=window_start,
                         window_end=window_end,
                     )
+                    .first()
                 )
-            session.commit()
+                if record:
+                    record.value += amount
+                else:
+                    session.add(
+                        UsageCounter(
+                            tenant_id=tenant_id,
+                            user_id=user_id,
+                            metric=metric,
+                            value=amount,
+                            window_start=window_start,
+                            window_end=window_end,
+                        )
+                    )
+                session.commit()
+        except Exception:
+            # Database unavailable, silently ignore usage tracking
+            # This prevents middleware failures when PostgreSQL is down
+            pass

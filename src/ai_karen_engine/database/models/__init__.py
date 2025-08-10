@@ -116,7 +116,7 @@ class TenantConversation(Base):
     __tablename__ = "conversations"
 
     id = Column(
-        "conversation_id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id = Column(UUID(as_uuid=True), nullable=False)
     title = Column(String(255))
@@ -201,10 +201,10 @@ class TenantMessage(Base):
 
     __tablename__ = "messages"
 
-    id = Column("message_id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     conversation_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("conversations.conversation_id", ondelete="CASCADE"),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
         nullable=False,
     )
     role = Column(String(50), nullable=False)
@@ -232,7 +232,7 @@ class TenantMessageTool(Base):
     )
     message_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("messages.message_id", ondelete="CASCADE"),
+        ForeignKey("messages.id", ondelete="CASCADE"),
         nullable=False,
     )
     tool_name = Column(String(255), nullable=False)

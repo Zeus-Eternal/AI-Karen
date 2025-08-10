@@ -304,7 +304,16 @@ class DatabaseSessionBackend:
             async with self.db_client.session_factory() as session:
                 from sqlalchemy import text
                 result = await session.execute(text("""
-                    SELECT s.*, u.* FROM auth_sessions s
+                    SELECT 
+                        s.session_token, s.access_token, s.refresh_token, s.expires_in,
+                        s.created_at as session_created_at, s.last_accessed, s.ip_address, 
+                        s.user_agent, s.device_fingerprint, s.geolocation, s.risk_score, 
+                        s.security_flags,
+                        u.user_id, u.email, u.full_name, u.roles, u.tenant_id, u.preferences,
+                        u.is_verified, u.is_active, u.created_at as user_created_at, 
+                        u.updated_at, u.last_login_at, u.failed_login_attempts, u.locked_until,
+                        u.two_factor_enabled, u.two_factor_secret
+                    FROM auth_sessions s
                     JOIN auth_users u ON s.user_id = u.user_id
                     WHERE s.session_token = :session_token AND s.is_active = true
                 """), {"session_token": session_token})
@@ -367,7 +376,16 @@ class DatabaseSessionBackend:
             async with self.db_client.session_factory() as session:
                 from sqlalchemy import text
                 result = await session.execute(text("""
-                    SELECT s.*, u.* FROM auth_sessions s
+                    SELECT 
+                        s.session_token, s.access_token, s.refresh_token, s.expires_in,
+                        s.created_at as session_created_at, s.last_accessed, s.ip_address, 
+                        s.user_agent, s.device_fingerprint, s.geolocation, s.risk_score, 
+                        s.security_flags,
+                        u.user_id, u.email, u.full_name, u.roles, u.tenant_id, u.preferences,
+                        u.is_verified, u.is_active, u.created_at as user_created_at, 
+                        u.updated_at, u.last_login_at, u.failed_login_attempts, u.locked_until,
+                        u.two_factor_enabled, u.two_factor_secret
+                    FROM auth_sessions s
                     JOIN auth_users u ON s.user_id = u.user_id
                     WHERE s.user_id = :user_id AND s.is_active = true
                     ORDER BY s.last_accessed DESC
@@ -412,47 +430,48 @@ class DatabaseSessionBackend:
             raise DatabaseOperationError(f"Failed to cleanup expired sessions: {e}", operation="cleanup_sessions")
 
     def _row_to_session_data(self, row) -> SessionData:
+        # Column order from the explicit SELECT query:
+        # s.session_token, s.access_token, s.refresh_token, s.expires_in,
+        # s.created_at as session_created_at, s.last_accessed, s.ip_address, 
+        # s.user_agent, s.device_fingerprint, s.geolocation, s.risk_score, 
+        # s.security_flags,
+        # u.user_id, u.email, u.full_name, u.roles, u.tenant_id, u.preferences,
+        # u.is_verified, u.is_active, u.created_at as user_created_at, 
+        # u.updated_at, u.last_login_at, u.failed_login_attempts, u.locked_until,
+        # u.two_factor_enabled, u.two_factor_secret
+        
         user_data = UserData(
-            user_id=row["user_id"],
-            email=row["email"],
-            full_name=row["full_name"],
-            roles=json.loads(row["roles"]),
-            tenant_id=row["tenant_id"],
-            preferences=json.loads(row["preferences"]),
-            is_verified=bool(row["is_verified"]),
-            is_active=bool(row["is_active"]),
-            created_at=datetime.fromisoformat(row["created_at"]),
-            updated_at=datetime.fromisoformat(row["updated_at"]),
-            last_login_at=datetime.fromisoformat(row["last_login_at"])
-            if row["last_login_at"]
-            else None,
-            failed_login_attempts=row["failed_login_attempts"],
-            locked_until=datetime.fromisoformat(row["locked_until"])
-            if row["locked_until"]
-            else None,
-            two_factor_enabled=bool(row["two_factor_enabled"]),
-            two_factor_secret=row["two_factor_secret"],
+            user_id=str(row[12]),  # u.user_id
+            email=row[13],  # u.email
+            full_name=row[14],  # u.full_name
+            roles=row[15] if isinstance(row[15], list) else (json.loads(row[15]) if row[15] else []),  # u.roles
+            tenant_id=str(row[16]),  # u.tenant_id
+            preferences=row[17] if isinstance(row[17], dict) else (json.loads(row[17]) if row[17] else {}),  # u.preferences
+            is_verified=bool(row[18]),  # u.is_verified
+            is_active=bool(row[19]),  # u.is_active
+            created_at=row[20] if isinstance(row[20], datetime) else datetime.fromisoformat(str(row[20])),  # u.created_at
+            updated_at=row[21] if isinstance(row[21], datetime) else datetime.fromisoformat(str(row[21])),  # u.updated_at
+            last_login_at=row[22] if isinstance(row[22], datetime) else (datetime.fromisoformat(str(row[22])) if row[22] else None),  # u.last_login_at
+            failed_login_attempts=row[23] or 0,  # u.failed_login_attempts
+            locked_until=row[24] if isinstance(row[24], datetime) else (datetime.fromisoformat(str(row[24])) if row[24] else None),  # u.locked_until
+            two_factor_enabled=bool(row[25]),  # u.two_factor_enabled
+            two_factor_secret=row[26],  # u.two_factor_secret
         )
 
         return SessionData(
-            session_token=row["session_id"],
-            access_token=row["access_token"],
-            refresh_token=row["refresh_token"],
+            session_token=row[0],  # s.session_token
+            access_token=row[1],  # s.access_token
+            refresh_token=row[2],  # s.refresh_token
             user_data=user_data,
-            expires_in=row["expires_in"],
-            created_at=datetime.fromisoformat(row["created_at"]),
-            last_accessed=datetime.fromisoformat(row["last_accessed"]),
-            ip_address=row["ip_address"],
-            user_agent=row["user_agent"],
-            device_fingerprint=row["device_fingerprint"],
-            geolocation=json.loads(row["geolocation"]) if row["geolocation"] else None,
-            risk_score=row["risk_score"],
-            security_flags=json.loads(row["security_flags"]),
-            is_active=bool(row["is_active"]),
-            invalidated_at=datetime.fromisoformat(row["invalidated_at"])
-            if row["invalidated_at"]
-            else None,
-            invalidation_reason=row["invalidation_reason"],
+            expires_in=row[3],  # s.expires_in
+            created_at=row[4] if isinstance(row[4], datetime) else datetime.fromisoformat(str(row[4])),  # s.created_at
+            last_accessed=row[5] if isinstance(row[5], datetime) else datetime.fromisoformat(str(row[5])),  # s.last_accessed
+            ip_address=row[6],  # s.ip_address
+            user_agent=row[7],  # s.user_agent
+            device_fingerprint=row[8],  # s.device_fingerprint
+            geolocation=row[9] if isinstance(row[9], dict) else (json.loads(row[9]) if row[9] else None),  # s.geolocation
+            risk_score=row[10] or 0.0,  # s.risk_score
+            security_flags=row[11] if isinstance(row[11], list) else (json.loads(row[11]) if row[11] else []),  # s.security_flags
         )
 
 

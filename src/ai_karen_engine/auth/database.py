@@ -584,13 +584,31 @@ class AuthDatabaseClient:
 
     def _row_to_user_data(self, row) -> UserData:
         """Convert database row to UserData object."""
+        # Handle roles - might be string or already parsed list/dict
+        if row.roles:
+            if isinstance(row.roles, str):
+                roles = json.loads(row.roles)
+            else:
+                roles = row.roles  # Already parsed by asyncpg
+        else:
+            roles = []
+        
+        # Handle preferences - might be string or already parsed dict
+        if row.preferences:
+            if isinstance(row.preferences, str):
+                preferences = json.loads(row.preferences)
+            else:
+                preferences = row.preferences  # Already parsed by asyncpg
+        else:
+            preferences = {}
+        
         return UserData(
             user_id=str(row.user_id),
             email=row.email,
             full_name=row.full_name,
-            roles=json.loads(row.roles) if row.roles else [],
+            roles=roles,
             tenant_id=str(row.tenant_id),
-            preferences=json.loads(row.preferences) if row.preferences else {},
+            preferences=preferences,
             is_verified=row.is_verified,
             is_active=row.is_active,
             created_at=row.created_at,

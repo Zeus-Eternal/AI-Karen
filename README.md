@@ -167,10 +167,9 @@ npm run dev
 # Access at http://localhost:9002
 ```
 
-Default demo accounts are available:
+Default demo account is available:
 
 * **Admin:** `admin@kari.ai` / `password123`
-* **User:** `user@kari.ai` / `password123`
 
 #### Desktop UI (Tauri)
 ```bash
@@ -213,13 +212,12 @@ PYTHONPATH=src python demo_analytics_dashboard.py
 
 ### Default Demo Credentials
 
-Use these accounts for testing the web or Streamlit UI:
+Use this account for testing the web or Streamlit UI:
 
 ```
 Admin: admin@kari.ai / password123
-User:  user@kari.ai / password123
 ```
-Change these demo passwords after your first login.
+Change the demo password after your first login.
 
 ---
 
