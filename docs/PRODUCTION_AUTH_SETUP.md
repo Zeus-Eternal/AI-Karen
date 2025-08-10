@@ -118,6 +118,39 @@ For dry-run (preview changes):
 python scripts/run_auth_migration.py --dry-run
 ```
 
+### Migration Rollback
+
+If a migration needs to be reverted, use the migration manager and specify the
+target version:
+
+```bash
+python scripts/migrate.py rollback --version <migration_version>
+```
+
+Current migration versions include:
+
+1. `001_create_auth_tables`
+2. `001_create_tables`
+3. `002_create_extension_tables`
+4. `002_create_memory_entries_table`
+5. `003_web_ui_integration`
+6. `004_create_memory_entries_table`
+7. `005_create_conversations_table`
+8. `006_create_plugin_executions_table`
+9. `007_create_audit_log_table`
+10. `008_create_web_ui_memory_entries_table`
+11. `009_create_memory_items_table`
+12. `009_create_production_auth_tables`
+13. `010_add_production_auth_columns`
+14. `011_add_messages_table`
+15. `012_create_usage_and_rate_limit_tables`
+16. `013_production_auth_schema_alignment`
+17. `014_fix_user_id_type_mismatch`
+
+The rollback command expects a corresponding `<migration_version>_rollback.sql`
+file in the migrations directory. If no such file exists, the migration cannot
+be automatically reverted.
+
 ### Step 2: Initialize Production Authentication
 
 Run the production initialization script:
@@ -235,20 +268,20 @@ async def login(
             ip_address=request.client.host,
             user_agent=request.headers.get("user-agent", "")
         )
-        
+
         session = await auth_service.create_session(
             user_data=user,
             ip_address=request.client.host,
             user_agent=request.headers.get("user-agent", "")
         )
-        
+
         return {
             "access_token": session.access_token,
             "refresh_token": session.refresh_token,
             "session_token": session.session_token,
             "user": user.to_dict()
         }
-        
+
     except InvalidCredentialsError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -300,21 +333,21 @@ Monitor system health with these queries:
 
 ```sql
 -- Failed login attempts in last hour
-SELECT COUNT(*) FROM auth_events 
-WHERE event_type = 'LOGIN_FAILED' 
+SELECT COUNT(*) FROM auth_events
+WHERE event_type = 'LOGIN_FAILED'
 AND timestamp > NOW() - INTERVAL '1 hour';
 
 -- Active sessions by user
 SELECT u.email, COUNT(s.session_token) as active_sessions
 FROM auth_users u
-LEFT JOIN auth_sessions s ON u.user_id = s.user_id 
+LEFT JOIN auth_sessions s ON u.user_id = s.user_id
 WHERE s.is_active = true
 GROUP BY u.email
 ORDER BY active_sessions DESC;
 
 -- Locked accounts
 SELECT email, locked_until, failed_login_attempts
-FROM auth_users 
+FROM auth_users
 WHERE locked_until > NOW();
 ```
 
@@ -363,7 +396,7 @@ WHERE locked_until > NOW();
    ```bash
    # Check database is running
    sudo systemctl status postgresql
-   
+
    # Test connection
    psql -h localhost -U karen_user -d ai_karen
    ```
@@ -372,7 +405,7 @@ WHERE locked_until > NOW();
    ```bash
    # Check Redis is running
    sudo systemctl status redis-server
-   
+
    # Test connection
    redis-cli ping
    ```
