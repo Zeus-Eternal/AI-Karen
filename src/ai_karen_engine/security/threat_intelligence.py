@@ -5,17 +5,15 @@ This module provides comprehensive threat intelligence capabilities including
 IP reputation checking, threat indicator matching, and external threat feed integration.
 """
 
-import asyncio
-import hashlib
 import json
 import logging
 import time
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from ipaddress import AddressValueError, ip_address, ip_network
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 
@@ -175,8 +173,15 @@ class ThreatFeedManager:
         self.feed_cache = TTLCache(maxsize=10000, ttl=3600)  # 1 hour cache
         self.rate_limits: Dict[str, List[float]] = defaultdict(list)
 
+    async def close(self) -> None:
+        """Close the underlying aiohttp session if it exists."""
+        if self.session and not getattr(self.session, "closed", False):
+            await self.session.close()
+        self.session = None
+
     async def __aenter__(self):
         """Async context manager entry."""
+        await self.close()
         self.session = aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=30),
             headers={"User-Agent": "AI-Karen-ThreatIntel/1.0"},
@@ -185,8 +190,7 @@ class ThreatFeedManager:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
-        if self.session:
-            await self.session.close()
+        await self.close()
 
     async def query_abuse_ipdb(self, ip: str) -> Optional[Dict[str, Any]]:
         """Query AbuseIPDB for IP reputation."""
