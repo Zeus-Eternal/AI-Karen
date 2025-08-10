@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { EnhancedChatInterface } from './EnhancedChatInterface';
+import ModernChatInterface from './ModernChatInterface';
 import { AppProviders } from '@/contexts/AppProviders';
 
 /**
@@ -12,11 +12,7 @@ export const ChatExample: React.FC = () => {
   return (
     <AppProviders>
       <div className="h-screen w-full">
-        <EnhancedChatInterface 
-          defaultTab="chat"
-          showTabs={true}
-          className="h-full"
-        />
+        <ModernChatInterface />
       </div>
     </AppProviders>
   );

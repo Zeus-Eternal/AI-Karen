@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from '@/components/ui/separator';
 import NotificationsSection from '@/components/sidebar/NotificationsSection';
-import ChatInterface from '@/components/chat/ChatInterface';
+import ModernChatInterface from '@/components/chat/ModernChatInterface';
 import Dashboard from '@/components/dashboard/Dashboard';
 import { webUIConfig } from '@/lib/config';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -219,7 +219,7 @@ function AuthenticatedHomePage() {
 
           <SidebarInset className="flex-1 flex flex-col min-h-0">
             <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6 overflow-y-auto">
-              {activeMainView === 'chat' && <ChatInterface />}
+              {activeMainView === 'chat' && <ModernChatInterface />}
               {activeMainView === 'dashboard' && <Dashboard />}
               {activeMainView === 'settings' && <SettingsDialogComponent />}
               {activeMainView === 'pluginDatabaseConnector' && <DatabaseConnectorPluginPage />}

@@ -90,11 +90,18 @@ class WebUIMemoryQuery(BaseModel):
     
     def to_memory_query(self) -> MemoryQuery:
         """Convert to base MemoryQuery for compatibility."""
+        # Build metadata filter to include user_id, session_id, and tags
+        metadata_filter = {}
+        if self.user_id:
+            metadata_filter["user_id"] = self.user_id
+        if self.session_id:
+            metadata_filter["session_id"] = self.session_id
+        if self.tags:
+            metadata_filter["tags"] = self.tags
+            
         return MemoryQuery(
             text=self.text,
-            user_id=self.user_id,
-            session_id=self.session_id,
-            tags=self.tags,
+            metadata_filter=metadata_filter,
             time_range=self.time_range,
             top_k=self.top_k,
             similarity_threshold=self.similarity_threshold,
@@ -429,15 +436,21 @@ class WebUIMemoryService:
             if metadata:
                 web_ui_metadata.update(metadata)
             
-            # Store using base manager
+            # Store using base manager with correct parameters
+            # Include user_id, session_id, tags, and ttl_hours in metadata
+            web_ui_metadata.update({
+                "user_id": user_id,
+                "session_id": session_id,
+                "tags": tags or [],
+                "ttl_hours": ttl_hours
+            })
+            
             memory_id = await self.base_manager.store_memory(
                 tenant_id=tenant_id,
                 content=content,
-                user_id=user_id,
-                session_id=session_id,
-                metadata=web_ui_metadata,
-                tags=tags,
-                ttl_hours=ttl_hours
+                scope=f"user:{user_id}",  # Use user_id as scope
+                kind=memory_type.value,   # Use memory_type as kind
+                metadata=web_ui_metadata
             )
             
             # Update database with web UI specific fields

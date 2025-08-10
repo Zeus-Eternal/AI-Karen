@@ -109,7 +109,7 @@ class HealthCheckable(Protocol):
 class Configurable(Protocol):
     """Protocol for components that support configuration updates."""
 
-    async def update_config(self, config: Dict[str, Any]) -> bool:
+    async def update_config(self, config: IntelligentAuthConfig) -> bool:
         """Update component configuration."""
         ...
 

@@ -239,11 +239,13 @@ class ConversationManager:
                 await self.memory_manager.store_memory(
                     tenant_id=tenant_id,
                     content=initial_message,
-                    user_id=user_id,
-                    session_id=conversation_id,
+                    scope=f"user:{user_id}",
+                    kind="conversation_start",
                     metadata={
                         "type": "conversation_start",
                         "conversation_id": conversation_id,
+                        "user_id": user_id,
+                        "session_id": conversation_id,
                     },
                 )
 
@@ -427,12 +429,14 @@ class ConversationManager:
                 await self.memory_manager.store_memory(
                     tenant_id=tenant_id,
                     content=content,
-                    user_id=user_id_for_memory,
-                    session_id=conversation_id,
+                    scope=f"user:{user_id_for_memory}",
+                    kind="user_message",
                     metadata={
                         "type": "user_message",
                         "conversation_id": conversation_id,
                         "message_id": message.id,
+                        "user_id": str(user_id_for_memory),
+                        "session_id": conversation_id,
                     },
                 )
 

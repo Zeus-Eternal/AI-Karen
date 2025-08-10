@@ -1,8 +1,14 @@
-// Export existing components
-export { default as ChatInterface } from './ChatInterface';
+// Export modern AG-UI + CopilotKit interface as default
+export { default as ChatInterface } from './ModernChatInterface';
+export { default as ModernChatInterface } from './ModernChatInterface';
+
+// Export legacy interface for backward compatibility (deprecated)
+export { default as LegacyChatInterface } from './ChatInterface';
+
+// Export supporting components
 export { MessageBubble } from './MessageBubble';
 
-// Export new AG-UI enhanced components
+// Export AG-UI components
 export { ConversationGrid } from './ConversationGrid';
 export type { ConversationRow } from './ConversationGrid';
 
