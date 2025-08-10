@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: ai-karen
-Version: 0.1.0
+Version: 0.4.5
 Summary: Kari AI modular engine
 Author: Kari AI Team
 License: Mozilla Public License Version 2.0
@@ -416,6 +416,27 @@ AI-Karen is a comprehensive, production-ready AI platform designed for enterpris
 
 ---
 
+## Authentication Configuration
+
+The authentication service relies on the `AuthConfig` class for all
+runtime settings. Configuration can be provided in environment-specific
+YAML or JSON files:
+
+```python
+from ai_karen_engine.auth.config import AuthConfig
+
+# Load from a specific file and environment
+config = AuthConfig.from_file("config/auth_config.yaml", "development")
+
+# Or discover the file in the default ``config/`` directory
+config = AuthConfig.from_environment("production")
+```
+
+Example configuration files are provided in `config/auth_config.yaml`
+and `config/auth_config.json`.
+
+---
+
 ## Architecture
 
 ### System Components
@@ -443,7 +464,7 @@ AI-Karen is a comprehensive, production-ready AI platform designed for enterpris
 │                    Database Layer                               │
 ├─────────────┬─────────────┬─────────────┬─────────────┬─────────┤
 │ PostgreSQL  │   Redis     │   Milvus    │ Elasticsearch│ DuckDB  │
-│ Port: 5432  │ Port: 6379  │Port: 19530  │ Port: 9200   │ Local   │
+│ Port: 5433  │ Port: 6379  │Port: 19530  │ Port: 9200   │ Local   │
 │ (Metadata)  │ (Cache)     │ (Vectors)   │ (Search)     │(Analytics)│
 └─────────────┴─────────────┴─────────────┴─────────────┴─────────┘
 ```
@@ -474,6 +495,10 @@ AI-Karen is a comprehensive, production-ready AI platform designed for enterpris
 git clone <repository-url>
 cd AI-Karen
 
+# Configure environment variables
+cp .env.example .env
+# Edit .env and set required values (see [docs/environment-variables.md](docs/environment-variables.md))
+
 # Install Python dependencies
 ./scripts/install.sh
 
@@ -493,10 +518,11 @@ docker compose up -d postgres redis elasticsearch milvus
 
 ### 3. Initialize Databases
 
+The authentication service automatically initializes its PostgreSQL schema on
+startup. For other components, run:
+
 ```bash
 
-# Initialize PostgreSQL schema
-docker compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/001_create_tables.sql
 # Create memory_entries table
 docker compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/004_create_memory_entries_table.sql
 
@@ -511,7 +537,7 @@ curl -X PUT "http://localhost:9200/ai_karen_index"
 
 ```bash
 # Start FastAPI server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:create_app --factory --reload --host 0.0.0.0 --port 8000
 
 # Verify API is running
 curl http://localhost:8000/health
@@ -527,10 +553,9 @@ npm run dev
 # Access at http://localhost:9002
 ```
 
-Default demo accounts are available:
+Default demo account is available:
 
 * **Admin:** `admin@kari.ai` / `password123`
-* **User:** `user@kari.ai` / `password123`
 
 #### Desktop UI (Tauri)
 ```bash
@@ -573,13 +598,12 @@ PYTHONPATH=src python demo_analytics_dashboard.py
 
 ### Default Demo Credentials
 
-Use these accounts for testing the web or Streamlit UI:
+Use this account for testing the web or Streamlit UI:
 
 ```
 Admin: admin@kari.ai / password123
-User:  user@kari.ai / password123
 ```
-Change these demo passwords after your first login.
+Change the demo password after your first login.
 
 ---
 
@@ -600,7 +624,7 @@ export POSTGRES_USER=karen_user
 export POSTGRES_PASSWORD=karen_secure_pass_change_me
 export POSTGRES_DB=ai_karen
 export POSTGRES_HOST=postgres  # use 'postgres' when running via Docker
-export POSTGRES_PORT=5432
+export POSTGRES_PORT=5433  # change if port 5432 is busy
 export REDIS_URL=redis://localhost:6379/0
 export ELASTICSEARCH_URL=http://localhost:9200
 export MILVUS_HOST=localhost
@@ -615,9 +639,20 @@ export MILVUS_PORT=19530
 | Type checking | `mypy .` |
 | Linting | `ruff check .` |
 | Run tests | `pytest` |
-| Start API | `uvicorn main:app --reload` |
+| Start API | `uvicorn main:create_app --factory --reload` |
 | Build web UI | `cd ui_launchers/web_ui && npm run build` |
 | Build desktop | `cd ui_launchers/desktop_ui && npm run tauri build` |
+
+### Test Environment Setup
+
+The test suite depends on several third-party libraries, including
+`httpx`, `sqlalchemy`, `asyncpg`, `aiohttp`, `psutil`,
+`prometheus_client`, and `bcrypt`. Install all test dependencies
+before running `pytest`:
+
+```bash
+pip install -r requirements.txt
+```
 
 ### Demo Scripts
 
@@ -694,7 +729,7 @@ helm install ai-karen ./charts/kari/ \
 | `POSTGRES_PASSWORD` | PostgreSQL password | `karen_secure_pass_change_me` |
 | `POSTGRES_DB` | PostgreSQL database | `ai_karen` |
 | `POSTGRES_HOST` | PostgreSQL host | `postgres` |
-| `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `POSTGRES_PORT` | PostgreSQL port | `5433` |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `ELASTICSEARCH_URL` | Elasticsearch URL | `http://localhost:9200` |
 | `MILVUS_HOST` | Milvus host | `localhost` |
@@ -964,11 +999,14 @@ See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt
 
 ### Component Documentation
 - [Web UI Documentation](ui_launchers/web_ui/README.md) - Next.js web interface
-- [Desktop UI Documentation](ui_launchers/desktop_ui/README.md) - Tauri desktop application  
+- [Desktop UI Documentation](ui_launchers/desktop_ui/README.md) - Tauri desktop application
 - [Streamlit UI Documentation](ui_launchers/streamlit_ui/README.md) - Modern Streamlit interface
 - [Database Documentation](docker/database/README.md) - Multi-database setup
 - [Plugin Documentation](plugin_marketplace/README.md) - Plugin development guide
 - [Extension Documentation](extensions/README.md) - Extension system overview
+- [Auth Service](docs/auth_service.md) - Core authentication service overview
+- [Auth Service Deployment Guide](docs/auth_service_deployment.md) - Environment setup and configuration loading
+- [Auth Service Migration Guide](docs/auth_service_migration.md) - Removal of legacy security modules
 
 ### Architecture Guides
 - [API Reference](docs/api_reference.md) - Complete API documentation
