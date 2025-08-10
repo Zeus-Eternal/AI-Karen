@@ -9,7 +9,7 @@ single entry point for all authentication operations.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from .config import AuthConfig
@@ -153,7 +153,7 @@ class AuthService:
             SecurityError: Blocked by security measures
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             # Step 1: Security layer pre-checks
@@ -171,7 +171,7 @@ class AuthService:
                     email=email,
                     ip_address=ip_address,
                     user_agent=user_agent,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(timezone.utc),
                     device_fingerprint=device_fingerprint,
                     geolocation=geolocation,
                     session_context=request_context,
@@ -253,7 +253,9 @@ class AuthService:
             )
 
             # Record performance metric
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_performance_metric(
                 "authenticate_user", processing_time, True
             )
@@ -289,7 +291,9 @@ class AuthService:
             )
 
             # Record performance metric for failed attempt
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_performance_metric(
                 "authenticate_user", processing_time, False
             )
@@ -320,7 +324,9 @@ class AuthService:
             )
 
             # Record performance metric for system error
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_performance_metric(
                 "authenticate_user", processing_time, False
             )
@@ -387,7 +393,7 @@ class AuthService:
             SecurityError: Session creation blocked by security measures
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.SESSION_CREATED,
             success=False,
@@ -398,7 +404,7 @@ class AuthService:
             details={"stage": "start"},
         )
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             session_data = await self.core_auth.create_session(
@@ -445,7 +451,9 @@ class AuthService:
             )
 
             # Record performance metric
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_performance_metric(
                 "create_session", processing_time, True
             )
@@ -453,7 +461,9 @@ class AuthService:
             return session_data
 
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_auth_event(
                 event_type=AuthEventType.SESSION_CREATED,
                 success=False,
@@ -498,7 +508,7 @@ class AuthService:
             SecurityError: Session validation failed security checks
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.SESSION_VALIDATED,
             success=False,
@@ -523,7 +533,7 @@ class AuthService:
                 )
                 await self._record_performance_metric(
                     "validate_session",
-                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                     False,
                 )
                 return None
@@ -571,7 +581,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "validate_session",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 True,
             )
             return user_data
@@ -588,7 +598,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "validate_session",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             raise
@@ -604,7 +614,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "validate_session",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             self.logger.error(f"Session validation error: {e}")
@@ -625,7 +635,7 @@ class AuthService:
             True if session was invalidated, False otherwise
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.LOGOUT,
             success=False,
@@ -633,7 +643,7 @@ class AuthService:
             details={"stage": "start", "reason": reason},
         )
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             result = await self.core_auth.invalidate_session(
@@ -669,7 +679,9 @@ class AuthService:
                 details={"reason": reason},
             )
 
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_performance_metric(
                 "invalidate_session", processing_time, result
             )
@@ -677,7 +689,9 @@ class AuthService:
             return result
 
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_auth_event(
                 event_type=AuthEventType.SESSION_INVALIDATED,
                 success=False,
@@ -725,7 +739,7 @@ class AuthService:
             RateLimitExceededError: Too many user creation attempts
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             if self.security_layer:
@@ -753,13 +767,17 @@ class AuthService:
                 user_agent=user_agent,
             )
 
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_performance_metric("create_user", processing_time, True)
 
             return user_data
 
         except (UserAlreadyExistsError, RateLimitExceededError) as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_auth_event(
                 event_type=AuthEventType.USER_CREATED,
                 success=False,
@@ -802,7 +820,7 @@ class AuthService:
             PasswordValidationError: New password doesn't meet requirements
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             result = await self.core_auth.update_user_password(
@@ -825,20 +843,24 @@ class AuthService:
                 user_agent=user_agent,
             )
 
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             await self._record_performance_metric(
                 "update_user_password", processing_time, result
             )
 
             await self._record_performance_metric(
                 "update_user_password",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 result,
             )
             return result
 
         except Exception as e:
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             user_data = await self.core_auth.get_user_by_id(user_id)
             await self._record_auth_event(
                 event_type=AuthEventType.PASSWORD_CHANGED,
@@ -881,7 +903,7 @@ class AuthService:
             True if preferences were updated successfully
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.USER_UPDATED,
             success=False,
@@ -895,7 +917,7 @@ class AuthService:
                 raise UserNotFoundError(user_id=user_id)
 
             user_data.preferences.update(preferences)
-            user_data.updated_at = datetime.utcnow()
+            user_data.updated_at = datetime.now(timezone.utc)
 
             await self.core_auth.db_client.update_user(user_data)
 
@@ -909,7 +931,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "update_user_preferences",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 True,
             )
             return True
@@ -925,7 +947,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "update_user_preferences",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             self.logger.error(f"Failed to update user preferences: {e}")
@@ -947,7 +969,7 @@ class AuthService:
             Password reset token if user exists, None otherwise
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.PASSWORD_RESET_REQUESTED,
             success=False,
@@ -971,7 +993,7 @@ class AuthService:
                 )
                 await self._record_performance_metric(
                     "create_password_reset_token",
-                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                     False,
                 )
                 return None
@@ -1002,7 +1024,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "create_password_reset_token",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 True,
             )
             return reset_token
@@ -1019,7 +1041,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "create_password_reset_token",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             raise
@@ -1035,7 +1057,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "create_password_reset_token",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             self.logger.error(f"Failed to create password reset token: {e}")
@@ -1063,7 +1085,7 @@ class AuthService:
             True if password was reset successfully
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.PASSWORD_RESET_COMPLETED,
             success=False,
@@ -1087,7 +1109,7 @@ class AuthService:
                 )
                 await self._record_performance_metric(
                     "verify_password_reset_token",
-                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                     False,
                 )
                 return False
@@ -1112,7 +1134,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "verify_password_reset_token",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 True,
             )
             return True
@@ -1128,7 +1150,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "verify_password_reset_token",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             self.logger.error(f"Password reset verification failed: {e}")
@@ -1150,7 +1172,7 @@ class AuthService:
             Email verification token if user exists, None otherwise
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.USER_UPDATED,
             success=False,
@@ -1179,7 +1201,7 @@ class AuthService:
                 )
                 await self._record_performance_metric(
                     "create_email_verification_token",
-                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                     False,
                 )
                 return None
@@ -1211,7 +1233,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "create_email_verification_token",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 True,
             )
             return verification_token
@@ -1229,7 +1251,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "create_email_verification_token",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             raise
@@ -1246,7 +1268,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "create_email_verification_token",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             self.logger.error(f"Failed to create email verification token: {e}")
@@ -1268,7 +1290,7 @@ class AuthService:
             True if email was verified successfully
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.USER_UPDATED,
             success=False,
@@ -1293,13 +1315,13 @@ class AuthService:
                 )
                 await self._record_performance_metric(
                     "verify_email_address",
-                    (datetime.utcnow() - start_time).total_seconds() * 1000,
+                    (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                     False,
                 )
                 return False
 
             user_data.is_verified = True
-            user_data.updated_at = datetime.utcnow()
+            user_data.updated_at = datetime.now(timezone.utc)
             await self.core_auth.db_client.update_user(user_data)
 
             await self._record_auth_event(
@@ -1315,7 +1337,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "verify_email_address",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 True,
             )
             return True
@@ -1332,7 +1354,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "verify_email_address",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             self.logger.error(f"Email verification failed: {e}")
@@ -1362,7 +1384,7 @@ class AuthService:
             True if profile was updated successfully
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.PROFILE_UPDATED,
             success=False,
@@ -1386,7 +1408,7 @@ class AuthService:
                 user_data.preferences.update(preferences)
                 updates["preferences"] = list(preferences.keys())
 
-            user_data.updated_at = datetime.utcnow()
+            user_data.updated_at = datetime.now(timezone.utc)
             await self.core_auth.db_client.update_user(user_data)
 
             await self._record_auth_event(
@@ -1402,7 +1424,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "update_user_profile",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 True,
             )
             return True
@@ -1419,7 +1441,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "update_user_profile",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             self.logger.error(f"Failed to update user profile: {e}")
@@ -1447,7 +1469,7 @@ class AuthService:
             True if user was deactivated successfully
         """
         await self.initialize()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await self._record_auth_event(
             event_type=AuthEventType.USER_DEACTIVATED,
             success=False,
@@ -1463,7 +1485,7 @@ class AuthService:
                 raise UserNotFoundError(user_id=user_id)
 
             user_data.is_active = False
-            user_data.updated_at = datetime.utcnow()
+            user_data.updated_at = datetime.now(timezone.utc)
 
             await self.core_auth.db_client.update_user(user_data)
 
@@ -1480,7 +1502,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "deactivate_user",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 True,
             )
             return True
@@ -1498,7 +1520,7 @@ class AuthService:
             )
             await self._record_performance_metric(
                 "deactivate_user",
-                (datetime.utcnow() - start_time).total_seconds() * 1000,
+                (datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
                 False,
             )
             self.logger.error(f"Failed to deactivate user: {e}")
@@ -1565,7 +1587,7 @@ class AuthService:
         """
         health = {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "components": {},
         }
 
@@ -1641,7 +1663,9 @@ class AuthService:
         # Calculate processing time if start_time provided
         processing_time_ms = 0.0
         if start_time:
-            processing_time_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time_ms = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
 
         # Create auth event
         event = AuthEvent(

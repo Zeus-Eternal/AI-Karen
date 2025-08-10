@@ -11,7 +11,7 @@ import json
 import logging
 import sqlite3
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -49,7 +49,7 @@ class AuthDataMigrator:
             Migration summary with statistics and any errors
         """
         migration_summary = {
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
             "dry_run": dry_run,
             "source_databases": source_databases,
             "migrated_users": 0,
@@ -85,7 +85,7 @@ class AuthDataMigrator:
                     migration_summary["errors"].append(error_msg)
                     logger.error(error_msg)
 
-            migration_summary["completed_at"] = datetime.utcnow().isoformat()
+            migration_summary["completed_at"] = datetime.now(timezone.utc).isoformat()
 
             if not dry_run:
                 self._log_migration(migration_summary)
@@ -94,7 +94,7 @@ class AuthDataMigrator:
 
         except Exception as e:
             migration_summary["errors"].append(f"Migration failed: {e}")
-            migration_summary["completed_at"] = datetime.utcnow().isoformat()
+            migration_summary["completed_at"] = datetime.now(timezone.utc).isoformat()
             raise MigrationError(f"Migration failed: {e}")
 
     def _migrate_single_database(self, db_path: str, dry_run: bool) -> Dict[str, int]:
@@ -194,8 +194,16 @@ class AuthDataMigrator:
                         safe_get(user_row, "preferences", "{}"),
                         safe_get(user_row, "is_verified", True),
                         safe_get(user_row, "is_active", True),
-                        safe_get(user_row, "created_at", datetime.utcnow().isoformat()),
-                        safe_get(user_row, "updated_at", datetime.utcnow().isoformat()),
+                        safe_get(
+                            user_row,
+                            "created_at",
+                            datetime.now(timezone.utc).isoformat(),
+                        ),
+                        safe_get(
+                            user_row,
+                            "updated_at",
+                            datetime.now(timezone.utc).isoformat(),
+                        ),
                         safe_get(user_row, "last_login_at"),
                         safe_get(user_row, "failed_login_attempts", 0),
                         safe_get(user_row, "locked_until"),
@@ -214,8 +222,8 @@ class AuthDataMigrator:
                         (
                             user_row["user_id"],
                             user_row["password_hash"],
-                            datetime.utcnow().isoformat(),
-                            datetime.utcnow().isoformat(),
+                            datetime.now(timezone.utc).isoformat(),
+                            datetime.now(timezone.utc).isoformat(),
                         ),
                     )
 
@@ -292,8 +300,16 @@ class AuthDataMigrator:
                         preferences,
                         safe_get(user_row, "is_verified", True),
                         safe_get(user_row, "is_active", True),
-                        safe_get(user_row, "created_at", datetime.utcnow().isoformat()),
-                        safe_get(user_row, "updated_at", datetime.utcnow().isoformat()),
+                        safe_get(
+                            user_row,
+                            "created_at",
+                            datetime.now(timezone.utc).isoformat(),
+                        ),
+                        safe_get(
+                            user_row,
+                            "updated_at",
+                            datetime.now(timezone.utc).isoformat(),
+                        ),
                         safe_get(user_row, "last_login"),
                     ),
                 )
@@ -308,8 +324,8 @@ class AuthDataMigrator:
                         (
                             user_id,
                             user_row["password_hash"],
-                            datetime.utcnow().isoformat(),
-                            datetime.utcnow().isoformat(),
+                            datetime.now(timezone.utc).isoformat(),
+                            datetime.now(timezone.utc).isoformat(),
                         ),
                     )
 
@@ -381,10 +397,14 @@ class AuthDataMigrator:
                         safe_get(session_row, "refresh_token", ""),
                         safe_get(session_row, "expires_in", 3600),
                         safe_get(
-                            session_row, "created_at", datetime.utcnow().isoformat()
+                            session_row,
+                            "created_at",
+                            datetime.now(timezone.utc).isoformat(),
                         ),
                         safe_get(
-                            session_row, "last_accessed", datetime.utcnow().isoformat()
+                            session_row,
+                            "last_accessed",
+                            datetime.now(timezone.utc).isoformat(),
                         ),
                         safe_get(session_row, "ip_address", "unknown"),
                         safe_get(session_row, "user_agent", ""),
@@ -463,7 +483,7 @@ class AuthDataMigrator:
                     try:
                         expires_at = datetime.fromisoformat(session_row["expires_at"])
                         expires_in = int(
-                            (expires_at - datetime.utcnow()).total_seconds()
+                            (expires_at - datetime.now(timezone.utc)).total_seconds()
                         )
                         if expires_in <= 0:
                             continue  # Skip expired sessions
@@ -485,10 +505,14 @@ class AuthDataMigrator:
                         safe_get(session_row, "refresh_token", ""),
                         expires_in,
                         safe_get(
-                            session_row, "created_at", datetime.utcnow().isoformat()
+                            session_row,
+                            "created_at",
+                            datetime.now(timezone.utc).isoformat(),
                         ),
                         safe_get(
-                            session_row, "last_accessed", datetime.utcnow().isoformat()
+                            session_row,
+                            "last_accessed",
+                            datetime.now(timezone.utc).isoformat(),
                         ),
                         safe_get(session_row, "ip_address", "unknown"),
                         safe_get(session_row, "user_agent", ""),
@@ -508,7 +532,7 @@ class AuthDataMigrator:
         """Migrate events from auth_events table."""
         cursor = source_conn.cursor()
         # Only migrate recent events (last 30 days) to avoid overwhelming the target
-        cutoff_date = (datetime.utcnow() - timedelta(days=30)).isoformat()
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
         cursor.execute(
             "SELECT * FROM auth_events WHERE timestamp > ? ORDER BY timestamp DESC LIMIT 10000",
             (cutoff_date,),
@@ -588,7 +612,7 @@ class AuthDataMigrator:
         """Migrate events from legacy audit log table format."""
         cursor = source_conn.cursor()
         # Only migrate recent events (last 30 days)
-        cutoff_date = (datetime.utcnow() - timedelta(days=30)).isoformat()
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
         cursor.execute(
             f"SELECT * FROM {table_name} WHERE created_at > ? ORDER BY created_at DESC LIMIT 10000",
             (cutoff_date,),
@@ -625,7 +649,7 @@ class AuthDataMigrator:
                 # Convert legacy audit log to auth event format
                 event_type = safe_get(event_row, "action", "unknown")
                 timestamp = safe_get(
-                    event_row, "created_at", datetime.utcnow().isoformat()
+                    event_row, "created_at", datetime.now(timezone.utc).isoformat()
                 )
 
                 # Migrate event data
@@ -703,20 +727,20 @@ class AuthDataMigrator:
             cursor = target_conn.cursor()
 
             cutoff_date = (
-                datetime.utcnow() - timedelta(days=older_than_days)
+                datetime.now(timezone.utc) - timedelta(days=older_than_days)
             ).isoformat()
 
             # Clean up expired password reset tokens
             cursor.execute(
                 "DELETE FROM auth_password_reset_tokens WHERE expires_at < ?",
-                (datetime.utcnow().isoformat(),),
+                (datetime.now(timezone.utc).isoformat(),),
             )
             cleanup_summary["expired_tokens"] += cursor.rowcount
 
             # Clean up expired email verification tokens
             cursor.execute(
                 "DELETE FROM auth_email_verification_tokens WHERE expires_at < ?",
-                (datetime.utcnow().isoformat(),),
+                (datetime.now(timezone.utc).isoformat(),),
             )
             cleanup_summary["expired_tokens"] += cursor.rowcount
 
@@ -754,7 +778,7 @@ class AuthDataMigrator:
             Validation report with any issues found
         """
         validation_report = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "issues": [],
             "warnings": [],
             "statistics": {},

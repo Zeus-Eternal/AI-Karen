@@ -10,7 +10,7 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .config import AuthConfig
@@ -720,7 +720,7 @@ class SessionValidator:
         """Validate session activity patterns."""
         result = {"flags": [], "risk_score": 0.0, "warnings": []}
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Check session age
         session_age = now - session.created_at

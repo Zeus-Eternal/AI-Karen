@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from .config import AuthConfig
@@ -57,7 +57,7 @@ class BehavioralPattern:
         default_factory=dict
     )  # day_of_week -> count
     average_session_duration: float = 0.0
-    last_updated: datetime = field(default_factory=datetime.utcnow)
+    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -132,7 +132,7 @@ class AnomalyDetector:
         self, attempt: LoginAttempt, user_pattern: Optional[BehavioralPattern] = None
     ) -> AnomalyResult:
         """Detect anomalies in a login attempt."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         anomaly_types = []
         anomaly_score = 0.0
         details = {}
@@ -171,7 +171,9 @@ class AnomalyDetector:
                 1.0, anomaly_score * len(anomaly_types) / 4.0
             )  # Normalize by max possible anomaly types
 
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
             details["processing_time_ms"] = processing_time
 
             return AnomalyResult(
@@ -438,7 +440,7 @@ class BehavioralAnalyzer:
                 devices.append(event.details["device_fingerprint"])
         pattern.typical_devices = list(set(devices))
 
-        pattern.last_updated = datetime.utcnow()
+        pattern.last_updated = datetime.now(timezone.utc)
         return pattern
 
     def _analyze_time_pattern(
@@ -782,7 +784,7 @@ class IntelligenceEngine:
         historical_events: Optional[List[AuthEvent]] = None,
     ) -> IntelligenceResult:
         """Analyze a login attempt and return intelligence result."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             await self.initialize()
@@ -818,7 +820,9 @@ class IntelligenceEngine:
             )
 
             # Calculate processing time
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
 
             result = IntelligenceResult(
                 risk_score=risk_score,
@@ -840,7 +844,9 @@ class IntelligenceEngine:
 
         except Exception as e:
             self.logger.error(f"Error in intelligence analysis: {e}")
-            processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            processing_time = (
+                datetime.now(timezone.utc) - start_time
+            ).total_seconds() * 1000
 
             # Return safe default result on error
             return IntelligenceResult(
@@ -866,7 +872,7 @@ class IntelligenceEngine:
                 email=user_data.email,
                 ip_address=context.get("ip_address", "unknown"),
                 user_agent=context.get("user_agent", ""),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 device_fingerprint=context.get("device_fingerprint"),
                 geolocation=context.get("geolocation"),
                 session_context=context.get("session_context"),

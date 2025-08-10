@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
@@ -272,8 +272,8 @@ class OptimizedAuthDatabaseClient:
                     {
                         "user_id": user_result.user_id,
                         "password_hash": password_hash,
-                        "created_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow(),
+                        "created_at": datetime.now(timezone.utc),
+                        "updated_at": datetime.now(timezone.utc),
                     },
                 )
 
@@ -651,7 +651,7 @@ class OptimizedAuthDatabaseClient:
                         "max_risk_score": float(session_stats.max_risk_score or 0),
                     },
                     "period_hours": hours,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
 
         except Exception as e:
