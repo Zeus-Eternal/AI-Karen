@@ -1,6 +1,6 @@
 /**
  * Enhanced Authentication Types and Interfaces
- * 
+ *
  * This module exports all enhanced authentication types, interfaces, and utilities
  * for the comprehensive login feedback system.
  */
@@ -92,10 +92,10 @@ export const DEFAULT_AUTH_SYSTEM_CONFIG: AuthSystemConfig = {
 /**
  * Authentication event types for logging and analytics
  */
-export type AuthEventType = 
+export type AuthEventType =
   | 'login_attempt'
   | 'login_success'
-  | 'login_failure'
+  | 'login_failed'
   | 'validation_error'
   | 'network_error'
   | 'security_block'
@@ -159,21 +159,21 @@ export interface EnhancedAuthService {
   login(credentials: LoginCredentials): Promise<AuthServiceResponse<LoginResponse>>;
   logout(): Promise<void>;
   refreshToken(): Promise<AuthServiceResponse<LoginResponse>>;
-  
+
   // Validation methods
   validateCredentials(credentials: LoginCredentials): Promise<ValidationErrors>;
   validateEmail(email: string): Promise<string | null>;
   validatePassword(password: string): Promise<string | null>;
-  
+
   // Error handling methods
   parseError(error: any): AuthenticationError;
   classifyError(error: AuthenticationError): ErrorClassification;
   shouldRetry(error: AuthenticationError, attemptCount: number): boolean;
-  
+
   // Security methods
   checkSecurityFlags(credentials: LoginCredentials): Promise<SecurityFlags>;
   handleRateLimit(error: AuthenticationError): Promise<number>;
-  
+
   // Logging and monitoring
   logEvent(event: AuthEvent): void;
   getMetrics(): AuthMetrics;
@@ -190,7 +190,7 @@ export interface UseAuthenticationHook {
   feedbackMessage: FeedbackMessage | null;
   validationErrors: ValidationErrors;
   isSubmitting: boolean;
-  
+
   // Actions
   login: (credentials: LoginCredentials) => Promise<void>;
   validateField: (field: FormFieldType, value: string) => Promise<string | null>;
@@ -198,7 +198,7 @@ export interface UseAuthenticationHook {
   clearFeedback: () => void;
   setFeedback: (message: FeedbackMessage) => void;
   resetForm: () => void;
-  
+
   // Utilities
   canSubmit: boolean;
   hasErrors: boolean;
@@ -237,15 +237,15 @@ export const AuthTypeGuards = {
   isUser: (value: any): value is User => {
     return value && typeof value === 'object' && 'user_id' in value && 'email' in value;
   },
-  
+
   isAuthenticationError: (value: any): value is AuthenticationError => {
     return value && typeof value === 'object' && 'type' in value && 'message' in value;
   },
-  
+
   isFeedbackMessage: (value: any): value is FeedbackMessage => {
     return value && typeof value === 'object' && 'type' in value && 'title' in value && 'message' in value;
   },
-  
+
   isValidationErrors: (value: any): value is ValidationErrors => {
     return value && typeof value === 'object';
   }
@@ -259,23 +259,23 @@ export const AUTH_CONSTANTS = {
   DEFAULT_REQUEST_TIMEOUT: 30000, // 30 seconds
   DEFAULT_RETRY_DELAY: 1000, // 1 second
   DEFAULT_FEEDBACK_DURATION: 5000, // 5 seconds
-  
+
   // Limits
   MAX_RETRY_ATTEMPTS: 3,
   MAX_VALIDATION_ERRORS: 10,
   MAX_SESSION_DURATION: 24 * 60 * 60 * 1000, // 24 hours
-  
+
   // Validation
   MIN_PASSWORD_LENGTH: 8,
   MAX_PASSWORD_LENGTH: 128,
   MAX_EMAIL_LENGTH: 254,
   TOTP_CODE_LENGTH: 6,
-  
+
   // UI
   DEBOUNCE_DELAY: 300,
   ANIMATION_DURATION: 300,
   LOADING_SPINNER_SIZE: 20,
-  
+
   // Storage keys
   STORAGE_KEYS: {
     REMEMBER_EMAIL: 'auth_remember_email',
