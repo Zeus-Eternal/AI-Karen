@@ -41,6 +41,7 @@ fakeredis
 psycopg
 psycopg2-binary
 asyncpg
+aiohttp
 sqlalchemy
 alembic
 chardet

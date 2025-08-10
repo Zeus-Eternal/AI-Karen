@@ -259,6 +259,17 @@ export MILVUS_PORT=19530
 | Build web UI | `cd ui_launchers/web_ui && npm run build` |
 | Build desktop | `cd ui_launchers/desktop_ui && npm run tauri build` |
 
+### Test Environment Setup
+
+The test suite depends on several third-party libraries, including
+`httpx`, `sqlalchemy`, `asyncpg`, `aiohttp`, `psutil`,
+`prometheus_client`, and `bcrypt`. Install all test dependencies
+before running `pytest`:
+
+```bash
+pip install -r requirements.txt
+```
+
 ### Demo Scripts
 
 When running the example demo scripts directly from the repository, set
