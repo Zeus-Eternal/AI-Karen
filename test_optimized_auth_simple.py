@@ -109,6 +109,7 @@ async def test_optimized_components():
             tenant_id="test_tenant",
             roles=["user", "tester"],
             preferences={"theme": "dark", "lang": "en"},
+            two_factor_secret="secret",
         )
         
         print(f"✅ UserData created: {user_data.email}")
@@ -118,6 +119,7 @@ async def test_optimized_components():
         
         # Test serialization
         user_dict = user_data.to_dict()
+        assert user_dict.get("two_factor_secret") is None
         user_from_dict = UserData.from_dict(user_dict)
         print(f"✅ Serialization test: {user_from_dict.email == user_data.email}")
         

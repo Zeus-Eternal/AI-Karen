@@ -97,7 +97,12 @@ class UserData:
             if self.locked_until
             else None,
             "two_factor_enabled": self.two_factor_enabled,
-            "two_factor_secret": self.two_factor_secret,
+            # Never expose the raw two-factor secret to prevent accidental
+            # leakage when serializing. For backward compatibility we keep
+            # the key but always mask the value.
+            # Consumers should retrieve the secret via secure channels
+            # rather than serialized representations.
+            "two_factor_secret": None,
         }
 
     @classmethod
