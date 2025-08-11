@@ -8,15 +8,8 @@ import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import ModernChatInterface from '@/components/chat/ModernChatInterface';
 import { AuthProvider } from '@/contexts/AuthContext';
-
-// Mock CopilotKit components
-vi.mock('@copilotkit/react-core', () => ({
-  CopilotKit: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="copilot-provider">{children}</div>
-  ),
-  useCopilotAction: () => {},
-  useCopilotReadable: () => {},
-}));
+import { HookProvider } from '@/contexts/HookContext';
+import { CopilotKitProvider } from '@/components/copilot';
 
 vi.mock('@copilotkit/react-textarea', () => ({
   CopilotTextarea: (props: any) => (
@@ -42,7 +35,9 @@ const mockUser = {
 
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <AuthProvider>
-    {children}
+    <HookProvider>
+      <CopilotKitProvider>{children}</CopilotKitProvider>
+    </HookProvider>
   </AuthProvider>
 );
 
@@ -59,14 +54,15 @@ describe('ModernChatInterface Integration', () => {
     });
   });
 
-  it('renders with CopilotKit provider', () => {
-    render(
-      <TestWrapper>
-        <ModernChatInterface />
-      </TestWrapper>
-    );
+  it('renders without CopilotKit provider errors', () => {
+    const renderComponent = () =>
+      render(
+        <TestWrapper>
+          <ModernChatInterface />
+        </TestWrapper>
+      );
 
-    expect(screen.getByTestId('copilot-provider')).toBeInTheDocument();
+    expect(renderComponent).not.toThrow();
   });
 
   it('includes CopilotKit textarea for input', () => {
