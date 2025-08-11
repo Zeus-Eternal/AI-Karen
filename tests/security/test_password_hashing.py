@@ -29,3 +29,16 @@ def test_password_hashing_algorithms(algorithm):
     hashed = hasher.hash_password(password)
     assert hasher.verify_password(password, hashed)
     assert not hasher.verify_password("wrong", hashed)
+
+
+def test_password_hash_backward_compatibility():
+    bcrypt_hasher = PasswordHasher(rounds=6, algorithm="bcrypt")
+    argon2_hasher = PasswordHasher(rounds=6, algorithm="argon2")
+    password = "StrongPassw0rd!"
+    bcrypt_hash = bcrypt_hasher.hash_password(password)
+    argon2_hash = argon2_hasher.hash_password(password)
+
+    assert argon2_hasher.verify_password(password, bcrypt_hash)
+    assert bcrypt_hasher.verify_password(password, argon2_hash)
+    assert argon2_hasher.needs_rehash(bcrypt_hash)
+    assert bcrypt_hasher.needs_rehash(argon2_hash)
