@@ -23,6 +23,7 @@ test('renders user id and joined roles when roles array provided', async () => {
   expect(screen.getByText('U')).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button'));
   expect(screen.getByText('user123')).toBeInTheDocument();
+    
   expect(screen.getByText('admin, user')).toBeInTheDocument();
 });
 
@@ -48,4 +49,3 @@ test('renders role string when user roles is a string', async () => {
   await userEvent.click(screen.getByRole('button'));
   expect(screen.getByText('admin')).toBeInTheDocument();
 });
-
