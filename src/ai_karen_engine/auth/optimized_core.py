@@ -58,6 +58,7 @@ class OptimizedPasswordHasher:
         self.rounds = rounds
         self.algorithm = algorithm
         self.logger = logging.getLogger(f"{__name__}.OptimizedPasswordHasher")
+        self.argon2_hasher = None
         if algorithm == "argon2":
             if Argon2Hasher is None:
                 raise ImportError(
@@ -71,7 +72,7 @@ class OptimizedPasswordHasher:
             raise ValueError("Password cannot be empty")
 
         if self.algorithm == "argon2":
-            return self.argon2_hasher.hash(password)
+            return self._get_argon2_hasher().hash(password)
 
         salt = bcrypt.gensalt(rounds=self.rounds)
         hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
@@ -82,9 +83,10 @@ class OptimizedPasswordHasher:
         if not password or not hashed:
             return False
 
-        if self.algorithm == "argon2":
+        algorithm = self._detect_algorithm(hashed)
+        if algorithm == "argon2":
             try:
-                return self.argon2_hasher.verify(hashed, password)
+                return self._get_argon2_hasher().verify(hashed, password)
             except VerificationError:
                 return False
 
@@ -108,19 +110,40 @@ class OptimizedPasswordHasher:
 
     def needs_rehash(self, hashed: str) -> bool:
         """Check if password hash needs updating."""
-        if self.algorithm == "argon2":
+        algorithm = self._detect_algorithm(hashed)
+        if algorithm != self.algorithm:
+            return True
+        if algorithm == "argon2":
             try:
-                return self.argon2_hasher.check_needs_rehash(hashed)
+                return self._get_argon2_hasher().check_needs_rehash(hashed)
             except Exception:
                 return False
         try:
             parts = hashed.split("$")
-            if len(parts) >= 3 and parts[1] == "2b":
+            if len(parts) >= 3 and parts[1] in {"2a", "2b", "2y"}:
                 current_rounds = int(parts[2])
                 return current_rounds < self.rounds
         except (ValueError, IndexError):
             pass
         return True
+
+    def _detect_algorithm(self, hashed: str) -> str:
+        """Identify hash algorithm from hash prefix."""
+        if hashed.startswith("$argon2"):
+            return "argon2"
+        if hashed.startswith("$2"):
+            return "bcrypt"
+        return self.algorithm
+
+    def _get_argon2_hasher(self) -> "Argon2Hasher":
+        """Get or initialize Argon2 hasher."""
+        if Argon2Hasher is None:
+            raise ImportError(
+                "argon2-cffi is required for argon2 hashing. Install with: pip install argon2-cffi"
+            )
+        if self.argon2_hasher is None:
+            self.argon2_hasher = Argon2Hasher(time_cost=self.rounds)
+        return self.argon2_hasher
 
 
 class OptimizedCoreAuthenticator:

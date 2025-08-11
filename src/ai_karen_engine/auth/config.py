@@ -20,6 +20,11 @@ try:
 except ImportError:  # pragma: no cover - yaml is optional
     yaml = None
 
+try:
+    import argon2  # type: ignore
+except Exception:  # pragma: no cover - argon2 is optional
+    argon2 = None  # type: ignore
+
 
 def _env_bool(value: Optional[str], default: bool) -> bool:
     """Convert environment string to boolean with a default."""
@@ -861,7 +866,12 @@ class AuthConfig:
         if self.security.password_hash_algorithm == "bcrypt":
             if not (4 <= self.security.password_hash_rounds <= 20):
                 errors.append("Password hash rounds must be between 4 and 20")
-        elif self.security.password_hash_algorithm != "argon2":
+        elif self.security.password_hash_algorithm == "argon2":
+            if self.security.password_hash_rounds <= 0:
+                errors.append("Password hash rounds must be positive")
+            if argon2 is None:
+                errors.append("argon2-cffi must be installed for argon2 hashing")
+        else:
             errors.append("Unsupported password hash algorithm")
 
         # Intelligence validation
