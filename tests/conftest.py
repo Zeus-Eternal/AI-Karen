@@ -20,7 +20,12 @@ pg_mod = importlib.import_module(
 )
 
 sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
-sys.modules.setdefault("numpy", importlib.import_module("tests.stubs.numpy"))
+try:
+    import numpy as _real_numpy  # type: ignore
+
+    sys.modules.setdefault("numpy", _real_numpy)
+except Exception:  # pragma: no cover - only used when numpy isn't installed
+    sys.modules.setdefault("numpy", importlib.import_module("tests.stubs.numpy"))
 sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
 sys.modules.setdefault(
     "cryptography", importlib.import_module("tests.stubs.cryptography")
@@ -31,6 +36,11 @@ sys.modules.setdefault(
     "streamlit_autorefresh",
     importlib.import_module("tests.stubs.streamlit_autorefresh"),
 )
+
+os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "0123456789abcdef0123456789abcdef")
+os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")
+os.environ.setdefault("KARI_JOB_SIGNING_KEY", "test")
+os.environ.setdefault("DUCKDB_PATH", ":memory:")
 
 # Provide fastapi and pydantic stubs before importing project modules
 sys.modules.setdefault(
@@ -75,11 +85,6 @@ except Exception as e:  # pragma: no cover
     raise RuntimeError(
         "FastAPI and Pydantic must be installed for tests. Install with `pip install fastapi pydantic`."
     ) from e
-
-os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "0123456789abcdef0123456789abcdef")
-os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")
-os.environ.setdefault("KARI_JOB_SIGNING_KEY", "test")
-os.environ.setdefault("DUCKDB_PATH", ":memory:")
 
 # Lightweight LLMOrchestrator stub to avoid heavyweight dependencies
 llm_stub = types.ModuleType("ai_karen_engine.llm_orchestrator")

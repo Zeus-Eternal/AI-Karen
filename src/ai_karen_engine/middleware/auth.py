@@ -5,8 +5,13 @@
 try:
     from fastapi import Request
     from fastapi.responses import JSONResponse
+    from fastapi.concurrency import run_in_threadpool
 except Exception:  # pragma: no cover - fallback for tests
     from ai_karen_engine.fastapi_stub import Request, JSONResponse
+
+    async def run_in_threadpool(func, *args, **kwargs):
+        return func(*args, **kwargs)
+
 
 import hashlib
 from datetime import datetime
@@ -44,13 +49,17 @@ async def auth_middleware(request: Request, call_next):
     if api_key:
         try:
             hashed = hashlib.sha256(api_key.encode()).hexdigest()
-            with get_db_session_context() as session:
-                record = session.query(ApiKey).filter_by(hashed_key=hashed).first()
-                if not record or (
-                    record.expires_at and record.expires_at < datetime.utcnow()
-                ):
-                    return JSONResponse({"detail": "Invalid API key"}, status_code=401)
-                allowed_scopes = set(record.scopes or [])
+
+            def fetch_api_key(h):
+                with get_db_session_context() as session:
+                    return session.query(ApiKey).filter_by(hashed_key=h).first()
+
+            record = await run_in_threadpool(fetch_api_key, hashed)
+            if not record or (
+                record.expires_at and record.expires_at < datetime.utcnow()
+            ):
+                return JSONResponse({"detail": "Invalid API key"}, status_code=401)
+            allowed_scopes = set(record.scopes or [])
             if required_scopes and not required_scopes.issubset(allowed_scopes):
                 return JSONResponse({"detail": "Forbidden"}, status_code=403)
             request.state.user = record.user_id
@@ -59,7 +68,9 @@ async def auth_middleware(request: Request, call_next):
             return await call_next(request)
         except Exception:
             # Database unavailable, reject API key authentication
-            return JSONResponse({"detail": "Authentication service unavailable"}, status_code=503)
+            return JSONResponse(
+                {"detail": "Authentication service unavailable"}, status_code=503
+            )
 
     # Initialize auth service if not already done
     if auth_service_instance is None:
@@ -107,14 +118,18 @@ async def auth_middleware(request: Request, call_next):
     allowed_scopes = set()
     if required_scopes:
         try:
-            with get_db_session_context() as session:
-                perms = (
-                    session.query(RolePermission.permission)
-                    .join(Role, Role.role_id == RolePermission.role_id)
-                    .filter(Role.name.in_(roles))
-                    .all()
-                )
-                allowed_scopes = {p[0] for p in perms}
+
+            def fetch_allowed_scopes(role_names):
+                with get_db_session_context() as session:
+                    perms = (
+                        session.query(RolePermission.permission)
+                        .join(Role, Role.role_id == RolePermission.role_id)
+                        .filter(Role.name.in_(role_names))
+                        .all()
+                    )
+                    return {p[0] for p in perms}
+
+            allowed_scopes = await run_in_threadpool(fetch_allowed_scopes, roles)
             if not required_scopes.issubset(allowed_scopes):
                 return JSONResponse({"detail": "Forbidden"}, status_code=403)
         except Exception:
@@ -127,7 +142,10 @@ async def auth_middleware(request: Request, call_next):
                 basic_scopes = {"read", "write", "user"}
                 allowed_scopes = required_scopes.intersection(basic_scopes)
                 if not required_scopes.issubset(allowed_scopes):
-                    return JSONResponse({"detail": "Service unavailable - permission check failed"}, status_code=503)
-    
+                    return JSONResponse(
+                        {"detail": "Service unavailable - permission check failed"},
+                        status_code=503,
+                    )
+
     request.state.scopes = list(allowed_scopes)
     return await call_next(request)
