@@ -13,8 +13,8 @@ from ai_karen_engine.auth.exceptions import (
     SecurityError,
 )
 
-APIRouter, Depends, HTTPException = import_fastapi(
-    "APIRouter", "Depends", "HTTPException"
+APIRouter, Depends, HTTPException, Response = import_fastapi(
+    "APIRouter", "Depends", "HTTPException", "Response"
 )
 BaseModel = import_pydantic("BaseModel")
 
@@ -75,7 +75,31 @@ class UserResponse(BaseModel):
     updated_at: str
 
 
-@router.get("/users/{user_id}/profile", response_model=UserProfile)
+class ErrorResponse(BaseModel):
+    detail: str
+
+
+def error_detail(message: str) -> Dict[str, str]:
+    """Return error detail payload consistent with ErrorResponse."""
+    return ErrorResponse(detail=message).model_dump()
+
+
+error_responses = {
+    400: {"model": ErrorResponse},
+    403: {"model": ErrorResponse},
+    404: {"model": ErrorResponse},
+    409: {"model": ErrorResponse},
+    429: {"model": ErrorResponse},
+    500: {"model": ErrorResponse},
+}
+
+
+@router.get(
+    "/users/{user_id}/profile",
+    response_model=UserProfile,
+    status_code=200,
+    responses=error_responses,
+)
 async def get_profile(
     user_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user_context),
@@ -86,16 +110,21 @@ async def get_profile(
         "roles", []
     ):
         raise HTTPException(
-            status_code=403, detail="Not authorized to access this profile"
+            status_code=403, detail=error_detail("Not authorized to access this profile")
         )
 
     profile = await asyncio.to_thread(db.get_profile, user_id)
     if profile is None:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        raise HTTPException(status_code=404, detail=error_detail("Profile not found"))
     return UserProfile(user_id=user_id, **profile)
 
 
-@router.put("/users/{user_id}/profile", response_model=UserProfile)
+@router.put(
+    "/users/{user_id}/profile",
+    response_model=UserProfile,
+    status_code=200,
+    responses=error_responses,
+)
 async def save_profile(
     user_id: str,
     profile: UserProfile,
@@ -107,7 +136,7 @@ async def save_profile(
         "roles", []
     ):
         raise HTTPException(
-            status_code=403, detail="Not authorized to modify this profile"
+            status_code=403, detail=error_detail("Not authorized to modify this profile")
         )
 
     data = profile.dict(exclude={"user_id"})
@@ -115,7 +144,12 @@ async def save_profile(
     return UserProfile(user_id=user_id, **data)
 
 
-@router.post("/users", response_model=UserResponse)
+@router.post(
+    "/users",
+    response_model=UserResponse,
+    status_code=201,
+    responses=error_responses,
+)
 async def create_user(
     request: CreateUserRequest,
     current_user: Dict[str, Any] = Depends(get_current_user_context),
@@ -124,7 +158,7 @@ async def create_user(
     # Only allow admin users to create new users
     if "admin" not in current_user.get("roles", []):
         raise HTTPException(
-            status_code=403, detail="Not authorized to create users"
+            status_code=403, detail=error_detail("Not authorized to create users")
         )
 
     try:
@@ -151,18 +185,25 @@ async def create_user(
         )
 
     except UserAlreadyExistsError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=error_detail(str(e)))
     except RateLimitExceededError as e:
-        raise HTTPException(status_code=429, detail=str(e))
+        raise HTTPException(status_code=429, detail=error_detail(str(e)))
     except SecurityError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=error_detail(str(e)))
     except AuthError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to create user")
+        raise HTTPException(status_code=400, detail=error_detail(str(e)))
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail=error_detail("Failed to create user")
+        )
 
 
-@router.get("/users/{user_id}", response_model=UserResponse)
+@router.get(
+    "/users/{user_id}",
+    response_model=UserResponse,
+    status_code=200,
+    responses=error_responses,
+)
 async def get_user(
     user_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user_context),
@@ -173,7 +214,7 @@ async def get_user(
         "roles", []
     ):
         raise HTTPException(
-            status_code=403, detail="Not authorized to access this user"
+            status_code=403, detail=error_detail("Not authorized to access this user")
         )
 
     try:
@@ -181,7 +222,7 @@ async def get_user(
         user_data = await auth_service.get_user_by_id(user_id)
 
         if not user_data:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail=error_detail("User not found"))
 
         return UserResponse(
             user_id=user_data.user_id,
@@ -197,14 +238,19 @@ async def get_user(
         )
 
     except UserNotFoundError:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=error_detail("User not found"))
     except AuthError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to get user")
+        raise HTTPException(status_code=400, detail=error_detail(str(e)))
+    except Exception:
+        raise HTTPException(status_code=500, detail=error_detail("Failed to get user"))
 
 
-@router.put("/users/{user_id}", response_model=UserResponse)
+@router.put(
+    "/users/{user_id}",
+    response_model=UserResponse,
+    status_code=200,
+    responses=error_responses,
+)
 async def update_user(
     user_id: str,
     request: UpdateUserRequest,
@@ -217,13 +263,13 @@ async def update_user(
         "roles", []
     ):
         raise HTTPException(
-            status_code=403, detail="Not authorized to modify this user"
+            status_code=403, detail=error_detail("Not authorized to modify this user")
         )
 
     # Only admin can modify roles and is_active status
     if (request.roles is not None or request.is_active is not None) and "admin" not in current_user.get("roles", []):
         raise HTTPException(
-            status_code=403, detail="Not authorized to modify user roles or status"
+            status_code=403, detail=error_detail("Not authorized to modify user roles or status")
         )
 
     try:
@@ -232,7 +278,7 @@ async def update_user(
         # Get current user data
         user_data = await auth_service.get_user_by_id(user_id)
         if not user_data:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail=error_detail("User not found"))
 
         # Update user data using the consolidated service
         updated_user = await auth_service.update_user(
@@ -257,31 +303,35 @@ async def update_user(
         )
 
     except UserNotFoundError:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=error_detail("User not found"))
     except SecurityError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=error_detail(str(e)))
     except AuthError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to update user")
+        raise HTTPException(status_code=400, detail=error_detail(str(e)))
+    except Exception:
+        raise HTTPException(status_code=500, detail=error_detail("Failed to update user"))
 
 
-@router.delete("/users/{user_id}")
+@router.delete(
+    "/users/{user_id}",
+    status_code=204,
+    responses=error_responses,
+)
 async def delete_user(
     user_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user_context),
-) -> Dict[str, str]:
+) -> Response:
     """Delete a user (admin only)."""
     # Only allow admin users to delete users
     if "admin" not in current_user.get("roles", []):
         raise HTTPException(
-            status_code=403, detail="Not authorized to delete users"
+            status_code=403, detail=error_detail("Not authorized to delete users")
         )
 
     # Prevent self-deletion
     if current_user.get("user_id") == user_id:
         raise HTTPException(
-            status_code=400, detail="Cannot delete your own account"
+            status_code=400, detail=error_detail("Cannot delete your own account")
         )
 
     try:
@@ -289,21 +339,26 @@ async def delete_user(
         success = await auth_service.delete_user(user_id)
 
         if not success:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail=error_detail("User not found"))
 
-        return {"detail": "User deleted successfully"}
+        return Response(status_code=204)
 
     except UserNotFoundError:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=error_detail("User not found"))
     except SecurityError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=error_detail(str(e)))
     except AuthError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to delete user")
+        raise HTTPException(status_code=400, detail=error_detail(str(e)))
+    except Exception:
+        raise HTTPException(status_code=500, detail=error_detail("Failed to delete user"))
 
 
-@router.get("/users", response_model=List[UserResponse])
+@router.get(
+    "/users",
+    response_model=List[UserResponse],
+    status_code=200,
+    responses=error_responses,
+)
 async def list_users(
     current_user: Dict[str, Any] = Depends(get_current_user_context),
     tenant_id: Optional[str] = None,
@@ -314,7 +369,7 @@ async def list_users(
     # Only allow admin users to list users
     if "admin" not in current_user.get("roles", []):
         raise HTTPException(
-            status_code=403, detail="Not authorized to list users"
+            status_code=403, detail=error_detail("Not authorized to list users")
         )
 
     try:
@@ -342,6 +397,6 @@ async def list_users(
         ]
 
     except AuthError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to list users")
+        raise HTTPException(status_code=400, detail=error_detail(str(e)))
+    except Exception:
+        raise HTTPException(status_code=500, detail=error_detail("Failed to list users"))
