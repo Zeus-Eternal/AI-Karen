@@ -1,8 +1,10 @@
-import pytest
+# mypy: ignore-errors
+"""Integration tests for provider hierarchy."""
+
 from ai_karen_engine.integrations.provider_hierarchy import get_provider_hierarchy
 
 
-def test_provider_hierarchy_structure():
+def test_provider_hierarchy_structure() -> None:
     hierarchy = get_provider_hierarchy()
     assert "llm" in hierarchy
     assert "voice" in hierarchy

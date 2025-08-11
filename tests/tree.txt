@@ -770,7 +770,8 @@ AI-Karen
     │   ├── dotenv.py
     │   └── pydantic_stub_import.py
     ├── tests
-    │   ├── integrations
+    │   ├── integration
+    │   │   ├── test_auth_flows.py
     │   │   └── test_provider_hierarchy.py
     │   ├── services
     │   │   ├── test_analytics_dashboard.py
