@@ -127,7 +127,7 @@ Create a `.env.local` file in the web UI directory:
 
 ```env
 # Backend Configuration
-KAREN_BACKEND_URL=http://localhost:8000
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 KAREN_API_KEY=your_api_key_here
 
 # Firebase Configuration (if using Firebase features)
@@ -334,7 +334,7 @@ CMD ["npm", "start"]
 curl http://localhost:8000/api/health
 
 # Verify environment variables
-echo $KAREN_BACKEND_URL
+echo $NEXT_PUBLIC_API_BASE_URL
 ```
 
 #### Build Errors

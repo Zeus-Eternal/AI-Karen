@@ -82,8 +82,10 @@ export class ChatService {
         sessionId: response.data.conversation.session_id || sessionId
       };
     } catch (error) {
-      console.error('ChatService: Failed to create conversation session:', error);
-      throw error;
+      console.error('ChatService.createConversationSession failed', error);
+      throw new Error(
+        'Cannot reach Kari API. Check that the backend is running on http://127.0.0.1:8000 and that NEXT_PUBLIC_API_BASE_URL is set.'
+      );
     }
   }
 
