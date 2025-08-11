@@ -3,6 +3,7 @@ FastAPI routes for file attachment and multimedia support.
 """
 
 from typing import Any, Dict, List, Optional
+from tempfile import SpooledTemporaryFile
 
 from ai_karen_engine.chat.file_attachment_service import (
     FileAttachmentService,
@@ -99,45 +100,46 @@ async def upload_file(
                 detail=error_response.dict(),
             )
 
-        # Stream file content in chunks to enforce size limits
+        # Stream file content to temporary file to enforce size limits
         max_size = file_service.max_file_size
         file_size = 0
-        content_chunks: List[bytes] = []
         chunk_size = 1024 * 1024  # 1MB
-        file.file.seek(0)
-        while True:
-            chunk = file.file.read(chunk_size)
-            if not chunk:
-                break
-            file_size += len(chunk)
-            if file_size > max_size:
-                error_response = create_validation_error_response(
-                    field="file",
-                    message=f"File size exceeds maximum allowed size of {max_size} bytes",
-                    details={"max_size": max_size},
-                )
-                raise HTTPException(
-                    status_code=get_http_status_for_error_code(
-                        WebAPIErrorCode.VALIDATION_ERROR
-                    ),
-                    detail=error_response.dict(),
-                )
-            content_chunks.append(chunk)
-        file_content = b"".join(content_chunks)
 
-        # Create upload request
-        upload_request = FileUploadRequest(
-            conversation_id=file_metadata.conversation_id,
-            user_id=file_metadata.user_id,
-            filename=file.filename or "unknown",
-            content_type=file.content_type or "application/octet-stream",
-            file_size=len(file_content),
-            description=file_metadata.description,
-            metadata={"tags": file_metadata.tags},
-        )
+        with SpooledTemporaryFile(max_size=max_size) as tmp:
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                file_size += len(chunk)
+                if file_size > max_size:
+                    error_response = create_validation_error_response(
+                        field="file",
+                        message=f"File size exceeds maximum allowed size of {max_size} bytes",
+                        details={"max_size": max_size},
+                    )
+                    raise HTTPException(
+                        status_code=get_http_status_for_error_code(
+                            WebAPIErrorCode.VALIDATION_ERROR
+                        ),
+                        detail=error_response.dict(),
+                    )
+                tmp.write(chunk)
 
-        # Upload file
-        result = await file_service.upload_file(upload_request, file_content)
+            tmp.seek(0)
+
+            # Create upload request
+            upload_request = FileUploadRequest(
+                conversation_id=file_metadata.conversation_id,
+                user_id=file_metadata.user_id,
+                filename=file.filename or "unknown",
+                content_type=file.content_type or "application/octet-stream",
+                file_size=file_size,
+                description=file_metadata.description,
+                metadata={"tags": file_metadata.tags},
+            )
+
+            # Upload file using streamed content
+            result = await file_service.upload_file(upload_request, tmp)
 
         if not result.success:
             error_response = create_service_error_response(

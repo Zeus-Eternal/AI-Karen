@@ -12,6 +12,7 @@ import hashlib
 import logging
 import mimetypes
 import os
+import shutil
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -259,9 +260,14 @@ class FileAttachmentService:
         else:
             return FileType.UNKNOWN
     
-    def _calculate_file_hash(self, file_content: bytes) -> str:
-        """Calculate SHA-256 hash of file content."""
-        return hashlib.sha256(file_content).hexdigest()
+    def _calculate_file_hash(self, file_handle: BinaryIO) -> str:
+        """Calculate SHA-256 hash of file content from a file-like object."""
+        file_handle.seek(0)
+        hasher = hashlib.sha256()
+        for chunk in iter(lambda: file_handle.read(8192), b""):
+            hasher.update(chunk)
+        file_handle.seek(0)
+        return hasher.hexdigest()
     
     def _validate_file(self, filename: str, file_size: int, mime_type: str) -> tuple[bool, str]:
         """Validate file before upload."""
@@ -284,7 +290,7 @@ class FileAttachmentService:
     async def upload_file(
         self,
         request: FileUploadRequest,
-        file_content: bytes
+        file_handle: BinaryIO
     ) -> FileUploadResponse:
         """Upload and process a file attachment."""
         try:
@@ -292,7 +298,7 @@ class FileAttachmentService:
             is_valid, validation_message = self._validate_file(
                 request.filename, request.file_size, request.content_type
             )
-            
+
             if not is_valid:
                 return FileUploadResponse(
                     file_id="",
@@ -309,29 +315,29 @@ class FileAttachmentService:
                     success=False,
                     message=validation_message
                 )
-            
+
             # Generate unique file ID and filename
             file_id = str(uuid.uuid4())
-            file_hash = self._calculate_file_hash(file_content)
+            file_hash = self._calculate_file_hash(file_handle)
             file_extension = Path(request.filename).suffix
             stored_filename = f"{file_id}{file_extension}"
             file_path = self.storage_path / "files" / stored_filename
-            
+
             # Create file metadata
             file_type = self._determine_file_type(request.filename, request.content_type)
             metadata = FileMetadata(
                 filename=stored_filename,
                 original_filename=request.filename,
-                file_size=len(file_content),
+                file_size=request.file_size,
                 mime_type=request.content_type,
                 file_type=file_type,
                 file_hash=file_hash,
                 processing_status=ProcessingStatus.PROCESSING
             )
-            
+
             # Store file
             with open(file_path, 'wb') as f:
-                f.write(file_content)
+                shutil.copyfileobj(file_handle, f)
 
             # Store metadata in memory
             self._file_metadata[file_id] = metadata
@@ -344,7 +350,7 @@ class FileAttachmentService:
                         owner_user_id=request.user_id,
                         name=request.filename,
                         mime_type=request.content_type,
-                        bytes=len(file_content),
+                        bytes=request.file_size,
                         storage_uri=str(file_path),
                         sha256=file_hash,
                         metadata={
@@ -375,7 +381,7 @@ class FileAttachmentService:
                 success=True,
                 message="File uploaded successfully and processing started"
             )
-            
+
         except Exception as e:
             logger.error(f"File upload failed: {e}", exc_info=True)
             return FileUploadResponse(

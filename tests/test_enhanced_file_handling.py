@@ -4,6 +4,7 @@ Tests for enhanced file handling with AG-UI multimedia interface and hook integr
 
 import asyncio
 import json
+import io
 import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -101,7 +102,7 @@ class TestHookEnabledFileService:
         )
         
         # Mock file content
-        file_content = b"fake_image_data"
+        file_content = io.BytesIO(b"fake_image_data")
         
         # Mock the base upload method
         with patch.object(file_service, '_validate_file', return_value=(True, "Valid")), \
@@ -163,7 +164,7 @@ class TestHookEnabledFileService:
             metadata={"enable_hooks": True}
         )
         
-        file_content = b"malicious_content"
+        file_content = io.BytesIO(b"malicious_content")
         
         # Execute upload
         result = await file_service.upload_file(request, file_content)
@@ -545,7 +546,7 @@ class TestEnhancedFileRoutes:
         mock_file = Mock()
         mock_file.filename = "test.jpg"
         mock_file.content_type = "image/jpeg"
-        mock_file.read = AsyncMock(return_value=b"fake_image_data")
+        mock_file.read = AsyncMock(side_effect=[b"fake_image_data", b""])
         
         metadata_json = json.dumps({
             "conversation_id": "conv_123",

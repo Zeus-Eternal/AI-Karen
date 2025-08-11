@@ -11,7 +11,7 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, BinaryIO
 
 from ai_karen_engine.chat.file_attachment_service import (
     FileAttachmentService,
@@ -122,17 +122,20 @@ class HookEnabledFileService(FileAttachmentService):
     async def upload_file(
         self,
         request: FileUploadRequest,
-        file_content: bytes
+        file_handle: BinaryIO
     ) -> FileUploadResponse:
         """Enhanced file upload with comprehensive hook integration."""
         try:
             # Create hook context for pre-upload
+            file_handle.seek(0)
+            preview_bytes = file_handle.read(1024)
+            file_handle.seek(0)
             pre_upload_context = HookContext(
                 hook_type=HookTypes.FILE_PRE_UPLOAD,
                 data={
                     "request": request.dict(),
-                    "file_size": len(file_content),
-                    "content_preview": file_content[:1024].hex(),  # First 1KB as hex
+                    "file_size": request.file_size,
+                    "content_preview": preview_bytes.hex(),  # First 1KB as hex
                     "timestamp": datetime.utcnow().isoformat()
                 },
                 user_context={
@@ -155,7 +158,7 @@ class HookEnabledFileService(FileAttachmentService):
                         metadata=FileMetadata(
                             filename="",
                             original_filename=request.filename,
-                            file_size=len(file_content),
+                            file_size=request.file_size,
                             mime_type=request.content_type,
                             file_type=FileType.UNKNOWN,
                             file_hash="",
@@ -166,7 +169,7 @@ class HookEnabledFileService(FileAttachmentService):
                     )
             
             # Proceed with base upload
-            upload_response = await super().upload_file(request, file_content)
+            upload_response = await super().upload_file(request, file_handle)
             
             if upload_response.success:
                 # Create hook context for post-upload
@@ -224,7 +227,7 @@ class HookEnabledFileService(FileAttachmentService):
                 metadata=FileMetadata(
                     filename="",
                     original_filename=request.filename,
-                    file_size=len(file_content),
+                    file_size=request.file_size,
                     mime_type=request.content_type,
                     file_type=FileType.UNKNOWN,
                     file_hash="",

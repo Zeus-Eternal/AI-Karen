@@ -5,6 +5,7 @@ Enhanced FastAPI routes for file attachment with AG-UI and hook integration.
 import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from tempfile import SpooledTemporaryFile
 
 from ai_karen_engine.chat.file_attachment_service import (
     FileType,
@@ -137,27 +138,51 @@ async def enhanced_upload_file(
                 detail=error_response.dict(),
             )
 
-        # Read file content
-        file_content = await file.read()
+        # Stream file content to temporary file to enforce size limits
+        max_size = file_service.max_file_size
+        file_size = 0
+        chunk_size = 1024 * 1024  # 1MB
 
-        # Create enhanced upload request
-        upload_request = FileUploadRequest(
-            conversation_id=file_metadata.conversation_id,
-            user_id=file_metadata.user_id,
-            filename=file.filename or "unknown",
-            content_type=file.content_type or "application/octet-stream",
-            file_size=len(file_content),
-            description=file_metadata.description,
-            metadata={
-                "tags": file_metadata.tags,
-                "enable_hooks": file_metadata.enable_hooks,
-                "processing_options": file_metadata.processing_options,
-                "ui_context": file_metadata.ui_context or {},
-            },
-        )
+        with SpooledTemporaryFile(max_size=max_size) as tmp:
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                file_size += len(chunk)
+                if file_size > max_size:
+                    error_response = create_validation_error_response(
+                        field="file",
+                        message=f"File size exceeds maximum allowed size of {max_size} bytes",
+                        details={"max_size": max_size},
+                    )
+                    raise HTTPException(
+                        status_code=get_http_status_for_error_code(
+                            WebAPIErrorCode.VALIDATION_ERROR
+                        ),
+                        detail=error_response.dict(),
+                    )
+                tmp.write(chunk)
 
-        # Upload file with hook integration
-        result = await file_service.upload_file(upload_request, file_content)
+            tmp.seek(0)
+
+            # Create enhanced upload request
+            upload_request = FileUploadRequest(
+                conversation_id=file_metadata.conversation_id,
+                user_id=file_metadata.user_id,
+                filename=file.filename or "unknown",
+                content_type=file.content_type or "application/octet-stream",
+                file_size=file_size,
+                description=file_metadata.description,
+                metadata={
+                    "tags": file_metadata.tags,
+                    "enable_hooks": file_metadata.enable_hooks,
+                    "processing_options": file_metadata.processing_options,
+                    "ui_context": file_metadata.ui_context or {},
+                },
+            )
+
+            # Upload file with hook integration
+            result = await file_service.upload_file(upload_request, tmp)
 
         if not result.success:
             error_response = create_service_error_response(
