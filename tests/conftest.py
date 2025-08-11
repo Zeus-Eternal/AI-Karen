@@ -4,38 +4,13 @@ import importlib
 import os
 import sys
 import types
+import requests  # noqa: F401 - ensure real package is available
+import numpy  # noqa: F401 - ensure real package is available
 
-# Prefer the real `requests` package when available to support
-# libraries that rely on its internal structure. Fall back to the
-# lightweight stub only if `requests` cannot be imported.
-try:
-    import requests as _real_requests  # type: ignore
-
-    sys.modules.setdefault("requests", _real_requests)
-except Exception:  # pragma: no cover - only used when requests isn't installed
-    sys.modules.setdefault("requests", importlib.import_module("tests.stubs.requests"))
-sys.modules.setdefault("tenacity", importlib.import_module("tests.stubs.tenacity"))
-pg_mod = importlib.import_module(
-    "tests.stubs.ai_karen_engine.clients.database.postgres_client"
-)
-
+# Provide lightweight stand-ins for optional dependencies
 sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
-try:
-    import numpy as _real_numpy  # type: ignore
-
-    sys.modules.setdefault("numpy", _real_numpy)
-except Exception:  # pragma: no cover - only used when numpy isn't installed
-    sys.modules.setdefault("numpy", importlib.import_module("tests.stubs.numpy"))
 sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
-sys.modules.setdefault(
-    "cryptography", importlib.import_module("tests.stubs.cryptography")
-)
 sys.modules.setdefault("ollama", importlib.import_module("tests.stubs.ollama"))
-sys.modules.setdefault("jwt", importlib.import_module("tests.stubs.jwt"))
-sys.modules.setdefault(
-    "streamlit_autorefresh",
-    importlib.import_module("tests.stubs.streamlit_autorefresh"),
-)
 
 os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "0123456789abcdef0123456789abcdef")
 os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")
