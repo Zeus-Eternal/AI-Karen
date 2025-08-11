@@ -5,23 +5,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile } from '@/components/auth/UserProfile';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -43,7 +43,7 @@ export const AuthenticatedHeader: React.FC = () => {
     return null;
   }
 
-  const userInitials = user.email.charAt(0).toUpperCase();
+  const userInitials = (user?.email?.charAt(0) ?? user?.user_id?.charAt(0) ?? '?').toUpperCase();
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
@@ -66,7 +66,7 @@ export const AuthenticatedHeader: React.FC = () => {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user.email}</p>
+                <p className="text-sm font-medium leading-none">{user?.email ?? user?.user_id ?? ''}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user.roles.join(', ')}
                 </p>
