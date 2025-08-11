@@ -457,11 +457,20 @@ curl -X POST http://localhost:8000/plugins/reload
 ### Health Checks
 
 ```bash
+# Verify backend is listening on port 8000
+ss -ltnp | grep :8000 || lsof -iTCP:8000 -sTCP:LISTEN
+
 # System health
 curl http://localhost:8000/health
 
+# API health
+curl http://localhost:8000/api/health
+
 # Detailed health summary
 curl http://localhost:8000/api/health/summary
+
+# Metrics
+curl http://localhost:8000/metrics
 
 # Service-specific health
 curl http://localhost:8000/api/services/postgres/health

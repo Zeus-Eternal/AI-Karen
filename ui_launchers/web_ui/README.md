@@ -335,7 +335,17 @@ curl http://localhost:8000/api/health
 
 # Verify environment variables
 echo $NEXT_PUBLIC_API_BASE_URL
+
+# Wait for the API to become reachable
+../scripts/wait-for-kari-api.sh
+
+# Smoke-test conversation creation
+../scripts/smoke-create-conversation.sh
 ```
+
+If requests continue to fail, ensure the backend allows your UI origin via
+`KARI_CORS_ORIGINS` and include an `X-Tenant-ID` header when calling
+non-public routes.
 
 #### Build Errors
 ```bash

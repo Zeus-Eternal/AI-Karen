@@ -9,6 +9,12 @@ import { getNetworkDetectionService } from './network-detector';
 import { shouldAutoRetry, getRetryDelay, formatErrorForLogging } from './error-handler';
 import { getDiagnosticLogger, logEndpointAttempt, logCORSIssue } from './diagnostics';
 
+const DEFAULT_BASE_URLS = [
+  process.env.NEXT_PUBLIC_API_BASE_URL,
+  'http://127.0.0.1:8000',
+  'http://localhost:8000',
+].filter(Boolean) as string[];
+
 export interface ApiClientConfig {
   timeout: number;
   retries: number;
@@ -110,7 +116,7 @@ export class ApiClient {
           ...this.config.defaultHeaders,
           ...request.headers,
         };
-        
+
         // Add Authorization header with JWT token if available
         if (typeof window !== 'undefined') {
           const accessToken = localStorage.getItem('karen_access_token');
@@ -525,6 +531,13 @@ let apiClient: ApiClient | null = null;
 export function getApiClient(): ApiClient {
   if (!apiClient) {
     apiClient = new ApiClient();
+    const [primary, ...fallbacks] = DEFAULT_BASE_URLS;
+    if (primary) {
+      getConfigManager().updateConfiguration({
+        backendUrl: primary,
+        fallbackUrls: fallbacks,
+      });
+    }
   }
   return apiClient;
 }
