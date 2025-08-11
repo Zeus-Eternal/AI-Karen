@@ -38,19 +38,6 @@ from ai_karen_engine.auth.service import AuthService
 class TestMetricsCollector:
     """Test the MetricsCollector component."""
 
-    @pytest.fixture
-    def config(self):
-        """Create test configuration."""
-        config = AuthConfig()
-        config.monitoring.enable_metrics = True
-        config.monitoring.enable_monitoring = True
-        return config
-
-    @pytest.fixture
-    def metrics_collector(self, config):
-        """Create MetricsCollector instance."""
-        return MetricsCollector(config)
-
     @pytest.mark.asyncio
     async def test_record_counter_metric(self, metrics_collector):
         """Test recording counter metrics."""
@@ -130,24 +117,6 @@ class TestMetricsCollector:
 
 class TestAlertManager:
     """Test the AlertManager component."""
-
-    @pytest.fixture
-    def config(self):
-        """Create test configuration."""
-        config = AuthConfig()
-        config.monitoring.enable_alerting = True
-        config.monitoring.enable_monitoring = True
-        return config
-
-    @pytest.fixture
-    def metrics_collector(self, config):
-        """Create MetricsCollector instance."""
-        return MetricsCollector(config)
-
-    @pytest.fixture
-    def alert_manager(self, config, metrics_collector):
-        """Create AlertManager instance."""
-        return AlertManager(config, metrics_collector)
 
     @pytest.mark.asyncio
     async def test_trigger_security_alert(self, alert_manager):
@@ -377,16 +346,6 @@ class TestAuthMonitor:
 class TestSecurityEventCorrelator:
     """Test the SecurityEventCorrelator component."""
 
-    @pytest.fixture
-    def config(self):
-        """Create test configuration."""
-        return AuthConfig()
-
-    @pytest.fixture
-    def correlator(self, config):
-        """Create SecurityEventCorrelator instance."""
-        return SecurityEventCorrelator(config)
-
     @pytest.mark.asyncio
     async def test_brute_force_detection(self, correlator):
         """Test brute force attack detection."""
@@ -492,67 +451,56 @@ class TestSecurityEventCorrelator:
 
 class TestPerformanceTrendAnalyzer:
     """Test the PerformanceTrendAnalyzer component."""
-
-    @pytest.fixture
-    def config(self):
-        """Create test configuration."""
-        return AuthConfig()
-
-    @pytest.fixture
-    def analyzer(self, config):
-        """Create PerformanceTrendAnalyzer instance."""
-        return PerformanceTrendAnalyzer(config)
-
     @pytest.mark.asyncio
-    async def test_record_metric_point(self, analyzer):
+    async def test_record_metric_point(self, performance_analyzer):
         """Test recording metric data points."""
-        await analyzer.record_metric_point("test.metric", 100.0)
-        await analyzer.record_metric_point("test.metric", 110.0)
-        await analyzer.record_metric_point("test.metric", 120.0)
-        
-        history = analyzer._metric_history["test.metric"]
+        await performance_analyzer.record_metric_point("test.metric", 100.0)
+        await performance_analyzer.record_metric_point("test.metric", 110.0)
+        await performance_analyzer.record_metric_point("test.metric", 120.0)
+
+        history = performance_analyzer._metric_history["test.metric"]
         assert len(history) == 3
         assert history[-1][1] == 120.0  # Latest value
 
     @pytest.mark.asyncio
-    async def test_trend_analysis(self, analyzer):
+    async def test_trend_analysis(self, performance_analyzer):
         """Test performance trend analysis."""
         # Add historical data with an improving trend
         base_time = datetime.now(timezone.utc)
-        
+
         for i in range(20):
             timestamp = base_time - timedelta(minutes=i)
             value = 100.0 - (i * 2)  # Decreasing values (improving performance)
-            await analyzer.record_metric_point("response_time", value, timestamp)
-        
-        trends = await analyzer.analyze_trends()
-        
+            await performance_analyzer.record_metric_point("response_time", value, timestamp)
+
+        trends = await performance_analyzer.analyze_trends()
+
         # Should detect improving trend for response time
         response_time_trends = [
             t for t in trends if t.metric_name == "response_time"
         ]
-        
+
         assert len(response_time_trends) > 0
-        
+
         # At least one trend should show improvement
         improving_trends = [
             t for t in response_time_trends if t.trend_direction == "improving"
         ]
         assert len(improving_trends) > 0
 
-    def test_get_trend_summary(self, analyzer):
+    def test_get_trend_summary(self, performance_analyzer):
         """Test trend summary generation."""
         # Add some mock trends
-        analyzer._trend_cache["metric1_5m"] = MagicMock()
-        analyzer._trend_cache["metric1_5m"].trend_direction = "improving"
-        analyzer._trend_cache["metric1_5m"].trend_strength = 0.3
-        
-        analyzer._trend_cache["metric2_5m"] = MagicMock()
-        analyzer._trend_cache["metric2_5m"].trend_direction = "degrading"
-        analyzer._trend_cache["metric2_5m"].trend_strength = 0.8
-        
-        summary = analyzer.get_trend_summary()
-        
+        performance_analyzer._trend_cache["metric1_5m"] = MagicMock()
+        performance_analyzer._trend_cache["metric1_5m"].trend_direction = "improving"
+        performance_analyzer._trend_cache["metric1_5m"].trend_strength = 0.3
+
+        performance_analyzer._trend_cache["metric2_5m"] = MagicMock()
+        performance_analyzer._trend_cache["metric2_5m"].trend_direction = "degrading"
+        performance_analyzer._trend_cache["metric2_5m"].trend_strength = 0.8
+
+        summary = performance_analyzer.get_trend_summary()
+
         assert summary["trends_analyzed"] == 2
         assert summary["improving"] == 1
         assert summary["degrading"] == 1
