@@ -1,3 +1,5 @@
+import { getApiClient } from '@/lib/api-client';
+
 export interface AuditLogEntry {
   id: string;
   user_id?: string;
@@ -8,21 +10,17 @@ export interface AuditLogEntry {
   created_at?: string;
 }
 
+/**
+ * Service for retrieving audit log entries from the backend.
+ *
+ * Uses the shared ApiClient which handles base URL configuration,
+ * authentication cookies, and fallback logic.
+ */
 export class AuditService {
-  private baseUrl: string;
-
-  constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  }
+  private apiClient = getApiClient();
 
   async getAuditLogs(limit = 50): Promise<AuditLogEntry[]> {
-    const resp = await fetch(`${this.baseUrl}/api/audit/logs?limit=${limit}`, {
-      credentials: 'include',
-    });
-    if (!resp.ok) {
-      const error = await resp.text();
-      throw new Error(`Failed to fetch audit logs: ${error}`);
-    }
-    return resp.json();
+    const response = await this.apiClient.get<AuditLogEntry[]>(`/api/audit/logs?limit=${limit}`);
+    return response.data;
   }
 }
