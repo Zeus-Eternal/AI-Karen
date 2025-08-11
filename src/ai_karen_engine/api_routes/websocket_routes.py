@@ -28,6 +28,7 @@ from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
 from ai_karen_engine.chat.stream_processor import StreamProcessor
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
 from ai_karen_engine.auth.service import get_auth_service
+from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.utils.dependency_checks import import_pydantic
 
 try:
@@ -209,6 +210,7 @@ async def stream_chat_sse(
     request: StreamChatRequest,
     http_request: Request,
     processor: StreamProcessor = Depends(get_stream_processor),
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
 ) -> EventSourceResponse:
     """
     Server-Sent Events endpoint for streaming chat responses.
@@ -219,7 +221,7 @@ async def stream_chat_sse(
         # Create chat request
         chat_request = ChatRequest(
             message=request.message,
-            user_id=request.user_id,
+            user_id=current_user.get("user_id"),
             conversation_id=request.conversation_id,
             session_id=request.session_id,
             stream=True,
@@ -243,6 +245,7 @@ async def stream_chat_http(
     request: StreamChatRequest,
     http_request: Request,
     processor: StreamProcessor = Depends(get_stream_processor),
+    current_user: Dict[str, Any] = Depends(get_current_user_context),
 ) -> StreamingResponse:
     """
     HTTP streaming endpoint for streaming chat responses.
@@ -253,7 +256,7 @@ async def stream_chat_http(
         # Create chat request
         chat_request = ChatRequest(
             message=request.message,
-            user_id=request.user_id,
+            user_id=current_user.get("user_id"),
             conversation_id=request.conversation_id,
             session_id=request.session_id,
             stream=True,
