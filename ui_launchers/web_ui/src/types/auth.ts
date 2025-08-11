@@ -1,6 +1,6 @@
 export interface User {
   user_id: string;
-  email: string;
+  email?: string;
   roles: string[];
   tenant_id: string;
   two_factor_enabled: boolean;
@@ -65,7 +65,7 @@ export interface AuthContextType {
 /**
  * Authentication step types for the authentication flow
  */
-export type AuthenticationStep = 
+export type AuthenticationStep =
   | 'initial'
   | 'validating'
   | 'authenticating'
@@ -76,7 +76,7 @@ export type AuthenticationStep =
 /**
  * Authentication error types for comprehensive error classification
  */
-export type AuthenticationErrorType = 
+export type AuthenticationErrorType =
   | 'invalid_credentials'
   | 'network_error'
   | 'security_block'
@@ -99,7 +99,7 @@ export type FeedbackMessageType = 'success' | 'error' | 'warning' | 'info';
 /**
  * Error categories for classification system
  */
-export type ErrorCategory = 
+export type ErrorCategory =
   | 'authentication'
   | 'validation'
   | 'network'
@@ -115,7 +115,7 @@ export type ErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
 /**
  * User action types for error handling guidance
  */
-export type UserAction = 
+export type UserAction =
   | 'retry'
   | 'correct_input'
   | 'wait'
@@ -298,4 +298,3 @@ export interface EnhancedAuthContextType extends AuthContextType {
   setFeedback: (message: FeedbackMessage) => void;
   validateCredentials: (credentials: LoginCredentials) => ValidationErrors;
 }
-

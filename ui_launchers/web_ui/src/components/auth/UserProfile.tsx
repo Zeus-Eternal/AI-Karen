@@ -335,7 +335,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Email</Label>
-              <p className="font-medium">{user.email}</p>
+              <p className="font-medium">{user.email ?? 'N/A'}</p>
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">User ID</Label>

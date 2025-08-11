@@ -90,13 +90,13 @@ vi.mock('@/components/ui/alert', () => ({
 // Test component to verify auth context integration
 const AuthTestComponent = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
-  
+
   return (
     <div data-testid="auth-test">
       <div data-testid="auth-status">
         {isLoading ? 'loading' : isAuthenticated ? 'authenticated' : 'unauthenticated'}
       </div>
-      {user && <div data-testid="user-email">{user.email}</div>}
+      {user?.email && <div data-testid="user-email">{user.email}</div>}
     </div>
   );
 };

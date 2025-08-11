@@ -2,7 +2,7 @@
 
 /**
  * Modern Chat Interface with AG-UI + CopilotKit Integration
- * 
+ *
  * This component replaces the legacy ChatInterface with a modern implementation that:
  * - Uses AG-Grid for conversation management and history
  * - Integrates CopilotKit for AI-powered assistance
@@ -26,11 +26,11 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 
 // Icons
-import { 
-  MessageSquare, 
-  Send, 
-  Bot, 
-  User, 
+import {
+  MessageSquare,
+  Send,
+  Bot,
+  User,
   Sparkles,
   Grid3X3,
   BarChart3,
@@ -234,7 +234,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
   const initializeChatData = async () => {
     try {
       setIsLoading(true);
-      
+
       // Load conversations
       const userConversations = await chatService.getUserConversations(user!.user_id);
       const conversationRows: ConversationRow[] = userConversations.map(conv => ({
@@ -243,20 +243,20 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
         messageCount: conv.messages.length,
         lastMessage: conv.messages[conv.messages.length - 1]?.content || 'No messages',
         timestamp: conv.updatedAt,
-        participants: [user!.email],
+        participants: [user?.email ?? 'Unknown'],
         status: 'active' as const,
         sentiment: 'neutral' as const,
         aiConfidence: 0.85,
         tags: ['general']
       }));
-      
+
       setConversations(conversationRows);
-      
+
       // If no current conversation, create one
       if (!currentConversationId && conversationRows.length === 0) {
         await createNewConversation();
       }
-      
+
     } catch (error) {
       console.error('Failed to initialize chat data:', error);
       toast({
@@ -273,7 +273,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
     try {
       const { conversationId, sessionId } = await chatService.createConversationSession(user!.user_id);
       setCurrentConversationId(conversationId);
-      
+
       // Add to conversations list
       const newConversation: ConversationRow = {
         id: conversationId,
@@ -281,16 +281,16 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
         messageCount: 0,
         lastMessage: 'Conversation started',
         timestamp: new Date(),
-        participants: [user!.email],
+        participants: [user?.email ?? 'Unknown'],
         status: 'active',
         sentiment: 'neutral',
         aiConfidence: 0.0,
         tags: ['new']
       };
-      
+
       setConversations(prev => [newConversation, ...prev]);
       setMessages([]);
-      
+
     } catch (error) {
       console.error('Failed to create conversation:', error);
       toast({
@@ -357,8 +357,8 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
       }
 
       // Update conversation in grid
-      setConversations(prev => prev.map(conv => 
-        conv.id === currentConversationId 
+      setConversations(prev => prev.map(conv =>
+        conv.id === currentConversationId
           ? {
               ...conv,
               messageCount: conv.messageCount + 2,
@@ -389,7 +389,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
       suggestions: ['Consider exploring advanced features', 'Review documentation'],
       summary: 'Productive conversation about technical topics'
     };
-    
+
     return analysis[type as keyof typeof analysis] || analysis;
   };
 
@@ -401,7 +401,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
       helpful: "I understand what you're looking for. Here's how I can assist:",
       creative: "That's an interesting challenge! Let's explore some innovative solutions."
     };
-    
+
     return suggestions[tone as keyof typeof suggestions] || suggestions.helpful;
   };
 
@@ -417,7 +417,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
 
   const MessageComponent = ({ message }: { message: ChatMessage }) => {
     const isUser = message.role === 'user';
-    
+
     return (
       <div className={`flex gap-3 mb-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
@@ -425,17 +425,17 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
         }`}>
           {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
         </div>
-        
+
         <div className={`flex-1 max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>
           <div className={`inline-block p-3 rounded-lg ${
-            isUser 
-              ? 'bg-primary text-primary-foreground' 
+            isUser
+              ? 'bg-primary text-primary-foreground'
               : 'bg-muted border'
           }`}>
             <div className="whitespace-pre-wrap break-words">
               {message.content}
             </div>
-            
+
             {message.aiData && (
               <div className="mt-2 pt-2 border-t border-border/20">
                 <div className="flex items-center gap-2 text-xs opacity-70">
@@ -451,10 +451,10 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
               </div>
             )}
           </div>
-          
+
           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
             <span>{message.timestamp.toLocaleTimeString()}</span>
-            
+
             {!isUser && (
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -493,7 +493,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
               <MessageComponent key={message.id} message={message} />
             ))
           )}
-          
+
           {isTyping && (
             <div className="flex gap-3 mb-4">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
@@ -509,7 +509,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
               </div>
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
@@ -543,7 +543,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
             }}
             disabled={isLoading || isTyping}
           />
-          <Button 
+          <Button
             onClick={() => sendMessage(inputValue)}
             disabled={!inputValue.trim() || isLoading || isTyping}
             size="sm"
@@ -555,7 +555,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
             )}
           </Button>
         </div>
-        
+
         {/* Quick Actions */}
         <div className="flex items-center gap-2 mt-2">
           <Button
@@ -625,7 +625,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
             <p className="text-xs text-muted-foreground">In current conversation</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">AI Confidence</CardTitle>
@@ -635,7 +635,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
             <p className="text-xs text-muted-foreground">Average response quality</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Active Conversations</CardTitle>
@@ -646,7 +646,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
           </CardContent>
         </Card>
       </div>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>Conversation Insights</CardTitle>
@@ -681,7 +681,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
                 AG-UI + CopilotKit
               </Badge>
             </CardTitle>
-            
+
             {enableFullscreen && (
               <Button
                 variant="ghost"
@@ -713,15 +713,15 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
                   </TabsTrigger>
                 </TabsList>
               </div>
-              
+
               <TabsContent value="chat" className="flex-1 m-0">
                 <ChatTab />
               </TabsContent>
-              
+
               <TabsContent value="conversations" className="flex-1 m-0 p-4">
                 <ConversationsTab />
               </TabsContent>
-              
+
               <TabsContent value="analytics" className="flex-1 m-0">
                 <AnalyticsTab />
               </TabsContent>
