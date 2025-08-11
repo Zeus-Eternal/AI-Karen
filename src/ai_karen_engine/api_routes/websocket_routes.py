@@ -27,6 +27,7 @@ from fastapi.responses import StreamingResponse
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
 from ai_karen_engine.chat.stream_processor import StreamProcessor
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
+from ai_karen_engine.auth.service import get_auth_service
 from ai_karen_engine.utils.dependency_checks import import_pydantic
 
 try:
@@ -131,10 +132,47 @@ def get_stream_processor() -> StreamProcessor:
     return StreamProcessor(get_chat_orchestrator())
 
 
+async def get_current_user_websocket(websocket: WebSocket) -> Dict[str, Any]:
+    """Authenticate WebSocket connections using session cookie or JWT."""
+    session_token = websocket.cookies.get("kari_session")
+    if session_token:
+        service = await get_auth_service()
+        user_data = await service.validate_session(
+            session_token=session_token,
+            ip_address=websocket.client.host if websocket.client else "unknown",
+            user_agent=websocket.headers.get("user-agent", ""),
+        )
+        if user_data:
+            return user_data.to_dict() if hasattr(user_data, "to_dict") else user_data
+
+    auth_header = websocket.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        access_token = auth_header.split(" ", 1)[1]
+        service = await get_auth_service()
+        token_payload = await service.core_auth.token_manager.validate_access_token(
+            access_token
+        )
+        return {
+            "user_id": token_payload.get("sub"),
+            "email": token_payload.get("email"),
+            "full_name": token_payload.get("full_name"),
+            "roles": token_payload.get("roles", []),
+            "tenant_id": token_payload.get("tenant_id"),
+            "preferences": token_payload.get("preferences", {}),
+            "two_factor_enabled": token_payload.get("two_factor_enabled", False),
+            "is_verified": token_payload.get("is_verified", False),
+            "is_active": token_payload.get("is_active", True),
+        }
+
+    raise HTTPException(status_code=401, detail="Authentication required")
+
+
 # WebSocket endpoint
 @router.websocket("/chat")
 async def websocket_chat_endpoint(
-    websocket: WebSocket, gateway: WebSocketGateway = Depends(get_websocket_gateway)
+    websocket: WebSocket,
+    gateway: WebSocketGateway = Depends(get_websocket_gateway),
+    current_user: Dict[str, Any] = Depends(get_current_user_websocket),
 ):
     """
     WebSocket endpoint for real-time chat communication.
@@ -151,7 +189,10 @@ async def websocket_chat_endpoint(
     try:
         # Handle WebSocket connection
         connection_id = await gateway.handle_websocket_connection(websocket)
-        logger.info(f"WebSocket chat session completed: {connection_id}")
+        logger.info(
+            "WebSocket chat session completed",
+            extra={"connection_id": connection_id, "user": current_user.get("user_id")},
+        )
 
     except WebSocketDisconnect as e:
         logger.info(f"WebSocket disconnected: {connection_id} (code: {e.code})")
