@@ -344,7 +344,7 @@ class BehavioralEmbeddingService:
         if self.config.enable_device_features:
             features.update(
                 {
-                    "user_agent_hash": hashlib.md5(
+                    "user_agent_hash": hashlib.sha256(
                         auth_context.user_agent.encode()
                     ).hexdigest()[:8],
                     "has_device_fingerprint": bool(auth_context.device_fingerprint),
@@ -360,7 +360,9 @@ class BehavioralEmbeddingService:
                 "previous_failed_attempts": min(
                     auth_context.previous_failed_attempts, 10
                 ),  # Cap for embedding
-                "ip_hash": hashlib.md5(auth_context.client_ip.encode()).hexdigest()[:8],
+                "ip_hash": hashlib.sha256(auth_context.client_ip.encode()).hexdigest()[
+                    :8
+                ],
             }
         )
 
@@ -535,7 +537,9 @@ class BehavioralEmbeddingService:
                     profile.typical_locations = profile.typical_locations[-20:]
 
             # Update typical devices
-            device_hash = hashlib.md5(auth_context.user_agent.encode()).hexdigest()[:16]
+            device_hash = hashlib.sha256(auth_context.user_agent.encode()).hexdigest()[
+                :16
+            ]
             if device_hash not in profile.typical_devices:
                 profile.typical_devices.append(device_hash)
                 if len(profile.typical_devices) > 10:  # Keep last 10 devices
@@ -673,9 +677,9 @@ class BehavioralEmbeddingService:
         """Generate hash-based embedding as fallback."""
         # Use multiple hash functions for better distribution
         hash_functions: List[Callable[[str], bytes]] = [
-            lambda x: hashlib.md5(x.encode()).digest(),
-            lambda x: hashlib.sha1(x.encode()).digest(),
             lambda x: hashlib.sha256(x.encode()).digest(),
+            lambda x: hashlib.sha1(x.encode()).digest(),
+            lambda x: hashlib.sha512(x.encode()).digest(),
         ]
 
         embedding = []
@@ -704,9 +708,9 @@ class BehavioralEmbeddingService:
 
     def _get_embedding_cache_key(self, context_text: str) -> str:
         """Generate cache key for embedding."""
-        text_hash = hashlib.md5(context_text.encode()).hexdigest()
+        text_hash = hashlib.sha256(context_text.encode()).hexdigest()
         model_info = f"{self.distilbert_service.config.model_name}_{self.distilbert_service.config.pooling_strategy}"
-        model_hash = hashlib.md5(model_info.encode()).hexdigest()[:8]
+        model_hash = hashlib.sha256(model_info.encode()).hexdigest()[:8]
         return f"behavioral_embedding:{model_hash}:{text_hash}"
 
     def get_user_profile(self, user_email: str) -> Optional[UserBehavioralProfile]:

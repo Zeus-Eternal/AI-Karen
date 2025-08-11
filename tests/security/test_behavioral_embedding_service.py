@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 from datetime import datetime
 from types import SimpleNamespace
 
@@ -60,3 +61,44 @@ async def test_minimal_fallback_when_hash_generation_fails():
     assert result.used_fallback is True
     assert result.model_version == "minimal_fallback"
     assert len(result.embedding_vector) == 768
+
+
+@pytest.mark.asyncio
+async def test_device_hash_consistency_across_sessions():
+    service = BehavioralEmbeddingService(
+        distilbert_service=FailingDistilBertService(),
+        config=BehavioralEmbeddingConfig(),
+    )
+    context1 = AuthContext(
+        email="user@example.com",
+        password_hash="hash",
+        client_ip="127.0.0.1",
+        user_agent="agent",
+        timestamp=datetime.utcnow(),
+        request_id="req1",
+    )
+    result1 = await service.generate_behavioral_embedding(context1)
+    await service.update_user_behavioral_profile(
+        "user@example.com", context1, result1, login_successful=True
+    )
+    profile = service.get_user_profile("user@example.com")
+    assert profile is not None
+    assert len(profile.typical_devices) == 1
+    first_hash = profile.typical_devices[0]
+
+    context2 = AuthContext(
+        email="user@example.com",
+        password_hash="hash",
+        client_ip="127.0.0.1",
+        user_agent="agent",
+        timestamp=datetime.utcnow(),
+        request_id="req2",
+    )
+    result2 = await service.generate_behavioral_embedding(context2)
+    await service.update_user_behavioral_profile(
+        "user@example.com", context2, result2, login_successful=True
+    )
+    profile = service.get_user_profile("user@example.com")
+    assert profile is not None
+    assert len(profile.typical_devices) == 1
+    assert profile.typical_devices[0] == first_hash
