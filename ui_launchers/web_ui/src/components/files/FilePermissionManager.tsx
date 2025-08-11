@@ -3,15 +3,15 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-community';
-import { 
-  Shield, 
-  Users, 
-  User, 
-  Lock, 
-  Unlock, 
-  Eye, 
-  Edit, 
-  Download, 
+import {
+  Shield,
+  Users,
+  User,
+  Lock,
+  Unlock,
+  Eye,
+  Edit,
+  Download,
   Trash2,
   Plus,
   Settings,
@@ -22,20 +22,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -164,12 +164,12 @@ const StatusRenderer = ({ data }: { data: FilePermission }) => {
   );
 };
 
-const ActionsRenderer = ({ 
-  data, 
-  onEdit, 
+const ActionsRenderer = ({
+  data,
+  onEdit,
   onDelete,
-  readOnly 
-}: { 
+  readOnly
+}: {
   data: FilePermission;
   onEdit: (permission: FilePermission) => void;
   onDelete: (permissionId: string) => void;
@@ -261,7 +261,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
       headerName: 'Expires',
       field: 'expires_at',
       width: 150,
-      cellRenderer: ({ value }: { value?: string }) => 
+      cellRenderer: ({ value }: { value?: string }) =>
         value ? formatDate(value) : <span className="text-muted-foreground">Never</span>,
       filter: 'agDateColumnFilter'
     },
@@ -340,10 +340,10 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
   // Permission statistics
   const permissionStats = useMemo(() => {
     const activePermissions = currentPermissions.filter(p => p.is_active);
-    const expiredPermissions = currentPermissions.filter(p => 
+    const expiredPermissions = currentPermissions.filter(p =>
       p.expires_at && new Date(p.expires_at) < new Date()
     );
-    
+
     const typeDistribution = currentPermissions.reduce((acc, p) => {
       acc[p.permission_type] = (acc[p.permission_type] || 0) + 1;
       return acc;
@@ -407,7 +407,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                             <SelectContent>
                               {availableUsers.map(user => (
                                 <SelectItem key={user.id} value={user.id}>
-                                  {user.name} ({user.email})
+                                  {user.name} ({user.email ?? 'Unknown'})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -522,7 +522,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -534,7 +534,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -546,7 +546,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -566,7 +566,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
           <CardTitle>Current Permissions</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div 
+          <div
             className="ag-theme-alpine w-full"
             style={{ height: '400px' }}
           >
@@ -583,7 +583,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
               getRowStyle={(params) => {
                 const permission = params.data as FilePermission;
                 const isExpired = permission.expires_at && new Date(permission.expires_at) < new Date();
-                
+
                 if (!permission.is_active || isExpired) {
                   return { backgroundColor: '#fef2f2', opacity: 0.7 };
                 }

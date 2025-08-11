@@ -9,11 +9,11 @@ import { sanitizeInput } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, SendHorizontal, Mic, MicOff, AlertTriangle, Sparkles } from 'lucide-react';
-import { 
-  handleUserMessage, 
+import {
+  handleUserMessage,
   handleUserMessageWithKarenBackend,
-  getSuggestedStarter, 
-  type HandleUserMessageResult 
+  getSuggestedStarter,
+  type HandleUserMessageResult
 } from '@/app/actions';
 import { MessageBubble } from './MessageBubble';
 import { useToast } from "@/hooks/use-toast";
@@ -66,7 +66,7 @@ export default function ChatInterface() {
       }
 
       // Set welcome message with user's name if available
-      const welcomeMessage = user 
+      const welcomeMessage = user?.email
         ? `Hello ${user.email}! I'm Karen, your intelligent assistant. How can I help you today?`
         : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
 
@@ -118,7 +118,7 @@ export default function ChatInterface() {
         }
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
@@ -211,7 +211,7 @@ export default function ChatInterface() {
       if (conversationId) {
         await chatService.addMessageToConversation(conversationId, userMessage);
       }
-      
+
       const newMessages: ChatMessage[] = [];
       const autoPlayThisMessage = isVoice;
 
@@ -221,7 +221,7 @@ export default function ChatInterface() {
           role: 'assistant',
           content: result.acknowledgement,
           timestamp: new Date(),
-          shouldAutoPlay: autoPlayThisMessage, 
+          shouldAutoPlay: autoPlayThisMessage,
         });
       }
 
@@ -241,7 +241,7 @@ export default function ChatInterface() {
           role: 'assistant',
           content: result.proactiveSuggestion,
           timestamp: new Date(),
-          shouldAutoPlay: autoPlayThisMessage, 
+          shouldAutoPlay: autoPlayThisMessage,
         });
       }
 
@@ -292,8 +292,8 @@ export default function ChatInterface() {
       }
 
 
-      if (result.aiDataForFinalResponse?.knowledgeGraphInsights && 
-          parsedSettings.notifications.enabled && 
+      if (result.aiDataForFinalResponse?.knowledgeGraphInsights &&
+          parsedSettings.notifications.enabled &&
           parsedSettings.notifications.alertOnNewInsights) {
         toast({
           title: "✨ New Insight from Karen!",
@@ -304,12 +304,12 @@ export default function ChatInterface() {
 
     } catch (error) {
       console.error("Error sending message in ChatInterface handleSubmit:", error);
-      
+
       setMessages((prevMessages) => prevMessages.filter(m => m.id !== userMessage.id));
-      
+
       let errorMessageContent = "Failed to get a response from Karen. Please check your connection or try again later.";
       if (error instanceof Error && error.message) {
-        if (error.message.startsWith("Karen: ")) { 
+        if (error.message.startsWith("Karen: ")) {
           errorMessageContent = error.message;
         } else if (error.message.includes("API key not valid")) {
           errorMessageContent = `Karen: There seems to be an issue with the API key. Please go to Settings > API Key for setup instructions. The key needs to be in a .env file at your project root, and the Genkit server must be restarted.`;
@@ -317,7 +317,7 @@ export default function ChatInterface() {
           error.message.includes("INVALID_ARGUMENT") &&
           error.message.includes("Schema validation failed") &&
           error.message.includes("(root): must be object") &&
-          /Provided data:\s*null/.test(error.message) 
+          /Provided data:\s*null/.test(error.message)
         ) {
           errorMessageContent = `Karen: I'm having a little trouble formulating a response right now. This can sometimes happen if the request is very complex or if content filters are active. Could you try rephrasing your request?`;
         } else {
@@ -329,7 +329,7 @@ export default function ChatInterface() {
         title: "Processing Error",
         description: errorMessageContent.startsWith("Karen: ") ? errorMessageContent.substring(7) : errorMessageContent,
       });
-      
+
       const systemErrorMessage: ChatMessage = {
         id: 'error-' + Date.now(),
         role: 'system',
@@ -372,7 +372,7 @@ export default function ChatInterface() {
       console.error('Speech recognition error:', event.error, event.message);
       let errorTitle = 'Speech Recognition Error';
       let errorMessage = 'An unexpected error occurred during speech recognition.';
-      
+
       switch (event.error) {
           case 'no-speech': errorMessage = 'No speech was detected. Please ensure your microphone is active and try again.'; break;
           case 'audio-capture': errorMessage = 'Audio capture failed. Please ensure your microphone is working and selected correctly.'; break;
@@ -381,7 +381,7 @@ export default function ChatInterface() {
               errorMessage = 'Microphone access was denied. Enable it in browser settings and refresh.';
               setMicPermissionGranted(false);
               break;
-          case 'aborted': break; 
+          case 'aborted': break;
           case 'network': errorMessage = 'Network error with speech service. Check connection.'; break;
           case 'service-not-allowed':
               errorTitle = 'Speech Service Unavailable';
@@ -396,18 +396,18 @@ export default function ChatInterface() {
               break;
           default: if (event.message) { errorMessage = `Error: ${event.message}`; } break;
       }
-      
+
       if (event.error !== 'aborted' && event.error !== 'no-speech') { // Don't toast for these common, less critical errors
         toast({ variant: 'destructive', title: errorTitle, description: errorMessage });
       }
-      setIsRecording(false); 
+      setIsRecording(false);
     };
 
     recognitionInstance.onend = () => {
       setIsRecording(false);
       setShouldSubmitVoiceInput(true); // Always attempt to submit after STT ends
     };
-    
+
     recognitionRef.current = recognitionInstance;
 
     return () => {
@@ -421,7 +421,7 @@ export default function ChatInterface() {
             clearTimeout(micReactivationTimerRef.current);
       }
     };
-  }, [toast]); 
+  }, [toast]);
 
 
   useEffect(() => {
@@ -430,7 +430,7 @@ export default function ChatInterface() {
       if (input.trim() && !isLoading) {
         handleSubmit({isVoiceSubmission: true});
       }
-      setShouldSubmitVoiceInput(false); 
+      setShouldSubmitVoiceInput(false);
     }
   }, [shouldSubmitVoiceInput, input, isLoading, handleSubmit]);
 
@@ -451,11 +451,11 @@ export default function ChatInterface() {
       });
       return;
     }
-    
+
     if (!recognitionRef.current) return;
 
     if (isRecording) {
-      recognitionRef.current.stop(); 
+      recognitionRef.current.stop();
     } else {
       try {
         let permissionState = 'prompt';
@@ -477,11 +477,11 @@ export default function ChatInterface() {
           });
           return;
         }
-        
+
         if (permissionState !== 'granted') {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            stream.getTracks().forEach(track => track.stop()); 
+            stream.getTracks().forEach(track => track.stop());
             setMicPermissionGranted(true);
           } catch (err) {
              console.error('Error accessing microphone:', err);
@@ -499,14 +499,14 @@ export default function ChatInterface() {
                   description: 'Could not access the microphone. Ensure it is connected and not in use by another application.',
                 });
             }
-            return; 
+            return;
           }
         } else {
-           setMicPermissionGranted(true); 
+           setMicPermissionGranted(true);
         }
-        
+
         setLastInputMethod('voice');
-        setInput(''); 
+        setInput('');
         recognitionRef.current.start();
         setIsRecording(true);
         toast({
@@ -514,7 +514,7 @@ export default function ChatInterface() {
           description: "Using your browser's speech recognition. Stops on pause or click.",
         });
 
-      } catch (err) { 
+      } catch (err) {
         console.error('Unexpected error in handleMicClick:', err);
         toast({
             variant: 'destructive',
@@ -524,9 +524,9 @@ export default function ChatInterface() {
       }
     }
   };
-  
+
   const showMicPermissionAlert = micPermissionGranted === false && !isRecording;
-  
+
   const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     handleSubmit();
@@ -614,7 +614,7 @@ export default function ChatInterface() {
             }}
             placeholder={isRecording ? "Listening..." : (speechRecognitionSupported ? "Ask Karen anything or use mic..." : "Ask Karen anything (mic not supported)...")}
             className="flex-1 text-sm md:text-base h-11 md:h-12 rounded-lg focus-visible:ring-primary focus-visible:ring-offset-0"
-            disabled={isLoading || (isRecording && !input)} 
+            disabled={isLoading || (isRecording && !input)}
             aria-label="Chat input"
           />
           <Button

@@ -20,7 +20,7 @@ export default function Dashboard() {
       ) : (
         <>
           <h2 className="text-2xl font-semibold">My Dashboard</h2>
-          <p className="text-muted-foreground">Welcome, {user.email}</p>
+          <p className="text-muted-foreground">Welcome, {user.email ?? 'User'}</p>
           <UsageAnalyticsCharts />
         </>
       )}
