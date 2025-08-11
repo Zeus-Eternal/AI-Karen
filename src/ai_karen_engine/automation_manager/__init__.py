@@ -84,16 +84,20 @@ def _resolve_secure_db_path() -> Path:
       2) Use /secure/kari_automation.db if /secure exists & is writable (container)
       3) Fall back to per-user secure dir: ~/.kari/secure/kari_automation.db
     """
-    cfg = os.getenv("KARI_SECURE_DB_PATH")
-    if cfg:
-        return Path(os.path.expanduser(cfg))
-    secure_dir = Path("/secure")
-    try:
-        if secure_dir.exists() and os.access(secure_dir, os.W_OK | os.X_OK):
-            return secure_dir / "kari_automation.db"
-    except Exception:
-        pass
-    return Path.home() / ".kari" / "secure" / "kari_automation.db"
+    env_path = os.getenv("KARI_SECURE_DB_PATH")
+    if env_path:
+        p = Path(os.path.expanduser(env_path))
+        p.parent.mkdir(mode=0o700, exist_ok=True)
+        return p
+
+    container_secure = Path("/secure")
+    if container_secure.exists() and os.access(container_secure, os.W_OK):
+        container_secure.mkdir(mode=0o700, exist_ok=True)
+        return container_secure / "kari_automation.db"
+
+    user_secure = Path.home() / ".kari" / "secure"
+    user_secure.mkdir(mode=0o700, exist_ok=True)
+    return user_secure / "kari_automation.db"
 
 
 DB_PATH = _resolve_secure_db_path()

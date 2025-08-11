@@ -188,6 +188,9 @@ async def create_user(
         raise HTTPException(status_code=409, detail=error_detail(str(e)))
     except RateLimitExceededError as e:
         raise HTTPException(status_code=429, detail=error_detail(str(e)))
+        retry_after = e.details.get("retry_after") if isinstance(e.details, dict) else None
+        headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
+        raise HTTPException(status_code=429, detail=str(e), headers=headers)
     except SecurityError as e:
         raise HTTPException(status_code=403, detail=error_detail(str(e)))
     except AuthError as e:
