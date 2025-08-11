@@ -9,7 +9,7 @@ import sys
 if "jinja2" not in sys.modules:
     sys.modules["jinja2"] = ModuleType("jinja2")
 
-PLUGIN_DIR = Path(__file__).resolve().parents[1] / "src" / "ai_karen_engine" / "plugins"
+PLUGIN_DIR = Path(__file__).resolve().parents[2] / "src" / "ai_karen_engine" / "plugins"
 
 
 def ensure_optional_dependency(name: str):
