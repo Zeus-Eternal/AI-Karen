@@ -68,7 +68,9 @@ export const AuthenticatedHeader: React.FC = () => {
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">{user?.email ?? user?.user_id ?? ''}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  {user.roles.join(', ')}
+                  {Array.isArray(user.roles)
+                    ? user.roles.join(', ')
+                    : user.roles ?? ''}
                 </p>
               </div>
             </DropdownMenuLabel>
