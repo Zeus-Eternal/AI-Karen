@@ -4,6 +4,10 @@ AutomationManager: Ironclad Task Orchestration for Kari
 - Hardware-enforced thread isolation
 - Cryptographic job verification
 - Fail-closed design
+- Secure DuckDB path resolution:
+    1) Respect KARI_SECURE_DB_PATH (supports ~ expansion)
+    2) Use /secure/kari_automation.db if /secure exists & is writable (containers)
+    3) Fall back to ~/.kari/secure/kari_automation.db
 - Environment variable ``KARI_DUCKDB_PASSWORD`` must be set for encrypted
   database access; no fallback password is provided.
 """
@@ -73,11 +77,54 @@ except ImportError:
     NUMA_ENABLED = False
 
 # === DuckDB Hardening ===
-DB_PATH = Path(os.getenv("KARI_SECURE_DB_PATH", "/secure/kari_automation.db"))
-DB_PATH.parent.mkdir(mode=0o700, exist_ok=True)
+def _resolve_secure_db_path() -> Path:
+    """
+    Cross-platform, reuse existing secure folder:
+      1) Respect KARI_SECURE_DB_PATH (supports ~ expansion)
+      2) Use /secure/kari_automation.db if /secure exists & is writable (container)
+      3) Fall back to per-user secure dir: ~/.kari/secure/kari_automation.db
+    """
+    cfg = os.getenv("KARI_SECURE_DB_PATH")
+    if cfg:
+        return Path(os.path.expanduser(cfg))
+    secure_dir = Path("/secure")
+    try:
+        if secure_dir.exists() and os.access(secure_dir, os.W_OK | os.X_OK):
+            return secure_dir / "kari_automation.db"
+    except Exception:
+        pass
+    return Path.home() / ".kari" / "secure" / "kari_automation.db"
+
+
+DB_PATH = _resolve_secure_db_path()
 
 
 def init_secure_db():
+    # Lazily ensure the secure directory exists; avoid doing this at import time.
+    global DB_PATH
+    parent = DB_PATH.parent
+    try:
+        parent.mkdir(parents=True, exist_ok=True)
+        # Enforce restrictive perms on POSIX; no-op on Windows.
+        if os.name != "nt":
+            try:
+                os.chmod(parent, 0o700)
+            except Exception:
+                log.warning("Could not set permissions 0700 on %s", parent)
+    except PermissionError:
+        # Fall back to per-user secure dir if the chosen parent is not writable.
+        fallback = Path.home() / ".kari" / "secure"
+        fallback.mkdir(parents=True, exist_ok=True)
+        if os.name != "nt":
+            try:
+                os.chmod(fallback, 0o700)
+            except Exception:
+                log.warning("Could not set permissions 0700 on %s", fallback)
+        log.warning("No permission for %s; falling back to %s", parent, fallback)
+        DB_PATH = fallback / "kari_automation.db"
+        parent = fallback
+
+    log.info("Automation DB path: %s", DB_PATH)
     conn = duckdb.connect(str(DB_PATH))
     # Skip encryption for development - only use in production with encrypted DuckDB
     try:
@@ -87,7 +134,7 @@ def init_secure_db():
         # Standard DuckDB doesn't support encryption, continue without it
         encryption_clause = ""
         log.warning("DuckDB encryption not available, using unencrypted database for development")
-    
+
     conn.execute(
         f"""
         CREATE TABLE IF NOT EXISTS automation_jobs (

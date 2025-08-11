@@ -38,10 +38,10 @@ class EmbeddingManager:
                 config = get_config()
                 self.model_name = config.default_embedding_model
             except Exception:
-                # Fallback to environment variable or default
+                # Fallback to environment variable or default (using all-MPNet-base-v2 as per stack spec)
                 self.model_name = os.getenv(
                     "KARI_EMBED_MODEL", 
-                    "sentence-transformers/distilbert-base-nli-stsb-mean-tokens"
+                    "sentence-transformers/all-MPNet-base-v2"
                 )
         
         self.model: Optional[SentenceTransformer] = None

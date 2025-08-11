@@ -860,6 +860,14 @@ class AuthMonitor:
             return "user_not_found"
         elif "security" in error_lower or "blocked" in error_lower:
             return "security_block"
+        elif "timeout" in error_lower:
+            return "timeout"
+        elif "database" in error_lower or "connection" in error_lower:
+            return "database_error"
+        elif "validation" in error_lower:
+            return "validation_error"
+        elif "anomaly" in error_lower:
+            return "anomaly_detected"
         else:
             return "other"
 

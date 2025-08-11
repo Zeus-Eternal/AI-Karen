@@ -22,7 +22,12 @@ from ai_karen_engine.auth.exceptions import (
     InvalidCredentialsError,
     AccountLockedError,
     SessionExpiredError,
+    SessionNotFoundError,
     RateLimitExceededError,
+    SecurityError,
+    AnomalyDetectedError,
+    UserAlreadyExistsError,
+    UserNotFoundError,
 )
 
 logger = get_logger(__name__)
@@ -188,12 +193,16 @@ async def register(
             user=user_data,
         )
 
+    except UserAlreadyExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RateLimitExceededError as e:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)
         )
+    except SecurityError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except AuthError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -282,6 +291,10 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)
         )
+    except SecurityError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except AnomalyDetectedError as e:
+        raise HTTPException(status_code=403, detail="Authentication blocked")
     except HTTPException:
         raise
     except Exception as e:
@@ -333,12 +346,31 @@ async def get_session_user(
         if not user_data:
             raise HTTPException(status_code=401, detail="Invalid session")
 
+        # Convert UserData to dict if needed
+        if hasattr(user_data, 'user_id'):
+            user_dict = {
+                "user_id": user_data.user_id,
+                "email": user_data.email,
+                "full_name": getattr(user_data, 'full_name', None),
+                "roles": user_data.roles,
+                "tenant_id": user_data.tenant_id,
+                "preferences": getattr(user_data, 'preferences', {}),
+                "two_factor_enabled": False,
+                "is_verified": user_data.is_verified,
+            }
+        else:
+            user_dict = user_data
+
         # Store the session token for callers that need it (e.g., logout)
-        user_data["session_token"] = session_token
-        return user_data
+        user_dict["session_token"] = session_token
+        return user_dict
         
     except SessionExpiredError:
         raise HTTPException(status_code=401, detail="Session expired")
+    except SessionNotFoundError:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    except SecurityError:
+        raise HTTPException(status_code=403, detail="Security validation failed")
     except AuthError:
         raise HTTPException(status_code=401, detail="Invalid session")
     except Exception:
@@ -408,7 +440,7 @@ async def update_credentials(
 
         # Create new session (invalidates old one)
         session_data = await auth_service.create_session(
-            user_id=updated_user_data.user_id,
+            user_data=updated_user_data,
             ip_address=request_meta["ip_address"],
             user_agent=request_meta["user_agent"],
         )

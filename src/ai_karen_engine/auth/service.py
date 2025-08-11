@@ -9,6 +9,7 @@ single entry point for all authentication operations.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -29,6 +30,7 @@ from .exceptions import (
 from .intelligence import IntelligenceEngine, LoginAttempt
 from .models import AuthEvent, AuthEventType, SessionData, UserData
 from .monitoring import AuthMonitor
+from .monitoring_extensions import EnhancedAuthMonitor
 from .security import SecurityEnhancer
 
 
@@ -75,8 +77,11 @@ class AuthService:
 
         # Initialize monitoring system if enabled
         self.monitor: Optional[AuthMonitor] = None
+        self.enhanced_monitor: Optional[EnhancedAuthMonitor] = None
         if config.monitoring.enable_monitoring:
             self.monitor = AuthMonitor(config)
+            # Initialize enhanced monitoring for advanced analytics
+            self.enhanced_monitor = EnhancedAuthMonitor(config)
 
         self._initialized = False
         self.logger.info(
@@ -107,6 +112,10 @@ class AuthService:
             if self.security_layer:
                 await self.security_layer.initialize()
                 self.logger.info("Security layer initialized")
+
+            # Setup default users if needed
+            await self._setup_default_users()
+            self.logger.info("Default users setup completed")
 
             self._initialized = True
             self.logger.info("AuthService initialization completed successfully")
@@ -1692,6 +1701,21 @@ class AuthService:
         # Record through monitoring system if available
         if self.monitor:
             await self.monitor.record_auth_event(event)
+        
+        # Enhanced monitoring with advanced analytics
+        if self.enhanced_monitor:
+            analysis_results = await self.enhanced_monitor.analyze_auth_event(event)
+            # Log analysis results if significant patterns detected
+            if analysis_results.get("security_patterns") or analysis_results.get("recommendations"):
+                self.logger.info(
+                    f"Enhanced monitoring analysis for event {event.event_id}",
+                    extra={
+                        "event_id": event.event_id,
+                        "analysis_results": analysis_results,
+                        "security_patterns": len(analysis_results.get("security_patterns", [])),
+                        "recommendations": len(analysis_results.get("recommendations", [])),
+                    }
+                )
 
     async def _record_performance_metric(
         self,
@@ -1735,14 +1759,251 @@ class AuthService:
     def get_health_status(self) -> Dict[str, Any]:
         """Get system health status."""
         if self.monitor:
-            return self.monitor.get_health_status()
+            health = self.monitor.get_health_status()
+            # Add enhanced monitoring status if available
+            if self.enhanced_monitor:
+                enhanced_status = self.enhanced_monitor.get_comprehensive_status()
+                health["enhanced_monitoring"] = enhanced_status
+            return health
         return {"status": "unknown", "reason": "Monitoring not enabled"}
+
+    def get_comprehensive_monitoring_status(self) -> Dict[str, Any]:
+        """Get comprehensive monitoring status including advanced analytics."""
+        status = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "basic_monitoring": {},
+            "enhanced_monitoring": {},
+            "overall_health": "unknown",
+        }
+
+        # Basic monitoring status
+        if self.monitor:
+            status["basic_monitoring"] = {
+                "enabled": True,
+                "health": self.monitor.get_health_status(),
+                "metrics": self.monitor.get_monitoring_stats(),
+                "alerts": self.monitor.alerts.get_alert_stats(),
+            }
+
+        # Enhanced monitoring status
+        if self.enhanced_monitor:
+            status["enhanced_monitoring"] = self.enhanced_monitor.get_comprehensive_status()
+
+        # Determine overall health
+        basic_health = status["basic_monitoring"].get("health", {}).get("status", "unknown")
+        enhanced_health = status["enhanced_monitoring"].get("monitoring_health", "unknown")
+
+        if basic_health == "critical" or enhanced_health == "critical":
+            status["overall_health"] = "critical"
+        elif basic_health == "degraded" or enhanced_health == "degraded":
+            status["overall_health"] = "degraded"
+        elif basic_health == "warning" or enhanced_health == "warning":
+            status["overall_health"] = "warning"
+        elif basic_health == "healthy" and enhanced_health in ["healthy", "active"]:
+            status["overall_health"] = "healthy"
+
+        return status
+
+    async def _setup_default_users(self) -> None:
+        """
+        Setup default users during authentication service initialization.
+        
+        Creates essential default users if they don't already exist:
+        - Admin user for system administration
+        - Anonymous user for unauthenticated operations
+        - Test user for development/testing (only in non-production environments)
+        """
+        self.logger.info("Setting up default users...")
+        
+        try:
+            # Default users configuration
+            default_users = []
+            
+            # 1. Admin user - always create in all environments
+            # Support both ADMIN_EMAIL/ADMIN_PASSWORD and AUTH_DEFAULT_* formats
+            admin_email = (
+                os.getenv("ADMIN_EMAIL") or 
+                os.getenv("AUTH_DEFAULT_ADMIN_EMAIL", "admin@kari.ai")
+            )
+            admin_password = (
+                os.getenv("ADMIN_PASSWORD") or 
+                os.getenv("AUTH_DEFAULT_ADMIN_PASSWORD", "password123")
+            )
+            
+            # Validate admin credentials format
+            if not self._validate_email_format(admin_email):
+                self.logger.warning(f"Invalid admin email format: {admin_email}, using default")
+                admin_email = "admin@kari.ai"
+            
+            if not self._validate_password_strength(admin_password):
+                self.logger.warning("Admin password doesn't meet minimum requirements, using default")
+                admin_password = "password123"
+            
+            default_users.append({
+                "email": admin_email,
+                "password": admin_password,
+                "full_name": "System Administrator",
+                "roles": ["admin", "user"],
+                "tenant_id": "default",
+                "is_verified": True,
+                "description": "Default admin user"
+            })
+            
+            # 2. Anonymous user for unauthenticated operations
+            # Support both ANONYMOUS_EMAIL/ANONYMOUS_PASSWORD and AUTH_ANONYMOUS_* formats
+            anonymous_email = (
+                os.getenv("ANONYMOUS_EMAIL") or 
+                os.getenv("AUTH_ANONYMOUS_EMAIL", "anonymous@karen.ai")
+            )
+            anonymous_password = (
+                os.getenv("ANONYMOUS_PASSWORD") or 
+                os.getenv("AUTH_ANONYMOUS_PASSWORD", "anonymous")
+            )
+            
+            # Validate anonymous credentials format
+            if not self._validate_email_format(anonymous_email):
+                self.logger.warning(f"Invalid anonymous email format: {anonymous_email}, using default")
+                anonymous_email = "anonymous@karen.ai"
+            
+            if not self._validate_password_strength(anonymous_password):
+                self.logger.warning("Anonymous password doesn't meet minimum requirements, using default")
+                anonymous_password = "anonymous"
+            
+            default_users.append({
+                "email": anonymous_email,
+                "password": anonymous_password,
+                "full_name": "Anonymous User",
+                "roles": ["anonymous"],
+                "tenant_id": "default",
+                "is_verified": True,
+                "description": "Anonymous user for unauthenticated operations"
+            })
+            
+            # 3. Test user - only in development/testing environments
+            if self.config.environment in ["development", "testing", "dev", "test"]:
+                # Support both TEST_EMAIL/TEST_PASSWORD and AUTH_TEST_USER_* formats
+                test_email = (
+                    os.getenv("TEST_EMAIL") or 
+                    os.getenv("AUTH_TEST_USER_EMAIL", "test@example.com")
+                )
+                test_password = (
+                    os.getenv("TEST_PASSWORD") or 
+                    os.getenv("AUTH_TEST_USER_PASSWORD", "testpassword")
+                )
+                
+                # Validate test credentials format
+                if not self._validate_email_format(test_email):
+                    self.logger.warning(f"Invalid test email format: {test_email}, using default")
+                    test_email = "test@example.com"
+                
+                if not self._validate_password_strength(test_password):
+                    self.logger.warning("Test password doesn't meet minimum requirements, using default")
+                    test_password = "testpassword"
+                
+                default_users.append({
+                    "email": test_email,
+                    "password": test_password,
+                    "full_name": "Test User",
+                    "roles": ["user"],
+                    "tenant_id": "default",
+                    "is_verified": True,
+                    "description": "Test user for development and testing"
+                })
+            
+            # Create users that don't already exist
+            created_users = []
+            skipped_users = []
+            
+            for user_config in default_users:
+                try:
+                    # Check if user already exists
+                    existing_user = await self.core_auth.get_user_by_email(user_config["email"])
+                    
+                    if existing_user:
+                        skipped_users.append(user_config["email"])
+                        self.logger.debug(f"User {user_config['email']} already exists, skipping")
+                        continue
+                    
+                    # Create the user
+                    user_data = await self.core_auth.create_user(
+                        email=user_config["email"],
+                        password=user_config["password"],
+                        full_name=user_config["full_name"],
+                        tenant_id=user_config["tenant_id"],
+                        roles=user_config["roles"],
+                    )
+                    
+                    # Ensure user is verified if specified
+                    if user_config.get("is_verified", False) and not user_data.is_verified:
+                        user_data.is_verified = True
+                        await self.core_auth.db_client.update_user(user_data)
+                    
+                    created_users.append(user_config["email"])
+                    self.logger.info(f"Created default user: {user_config['email']} ({user_config['description']})")
+                    
+                except Exception as e:
+                    self.logger.error(f"Failed to create default user {user_config['email']}: {e}")
+                    # Continue with other users even if one fails
+                    continue
+            
+            # Log summary
+            if created_users:
+                self.logger.info(f"Successfully created {len(created_users)} default users: {', '.join(created_users)}")
+            
+            if skipped_users:
+                self.logger.info(f"Skipped {len(skipped_users)} existing users: {', '.join(skipped_users)}")
+            
+            # Log default credentials for development environments
+            if self.config.environment in ["development", "testing", "dev", "test"]:
+                self.logger.info("Default user credentials for development:")
+                for user_config in default_users:
+                    if user_config["email"] in created_users or user_config["email"] in skipped_users:
+                        self.logger.info(f"  {user_config['email']} / {user_config['password']} ({user_config['description']})")
+            
+        except Exception as e:
+            self.logger.error(f"Error during default users setup: {e}")
+            # Don't raise exception to avoid breaking initialization
+            # Default users are helpful but not critical for service operation
+
+    def _validate_email_format(self, email: str) -> bool:
+        """
+        Validate email format for custom credentials.
+        
+        Args:
+            email: Email address to validate
+            
+        Returns:
+            True if email format is valid, False otherwise
+        """
+        import re
+        
+        # Basic email validation pattern
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(email_pattern, email))
+    
+    def _validate_password_strength(self, password: str) -> bool:
+        """
+        Validate password strength for custom credentials.
+        
+        Args:
+            password: Password to validate
+            
+        Returns:
+            True if password meets minimum requirements, False otherwise
+        """
+        # Minimum requirements: at least 6 characters
+        # In production, you might want stricter requirements
+        return len(password) >= 6
 
     async def shutdown(self) -> None:
         """Shutdown the authentication service and all components."""
         self.logger.info("Shutting down AuthService...")
 
         try:
+            # Shutdown enhanced monitoring
+            if self.enhanced_monitor:
+                await self.enhanced_monitor.shutdown()
+
             # Shutdown monitoring
             if self.monitor:
                 await self.monitor.shutdown()

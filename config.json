@@ -1,8 +1,9 @@
 {
+  "$schema": "",
   "active_user": "default",
   "theme": "dark",
   "llm_model": "llama3.2:latest",
-  "default_embedding_model": "sentence-transformers/distilbert-base-nli-stsb-mean-tokens",
+  "default_embedding_model": "sentence-transformers/all-MPNet-base-v2",
   "spacy_model": "en_core_web_sm",
   "memory": {
     "enabled": true,

@@ -15,6 +15,10 @@ from ai_karen_engine.auth.exceptions import (
     AuthError,
     RateLimitExceededError,
     SessionExpiredError,
+    SessionNotFoundError,
+    SecurityError,
+    AnomalyDetectedError,
+    AccountLockedError,
 )
 from ai_karen_engine.auth.models import UserData
 from ai_karen_engine.auth.service import AuthService, get_auth_service
@@ -74,8 +78,16 @@ async def auth_middleware(request: Request, call_next):
         )
     except SessionExpiredError:
         return JSONResponse({"detail": "Session expired"}, status_code=401)
+    except SessionNotFoundError:
+        return JSONResponse({"detail": "Invalid session"}, status_code=401)
     except RateLimitExceededError:
         return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+    except SecurityError:
+        return JSONResponse({"detail": "Security validation failed"}, status_code=403)
+    except AnomalyDetectedError:
+        return JSONResponse({"detail": "Authentication blocked"}, status_code=403)
+    except AccountLockedError:
+        return JSONResponse({"detail": "Account locked"}, status_code=423)
     except AuthError:
         return JSONResponse({"detail": "Authentication failed"}, status_code=401)
     except Exception:
