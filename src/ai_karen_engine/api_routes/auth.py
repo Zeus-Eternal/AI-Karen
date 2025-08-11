@@ -80,8 +80,14 @@ def set_session_cookie(
 # Request metadata dependency
 async def get_request_meta(request: Request) -> Dict[str, str]:
     """Extract request metadata like IP address and user agent."""
+    xff = request.headers.get("x-forwarded-for")
+    ip = (
+        xff.split(",")[0].strip()
+        if xff
+        else (request.client.host if request.client else "unknown")
+    )
     return {
-        "ip_address": request.client.host if request.client else "unknown",
+        "ip_address": ip,
         "user_agent": request.headers.get("user-agent", ""),
     }
 
@@ -198,8 +204,12 @@ async def register(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RateLimitExceededError as e:
+        retry_after = e.details.get("retry_after") if isinstance(e.details, dict) else None
+        headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
         raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(e),
+            headers=headers,
         )
     except SecurityError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -288,8 +298,12 @@ async def login(
             status_code=status.HTTP_423_LOCKED, detail=str(e)
         )
     except RateLimitExceededError as e:
+        retry_after = e.details.get("retry_after") if isinstance(e.details, dict) else None
+        headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
         raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e)
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(e),
+            headers=headers,
         )
     except SecurityError as e:
         raise HTTPException(status_code=403, detail=str(e))

@@ -12,6 +12,22 @@ except Exception:  # pragma: no cover
     redis_asyncio = None  # type: ignore
 
 
+def build_limit_key(identifier: str, event_type: str, ip: str | None = None) -> str:
+    """Construct a standardized rate-limit key.
+
+    Args:
+        identifier: Base identifier, typically `user:<email>` or `ip`.
+        event_type: The type of event being limited (e.g., ``login_attempt``).
+        ip: Optional IP address to scope the identifier.
+
+    Returns:
+        A namespaced key suitable for storing rate limit data.
+    """
+
+    suffix = f":{ip}" if ip else ""
+    return f"rl:{event_type}:{identifier}{suffix}"
+
+
 class RateLimitStore:
     """Abstract rate limit storage backend."""
 
