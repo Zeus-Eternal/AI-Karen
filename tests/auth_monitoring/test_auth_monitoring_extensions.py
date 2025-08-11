@@ -27,14 +27,6 @@ from ai_karen_engine.auth.monitoring_extensions import (
 class TestSecurityEventCorrelator:
     """Test security event correlation functionality."""
 
-    @pytest.fixture
-    def config(self):
-        return AuthConfig()
-
-    @pytest.fixture
-    def correlator(self, config):
-        return SecurityEventCorrelator(config)
-
     @pytest.mark.asyncio
     async def test_brute_force_pattern_detection(self, correlator):
         """Test detection of brute force attack patterns."""
@@ -182,16 +174,8 @@ class TestSecurityEventCorrelator:
 class TestPerformanceTrendAnalyzer:
     """Test performance trend analysis functionality."""
 
-    @pytest.fixture
-    def config(self):
-        return AuthConfig()
-
-    @pytest.fixture
-    def analyzer(self, config):
-        return PerformanceTrendAnalyzer(config)
-
     @pytest.mark.asyncio
-    async def test_metric_recording(self, analyzer):
+    async def test_metric_recording(self, performance_analyzer):
         """Test recording of metric data points."""
         metric_name = "auth.response_time"
         
@@ -201,16 +185,16 @@ class TestPerformanceTrendAnalyzer:
         
         for value in values:
             timestamp = datetime.now(timezone.utc)
-            await analyzer.record_metric_point(metric_name, value, timestamp)
+            await performance_analyzer.record_metric_point(metric_name, value, timestamp)
             timestamps.append(timestamp)
         
         # Check data was recorded
-        history = analyzer._metric_history[metric_name]
+        history = performance_analyzer._metric_history[metric_name]
         assert len(history) == 5
         assert history[-1][1] == 90.0  # Last value
 
     @pytest.mark.asyncio
-    async def test_improving_trend_detection(self, analyzer):
+    async def test_improving_trend_detection(self, performance_analyzer):
         """Test detection of improving performance trends."""
         metric_name = "auth.response_time"
         base_time = datetime.now(timezone.utc)
@@ -219,9 +203,9 @@ class TestPerformanceTrendAnalyzer:
         for i in range(20):
             timestamp = base_time - timedelta(minutes=i)
             value = 200.0 - (i * 5)  # Decreasing values = improving performance
-            await analyzer.record_metric_point(metric_name, value, timestamp)
+            await performance_analyzer.record_metric_point(metric_name, value, timestamp)
         
-        trends = await analyzer.analyze_trends()
+        trends = await performance_analyzer.analyze_trends()
         
         # Should detect improving trend
         response_trends = [t for t in trends if t.metric_name == metric_name]
@@ -236,7 +220,7 @@ class TestPerformanceTrendAnalyzer:
         assert trend.change_percentage < 0  # Negative change = improvement for response time
 
     @pytest.mark.asyncio
-    async def test_degrading_trend_detection(self, analyzer):
+    async def test_degrading_trend_detection(self, performance_analyzer):
         """Test detection of degrading performance trends."""
         metric_name = "auth.success_rate"
         base_time = datetime.now(timezone.utc)
@@ -245,9 +229,9 @@ class TestPerformanceTrendAnalyzer:
         for i in range(20):
             timestamp = base_time - timedelta(minutes=i)
             value = 0.95 - (i * 0.01)  # Decreasing success rate
-            await analyzer.record_metric_point(metric_name, value, timestamp)
+            await performance_analyzer.record_metric_point(metric_name, value, timestamp)
         
-        trends = await analyzer.analyze_trends()
+        trends = await performance_analyzer.analyze_trends()
         
         # Should detect degrading trend
         success_trends = [t for t in trends if t.metric_name == metric_name]
@@ -261,7 +245,7 @@ class TestPerformanceTrendAnalyzer:
         assert trend.change_percentage < 0  # Negative change = degradation for success rate
 
     @pytest.mark.asyncio
-    async def test_stable_trend_detection(self, analyzer):
+    async def test_stable_trend_detection(self, performance_analyzer):
         """Test detection of stable performance trends."""
         metric_name = "auth.stable_metric"
         base_time = datetime.now(timezone.utc)
@@ -272,9 +256,9 @@ class TestPerformanceTrendAnalyzer:
             timestamp = base_time - timedelta(minutes=i)
             # Add small random variation but keep stable
             value = stable_value + (i % 3 - 1) * 0.5  # Very small variations
-            await analyzer.record_metric_point(metric_name, value, timestamp)
+            await performance_analyzer.record_metric_point(metric_name, value, timestamp)
         
-        trends = await analyzer.analyze_trends()
+        trends = await performance_analyzer.analyze_trends()
         
         # Should detect stable trend
         stable_trends = [t for t in trends if t.metric_name == metric_name]
@@ -283,12 +267,12 @@ class TestPerformanceTrendAnalyzer:
             if stable_trend:
                 trend = stable_trend[0]
                 assert trend.trend_strength == 0.0
-                assert abs(trend.change_percentage) < analyzer.significant_change_threshold * 100
+                assert abs(trend.change_percentage) < performance_analyzer.significant_change_threshold * 100
 
-    def test_trend_summary(self, analyzer):
+    def test_trend_summary(self, performance_analyzer):
         """Test trend summary generation."""
         # Add mock trends to cache
-        analyzer._trend_cache = {
+        performance_analyzer._trend_cache = {
             "metric1_5m": PerformanceTrend(
                 metric_name="metric1",
                 trend_direction="improving",
@@ -318,7 +302,7 @@ class TestPerformanceTrendAnalyzer:
             ),
         }
         
-        summary = analyzer.get_trend_summary()
+        summary = performance_analyzer.get_trend_summary()
         
         assert summary["trends_analyzed"] == 3
         assert summary["improving"] == 1
@@ -327,7 +311,7 @@ class TestPerformanceTrendAnalyzer:
         assert summary["concerning_trends"] == 1  # degrading with strength > 0.5
         assert summary["status"] == "concerning"  # Has concerning trends
 
-    def test_get_current_trends(self, analyzer):
+    def test_get_current_trends(self, performance_analyzer):
         """Test retrieving current trends."""
         # Add mock trends
         trend1 = PerformanceTrend(
@@ -350,29 +334,21 @@ class TestPerformanceTrendAnalyzer:
             analysis_period_minutes=15,
         )
         
-        analyzer._trend_cache["auth.response_time_5m"] = trend1
-        analyzer._trend_cache["auth.success_rate_15m"] = trend2
+        performance_analyzer._trend_cache["auth.response_time_5m"] = trend1
+        performance_analyzer._trend_cache["auth.success_rate_15m"] = trend2
         
         # Get all trends
-        all_trends = analyzer.get_current_trends()
+        all_trends = performance_analyzer.get_current_trends()
         assert len(all_trends) == 2
         
         # Get specific metric trends
-        response_trends = analyzer.get_current_trends("auth.response_time")
+        response_trends = performance_analyzer.get_current_trends("auth.response_time")
         assert len(response_trends) == 1
         assert response_trends[0].metric_name == "auth.response_time"
 
 
 class TestEnhancedAuthMonitor:
     """Test the enhanced authentication monitor."""
-
-    @pytest.fixture
-    def config(self):
-        return AuthConfig()
-
-    @pytest.fixture
-    def enhanced_monitor(self, config):
-        return EnhancedAuthMonitor(config)
 
     @pytest.mark.asyncio
     async def test_comprehensive_event_analysis(self, enhanced_monitor):
