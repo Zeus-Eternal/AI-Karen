@@ -39,7 +39,6 @@ import NotificationsSection from '@/components/sidebar/NotificationsSection';
 import ModernChatInterface from '@/components/chat/ModernChatInterface';
 import Dashboard from '@/components/dashboard/Dashboard';
 import { webUIConfig } from '@/lib/config';
-import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AuthenticatedHeader } from '@/components/layout/AuthenticatedHeader';
 
@@ -49,11 +48,9 @@ type ActiveView = 'chat' | 'settings' | 'dashboard' | 'commsCenter' | 'pluginDat
 
 export default function HomePage() {
   return (
-    <AuthProvider>
-      <ProtectedRoute>
-        <AuthenticatedHomePage />
-      </ProtectedRoute>
-    </AuthProvider>
+    <ProtectedRoute>
+      <AuthenticatedHomePage />
+    </ProtectedRoute>
   );
 }
 
