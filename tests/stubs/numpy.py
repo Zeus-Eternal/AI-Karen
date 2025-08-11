@@ -5,6 +5,7 @@ float32 = "float32"
 uint8 = "uint8"
 inf = float("inf")
 nan = float("nan")
+__version__ = "0.0"
 
 # Additional numpy types needed for torch compatibility
 bool_ = bool

@@ -4,6 +4,7 @@ Tests for advanced chat features: file attachments and code execution.
 
 import asyncio
 import hashlib
+import io
 import pytest
 import tempfile
 from pathlib import Path
@@ -68,7 +69,7 @@ class TestFileAttachmentService:
         )
         
         # Upload file
-        result = await file_service.upload_file(request, test_content)
+        result = await file_service.upload_file(request, io.BytesIO(test_content))
 
         # Verify result
         assert result.success is True
@@ -81,8 +82,8 @@ class TestFileAttachmentService:
     @pytest.mark.asyncio
     async def test_file_upload_validation_failure(self, file_service):
         """Test file upload validation failure."""
-        # Create oversized file content
-        test_content = b"x" * (file_service.max_file_size + 1)
+        # Create oversized file content metadata
+        oversized_size = file_service.max_file_size + 1
         
         # Create upload request
         request = FileUploadRequest(
@@ -90,12 +91,12 @@ class TestFileAttachmentService:
             user_id="test-user-456",
             filename="large.txt",
             content_type="text/plain",
-            file_size=len(test_content),
+            file_size=oversized_size,
             description="Large test file"
         )
-        
+
         # Upload file
-        result = await file_service.upload_file(request, test_content)
+        result = await file_service.upload_file(request, io.BytesIO(b"x"))
         
         # Verify validation failure
         assert result.success is False
@@ -114,7 +115,7 @@ class TestFileAttachmentService:
             file_size=len(test_content)
         )
         
-        upload_result = await file_service.upload_file(request, test_content)
+        upload_result = await file_service.upload_file(request, io.BytesIO(test_content))
         assert upload_result.success is True
         
         # Wait a bit for processing
@@ -460,7 +461,7 @@ class TestChatOrchestratorIntegration:
         )
         
         upload_result = await orchestrator.file_attachment_service.upload_file(
-            upload_request, test_content
+            upload_request, io.BytesIO(test_content)
         )
         assert upload_result.success is True
         
