@@ -46,13 +46,28 @@ class IntelligenceEngine:
         """Initialize all component services."""
         if self._initialized:
             return
-        await asyncio.gather(
+        self._initialized = True
+        results = await asyncio.gather(
             self.credential_analyzer.initialize(),
             self.behavioral_embedding.initialize(),
             self.anomaly_engine.initialize(),
             self.adaptive_learning.initialize(),
+            return_exceptions=True,
         )
-        self._initialized = True
+        component_names = [
+            "credential_analyzer",
+            "behavioral_embedding",
+            "anomaly_engine",
+            "adaptive_learning",
+        ]
+        failed = False
+        for name, result in zip(component_names, results):
+            if isinstance(result, Exception):
+                logger.error(f"{name} initialization failed: {result}")
+                failed = True
+        if failed:
+            self._initialized = False
+            raise RuntimeError("IntelligenceEngine initialization failed")
 
     async def calculate_risk_score(self, context: AuthContext) -> RiskScoreResult:
         """Calculate risk score for an authentication attempt."""
@@ -73,19 +88,23 @@ class IntelligenceEngine:
 
         start_time = time.time()
         try:
-            embedding_result = await self.behavioral_embedding.generate_behavioral_embedding(
-                context
+            embedding_result = (
+                await self.behavioral_embedding.generate_behavioral_embedding(context)
             )
         except Exception as e:  # pragma: no cover - logging only
             logger.error(f"Behavioral embedding generation failed: {e}")
             fallback_mode = True
-            embedding_result = await self.behavioral_embedding._generate_fallback_embedding(
-                context, start_time
+            embedding_result = (
+                await self.behavioral_embedding._generate_fallback_embedding(
+                    context, start_time
+                )
             )
 
         try:
-            embedding_analysis = await self.behavioral_embedding.analyze_embedding_for_anomalies(
-                context, embedding_result
+            embedding_analysis = (
+                await self.behavioral_embedding.analyze_embedding_for_anomalies(
+                    context, embedding_result
+                )
             )
         except Exception as e:  # pragma: no cover - logging only
             logger.error(f"Embedding anomaly analysis failed: {e}")
