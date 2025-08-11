@@ -13,7 +13,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridReadyEvent, RowSelectedEvent } from 'ag-grid-community';
-import { CopilotKit } from '@copilotkit/react-core';
 import { CopilotTextarea } from '@copilotkit/react-textarea';
 import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
 
@@ -672,8 +671,7 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
   }
 
   return (
-    <CopilotKit runtimeUrl="/api/copilot">
-      <Card className={`flex flex-col ${className} ${isFullscreen ? 'fixed inset-0 z-50' : ''}`} style={{ height }}>
+    <Card className={`flex flex-col ${className} ${isFullscreen ? 'fixed inset-0 z-50' : ''}`} style={{ height }}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -733,7 +731,6 @@ export const ModernChatInterface: React.FC<ModernChatInterfaceProps> = ({
           )}
         </CardContent>
       </Card>
-    </CopilotKit>
   );
 };
 
