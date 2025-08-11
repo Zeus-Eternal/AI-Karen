@@ -64,10 +64,13 @@ export class ConfigManager {
    * Load configuration from environment variables with defaults
    */
   private loadConfiguration(): EndpointConfig {
-    // Force localhost configuration for development to prevent external IP issues
-    const backendUrl = 'http://localhost:8000';
-    const environment = 'local' as Environment;
-    const networkMode = 'localhost' as NetworkMode;
+    // Allow explicit environment configuration with sensible defaults
+    const backendUrl = this.getEnvVar(
+      'API_BASE_URL',
+      this.getEnvVar('KAREN_BACKEND_URL', 'http://localhost:8000')
+    );
+    const environment = this.getEnvVar('KAREN_ENVIRONMENT', 'local') as Environment;
+    const networkMode = this.getEnvVar('KAREN_NETWORK_MODE', 'localhost') as NetworkMode;
     
     // Parse fallback URLs
     const fallbackUrlsStr = this.getEnvVar('KAREN_FALLBACK_BACKEND_URLS', '');
@@ -101,7 +104,10 @@ export class ConfigManager {
       const value = process.env[nextPublicKey] || process.env[key] || defaultValue;
       
       // Debug logging for environment variable resolution
-      if (typeof console !== 'undefined' && key === 'KAREN_BACKEND_URL') {
+      if (
+        typeof console !== 'undefined' &&
+        (key === 'KAREN_BACKEND_URL' || key === 'API_BASE_URL')
+      ) {
         console.log(`🔍 Environment variable lookup for ${key}:`, {
           nextPublicKey,
           nextPublicValue: process.env[nextPublicKey],
@@ -165,9 +171,11 @@ export class ConfigManager {
    */
   private detectEnvironment(): void {
     // Skip environment detection if explicit configuration is provided
-    const hasExplicitConfig = this.getEnvVar('KAREN_BACKEND_URL', '') !== '' ||
-                             this.getEnvVar('KAREN_ENVIRONMENT', '') !== '' ||
-                             this.getEnvVar('KAREN_NETWORK_MODE', '') !== '';
+    const hasExplicitConfig =
+      this.getEnvVar('API_BASE_URL', '') !== '' ||
+      this.getEnvVar('KAREN_BACKEND_URL', '') !== '' ||
+      this.getEnvVar('KAREN_ENVIRONMENT', '') !== '' ||
+      this.getEnvVar('KAREN_NETWORK_MODE', '') !== '';
     
     if (hasExplicitConfig) {
       // Use explicit configuration, don't override with auto-detection
