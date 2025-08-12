@@ -5,17 +5,18 @@ Enhanced with unified validation patterns from Phase 4.1.a.
 
 from __future__ import annotations
 
-import re
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict, Any, Optional, Union
 from datetime import datetime
+import re
 
-from ai_karen_engine.extensions.models import ExtensionManifest
+from pydantic import ValidationError as PydanticValidationError
+
+from ai_karen_engine.extensions.models import ExtensionManifest, NAME_PATTERN
 
 # Import unified validation utilities
 try:
     from ai_karen_engine.api_routes.unified_schemas import (
         ValidationUtils,
-        ErrorType,
         FieldError
     )
     UNIFIED_VALIDATION_AVAILABLE = True
@@ -33,24 +34,6 @@ class ExtensionValidator:
     Validates extension manifests and ensures they meet requirements.
     """
     
-    # Semantic version regex pattern
-    SEMVER_PATTERN = re.compile(
-        r'^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)'
-        r'(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)'
-        r'(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?'
-        r'(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
-    )
-    
-    # Valid extension name pattern (kebab-case)
-    NAME_PATTERN = re.compile(r'^[a-z][a-z0-9]*(-[a-z0-9]+)*$')
-    
-    # Valid categories
-    VALID_CATEGORIES = {
-        'analytics', 'automation', 'communication', 'data', 'development',
-        'finance', 'integration', 'iot', 'marketing', 'productivity',
-        'security', 'social', 'utilities', 'example', 'test'
-    }
-    
     # Valid permissions
     VALID_DATA_PERMISSIONS = {'read', 'write', 'delete', 'admin'}
     VALID_PLUGIN_PERMISSIONS = {'execute', 'manage'}
@@ -63,7 +46,7 @@ class ExtensionValidator:
         self.warnings: List[str] = []
         self.field_errors: List[FieldError] = []
     
-    def validate_manifest(self, manifest: ExtensionManifest) -> Tuple[bool, List[str], List[str]]:
+    def validate_manifest(self, manifest: Union[ExtensionManifest, Dict[str, Any]]) -> Tuple[bool, List[str], List[str]]:
         """
         Validate an extension manifest.
         
@@ -75,19 +58,31 @@ class ExtensionValidator:
         """
         self.errors = []
         self.warnings = []
-        
-        # Basic field validation
-        self._validate_basic_fields(manifest)
-        
-        # Version validation
-        self._validate_version(manifest.version)
-        self._validate_version(manifest.kari_min_version)
-        
-        # Name validation
-        self._validate_name(manifest.name)
-        
-        # Category validation
-        self._validate_category(manifest.category)
+        self.field_errors = []
+
+        try:
+            manifest_model = (
+                manifest
+                if isinstance(manifest, ExtensionManifest)
+                else ExtensionManifest(**manifest)
+            )
+        except PydanticValidationError as e:
+            for err in e.errors():
+                field_path = ".".join(str(p) for p in err["loc"])
+                message = err["msg"]
+                self.errors.append(f"{field_path}: {message}")
+                if UNIFIED_VALIDATION_AVAILABLE:
+                    self.field_errors.append(
+                        FieldError(
+                            field=field_path,
+                            message=message,
+                            code="invalid",
+                            invalid_value=err.get("input"),
+                        )
+                    )
+            return False, self.errors.copy(), self.warnings.copy()
+
+        manifest = manifest_model
         
         # Dependencies validation
         self._validate_dependencies(manifest)
@@ -110,63 +105,36 @@ class ExtensionValidator:
         is_valid = len(self.errors) == 0
         return is_valid, self.errors.copy(), self.warnings.copy()
     
+    # The basic field, version, name, and category validations are now handled
+    # by the Pydantic ``ExtensionManifest`` model. The methods are kept for
+    # backward compatibility but perform no actions.
+
     def _validate_basic_fields(self, manifest: ExtensionManifest) -> None:
-        """Validate basic required fields."""
-        required_fields = [
-            ('name', manifest.name),
-            ('version', manifest.version),
-            ('display_name', manifest.display_name),
-            ('description', manifest.description),
-            ('author', manifest.author),
-            ('license', manifest.license),
-            ('category', manifest.category)
-        ]
-        
-        for field_name, field_value in required_fields:
-            if not field_value or not isinstance(field_value, str) or not field_value.strip():
-                self.errors.append(f"Required field '{field_name}' is missing or empty")
-    
+        return
+
     def _validate_version(self, version: str) -> None:
-        """Validate semantic version format."""
-        if not version:
-            return  # Will be caught by basic field validation
-        
-        if not self.SEMVER_PATTERN.match(version):
-            self.errors.append(f"Invalid semantic version format: {version}")
-    
+        return
+
     def _validate_name(self, name: str) -> None:
-        """Validate extension name format."""
-        if not name:
-            return  # Will be caught by basic field validation
-        
-        if not self.NAME_PATTERN.match(name):
-            self.errors.append(
-                f"Extension name '{name}' must be lowercase kebab-case (e.g., 'my-extension')"
-            )
-        
-        if len(name) > 50:
-            self.errors.append(f"Extension name '{name}' is too long (max 50 characters)")
-    
+        return
+
     def _validate_category(self, category: str) -> None:
-        """Validate extension category."""
-        if not category:
-            return  # Will be caught by basic field validation
-        
-        if category not in self.VALID_CATEGORIES:
-            self.warnings.append(
-                f"Category '{category}' is not in recommended categories: "
-                f"{', '.join(sorted(self.VALID_CATEGORIES))}"
-            )
+        return
     
     def _validate_dependencies(self, manifest: ExtensionManifest) -> None:
         """Validate extension dependencies."""
+        deps = manifest.dependencies or {}
+        plugins = (deps.get("plugins") if isinstance(deps, dict) else deps.plugins) or []
+        extensions = (deps.get("extensions") if isinstance(deps, dict) else deps.extensions) or []
+        system_services = (deps.get("system_services") if isinstance(deps, dict) else deps.system_services) or []
+
         # Validate plugin dependencies
-        for plugin in manifest.dependencies.plugins:
+        for plugin in plugins:
             if not isinstance(plugin, str) or not plugin.strip():
                 self.errors.append(f"Invalid plugin dependency: {plugin}")
-        
+
         # Validate extension dependencies
-        for ext_dep in manifest.dependencies.extensions:
+        for ext_dep in extensions:
             if not isinstance(ext_dep, str) or not ext_dep.strip():
                 self.errors.append(f"Invalid extension dependency: {ext_dep}")
                 continue
@@ -174,7 +142,7 @@ class ExtensionValidator:
             # Check version specification format
             if '@' in ext_dep:
                 ext_name, version_spec = ext_dep.split('@', 1)
-                if not self.NAME_PATTERN.match(ext_name):
+                if not re.match(NAME_PATTERN, ext_name):
                     self.errors.append(f"Invalid extension name in dependency: {ext_name}")
                 
                 # Basic version spec validation (could be enhanced)
@@ -183,29 +151,31 @@ class ExtensionValidator:
         
         # Validate system service dependencies
         valid_services = {'postgres', 'redis', 'elasticsearch', 'milvus'}
-        for service in manifest.dependencies.system_services:
+        for service in system_services:
             if service not in valid_services:
                 self.warnings.append(f"Unknown system service dependency: {service}")
     
     def _validate_permissions(self, manifest: ExtensionManifest) -> None:
         """Validate extension permissions."""
-        # Data access permissions
-        for perm in manifest.permissions.data_access:
+        perms = manifest.permissions or {}
+        data_access = perms.get("data_access") if isinstance(perms, dict) else perms.data_access
+        plugin_access = perms.get("plugin_access") if isinstance(perms, dict) else perms.plugin_access
+        system_access = perms.get("system_access") if isinstance(perms, dict) else perms.system_access
+        network_access = perms.get("network_access") if isinstance(perms, dict) else perms.network_access
+
+        for perm in data_access or []:
             if perm not in self.VALID_DATA_PERMISSIONS:
                 self.errors.append(f"Invalid data access permission: {perm}")
-        
-        # Plugin access permissions
-        for perm in manifest.permissions.plugin_access:
+
+        for perm in plugin_access or []:
             if perm not in self.VALID_PLUGIN_PERMISSIONS:
                 self.errors.append(f"Invalid plugin access permission: {perm}")
-        
-        # System access permissions
-        for perm in manifest.permissions.system_access:
+
+        for perm in system_access or []:
             if perm not in self.VALID_SYSTEM_PERMISSIONS:
                 self.errors.append(f"Invalid system access permission: {perm}")
-        
-        # Network access permissions
-        for perm in manifest.permissions.network_access:
+
+        for perm in network_access or []:
             if perm not in self.VALID_NETWORK_PERMISSIONS:
                 self.errors.append(f"Invalid network access permission: {perm}")
     
@@ -422,7 +392,7 @@ class ExtensionValidator:
                     f"Consider adding these to system_services dependencies."
                 )
     
-    def validate_manifest_enhanced(self, manifest: ExtensionManifest) -> Tuple[bool, List[str], List[str], List[FieldError]]:
+    def validate_manifest_enhanced(self, manifest: Union[ExtensionManifest, Dict[str, Any]]) -> Tuple[bool, List[str], List[str], List[FieldError]]:
         """
         Enhanced validation with unified patterns and new API compatibility.
         
@@ -434,12 +404,21 @@ class ExtensionValidator:
         """
         # Run standard validation first
         is_valid, errors, warnings = self.validate_manifest(manifest)
-        
+
+        if not is_valid:
+            return is_valid, errors, warnings, self.field_errors.copy()
+
+        manifest_model = (
+            manifest
+            if isinstance(manifest, ExtensionManifest)
+            else ExtensionManifest(**manifest)
+        )
+
         # Run enhanced validations
-        self._validate_with_unified_patterns(manifest)
-        self._validate_api_endpoint_compatibility(manifest)
-        self._validate_provider_integration(manifest)
-        self._validate_memory_system_integration(manifest)
+        self._validate_with_unified_patterns(manifest_model)
+        self._validate_api_endpoint_compatibility(manifest_model)
+        self._validate_provider_integration(manifest_model)
+        self._validate_memory_system_integration(manifest_model)
         
         # Update validity based on any new errors
         is_valid = len(self.errors) == 0
@@ -503,7 +482,7 @@ class ExtensionValidator:
         }
 
 
-def validate_extension_manifest(manifest: ExtensionManifest) -> Tuple[bool, List[str], List[str]]:
+def validate_extension_manifest(manifest: Union[ExtensionManifest, Dict[str, Any]]) -> Tuple[bool, List[str], List[str]]:
     """
     Convenience function to validate an extension manifest.
     

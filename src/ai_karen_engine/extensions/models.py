@@ -5,31 +5,20 @@ Extension data models and schemas.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-try:
-    from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-    PYDANTIC_AVAILABLE = True
-except ImportError:
-    # Fallback for environments without pydantic
-    PYDANTIC_AVAILABLE = False
-    BaseModel = object
-
-    def Field(**kwargs):
-        """Return a no-op field placeholder when pydantic is unavailable."""
-        return None
-
-    def validator(*args, **kwargs):
-        """Return a decorator that leaves the function unchanged."""
-
-        def decorator(func):
-            return func
-
-        return decorator
+SEMVER_PATTERN = (
+    r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
+    r"(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
+    r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
+    r"(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+)
+NAME_PATTERN = r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
 
 
 class ExtensionStatus(Enum):
@@ -42,8 +31,7 @@ class ExtensionStatus(Enum):
     UNLOADING = "unloading"
 
 
-@dataclass
-class ExtensionCapabilities:
+class ExtensionCapabilities(BaseModel):
     """Extension capability declarations."""
 
     provides_ui: bool = False
@@ -52,27 +40,24 @@ class ExtensionCapabilities:
     provides_webhooks: bool = False
 
 
-@dataclass
-class ExtensionDependencies:
+class ExtensionDependencies(BaseModel):
     """Extension dependency declarations."""
 
-    plugins: List[str] = field(default_factory=list)
-    extensions: List[str] = field(default_factory=list)
-    system_services: List[str] = field(default_factory=list)
+    plugins: List[str] = Field(default_factory=list)
+    extensions: List[str] = Field(default_factory=list)
+    system_services: List[str] = Field(default_factory=list)
 
 
-@dataclass
-class ExtensionPermissions:
+class ExtensionPermissions(BaseModel):
     """Extension permission declarations."""
 
-    data_access: List[str] = field(default_factory=list)
-    plugin_access: List[str] = field(default_factory=list)
-    system_access: List[str] = field(default_factory=list)
-    network_access: List[str] = field(default_factory=list)
+    data_access: List[str] = Field(default_factory=list)
+    plugin_access: List[str] = Field(default_factory=list)
+    system_access: List[str] = Field(default_factory=list)
+    network_access: List[str] = Field(default_factory=list)
 
 
-@dataclass
-class ExtensionResources:
+class ExtensionResources(BaseModel):
     """Extension resource limits."""
 
     max_memory_mb: int = 256
@@ -81,23 +66,20 @@ class ExtensionResources:
     enforcement_action: str = "default"
 
 
-@dataclass
-class ExtensionUIConfig:
+class ExtensionUIConfig(BaseModel):
     """Extension UI configuration."""
 
-    control_room_pages: List[Dict[str, Any]] = field(default_factory=list)
-    streamlit_pages: List[Dict[str, Any]] = field(default_factory=list)
+    control_room_pages: List[Dict[str, Any]] = Field(default_factory=list)
+    streamlit_pages: List[Dict[str, Any]] = Field(default_factory=list)
 
 
-@dataclass
-class ExtensionAPIConfig:
+class ExtensionAPIConfig(BaseModel):
     """Extension API configuration."""
 
-    endpoints: List[Dict[str, Any]] = field(default_factory=list)
+    endpoints: List[Dict[str, Any]] = Field(default_factory=list)
 
 
-@dataclass
-class ExtensionBackgroundTask:
+class ExtensionBackgroundTask(BaseModel):
     """Extension background task configuration."""
 
     name: str
@@ -105,77 +87,57 @@ class ExtensionBackgroundTask:
     function: str
 
 
-@dataclass
-class ExtensionMarketplaceInfo:
+class ExtensionMarketplaceInfo(BaseModel):
     """Extension marketplace metadata."""
 
     price: str = "free"
     support_url: Optional[str] = None
     documentation_url: Optional[str] = None
-    screenshots: List[str] = field(default_factory=list)
+    screenshots: List[str] = Field(default_factory=list)
 
 
-@dataclass
-class ExtensionManifest:
+class ExtensionManifest(BaseModel):
     """Extension manifest containing all metadata and configuration."""
 
+    model_config = ConfigDict(extra="allow")
+
     # Basic metadata
-    name: str
-    version: str
+    name: str = Field(pattern=NAME_PATTERN, min_length=1, max_length=50)
+    version: str = Field(pattern=SEMVER_PATTERN)
     display_name: str
     description: str
     author: str
     license: str
     category: str
-    tags: List[str] = field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
 
     # API compatibility
     api_version: str = "1.0"
-    kari_min_version: str = "0.4.0"
+    kari_min_version: str = Field(default="0.4.0", pattern=SEMVER_PATTERN)
 
     # Capabilities and configuration
-    capabilities: ExtensionCapabilities = field(default_factory=ExtensionCapabilities)
-    dependencies: ExtensionDependencies = field(default_factory=ExtensionDependencies)
-    permissions: ExtensionPermissions = field(default_factory=ExtensionPermissions)
-    resources: ExtensionResources = field(default_factory=ExtensionResources)
+    capabilities: ExtensionCapabilities = Field(default_factory=ExtensionCapabilities)
+    dependencies: ExtensionDependencies = Field(default_factory=ExtensionDependencies)
+    permissions: ExtensionPermissions = Field(default_factory=ExtensionPermissions)
+    resources: ExtensionResources = Field(default_factory=ExtensionResources)
 
     # UI and API configuration
-    ui: ExtensionUIConfig = field(default_factory=ExtensionUIConfig)
-    api: ExtensionAPIConfig = field(default_factory=ExtensionAPIConfig)
-    background_tasks: List[ExtensionBackgroundTask] = field(default_factory=list)
+    ui: ExtensionUIConfig = Field(default_factory=ExtensionUIConfig)
+    api: ExtensionAPIConfig = Field(default_factory=ExtensionAPIConfig)
+    background_tasks: List[ExtensionBackgroundTask] = Field(default_factory=list)
 
     # Marketplace metadata
-    marketplace: ExtensionMarketplaceInfo = field(
+    marketplace: ExtensionMarketplaceInfo = Field(
         default_factory=ExtensionMarketplaceInfo
     )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> ExtensionManifest:
+    def from_dict(cls, data: Dict[str, Any]) -> "ExtensionManifest":
         """Create manifest from dictionary."""
-        # Handle nested objects
-        if "capabilities" in data:
-            data["capabilities"] = ExtensionCapabilities(**data["capabilities"])
-        if "dependencies" in data:
-            data["dependencies"] = ExtensionDependencies(**data["dependencies"])
-        if "permissions" in data:
-            data["permissions"] = ExtensionPermissions(**data["permissions"])
-        if "resources" in data:
-            data["resources"] = ExtensionResources(**data["resources"])
-        if "ui" in data:
-            data["ui"] = ExtensionUIConfig(**data["ui"])
-        if "api" in data:
-            data["api"] = ExtensionAPIConfig(**data["api"])
-        if "background_tasks" in data:
-            data["background_tasks"] = [
-                ExtensionBackgroundTask(**task) for task in data["background_tasks"]
-            ]
-        if "marketplace" in data:
-            data["marketplace"] = ExtensionMarketplaceInfo(**data["marketplace"])
-
         return cls(**data)
 
     @classmethod
-    def from_file(cls, manifest_path: Path) -> ExtensionManifest:
+    def from_file(cls, manifest_path: Path) -> "ExtensionManifest":
         """Load manifest from JSON file."""
         with open(manifest_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -183,15 +145,7 @@ class ExtensionManifest:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert manifest to dictionary."""
-        result = {}
-        for key, value in self.__dict__.items():
-            if hasattr(value, "__dict__"):
-                result[key] = value.__dict__
-            elif isinstance(value, list) and value and hasattr(value[0], "__dict__"):
-                result[key] = [item.__dict__ for item in value]
-            else:
-                result[key] = value
-        return result
+        return self.model_dump()
 
 
 @dataclass
@@ -229,43 +183,33 @@ class ExtensionRecord:
         }
 
 
-# Pydantic models for API serialization (if available)
-if PYDANTIC_AVAILABLE:
+# Pydantic models for API serialization
 
-    class ExtensionManifestAPI(BaseModel):
-        """Pydantic model for API serialization of extension manifest."""
+class ExtensionManifestAPI(BaseModel):
+    """Pydantic model for API serialization of extension manifest."""
 
-        name: str
-        version: str
-        display_name: str
-        description: str
-        author: str
-        license: str
-        category: str
-        tags: List[str] = []
-        api_version: str = "1.0"
-        kari_min_version: str = "0.4.0"
+    name: str
+    version: str
+    display_name: str
+    description: str
+    author: str
+    license: str
+    category: str
+    tags: List[str] = []
+    api_version: str = "1.0"
+    kari_min_version: str = "0.4.0"
 
-        model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow")
 
-    class ExtensionStatusAPI(BaseModel):
-        """Pydantic model for API serialization of extension status."""
 
-        name: str
-        version: str
-        status: str
-        loaded_at: Optional[float] = None
-        error_message: Optional[str] = None
+class ExtensionStatusAPI(BaseModel):
+    """Pydantic model for API serialization of extension status."""
 
-else:
-    # Fallback classes when pydantic is not available
-    class ExtensionManifestAPI:
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
-
-    class ExtensionStatusAPI:
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
+    name: str
+    version: str
+    status: str
+    loaded_at: Optional[float] = None
+    error_message: Optional[str] = None
 
 
 __all__ = [

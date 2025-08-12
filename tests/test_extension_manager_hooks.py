@@ -48,12 +48,11 @@ class TestExtensionManagerHooks:
         return ExtensionManifest(
             name="test_extension",
             version="1.0.0",
+            display_name="Test Extension",
             description="Test extension",
             author="Test Author",
-            entry_point="__init__.py",
-            dependencies=[],
-            permissions=[],
-            category="test"
+            license="MIT",
+            category="test",
         )
     
     @pytest.fixture

@@ -44,6 +44,7 @@ from ai_karen_engine.database.models import (
     InstalledExtension,
     MarketplaceExtension,
 )
+from pydantic import ValidationError as PydanticValidationError
 
 
 class ExtensionManager(HookMixin):
@@ -139,39 +140,46 @@ class ExtensionManager(HookMixin):
         """
         try:
             manifest = ExtensionManifest.from_file(manifest_path)
-            # Use enhanced validation with unified patterns
-            is_valid, errors, warnings, field_errors = self.validator.validate_manifest_enhanced(manifest)
-
-            if not is_valid:
-                self.logger.error(
-                    "Invalid manifest for %s: %s", extension_dir.name, "; ".join(errors)
-                )
-                return
-
-            if warnings:
-                self.logger.warning(
-                    "Manifest warnings for %s: %s", extension_dir.name, "; ".join(warnings)
-                )
-            
-            # Log field errors if present
-            if field_errors:
-                self.logger.warning(
-                    "Manifest field errors for %s: %s", 
-                    extension_dir.name, 
-                    "; ".join(str(fe) for fe in field_errors)
-                )
-
-            manifests[manifest.name] = manifest
-            self.logger.info(
-                "Discovered extension: %s v%s at %s",
-                manifest.name,
-                manifest.version,
-                extension_dir,
+        except PydanticValidationError as e:
+            errors = [".".join(str(p) for p in err["loc"]) + ": " + err["msg"] for err in e.errors()]
+            self.logger.error(
+                "Invalid manifest for %s: %s", extension_dir.name, "; ".join(errors)
             )
+            return
         except Exception as e:
             self.logger.error(
                 "Failed to load manifest from %s: %s", manifest_path, e, exc_info=True
             )
+            return
+
+        # Use enhanced validation with unified patterns
+        is_valid, errors, warnings, field_errors = self.validator.validate_manifest_enhanced(manifest)
+
+        if not is_valid:
+            self.logger.error(
+                "Invalid manifest for %s: %s", extension_dir.name, "; ".join(errors)
+            )
+            return
+
+        if warnings:
+            self.logger.warning(
+                "Manifest warnings for %s: %s", extension_dir.name, "; ".join(warnings)
+            )
+
+        if field_errors:
+            self.logger.warning(
+                "Manifest field errors for %s: %s",
+                extension_dir.name,
+                "; ".join(str(fe) for fe in field_errors)
+            )
+
+        manifests[manifest.name] = manifest
+        self.logger.info(
+            "Discovered extension: %s v%s at %s",
+            manifest.name,
+            manifest.version,
+            extension_dir,
+        )
 
     # -------------------------
     # Loading / Unloading
