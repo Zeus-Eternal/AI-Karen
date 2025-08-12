@@ -1,0 +1,25 @@
+{
+  "title": "Health Check SLO",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Latency 95th Percentile",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(health_check_latency_seconds_bucket[5m])) by (le, check))",
+          "legendFormat": "{{check}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Availability",
+      "targets": [
+        {
+          "expr": "health_check_availability",
+          "legendFormat": "{{check}}"
+        }
+      ]
+    }
+  ]
+}

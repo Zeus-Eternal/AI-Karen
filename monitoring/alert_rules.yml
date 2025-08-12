@@ -1,0 +1,19 @@
+groups:
+  - name: health_slo
+    rules:
+      - alert: HealthCheckLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(health_check_latency_seconds_bucket[5m])) by (le, check)) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: '95th percentile latency above SLO for {{ $labels.check }}'
+          description: 'Latency exceeded 0.5s for check {{ $labels.check }}'
+      - alert: HealthCheckAvailabilityLow
+        expr: health_check_availability < 99
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Availability below SLO for {{ $labels.check }}'
+          description: 'Availability dropped below 99% for check {{ $labels.check }}'
