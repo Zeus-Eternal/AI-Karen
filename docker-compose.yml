@@ -8,7 +8,7 @@ services:
     container_name: ai-karen-postgres
     image: postgres:15-alpine
     restart: unless-stopped
-    env_file: 
+    env_file:
       - .env
     environment:
       POSTGRES_USER:    ${POSTGRES_USER}
@@ -173,6 +173,38 @@ services:
       - ai-karen-net
 
   # ──────────────────────────────────────────────────────────────────────────────
+  # Prometheus Monitoring
+  # ──────────────────────────────────────────────────────────────────────────────
+  prometheus:
+    container_name: ai-karen-prometheus
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - ai-karen-net
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # Grafana Dashboard
+  # ──────────────────────────────────────────────────────────────────────────────
+  grafana:
+    container_name: ai-karen-grafana
+    image: grafana/grafana:9.5.2
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana_dashboard.json:/etc/grafana/provisioning/dashboards/health_dashboard.json
+    depends_on:
+      - prometheus
+    networks:
+      - ai-karen-net
+
+  # ──────────────────────────────────────────────────────────────────────────────
   # FastAPI Backend (“api”)
   # ──────────────────────────────────────────────────────────────────────────────
   api:
@@ -208,6 +240,7 @@ volumes:
   minio_data:
   milvus_data:
   ollama_data:
+  grafana_data:
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Custom Network

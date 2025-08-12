@@ -22,6 +22,21 @@ Example metrics:
 
 Use `docker compose up` to start a Prometheus container that scrapes `http://localhost:8000/metrics`.
 
+### Health Check SLO Metrics
+
+The core health monitor exposes latency and availability metrics for each
+registered service:
+
+- `health_check_latency_seconds{check="<name>"}`
+- `health_check_availability{check="<name>"}`
+
+These are scraped by the Prometheus service defined in
+`monitoring/prometheus.yml`. Alert rules for SLO breaches live in
+`monitoring/alert_rules.yml`.
+
+Run `docker compose up prometheus grafana` to persist metrics and view the
+included `monitoring/grafana_dashboard.json` for real-time SLO compliance.
+
 ## Tracing
 
 The reference code emits minimal traces through `print()` statements. In production you can integrate OpenTelemetry and send traces to Tempo or Jaeger.
