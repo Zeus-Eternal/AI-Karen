@@ -9,7 +9,7 @@ from ai_karen_engine.services.memory_compatibility import (
     transform_memory_entries_to_web_ui,
     ensure_js_timestamp,
 )
-from ai_karen_engine.api_routes.memory_routes import QueryMemoryRequest
+from ai_karen_engine.api_routes.memory_routes import MemQuery
 
 
 @pytest.mark.asyncio
@@ -23,12 +23,10 @@ async def test_transform_web_ui_memory_query():
         similarity_threshold=0.8,
     )
     result = await transform_web_ui_memory_query(query)
-    assert isinstance(result, QueryMemoryRequest)
-    assert result.text == "hello"
-    assert result.session_id == "s1"
-    assert result.tags == ["tag1"]
+    assert isinstance(result, MemQuery)
+    assert result.query == "hello"
+    assert result.user_id == "s1"
     assert result.top_k == 3
-    assert result.similarity_threshold == 0.8
 
 
 @pytest.mark.asyncio
@@ -38,8 +36,10 @@ async def test_transform_memory_entries_to_web_ui():
         content="c",
         metadata={"a": 1},
         timestamp=123.0,
-        tags=["t1"],
     )
+    entry.tags = ["t1"]
+    entry.user_id = "u1"
+    entry.session_id = "s1"
     results = await transform_memory_entries_to_web_ui([entry])
     assert len(results) == 1
     m = results[0]

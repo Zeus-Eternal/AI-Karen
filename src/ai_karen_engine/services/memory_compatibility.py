@@ -41,7 +41,7 @@ def sanitize_metadata(metadata: Optional[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 async def transform_web_ui_memory_query(web_ui_query: WebUIMemoryQuery) -> MemQuery:
-    """Transform a ``WebUIMemoryQuery`` to backend ``QueryMemoryRequest``."""
+    """Transform a ``WebUIMemoryQuery`` to backend ``MemQuery``."""
     time_range_start: Optional[datetime] = None
     time_range_end: Optional[datetime] = None
     if web_ui_query.time_range:

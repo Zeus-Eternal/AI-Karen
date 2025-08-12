@@ -20,13 +20,12 @@ from ai_karen_engine.models.web_ui_types import (
 )
 from ai_karen_engine.services.memory_service import (
     WebUIMemoryQuery as ServiceWebUIMemoryQuery,
-    MemoryType,
     UISource,
 )
 from ai_karen_engine.api_routes.memory_routes import (
-    QueryMemoryRequest,
-    StoreMemoryRequest,
-    MemoryResponse,
+    MemQuery,
+    MemCommit,
+    ContextHit,
 )
 
 logger = logging.getLogger(__name__)
@@ -113,64 +112,30 @@ class MemoryTransformationUtils:
     @staticmethod
     def transform_web_ui_memory_query_to_api_request(
         web_ui_query: WebUIMemoryQuery
-    ) -> QueryMemoryRequest:
-        """
-        Transform web UI memory query to API request format.
-        
-        Args:
-            web_ui_query: WebUIMemoryQuery from the web UI
-            
-        Returns:
-            QueryMemoryRequest for the API endpoint
-        """
+    ) -> MemQuery:
+        """Transform web UI memory query to API request format."""
         try:
-            # Extract time range components
-            time_range_start = None
-            time_range_end = None
-            if web_ui_query.time_range and len(web_ui_query.time_range) == 2:
-                time_range_start = web_ui_query.time_range[0]
-                time_range_end = web_ui_query.time_range[1]
-            
-            # Process metadata filter to extract importance range
-            importance_range = None
-            if web_ui_query.metadata_filter:
-                if 'importance_min' in web_ui_query.metadata_filter and 'importance_max' in web_ui_query.metadata_filter:
-                    importance_range = (
-                        web_ui_query.metadata_filter['importance_min'],
-                        web_ui_query.metadata_filter['importance_max']
-                    )
-            
-            return QueryMemoryRequest(
-                text=web_ui_query.text,
-                session_id=web_ui_query.session_id,
-                conversation_id=None,  # Not directly mapped from web UI query
-                ui_source=UISource.WEB,
-                memory_types=[],  # Default to all types
-                tags=web_ui_query.tags or [],
-                importance_range=importance_range,
-                only_user_confirmed=True,
-                only_ai_generated=False,
-                time_range_start=time_range_start,
-                time_range_end=time_range_end,
-                top_k=web_ui_query.top_k or 5,
-                similarity_threshold=web_ui_query.similarity_threshold or 0.7,
-                include_embeddings=False
+            user_id = web_ui_query.user_id or web_ui_query.session_id or "anonymous"
+            return MemQuery(
+                user_id=user_id,
+                org_id=None,
+                query=web_ui_query.text,
+                top_k=web_ui_query.top_k or 12,
             )
-            
         except Exception as e:
             logger.error(f"Failed to transform web UI query to API request: {e}")
             raise ValueError(f"Invalid web UI query format: {e}")
     
     @staticmethod
     def transform_memory_entries_to_web_ui(
-        backend_memories: List[MemoryResponse],
+        backend_memories: List[ContextHit],
         query_time_ms: float = 0.0
     ) -> WebUIMemoryQueryResponse:
         """
         Transform backend memory entries to web UI format with JavaScript compatibility.
         
         Args:
-            backend_memories: List of MemoryResponse from backend
+            backend_memories: List of ContextHit from backend
             query_time_ms: Query execution time in milliseconds
             
         Returns:
@@ -191,10 +156,10 @@ class MemoryTransformationUtils:
             for memory in backend_memories:
                 try:
                     # Convert timestamp to JavaScript-compatible format (milliseconds)
-                    js_timestamp = MemoryTransformationUtils.ensure_js_compatible_timestamp(memory.timestamp)
-                    
+                    js_timestamp = MemoryTransformationUtils.ensure_js_compatible_timestamp(memory.created_at)
+
                     # Ensure content is not empty
-                    content = memory.content.strip() if memory.content else ""
+                    content = memory.text.strip() if memory.text else ""
                     if not content:
                         logger.warning(f"Skipping memory {memory.id} with empty content")
                         continue
@@ -207,12 +172,12 @@ class MemoryTransformationUtils:
                                 cleaned_tag = tag.strip().lower()
                                 if cleaned_tag not in cleaned_tags:
                                     cleaned_tags.append(cleaned_tag)
-                    
+
                     # Ensure metadata is a dictionary
-                    metadata = memory.metadata if isinstance(memory.metadata, dict) else {}
-                    
+                    metadata = memory.meta if isinstance(memory.meta, dict) else {}
+
                     # Validate and clamp similarity score
-                    similarity_score = memory.similarity_score
+                    similarity_score = memory.score
                     if similarity_score is not None:
                         if not isinstance(similarity_score, (int, float)):
                             logger.warning(f"Invalid similarity score type for memory {memory.id}: {type(similarity_score)}")
@@ -232,7 +197,7 @@ class MemoryTransformationUtils:
                         similarity_score=similarity_score,
                         tags=cleaned_tags,
                         user_id=memory.user_id,
-                        session_id=memory.session_id
+                        session_id=None
                     )
                     
                     web_ui_entries.append(web_ui_entry)
@@ -265,27 +230,18 @@ class MemoryTransformationUtils:
     @staticmethod
     def transform_web_ui_memory_store_request(
         web_ui_request: WebUIMemoryStoreRequest
-    ) -> StoreMemoryRequest:
-        """
-        Transform web UI memory store request to backend format.
-        
-        Args:
-            web_ui_request: WebUIMemoryStoreRequest from the web UI
-            
-        Returns:
-            StoreMemoryRequest for the backend API
-        """
+    ) -> MemCommit:
+        """Transform web UI memory store request to backend format."""
         try:
-            return StoreMemoryRequest(
-                content=web_ui_request.content,
-                ui_source=UISource.WEB,
-                session_id=web_ui_request.session_id,
-                memory_type=MemoryType.GENERAL,
-                tags=web_ui_request.tags,
-                metadata=web_ui_request.metadata or {},
-                ai_generated=False
+            user_id = web_ui_request.user_id or web_ui_request.session_id or "anonymous"
+            return MemCommit(
+                user_id=user_id,
+                org_id=None,
+                text=web_ui_request.content,
+                tags=web_ui_request.tags or [],
+                importance=5,
+                decay="short",
             )
-            
         except Exception as e:
             logger.error(f"Failed to transform memory store request: {e}")
             raise ValueError(f"Invalid memory store request format: {e}")
@@ -600,7 +556,7 @@ def transform_web_ui_memory_query(web_ui_query: WebUIMemoryQuery) -> ServiceWebU
 
 
 def transform_memory_entries_to_web_ui(
-    backend_memories: List[MemoryResponse],
+    backend_memories: List[ContextHit],
     query_time_ms: float = 0.0
 ) -> WebUIMemoryQueryResponse:
     """Transform backend memory entries to web UI format."""
