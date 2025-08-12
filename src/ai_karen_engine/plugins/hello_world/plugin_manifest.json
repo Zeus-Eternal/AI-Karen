@@ -6,6 +6,12 @@
     "user"
   ],
   "trusted_ui": false,
+  "capabilities": {
+    "memory": {
+      "read": true,
+      "write": true
+    }
+  },
   "module": "ai_karen_engine.plugins.hello_world.handler",
   "name": "hello-world",
   "version": "0.1.0",
