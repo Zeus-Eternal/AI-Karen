@@ -5,9 +5,10 @@ import logging
 import traceback
 import json
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 import streamlit as st
+from ai_karen_engine.plugins.validator import validate_plugin_manifest
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import (
     list_plugins,
@@ -19,16 +20,6 @@ from ui_logic.utils.api import (
 )
 
 PLUGIN_DIR = Path(__file__).resolve().parent.parent / "plugins"
-
-DEFAULT_PLUGIN_SCHEMA = {
-    "name": str,
-    "description": str,
-    "version": str,
-    "prompt_file": str,
-    "handler_file": str,
-    "enabled": bool,
-    "rbac": dict,
-}
 
 class PluginManagerError(Exception):
     pass
@@ -66,14 +57,6 @@ class PluginManager:
         self.enabled_plugins: Dict[str, dict] = {}
         self._load_plugins()
 
-    def _validate_manifest(self, manifest: dict, plugin_path: Path) -> dict:
-        for key, typ in DEFAULT_PLUGIN_SCHEMA.items():
-            if key not in manifest:
-                raise PluginManifestError(f"{plugin_path}: Missing manifest key: {key}")
-            if not isinstance(manifest[key], typ):
-                raise PluginManifestError(f"{plugin_path}: Manifest key '{key}' wrong type: expected {typ.__name__}")
-        return manifest
-
     def _discover_plugins(self) -> List[Path]:
         if not self.plugin_dir.exists():
             self.logger.warning(f"Plugin directory {self.plugin_dir} does not exist")
@@ -91,7 +74,9 @@ class PluginManager:
             try:
                 with open(pdir / "plugin_manifest.json", "r") as f:
                     manifest = json.load(f)
-                self._validate_manifest(manifest, pdir)
+                is_valid, errors, _ = validate_plugin_manifest(manifest)
+                if not is_valid:
+                    raise PluginManifestError(f"{pdir}: {'; '.join(errors)}")
                 plugin = {
                     "manifest": manifest,
                     "path": pdir,

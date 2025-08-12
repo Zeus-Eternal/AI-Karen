@@ -1,7 +1,12 @@
+"""Utility for loading plugin manifests for legacy systems."""
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
 from typing import Any, Dict
+
+from ai_karen_engine.plugins.validator import validate_plugin_manifest
 
 logger = logging.getLogger(__name__)
 
@@ -9,18 +14,8 @@ PLUGIN_MAP: Dict[str, Dict[str, Any]] = {}
 ENABLED_PLUGINS: set[str] = set()
 
 
-def _validate_plugin_manifest(manifest: Dict) -> bool:
-    """Validate plugin manifest with enhanced checks"""
-    required_fields = ["name", "version", "description", "intent"]
-    if not all(field in manifest for field in required_fields):
-        return False
-    if not isinstance(manifest.get("intent", []), (str, list)):
-        return False
-    return True
-
-
 def load_plugins(plugin_dir: str) -> None:
-    """Load and validate all plugins from a directory"""
+    """Load and validate all plugins from a directory."""
     PLUGIN_MAP.clear()
     ENABLED_PLUGINS.clear()
 
@@ -41,7 +36,11 @@ def load_plugins(plugin_dir: str) -> None:
             with open(manifest_file, "r", encoding="utf-8") as f:
                 manifest = json.load(f)
 
-            if not _validate_plugin_manifest(manifest):
+            valid, errors, _ = validate_plugin_manifest(manifest)
+            if not valid:
+                logger.warning(
+                    "Invalid plugin manifest %s: %s", manifest_file, "; ".join(errors)
+                )
                 continue
 
             intents = manifest.get("intent", [])

@@ -10,16 +10,16 @@ import json
 import logging
 import os
 import sys
+import uuid
+import importlib.util
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Any, Union
-import uuid
-import importlib.util
-import hashlib
+from typing import Any, Dict, List, Optional, Set, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from ai_karen_engine.manifest import PluginManifestSchema as PluginManifest, PluginType
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +33,6 @@ class PluginStatus(str, Enum):
     ACTIVE = "active"
     DISABLED = "disabled"
     ERROR = "error"
-
-
-class PluginType(str, Enum):
-    """Plugin type enumeration."""
-    CORE = "core"
-    AUTOMATION = "automation"
-    AI = "ai"
-    INTEGRATION = "integration"
-    EXAMPLE = "example"
-    CUSTOM = "custom"
 
 
 @dataclass
@@ -62,48 +52,6 @@ class PluginCompatibility:
     karen_version: Optional[str] = None
     os_platforms: List[str] = field(default_factory=list)
     required_packages: List[str] = field(default_factory=list)
-
-
-class PluginManifest(BaseModel):
-    """Plugin manifest model for validation."""
-    model_config = ConfigDict(extra="allow")
-    
-    # Basic plugin information
-    name: str
-    version: str
-    description: str
-    author: str
-    license: str = "MIT"
-    
-    # Plugin configuration
-    plugin_api_version: str = "1.0"
-    plugin_type: PluginType = PluginType.CUSTOM
-    module: str
-    entry_point: str = "run"
-    
-    # Security and permissions
-    required_roles: List[str] = Field(default_factory=lambda: ["user"])
-    trusted_ui: bool = False
-    enable_external_workflow: bool = False
-    sandbox_required: bool = True
-    
-    # Dependencies and compatibility
-    dependencies: List[Dict[str, Any]] = Field(default_factory=list)
-    compatibility: Dict[str, Any] = Field(default_factory=dict)
-    
-    # Metadata
-    tags: List[str] = Field(default_factory=list)
-    category: str = "general"
-    intent: Optional[str] = None
-    
-    @field_validator('plugin_api_version')
-    @classmethod
-    def validate_api_version(cls, v):
-        """Validate plugin API version."""
-        supported_versions = ["1.0", "1.1"]
-        if v not in supported_versions:
-            raise ValueError(f"Unsupported plugin API version: {v}")
-        return v
 
 
 @dataclass
@@ -128,7 +76,7 @@ class PluginRegistry:
     def __init__(self, marketplace_path: Optional[Path] = None, core_plugins_path: Optional[Path] = None):
         """Initialize plugin registry."""
         self.marketplace_path = marketplace_path or Path("plugin_marketplace")
-        self.core_plugins_path = core_plugins_path or Path("src/ai_karen_engine/plugins")
+        self.core_plugins_path = core_plugins_path
         
         # Plugin storage
         self.plugins: Dict[str, PluginMetadata] = {}
@@ -181,7 +129,7 @@ class PluginRegistry:
             discovered_plugins.update(marketplace_plugins)
         
         # Discover core plugins
-        if self.core_plugins_path.exists():
+        if self.core_plugins_path and self.core_plugins_path.exists():
             core_plugins = await self._discover_in_path(
                 self.core_plugins_path,
                 plugin_type=PluginType.CORE
