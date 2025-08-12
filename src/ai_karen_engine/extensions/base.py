@@ -176,7 +176,7 @@ class BaseExtension(ABC, HookMixin):
         if not FASTAPI_AVAILABLE:
             self.logger.warning("FastAPI not available, cannot create API router")
             return None
-        return APIRouter(prefix=f"/extensions/{self.manifest.name}")
+        return APIRouter(prefix=f"/api/extensions/{self.manifest.name}")
 
     def create_background_tasks(self) -> List[BackgroundTask]:
         """

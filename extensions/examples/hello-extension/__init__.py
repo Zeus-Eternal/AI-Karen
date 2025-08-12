@@ -107,7 +107,7 @@ class HelloExtension(BaseExtension):
         if not FASTAPI_AVAILABLE:
             return None
         
-        router = APIRouter(prefix=f"/extensions/{self.manifest.name}")
+        router = APIRouter(prefix=f"/api/extensions/{self.manifest.name}")
         
         @router.get("/hello")
         async def get_hello():

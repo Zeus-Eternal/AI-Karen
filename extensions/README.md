@@ -310,7 +310,7 @@ class TaskManagerExtension(BaseExtension):
     
     def create_api_router(self) -> APIRouter:
         """Create API routes for the Task Manager Extension."""
-        router = APIRouter(prefix=f"/extensions/{self.manifest.name}")
+        router = APIRouter(prefix=f"/api/extensions/{self.manifest.name}")
         
         @router.get("/tasks")
         async def list_tasks(status: str = "all", priority: str = None):
