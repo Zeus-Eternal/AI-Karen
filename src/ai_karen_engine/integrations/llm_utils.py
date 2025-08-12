@@ -118,6 +118,19 @@ class LLMProviderBase:
     def embed(self, text: Union[str, List[str]], **kwargs) -> List[float]:
         raise NotImplementedError
 
+    def warm_cache(self) -> None:
+        """Warm provider caches by issuing a tiny generation request.
+
+        Providers may override this for custom behaviour. The default
+        implementation makes a best-effort call to :meth:`generate_text` with a
+        single-token prompt and ignores all errors so that warmup never blocks
+        startup.
+        """
+        try:
+            self.generate_text("hello", max_tokens=1)
+        except Exception:  # pragma: no cover - warmup is best-effort
+            logger.debug("warm_cache failed", exc_info=True)
+
 
 # ========== Main Utility Class ==========
 
