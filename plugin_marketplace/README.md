@@ -108,6 +108,12 @@ plugin_marketplace/productivity/task-scheduler/
     "system_access": ["scheduler"],
     "network_access": []
   },
+  "capabilities": {
+    "memory": {
+      "read": true,
+      "write": true
+    }
+  },
   "resource_limits": {
     "max_memory_mb": 128,
     "max_cpu_percent": 10,
@@ -119,6 +125,18 @@ plugin_marketplace/productivity/task-scheduler/
     "log_level": "INFO"
   }
 }
+```
+
+### Memory Helper
+
+Plugins can interact with the unified memory system using the `MemoryManager` helper:
+
+```python
+from plugin_marketplace.memory_manager import MemoryManager
+
+memory = MemoryManager()
+memory.write({"user_id": "demo"}, "greet", "Hello Demo!")
+memories = memory.read({"user_id": "demo"}, "greet")
 ```
 
 ### Plugin Handler (`handler.py`)

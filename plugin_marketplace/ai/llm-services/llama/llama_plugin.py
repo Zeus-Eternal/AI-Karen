@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List, Dict, Optional, Any
 
 from ai_karen_engine.plugins.llm_services.ollama.ollama_service import ollama_inprocess_client
+from plugin_marketplace.memory_manager import MemoryManager
 
 router = APIRouter(
     prefix="/llm/ollama",
@@ -19,6 +20,9 @@ router = APIRouter(
 
 log = logging.getLogger("ollama_plugin")
 log.setLevel(logging.INFO)
+
+# Unified memory interface for storing chat interactions
+memory = MemoryManager()
 
 # --- List all available models
 @router.get("/models", response_model=List[str])
@@ -81,7 +85,8 @@ def embedding(
 def chat(
     messages: List[Dict[str, str]] = Body(..., embed=True),
     max_tokens: int = Body(128),
-    stream: bool = Body(False)
+    stream: bool = Body(False),
+    user_id: str = Body("anonymous"),
 ):
     """
     Synchronous chat endpoint. Set stream=True for token streaming.
@@ -94,6 +99,7 @@ def chat(
             return StreamingResponse(generator(), media_type="text/plain")
         else:
             response = ollama_inprocess_client.chat(messages, stream=False, max_tokens=max_tokens)
+            memory.write({"user_id": user_id}, "llama_chat", {"messages": messages, "response": response})
             return {"response": response}
     except Exception as e:
         log.exception("Chat failed")
@@ -108,7 +114,8 @@ async def achat(
     request: Request,
     messages: List[Dict[str, str]] = Body(..., embed=True),
     max_tokens: int = Body(128),
-    stream: bool = Body(False)
+    stream: bool = Body(False),
+    user_id: str = Body("anonymous"),
 ):
     """
     Async chat endpoint. Supports async token streaming and non-blocking chat.
@@ -124,6 +131,7 @@ async def achat(
             # Non-streaming: run in executor for non-blocking I/O
             import asyncio
             response = await ollama_inprocess_client.achat(messages, stream=False, max_tokens=max_tokens)
+            memory.write({"user_id": user_id}, "llama_chat", {"messages": messages, "response": response})
             return {"response": response}
     except Exception as e:
         log.exception("Async chat failed")
