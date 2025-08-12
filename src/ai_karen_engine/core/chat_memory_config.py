@@ -62,6 +62,11 @@ class ChatMemorySettings(BaseSettings):
     # Performance
     batch_size: int = Field(10, description="Batch size for vector ops")
     cache_ttl_seconds: int = Field(300, description="Cache TTL (seconds)")
+    cache_maxsize: int = Field(1000, description="Max cached queries")
+
+    # Connection pooling
+    redis_pool_size: int = Field(10, description="Redis connection pool size")
+    milvus_pool_size: int = Field(5, description="Milvus connection pool size")
 
     if V2:
         model_config = SettingsConfigDict(
@@ -94,9 +99,13 @@ class ProductionAuthSettings(BaseSettings):
     refresh_token_expire_days: int = Field(7, description="Refresh token TTL (days)")
 
     # Password hashing
-    password_hash_rounds: int = Field(12, description="Bcrypt rounds or Argon2 time cost")
+    password_hash_rounds: int = Field(
+        12, description="Bcrypt rounds or Argon2 time cost"
+    )
     password_hash_algorithm: str = Field(
-        "bcrypt", description="Password hashing algorithm (bcrypt or argon2)", json_schema_extra={"env": "AUTH_PASSWORD_HASH_ALGORITHM"}
+        "bcrypt",
+        description="Password hashing algorithm (bcrypt or argon2)",
+        json_schema_extra={"env": "AUTH_PASSWORD_HASH_ALGORITHM"},
     )
 
     # Session management
