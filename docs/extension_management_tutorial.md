@@ -7,8 +7,10 @@ This tutorial walks through enabling and managing extensions in the AI Karen web
    Set the environment variable `KAREN_ENABLE_EXTENSIONS=true` before starting the web UI. This will replace the plugin sidebar with the new Extension Manager.
 
 2. **Browse extensions**
-   
-   Open the navigation sidebar and select **Extensions**. Categories and breadcrumbs help you drill down to specific providers, models and settings.
+
+    Open the navigation sidebar and select **Extensions**. Categories and breadcrumbs help you drill down to specific providers, models and settings.
+
+   The system now pre-registers **CopilotKit** as a provider. It will appear in the list and requires an API key before use.
 
 3. **Install from marketplace**
    
