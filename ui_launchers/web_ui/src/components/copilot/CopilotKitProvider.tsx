@@ -1,15 +1,18 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { CopilotKit } from '@copilotkit/react-core';
 import { CopilotSidebar } from '@copilotkit/react-ui';
 import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { getConfigManager } from '@/lib/endpoint-config';
+import { getApiClient } from '@/lib/api-client';
 
 interface CopilotKitConfig {
   apiKey?: string;
   baseUrl: string;
+  fallbackUrls: string[];
   features: {
     codeCompletion: boolean;
     contextualSuggestions: boolean;
@@ -21,6 +24,12 @@ interface CopilotKitConfig {
     completion: string;
     chat: string;
     embedding: string;
+  };
+  endpoints: {
+    assist: string;
+    suggestions: string;
+    analyze: string;
+    docs: string;
   };
 }
 
@@ -54,6 +63,7 @@ interface CopilotKitProviderProps {
 
 const defaultConfig: CopilotKitConfig = {
   baseUrl: '/api/copilot',
+  fallbackUrls: [],
   features: {
     codeCompletion: true,
     contextualSuggestions: true,
@@ -65,6 +75,12 @@ const defaultConfig: CopilotKitConfig = {
     completion: 'gpt-4',
     chat: 'gpt-4',
     embedding: 'text-embedding-ada-002'
+  },
+  endpoints: {
+    assist: '/copilot/assist',
+    suggestions: '/copilot/suggestions',
+    analyze: '/copilot/analyze',
+    docs: '/copilot/generate-docs'
   }
 };
 
@@ -76,6 +92,8 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
   const { user } = useAuth();
   const { triggerHooks, registerHook } = useHooks();
   const { toast } = useToast();
+  const configManager = getConfigManager();
+  const apiClient = getApiClient();
   
   const [config, setConfig] = useState<CopilotKitConfig>({
     ...defaultConfig,
@@ -84,6 +102,34 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
   const [isEnabled, setIsEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Runtime URL configuration with multi-endpoint support
+  const runtimeUrl = useMemo(() => {
+    const baseUrl = configManager.getBackendUrl();
+    const assistEndpoint = config.endpoints.assist;
+    const fullUrl = `${baseUrl.replace(/\/+$/, "")}${assistEndpoint}`;
+    
+    console.log('CopilotKit: Runtime URL configured:', {
+      baseUrl,
+      assistEndpoint,
+      fullUrl,
+      fallbackUrls: configManager.getFallbackUrls()
+    });
+    
+    return fullUrl;
+  }, [configManager, config.endpoints.assist]);
+
+  // Update config with current backend URLs
+  useEffect(() => {
+    const backendUrl = configManager.getBackendUrl();
+    const fallbackUrls = configManager.getFallbackUrls();
+    
+    setConfig(prev => ({
+      ...prev,
+      baseUrl: backendUrl,
+      fallbackUrls
+    }));
+  }, [configManager]);
 
   // Register CopilotKit hooks on mount
   useEffect(() => {
@@ -146,25 +192,16 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         timestamp: new Date().toISOString()
       }, { userId: user?.user_id });
 
-      const response = await fetch(`${config.baseUrl}/suggestions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          context,
-          type,
-          model: config.models.completion,
-          features: config.features
-        })
+      // Use unified API client with fallback support
+      const response = await apiClient.post(config.endpoints.suggestions, {
+        context,
+        type,
+        model: config.models.completion,
+        features: config.features,
+        user_id: user?.user_id
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to get suggestions: ${response.statusText}`);
-      }
-
-      const suggestions = await response.json();
-      return suggestions.data || [];
+      return response.data.suggestions || [];
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get suggestions';
@@ -198,25 +235,16 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         timestamp: new Date().toISOString()
       }, { userId: user?.user_id });
 
-      const response = await fetch(`${config.baseUrl}/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code,
-          language,
-          model: config.models.completion,
-          analysisType: 'comprehensive'
-        })
+      // Use unified API client with fallback support
+      const response = await apiClient.post(config.endpoints.analyze, {
+        code,
+        language,
+        model: config.models.completion,
+        analysisType: 'comprehensive',
+        user_id: user?.user_id
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to analyze code: ${response.statusText}`);
-      }
-
-      const analysis = await response.json();
-      return analysis.data;
+      return response.data.analysis || response.data;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to analyze code';
@@ -250,25 +278,16 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         timestamp: new Date().toISOString()
       }, { userId: user?.user_id });
 
-      const response = await fetch(`${config.baseUrl}/generate-docs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code,
-          language,
-          model: config.models.completion,
-          style: 'comprehensive'
-        })
+      // Use unified API client with fallback support
+      const response = await apiClient.post(config.endpoints.docs, {
+        code,
+        language,
+        model: config.models.completion,
+        style: 'comprehensive',
+        user_id: user?.user_id
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to generate documentation: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result.data.documentation;
+      return response.data.documentation || response.data;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate documentation';
@@ -297,7 +316,12 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
   };
 
   const copilotKitProps = {
-    runtimeUrl: config.baseUrl,
+    runtimeUrl: runtimeUrl,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(user?.user_id && { 'X-User-ID': user.user_id }),
+      ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` })
+    },
     // Add other CopilotKit configuration as needed
   };
 

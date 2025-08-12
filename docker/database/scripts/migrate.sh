@@ -137,7 +137,7 @@ migrate_postgres() {
     
     log "INFO" "Running PostgreSQL migrations ($action)..."
     
-    local migration_dir="./migrations/postgres"
+    local migration_dir="../../data/migrations/postgres"
     [ -d "$migration_dir" ] || { log "ERROR" "Directory not found: $migration_dir"; return 1; }
     
     ensure_migration_table "postgres"
@@ -195,7 +195,7 @@ SQL
             ")
             
             for mig in $migrations; do
-                local rollback_file="./migrations/postgres/rollbacks/${mig%.sql}_rollback.sql"
+                local rollback_file="../../data/migrations/postgres/rollbacks/${mig%.sql}_rollback.sql"
                 if [ -f "$rollback_file" ]; then
                     log "INFO" "Rolling back: $mig"
                     if psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$rollback_file"; then
@@ -536,7 +536,7 @@ create_migration() {
         *) log "ERROR" "Unknown service: $service"; return 1 ;;
     esac
     
-    local dir="./migrations/$service"
+    local dir="../../data/migrations/$service"
     local file="$dir/${timestamp}_${name}.$ext"
     
     mkdir -p "$dir"

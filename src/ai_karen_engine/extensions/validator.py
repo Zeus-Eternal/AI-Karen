@@ -1,13 +1,26 @@
 """
 Extension manifest validation and schema checking.
+Enhanced with unified validation patterns from Phase 4.1.a.
 """
 
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any, Optional
+from datetime import datetime
 
 from ai_karen_engine.extensions.models import ExtensionManifest
+
+# Import unified validation utilities
+try:
+    from ai_karen_engine.api_routes.unified_schemas import (
+        ValidationUtils,
+        ErrorType,
+        FieldError
+    )
+    UNIFIED_VALIDATION_AVAILABLE = True
+except ImportError:
+    UNIFIED_VALIDATION_AVAILABLE = False
 
 
 class ValidationError(Exception):
@@ -48,6 +61,7 @@ class ExtensionValidator:
         """Initialize the validator."""
         self.errors: List[str] = []
         self.warnings: List[str] = []
+        self.field_errors: List[FieldError] = []
     
     def validate_manifest(self, manifest: ExtensionManifest) -> Tuple[bool, List[str], List[str]]:
         """
@@ -292,6 +306,201 @@ class ExtensionValidator:
             function = task.function
             if function and '.' not in function:
                 self.warnings.append(f"Background task function should include module path: {function}")
+
+    def _validate_with_unified_patterns(self, manifest: ExtensionManifest) -> None:
+        """Validate using unified validation patterns from Phase 4.1.a."""
+        if not UNIFIED_VALIDATION_AVAILABLE:
+            return
+        
+        try:
+            # Validate extension name using unified patterns
+            if manifest.name:
+                # Use unified validation for text content
+                ValidationUtils.validate_text_content(manifest.name, min_length=1, max_length=50)
+            
+            # Validate description using unified patterns
+            if manifest.description:
+                ValidationUtils.validate_text_content(manifest.description, min_length=10, max_length=500)
+            
+            # Validate tags if present in manifest
+            if hasattr(manifest, 'tags') and manifest.tags:
+                ValidationUtils.validate_tags(manifest.tags)
+                
+        except ValueError as e:
+            self.errors.append(f"Unified validation error: {str(e)}")
+    
+    def _validate_api_endpoint_compatibility(self, manifest: ExtensionManifest) -> None:
+        """Validate API endpoint compatibility with new unified endpoints."""
+        # Check if extension uses legacy API endpoints
+        legacy_endpoints = [
+            '/ag_ui/memory',
+            '/memory_ag_ui',
+            '/chat_memory',
+            '/legacy'
+        ]
+        
+        for endpoint in manifest.api.endpoints:
+            if isinstance(endpoint, dict) and 'path' in endpoint:
+                path = endpoint['path']
+                for legacy_path in legacy_endpoints:
+                    if legacy_path in path:
+                        self.warnings.append(
+                            f"Extension uses legacy API endpoint '{path}'. "
+                            f"Consider updating to use unified endpoints: "
+                            f"/copilot/assist, /memory/search, /memory/commit"
+                        )
+        
+        # Check for recommended unified endpoint usage
+        unified_endpoints = ['/copilot/assist', '/memory/search', '/memory/commit']
+        uses_unified = False
+        
+        for endpoint in manifest.api.endpoints:
+            if isinstance(endpoint, dict) and 'path' in endpoint:
+                path = endpoint['path']
+                if any(unified_path in path for unified_path in unified_endpoints):
+                    uses_unified = True
+                    break
+        
+        if not uses_unified and manifest.api.endpoints:
+            self.warnings.append(
+                "Extension does not use unified API endpoints. "
+                "Consider integrating with /copilot/assist, /memory/search, /memory/commit for better compatibility."
+            )
+    
+    def _validate_provider_integration(self, manifest: ExtensionManifest) -> None:
+        """Validate provider integration compatibility."""
+        # Check if extension declares provider capabilities
+        if hasattr(manifest, 'capabilities') and manifest.capabilities:
+            provider_capabilities = [
+                'chat_assistance',
+                'memory_integration', 
+                'action_suggestions',
+                'context_awareness',
+                'real_time_streaming',
+                'multi_tenant_support'
+            ]
+            
+            declared_capabilities = getattr(manifest.capabilities, 'provides', [])
+            if isinstance(declared_capabilities, list):
+                for capability in declared_capabilities:
+                    if capability in provider_capabilities:
+                        # Extension provides provider-like capabilities
+                        self.warnings.append(
+                            f"Extension provides '{capability}' capability. "
+                            f"Consider registering as a provider in the provider registry."
+                        )
+    
+    def _validate_memory_system_integration(self, manifest: ExtensionManifest) -> None:
+        """Validate memory system integration patterns."""
+        # Check for memory-related permissions
+        memory_permissions = ['memory:read', 'memory:write', 'memory:admin']
+        extension_permissions = []
+        
+        # Collect all permissions from the manifest
+        if manifest.permissions:
+            extension_permissions.extend(manifest.permissions.data_access)
+            extension_permissions.extend(manifest.permissions.system_access)
+        
+        uses_memory = any(perm in str(extension_permissions) for perm in ['memory', 'data'])
+        
+        if uses_memory:
+            # Extension uses memory - validate it follows unified patterns
+            self.warnings.append(
+                "Extension uses memory functionality. "
+                "Ensure it integrates with the unified memory service and follows "
+                "tenant isolation patterns."
+            )
+            
+            # Check for required memory dependencies
+            required_services = ['postgres', 'milvus', 'redis']
+            declared_services = manifest.dependencies.system_services
+            
+            missing_services = [svc for svc in required_services if svc not in declared_services]
+            if missing_services:
+                self.warnings.append(
+                    f"Extension uses memory but doesn't declare dependencies on: {', '.join(missing_services)}. "
+                    f"Consider adding these to system_services dependencies."
+                )
+    
+    def validate_manifest_enhanced(self, manifest: ExtensionManifest) -> Tuple[bool, List[str], List[str], List[FieldError]]:
+        """
+        Enhanced validation with unified patterns and new API compatibility.
+        
+        Args:
+            manifest: Extension manifest to validate
+            
+        Returns:
+            Tuple of (is_valid, errors, warnings, field_errors)
+        """
+        # Run standard validation first
+        is_valid, errors, warnings = self.validate_manifest(manifest)
+        
+        # Run enhanced validations
+        self._validate_with_unified_patterns(manifest)
+        self._validate_api_endpoint_compatibility(manifest)
+        self._validate_provider_integration(manifest)
+        self._validate_memory_system_integration(manifest)
+        
+        # Update validity based on any new errors
+        is_valid = len(self.errors) == 0
+        
+        return is_valid, self.errors.copy(), self.warnings.copy(), self.field_errors.copy()
+    
+    def get_validation_report(self, manifest: ExtensionManifest) -> Dict[str, Any]:
+        """
+        Get comprehensive validation report with recommendations.
+        
+        Args:
+            manifest: Extension manifest to validate
+            
+        Returns:
+            Dict containing validation results and recommendations
+        """
+        is_valid, errors, warnings, field_errors = self.validate_manifest_enhanced(manifest)
+        
+        # Generate recommendations based on validation results
+        recommendations = []
+        
+        if not is_valid:
+            recommendations.append("Fix validation errors before deploying extension")
+        
+        if warnings:
+            recommendations.append("Review warnings for potential improvements")
+        
+        # API modernization recommendations
+        if any("legacy" in warning.lower() for warning in warnings):
+            recommendations.append("Update to use unified API endpoints for better performance and compatibility")
+        
+        # Provider integration recommendations
+        if any("provider" in warning.lower() for warning in warnings):
+            recommendations.append("Consider registering extension capabilities in the provider registry")
+        
+        # Memory system recommendations
+        if any("memory" in warning.lower() for warning in warnings):
+            recommendations.append("Ensure memory operations follow tenant isolation and RBAC patterns")
+        
+        return {
+            "manifest_name": manifest.name,
+            "manifest_version": manifest.version,
+            "validation_timestamp": datetime.utcnow().isoformat(),
+            "is_valid": is_valid,
+            "errors": errors,
+            "warnings": warnings,
+            "field_errors": [fe.dict() if hasattr(fe, 'dict') else str(fe) for fe in field_errors],
+            "recommendations": recommendations,
+            "compatibility": {
+                "unified_api": not any("legacy" in warning.lower() for warning in warnings),
+                "provider_registry": not any("provider" in warning.lower() for warning in warnings),
+                "memory_system": not any("memory" in warning.lower() for warning in warnings),
+                "rbac_ready": "admin" in str(manifest.permissions.system_access) if manifest.permissions else False
+            },
+            "summary": {
+                "total_errors": len(errors),
+                "total_warnings": len(warnings),
+                "total_recommendations": len(recommendations),
+                "overall_score": max(0, 100 - (len(errors) * 20) - (len(warnings) * 5))
+            }
+        }
 
 
 def validate_extension_manifest(manifest: ExtensionManifest) -> Tuple[bool, List[str], List[str]]:

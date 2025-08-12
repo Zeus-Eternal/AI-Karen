@@ -14,7 +14,7 @@ services:
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
       - ./init/postgres:/docker-entrypoint-initdb.d
-      - ./migrations/postgres:/migrations/postgres:ro
+      - ../../data/migrations/postgres:/migrations/postgres:ro
     command: >
       postgres
       -c log_statement=all

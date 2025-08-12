@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from ai_karen_engine.models.web_ui_types import WebUIMemoryQuery, WebUIMemoryEntry
-from ai_karen_engine.api_routes.memory_routes import QueryMemoryRequest
+from ai_karen_engine.api_routes.memory_routes import MemQuery
 from ai_karen_engine.database.memory_manager import MemoryEntry
 from ai_karen_engine.services.memory_service import UISource
 
@@ -40,29 +40,18 @@ def sanitize_metadata(metadata: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     return cleaned
 
 
-async def transform_web_ui_memory_query(web_ui_query: WebUIMemoryQuery) -> QueryMemoryRequest:
+async def transform_web_ui_memory_query(web_ui_query: WebUIMemoryQuery) -> MemQuery:
     """Transform a ``WebUIMemoryQuery`` to backend ``QueryMemoryRequest``."""
     time_range_start: Optional[datetime] = None
     time_range_end: Optional[datetime] = None
     if web_ui_query.time_range:
         if len(web_ui_query.time_range) == 2:
             time_range_start, time_range_end = tuple(web_ui_query.time_range)
-    return QueryMemoryRequest(
-        text=web_ui_query.text,
-        session_id=web_ui_query.session_id,
-        conversation_id=None,
-        ui_source=UISource.WEB,
-        memory_types=[],
-        tags=web_ui_query.tags or [],
-        importance_range=None,
-        only_user_confirmed=True,
-        only_ai_generated=False,
-        time_range_start=time_range_start,
-        time_range_end=time_range_end,
-        top_k=web_ui_query.top_k or 5,
-        result_limit=None,
-        similarity_threshold=web_ui_query.similarity_threshold or 0.7,
-        include_embeddings=False,
+    return MemQuery(
+        user_id=web_ui_query.session_id or "default_user",
+        org_id=None,
+        query=web_ui_query.text,
+        top_k=web_ui_query.top_k or 12
     )
 
 

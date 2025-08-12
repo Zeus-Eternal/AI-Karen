@@ -1,0 +1,35 @@
+# Memory Policy Configuration
+# Configures decay tiers, importance scoring, and feedback loops
+
+# Query configuration
+top_k: 6
+rerank_window_factor: 3.0
+similarity_threshold: 0.7
+
+# Decay tier retention periods (in days)
+decay_tiers:
+  short: 7        # 1-7 days for low importance memories
+  medium: 30      # 14-45 days for moderate importance
+  long: 180       # 90-180 days for high importance
+  pinned: null    # indefinite retention for critical memories
+
+# Importance-based tier assignment thresholds
+importance_thresholds:
+  long_threshold: 8     # importance ≥8 → long-term retention
+  medium_threshold: 5   # importance ≥5 → medium-term retention  
+  short_threshold: 1    # importance ≥1 → short-term retention
+
+# Feedback loop configuration for automatic adjustments
+feedback_loop:
+  used_shard_rate_threshold: 0.3      # Minimum usage rate for promotion
+  ignored_top_hit_rate_threshold: 0.7 # Maximum ignore rate before demotion
+
+# Auto-promotion/demotion settings
+auto_adjustment:
+  promotion_enabled: true
+  demotion_enabled: true
+  promotion_usage_count: 5    # Minimum usage count for promotion consideration
+  demotion_ignore_count: 10   # Minimum ignore count for demotion consideration
+
+# Recency weighting factor
+recency_alpha: 0.05  # Exponential decay factor for recency weighting

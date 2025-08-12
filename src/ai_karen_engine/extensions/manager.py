@@ -139,7 +139,8 @@ class ExtensionManager(HookMixin):
         """
         try:
             manifest = ExtensionManifest.from_file(manifest_path)
-            is_valid, errors, warnings = self.validator.validate_manifest(manifest)
+            # Use enhanced validation with unified patterns
+            is_valid, errors, warnings, field_errors = self.validator.validate_manifest_enhanced(manifest)
 
             if not is_valid:
                 self.logger.error(
@@ -150,6 +151,14 @@ class ExtensionManager(HookMixin):
             if warnings:
                 self.logger.warning(
                     "Manifest warnings for %s: %s", extension_dir.name, "; ".join(warnings)
+                )
+            
+            # Log field errors if present
+            if field_errors:
+                self.logger.warning(
+                    "Manifest field errors for %s: %s", 
+                    extension_dir.name, 
+                    "; ".join(str(fe) for fe in field_errors)
                 )
 
             manifests[manifest.name] = manifest

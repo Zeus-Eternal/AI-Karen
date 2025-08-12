@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init/postgres:/docker-entrypoint-initdb.d
-      - ./migrations/postgres:/migrations/postgres:ro
+      - ../../data/migrations/postgres:/migrations/postgres:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-karen_user} -d ${POSTGRES_DB:-ai_karen}"]
       interval: 10s

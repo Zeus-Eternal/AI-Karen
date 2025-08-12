@@ -38,6 +38,7 @@ async def auth_middleware(request: Request, call_next):
     """Authenticate requests via bearer tokens or API keys with RBAC checks."""
     global auth_service_instance
 
+    # Extract required scopes for RBAC validation
     required_header = request.headers.get("X-Required-Scopes")
     required_scopes = (
         {s.strip() for s in required_header.split(",") if s.strip()}

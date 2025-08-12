@@ -14,7 +14,7 @@ services:
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
       - ./init/postgres:/docker-entrypoint-initdb.d
-      - ./migrations/postgres:/migrations/postgres:ro
+      - ../../data/migrations/postgres:/migrations/postgres:ro
       - ./backups/postgres:/backups:rw
     command: >
       postgres
