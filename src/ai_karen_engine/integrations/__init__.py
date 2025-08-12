@@ -18,6 +18,7 @@ from ai_karen_engine.integrations.video_registry import (
 from ai_karen_engine.integrations.provider_registry import (
     ProviderRegistry,
     ModelInfo,
+    get_provider_registry,
 )
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     "LLMProfileRouter",
     "ProviderRegistry",
     "ModelInfo",
+    "get_provider_registry",
     "VoiceRegistry",
     "VoiceProviderBase",
     "DummyVoiceProvider",

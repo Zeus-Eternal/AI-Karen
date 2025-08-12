@@ -35,6 +35,21 @@ class ProviderRegistry:
         self._registrations: Dict[str, ProviderRegistration] = {}
         self._instances: Dict[str, Any] = {}
 
+    def register_default_providers(self) -> None:
+        """Register built-in providers."""
+        from ai_karen_engine.integrations.providers.copilotkit_provider import (
+            CopilotKitProvider,
+        )
+
+        self.register_provider(
+            "copilotkit",
+            CopilotKitProvider,
+            description="CopilotKit AI-powered code assistance and contextual suggestions",
+            models=[ModelInfo(name="gpt-4", description="Default CopilotKit model")],
+            requires_api_key=True,
+            default_model="gpt-4",
+        )
+
     def register_provider(
         self,
         name: str,
@@ -76,4 +91,25 @@ class ProviderRegistry:
         if not reg:
             return []
         return [m.name for m in reg.models]
+
+
+# Global registry instance
+_provider_registry: ProviderRegistry | None = None
+
+
+def get_provider_registry() -> ProviderRegistry:
+    """Get or create the global provider registry."""
+    global _provider_registry
+    if _provider_registry is None:
+        _provider_registry = ProviderRegistry()
+        _provider_registry.register_default_providers()
+    return _provider_registry
+
+
+__all__ = [
+    "ModelInfo",
+    "ProviderRegistration",
+    "ProviderRegistry",
+    "get_provider_registry",
+]
 

@@ -24,6 +24,7 @@ async def test_llm_utils():
         # Test provider listing
         providers = llm_manager.list_available_providers()
         print(f"Available providers: {providers}")
+        # CopilotKit should now appear in the default provider list
         
         # Test health check
         health = llm_manager.health_check_all()
@@ -51,3 +52,4 @@ async def test_llm_utils():
 
 if __name__ == "__main__":
     asyncio.run(test_llm_utils())
+
