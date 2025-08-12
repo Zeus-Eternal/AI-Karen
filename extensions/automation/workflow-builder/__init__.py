@@ -227,7 +227,7 @@ class WorkflowBuilderExtension(BaseExtension):
         if not FASTAPI_AVAILABLE:
             return None
         
-        router = APIRouter(prefix=f"/extensions/{self.manifest.name}")
+        router = APIRouter(prefix=f"/api/extensions/{self.manifest.name}")
         
         @router.get("/workflows")
         async def list_workflows():
