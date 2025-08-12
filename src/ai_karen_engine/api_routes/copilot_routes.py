@@ -29,7 +29,7 @@ except ImportError:
     LLM_REGISTRY_AVAILABLE = False
 
 try:
-    from ai_karen_engine.middleware.rbac import check_scope, require_scopes
+    from ai_karen_engine.core.rbac import check_scope, require_scopes
     RBAC_AVAILABLE = True
 except ImportError:
     logger.warning("RBAC not available, using fallback")
@@ -119,14 +119,14 @@ def get_correlation_id(request: Request) -> str:
 async def check_rbac_scope(request: Request, scope: str) -> bool:
     """Check RBAC scope with graceful fallback"""
     if not RBAC_AVAILABLE:
-        logger.debug(f"RBAC not available, allowing {scope}")
-        return True
-    
+        logger.warning("RBAC not available")
+        raise HTTPException(status_code=403, detail="RBAC unavailable")
+
     try:
         return await check_scope(request, scope)
     except Exception as e:
         logger.warning(f"RBAC check failed for {scope}: {e}")
-        return True  # Fallback to allow in development
+        raise HTTPException(status_code=403, detail="RBAC error")
 
 async def get_memory_service() -> Optional[WebUIMemoryService]:
     """Get memory service with graceful fallback"""

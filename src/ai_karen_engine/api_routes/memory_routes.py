@@ -164,17 +164,17 @@ def get_correlation_id(request: Request) -> str:
         return request.headers.get("X-Correlation-Id", str(uuid.uuid4()))
 
 
-def check_rbac_scope(scope: str) -> bool:
-    """Check RBAC scope with graceful fallback"""
+async def check_rbac_scope(request: Request, scope: str) -> bool:
+    """Check RBAC scope and fail closed on errors."""
     if not RBAC_AVAILABLE:
-        logger.debug(f"RBAC not available, allowing {scope}")
-        return True
+        logger.warning("RBAC not available")
+        raise HTTPException(status_code=403, detail="RBAC unavailable")
 
     try:
-        return check_scope(scope)
+        return await check_scope(request, scope)
     except Exception as e:
         logger.warning(f"RBAC check failed for {scope}: {e}")
-        return True  # Fallback to allow in development
+        raise HTTPException(status_code=403, detail="RBAC error")
 
 
 async def get_memory_service() -> Optional[WebUIMemoryService]:
@@ -266,7 +266,7 @@ async def memory_search(request: MemQuery, http_request: Request):
         )
 
     # Check RBAC permissions
-    if not check_rbac_scope("memory:read"):
+    if not await check_rbac_scope(http_request, "memory:read"):
         record_metrics(
             "search",
             "forbidden",
@@ -466,7 +466,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
     correlation_id = get_correlation_id(http_request)
 
     # Check RBAC permissions
-    if not check_rbac_scope("memory:write"):
+    if not await check_rbac_scope(http_request, "memory:write"):
         record_metrics(
             "commit",
             "forbidden",
@@ -584,7 +584,7 @@ async def memory_update(
     correlation_id = get_correlation_id(http_request)
 
     # Check RBAC permissions
-    if not check_rbac_scope("memory:write"):
+    if not await check_rbac_scope(http_request, "memory:write"):
         record_metrics(
             "update", "forbidden", 0, user_id, org_id or "", "", correlation_id
         )
@@ -698,7 +698,7 @@ async def memory_delete(
     correlation_id = get_correlation_id(http_request)
 
     # Check RBAC permissions
-    if not check_rbac_scope("memory:write"):
+    if not await check_rbac_scope(http_request, "memory:write"):
         record_metrics(
             "delete", "forbidden", 0, user_id, org_id or "", "", correlation_id
         )
