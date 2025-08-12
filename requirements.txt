@@ -8,6 +8,7 @@ pydantic-settings
 pytest
 transformers
 sentence-transformers
+hnswlib
 duckdb
 huggingface_hub
 openai
