@@ -23,6 +23,7 @@ try:
 except ImportError:
     logger.warning("Memory service not available, using fallback")
     MEMORY_SERVICE_AVAILABLE = False
+    InteractionType = None  # type: ignore
 
 try:
     from ai_karen_engine.integrations.llm_registry import get_llm_registry
@@ -461,7 +462,6 @@ Please provide a helpful response and suggest relevant actions."""
                     org_id=request.org_id,
                     correlation_id=correlation_id,
                 )
-
                 await memory_service.queue_interaction_writeback(
                     content=answer,
                     interaction_type=InteractionType.COPILOT_RESPONSE,
@@ -496,7 +496,6 @@ Please provide a helpful response and suggest relevant actions."""
                 logger.debug(
                     f"Write-back error response: {error_response.message}",
                     extra={"correlation_id": correlation_id},
-                )
 
         timings["memory_writeback_ms"] = (
             datetime.utcnow() - writeback_start
