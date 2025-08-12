@@ -11,12 +11,13 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from ai_karen_engine.services.memory_writeback import InteractionType
+
 logger = logging.getLogger(__name__)
 
 # Graceful imports with fallback mechanisms
 try:
     from ai_karen_engine.services.memory_service import WebUIMemoryService
-    from ai_karen_engine.services.memory_writeback import InteractionType
 
     MEMORY_SERVICE_AVAILABLE = True
 except ImportError:
@@ -118,7 +119,7 @@ except ImportError:
     CORRELATION_AVAILABLE = False
 
 try:
-    from ai_karen_engine.services.structured_logging import (  # type: ignore[import-not-found]
+    from ai_karen_engine.services.structured_logging import (
         get_structured_logging_service,
     )
 
@@ -452,18 +453,15 @@ Please provide a helpful response and suggest relevant actions."""
         if memory_service:
             try:
                 response_id = str(uuid.uuid4())
-                shard_links = []
 
-                if context_hits:
-                    shard_links = await memory_service.link_response_to_shards(
-                        response_id=response_id,
-                        response_content=answer,
-                        source_context_hits=context_hits,
-                        user_id=request.user_id,
-                        org_id=request.org_id,
-                        correlation_id=correlation_id,
-                    )
-
+                shard_links = await memory_service.link_response_to_shards(
+                    response_id=response_id,
+                    response_content=answer,
+                    source_context_hits=context_hits,
+                    user_id=request.user_id,
+                    org_id=request.org_id,
+                    correlation_id=correlation_id,
+                )
                 await memory_service.queue_interaction_writeback(
                     content=answer,
                     interaction_type=InteractionType.COPILOT_RESPONSE,
@@ -490,14 +488,14 @@ Please provide a helpful response and suggest relevant actions."""
                         org_id=request.org_id or "",
                         correlation_id=correlation_id,
                     )
-                try:
-                    ErrorHandler.create_internal_error_response(
-                        correlation_id=correlation_id,
-                        path=str(http_request.url.path),
-                        error=e,
-                    )
-                except Exception:
-                    pass
+                error_response = ErrorHandler.create_internal_error_response(
+                    correlation_id=correlation_id,
+                    path=str(http_request.url.path),
+                    error=e,
+                )
+                logger.debug(
+                    f"Write-back error response: {error_response.message}",
+                    extra={"correlation_id": correlation_id},
 
         timings["memory_writeback_ms"] = (
             datetime.utcnow() - writeback_start
