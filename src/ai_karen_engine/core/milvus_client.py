@@ -53,6 +53,9 @@ class MilvusClient:
             OrderedDict() if cache_size > 0 else None
         )
 
+    def pool_utilization(self) -> float:
+        return 0.0
+
     async def connect(self) -> None:
         """Async connection hook for API compatibility."""
         self._connected = True
@@ -317,6 +320,9 @@ def recall_vectors(
     store = _get_store(tenant)
     metadata = {"user_id": user_id, "tenant_id": tenant}
     results = store.search_sync(vec, top_k=top_k, metadata_filter=metadata)
+    record_metric(
+        "milvus_pool_utilization", getattr(store, "pool_utilization", lambda: 0.0)()
+    )
     # Include vector id so external stores can reference metadata
     return [{"id": r["id"], **r["payload"]} for r in results]
 

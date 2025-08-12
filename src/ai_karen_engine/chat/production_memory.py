@@ -9,14 +9,17 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import redis
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from ai_karen_engine.chat.summarizer import summarize_conversation
 from ai_karen_engine.clients.database.milvus_client import recall_vectors, store_vector
 from ai_karen_engine.core.chat_memory_config import settings
+from ai_karen_engine.core.embedding_manager import record_metric
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.client import get_db_session
 from ai_karen_engine.database.models import ChatMemory
+from cachetools import TTLCache
 
 logger = get_logger(__name__)
 
@@ -25,7 +28,16 @@ class ProductionChatMemory:
     """Production chat memory system with Redis + Vector DB"""
 
     def __init__(self):
-        self.redis_client = redis.from_url(settings.redis_url)
+        self.redis_pool = redis.ConnectionPool.from_url(
+            settings.redis_url, max_connections=settings.chat_memory.redis_pool_size
+        )
+        self.redis_client = redis.Redis(connection_pool=self.redis_pool)
+        self._semantic_cache: TTLCache[
+            Tuple[str, str, Optional[str]], List[Dict[str, Any]]
+        ] = TTLCache(
+            maxsize=settings.chat_memory.cache_maxsize,
+            ttl=settings.chat_memory.cache_ttl_seconds,
+        )
 
     async def store_turn(
         self,
@@ -138,7 +150,14 @@ class ProductionChatMemory:
             if chat_id:
                 vector_filter["chat_id"] = chat_id
 
-            # Search vectors
+            cache_key = (user_id, query, chat_id)
+            cached = self._semantic_cache.get(cache_key)
+            if cached is not None:
+                record_metric("semantic_search_cache_hit", 1)
+                self._record_pool_metrics()
+                return cached
+
+            record_metric("semantic_search_cache_miss", 1)
             results = await recall_vectors(
                 user_id=user_id, query=query, top_k=limit, filter=vector_filter
             )
@@ -150,14 +169,36 @@ class ProductionChatMemory:
                 if result.get("similarity", 0) >= similarity_threshold
             ]
 
+            self._semantic_cache[cache_key] = filtered_results
             logger.info(
                 f"Semantic search returned {len(filtered_results)} results for user {user_id}"
             )
+            self._record_pool_metrics()
             return filtered_results
 
         except Exception as e:
             logger.error(f"Semantic search failed: {e}")
             return []
+
+    def _record_pool_metrics(self) -> None:
+        try:
+            used = self.redis_pool._created_connections - len(  # type: ignore[attr-defined]
+                self.redis_pool._available_connections  # type: ignore[attr-defined]
+            )
+            utilization = used / self.redis_pool.max_connections
+            record_metric("redis_pool_utilization", utilization)
+        except Exception:
+            pass
+        try:
+            from ai_karen_engine.core.milvus_client import (
+                _vector_stores,  # type: ignore[import-not-found]
+            )
+
+            for store in _vector_stores.values():
+                util = getattr(store, "pool_utilization", lambda: 0.0)()
+                record_metric("milvus_pool_utilization", util)
+        except Exception:
+            pass
 
     async def get_chat_reference(
         self, chat_id: str, user_id: str, query: Optional[str] = None, limit: int = 5
