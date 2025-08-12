@@ -138,6 +138,15 @@ response = orchestrator.route_request(
 )
 ```
 
+### Warmed Provider Routing and Fallback
+
+The orchestrator preloads available providers on startup and performs a
+lightweight generation to warm their model caches. First‑token latency is
+tracked for each provider and a p95 metric is used during routing to
+prioritize warmed providers with latency below 1.2 s. If no warmed
+providers are available, the orchestrator falls back to any registered
+models so requests still succeed even when warm caches are missing.
+
 ## Configuration
 
 The engine supports configuration through:

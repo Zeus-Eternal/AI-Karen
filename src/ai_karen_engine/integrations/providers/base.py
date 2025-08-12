@@ -3,6 +3,7 @@ Base LLM Provider class with CopilotKit code assistance integration.
 """
 
 from abc import ABC, abstractmethod
+import asyncio
 from typing import Any, Dict, List, Optional
 import logging
 import re
@@ -38,6 +39,13 @@ class BaseLLMProvider(ABC):
         except Exception as e:
             logger.warning(f"Failed to initialize CopilotKit integration for {self.provider_name}: {e}")
             self._copilotkit_provider = None
+
+    def warm_cache(self) -> None:
+        """Best-effort cache warmup using a minimal generation request."""
+        try:
+            asyncio.run(self.generate_response("hello"))
+        except Exception as e:  # pragma: no cover - warmup is optional
+            logger.debug(f"warm_cache failed for {self.provider_name}: {e}")
     
     def _is_code_related(self, prompt: str) -> bool:
         """Detect if prompt is code-related and should use CopilotKit assistance."""

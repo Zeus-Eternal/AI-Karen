@@ -24,6 +24,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+
 # === Constants & Configuration ===
 DEFAULT_CONFIG = {
     "max_concurrent_requests": 8,
@@ -223,6 +224,20 @@ class ModelInfo:
     last_used: float = 0.0
     created: float = field(default_factory=time.time)
     status: ModelStatus = ModelStatus.ACTIVE
+    latency_samples: List[float] = field(default_factory=list)
+    warmed: bool = False
+
+    def record_latency(self, latency: float, max_samples: int = 50) -> None:
+        self.latency_samples.append(latency)
+        if len(self.latency_samples) > max_samples:
+            self.latency_samples.pop(0)
+
+    def p95_latency(self) -> float:
+        if not self.latency_samples:
+            return float("inf")
+        samples = sorted(self.latency_samples)
+        idx = max(0, int(0.95 * (len(samples) - 1)))
+        return samples[idx]
 
 
 # === Enhanced Model Registry ===
@@ -378,6 +393,7 @@ class LLMOrchestrator:
             self.pool = ExecutionPool(self.hardware)
             self._setup_watchdog()
             self._initialized = True
+            self._preload_providers()
             logger.info("LLMOrchestrator initialized in secure mode")
 
     def _setup_watchdog(self):
@@ -401,6 +417,58 @@ class LLMOrchestrator:
                     logger.warning(f"Model integrity check failed: {model_id}")
                     del self.registry._models[model_id]
 
+    def _preload_providers(self) -> None:
+        """Initialize providers at startup and warm their caches."""
+        from ai_karen_engine.integrations.provider_registry import (
+            ModelInfo as ProviderModelInfo,
+            get_provider_registry,
+        )
+
+        registry = get_provider_registry()
+        for provider_name in registry.list_providers():
+            info = registry.get_provider_info(provider_name)
+            if not info:
+                continue
+            models: List[ProviderModelInfo] = info.models or []
+            if not models:
+                default_name = info.default_model or provider_name
+                models = [ProviderModelInfo(name=default_name, capabilities=["generic"])]
+            for m in models:
+                try:
+                    provider = registry.get_provider(provider_name, model=m.name)
+                    model_id = f"{provider_name}:{m.name}"
+                    capabilities = m.capabilities or ["generic"]
+                    self.registry.register(model_id, provider, capabilities)
+                    latency = self._warm_model(model_id, provider)
+                    if latency is not None:
+                        info = self.registry._models.get(model_id)
+                        if info:
+                            info.warmed = True
+                            info.record_latency(latency)
+                except Exception as e:  # pragma: no cover - warmup is best effort
+                    logger.warning(f"Provider preload failed for {provider_name}:{m.name}: {e}")
+
+    def _warm_model(self, model_id: str, provider: Any) -> Optional[float]:
+        """Warm a model and return latency in seconds if successful."""
+        start = time.time()
+        try:
+            if hasattr(provider, "warm_cache"):
+                provider.warm_cache()
+            else:  # Fallback minimal generation
+                provider.generate_text("hello", max_tokens=1)
+            latency = time.time() - start
+            logger.info(f"Warmed {model_id} in {latency:.3f}s")
+            return latency
+        except Exception as e:
+            logger.warning(f"Warmup failed for {model_id}: {e}")
+            return None
+
+    def _track_latency(self, model_id: str, latency: float) -> None:
+        info = self.registry._models.get(model_id)
+        if info:
+            info.record_latency(latency)
+            info.warmed = True
+
     def route(self, prompt: str, skill: Optional[str] = None, **kwargs) -> str:
         """Route request to appropriate model"""
         model_id, model = self._select_model(skill)
@@ -408,11 +476,13 @@ class LLMOrchestrator:
             raise RuntimeError("No suitable model available")
 
         try:
+            start = time.time()
             future = self.pool.execute(
                 model_id, model.model.generate_text, prompt, **kwargs
             )
             result = future.result(timeout=DEFAULT_CONFIG["request_timeout"])
             self.pool._record_outcome(model_id, True)
+            self._track_latency(model_id, time.time() - start)
             return result
         except Exception as e:
             self.pool._record_outcome(model_id, False)
@@ -443,12 +513,13 @@ class LLMOrchestrator:
             # Add conversation context for CopilotKit
             if context:
                 kwargs["conversation_context"] = context
-
+            start = time.time()
             future = self.pool.execute(
                 model_id, model.model.generate_text, prompt, **kwargs
             )
             result = future.result(timeout=DEFAULT_CONFIG["request_timeout"])
             self.pool._record_outcome(model_id, True)
+            self._track_latency(model_id, time.time() - start)
             return result
         except Exception as e:
             self.pool._record_outcome(model_id, False)
@@ -633,8 +704,16 @@ class LLMOrchestrator:
                 )
 
             if candidates:
-                # Select least used, lowest weight model
-                candidates.sort(key=lambda x: (x[1].weight, x[1].last_used))
+                warmed = [c for c in candidates if c[1].warmed]
+                if warmed:
+                    candidates = warmed
+                candidates.sort(
+                    key=lambda x: (
+                        x[1].p95_latency(),
+                        x[1].weight,
+                        x[1].last_used,
+                    )
+                )
                 selected = candidates[0]
                 selected[1].last_used = time.time()
                 return selected
@@ -653,9 +732,12 @@ class LLMOrchestrator:
 
 
 # === Singleton Access ===
+_llm_orchestrator: Optional[LLMOrchestrator] = None
+
+
 def get_orchestrator() -> LLMOrchestrator:
-    """Get the orchestrator instance"""
-    return LLMOrchestrator()
-
-
-llm_orchestrator = get_orchestrator()
+    """Get (or create) the orchestrator singleton."""
+    global _llm_orchestrator
+    if _llm_orchestrator is None:
+        _llm_orchestrator = LLMOrchestrator()
+    return _llm_orchestrator
