@@ -7,25 +7,53 @@ This module provides the foundational components for the AI Karen engine includi
 - FastAPI gateway and middleware
 """
 
-from ai_karen_engine.core.services import (
-    BaseService, ServiceConfig, ServiceStatus, ServiceContainer, 
-    ServiceRegistry, get_container, get_registry, inject, service
+from ai_karen_engine.core.errors import (  # type: ignore
+    AIProcessingError,
+    AuthenticationError,
+    AuthorizationError,
+    ErrorCode,
+    ErrorHandler,
+    ErrorResponse,
+    KarenError,
+    MemoryError,
+    NotFoundError,
+    PluginError,
+    ServiceError,
+    ValidationError,
+    error_middleware,
 )
-from ai_karen_engine.core.errors import (
-    KarenError, ValidationError, AuthenticationError, AuthorizationError,
-    NotFoundError, ServiceError, PluginError, MemoryError, AIProcessingError,
-    ErrorHandler, ErrorResponse, ErrorCode, error_middleware
+from ai_karen_engine.core.gateway import (  # type: ignore
+    KarenApp,
+    create_app,
+    setup_middleware,
+    setup_routing,
 )
-from ai_karen_engine.core.logging import (
-    KarenLogger, get_logger, configure_logging, LogLevel, LogFormat,
-    logging_middleware, StructuredFormatter, JSONFormatter
+from ai_karen_engine.core.logging import (  # type: ignore
+    JSONFormatter,
+    KarenLogger,
+    LogFormat,
+    LogLevel,
+    StructuredFormatter,
+    configure_logging,
+    get_logger,
+    logging_middleware,
 )
-from ai_karen_engine.core.gateway import create_app, KarenApp, setup_middleware, setup_routing
+from ai_karen_engine.core.services import (  # type: ignore
+    BaseService,
+    ServiceConfig,
+    ServiceContainer,
+    ServiceRegistry,
+    ServiceStatus,
+    get_container,
+    get_registry,
+    inject,
+    service,
+)
 
 __all__ = [
     # Services
     "BaseService",
-    "ServiceConfig", 
+    "ServiceConfig",
     "ServiceStatus",
     "ServiceContainer",
     "ServiceRegistry",
@@ -33,11 +61,10 @@ __all__ = [
     "get_registry",
     "inject",
     "service",
-    
     # Errors
     "KarenError",
     "ValidationError",
-    "AuthenticationError", 
+    "AuthenticationError",
     "AuthorizationError",
     "NotFoundError",
     "ServiceError",
@@ -48,29 +75,27 @@ __all__ = [
     "ErrorResponse",
     "ErrorCode",
     "error_middleware",
-    
     # Logging
     "KarenLogger",
     "get_logger",
     "configure_logging",
     "LogLevel",
-    "LogFormat", 
+    "LogFormat",
     "logging_middleware",
     "StructuredFormatter",
     "JSONFormatter",
-    
     # Gateway
     "create_app",
     "KarenApp",
     "setup_middleware",
-    "setup_routing"
+    "setup_routing",
 ]
 
-from ai_karen_engine.core.default_models import (
-    load_default_models,
+from ai_karen_engine.core.default_models import (  # type: ignore
+    get_classifier,
     get_embedding_manager,
     get_spacy_client,
-    get_classifier,
+    load_default_models,
 )
 
 __all__ += [
