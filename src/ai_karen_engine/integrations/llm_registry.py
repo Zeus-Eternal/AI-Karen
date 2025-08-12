@@ -12,8 +12,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
-from ai_karen_engine.integrations.providers import (DeepseekProvider, GeminiProvider, HuggingFaceProvider,
-                        OllamaProvider, OpenAIProvider, CopilotKitProvider)
+from ai_karen_engine.integrations.providers import (
+    CopilotKitProvider,
+    DeepseekProvider,
+    GeminiProvider,
+    HuggingFaceProvider,
+    OllamaProvider,
+    OpenAIProvider,
+)
 
 logger = logging.getLogger("kari.llm_registry")
 
@@ -165,7 +171,6 @@ class LLMRegistry:
             with open(self.registry_path, "w") as f:
                 json.dump(data, f, indent=2)
 
-
         except Exception as ex:
             logger.error(f"Could not save registry to {self.registry_path}: {ex}")
 
@@ -263,10 +268,14 @@ class LLMRegistry:
         registration = self._registrations[name]
         info = asdict(registration)
 
-        # Add runtime info if provider is instantiated
-        if name in self._providers:
+        # Ensure provider is instantiated to gather runtime metadata
+        provider = self._providers.get(name)
+        if provider is None:
+            provider = self.get_provider(name)
+
+        if provider:
             try:
-                provider_info = self._providers[name].get_provider_info()
+                provider_info = provider.get_provider_info()
                 info.update(provider_info)
             except Exception as ex:
                 logger.warning(f"Could not get provider info for {name}: {ex}")
