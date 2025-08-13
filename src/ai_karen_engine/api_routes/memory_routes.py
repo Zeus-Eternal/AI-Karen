@@ -298,7 +298,9 @@ async def memory_search(request: MemQuery, http_request: Request):
                     user_id=request.user_id,
                     top_k=request.top_k,
                 )
-                memories = await memory_service.query_memories(tenant_id, query)
+                memories = await memory_service.query_memories(
+                    tenant_id, query, tenant_filters=tenant_filters
+                )
                 hits = [
                     ContextHit(
                         id=mem.id,
@@ -593,6 +595,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     tags=request.tags,
                     importance_score=request.importance,
                     metadata={"decay": request.decay},
+                    tenant_filters=tenant_filters,
                 )
                 success = memory_id is not None
                 message = (
@@ -808,6 +811,7 @@ async def memory_update(
                         tags=request.tags,
                         importance_score=request.importance,
                         metadata={"decay": request.decay} if request.decay else None,
+                        tenant_filters=tenant_filters,
                     )
                     success = new_id is not None
                 message = (
