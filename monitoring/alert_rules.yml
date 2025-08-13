@@ -17,14 +17,19 @@ groups:
         annotations:
           summary: 'Availability below SLO for {{ $labels.check }}'
           description: 'Availability dropped below 99% for check {{ $labels.check }}'
+
+  - name: copilot_latency_slo
+    rules:
+      # Vector search should stay under 50ms at p95
       - alert: VectorSearchLatencyHigh
         expr: histogram_quantile(0.95, sum(rate(vector_latency_seconds_bucket[5m])) by (le, operation)) > 0.05
         for: 10m
         labels:
-          severity: critical
+          severity: warning
         annotations:
           summary: 'Vector search p95 latency above 50ms for {{ $labels.operation }}'
-          description: 'Vector search latency exceeded 50ms'
+          description: '95th percentile vector search latency exceeded 50ms'
+      # LLM generation should emit first token within 1.2s at p95
       - alert: LLMGenerationLatencyHigh
         expr: histogram_quantile(0.95, sum(rate(llm_latency_seconds_bucket[5m])) by (le, provider, model)) > 1.2
         for: 10m

@@ -87,7 +87,7 @@ def handle_service_error(
     # Get appropriate HTTP status code
     status_code = get_http_status_for_error_code(error_code)
 
-    return HTTPException(status_code=status_code, detail=error_response.dict())
+    return HTTPException(status_code=status_code, detail=error_response.model_dump(mode="json"))
 
 
 def create_fallback_chat_response(
@@ -651,7 +651,7 @@ async def memory_store_compatibility(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(error_response.type),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Database schema validation - check if memory_entries table exists
@@ -682,7 +682,7 @@ async def memory_store_compatibility(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(error_response.type),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Transform request to backend format
@@ -705,7 +705,7 @@ async def memory_store_compatibility(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(error_response.type),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Validate user ID - store anonymously if not a valid UUID
@@ -838,7 +838,7 @@ async def memory_store_compatibility(
 
             raise HTTPException(
                 status_code=get_http_status_for_error_code(error_response.type),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         storage_time = (datetime.utcnow() - start_time).total_seconds() * 1000
@@ -901,7 +901,7 @@ async def memory_store_compatibility(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(error_response.type),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
     except ValueError as e:
@@ -915,7 +915,7 @@ async def memory_store_compatibility(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(error_response.type),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
     except Exception as e:
@@ -931,7 +931,7 @@ async def memory_store_compatibility(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(error_response.type),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 

@@ -160,12 +160,22 @@ class LLMUtils:
             # Legacy mode - use provided providers or create default ones
             if providers is None:
                 # Lazy import providers to avoid circular imports
-                from ai_karen_engine.integrations.providers.ollama_provider import OllamaProvider
-                from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvider
-                from ai_karen_engine.integrations.providers.gemini_provider import GeminiProvider
-                from ai_karen_engine.integrations.providers.deepseek_provider import DeepseekProvider
-                from ai_karen_engine.integrations.providers.huggingface_provider import HuggingFaceProvider
-                
+                from ai_karen_engine.integrations.providers.deepseek_provider import (
+                    DeepseekProvider,
+                )
+                from ai_karen_engine.integrations.providers.gemini_provider import (
+                    GeminiProvider,
+                )
+                from ai_karen_engine.integrations.providers.huggingface_provider import (
+                    HuggingFaceProvider,
+                )
+                from ai_karen_engine.integrations.providers.ollama_provider import (
+                    OllamaProvider,
+                )
+                from ai_karen_engine.integrations.providers.openai_provider import (
+                    OpenAIProvider,
+                )
+
                 providers = {
                     "ollama": OllamaProvider(),
                     "openai": OpenAIProvider(),
@@ -287,10 +297,13 @@ class LLMUtils:
     ) -> str:
         provider_obj = self.get_provider(provider)
         trace_id = trace_id or str(uuid.uuid4())
+        provider_name = provider or self.default
+        model_name = kwargs.get("model") or getattr(provider_obj, "model", None)
         t0 = time.time()
+        status = "success"
         meta = {
             "prompt": prompt[:100],
-            "provider": provider or self.default,
+            "provider": provider_name,
             "user_roles": user_ctx.get("roles") if user_ctx else None,
             "trace_id": trace_id,
             "kwargs": kwargs,
@@ -331,6 +344,19 @@ class LLMUtils:
             meta.update({"duration": duration, "error": str(ex)})
             trace_llm_event("generate_text_error", trace_id, meta)
             raise GenerationFailed(f"Provider '{provider}' failed: {ex}")
+        finally:
+            duration = time.time() - t0
+            try:
+                from ai_karen_engine.services.metrics_service import get_metrics_service
+
+                get_metrics_service().record_llm_latency(
+                    duration,
+                    provider=provider_name,
+                    model=model_name or "",
+                    status=status,
+                )
+            except Exception:
+                pass
 
     def embed(
         self,
@@ -342,9 +368,12 @@ class LLMUtils:
     ) -> List[float]:
         provider_obj = self.get_provider(provider)
         trace_id = trace_id or str(uuid.uuid4())
+        provider_name = provider or self.default
+        model_name = kwargs.get("model") or getattr(provider_obj, "model", None)
         t0 = time.time()
+        status = "success"
         meta = {
-            "provider": provider or self.default,
+            "provider": provider_name,
             "trace_id": trace_id,
             "kwargs": kwargs,
         }
@@ -354,8 +383,8 @@ class LLMUtils:
             duration = time.time() - t0
             usage = getattr(provider_obj, "last_usage", {})
             self._record_request(
-                provider or self.default,
-                kwargs.get("model") or getattr(provider_obj, "model", None),
+                provider_name,
+                model_name,
                 usage,
                 duration,
                 user_ctx,
@@ -364,9 +393,23 @@ class LLMUtils:
             trace_llm_event("embed_success", trace_id, meta)
             return out
         except Exception as ex:
+            status = "error"
             meta.update({"duration": time.time() - t0, "error": str(ex)})
             trace_llm_event("embed_error", trace_id, meta)
             raise EmbeddingFailed(f"Provider '{provider}' failed: {ex}")
+        finally:
+            duration = time.time() - t0
+            try:
+                from ai_karen_engine.services.metrics_service import get_metrics_service
+
+                get_metrics_service().record_llm_latency(
+                    duration,
+                    provider=provider_name,
+                    model=model_name or "",
+                    status=status,
+                )
+            except Exception:
+                pass
 
 
 # ========== Prompt-First Plugin API ==========

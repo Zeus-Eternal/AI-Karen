@@ -123,7 +123,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 message="Insufficient permissions for data export"
             )
-            raise HTTPException(status_code=403, detail=error_response.dict())
+            raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
         
         try:
             # Create privacy request
@@ -150,7 +150,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 error=e
             )
-            raise HTTPException(status_code=500, detail=error_response.dict())
+            raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
     
     @router.post("/erasure/request", response_model=PrivacyRequestResponse)
     async def request_data_erasure(
@@ -173,7 +173,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 message="Insufficient permissions for data erasure"
             )
-            raise HTTPException(status_code=403, detail=error_response.dict())
+            raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
         
         try:
             # Create privacy request
@@ -204,7 +204,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 error=e
             )
-            raise HTTPException(status_code=500, detail=error_response.dict())
+            raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
     
     @router.get("/request/{request_id}/status", response_model=PrivacyRequestStatusResponse)
     async def get_privacy_request_status(
@@ -226,7 +226,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 message="Insufficient permissions to view privacy requests"
             )
-            raise HTTPException(status_code=403, detail=error_response.dict())
+            raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
         
         try:
             privacy_request = privacy_service.get_privacy_request_status(request_id)
@@ -237,7 +237,7 @@ if FASTAPI_AVAILABLE:
                     path=str(http_request.url.path),
                     resource="Privacy request"
                 )
-                raise HTTPException(status_code=404, detail=error_response.dict())
+                raise HTTPException(status_code=404, detail=error_response.model_dump(mode="json"))
             
             return PrivacyRequestStatusResponse(
                 request_id=privacy_request.request_id,
@@ -261,7 +261,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 error=e
             )
-            raise HTTPException(status_code=500, detail=error_response.dict())
+            raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
     
     @router.post("/request/{request_id}/process")
     async def process_privacy_request(
@@ -284,7 +284,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 message="Insufficient permissions to process privacy requests"
             )
-            raise HTTPException(status_code=403, detail=error_response.dict())
+            raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
         
         try:
             privacy_request = privacy_service.get_privacy_request_status(request_id)
@@ -295,7 +295,7 @@ if FASTAPI_AVAILABLE:
                     path=str(http_request.url.path),
                     resource="Privacy request"
                 )
-                raise HTTPException(status_code=404, detail=error_response.dict())
+                raise HTTPException(status_code=404, detail=error_response.model_dump(mode="json"))
             
             # Verify token
             if privacy_request.verification_token != verification_token:
@@ -304,7 +304,7 @@ if FASTAPI_AVAILABLE:
                     path=str(http_request.url.path),
                     message="Invalid verification token"
                 )
-                raise HTTPException(status_code=403, detail=error_response.dict())
+                raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
             
             # Process based on request type
             if privacy_request.request_type == "export":
@@ -345,7 +345,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 error=e
             )
-            raise HTTPException(status_code=500, detail=error_response.dict())
+            raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
     
     @router.post("/content/sanitize")
     async def sanitize_content(
@@ -368,7 +368,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 message="Insufficient permissions to sanitize content"
             )
-            raise HTTPException(status_code=403, detail=error_response.dict())
+            raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
         
         try:
             safe_preview = privacy_service.create_safe_content_preview(content)
@@ -387,7 +387,7 @@ if FASTAPI_AVAILABLE:
                 path=str(http_request.url.path),
                 error=e
             )
-            raise HTTPException(status_code=500, detail=error_response.dict())
+            raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
     
     @router.get("/health")
     async def privacy_health_check():

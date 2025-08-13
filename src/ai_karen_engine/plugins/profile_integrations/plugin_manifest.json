@@ -2,7 +2,9 @@
   "plugin_api_version": "1.0",
   "intent": "profile_integration",
   "enable_external_workflow": false,
-  "required_roles": ["user"],
+  "required_roles": [
+    "user"
+  ],
   "trusted_ui": false,
   "module": "ai_karen_engine.plugins.profile_integrations.handler",
   "name": "profile-integrations",

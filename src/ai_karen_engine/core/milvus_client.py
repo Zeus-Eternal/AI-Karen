@@ -219,6 +219,7 @@ class MilvusClient:
         record_metric("vector_search_latency_seconds", duration)
         return results
 
+
     async def search(
         self,
         vector: Optional[List[float]] = None,

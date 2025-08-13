@@ -11,11 +11,31 @@ logger = logging.getLogger(__name__)
 
 try:
     import copilotkit
-
     COPILOTKIT_AVAILABLE = True
 except ImportError:
     COPILOTKIT_AVAILABLE = False
-    logger.warning("CopilotKit not available, using fallback mode")
+    # Check if we should attempt to install CopilotKit
+    try:
+        from ai_karen_engine.core.initialization import initialize_system
+        import asyncio
+        import os
+        
+        # Only attempt installation if explicitly requested
+        if os.getenv("KARI_INSTALL_COPILOTKIT", "false").lower() == "true":
+            logger.info("CopilotKit not found but installation requested - initializing system...")
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(initialize_system())
+                else:
+                    asyncio.run(initialize_system())
+            except RuntimeError:
+                logger.info("CopilotKit installation will be handled during system initialization")
+        else:
+            logger.debug("CopilotKit not available - using fallback mode (set KARI_INSTALL_COPILOTKIT=true to auto-install)")
+            
+    except ImportError:
+        logger.debug("CopilotKit not available - using fallback mode")
 
 
 class CopilotKitProvider(BaseLLMProvider, HookMixin):
@@ -49,9 +69,10 @@ class CopilotKitProvider(BaseLLMProvider, HookMixin):
         if COPILOTKIT_AVAILABLE and self.api_key:
             self._init_copilot_client()
         else:
-            logger.warning(
-                "CopilotKit client not initialized - API key missing or library unavailable"
-            )
+            if not COPILOTKIT_AVAILABLE:
+                logger.debug("CopilotKit library not installed - using fallback mode")
+            elif not self.api_key:
+                logger.debug("CopilotKit API key not configured - using fallback mode")
             self.client = None
 
         # Register hooks

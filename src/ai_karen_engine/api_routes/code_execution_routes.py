@@ -139,7 +139,7 @@ async def execute_code(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -180,7 +180,7 @@ async def get_supported_languages(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -217,7 +217,7 @@ async def get_execution_history(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -239,7 +239,7 @@ async def cancel_execution(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return {"success": True, "message": "Execution cancelled successfully"}
@@ -262,7 +262,7 @@ async def cancel_execution(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -307,7 +307,7 @@ async def execute_tool(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -350,7 +350,7 @@ async def list_tools(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -374,7 +374,7 @@ async def get_tool_info(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return tool_info
@@ -397,7 +397,7 @@ async def get_tool_info(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -437,7 +437,7 @@ async def get_tool_execution_history(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -473,7 +473,7 @@ async def get_service_stats(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -526,5 +526,5 @@ async def get_security_levels():
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )

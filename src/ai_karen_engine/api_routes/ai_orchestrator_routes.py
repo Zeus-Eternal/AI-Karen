@@ -124,7 +124,7 @@ async def process_flow(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -165,7 +165,7 @@ async def decide_action(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -213,7 +213,7 @@ async def conversation_processing(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -250,7 +250,7 @@ async def get_available_flows(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -281,7 +281,7 @@ async def get_flow_metrics(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -316,7 +316,7 @@ async def generate_starter_prompts_get():
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -338,7 +338,7 @@ async def generate_starter_prompts_post(body: Optional[Dict[str, Any]] = None):
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.AI_ORCHESTRATOR_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 

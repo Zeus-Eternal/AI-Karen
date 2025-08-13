@@ -35,8 +35,14 @@
     "ai_karen_engine": ">=1.0.0"
   },
   "hooks": {
-    "pre_execution": ["validate_code_input"],
-    "post_execution": ["store_debug_results"],
-    "error_handling": ["fallback_debug_analysis"]
+    "pre_execution": [
+      "validate_code_input"
+    ],
+    "post_execution": [
+      "store_debug_results"
+    ],
+    "error_handling": [
+      "fallback_debug_analysis"
+    ]
   }
 }

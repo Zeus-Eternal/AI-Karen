@@ -172,7 +172,7 @@ async def list_plugins(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -193,7 +193,7 @@ async def get_plugin_info(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return PluginInfoResponse(
@@ -228,7 +228,7 @@ async def get_plugin_info(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -276,7 +276,7 @@ async def execute_plugin(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -310,7 +310,7 @@ async def validate_plugin_parameters(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -335,7 +335,7 @@ async def enable_plugin(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return {
@@ -359,7 +359,7 @@ async def enable_plugin(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -384,7 +384,7 @@ async def disable_plugin(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return {
@@ -408,7 +408,7 @@ async def disable_plugin(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -448,7 +448,7 @@ async def get_plugin_categories(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -486,7 +486,7 @@ async def get_plugin_metrics(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -523,7 +523,7 @@ async def reload_plugins(
         )
         raise HTTPException(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
