@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
-import MetaBar from "@/components/chat/MetaBar";
+import { MetaBar } from "@/components/chat";
 import InputBox from "@/components/chat/InputBox";
 import { CopilotChat } from "@/components/copilot";
 import { webUIConfig } from "@/lib/config";
@@ -148,7 +148,7 @@ function ChatView() {
           )}
 
           <SidebarInset className="flex-1 flex flex-col min-h-0">
-            <MetaBar title="Chat" />
+            <MetaBar />
             <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6 overflow-y-auto">
               <CopilotChat className="flex-1" />
             </main>

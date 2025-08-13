@@ -7,6 +7,7 @@ export { default as LegacyChatInterface } from './ChatInterface';
 
 // Export supporting components
 export { MessageBubble } from './MessageBubble';
+export { MetaBar } from './MetaBar';
 
 // Export AG-UI components
 export { ConversationGrid } from './ConversationGrid';
