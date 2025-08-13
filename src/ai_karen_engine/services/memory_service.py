@@ -402,7 +402,8 @@ class WebUIMemoryService:
         importance_score: int = None,
         ai_generated: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
-        ttl_hours: Optional[int] = None
+        ttl_hours: Optional[int] = None,
+        tenant_filters: Optional[Dict[str, Any]] = None
     ) -> Optional[str]:
         """Store memory with web UI specific features."""
         try:
@@ -468,7 +469,8 @@ class WebUIMemoryService:
     async def query_memories(
         self,
         tenant_id: Union[str, uuid.UUID],
-        query: WebUIMemoryQuery
+        query: WebUIMemoryQuery,
+        tenant_filters: Optional[Dict[str, Any]] = None
     ) -> List[WebUIMemoryEntry]:
         """Query memories with web UI specific filtering."""
         try:
