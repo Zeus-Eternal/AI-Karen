@@ -3,18 +3,18 @@ Chat Runtime API Routes
 Unified chat endpoint for all platforms (Web UI, Streamlit, Desktop)
 """
 
-import asyncio
 import json
-import logging
+import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Dict, List, Optional
+from functools import lru_cache
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sse_starlette import EventSourceResponse
 
+from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
 from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.core.logging import get_logger
 
@@ -25,41 +25,65 @@ router = APIRouter(tags=["chat-runtime"])
 # Request/Response Models
 class ChatMessage(BaseModel):
     """Chat message model"""
+
     role: str = Field(..., description="Message role: user, assistant, or system")
     content: str = Field(..., description="Message content")
-    timestamp: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: Optional[datetime] = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class ToolCall(BaseModel):
     """Tool call model"""
+
     id: str = Field(..., description="Unique tool call ID")
     tool_name: str = Field(..., description="Name of the tool to execute")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Tool parameters")
+    parameters: Dict[str, Any] = Field(
+        default_factory=dict, description="Tool parameters"
+    )
     result: Optional[Any] = Field(None, description="Tool execution result")
     error: Optional[str] = Field(None, description="Tool execution error")
-    execution_time: Optional[float] = Field(None, description="Tool execution time in seconds")
+    execution_time: Optional[float] = Field(
+        None, description="Tool execution time in seconds"
+    )
     status: str = Field(default="pending", description="Tool execution status")
 
 
 class MemoryOperation(BaseModel):
     """Memory operation model"""
+
     id: str = Field(..., description="Unique operation ID")
-    operation_type: str = Field(..., description="Operation type: store, retrieve, update, delete")
-    memory_tier: str = Field(..., description="Memory tier: short_term, long_term, persistent")
-    content: Dict[str, Any] = Field(default_factory=dict, description="Operation content")
+    operation_type: str = Field(
+        ..., description="Operation type: store, retrieve, update, delete"
+    )
+    memory_tier: str = Field(
+        ..., description="Memory tier: short_term, long_term, persistent"
+    )
+    content: Dict[str, Any] = Field(
+        default_factory=dict, description="Operation content"
+    )
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     success: bool = Field(default=True, description="Operation success status")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Operation metadata")
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Operation metadata"
+    )
 
 
 class ChatRuntimeRequest(BaseModel):
     """Chat runtime request model"""
+
     message: str = Field(..., description="User message")
-    context: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Chat context")
-    tools: Optional[List[str]] = Field(default_factory=list, description="Available tools")
+    context: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, description="Chat context"
+    )
+    tools: Optional[List[str]] = Field(
+        default_factory=list, description="Available tools"
+    )
     memory_context: Optional[str] = Field(None, description="Memory context identifier")
-    user_preferences: Optional[Dict[str, Any]] = Field(default_factory=dict, description="User preferences")
+    user_preferences: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, description="User preferences"
+    )
     platform: Optional[str] = Field(default="web", description="Platform identifier")
     conversation_id: Optional[str] = Field(None, description="Conversation ID")
     stream: bool = Field(default=True, description="Enable streaming response")
@@ -67,19 +91,29 @@ class ChatRuntimeRequest(BaseModel):
 
 class ChatRuntimeResponse(BaseModel):
     """Chat runtime response model"""
+
     content: str = Field(..., description="Response content")
-    tool_calls: List[ToolCall] = Field(default_factory=list, description="Tool calls made")
-    memory_operations: List[MemoryOperation] = Field(default_factory=list, description="Memory operations")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Response metadata")
+    tool_calls: List[ToolCall] = Field(
+        default_factory=list, description="Tool calls made"
+    )
+    memory_operations: List[MemoryOperation] = Field(
+        default_factory=list, description="Memory operations"
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Response metadata"
+    )
     conversation_id: Optional[str] = Field(None, description="Conversation ID")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ChatError(BaseModel):
     """Chat error model"""
+
     error_type: str = Field(..., description="Error type")
     message: str = Field(..., description="Error message")
-    details: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Error details")
+    details: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, description="Error details"
+    )
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -99,17 +133,31 @@ async def validate_chat_request(request: ChatRuntimeRequest) -> ChatRuntimeReque
     """Validate chat request"""
     if not request.message.strip():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message cannot be empty"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty"
         )
-    
+
     if len(request.message) > 10000:  # 10KB limit
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message too long (max 10KB)"
+            detail="Message too long (max 10KB)",
         )
-    
+
     return request
+
+
+# Orchestrator dependency
+@lru_cache
+def get_chat_orchestrator() -> ChatOrchestrator:
+    """Return a cached ChatOrchestrator instance."""
+    from ai_karen_engine.chat.memory_processor import MemoryProcessor
+    from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+
+    memory_processor = MemoryProcessor(
+        spacy_service=nlp_service_manager.spacy_service,
+        distilbert_service=nlp_service_manager.distilbert_service,
+        memory_manager=None,
+    )
+    return ChatOrchestrator(memory_processor=memory_processor)
 
 
 # Chat Runtime Routes
@@ -118,43 +166,65 @@ async def chat_runtime(
     request: ChatRuntimeRequest = Depends(validate_chat_request),
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
+    chat_orchestrator: ChatOrchestrator = Depends(get_chat_orchestrator),
 ) -> ChatRuntimeResponse:
     """
     Main chat runtime endpoint for non-streaming responses
     """
     try:
+        start_time = time.time()
+        correlation_id = request_metadata.get("correlation_id")
+        conversation_id = request.conversation_id or str(uuid.uuid4())
+
         logger.info(
             "Chat runtime request received",
             extra={
                 "user_id": user_context.get("user_id"),
                 "platform": request.platform,
-                "correlation_id": request_metadata.get("correlation_id"),
+                "correlation_id": correlation_id,
                 "message_length": len(request.message),
-            }
+            },
         )
 
-        # TODO: Implement actual chat processing logic
-        # This is a placeholder implementation
-        response_content = f"Echo: {request.message}"
-        
+        chat_request = ChatRequest(
+            message=request.message,
+            user_id=user_context.get("user_id"),
+            conversation_id=conversation_id,
+            session_id=correlation_id,
+            stream=False,
+            include_context=True,
+            metadata={
+                **(request.context or {}),
+                "platform": request.platform,
+                "request_metadata": request_metadata,
+            },
+        )
+
+        orchestrator_response = await chat_orchestrator.process_message(chat_request)
+
+        latency_ms = (time.time() - start_time) * 1000
+
         response = ChatRuntimeResponse(
-            content=response_content,
-            conversation_id=request.conversation_id or str(uuid.uuid4()),
+            content=orchestrator_response.response,
+            conversation_id=conversation_id,
             metadata={
                 "platform": request.platform,
-                "correlation_id": request_metadata.get("correlation_id"),
+                "correlation_id": orchestrator_response.correlation_id,
                 "user_id": user_context.get("user_id"),
-                "processing_time": 0.1,  # Placeholder
-            }
+                "processing_time": orchestrator_response.processing_time,
+                "latency_ms": latency_ms,
+                **orchestrator_response.metadata,
+            },
         )
 
         logger.info(
             "Chat runtime response generated",
             extra={
                 "user_id": user_context.get("user_id"),
-                "correlation_id": request_metadata.get("correlation_id"),
+                "correlation_id": correlation_id,
                 "response_length": len(response.content),
-            }
+                "latency_ms": latency_ms,
+            },
         )
 
         return response
@@ -168,11 +238,11 @@ async def chat_runtime(
                 "user_id": user_context.get("user_id"),
                 "correlation_id": request_metadata.get("correlation_id"),
                 "error": str(e),
-            }
+            },
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
 
 
@@ -181,42 +251,78 @@ async def chat_runtime_stream(
     request: ChatRuntimeRequest = Depends(validate_chat_request),
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
+    chat_orchestrator: ChatOrchestrator = Depends(get_chat_orchestrator),
 ) -> StreamingResponse:
     """
     Streaming chat runtime endpoint using Server-Sent Events
     """
+
     async def generate_stream():
+        start_time = time.time()
+        first_token_time = None
+        token_count = 0
+        correlation_id = request_metadata.get("correlation_id")
+        conversation_id = request.conversation_id or str(uuid.uuid4())
+
         try:
             logger.info(
                 "Chat runtime stream started",
                 extra={
                     "user_id": user_context.get("user_id"),
                     "platform": request.platform,
-                    "correlation_id": request_metadata.get("correlation_id"),
-                }
+                    "correlation_id": correlation_id,
+                },
             )
 
-            # Send initial metadata
-            yield f"data: {json.dumps({'type': 'metadata', 'data': {'conversation_id': request.conversation_id or str(uuid.uuid4())}})}\n\n"
+            yield f"data: {json.dumps({'type': 'metadata', 'data': {'conversation_id': conversation_id, 'correlation_id': correlation_id}})}\n\n"
 
-            # TODO: Implement actual streaming chat processing
-            # This is a placeholder implementation
-            response_text = f"Streaming echo: {request.message}"
-            
-            # Simulate token streaming
-            for i, char in enumerate(response_text):
-                await asyncio.sleep(0.01)  # Simulate processing delay
-                yield f"data: {json.dumps({'type': 'token', 'data': {'token': char, 'index': i}})}\n\n"
+            chat_request = ChatRequest(
+                message=request.message,
+                user_id=user_context.get("user_id"),
+                conversation_id=conversation_id,
+                session_id=correlation_id,
+                stream=True,
+                include_context=True,
+                metadata={
+                    **(request.context or {}),
+                    "platform": request.platform,
+                    "request_metadata": request_metadata,
+                },
+            )
 
-            # Send completion signal
-            yield f"data: {json.dumps({'type': 'complete', 'data': {'total_tokens': len(response_text)}})}\n\n"
+            stream = await chat_orchestrator.process_message(chat_request)
+
+            async for chunk in stream:
+                if chunk.type == "content":
+                    if first_token_time is None:
+                        first_token_time = time.time()
+                    token_count += 1
+                    yield f"data: {json.dumps({'type': 'token', 'data': {'token': chunk.content}})}\n\n"
+                elif chunk.type == "metadata":
+                    yield f"data: {json.dumps({'type': 'metadata', 'data': chunk.metadata})}\n\n"
+                elif chunk.type == "error":
+                    yield f"data: {json.dumps({'type': 'error', 'data': {'message': chunk.content, **chunk.metadata}})}\n\n"
+                elif chunk.type == "complete":
+                    total_latency = (time.time() - start_time) * 1000
+                    first_latency = (
+                        (first_token_time - start_time) * 1000
+                        if first_token_time
+                        else total_latency
+                    )
+                    completion_data = {
+                        **chunk.metadata,
+                        "total_tokens": token_count,
+                        "latency_ms": total_latency,
+                        "first_token_latency_ms": first_latency,
+                    }
+                    yield f"data: {json.dumps({'type': 'complete', 'data': completion_data})}\n\n"
 
             logger.info(
                 "Chat runtime stream completed",
                 extra={
                     "user_id": user_context.get("user_id"),
-                    "correlation_id": request_metadata.get("correlation_id"),
-                }
+                    "correlation_id": correlation_id,
+                },
             )
 
         except Exception as e:
@@ -224,9 +330,9 @@ async def chat_runtime_stream(
                 "Chat runtime stream error",
                 extra={
                     "user_id": user_context.get("user_id"),
-                    "correlation_id": request_metadata.get("correlation_id"),
+                    "correlation_id": correlation_id,
                     "error": str(e),
-                }
+                },
             )
             yield f"data: {json.dumps({'type': 'error', 'data': {'message': 'Stream processing error'}})}\n\n"
 
@@ -237,7 +343,7 @@ async def chat_runtime_stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
-        }
+        },
     )
 
 
@@ -257,7 +363,7 @@ async def stop_chat_generation(
                 "user_id": user_context.get("user_id"),
                 "conversation_id": conversation_id,
                 "correlation_id": request_metadata.get("correlation_id"),
-            }
+            },
         )
 
         # TODO: Implement actual stop logic
@@ -272,11 +378,11 @@ async def stop_chat_generation(
                 "user_id": user_context.get("user_id"),
                 "conversation_id": conversation_id,
                 "error": str(e),
-            }
+            },
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to stop generation"
+            detail="Failed to stop generation",
         )
 
 
@@ -320,9 +426,9 @@ async def get_chat_config(
             extra={
                 "user_id": user_context.get("user_id"),
                 "error": str(e),
-            }
+            },
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get configuration"
+            detail="Failed to get configuration",
         )
