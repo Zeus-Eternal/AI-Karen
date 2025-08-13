@@ -382,9 +382,45 @@ def create_app() -> FastAPI:
 
 
 if __name__ == "__main__":
+    import asyncio
     import logging
+    import sys
 
     import uvicorn  # type: ignore[import-not-found]
+    
+    # Perform startup checks before starting the server
+    async def startup_check():
+        """Perform startup checks and initialization."""
+        try:
+            from src.ai_karen_engine.core.startup_check import perform_startup_checks
+            
+            print("🔍 Performing startup checks...")
+            checks_passed, issues = await perform_startup_checks(auto_fix=True)
+            
+            if not checks_passed:
+                print("⚠️ Startup checks found issues:")
+                for issue in issues:
+                    print(f"   - {issue}")
+                print("\n💡 Some issues were automatically fixed. Others may require manual attention.")
+                print("   Run 'python scripts/initialize_system.py' for full system setup.")
+            else:
+                print("✅ All startup checks passed!")
+            
+            return checks_passed
+            
+        except Exception as e:
+            print(f"❌ Startup check failed: {e}")
+            print("   Continuing with server startup, but some features may not work correctly.")
+            return False
+    
+    # Run startup checks
+    try:
+        startup_success = asyncio.run(startup_check())
+        if not startup_success:
+            print("\n⚠️ Starting server despite startup issues...")
+    except Exception as e:
+        print(f"❌ Could not run startup checks: {e}")
+        print("   Starting server anyway...")
 
     # Use the imported SuppressInvalidHTTPFilter from logging_filters module
 

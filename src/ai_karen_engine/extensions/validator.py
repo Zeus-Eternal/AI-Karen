@@ -1,6 +1,7 @@
 """
 Extension manifest validation and schema checking.
 Enhanced with unified validation patterns from Phase 4.1.a.
+Consolidates extension validation logic to use unified validation patterns.
 """
 
 from __future__ import annotations
@@ -8,6 +9,7 @@ from __future__ import annotations
 from typing import List, Tuple, Dict, Any, Optional, Union
 from datetime import datetime
 import re
+import logging
 
 from pydantic import ValidationError as PydanticValidationError
 
@@ -17,11 +19,27 @@ from ai_karen_engine.extensions.models import ExtensionManifest, NAME_PATTERN
 try:
     from ai_karen_engine.api_routes.unified_schemas import (
         ValidationUtils,
-        FieldError
+        FieldError,
+        ErrorType
     )
     UNIFIED_VALIDATION_AVAILABLE = True
 except ImportError:
     UNIFIED_VALIDATION_AVAILABLE = False
+    # Fallback FieldError for when unified schemas are not available
+    class FieldError:
+        def __init__(self, field: str, message: str, code: str, invalid_value: Any = None):
+            self.field = field
+            self.message = message
+            self.code = code
+            self.invalid_value = invalid_value
+        
+        def dict(self):
+            return {
+                "field": self.field,
+                "message": self.message,
+                "code": self.code,
+                "invalid_value": self.invalid_value
+            }
 
 
 class ValidationError(Exception):
@@ -32,19 +50,28 @@ class ValidationError(Exception):
 class ExtensionValidator:
     """
     Validates extension manifests and ensures they meet requirements.
+    Enhanced with unified validation patterns from Phase 4.1.a.
     """
     
-    # Valid permissions
-    VALID_DATA_PERMISSIONS = {'read', 'write', 'delete', 'admin'}
+    # Valid permissions - updated for Phase 4.1.c RBAC patterns
+    VALID_DATA_PERMISSIONS = {'read', 'write', 'delete', 'admin', 'memory:read', 'memory:write', 'memory:admin'}
     VALID_PLUGIN_PERMISSIONS = {'execute', 'manage'}
-    VALID_SYSTEM_PERMISSIONS = {'metrics', 'logs', 'config', 'admin'}
+    VALID_SYSTEM_PERMISSIONS = {'metrics', 'logs', 'config', 'admin', 'chat:write', 'copilot:assist', 'memory:read', 'memory:write', 'memory:admin'}
     VALID_NETWORK_PERMISSIONS = {'outbound_http', 'outbound_https', 'inbound', 'webhook'}
+    
+    # Unified API endpoints from Phase 4.1.a
+    UNIFIED_ENDPOINTS = ['/copilot/assist', '/memory/search', '/memory/commit']
+    LEGACY_ENDPOINTS = ['/ag_ui/memory', '/memory_ag_ui', '/chat_memory', '/legacy']
+    
+    # Extension manifest format versions
+    SUPPORTED_API_VERSIONS = ['1.0', '1.1', '2.0']
     
     def __init__(self):
         """Initialize the validator."""
         self.errors: List[str] = []
         self.warnings: List[str] = []
         self.field_errors: List[FieldError] = []
+        self.logger = logging.getLogger("extension.validator")
     
     def validate_manifest(self, manifest: Union[ExtensionManifest, Dict[str, Any]]) -> Tuple[bool, List[str], List[str]]:
         """
@@ -392,9 +419,155 @@ class ExtensionValidator:
                     f"Consider adding these to system_services dependencies."
                 )
     
+    def _validate_manifest_format_consistency(self, manifest: ExtensionManifest) -> None:
+        """Validate manifest format consistency across all extensions."""
+        # Check API version compatibility
+        if manifest.api_version not in self.SUPPORTED_API_VERSIONS:
+            self.warnings.append(
+                f"Extension uses API version '{manifest.api_version}'. "
+                f"Supported versions: {', '.join(self.SUPPORTED_API_VERSIONS)}"
+            )
+        
+        # Validate required fields are present and properly formatted
+        required_fields = ['name', 'version', 'display_name', 'description', 'author', 'license', 'category']
+        for field in required_fields:
+            if not hasattr(manifest, field) or not getattr(manifest, field):
+                self.errors.append(f"Required field '{field}' is missing or empty")
+        
+        # Validate consistent naming conventions
+        if manifest.name and not re.match(NAME_PATTERN, manifest.name):
+            self.errors.append(f"Extension name '{manifest.name}' does not follow naming convention (kebab-case)")
+        
+        # Validate category consistency
+        valid_categories = [
+            'analytics', 'automation', 'communication', 'development', 
+            'experimental', 'integration', 'productivity', 'security'
+        ]
+        if manifest.category and manifest.category not in valid_categories:
+            self.warnings.append(
+                f"Extension category '{manifest.category}' is not standard. "
+                f"Consider using: {', '.join(valid_categories)}"
+            )
+    
+    def _validate_new_api_endpoint_integration(self, manifest: ExtensionManifest) -> None:
+        """Validate integration with new unified API endpoints from Phase 4.1.a."""
+        # Check if extension properly integrates with unified endpoints
+        for endpoint in manifest.api.endpoints:
+            if isinstance(endpoint, dict) and 'path' in endpoint:
+                path = endpoint['path']
+                
+                # Check for proper RBAC scope requirements
+                if any(unified_path in path for unified_path in self.UNIFIED_ENDPOINTS):
+                    # Extension uses unified endpoints - validate RBAC integration
+                    required_scopes = []
+                    if '/copilot/assist' in path:
+                        required_scopes.extend(['chat:write'])
+                    if '/memory/search' in path or '/memory/commit' in path:
+                        required_scopes.extend(['memory:read', 'memory:write'])
+                    
+                    # Check if extension declares required permissions
+                    declared_permissions = []
+                    if manifest.permissions:
+                        declared_permissions.extend(manifest.permissions.system_access or [])
+                        declared_permissions.extend(manifest.permissions.data_access or [])
+                    
+                    missing_scopes = [scope for scope in required_scopes if scope not in declared_permissions]
+                    if missing_scopes:
+                        self.warnings.append(
+                            f"Extension uses unified endpoint '{path}' but doesn't declare required scopes: "
+                            f"{', '.join(missing_scopes)}. Add to permissions.system_access or permissions.data_access."
+                        )
+                
+                # Validate endpoint follows RESTful patterns
+                if path.startswith('/'):
+                    # Check for proper HTTP methods
+                    methods = endpoint.get('methods', [])
+                    if '/search' in path and 'POST' not in methods:
+                        self.warnings.append(f"Search endpoint '{path}' should typically use POST method")
+                    if '/commit' in path and 'POST' not in methods:
+                        self.warnings.append(f"Commit endpoint '{path}' should typically use POST method")
+    
+    def _validate_tenant_isolation_compliance(self, manifest: ExtensionManifest) -> None:
+        """Validate extension compliance with tenant isolation requirements."""
+        # Check if extension handles multi-tenant data properly
+        if manifest.permissions and manifest.permissions.data_access:
+            data_permissions = manifest.permissions.data_access
+            
+            # Extensions with data access should declare tenant isolation support
+            if any(perm in ['read', 'write', 'admin'] for perm in data_permissions):
+                # Check if extension declares multi-tenant support
+                if hasattr(manifest, 'capabilities') and manifest.capabilities:
+                    capabilities = manifest.capabilities
+                    if hasattr(capabilities, 'provides_multi_tenant') and not capabilities.provides_multi_tenant:
+                        self.warnings.append(
+                            "Extension has data access permissions but doesn't declare multi-tenant support. "
+                            "Consider adding 'provides_multi_tenant': true to capabilities."
+                        )
+                
+                # Check for tenant-aware dependencies
+                if 'postgres' in manifest.dependencies.system_services:
+                    self.warnings.append(
+                        "Extension uses PostgreSQL. Ensure all queries include tenant filtering (org_id, user_id) "
+                        "to maintain data isolation."
+                    )
+                
+                if 'milvus' in manifest.dependencies.system_services:
+                    self.warnings.append(
+                        "Extension uses Milvus vector store. Ensure all vector operations include tenant metadata "
+                        "filtering to prevent cross-tenant data leakage."
+                    )
+    
+    def _validate_security_compliance(self, manifest: ExtensionManifest) -> None:
+        """Validate extension security compliance with Phase 4.1.c requirements."""
+        # Check for proper permission declarations
+        if manifest.permissions:
+            # Validate network permissions for security
+            if manifest.permissions.network_access:
+                network_perms = manifest.permissions.network_access
+                if 'outbound_http' in network_perms:
+                    self.warnings.append(
+                        "Extension uses outbound HTTP. Consider using HTTPS for security. "
+                        "Ensure all external API calls are over secure connections."
+                    )
+                
+                if 'inbound' in network_perms or 'webhook' in network_perms:
+                    self.warnings.append(
+                        "Extension accepts inbound connections. Ensure proper authentication, "
+                        "rate limiting, and input validation are implemented."
+                    )
+            
+            # Check for admin permissions
+            admin_permissions = []
+            if manifest.permissions.data_access and 'admin' in manifest.permissions.data_access:
+                admin_permissions.append('data:admin')
+            if manifest.permissions.system_access and 'admin' in manifest.permissions.system_access:
+                admin_permissions.append('system:admin')
+            
+            if admin_permissions:
+                self.warnings.append(
+                    f"Extension requests admin permissions: {', '.join(admin_permissions)}. "
+                    f"Ensure extension follows principle of least privilege and implements proper audit logging."
+                )
+        
+        # Validate resource limits for security
+        if manifest.resources:
+            # Check for reasonable resource limits
+            if manifest.resources.max_memory_mb > 2048:  # 2GB
+                self.warnings.append(
+                    f"Extension requests high memory limit ({manifest.resources.max_memory_mb}MB). "
+                    f"Consider optimizing memory usage or justifying high memory requirements."
+                )
+            
+            if manifest.resources.max_cpu_percent > 25:  # 25%
+                self.warnings.append(
+                    f"Extension requests high CPU limit ({manifest.resources.max_cpu_percent}%). "
+                    f"Consider optimizing CPU usage or implementing proper throttling."
+                )
+    
     def validate_manifest_enhanced(self, manifest: Union[ExtensionManifest, Dict[str, Any]]) -> Tuple[bool, List[str], List[str], List[FieldError]]:
         """
         Enhanced validation with unified patterns and new API compatibility.
+        Consolidates all validation logic to use unified validation patterns.
         
         Args:
             manifest: Extension manifest to validate
@@ -414,11 +587,15 @@ class ExtensionValidator:
             else ExtensionManifest(**manifest)
         )
 
-        # Run enhanced validations
+        # Run enhanced validations with unified patterns
         self._validate_with_unified_patterns(manifest_model)
+        self._validate_manifest_format_consistency(manifest_model)
         self._validate_api_endpoint_compatibility(manifest_model)
+        self._validate_new_api_endpoint_integration(manifest_model)
         self._validate_provider_integration(manifest_model)
         self._validate_memory_system_integration(manifest_model)
+        self._validate_tenant_isolation_compliance(manifest_model)
+        self._validate_security_compliance(manifest_model)
         
         # Update validity based on any new errors
         is_valid = len(self.errors) == 0

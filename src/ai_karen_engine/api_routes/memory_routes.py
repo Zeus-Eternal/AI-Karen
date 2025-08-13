@@ -7,6 +7,7 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from contextlib import nullcontext
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -220,11 +221,7 @@ def record_metrics(
                 operation, status, user_id, org_id, correlation_id
             )
 
-        # Record vector latency for search operations
-        if operation == "search":
-            metrics_service.record_vector_latency(
-                duration, "search", status, correlation_id
-            )
+        # Vector latency is recorded via timing context manager
 
     except Exception as e:
         logger.warning(f"Metrics recording failed: {e}")
@@ -248,6 +245,8 @@ async def memory_search(request: MemQuery, http_request: Request):
     """
     start_time = datetime.utcnow()
     correlation_id = get_correlation_id(http_request)
+    metrics_service = get_metrics_service() if METRICS_AVAILABLE else None
+    query_duration = 0.0
 
     # Set correlation ID in context for propagation
     if CORRELATION_AVAILABLE:
@@ -284,7 +283,7 @@ async def memory_search(request: MemQuery, http_request: Request):
             path=str(http_request.url.path),
             message="Insufficient permissions for memory search",
         )
-        raise HTTPException(status_code=403, detail=error_response.dict())
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
         # Apply tenant filtering
@@ -347,9 +346,9 @@ async def memory_search(request: MemQuery, http_request: Request):
                     meta={"source": "fallback"},
                 )
             ]
+            query_duration = (datetime.utcnow() - fallback_start).total_seconds()
 
         # Calculate timing
-        query_duration = (datetime.utcnow() - start_time).total_seconds()
         query_time_ms = query_duration * 1000
 
         # Record metrics
@@ -462,7 +461,7 @@ async def memory_search(request: MemQuery, http_request: Request):
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.dict())
+        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
 
 
 @router.post("/commit", response_model=MemCommitResponse)
@@ -491,7 +490,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
             path=str(http_request.url.path),
             message="Insufficient permissions for memory commit",
         )
-        raise HTTPException(status_code=403, detail=error_response.dict())
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
         # Field validations
@@ -523,7 +522,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     )
                 ],
             )
-            raise HTTPException(status_code=422, detail=error_response.dict())
+            raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         try:
             request.tags = ValidationUtils.validate_tags(request.tags)
@@ -553,7 +552,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     )
                 ],
             )
-            raise HTTPException(status_code=422, detail=error_response.dict())
+            raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         try:
             request.importance = ValidationUtils.validate_importance(request.importance)
@@ -583,7 +582,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     )
                 ],
             )
-            raise HTTPException(status_code=422, detail=error_response.dict())
+            raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(request.user_id, request.org_id)
@@ -603,6 +602,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     tags=request.tags,
                     importance_score=request.importance,
                     metadata={"decay": request.decay},
+                    tenant_filters=tenant_filters,
                 )
                 success = memory_id is not None
                 message = (
@@ -665,7 +665,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.dict())
+        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
 
 
 @router.put("/{memory_id}", response_model=MemUpdateResponse)
@@ -694,7 +694,7 @@ async def memory_update(
             path=str(http_request.url.path),
             message="Insufficient permissions for memory update",
         )
-        raise HTTPException(status_code=403, detail=error_response.dict())
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
         # Field validations
@@ -727,7 +727,7 @@ async def memory_update(
                         )
                     ],
                 )
-                raise HTTPException(status_code=422, detail=error_response.dict())
+                raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         if request.tags is not None:
             try:
@@ -758,7 +758,7 @@ async def memory_update(
                         )
                     ],
                 )
-                raise HTTPException(status_code=422, detail=error_response.dict())
+                raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         if request.importance is not None:
             try:
@@ -791,7 +791,7 @@ async def memory_update(
                         )
                     ],
                 )
-                raise HTTPException(status_code=422, detail=error_response.dict())
+                raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(user_id, org_id)
@@ -820,6 +820,7 @@ async def memory_update(
                         tags=request.tags,
                         importance_score=request.importance,
                         metadata={"decay": request.decay} if request.decay else None,
+                        tenant_filters=tenant_filters,
                     )
                     success = new_id is not None
                 message = (
@@ -875,7 +876,7 @@ async def memory_update(
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.dict())
+        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
 
 
 @router.delete("/{memory_id}", response_model=MemDeleteResponse)
@@ -904,7 +905,7 @@ async def memory_delete(
             path=str(http_request.url.path),
             message="Insufficient permissions for memory deletion",
         )
-        raise HTTPException(status_code=403, detail=error_response.dict())
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
         # Apply tenant filtering
@@ -974,7 +975,7 @@ async def memory_delete(
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.dict())
+        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
 
 
 @router.get("/health")

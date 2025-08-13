@@ -55,6 +55,11 @@ class ErrorResponse(BaseModel):
     timestamp: datetime = Field(..., description="Error timestamp")
     path: str = Field(..., description="API path where error occurred")
     status_code: int = Field(..., description="HTTP status code")
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 # Success response wrapper
 class SuccessResponse(BaseModel):
@@ -64,6 +69,11 @@ class SuccessResponse(BaseModel):
     message: Optional[str] = Field(None, description="Success message")
     correlation_id: str = Field(..., description="Request correlation ID for tracing")
     timestamp: datetime = Field(..., description="Response timestamp")
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 # Validation utilities
 class ValidationUtils:
@@ -354,7 +364,7 @@ if FASTAPI_AVAILABLE:
         
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=error_response.dict()
+            detail=error_response.model_dump(mode="json")
         )
 
     async def http_exception_handler(request: Request, exc: HTTPException):
@@ -399,7 +409,7 @@ if FASTAPI_AVAILABLE:
         
         raise HTTPException(
             status_code=exc.status_code,
-            detail=error_response.dict()
+            detail=error_response.model_dump(mode="json")
         )
 else:
     # Fallback handlers when FastAPI is not available

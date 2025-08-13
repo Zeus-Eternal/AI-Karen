@@ -97,7 +97,7 @@ async def upload_file(
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.VALIDATION_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Stream file content to temporary file to enforce size limits
@@ -121,7 +121,7 @@ async def upload_file(
                         status_code=get_http_status_for_error_code(
                             WebAPIErrorCode.VALIDATION_ERROR
                         ),
-                        detail=error_response.dict(),
+                        detail=error_response.model_dump(mode="json"),
                     )
                 tmp.write(chunk)
 
@@ -152,7 +152,7 @@ async def upload_file(
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.INTERNAL_SERVER_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return result
@@ -171,7 +171,7 @@ async def upload_file(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -190,7 +190,7 @@ async def get_file_info(file_id: str):
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return result
@@ -209,7 +209,7 @@ async def get_file_info(file_id: str):
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -228,7 +228,7 @@ async def download_file(file_id: str):
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Get file content
@@ -242,7 +242,7 @@ async def download_file(file_id: str):
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Get file metadata for proper response
@@ -278,7 +278,7 @@ async def download_file(file_id: str):
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -297,7 +297,7 @@ async def get_file_thumbnail(file_id: str):
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         def generate():
@@ -325,7 +325,7 @@ async def get_file_thumbnail(file_id: str):
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -344,7 +344,7 @@ async def process_multimedia(file_id: str, request: MultimediaProcessingRequest)
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Get file metadata to determine media type
@@ -360,7 +360,7 @@ async def process_multimedia(file_id: str, request: MultimediaProcessingRequest)
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.INTERNAL_SERVER_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Determine media type
@@ -381,7 +381,7 @@ async def process_multimedia(file_id: str, request: MultimediaProcessingRequest)
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.VALIDATION_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Create processing request
@@ -415,7 +415,7 @@ async def process_multimedia(file_id: str, request: MultimediaProcessingRequest)
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -484,7 +484,7 @@ async def list_files(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -503,7 +503,7 @@ async def delete_file(file_id: str):
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return {"success": True, "message": "File deleted successfully"}
@@ -522,7 +522,7 @@ async def delete_file(file_id: str):
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -551,7 +551,7 @@ async def get_multimedia_capabilities():
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -575,5 +575,5 @@ async def get_file_storage_stats():
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )

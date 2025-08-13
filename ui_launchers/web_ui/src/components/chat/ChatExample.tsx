@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import ModernChatInterface from './ModernChatInterface';
+import { CopilotChat } from '@/components/copilot';
 import { AppProviders } from '@/contexts/AppProviders';
 
 /**
@@ -12,7 +12,7 @@ export const ChatExample: React.FC = () => {
   return (
     <AppProviders>
       <div className="h-screen w-full">
-        <ModernChatInterface />
+        <CopilotChat />
       </div>
     </AppProviders>
   );

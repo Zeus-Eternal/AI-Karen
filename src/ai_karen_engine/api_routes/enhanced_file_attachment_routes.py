@@ -135,7 +135,7 @@ async def enhanced_upload_file(
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.VALIDATION_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Stream file content to temporary file to enforce size limits
@@ -159,7 +159,7 @@ async def enhanced_upload_file(
                         status_code=get_http_status_for_error_code(
                             WebAPIErrorCode.VALIDATION_ERROR
                         ),
-                        detail=error_response.dict(),
+                        detail=error_response.model_dump(mode="json"),
                     )
                 tmp.write(chunk)
 
@@ -195,7 +195,7 @@ async def enhanced_upload_file(
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.INTERNAL_SERVER_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Enhance response with UI metadata
@@ -241,7 +241,7 @@ async def enhanced_upload_file(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -371,7 +371,7 @@ async def enhanced_list_files(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -390,7 +390,7 @@ async def get_file_analysis(file_id: str):
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Extract specific analysis components
@@ -424,7 +424,7 @@ async def get_file_analysis(file_id: str):
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -445,7 +445,7 @@ async def enhanced_process_multimedia(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Get file metadata to determine media type
@@ -461,7 +461,7 @@ async def enhanced_process_multimedia(
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.INTERNAL_SERVER_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Determine media type
@@ -482,7 +482,7 @@ async def enhanced_process_multimedia(
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.VALIDATION_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         # Create enhanced processing request
@@ -528,7 +528,7 @@ async def enhanced_process_multimedia(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -594,7 +594,7 @@ async def get_file_statistics_dashboard():
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 

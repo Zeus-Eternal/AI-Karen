@@ -85,11 +85,11 @@ class ProductionAuthSettings(BaseSettings):
 
     # Database & Redis URLs
     database_url: str = Field(
-        "postgresql://karen_user:karen_secure_pass_change_me@postgres:5432/ai_karen",
+        "postgresql://karen_user:karen_secure_pass_change_me@localhost:5432/ai_karen",
         json_schema_extra={"env": ["POSTGRES_URL", "DATABASE_URL"]},
     )
     redis_url: str = Field(
-        "redis://redis:6379/0", json_schema_extra={"env": "REDIS_URL"}
+        "redis://localhost:6379/0", json_schema_extra={"env": "REDIS_URL"}
     )
 
     # JWT / security
@@ -146,11 +146,11 @@ class ProductionSettings(BaseSettings):
 
     # DB & Redis
     database_url: str = Field(
-        "postgresql://karen_user:karen_secure_pass_change_me@postgres:5432/ai_karen",
+        "postgresql://karen_user:karen_secure_pass_change_me@localhost:5432/ai_karen",
         json_schema_extra={"env": ["POSTGRES_URL", "DATABASE_URL"]},
     )
     redis_url: str = Field(
-        "redis://redis:6379/0", json_schema_extra={"env": "REDIS_URL"}
+        "redis://localhost:6379/0", json_schema_extra={"env": "REDIS_URL"}
     )
 
     # Vector DB / Milvus

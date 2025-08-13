@@ -127,6 +127,7 @@ class TenantIsolatedMemoryService:
         ai_generated: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
         ttl_hours: Optional[int] = None,
+        tenant_filters: Optional[Dict[str, Any]] = None,
         correlation_id: Optional[str] = None,
         access_level: TenantAccessLevel = TenantAccessLevel.STRICT
     ) -> Optional[str]:
@@ -140,15 +141,38 @@ class TenantIsolatedMemoryService:
             session_id=session_id,
             correlation_id=correlation_id
         )
-        
+
         try:
+            # Verify tenant filters
+            allowed_tenant_id = None
+            if tenant_filters:
+                allowed_tenant_id = tenant_filters.get("org_id") or tenant_filters.get("user_id")
+            if allowed_tenant_id and str(tenant_id) != str(allowed_tenant_id):
+                context = self._create_tenant_context_from_request(
+                    tenant_id=str(allowed_tenant_id),
+                    user_id=user_id,
+                    org_id=tenant_filters.get("org_id") if tenant_filters else None,
+                    access_level=access_level
+                )
+                self.tenant_service.log_security_incident(
+                    incident_type=SecurityIncidentType.CROSS_TENANT_ACCESS_ATTEMPT,
+                    context=context,
+                    attempted_access={
+                        "target_tenant_id": str(tenant_id),
+                        "operation": "memory_commit",
+                        "user_id": user_id
+                    },
+                    correlation_id=correlation_id
+                )
+                raise PermissionError(f"Access denied for tenant {tenant_id}")
+
             # Create tenant context
             context = self._create_tenant_context_from_request(
                 tenant_id=str(tenant_id),
                 user_id=user_id,
                 access_level=access_level
             )
-            
+
             # Validate tenant access (user should be able to write to their own tenant)
             if not self._validate_tenant_access(context, str(tenant_id), correlation_id):
                 # Log audit event for failed access
@@ -185,7 +209,8 @@ class TenantIsolatedMemoryService:
                 importance_score=importance_score,
                 ai_generated=ai_generated,
                 metadata=tenant_metadata,
-                ttl_hours=ttl_hours
+                ttl_hours=ttl_hours,
+                tenant_filters=tenant_filters
             )
             
             # Log successful audit event
@@ -237,6 +262,7 @@ class TenantIsolatedMemoryService:
         self,
         tenant_id: Union[str, uuid.UUID],
         query: WebUIMemoryQuery,
+        tenant_filters: Optional[Dict[str, Any]] = None,
         correlation_id: Optional[str] = None,
         access_level: TenantAccessLevel = TenantAccessLevel.STRICT
     ) -> List[WebUIMemoryEntry]:
@@ -251,13 +277,53 @@ class TenantIsolatedMemoryService:
         )
         
         try:
+            # Verify tenant filters
+            allowed_tenant_id = None
+            if tenant_filters:
+                allowed_tenant_id = tenant_filters.get("org_id") or tenant_filters.get("user_id")
+            if allowed_tenant_id and str(tenant_id) != str(allowed_tenant_id):
+                context = self._create_tenant_context_from_request(
+                    tenant_id=str(allowed_tenant_id),
+                    user_id=query.user_id or "unknown",
+                    org_id=tenant_filters.get("org_id") if tenant_filters else None,
+                    access_level=access_level
+                )
+                self.tenant_service.log_security_incident(
+                    incident_type=SecurityIncidentType.CROSS_TENANT_ACCESS_ATTEMPT,
+                    context=context,
+                    attempted_access={
+                        "target_tenant_id": str(tenant_id),
+                        "operation": "memory_query",
+                        "query": query.text
+                    },
+                    correlation_id=correlation_id
+                )
+                duration_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+                self.audit_logger.log_memory_read(
+                    context=audit_context,
+                    query=query.text,
+                    results_count=0,
+                    duration_ms=duration_ms,
+                    outcome="failure",
+                    error_message=f"Access denied for tenant {tenant_id}"
+                )
+                self.logger.warning(
+                    f"Access denied for tenant {tenant_id} query",
+                    extra={
+                        "tenant_id": str(tenant_id),
+                        "user_id": query.user_id,
+                        "correlation_id": correlation_id
+                    }
+                )
+                return []
+
             # Create tenant context
             context = self._create_tenant_context_from_request(
                 tenant_id=str(tenant_id),
                 user_id=query.user_id or "unknown",
                 access_level=access_level
             )
-            
+
             # Validate tenant access
             if not self._validate_tenant_access(context, str(tenant_id), correlation_id):
                 # Log audit event for failed access
@@ -270,7 +336,7 @@ class TenantIsolatedMemoryService:
                     outcome="failure",
                     error_message=f"Access denied for tenant {tenant_id}"
                 )
-                
+
                 self.logger.warning(
                     f"Access denied for tenant {tenant_id} query",
                     extra={
@@ -292,7 +358,9 @@ class TenantIsolatedMemoryService:
             })
             
             # Query using base service
-            memories = await self.base_service.query_memories(tenant_id, query)
+            memories = await self.base_service.query_memories(
+                tenant_id, query, tenant_filters=tenant_filters
+            )
             
             # Apply additional tenant filtering to results
             filtered_memories = self._filter_memories_by_tenant(
