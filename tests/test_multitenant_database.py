@@ -166,7 +166,7 @@ class TestMigrationManager:
     @pytest.fixture
     def mock_migration_manager(self, temp_migrations_dir):
         """Create a mock migration manager for testing."""
-        with patch('src.ai_karen_engine.database.migrations.MultiTenantPostgresClient'):
+        with patch('src.ai_karen_engine.database.migration_manager.MultiTenantPostgresClient'):
             manager = MigrationManager(
                 database_url="postgresql://test:test@localhost/test",
                 migrations_dir=temp_migrations_dir
