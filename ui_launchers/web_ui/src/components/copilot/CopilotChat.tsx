@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { CopilotChat as CopilotKitChat } from '@copilotkit/react-ui';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +12,7 @@ import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ChatBubble } from '@/components/chat/ChatBubble';
+import { getConfigManager } from '@/lib/endpoint-config';
 
 interface ChatMessage {
   id: string;
@@ -23,6 +23,8 @@ interface ChatMessage {
   language?: string;
   metadata?: {
     confidence?: number;
+    latencyMs?: number;
+    model?: string;
     sources?: string[];
     reasoning?: string;
   };
@@ -50,15 +52,22 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
   const { user } = useAuth();
   const { triggerHooks } = useHooks();
   const { toast } = useToast();
-  const { config, isLoading, getSuggestions } = useCopilotKit();
-  
+  const { config, isLoading } = useCopilotKit();
+
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [currentContext, setCurrentContext] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const runtimeUrl = useMemo(() => {
+    const configManager = getConfigManager();
+    const baseUrl = configManager.getBackendUrl();
+    const assistEndpoint = config.endpoints.assist;
+    return `${baseUrl.replace(/\/+$/, '')}${assistEndpoint}`;
+  }, [config.endpoints.assist]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -79,7 +88,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       role: 'user',
       content: content.trim(),
       timestamp: new Date(),
-      type
+      type,
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -91,86 +100,127 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       messageId: userMessage.id,
       content: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
       type,
-      userId: user?.user_id
+      userId: user?.user_id,
     }, { userId: user?.user_id });
 
     if (onMessageSent) {
       onMessageSent(userMessage);
     }
 
-    try {
-      // Simulate AI response (in real implementation, this would call the CopilotKit API)
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    // Ensure we have a session ID
+    const session = sessionId || crypto.randomUUID();
+    if (!sessionId) {
+      setSessionId(session);
+    }
 
-      const assistantMessage: ChatMessage = {
-        id: `msg_${Date.now()}_assistant`,
-        role: 'assistant',
-        content: await generateAIResponse(content, type),
-        timestamp: new Date(),
-        type: type === 'code' ? 'code' : 'text',
-        metadata: {
-          confidence: 0.85 + Math.random() * 0.1,
-          sources: ['CopilotKit AI', 'Knowledge Base'],
-          reasoning: 'Generated based on context and user query'
+    const assistantId = `msg_${Date.now()}_assistant`;
+    const placeholder: ChatMessage = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      type: type === 'code' ? 'code' : 'text',
+      metadata: {},
+    };
+    setMessages(prev => [...prev, placeholder]);
+
+    try {
+      const startTime = performance.now();
+      const response = await fetch(runtimeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user?.user_id && { 'X-User-ID': user.user_id }),
+          'X-Session-ID': session,
+        },
+        body: JSON.stringify({ message: content, session_id: session, stream: true }),
+      });
+
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+      let meta: any = {};
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean);
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const data = line.replace(/^data:\s*/, '');
+            if (data === '[DONE]') {
+              continue;
+            }
+            try {
+              const json = JSON.parse(data);
+              if (json.text) {
+                fullText += json.text;
+                setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+              }
+              if (json.meta) {
+                meta = { ...meta, ...json.meta };
+              }
+            } catch {
+              fullText += data;
+              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+            }
+          } else {
+            fullText += line;
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+          }
         }
+      }
+
+      const latency = Math.round(performance.now() - startTime);
+      const finalMessage: ChatMessage = {
+        ...placeholder,
+        content: fullText.trim(),
+        metadata: {
+          confidence: meta.confidence,
+          model: meta.model,
+          latencyMs: latency,
+        },
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages(prev => prev.map(m => m.id === assistantId ? finalMessage : m));
 
-      // Trigger hook for message received
       await triggerHooks('copilot_message_received', {
-        messageId: assistantMessage.id,
-        confidence: assistantMessage.metadata?.confidence,
-        type: assistantMessage.type,
-        userId: user?.user_id
+        messageId: assistantId,
+        confidence: finalMessage.metadata?.confidence,
+        type: finalMessage.type,
+        userId: user?.user_id,
       }, { userId: user?.user_id });
 
       if (onMessageReceived) {
-        onMessageReceived(assistantMessage);
+        onMessageReceived(finalMessage);
       }
-
     } catch (error) {
       console.error('Failed to get AI response:', error);
-      
+
       const errorMessage: ChatMessage = {
-        id: `msg_${Date.now()}_error`,
+        id: assistantId,
         role: 'assistant',
         content: 'I apologize, but I encountered an error processing your request. Please try again.',
         timestamp: new Date(),
-        type: 'text'
+        type: 'text',
       };
 
-      setMessages(prev => [...prev, errorMessage]);
-      
+      setMessages(prev => prev.map(m => m.id === assistantId ? errorMessage : m));
+
       toast({
         variant: 'destructive',
         title: 'Chat Error',
-        description: 'Failed to get AI response. Please try again.'
+        description: 'Failed to get AI response. Please try again.',
       });
     } finally {
       setIsTyping(false);
     }
-  }, [triggerHooks, user?.user_id, onMessageSent, onMessageReceived, toast]);
-
-  // Generate AI response (mock implementation)
-  const generateAIResponse = async (userInput: string, type: ChatMessage['type']): Promise<string> => {
-    // In a real implementation, this would call the CopilotKit API
-    const responses = {
-      code: [
-        "Here's a code solution for your request:\n\n```javascript\nfunction example() {\n  // Your code here\n  return 'Hello, World!';\n}\n```\n\nThis function demonstrates the concept you asked about.",
-        "I can help you with that code. Here's an optimized version:\n\n```python\ndef optimized_function(data):\n    # Efficient implementation\n    return processed_data\n```\n\nThis approach is more efficient because it reduces complexity.",
-        "Let me break down this code for you:\n\n```typescript\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n}\n```\n\nThis TypeScript interface defines a user structure with proper typing."
-      ],
-      text: [
-        "I understand your question. Based on the context, here's what I recommend: " + userInput.split(' ').slice(-3).join(' ') + " is a great approach for this use case.",
-        "That's an interesting point about " + userInput.split(' ')[0] + ". Let me provide some insights and suggestions that might help you.",
-        "I can help you with that. Here are some key considerations and best practices for your scenario."
-      ]
-    };
-
-    const responseArray = responses[type as keyof typeof responses] || responses.text;
-    return responseArray[Math.floor(Math.random() * responseArray.length)];
-  };
+  }, [triggerHooks, user?.user_id, onMessageSent, onMessageReceived, toast, sessionId, runtimeUrl]);
 
   // Handle input submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -215,7 +265,11 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
                     key={message.id}
                     role={message.role}
                     content={message.content}
-                    meta={{ confidence: message.metadata?.confidence }}
+                    meta={{
+                      confidence: message.metadata?.confidence,
+                      latencyMs: message.metadata?.latencyMs,
+                      model: message.metadata?.model,
+                    }}
                   />
                 ))
               )}
