@@ -3,31 +3,31 @@ Unified Memory Service - Phase 4.1.b
 Consolidates all memory adapters into single service with unified query/commit paths.
 """
 
-import asyncio
 import logging
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from ai_karen_engine.services.structured_logging import PIIRedactor
+from ai_karen_engine.utils.pydantic_base import ISO8601Model
 
 from ..core.embedding_manager import EmbeddingManager
 from ..core.milvus_client import MilvusClient
 from ..database.client import MultiTenantPostgresClient
 from ..database.memory_manager import MemoryEntry, MemoryManager, MemoryQuery
-from .memory_policy import DecayTier, ImportanceLevel, MemoryPolicy, MemoryPolicyManager
+from .memory_policy import DecayTier, MemoryPolicyManager
 from .memory_writeback import InteractionType, MemoryWritebackSystem, ShardUsageType
 
 logger = logging.getLogger(__name__)
 
 
 # Unified data models for consistent interface
-class ContextHit(BaseModel):
+class ContextHit(ISO8601Model):
     """Unified memory hit representation across all interfaces"""
 
     id: str
@@ -45,7 +45,7 @@ class ContextHit(BaseModel):
     org_id: Optional[str] = None
 
 
-class MemoryCommitRequest(BaseModel):
+class MemoryCommitRequest(ISO8601Model):
     """Unified memory commit request"""
 
     user_id: str = Field(..., min_length=1)
@@ -57,7 +57,7 @@ class MemoryCommitRequest(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-class MemoryQueryRequest(BaseModel):
+class MemoryQueryRequest(ISO8601Model):
     """Unified memory query request"""
 
     user_id: str = Field(..., min_length=1)
@@ -68,7 +68,7 @@ class MemoryQueryRequest(BaseModel):
     include_metadata: bool = Field(True)
 
 
-class MemorySearchResponse(BaseModel):
+class MemorySearchResponse(ISO8601Model):
     """Unified memory search response"""
 
     hits: List[ContextHit]
@@ -77,7 +77,7 @@ class MemorySearchResponse(BaseModel):
     correlation_id: str
 
 
-class MemoryCommitResponse(BaseModel):
+class MemoryCommitResponse(ISO8601Model):
     """Unified memory commit response"""
 
     id: str
@@ -264,7 +264,7 @@ class UnifiedMemoryService:
                 "importance": request.importance,
                 "decay_tier": decay_tier.value,
                 "tags": request.tags,
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now().isoformat(),
                 "interface": "unified",  # Mark as coming from unified service
                 **request.metadata,
             }
@@ -353,7 +353,7 @@ class UnifiedMemoryService:
             updated_metadata = {
                 **current_metadata,
                 "version": new_version,
-                "updated_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.now().isoformat(),
                 "updated_by": updates.get("updated_by", "system"),
                 **updates.get("metadata", {}),
             }
@@ -375,9 +375,7 @@ class UnifiedMemoryService:
 
                     # Update expiry date
                     created_at = datetime.fromisoformat(
-                        current_metadata.get(
-                            "created_at", datetime.utcnow().isoformat()
-                        )
+                        current_metadata.get("created_at", datetime.now().isoformat())
                     )
                     new_expiry = self.policy.calculate_expiry_date(
                         new_decay_tier, created_at
@@ -541,7 +539,7 @@ class UnifiedMemoryService:
 
                 updated_metadata = {
                     **current_metadata,
-                    "deleted_at": datetime.utcnow().isoformat(),
+                    "deleted_at": datetime.now().isoformat(),
                     "deleted_by": "system",  # Could be enhanced with user context
                     "deletion_reason": "user_request",
                     "soft_deleted": True,
@@ -804,15 +802,6 @@ class UnifiedMemoryService:
         logger.info(f"Policy adjustment completed: {adjustments}")
         return adjustments
 
-    def get_service_metrics(self) -> Dict[str, Any]:
-        """Get service performance metrics"""
-        return {
-            **self.metrics,
-            "policy_summary": self.policy_manager.get_policy_summary(),
-            "active_memories": len(self._usage_stats),
-            "base_manager_metrics": self.base_manager.metrics,
-        }
-
     async def _get_memory_by_id(
         self, tenant_id: Union[str, uuid.UUID], memory_id: str
     ) -> Optional[MemoryEntry]:
@@ -874,7 +863,7 @@ class UnifiedMemoryService:
                 "correlation_id": correlation_id,
                 "changes": changes,
                 "previous_version": previous_version,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now().isoformat(),
                 "user_agent": "unified_memory_service",
             }
 

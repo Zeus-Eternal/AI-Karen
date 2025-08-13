@@ -7,12 +7,12 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from contextlib import nullcontext
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from ai_karen_engine.services.structured_logging import PIIRedactor
+from ai_karen_engine.utils.pydantic_base import ISO8601Model
 
 from .unified_schemas import ErrorHandler, ErrorType, FieldError, ValidationUtils
 
@@ -50,7 +50,7 @@ except ImportError:
 
 
 # Unified request/response models according to design spec
-class ContextHit(BaseModel):
+class ContextHit(ISO8601Model):
     """Unified memory hit representation"""
 
     id: str
@@ -68,7 +68,7 @@ class ContextHit(BaseModel):
     org_id: Optional[str] = None
 
 
-class MemQuery(BaseModel):
+class MemQuery(ISO8601Model):
     """Unified memory query request schema"""
 
     user_id: str = Field(..., min_length=1)
@@ -77,7 +77,7 @@ class MemQuery(BaseModel):
     top_k: int = Field(12, ge=1, le=50)
 
 
-class MemSearchResponse(BaseModel):
+class MemSearchResponse(ISO8601Model):
     """Unified memory search response schema"""
 
     hits: List[ContextHit]
@@ -86,7 +86,7 @@ class MemSearchResponse(BaseModel):
     correlation_id: str
 
 
-class MemCommit(BaseModel):
+class MemCommit(ISO8601Model):
     """Unified memory commit request schema"""
 
     user_id: str = Field(..., min_length=1)
@@ -97,7 +97,7 @@ class MemCommit(BaseModel):
     decay: str = Field("short", pattern="^(short|medium|long|pinned)$")
 
 
-class MemCommitResponse(BaseModel):
+class MemCommitResponse(ISO8601Model):
     """Unified memory commit response schema"""
 
     id: str
@@ -106,7 +106,7 @@ class MemCommitResponse(BaseModel):
     correlation_id: str
 
 
-class MemUpdateRequest(BaseModel):
+class MemUpdateRequest(ISO8601Model):
     """Memory update request schema"""
 
     text: Optional[str] = Field(None, min_length=1, max_length=16000)
@@ -115,7 +115,7 @@ class MemUpdateRequest(BaseModel):
     decay: Optional[str] = Field(None, pattern="^(short|medium|long|pinned)$")
 
 
-class MemUpdateResponse(BaseModel):
+class MemUpdateResponse(ISO8601Model):
     """Memory update response schema"""
 
     success: bool
@@ -123,7 +123,7 @@ class MemUpdateResponse(BaseModel):
     correlation_id: str
 
 
-class MemDeleteResponse(BaseModel):
+class MemDeleteResponse(ISO8601Model):
     """Memory delete response schema"""
 
     success: bool
@@ -245,7 +245,7 @@ async def memory_search(request: MemQuery, http_request: Request):
     """
     start_time = datetime.utcnow()
     correlation_id = get_correlation_id(http_request)
-    metrics_service = get_metrics_service() if METRICS_AVAILABLE else None
+    # Metrics service currently unused here; retained for future enhancements
     query_duration = 0.0
 
     # Set correlation ID in context for propagation
@@ -283,7 +283,9 @@ async def memory_search(request: MemQuery, http_request: Request):
             path=str(http_request.url.path),
             message="Insufficient permissions for memory search",
         )
-        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
+        raise HTTPException(
+            status_code=403, detail=error_response.model_dump(mode="json")
+        )
 
     try:
         # Apply tenant filtering
@@ -315,9 +317,13 @@ async def memory_search(request: MemQuery, http_request: Request):
                             decay_tier=(
                                 mem.metadata.get("decay") if mem.metadata else "short"
                             ),
-                            created_at=datetime.utcfromtimestamp(mem.timestamp)
+                            created_at=datetime.fromtimestamp(mem.timestamp).isoformat()
                             if isinstance(mem.timestamp, (int, float))
-                            else mem.timestamp or datetime.utcnow(),
+                            else (
+                                mem.timestamp.isoformat()
+                                if isinstance(mem.timestamp, datetime)
+                                else datetime.now().isoformat()
+                            ),
                             user_id=request.user_id,
                             org_id=request.org_id,
                             meta={"source": "unified_search", "tenant_filtered": True},
@@ -328,6 +334,7 @@ async def memory_search(request: MemQuery, http_request: Request):
                 hits = []
         else:
             # Fallback mock results
+            fallback_start = datetime.now()
             redacted_text = PIIRedactor.redact_pii(
                 f"Fallback result for query: {request.query}"
             )
@@ -340,13 +347,13 @@ async def memory_search(request: MemQuery, http_request: Request):
                     tags=["fallback"],
                     importance=5,
                     decay_tier="short",
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now().isoformat(),
                     user_id=request.user_id,
                     org_id=request.org_id,
                     meta={"source": "fallback"},
                 )
             ]
-            query_duration = (datetime.utcnow() - fallback_start).total_seconds()
+            query_duration = (datetime.now() - fallback_start).total_seconds()
 
         # Calculate timing
         query_time_ms = query_duration * 1000
@@ -461,7 +468,9 @@ async def memory_search(request: MemQuery, http_request: Request):
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
+        raise HTTPException(
+            status_code=500, detail=error_response.model_dump(mode="json")
+        )
 
 
 @router.post("/commit", response_model=MemCommitResponse)
@@ -490,7 +499,9 @@ async def memory_commit(request: MemCommit, http_request: Request):
             path=str(http_request.url.path),
             message="Insufficient permissions for memory commit",
         )
-        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
+        raise HTTPException(
+            status_code=403, detail=error_response.model_dump(mode="json")
+        )
 
     try:
         # Field validations
@@ -522,7 +533,9 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     )
                 ],
             )
-            raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
+            raise HTTPException(
+                status_code=422, detail=error_response.model_dump(mode="json")
+            )
 
         try:
             request.tags = ValidationUtils.validate_tags(request.tags)
@@ -552,7 +565,9 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     )
                 ],
             )
-            raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
+            raise HTTPException(
+                status_code=422, detail=error_response.model_dump(mode="json")
+            )
 
         try:
             request.importance = ValidationUtils.validate_importance(request.importance)
@@ -582,7 +597,9 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     )
                 ],
             )
-            raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
+            raise HTTPException(
+                status_code=422, detail=error_response.model_dump(mode="json")
+            )
 
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(request.user_id, request.org_id)
@@ -665,7 +682,9 @@ async def memory_commit(request: MemCommit, http_request: Request):
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
+        raise HTTPException(
+            status_code=500, detail=error_response.model_dump(mode="json")
+        )
 
 
 @router.put("/{memory_id}", response_model=MemUpdateResponse)
@@ -694,7 +713,9 @@ async def memory_update(
             path=str(http_request.url.path),
             message="Insufficient permissions for memory update",
         )
-        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
+        raise HTTPException(
+            status_code=403, detail=error_response.model_dump(mode="json")
+        )
 
     try:
         # Field validations
@@ -727,7 +748,9 @@ async def memory_update(
                         )
                     ],
                 )
-                raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
+                raise HTTPException(
+                    status_code=422, detail=error_response.model_dump(mode="json")
+                )
 
         if request.tags is not None:
             try:
@@ -758,7 +781,9 @@ async def memory_update(
                         )
                     ],
                 )
-                raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
+                raise HTTPException(
+                    status_code=422, detail=error_response.model_dump(mode="json")
+                )
 
         if request.importance is not None:
             try:
@@ -791,7 +816,9 @@ async def memory_update(
                         )
                     ],
                 )
-                raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
+                raise HTTPException(
+                    status_code=422, detail=error_response.model_dump(mode="json")
+                )
 
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(user_id, org_id)
@@ -876,7 +903,9 @@ async def memory_update(
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
+        raise HTTPException(
+            status_code=500, detail=error_response.model_dump(mode="json")
+        )
 
 
 @router.delete("/{memory_id}", response_model=MemDeleteResponse)
@@ -905,7 +934,9 @@ async def memory_delete(
             path=str(http_request.url.path),
             message="Insufficient permissions for memory deletion",
         )
-        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
+        raise HTTPException(
+            status_code=403, detail=error_response.model_dump(mode="json")
+        )
 
     try:
         # Apply tenant filtering
@@ -975,7 +1006,9 @@ async def memory_delete(
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
+        raise HTTPException(
+            status_code=500, detail=error_response.model_dump(mode="json")
+        )
 
 
 @router.get("/health")
