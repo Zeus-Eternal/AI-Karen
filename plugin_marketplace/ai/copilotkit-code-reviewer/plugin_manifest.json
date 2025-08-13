@@ -39,13 +39,25 @@
     "ai_karen_engine": ">=1.0.0"
   },
   "permissions": {
-    "data_access": ["read", "write"],
-    "database_access": ["postgres", "milvus"]
+    "data_access": [
+      "read",
+      "write"
+    ],
+    "database_access": [
+      "postgres",
+      "milvus"
+    ]
   },
   "hooks": {
-    "pre_execution": ["validate_review_request"],
-    "post_execution": ["generate_review_report"],
-    "error_handling": ["fallback_code_analysis"]
+    "pre_execution": [
+      "validate_review_request"
+    ],
+    "post_execution": [
+      "generate_review_report"
+    ],
+    "error_handling": [
+      "fallback_code_analysis"
+    ]
   },
   "review_categories": [
     "security",
