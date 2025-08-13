@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import bcrypt
+
 try:
     from argon2 import PasswordHasher as Argon2Hasher  # type: ignore
     from argon2.exceptions import VerificationError  # type: ignore
@@ -21,8 +22,8 @@ except Exception:  # pragma: no cover - argon2 optional
     Argon2Hasher = None  # type: ignore
     VerificationError = Exception  # type: ignore
 
-from .config import AuthConfig
-from .exceptions import (
+from ai_karen_engine.auth.config import AuthConfig
+from ai_karen_engine.auth.exceptions import (
     AccountDisabledError,
     AccountLockedError,
     InvalidCredentialsError,
@@ -32,10 +33,10 @@ from .exceptions import (
     UserAlreadyExistsError,
     UserNotFoundError,
 )
-from .models import AuthEvent, AuthEventType, SessionData, UserData
-from .optimized_database import OptimizedAuthDatabaseClient
-from .optimized_session import OptimizedSessionManager
-from .tokens import TokenManager
+from ai_karen_engine.auth.models import AuthEvent, AuthEventType, SessionData, UserData
+from ai_karen_engine.auth.optimized_database import OptimizedAuthDatabaseClient
+from ai_karen_engine.auth.optimized_session import OptimizedSessionManager
+from ai_karen_engine.auth.tokens import TokenManager
 
 try:
     import json

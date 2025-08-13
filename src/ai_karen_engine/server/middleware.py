@@ -12,7 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from ai_karen_engine.middleware.error_counter import error_counter_middleware
 from ai_karen_engine.middleware.rate_limit import rate_limit_middleware
 from ai_karen_engine.middleware.rbac import setup_rbac
-from .http_validator import HTTPRequestValidator, ValidationConfig
+from ai_karen_engine.server.http_validator import HTTPRequestValidator, ValidationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +74,9 @@ def configure_middleware(
 
     # Initialize HTTP validator with configuration
     validation_config = ValidationConfig(
-        max_content_length=getattr(settings, 'max_request_size', 10 * 1024 * 1024),
+        max_content_length=getattr(settings, "max_request_size", 10 * 1024 * 1024),
         log_invalid_requests=True,
-        enable_security_analysis=True
+        enable_security_analysis=True,
     )
     http_validator = HTTPRequestValidator(validation_config)
 
@@ -87,11 +87,11 @@ def configure_middleware(
 
         # Perform comprehensive request validation using the new validator
         validation_result = await http_validator.validate_request(request)
-        
+
         if not validation_result.is_valid:
             # Get sanitized request data for logging
             sanitized_data = http_validator.sanitize_request_data(request)
-            
+
             # Log invalid request with sanitized data (INFO level as per requirements)
             logger.info(
                 "Invalid request blocked",
@@ -101,42 +101,41 @@ def configure_middleware(
                     "error_message": validation_result.error_message,
                     "security_threat_level": validation_result.security_threat_level,
                     "sanitized_request": sanitized_data,
-                    "validation_details": validation_result.validation_details
-                }
+                    "validation_details": validation_result.validation_details,
+                },
             )
-            
+
             # Update error metrics
             error_count.labels(
                 method=sanitized_data.get("method", "unknown"),
                 path=sanitized_data.get("path", "/unknown"),
                 error_type=validation_result.error_type or "validation_error",
             ).inc()
-            
+
             # Return appropriate error response based on validation result
             from fastapi.responses import Response
-            
+
             error_responses = {
                 "malformed_request": (400, "Bad Request"),
                 "invalid_method": (405, "Method Not Allowed"),
                 "invalid_headers": (400, "Bad Request"),
                 "content_too_large": (413, "Payload Too Large"),
                 "security_threat": (403, "Forbidden"),
-                "validation_error": (400, "Bad Request")
+                "validation_error": (400, "Bad Request"),
             }
-            
+
             status_code, status_text = error_responses.get(
-                validation_result.error_type, 
-                (400, "Bad Request")
+                validation_result.error_type, (400, "Bad Request")
             )
-            
+
             return Response(
                 content=status_text,
                 status_code=status_code,
                 headers={
                     "Content-Type": "text/plain",
                     "X-Request-ID": request_id,
-                    "X-Validation-Error": validation_result.error_type or "unknown"
-                }
+                    "X-Validation-Error": validation_result.error_type or "unknown",
+                },
             )
 
         # Log valid request start
@@ -147,7 +146,7 @@ def configure_middleware(
                 "method": request.method,
                 "path": request.url.path,
                 "client": request.client.host if request.client else None,
-                "security_threat_level": validation_result.security_threat_level
+                "security_threat_level": validation_result.security_threat_level,
             },
         )
 
@@ -167,7 +166,9 @@ def configure_middleware(
                 path=request.url.path,
                 error_type="unhandled_exception",
             ).inc()
-            logger.error("Unhandled exception", exc_info=True, extra={"request_id": request_id})
+            logger.error(
+                "Unhandled exception", exc_info=True, extra={"request_id": request_id}
+            )
             raise HTTPException(status_code=500, detail="Internal server error")
 
         process_time = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -180,7 +181,9 @@ def configure_middleware(
             status=response.status_code,
         ).inc()
 
-        request_latency.labels(method=request.method, path=request.url.path).observe(process_time)
+        request_latency.labels(method=request.method, path=request.url.path).observe(
+            process_time
+        )
 
         logger.info(
             "Request completed",

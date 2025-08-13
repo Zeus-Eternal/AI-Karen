@@ -33,9 +33,12 @@ except ImportError:
     AsyncAdaptedQueuePool = None
     text = None
 
-from .config import DatabaseConfig
-from .exceptions import DatabaseConnectionError, DatabaseOperationError
-from .models import AuthEvent, UserData
+from ai_karen_engine.auth.config import DatabaseConfig
+from ai_karen_engine.auth.exceptions import (
+    DatabaseConnectionError,
+    DatabaseOperationError,
+)
+from ai_karen_engine.auth.models import AuthEvent, UserData
 
 
 class AuthDatabaseClient:
@@ -590,7 +593,7 @@ class AuthDatabaseClient:
                 roles = row.roles  # Already parsed by asyncpg
         else:
             roles = []
-        
+
         # Handle preferences - might be string or already parsed dict
         if row.preferences:
             if isinstance(row.preferences, str):
@@ -599,7 +602,7 @@ class AuthDatabaseClient:
                 preferences = row.preferences  # Already parsed by asyncpg
         else:
             preferences = {}
-        
+
         return UserData(
             user_id=str(row.user_id),
             email=row.email,

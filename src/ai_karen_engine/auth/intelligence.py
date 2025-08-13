@@ -12,8 +12,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from .config import AuthConfig
-from .models import AuthEvent, AuthEventType, UserData
+from ai_karen_engine.auth.config import AuthConfig
+from ai_karen_engine.auth.models import AuthEvent, AuthEventType, UserData
 
 logger = logging.getLogger(__name__)
 

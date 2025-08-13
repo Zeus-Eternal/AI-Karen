@@ -15,10 +15,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from .config import DatabaseConfig
-from .database_schema import DatabaseSchemaManager
-from .exceptions import DatabaseOperationError, MigrationError
-from .models import UserData
+from ai_karen_engine.auth.config import DatabaseConfig
+from ai_karen_engine.auth.database_schema import DatabaseSchemaManager
+from ai_karen_engine.auth.exceptions import DatabaseOperationError, MigrationError
+from ai_karen_engine.auth.models import UserData
 
 logger = logging.getLogger(__name__)
 

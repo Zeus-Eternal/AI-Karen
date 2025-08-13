@@ -29,7 +29,7 @@ APIRouter, Depends, HTTPException, Query = import_fastapi(
 )
 BaseModel, Field = import_pydantic("BaseModel", "Field")
 
-# from ..database.client import get_db_client  # Not needed with dependency injection
+# from ai_karen_engine.database.client import get_db_client  # Not needed with dependency injection
 # Temporarily disable auth imports for web UI integration
 
 logger = get_logger(__name__)

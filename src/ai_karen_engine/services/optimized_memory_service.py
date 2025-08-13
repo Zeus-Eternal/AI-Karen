@@ -12,11 +12,11 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from ..core.embedding_manager import EmbeddingManager
-from ..core.milvus_client import MilvusClient
-from ..database.client import MultiTenantPostgresClient
-from .performance_monitor import get_performance_monitor
-from .unified_memory_service import (
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.database.client import MultiTenantPostgresClient
+from ai_karen_engine.services.performance_monitor import get_performance_monitor
+from ai_karen_engine.services.unified_memory_service import (
     ContextHit,
     MemoryCommitRequest,
     MemoryCommitResponse,
@@ -24,7 +24,7 @@ from .unified_memory_service import (
     MemorySearchResponse,
     UnifiedMemoryService,
 )
-from .vector_optimization import (
+from ai_karen_engine.services.vector_optimization import (
     SearchResult,
     VectorOptimizationService,
     VectorSearchConfig,
