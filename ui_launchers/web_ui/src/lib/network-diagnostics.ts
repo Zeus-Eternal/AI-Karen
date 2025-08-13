@@ -14,6 +14,7 @@ export interface NetworkTest {
   expectedStatus?: number;
   timeout?: number;
   headers?: Record<string, string>;
+  body?: string;
 }
 
 export interface NetworkTestResult {
@@ -74,7 +75,8 @@ class NetworkDiagnostics {
     endpoint: string,
     method: string = 'GET',
     timeout: number = 5000,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
+    body?: string
   ): Promise<NetworkDiagnostic> {
     const startTime = Date.now();
     const fullUrl = endpoint.startsWith('http') ? endpoint : `${webUIConfig.backendUrl}${endpoint}`;
@@ -89,6 +91,7 @@ class NetworkDiagnostics {
           'Content-Type': 'application/json',
           ...headers,
         },
+        body,
         signal: controller.signal,
       });
 
@@ -227,7 +230,8 @@ class NetworkDiagnostics {
         name: 'Chat Endpoint',
         description: 'Test chat endpoint availability',
         endpoint: '/api/ai/conversation-processing',
-        method: 'HEAD',
+        method: 'POST',
+        body: JSON.stringify({ messages: [] }),
       },
       {
         name: 'Memory Endpoint Options',
@@ -270,7 +274,9 @@ class NetworkDiagnostics {
         const diagnostic = await this.testEndpointConnectivity(
           test.endpoint,
           test.method,
-          test.timeout || 10000
+          test.timeout || 10000,
+          test.headers,
+          test.body
         );
 
         const success = diagnostic.status === 'success' && 
