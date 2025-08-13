@@ -1,6 +1,6 @@
-// Export modern AG-UI + CopilotKit interface as default
-export { default as ChatInterface } from './ModernChatInterface';
-export { default as ModernChatInterface } from './ModernChatInterface';
+// Export CopilotChat interface as default
+export { CopilotChat as ChatInterface } from '../copilot';
+export { CopilotChat } from '../copilot';
 
 // Export legacy interface for backward compatibility (deprecated)
 export { default as LegacyChatInterface } from './ChatInterface';
