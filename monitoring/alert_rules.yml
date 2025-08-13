@@ -34,16 +34,15 @@ groups:
         expr: histogram_quantile(0.95, sum(rate(llm_latency_seconds_bucket[5m])) by (le, provider, model)) > 1.2
         for: 10m
         labels:
-          severity: warning
+          severity: critical
         annotations:
-          summary: 'LLM generation p95 latency above 1.2s for {{ $labels.provider }}/{{ $labels.model }}'
-          description: '95th percentile LLM generation latency exceeded 1.2s'
-      # End-to-end turn time should remain under 3s at p95
-      - alert: TurnTimeHigh
+          summary: 'LLM generation p95 latency above 1.2s for {{ $labels.provider }}'
+          description: 'LLM generation latency exceeded 1.2s'
+      - alert: TurnTimeLatencyHigh
         expr: histogram_quantile(0.95, sum(rate(total_turn_time_seconds_bucket[5m])) by (le, endpoint)) > 3
         for: 10m
         labels:
-          severity: warning
+          severity: critical
         annotations:
           summary: 'End-to-end turn p95 latency above 3s for {{ $labels.endpoint }}'
-          description: '95th percentile total turn time exceeded 3s'
+          description: 'Total turn processing latency exceeded 3s'

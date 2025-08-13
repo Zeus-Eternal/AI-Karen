@@ -12,6 +12,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import numpy as np  # type: ignore
 
 from ai_karen_engine.core.embedding_manager import record_metric  # type: ignore
+from ai_karen_engine.services.metrics_service import get_metrics_service
 
 try:  # Optional approximate nearest neighbor backend
     import hnswlib  # type: ignore
@@ -174,59 +175,50 @@ class MilvusClient:
                 return list(self._cache[cache_key])
 
         start = time.time()
-        status = "success"
+        with self._lock:
+            self._prune()
+            norm = math.sqrt(sum(v * v for v in vector))
+            results: List[Dict[str, Any]] = []
+            if self.index_type == "hnsw" and self._index is not None:
+                search_k = min(top_k * 5, max(len(self._data), top_k)) or top_k
+                labels, distances = self._index.knn_query(
+                    np.array([vector], dtype=np.float32), k=search_k
+                )
+                for label, dist in zip(labels[0], distances[0]):
+                    rec = self._data.get(int(label))
+                    if rec is None:
+                        continue
+                    if metadata_filter and any(
+                        rec.payload.get(k) != v for k, v in metadata_filter.items()
+                    ):
+                        continue
+                    sim = 1.0 - float(dist)
+                    results.append({"id": rec.id, "score": sim, "payload": rec.payload})
+            else:
+                for rec in self._data.values():
+                    if metadata_filter and any(
+                        rec.payload.get(k) != v for k, v in metadata_filter.items()
+                    ):
+                        continue
+                    sim = self._similarity(vector, norm, rec.vector, rec.norm)
+                    results.append({"id": rec.id, "score": sim, "payload": rec.payload})
+            results.sort(key=lambda r: r["score"], reverse=True)
+            results = results[:top_k]
+
+        if self._cache is not None and cache_key is not None:
+            self._cache[cache_key] = results
+            if len(self._cache) > self.cache_size:
+                self._cache.popitem(last=False)
+
+        duration = time.time() - start
         try:
-            with self._lock:
-                self._prune()
-                norm = math.sqrt(sum(v * v for v in vector))
-                results: List[Dict[str, Any]] = []
-                if self.index_type == "hnsw" and self._index is not None:
-                    search_k = min(top_k * 5, max(len(self._data), top_k)) or top_k
-                    labels, distances = self._index.knn_query(
-                        np.array([vector], dtype=np.float32), k=search_k
-                    )
-                    for label, dist in zip(labels[0], distances[0]):
-                        rec = self._data.get(int(label))
-                        if rec is None:
-                            continue
-                        if metadata_filter and any(
-                            rec.payload.get(k) != v for k, v in metadata_filter.items()
-                        ):
-                            continue
-                        sim = 1.0 - float(dist)
-                        results.append(
-                            {"id": rec.id, "score": sim, "payload": rec.payload}
-                        )
-                else:
-                    for rec in self._data.values():
-                        if metadata_filter and any(
-                            rec.payload.get(k) != v for k, v in metadata_filter.items()
-                        ):
-                            continue
-                        sim = self._similarity(vector, norm, rec.vector, rec.norm)
-                        results.append(
-                            {"id": rec.id, "score": sim, "payload": rec.payload}
-                        )
-                results.sort(key=lambda r: r["score"], reverse=True)
-                results = results[:top_k]
-
-            if self._cache is not None and cache_key is not None:
-                self._cache[cache_key] = results
-                if len(self._cache) > self.cache_size:
-                    self._cache.popitem(last=False)
-            return results
+            metrics = get_metrics_service()
+            metrics.record_vector_latency(duration, "search", "success")
         except Exception:
-            status = "error"
-            raise
-        finally:
-            duration = time.time() - start
-            record_metric("vector_search_latency_seconds", duration)
-            try:
-                from ai_karen_engine.services.metrics_service import get_metrics_service
+            pass
+        record_metric("vector_search_latency_seconds", duration)
+        return results
 
-                get_metrics_service().record_vector_latency(duration, status=status)
-            except Exception:
-                pass
 
     async def search(
         self,

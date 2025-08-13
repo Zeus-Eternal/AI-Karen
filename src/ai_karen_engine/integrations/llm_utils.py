@@ -15,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ai_karen_engine.database.client import get_db_session_context
 from ai_karen_engine.database.models import LLMProvider, LLMRequest
+from ai_karen_engine.services.metrics_service import get_metrics_service
 
 # Lazy imports to avoid circular import issues
 # Providers will be imported when needed in get_provider_class()
@@ -308,23 +309,39 @@ class LLMUtils:
             "kwargs": kwargs,
         }
         trace_llm_event("generate_text_start", trace_id, meta)
+        metrics_service = get_metrics_service()
+        model_name = kwargs.get("model") or getattr(provider_obj, "model", None)
         try:
             out = provider_obj.generate_text(prompt, **kwargs)
             duration = time.time() - t0
             usage = getattr(provider_obj, "last_usage", {})
             self._record_request(
-                provider_name,
+                provider or self.default,
                 model_name,
                 usage,
                 duration,
                 user_ctx,
             )
+            metrics_service.record_llm_latency(
+                duration,
+                provider or self.default,
+                model_name or "",
+                "success",
+                trace_id,
+            )
             meta["duration"] = duration
             trace_llm_event("generate_text_success", trace_id, meta)
             return out
         except Exception as ex:
-            status = "error"
-            meta.update({"duration": time.time() - t0, "error": str(ex)})
+            duration = time.time() - t0
+            metrics_service.record_llm_latency(
+                duration,
+                provider or self.default,
+                model_name or "",
+                "error",
+                trace_id,
+            )
+            meta.update({"duration": duration, "error": str(ex)})
             trace_llm_event("generate_text_error", trace_id, meta)
             raise GenerationFailed(f"Provider '{provider}' failed: {ex}")
         finally:
