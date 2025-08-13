@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ai_karen_engine.services.memory_writeback import InteractionType
+from ai_karen_engine.services.structured_logging import PIIRedactor
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ class ContextHit(BaseModel):
 
     id: str
     text: str
+    preview: Optional[str] = None
     score: float
     tags: List[str] = Field(default_factory=list)
     recency: Optional[str] = None
@@ -248,25 +250,57 @@ async def copilot_assist(request: AssistRequest, http_request: Request):
         raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
-        with turn_timer:
-            timings = {}
-            context_hits = []
-            suggested_actions = []
+        timings = {}
+        context_hits = []
+        suggested_actions = []
+        metrics_service = get_metrics_service() if METRICS_AVAILABLE else None
 
-            # 1. Memory search with tenant filtering
-            memory_start = datetime.utcnow()
-            memory_service = await get_memory_service()
+        # 1. Memory search with tenant filtering
+        memory_start = datetime.utcnow()
+        memory_service = await get_memory_service()
 
-            if memory_service:
-                try:
-                    timer = (
-                        metrics_service.time_operation(
-                            "vector_search",
-                            {"operation": "search"},
-                            correlation_id,
+        if memory_service:
+            try:
+                # This would use the unified memory service
+                # For now, create mock context hits
+                context_hits = []
+                for i in range(min(request.top_k, 3)):
+                    raw_text = f"Mock context {i} for query: {request.message[:50]}..."
+                    redacted_text = PIIRedactor.redact_pii(raw_text)
+                    context_hits.append(
+                        ContextHit(
+                            id=f"mem_{i}",
+                            text=redacted_text,
+                            preview=redacted_text[:100],
+                            score=0.9 - (i * 0.1),
+                            tags=["mock", "context"],
+                            importance=8 - i,
+                            decay_tier="medium",
+                            created_at=datetime.utcnow(),
+                            user_id=request.user_id,
+                            org_id=request.org_id,
                         )
-                        if metrics_service
-                        else nullcontext()
+                    )
+
+                # Record vector search latency
+                vector_duration = (datetime.utcnow() - memory_start).total_seconds()
+                if metrics_service:
+                    metrics_service.record_vector_latency(
+                        vector_duration, "search", "success", correlation_id
+                    )
+
+                # Add trace span
+                if CORRELATION_AVAILABLE:
+                    tracker.add_span(
+                        correlation_id,
+                        "memory_search",
+                        vector_duration,
+                        {
+                            "hits_count": len(context_hits),
+                            "top_k": request.top_k,
+                            "status": "success",
+                        },
+                      
                     )
                     with timer:
                         # This would use the unified memory service
