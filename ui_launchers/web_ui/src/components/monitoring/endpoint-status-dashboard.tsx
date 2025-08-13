@@ -595,7 +595,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {['/api/health', '/api/auth/status', '/api/chat/process', '/api/memory/query'].map((endpoint) => (
+                {['/api/health', '/api/auth/status', '/api/ai/conversation-processing', '/api/memory/query'].map((endpoint) => (
                   <Button
                     key={endpoint}
                     variant="outline"

@@ -649,18 +649,25 @@ class KarenBackendService {
 
   // Plugin Service Integration
   async getAvailablePlugins(): Promise<PluginInfo[]> {
+    const cacheKey = '/api/plugins:{}';
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < cached.ttl) {
+      return cached.data.plugins || [];
+    }
+
     try {
-      const response = await this.makeRequest<{ plugins: PluginInfo[] }>('/api/plugins/list', {}, true);
+      const response = await this.makeRequest<{ plugins: PluginInfo[] }>('/api/plugins', {}, false);
+      this.cache.set(cacheKey, {
+        data: response,
+        timestamp: Date.now(),
+        ttl: webUIConfig.cacheTtl,
+      });
       return response.plugins || [];
     } catch (error) {
-      if (error instanceof APIError) {
-        if (error.details?.type === 'SERVICE_UNAVAILABLE') {
-          console.warn('Plugin service unavailable, returning cached plugins if available');
-          // Try to return cached results or empty array
-          const cached = this.cache.get('/api/plugins/list:{}');
-          if (cached) {
-            return cached.data.plugins || [];
-          }
+      if (error instanceof APIError && error.details?.type === 'SERVICE_UNAVAILABLE') {
+        console.warn('Plugin service unavailable, returning cached plugins if available');
+        if (cached) {
+          return cached.data.plugins || [];
         }
       }
       console.error('Failed to get available plugins:', error);

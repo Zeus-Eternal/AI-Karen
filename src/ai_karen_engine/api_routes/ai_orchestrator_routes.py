@@ -5,7 +5,7 @@ FastAPI routes for AI Orchestrator service integration.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from ai_karen_engine.core.dependencies import get_ai_orchestrator_service
@@ -185,6 +185,11 @@ async def decide_action(
             ),
             detail=error_response.model_dump(mode="json"),
         )
+
+
+@router.head("/conversation-processing")
+async def conversation_processing_head() -> Response:
+    return Response(status_code=200)
 
 
 @router.post("/conversation-processing", response_model=FlowResponse)

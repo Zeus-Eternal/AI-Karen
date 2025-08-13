@@ -176,7 +176,7 @@ export const API_ENDPOINTS = {
   MEMORY_QUERY: '/api/memory/query',
   MEMORY_CONTEXT: '/api/memory/context',
   MEMORY_STATS: '/api/memory/stats',
-  PLUGINS_LIST: '/api/plugins/list',
+  PLUGINS_LIST: '/api/plugins',
   PLUGINS_EXECUTE: '/api/plugins/execute',
   PLUGINS_INFO: '/api/plugins',
   PLUGINS_VALIDATE: '/api/plugins/validate',
