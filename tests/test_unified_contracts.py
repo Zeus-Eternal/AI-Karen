@@ -21,6 +21,7 @@ from src.ai_karen_engine.api_routes.unified_schemas import (
     ValidationUtils,
     ErrorHandler
 )
+from fastapi import HTTPException
 
 # Mock the FastAPI app with our routes
 @pytest.fixture
@@ -333,10 +334,79 @@ class TestMemoryContracts:
         for invalid_request in invalid_requests:
             response = client.post("/memory/commit", json=invalid_request)
             assert response.status_code == 422
-            
+
             data = response.json()
             self._validate_error_response(data)
             assert data["error"] == "validation_error"
+
+    @pytest.mark.asyncio
+    async def test_memory_commit_field_validations(self):
+        """Ensure commit handler performs field-level validation"""
+        test_cases = [
+            ({"user_id": "test", "text": "   "}, "text"),
+            (
+                {"user_id": "test", "text": "valid text", "tags": ["good", "bad tag"]},
+                "tags",
+            ),
+        ]
+
+        from src.ai_karen_engine.api_routes.memory_routes import memory_commit, MemCommit
+        from src.ai_karen_engine.fastapi_stub import Request
+        from types import SimpleNamespace
+
+        for payload, field in test_cases:
+            with patch(
+                'src.ai_karen_engine.api_routes.memory_routes.check_rbac_scope',
+                return_value=True,
+            ), patch(
+                'src.ai_karen_engine.api_routes.memory_routes.get_memory_service',
+                return_value=None,
+            ):
+                req_model = MemCommit(**payload)
+                http_req = Request()
+                http_req.url = SimpleNamespace(path="/memory/commit")
+                with pytest.raises(HTTPException) as exc:
+                    await memory_commit(req_model, http_req)
+                data = exc.value.detail
+                field_errors = data.get("field_errors", [])
+                names = [
+                    fe.field if hasattr(fe, "field") else fe.get("field")
+                    for fe in field_errors
+                ]
+                assert field in names
+
+    @pytest.mark.asyncio
+    async def test_memory_update_field_validations(self):
+        """Ensure update handler performs field-level validation"""
+        test_cases = [
+            ({"text": "   "}, "text"),
+            ({"tags": ["good", "bad tag"]}, "tags"),
+        ]
+
+        from src.ai_karen_engine.api_routes.memory_routes import memory_update, MemUpdateRequest
+        from src.ai_karen_engine.fastapi_stub import Request
+        from types import SimpleNamespace
+
+        for payload, field in test_cases:
+            with patch(
+                'src.ai_karen_engine.api_routes.memory_routes.check_rbac_scope',
+                return_value=True,
+            ), patch(
+                'src.ai_karen_engine.api_routes.memory_routes.get_memory_service',
+                return_value=None,
+            ):
+                req_model = MemUpdateRequest(**payload)
+                http_req = Request()
+                http_req.url = SimpleNamespace(path=f"/memory/mem1")
+                with pytest.raises(HTTPException) as exc:
+                    await memory_update("mem1", req_model, http_req)
+                data = exc.value.detail
+                field_errors = data.get("field_errors", [])
+                names = [
+                    fe.field if hasattr(fe, "field") else fe.get("field")
+                    for fe in field_errors
+                ]
+                assert field in names
     
     def _validate_context_hit(self, hit: Dict[str, Any]):
         """Validate ContextHit schema"""
