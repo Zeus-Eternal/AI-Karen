@@ -203,8 +203,9 @@ class HealthMonitor {
       // Check AI conversation processing endpoint (lightweight test)
       await this.checkEndpoint('/api/ai/conversation-processing', async (signal) => {
         const response = await fetch(`${webUIConfig.backendUrl}/api/ai/conversation-processing`, {
-          method: 'HEAD',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: [] }),
           signal,
         });
         return { status: response.ok ? 'healthy' : 'error' };

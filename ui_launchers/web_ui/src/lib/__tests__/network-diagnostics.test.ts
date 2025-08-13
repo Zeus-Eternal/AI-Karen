@@ -204,6 +204,26 @@ describe('NetworkDiagnostics', () => {
       );
     });
 
+    it('should send body when provided', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: new Map(),
+      });
+
+      const body = JSON.stringify({ ping: true });
+      await networkDiagnostics.testEndpointConnectivity('/api/ping', 'POST', 5000, undefined, body);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8000/api/ping',
+        expect.objectContaining({
+          method: 'POST',
+          body,
+        })
+      );
+    });
+
     it('should handle full URLs', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
