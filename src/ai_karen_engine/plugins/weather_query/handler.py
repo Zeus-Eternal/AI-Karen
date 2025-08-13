@@ -6,7 +6,7 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-from .client import WeatherClient
+from ai_karen_engine.plugins.weather_query.client import WeatherClient
 
 logger = logging.getLogger(__name__)
 

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from .provider_registry import ModelInfo, ProviderRegistry
-from .voice_providers import DummyVoiceProvider, VoiceProviderBase
+from ai_karen_engine.integrations.provider_registry import ModelInfo, ProviderRegistry
+from ai_karen_engine.integrations.voice_providers import (
+    DummyVoiceProvider,
+    VoiceProviderBase,
+)
 
 
 class VoiceRegistry(ProviderRegistry):
@@ -32,6 +35,7 @@ def get_voice_registry() -> VoiceRegistry:
         _voice_registry = VoiceRegistry()
         _voice_registry.register_default_providers()
     return _voice_registry
+
 
 __all__ = [
     "ModelInfo",

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from .provider_registry import ModelInfo, ProviderRegistry
-from .video_providers import DummyVideoProvider, VideoProviderBase
+from ai_karen_engine.integrations.provider_registry import ModelInfo, ProviderRegistry
+from ai_karen_engine.integrations.video_providers import (
+    DummyVideoProvider,
+    VideoProviderBase,
+)
 
 
 class VideoRegistry(ProviderRegistry):
@@ -31,6 +34,7 @@ def get_video_registry() -> VideoRegistry:
         _video_registry = VideoRegistry()
         _video_registry.register_default_providers()
     return _video_registry
+
 
 __all__ = [
     "ModelInfo",

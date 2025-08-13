@@ -13,15 +13,15 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Set
 from uuid import uuid4
 
-from .config import SessionConfig
-from .exceptions import (
+from ai_karen_engine.auth.config import SessionConfig
+from ai_karen_engine.auth.exceptions import (
     DatabaseOperationError,
     SessionExpiredError,
     SessionNotFoundError,
 )
-from .models import SessionData, UserData
-from .optimized_database import OptimizedAuthDatabaseClient
-from .tokens import TokenManager
+from ai_karen_engine.auth.models import SessionData, UserData
+from ai_karen_engine.auth.optimized_database import OptimizedAuthDatabaseClient
+from ai_karen_engine.auth.tokens import TokenManager
 
 try:
     import json

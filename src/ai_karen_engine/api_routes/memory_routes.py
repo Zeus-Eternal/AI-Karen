@@ -11,10 +11,14 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import Field
 
+from ai_karen_engine.api_routes.unified_schemas import (
+    ErrorHandler,
+    ErrorType,
+    FieldError,
+    ValidationUtils,
+)
 from ai_karen_engine.services.structured_logging import PIIRedactor
 from ai_karen_engine.utils.pydantic_base import ISO8601Model
-
-from .unified_schemas import ErrorHandler, ErrorType, FieldError, ValidationUtils
 
 logger = logging.getLogger(__name__)
 

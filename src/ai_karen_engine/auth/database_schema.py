@@ -14,8 +14,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from .config import DatabaseConfig
-from .exceptions import DatabaseConnectionError, DatabaseOperationError
+from ai_karen_engine.auth.config import DatabaseConfig
+from ai_karen_engine.auth.exceptions import (
+    DatabaseConnectionError,
+    DatabaseOperationError,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -8,11 +8,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
-from .hook_types import HookTypes
-from .models import HookContext, HookExecutionSummary, HookResult
+from ai_karen_engine.hooks.hook_types import HookTypes
+from ai_karen_engine.hooks.models import HookContext, HookExecutionSummary, HookResult
 
 if TYPE_CHECKING:
-    from .hook_manager import HookManager
+    from ai_karen_engine.hooks.hook_manager import HookManager
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class HookMixin:
         """Get the hook manager instance."""
         if self._hook_manager is None:
             try:
-                from .hook_manager import get_hook_manager
+                from ai_karen_engine.hooks.hook_manager import get_hook_manager
 
                 self._hook_manager = get_hook_manager()
             except Exception as e:

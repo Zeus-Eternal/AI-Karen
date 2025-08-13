@@ -16,9 +16,8 @@ from typing import Any, Callable, Dict, List, Optional
 from ai_karen_engine.database.client import get_db_session_context
 from ai_karen_engine.database.models import HookExecutionStat
 from ai_karen_engine.event_bus import get_event_bus
-
-from .hook_types import HookTypes
-from .models import (
+from ai_karen_engine.hooks.hook_types import HookTypes
+from ai_karen_engine.hooks.models import (
     HookContext,
     HookExecutionSummary,
     HookPriority,
@@ -338,9 +337,7 @@ class HookManager:
                         successes=data["successes"],
                         errors=data["errors"],
                         timeouts=data["timeouts"],
-                        avg_duration_ms=int(
-                            data["total_duration"] / data["executions"]
-                        )
+                        avg_duration_ms=int(data["total_duration"] / data["executions"])
                         if data["executions"]
                         else 0,
                         window_start=datetime.utcnow(),
@@ -349,9 +346,7 @@ class HookManager:
                     session.add(stat)
                 session.commit()
         except Exception as db_error:
-            self.logger.debug(
-                f"Failed to record hook execution stats: {db_error}"
-            )
+            self.logger.debug(f"Failed to record hook execution stats: {db_error}")
 
         return summary
 

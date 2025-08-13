@@ -37,9 +37,12 @@ except ImportError:
     func = None
     insert = None
 
-from .config import DatabaseConfig
-from .exceptions import DatabaseConnectionError, DatabaseOperationError
-from .models import AuthEvent, SessionData, UserData
+from ai_karen_engine.auth.config import DatabaseConfig
+from ai_karen_engine.auth.exceptions import (
+    DatabaseConnectionError,
+    DatabaseOperationError,
+)
+from ai_karen_engine.auth.models import AuthEvent, SessionData, UserData
 
 
 class OptimizedAuthDatabaseClient:

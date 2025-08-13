@@ -15,10 +15,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 from uuid import uuid4
 
+from ai_karen_engine.auth.config import AuthConfig
+from ai_karen_engine.auth.models import AuthEvent, AuthEventType
 from ai_karen_engine.integrations.llm_utils import PROM_REGISTRY
-
-from .config import AuthConfig
-from .models import AuthEvent, AuthEventType
 
 try:  # pragma: no cover - optional dependency
     from prometheus_client import CollectorRegistry, Counter, Histogram

@@ -13,11 +13,11 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from .config import AuthConfig
-from .exceptions import RateLimitExceededError
-from .models import AuthEvent, AuthEventType, SessionData
-from .monitoring import metrics_hook as monitoring_metrics_hook
-from .rate_limit_store import (
+from ai_karen_engine.auth.config import AuthConfig
+from ai_karen_engine.auth.exceptions import RateLimitExceededError
+from ai_karen_engine.auth.models import AuthEvent, AuthEventType, SessionData
+from ai_karen_engine.auth.monitoring import metrics_hook as monitoring_metrics_hook
+from ai_karen_engine.auth.rate_limit_store import (
     InMemoryRateLimitStore,
     RateLimitStore,
     RedisRateLimitStore,
@@ -68,9 +68,7 @@ class RateLimiter:
 
         self.logger = logging.getLogger(__name__)
 
-    def _build_key(
-        self, ip_address: str, email: Optional[str], event_type: str
-    ) -> str:
+    def _build_key(self, ip_address: str, email: Optional[str], event_type: str) -> str:
         """Construct the storage key for rate limiting."""
 
         identifier = f"user:{email}" if email else "ip"

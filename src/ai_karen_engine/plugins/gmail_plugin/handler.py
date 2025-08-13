@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 from typing import Any, Dict
 
-from .gmail_service import GmailService
+from ai_karen_engine.plugins.gmail_plugin.gmail_service import GmailService
 
 
 async def run(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -21,7 +21,7 @@ async def run(params: Dict[str, Any]) -> Dict[str, Any]:
         body: message body (compose_email)
     """
     action = params.get("action")
-    
+
     service = GmailService()
 
     try:

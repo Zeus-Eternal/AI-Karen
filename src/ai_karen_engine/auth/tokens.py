@@ -18,9 +18,9 @@ except ImportError:
     # Fallback for environments without PyJWT
     jwt = None
 
-from .config import JWTConfig
-from .exceptions import InvalidTokenError, TokenExpiredError
-from .models import UserData
+from ai_karen_engine.auth.config import JWTConfig
+from ai_karen_engine.auth.exceptions import InvalidTokenError, TokenExpiredError
+from ai_karen_engine.auth.models import UserData
 
 
 class TokenManager:

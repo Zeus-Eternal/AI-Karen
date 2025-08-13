@@ -24,8 +24,12 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from .exceptions import DatabaseConnectionError, DatabaseOperationError, MigrationError
-from .models import AuthEvent, AuthEventType, SessionData, UserData
+from ai_karen_engine.auth.exceptions import (
+    DatabaseConnectionError,
+    DatabaseOperationError,
+    MigrationError,
+)
+from ai_karen_engine.auth.models import AuthEvent, AuthEventType, SessionData, UserData
 
 logger = logging.getLogger(__name__)
 

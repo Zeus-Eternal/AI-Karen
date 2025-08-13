@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import bcrypt
+
 try:
     from argon2 import PasswordHasher as Argon2Hasher  # type: ignore
     from argon2.exceptions import VerificationError  # type: ignore
@@ -16,9 +17,9 @@ except Exception:  # pragma: no cover - argon2 is optional
     Argon2Hasher = None  # type: ignore
     VerificationError = Exception  # type: ignore
 
-from .config import AuthConfig
-from .database import AuthDatabaseClient
-from .exceptions import (
+from ai_karen_engine.auth.config import AuthConfig
+from ai_karen_engine.auth.database import AuthDatabaseClient
+from ai_karen_engine.auth.exceptions import (
     AccountDisabledError,
     AccountLockedError,
     InvalidCredentialsError,
@@ -28,9 +29,9 @@ from .exceptions import (
     UserAlreadyExistsError,
     UserNotFoundError,
 )
-from .models import AuthEvent, AuthEventType, SessionData, UserData
-from .session import SessionManager
-from .tokens import TokenManager
+from ai_karen_engine.auth.models import AuthEvent, AuthEventType, SessionData, UserData
+from ai_karen_engine.auth.session import SessionManager
+from ai_karen_engine.auth.tokens import TokenManager
 
 
 class PasswordHasher:

@@ -13,15 +13,22 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 from pydantic import Field
 
+from ai_karen_engine.core.embedding_manager import EmbeddingManager
+from ai_karen_engine.core.milvus_client import MilvusClient
+from ai_karen_engine.database.client import MultiTenantPostgresClient
+from ai_karen_engine.database.memory_manager import (
+    MemoryEntry,
+    MemoryManager,
+    MemoryQuery,
+)
+from ai_karen_engine.services.memory_policy import DecayTier, MemoryPolicyManager
+from ai_karen_engine.services.memory_writeback import (
+    InteractionType,
+    MemoryWritebackSystem,
+    ShardUsageType,
+)
 from ai_karen_engine.services.structured_logging import PIIRedactor
 from ai_karen_engine.utils.pydantic_base import ISO8601Model
-
-from ..core.embedding_manager import EmbeddingManager
-from ..core.milvus_client import MilvusClient
-from ..database.client import MultiTenantPostgresClient
-from ..database.memory_manager import MemoryEntry, MemoryManager, MemoryQuery
-from .memory_policy import DecayTier, MemoryPolicyManager
-from .memory_writeback import InteractionType, MemoryWritebackSystem, ShardUsageType
 
 logger = logging.getLogger(__name__)
 
@@ -436,7 +443,7 @@ class UnifiedMemoryService:
             async with self.db_client.get_async_session() as session:
                 from sqlalchemy import update
 
-                from ..database.models import TenantMemoryItem
+                from ai_karen_engine.database.models import TenantMemoryItem
 
                 await session.execute(
                     update(TenantMemoryItem)
@@ -511,7 +518,7 @@ class UnifiedMemoryService:
                 async with self.db_client.get_async_session() as session:
                     from sqlalchemy import delete
 
-                    from ..database.models import TenantMemoryItem
+                    from ai_karen_engine.database.models import TenantMemoryItem
 
                     await session.execute(
                         delete(TenantMemoryItem).where(
@@ -550,7 +557,7 @@ class UnifiedMemoryService:
                 async with self.db_client.get_async_session() as session:
                     from sqlalchemy import update
 
-                    from ..database.models import TenantMemoryItem
+                    from ai_karen_engine.database.models import TenantMemoryItem
 
                     await session.execute(
                         update(TenantMemoryItem)
@@ -810,7 +817,7 @@ class UnifiedMemoryService:
             async with self.db_client.get_async_session() as session:
                 from sqlalchemy import select
 
-                from ..database.models import TenantMemoryItem
+                from ai_karen_engine.database.models import TenantMemoryItem
 
                 result = await session.execute(
                     select(TenantMemoryItem).where(
@@ -951,7 +958,7 @@ class UnifiedMemoryService:
             async with self.db_client.get_async_session() as session:
                 from sqlalchemy import and_, or_, select
 
-                from ..database.models import TenantMemoryItem
+                from ai_karen_engine.database.models import TenantMemoryItem
 
                 # Build query conditions
                 conditions = []
@@ -1039,7 +1046,7 @@ class UnifiedMemoryService:
             async with self.db_client.get_async_session() as session:
                 from sqlalchemy import and_, func, select
 
-                from ..database.models import TenantMemoryItem
+                from ai_karen_engine.database.models import TenantMemoryItem
 
                 # Build base query conditions
                 conditions = []
