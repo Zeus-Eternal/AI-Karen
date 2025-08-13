@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ai_karen_engine.services.memory_writeback import InteractionType
+from ai_karen_engine.services.structured_logging import PIIRedactor
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class ContextHit(BaseModel):
 
     id: str
     text: str
+    preview: Optional[str] = None
     score: float
     tags: List[str] = Field(default_factory=list)
     recency: Optional[str] = None
@@ -253,20 +255,24 @@ async def copilot_assist(request: AssistRequest, http_request: Request):
             try:
                 # This would use the unified memory service
                 # For now, create mock context hits
-                context_hits = [
-                    ContextHit(
-                        id=f"mem_{i}",
-                        text=f"Mock context {i} for query: {request.message[:50]}...",
-                        score=0.9 - (i * 0.1),
-                        tags=["mock", "context"],
-                        importance=8 - i,
-                        decay_tier="medium",
-                        created_at=datetime.utcnow(),
-                        user_id=request.user_id,
-                        org_id=request.org_id,
+                context_hits = []
+                for i in range(min(request.top_k, 3)):
+                    raw_text = f"Mock context {i} for query: {request.message[:50]}..."
+                    redacted_text = PIIRedactor.redact_pii(raw_text)
+                    context_hits.append(
+                        ContextHit(
+                            id=f"mem_{i}",
+                            text=redacted_text,
+                            preview=redacted_text[:100],
+                            score=0.9 - (i * 0.1),
+                            tags=["mock", "context"],
+                            importance=8 - i,
+                            decay_tier="medium",
+                            created_at=datetime.utcnow(),
+                            user_id=request.user_id,
+                            org_id=request.org_id,
+                        )
                     )
-                    for i in range(min(request.top_k, 3))
-                ]
 
                 # Record vector search latency
                 vector_duration = (datetime.utcnow() - memory_start).total_seconds()

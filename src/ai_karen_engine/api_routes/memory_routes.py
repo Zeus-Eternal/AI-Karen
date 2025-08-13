@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from ai_karen_engine.services.structured_logging import PIIRedactor
+
 from .unified_schemas import ErrorHandler, ErrorType, FieldError, ValidationUtils
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,7 @@ class ContextHit(BaseModel):
 
     id: str
     text: str
+    preview: Optional[str] = None
     score: float
     tags: List[str] = Field(default_factory=list)
     recency: Optional[str] = None
@@ -299,34 +302,41 @@ async def memory_search(request: MemQuery, http_request: Request):
                     top_k=request.top_k,
                 )
                 memories = await memory_service.query_memories(tenant_id, query)
-                hits = [
-                    ContextHit(
-                        id=mem.id,
-                        text=mem.content,
-                        score=mem.similarity_score or 0.0,
-                        tags=mem.tags or [],
-                        importance=getattr(mem, "importance_score", 5),
-                        decay_tier=(
-                            mem.metadata.get("decay") if mem.metadata else "short"
-                        ),
-                        created_at=datetime.utcfromtimestamp(mem.timestamp)
-                        if isinstance(mem.timestamp, (int, float))
-                        else mem.timestamp or datetime.utcnow(),
-                        user_id=request.user_id,
-                        org_id=request.org_id,
-                        meta={"source": "unified_search", "tenant_filtered": True},
+                hits = []
+                for mem in memories:
+                    redacted_text = PIIRedactor.redact_pii(mem.content)
+                    hits.append(
+                        ContextHit(
+                            id=mem.id,
+                            text=redacted_text,
+                            preview=redacted_text[:100],
+                            score=mem.similarity_score or 0.0,
+                            tags=mem.tags or [],
+                            importance=getattr(mem, "importance_score", 5),
+                            decay_tier=(
+                                mem.metadata.get("decay") if mem.metadata else "short"
+                            ),
+                            created_at=datetime.utcfromtimestamp(mem.timestamp)
+                            if isinstance(mem.timestamp, (int, float))
+                            else mem.timestamp or datetime.utcnow(),
+                            user_id=request.user_id,
+                            org_id=request.org_id,
+                            meta={"source": "unified_search", "tenant_filtered": True},
+                        )
                     )
-                    for mem in memories
-                ]
             except Exception as e:
                 logger.warning(f"Memory search failed: {e}")
                 hits = []
         else:
             # Fallback mock results
+            redacted_text = PIIRedactor.redact_pii(
+                f"Fallback result for query: {request.query}"
+            )
             hits = [
                 ContextHit(
                     id="fallback_mem_1",
-                    text=f"Fallback result for query: {request.query}",
+                    text=redacted_text,
+                    preview=redacted_text[:100],
                     score=0.7,
                     tags=["fallback"],
                     importance=5,
@@ -752,7 +762,9 @@ async def memory_update(
 
         if request.importance is not None:
             try:
-                request.importance = ValidationUtils.validate_importance(request.importance)
+                request.importance = ValidationUtils.validate_importance(
+                    request.importance
+                )
             except ValueError as e:
                 update_duration = (datetime.utcnow() - start_time).total_seconds()
                 record_metrics(
