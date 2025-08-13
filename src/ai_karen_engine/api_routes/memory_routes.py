@@ -280,7 +280,7 @@ async def memory_search(request: MemQuery, http_request: Request):
             path=str(http_request.url.path),
             message="Insufficient permissions for memory search",
         )
-        raise HTTPException(status_code=403, detail=error_response.dict())
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
         # Apply tenant filtering
@@ -464,7 +464,7 @@ async def memory_search(request: MemQuery, http_request: Request):
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.dict())
+        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
 
 
 @router.post("/commit", response_model=MemCommitResponse)
@@ -493,7 +493,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
             path=str(http_request.url.path),
             message="Insufficient permissions for memory commit",
         )
-        raise HTTPException(status_code=403, detail=error_response.dict())
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
         # Field validations
@@ -525,7 +525,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     )
                 ],
             )
-            raise HTTPException(status_code=422, detail=error_response.dict())
+            raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         try:
             request.tags = ValidationUtils.validate_tags(request.tags)
@@ -555,7 +555,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     )
                 ],
             )
-            raise HTTPException(status_code=422, detail=error_response.dict())
+            raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         try:
             request.importance = ValidationUtils.validate_importance(request.importance)
@@ -585,7 +585,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
                     )
                 ],
             )
-            raise HTTPException(status_code=422, detail=error_response.dict())
+            raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(request.user_id, request.org_id)
@@ -667,7 +667,7 @@ async def memory_commit(request: MemCommit, http_request: Request):
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.dict())
+        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
 
 
 @router.put("/{memory_id}", response_model=MemUpdateResponse)
@@ -696,7 +696,7 @@ async def memory_update(
             path=str(http_request.url.path),
             message="Insufficient permissions for memory update",
         )
-        raise HTTPException(status_code=403, detail=error_response.dict())
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
         # Field validations
@@ -729,7 +729,7 @@ async def memory_update(
                         )
                     ],
                 )
-                raise HTTPException(status_code=422, detail=error_response.dict())
+                raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         if request.tags is not None:
             try:
@@ -760,7 +760,7 @@ async def memory_update(
                         )
                     ],
                 )
-                raise HTTPException(status_code=422, detail=error_response.dict())
+                raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         if request.importance is not None:
             try:
@@ -791,7 +791,7 @@ async def memory_update(
                         )
                     ],
                 )
-                raise HTTPException(status_code=422, detail=error_response.dict())
+                raise HTTPException(status_code=422, detail=error_response.model_dump(mode="json"))
 
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(user_id, org_id)
@@ -875,7 +875,7 @@ async def memory_update(
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.dict())
+        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
 
 
 @router.delete("/{memory_id}", response_model=MemDeleteResponse)
@@ -904,7 +904,7 @@ async def memory_delete(
             path=str(http_request.url.path),
             message="Insufficient permissions for memory deletion",
         )
-        raise HTTPException(status_code=403, detail=error_response.dict())
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
         # Apply tenant filtering
@@ -974,7 +974,7 @@ async def memory_delete(
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.dict())
+        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
 
 
 @router.get("/health")

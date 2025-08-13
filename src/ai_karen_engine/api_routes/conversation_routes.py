@@ -287,7 +287,7 @@ async def create_conversation(
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.INTERNAL_SERVER_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return CreateConversationResponse(
@@ -308,7 +308,7 @@ async def create_conversation(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -335,7 +335,7 @@ async def get_conversation(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return _convert_conversation_to_response(conversation)
@@ -354,7 +354,7 @@ async def get_conversation(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -390,7 +390,7 @@ async def add_message(
                 status_code=get_http_status_for_error_code(
                     WebAPIErrorCode.INTERNAL_SERVER_ERROR
                 ),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         message_dict = message.to_dict()
@@ -428,7 +428,7 @@ async def add_message(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -462,7 +462,7 @@ async def build_context(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -489,7 +489,7 @@ async def update_ui_context(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return {"success": True, "message": "UI context updated successfully"}
@@ -508,7 +508,7 @@ async def update_ui_context(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -535,7 +535,7 @@ async def update_ai_insights(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return {"success": True, "message": "AI insights updated successfully"}
@@ -554,7 +554,7 @@ async def update_ai_insights(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -581,7 +581,7 @@ async def add_tags(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return {
@@ -603,7 +603,7 @@ async def add_tags(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -663,7 +663,7 @@ async def list_conversations(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -692,7 +692,7 @@ async def update_conversation(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return {"success": True, "message": "Conversation updated successfully"}
@@ -711,7 +711,7 @@ async def update_conversation(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -736,7 +736,7 @@ async def delete_conversation(
             )
             raise HTTPException(
                 status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
-                detail=error_response.dict(),
+                detail=error_response.model_dump(mode="json"),
             )
 
         return {"success": True, "message": "Conversation deleted successfully"}
@@ -755,7 +755,7 @@ async def delete_conversation(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -798,7 +798,7 @@ async def get_analytics(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -833,7 +833,7 @@ async def get_conversation_stats(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 
@@ -867,7 +867,7 @@ async def cleanup_inactive_conversations(
             status_code=get_http_status_for_error_code(
                 WebAPIErrorCode.INTERNAL_SERVER_ERROR
             ),
-            detail=error_response.dict(),
+            detail=error_response.model_dump(mode="json"),
         )
 
 

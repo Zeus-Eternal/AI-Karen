@@ -7,6 +7,7 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Set
+from types import SimpleNamespace
 
 try:
     from fastapi import Request, HTTPException
@@ -238,69 +239,66 @@ class RBACMiddleware:
             )
             return False
 
-# Global RBAC middleware instance
-_rbac_middleware = None
+# RBAC middleware configuration
+def setup_rbac(app, development_mode: bool = False) -> None:
+    """Attach RBAC middleware to a FastAPI application.
 
-def get_rbac_middleware(development_mode: bool = False) -> RBACMiddleware:
-    """Get or create RBAC middleware instance"""
-    global _rbac_middleware
-    
-    if _rbac_middleware is None:
-        _rbac_middleware = RBACMiddleware(development_mode=development_mode)
-    
-    return _rbac_middleware
-
-async def rbac_middleware(request, call_next):
-    """FastAPI middleware for RBAC enforcement"""
+    Stores the :class:`RBACMiddleware` instance on ``app.state`` to avoid
+    relying on globals and ensure isolated instances per application.
+    """
     if not FASTAPI_AVAILABLE:
-        logger.warning("FastAPI not available, skipping RBAC middleware")
+        logger.warning("FastAPI not available, skipping RBAC middleware setup")
+        return
+
+    rbac = RBACMiddleware(development_mode=development_mode)
+    if not hasattr(app, "state"):
+        app.state = SimpleNamespace()
+    app.state.rbac = rbac
+
+    @app.middleware("http")
+    async def rbac_middleware(request, call_next):
+        # Parse required scopes from header
+        scopes_header = request.headers.get("X-Required-Scopes")
+        required_scopes = rbac.scope_validator.parse_required_scopes(scopes_header)
+
+        # If no scopes required, proceed
+        if not required_scopes:
+            return await call_next(request)
+
+        # Validate scopes
+        has_permission = await rbac.validate_scopes(request, required_scopes)
+
+        if not has_permission:
+            # Determine if it's authentication or authorization error
+            try:
+                await rbac.check_authentication(request)
+                # User is authenticated but lacks permissions
+                error_response = rbac.create_rbac_error_response(
+                    request,
+                    f"Insufficient permissions. Required scopes: {', '.join(required_scopes)}",
+                    403,
+                )
+                return JSONResponse(
+                    status_code=403,
+                    content=error_response.model_dump(mode="json"),
+                )
+            except RBACError:
+                # User is not authenticated
+                error_response = rbac.create_rbac_error_response(
+                    request,
+                    "Authentication required",
+                    401,
+                )
+                return JSONResponse(
+                    status_code=401,
+                    content=error_response.model_dump(mode="json"),
+                )
+
+        # Add validated scopes to request state for downstream use
+        if hasattr(request, "state"):
+            request.state.validated_scopes = required_scopes
+
         return await call_next(request)
-    
-    # Get RBAC middleware instance
-    rbac = get_rbac_middleware(development_mode=True)  # TODO: Set based on environment
-    
-    # Parse required scopes from header
-    scopes_header = request.headers.get("X-Required-Scopes")
-    required_scopes = rbac.scope_validator.parse_required_scopes(scopes_header)
-    
-    # If no scopes required, proceed
-    if not required_scopes:
-        return await call_next(request)
-    
-    # Validate scopes
-    has_permission = await rbac.validate_scopes(request, required_scopes)
-    
-    if not has_permission:
-        # Determine if it's authentication or authorization error
-        try:
-            await rbac.check_authentication(request)
-            # User is authenticated but lacks permissions
-            error_response = rbac.create_rbac_error_response(
-                request,
-                f"Insufficient permissions. Required scopes: {', '.join(required_scopes)}",
-                403
-            )
-            return JSONResponse(
-                status_code=403,
-                content=error_response.dict()
-            )
-        except RBACError:
-            # User is not authenticated
-            error_response = rbac.create_rbac_error_response(
-                request,
-                "Authentication required",
-                401
-            )
-            return JSONResponse(
-                status_code=401,
-                content=error_response.dict()
-            )
-    
-    # Add validated scopes to request state for downstream use
-    if hasattr(request, 'state'):
-        request.state.validated_scopes = required_scopes
-    
-    return await call_next(request)
 
 # Decorator for endpoint-level scope checking
 def require_scopes(*scopes: str):
@@ -314,12 +312,16 @@ def require_scopes(*scopes: str):
 # Utility functions for manual scope checking
 async def check_scope(request, scope: str) -> bool:
     """Check if current request has specific scope"""
-    rbac = get_rbac_middleware()
+    rbac: RBACMiddleware | None = getattr(request.app.state, "rbac", None)
+    if rbac is None:
+        raise RBACError("RBAC middleware not configured")
     return await rbac.validate_scopes(request, {scope})
 
 async def check_scopes(request, scopes: Set[str]) -> bool:
     """Check if current request has all specified scopes"""
-    rbac = get_rbac_middleware()
+    rbac: RBACMiddleware | None = getattr(request.app.state, "rbac", None)
+    if rbac is None:
+        raise RBACError("RBAC middleware not configured")
     return await rbac.validate_scopes(request, scopes)
 
 def get_user_scopes(request) -> Set[str]:
@@ -339,14 +341,13 @@ def get_user_scopes(request) -> Set[str]:
 # Export public interface
 __all__ = [
     "RBACMiddleware",
-    "ScopeValidator", 
+    "ScopeValidator",
     "RBACError",
     "VALID_SCOPES",
     "DEFAULT_ROLE_SCOPES",
-    "rbac_middleware",
+    "setup_rbac",
     "require_scopes",
     "check_scope",
     "check_scopes",
     "get_user_scopes",
-    "get_rbac_middleware"
 ]

@@ -61,7 +61,7 @@ class BaseModel:
         return self.__dict__.copy()
 
     # Pydantic v2 compatible name
-    def model_dump(self) -> dict[str, Any]:
+    def model_dump(self, *args, **kwargs) -> dict[str, Any]:
         return self.dict()
 
 
