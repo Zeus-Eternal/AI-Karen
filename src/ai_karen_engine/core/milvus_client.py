@@ -12,6 +12,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import numpy as np  # type: ignore
 
 from ai_karen_engine.core.embedding_manager import record_metric  # type: ignore
+from ai_karen_engine.services.metrics_service import get_metrics_service
 
 try:  # Optional approximate nearest neighbor backend
     import hnswlib  # type: ignore
@@ -208,7 +209,14 @@ class MilvusClient:
             self._cache[cache_key] = results
             if len(self._cache) > self.cache_size:
                 self._cache.popitem(last=False)
-        record_metric("vector_search_latency_seconds", time.time() - start)
+
+        duration = time.time() - start
+        try:
+            metrics = get_metrics_service()
+            metrics.record_vector_latency(duration, "search", "success")
+        except Exception:
+            pass
+        record_metric("vector_search_latency_seconds", duration)
         return results
 
     async def search(
