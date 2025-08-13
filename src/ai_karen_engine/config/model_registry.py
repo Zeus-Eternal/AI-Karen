@@ -10,16 +10,51 @@ def list_llama_cpp_models(models_dir=None):
     """
     Scan for GGUF/llama.cpp compatible models
     """
-    models_dir = models_dir or os.getenv("KARI_MODEL_DIR", "/models")
+    models_dir = models_dir or os.getenv("KARI_MODEL_DIR", "models")
     supported_ext = {".gguf", ".bin"}
     models = []
 
     try:
-        for file in Path(models_dir).iterdir():
+        models_path = Path(models_dir)
+        if not models_path.exists():
+            # Trigger system initialization if models directory doesn't exist
+            logger.info(f"[llama-cpp] Models directory not found, initializing system...")
+            try:
+                from ai_karen_engine.core.initialization import initialize_system
+                import asyncio
+                
+                # Try to initialize in background
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # If event loop is running, schedule initialization
+                        asyncio.create_task(initialize_system())
+                    else:
+                        # If no event loop, run initialization
+                        asyncio.run(initialize_system())
+                except RuntimeError:
+                    # Fallback: just create the directory
+                    models_path.mkdir(parents=True, exist_ok=True)
+                    logger.info(f"[llama-cpp] Created models directory: {models_dir}")
+                    
+            except ImportError:
+                # Fallback if initialization module not available
+                models_path.mkdir(parents=True, exist_ok=True)
+                logger.info(f"[llama-cpp] Created models directory: {models_dir}")
+            
+            return ["<initializing-models>"]
+        
+        # Search recursively for model files
+        for file in models_path.rglob("*"):
             if file.is_file() and file.suffix in supported_ext:
                 models.append(file.stem)
+                
+        # If no models found, suggest initialization
+        if not models:
+            logger.info(f"[llama-cpp] No models found in {models_dir}. Run system initialization to download default models.")
+            
     except Exception as e:
-        logger.warning(f"[llama-cpp] Failed to list models: {e}")
+        logger.warning(f"[llama-cpp] Error accessing models directory: {e}")
 
     return models or ["<no-models-found>"]
 
@@ -65,15 +100,15 @@ def list_anthropic_models():
 
 
 def list_groq_models():
-    """Return local Groq models under ``/models/groq`` if present."""
-    groq_dir = Path("/models/groq")
+    """Return local Groq models under ``models/groq`` if present."""
+    groq_dir = Path("models/groq")
     return [p.stem for p in groq_dir.glob("*.gguf")] if groq_dir.exists() else []
 
 
 # === Final Aggregation ===
 
 MODEL_PROVIDERS = {
-    "llama-cpp": list_llama_cpp_models("/models"),
+    "llama-cpp": list_llama_cpp_models("models"),
     "lmstudio": list_lmstudio_models(),
     "gemini": list_gemini_models(),
     "anthropic": list_anthropic_models(),

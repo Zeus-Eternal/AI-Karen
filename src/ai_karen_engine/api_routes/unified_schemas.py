@@ -55,6 +55,11 @@ class ErrorResponse(BaseModel):
     timestamp: datetime = Field(..., description="Error timestamp")
     path: str = Field(..., description="API path where error occurred")
     status_code: int = Field(..., description="HTTP status code")
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 # Success response wrapper
 class SuccessResponse(BaseModel):
@@ -64,6 +69,11 @@ class SuccessResponse(BaseModel):
     message: Optional[str] = Field(None, description="Success message")
     correlation_id: str = Field(..., description="Request correlation ID for tracing")
     timestamp: datetime = Field(..., description="Response timestamp")
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 # Validation utilities
 class ValidationUtils:
