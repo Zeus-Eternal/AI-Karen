@@ -11,6 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from ai_karen_engine.middleware.error_counter import error_counter_middleware
 from ai_karen_engine.middleware.rate_limit import rate_limit_middleware
+from ai_karen_engine.middleware.rbac import setup_rbac
 from .http_validator import HTTPRequestValidator, ValidationConfig
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,10 @@ def configure_middleware(
     )
 
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    # RBAC middleware configured based on environment
+    development_mode = getattr(settings, "environment", "").lower() != "production"
+    setup_rbac(app, development_mode=development_mode)
 
     # Register custom middlewares
     app.middleware("http")(rate_limit_middleware)

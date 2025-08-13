@@ -172,7 +172,7 @@ async def get_slo_status(request: Request):
         )
         raise HTTPException(
             status_code=500,
-            detail=error_response.dict()
+            detail=error_response.model_dump(mode="json")
         )
 
 @router.get("/dashboard", response_model=SLODashboardResponse)
@@ -291,7 +291,7 @@ async def get_slo_dashboard(request: Request):
         )
         raise HTTPException(
             status_code=500,
-            detail=error_response.dict()
+            detail=error_response.model_dump(mode="json")
         )
 
 @router.get("/metrics", response_model=MetricsExportResponse)
@@ -343,7 +343,7 @@ async def export_metrics(request: Request):
         )
         raise HTTPException(
             status_code=500,
-            detail=error_response.dict()
+            detail=error_response.model_dump(mode="json")
         )
 
 @router.post("/alerts/{alert_id}/resolve")
@@ -388,7 +388,7 @@ async def resolve_alert(alert_id: str, request: Request):
         )
         raise HTTPException(
             status_code=500,
-            detail=error_response.dict()
+            detail=error_response.model_dump(mode="json")
         )
 
 @router.get("/health")

@@ -474,19 +474,18 @@ class KarenBackendService {
 
       // Prepare the request payload for the secure memory endpoint
       const requestPayload = {
-        content,
-        ui_source: 'web',
-        session_id: sessionId,
-        memory_type: 'general',
+        user_id: userId || sessionId || 'anonymous',
+        org_id: null,
+        text: content,
         tags: tags || [],
-        metadata: metadata || {},
-        ai_generated: false
+        importance: 5,
+        decay: 'short'
       };
 
       console.log('Storing memory with payload:', requestPayload);
 
       // Use the secure memory storage endpoint with proper authentication
-      const response = await this.makeRequest<{ memory_id: string }>('/api/memory/store', {
+      const response = await this.makeRequest<{ memory_id: string }>('/api/memory/commit', {
         method: 'POST',
         body: JSON.stringify(requestPayload),
       });
@@ -547,16 +546,13 @@ class KarenBackendService {
 
       // Transform the query to match the backend format
       const backendQuery = {
-        text: query.text,
-        session_id: query.session_id,
-        tags: query.tags || [],
-        top_k: query.top_k || 5,
-        similarity_threshold: query.similarity_threshold || 0.7,
-        only_user_confirmed: true,
-        only_ai_generated: false,
+        user_id: query.user_id || query.session_id || 'anonymous',
+        org_id: null,
+        query: query.text,
+        top_k: query.top_k || 12,
       };
 
-      const response = await this.makeRequest<{ memories: any[] }>('/api/memory/query', {
+      const response = await this.makeRequest<{ memories: any[] }>('/api/memory/search', {
         method: 'POST',
         body: JSON.stringify(backendQuery),
       });

@@ -30,6 +30,8 @@ from ai_karen_engine.chat.file_attachment_service import FileAttachmentService
 from ai_karen_engine.chat.multimedia_service import MultimediaService
 from ai_karen_engine.chat.code_execution_service import CodeExecutionService
 from ai_karen_engine.chat.tool_integration_service import ToolIntegrationService
+from ai_karen_engine.chat.instruction_processor import InstructionProcessor, InstructionContext, InstructionScope
+from ai_karen_engine.chat.context_integrator import ContextIntegrator
 from ai_karen_engine.hooks import get_hook_manager, HookTypes, HookContext, HookExecutionSummary
 # Note: LLM orchestrator import moved to method level to avoid circular dependency
 
@@ -145,6 +147,8 @@ class ChatOrchestrator:
         multimedia_service: Optional[MultimediaService] = None,
         code_execution_service: Optional[CodeExecutionService] = None,
         tool_integration_service: Optional[ToolIntegrationService] = None,
+        instruction_processor: Optional[InstructionProcessor] = None,
+        context_integrator: Optional[ContextIntegrator] = None,
         retry_config: Optional[RetryConfig] = None,
         timeout_seconds: float = 30.0,
         enable_monitoring: bool = True
@@ -154,6 +158,8 @@ class ChatOrchestrator:
         self.multimedia_service = multimedia_service
         self.code_execution_service = code_execution_service
         self.tool_integration_service = tool_integration_service
+        self.instruction_processor = instruction_processor or InstructionProcessor()
+        self.context_integrator = context_integrator or ContextIntegrator()
         self.retry_config = retry_config or RetryConfig()
         self.timeout_seconds = timeout_seconds
         self.enable_monitoring = enable_monitoring
@@ -169,7 +175,7 @@ class ChatOrchestrator:
         # Active processing contexts
         self._active_contexts: Dict[str, ProcessingContext] = {}
         
-        logger.info("ChatOrchestrator initialized with NLP integration and file attachment support")
+        logger.info("ChatOrchestrator initialized with enhanced instruction processing and context integration")
     
     async def process_message(
         self,
@@ -647,12 +653,13 @@ class ChatOrchestrator:
         request: ChatRequest,
         context: ProcessingContext
     ) -> ProcessingResult:
-        """Internal message processing with NLP services."""
+        """Internal message processing with enhanced instruction processing and context integration."""
         start_time = time.time()
         parsed_message = None
         embeddings = None
         retrieved_context = None
         used_fallback = False
+        extracted_instructions = []
         
         try:
             # Step 1: Parse message with spaCy
@@ -675,7 +682,42 @@ class ChatOrchestrator:
                     correlation_id=context.correlation_id
                 )
             
-            # Step 2: Generate embeddings with DistilBERT
+            # Step 2: Extract and process instructions
+            try:
+                instruction_context = InstructionContext(
+                    user_id=request.user_id,
+                    conversation_id=request.conversation_id,
+                    session_id=request.session_id,
+                    message_history=[request.message],
+                    metadata=request.metadata
+                )
+                
+                # Extract instructions from current message
+                extracted_instructions = await self.instruction_processor.extract_instructions(
+                    request.message, instruction_context
+                )
+                
+                # Store instructions for persistence
+                if extracted_instructions:
+                    await self.instruction_processor.store_instructions(
+                        extracted_instructions, instruction_context
+                    )
+                    logger.debug(f"Extracted and stored {len(extracted_instructions)} instructions")
+                
+                # Get active instructions for context
+                active_instructions = await self.instruction_processor.get_active_instructions(
+                    instruction_context
+                )
+                
+                logger.debug(f"Found {len(active_instructions)} active instructions")
+                
+            except Exception as e:
+                logger.warning(f"Instruction processing failed: {e}")
+                # Don't fail the entire request for instruction processing errors
+                extracted_instructions = []
+                active_instructions = []
+            
+            # Step 3: Generate embeddings with DistilBERT
             try:
                 embeddings = await nlp_service_manager.get_embeddings(request.message)
                 logger.debug(f"Generated embeddings: {len(embeddings)} dimensions")
@@ -690,7 +732,7 @@ class ChatOrchestrator:
                     correlation_id=context.correlation_id
                 )
             
-            # Step 3: Extract and store memories (if memory processor available)
+            # Step 4: Extract and store memories (if memory processor available)
             extracted_memories = []
             if self.memory_processor:
                 try:
@@ -723,35 +765,58 @@ class ChatOrchestrator:
                     # Don't fail the entire request for attachment processing errors
                     attachment_context = {"error": str(e)}
             
-            # Step 5: Retrieve context (if enabled)
+            # Step 5: Retrieve and integrate context (if enabled)
+            integrated_context = None
             if request.include_context:
                 try:
-                    retrieved_context = await self._retrieve_context(
+                    # Get raw context from memory processor
+                    raw_context = await self._retrieve_context(
                         embeddings,
                         parsed_message,
                         request.user_id,
                         request.conversation_id
                     )
-                    logger.debug(f"Retrieved context: {retrieved_context.get('context_summary', 'No context')}")
                     
-                    # Merge attachment context into retrieved context
+                    # Merge attachment context into raw context
                     if attachment_context:
-                        retrieved_context["attachments"] = attachment_context
+                        raw_context["attachments"] = attachment_context
+                    
+                    # Add instructions to raw context
+                    if active_instructions:
+                        raw_context["instructions"] = [
+                            {
+                                "type": inst.type.value,
+                                "content": inst.content,
+                                "priority": inst.priority.value,
+                                "scope": inst.scope.value,
+                                "confidence": inst.confidence
+                            }
+                            for inst in active_instructions
+                        ]
+                    
+                    # Use context integrator for enhanced context processing
+                    integrated_context = await self.context_integrator.integrate_context(
+                        raw_context,
+                        request.message,
+                        request.user_id,
+                        request.conversation_id
+                    )
+                    
+                    logger.debug(f"Integrated context: {integrated_context.context_summary}")
                     
                 except Exception as e:
-                    logger.warning(f"Context retrieval failed: {e}")
-                    # Don't fail the entire request for context retrieval errors
-                    retrieved_context = {"attachments": attachment_context} if attachment_context else {}
-            else:
-                retrieved_context = {"attachments": attachment_context} if attachment_context else {}
+                    logger.warning(f"Context integration failed: {e}")
+                    # Don't fail the entire request for context integration errors
+                    integrated_context = None
             
-            # Step 6: Generate AI response
+            # Step 6: Generate AI response with enhanced context and instructions
             try:
-                ai_response = await self._generate_ai_response(
+                ai_response = await self._generate_ai_response_enhanced(
                     request.message,
                     parsed_message,
                     embeddings,
-                    retrieved_context,
+                    integrated_context,
+                    active_instructions,
                     context
                 )
                 
@@ -760,7 +825,7 @@ class ChatOrchestrator:
                     response=ai_response,
                     parsed_message=parsed_message,
                     embeddings=embeddings,
-                    context=retrieved_context,
+                    context=integrated_context.to_dict() if integrated_context else {},
                     processing_time=time.time() - start_time,
                     used_fallback=used_fallback,
                     correlation_id=context.correlation_id
@@ -856,6 +921,194 @@ class ChatOrchestrator:
                 "embedding_similarity_threshold": 0.7
             }
     
+    async def _generate_ai_response_enhanced(
+        self,
+        message: str,
+        parsed_message: ParsedMessage,
+        embeddings: List[float],
+        integrated_context: Optional[Any],  # IntegratedContext object
+        active_instructions: List[Any],     # List of ExtractedInstruction objects
+        processing_context: ProcessingContext
+    ) -> str:
+        """Generate AI response using enhanced context integration and instruction following."""
+        # Check for code execution requests
+        code_execution_result = await self._handle_code_execution_request(
+            message, processing_context
+        )
+        if code_execution_result:
+            return code_execution_result
+        
+        # Check for tool execution requests
+        tool_execution_result = await self._handle_tool_execution_request(
+            message, processing_context
+        )
+        if tool_execution_result:
+            return tool_execution_result
+        
+        # Build enhanced prompt with instructions and context
+        enhanced_prompt = await self._build_enhanced_prompt(
+            message, integrated_context, active_instructions
+        )
+        
+        # Try to use CopilotKit for enhanced AI response generation
+        try:
+            from ai_karen_engine.llm_orchestrator import get_orchestrator
+            orchestrator = get_orchestrator()
+            
+            # Check if this is a code-related request for CopilotKit code assistance
+            if self._is_code_related_message(message):
+                # Get code suggestions from CopilotKit if available
+                code_suggestions = orchestrator.get_code_suggestions(
+                    enhanced_prompt, 
+                    language=self._detect_programming_language(message)
+                )
+                
+                if code_suggestions:
+                    # Use CopilotKit for code-related responses
+                    copilot_response = orchestrator.route_with_copilotkit(
+                        enhanced_prompt, 
+                        context=integrated_context.to_dict() if integrated_context else {}
+                    )
+                    
+                    # Add code suggestions to the response
+                    if code_suggestions:
+                        suggestions_text = "\n\nCode suggestions:\n"
+                        for i, suggestion in enumerate(code_suggestions[:3], 1):  # Limit to top 3
+                            suggestions_text += f"{i}. {suggestion.get('explanation', 'Code suggestion')}\n"
+                            suggestions_text += f"   ```{suggestion.get('language', 'python')}\n"
+                            suggestions_text += f"   {suggestion.get('content', '')}\n"
+                            suggestions_text += f"   ```\n"
+                        copilot_response += suggestions_text
+                    
+                    return copilot_response
+            
+            # Get contextual suggestions from CopilotKit
+            contextual_suggestions = orchestrator.get_contextual_suggestions(
+                enhanced_prompt, 
+                integrated_context.to_dict() if integrated_context else {}
+            )
+            
+            # Use CopilotKit for enhanced response generation
+            copilot_response = orchestrator.route_with_copilotkit(
+                enhanced_prompt, 
+                context=integrated_context.to_dict() if integrated_context else {}
+            )
+            
+            # Add contextual suggestions if available
+            if contextual_suggestions:
+                suggestions_text = "\n\nSuggestions:\n"
+                for i, suggestion in enumerate(contextual_suggestions[:2], 1):  # Limit to top 2
+                    if suggestion.get('actionable', True):
+                        suggestions_text += f"• {suggestion.get('content', 'AI suggestion')}\n"
+                copilot_response += suggestions_text
+            
+            return copilot_response
+            
+        except Exception as e:
+            logger.warning(f"CopilotKit integration failed, falling back to enhanced standard response: {e}")
+            # Fall back to enhanced standard response generation
+            pass
+        
+        # Enhanced standard response generation (fallback)
+        return await self._generate_enhanced_fallback_response(
+            message, parsed_message, integrated_context, active_instructions
+        )
+    
+    async def _build_enhanced_prompt(
+        self,
+        message: str,
+        integrated_context: Optional[Any],
+        active_instructions: List[Any]
+    ) -> str:
+        """Build enhanced prompt with instructions and context."""
+        prompt_parts = []
+        
+        # Add active instructions to prompt
+        if active_instructions:
+            # Create instruction context for prompt enhancement
+            instruction_context = InstructionContext(
+                user_id="",  # Will be filled by caller
+                conversation_id="",  # Will be filled by caller
+                active_instructions=active_instructions
+            )
+            
+            enhanced_prompt = await self.instruction_processor.apply_instructions_to_prompt(
+                message, active_instructions, instruction_context
+            )
+            prompt_parts.append(enhanced_prompt)
+        else:
+            prompt_parts.append(message)
+        
+        # Add integrated context if available
+        if integrated_context:
+            if integrated_context.primary_context:
+                prompt_parts.insert(-1, f"CONTEXT:\n{integrated_context.primary_context}")
+            
+            if integrated_context.supporting_context:
+                prompt_parts.insert(-1, f"ADDITIONAL INFO:\n{integrated_context.supporting_context}")
+        
+        return "\n\n".join(prompt_parts)
+    
+    async def _generate_enhanced_fallback_response(
+        self,
+        message: str,
+        parsed_message: ParsedMessage,
+        integrated_context: Optional[Any],
+        active_instructions: List[Any]
+    ) -> str:
+        """Generate enhanced fallback response with instruction awareness."""
+        # Simulate AI processing delay
+        await asyncio.sleep(0.5)
+        
+        response_parts = []
+        
+        # Acknowledge instructions if present
+        if active_instructions:
+            high_priority_instructions = [
+                inst for inst in active_instructions 
+                if inst.priority.value == "high"
+            ]
+            
+            if high_priority_instructions:
+                response_parts.append("I'll keep your instructions in mind:")
+                for inst in high_priority_instructions[:2]:  # Limit to top 2
+                    response_parts.append(f"- {inst.content}")
+                response_parts.append("")  # Empty line
+        
+        # Build contextual response
+        context_info = ""
+        if integrated_context and integrated_context.items_included:
+            context_types = set(item.type.value for item in integrated_context.items_included)
+            if context_types:
+                context_info = f" (Using context: {', '.join(context_types)})"
+        
+        # Add entity information
+        entity_info = ""
+        if parsed_message.entities:
+            entity_info = f" I noticed {len(parsed_message.entities)} important entities in your message."
+        
+        # Add attachment information
+        attachment_info = ""
+        if (integrated_context and 
+            any(item.type.value == "attachments" for item in integrated_context.items_included)):
+            attachment_info = " I've also processed your file attachments."
+        
+        # Main response
+        main_response = f"I understand your message: '{message}'{context_info}.{entity_info}{attachment_info}"
+        response_parts.append(main_response)
+        
+        # Add fallback notice if needed
+        if parsed_message.used_fallback:
+            response_parts.append("(Note: I processed your message using fallback parsing.)")
+        
+        # Add context summary if available
+        if integrated_context and integrated_context.context_summary:
+            response_parts.append(f"Context: {integrated_context.context_summary}")
+        
+        response_parts.append("How can I help you further?")
+        
+        return " ".join(response_parts)
+
     async def _generate_ai_response(
         self,
         message: str,

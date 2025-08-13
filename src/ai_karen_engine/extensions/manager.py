@@ -152,7 +152,7 @@ class ExtensionManager(HookMixin):
             )
             return
 
-        # Use enhanced validation with unified patterns
+        # Use enhanced validation with unified patterns and new API compatibility
         is_valid, errors, warnings, field_errors = self.validator.validate_manifest_enhanced(manifest)
 
         if not is_valid:
@@ -170,8 +170,41 @@ class ExtensionManager(HookMixin):
             self.logger.warning(
                 "Manifest field errors for %s: %s",
                 extension_dir.name,
-                "; ".join(str(fe) for fe in field_errors)
+                "; ".join(str(fe.dict() if hasattr(fe, 'dict') else str(fe)) for fe in field_errors)
             )
+            
+        # Log validation report for comprehensive feedback
+        validation_report = self.validator.get_validation_report(manifest)
+        if validation_report.get("recommendations"):
+            self.logger.info(
+                "Extension %s recommendations: %s",
+                extension_dir.name,
+                "; ".join(validation_report["recommendations"])
+            )
+        
+        # Check endpoint compatibility with unified API
+        try:
+            from ai_karen_engine.extensions.endpoint_adapter import ExtensionEndpointAdapter
+            endpoint_adapter = ExtensionEndpointAdapter()
+            compatibility = endpoint_adapter.validate_endpoint_compatibility(manifest)
+            
+            if not compatibility["is_compatible"]:
+                self.logger.warning(
+                    "Extension %s has API compatibility issues: %s",
+                    extension_dir.name,
+                    "; ".join(compatibility["issues"])
+                )
+            
+            if compatibility["warnings"]:
+                self.logger.info(
+                    "Extension %s API warnings: %s",
+                    extension_dir.name,
+                    "; ".join(compatibility["warnings"])
+                )
+                
+        except ImportError:
+            # Endpoint adapter not available - skip compatibility check
+            pass
 
         manifests[manifest.name] = manifest
         self.logger.info(
