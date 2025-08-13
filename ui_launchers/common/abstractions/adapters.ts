@@ -287,7 +287,7 @@ class PluginService implements IPluginService {
   constructor(private apiBaseUrl: string) {}
 
   async listPlugins(): Promise<any[]> {
-    const response = await fetch(`${this.apiBaseUrl}/api/plugins/list`);
+    const response = await fetch(`${this.apiBaseUrl}/api/plugins`);
     
     if (!response.ok) {
       throw new Error(`Plugin list error: ${response.statusText}`);

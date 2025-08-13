@@ -224,10 +224,10 @@ class NetworkDiagnostics {
         method: 'GET',
       },
       {
-        name: 'Chat Endpoint Options',
-        description: 'Test chat endpoint CORS preflight',
-        endpoint: '/api/chat/process',
-        method: 'OPTIONS',
+        name: 'Chat Endpoint',
+        description: 'Test chat endpoint availability',
+        endpoint: '/api/ai/conversation-processing',
+        method: 'HEAD',
       },
       {
         name: 'Memory Endpoint Options',
@@ -238,7 +238,7 @@ class NetworkDiagnostics {
       {
         name: 'Plugin List Endpoint',
         description: 'Test plugin listing endpoint',
-        endpoint: '/api/plugins/list',
+        endpoint: '/api/plugins',
         method: 'GET',
       },
       {

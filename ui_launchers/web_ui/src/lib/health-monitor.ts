@@ -196,36 +196,37 @@ class HealthMonitor {
 
     try {
       // Check main health endpoint
-      await this.checkEndpoint('/health', async () => {
+      await this.checkEndpoint('/health', async (_signal) => {
         return await backend.healthCheck();
       });
 
       // Check AI conversation processing endpoint (lightweight test)
-      await this.checkEndpoint('/api/ai/conversation-processing', async () => {
-        // We don't want to actually process a message, so we'll just check if the endpoint responds to OPTIONS
+      await this.checkEndpoint('/api/ai/conversation-processing', async (signal) => {
         const response = await fetch(`${webUIConfig.backendUrl}/api/ai/conversation-processing`, {
-          method: 'OPTIONS',
+          method: 'HEAD',
           headers: { 'Content-Type': 'application/json' },
+          signal,
         });
         return { status: response.ok ? 'healthy' : 'error' };
       });
 
       // Check memory store endpoint (lightweight test)
-      await this.checkEndpoint('/api/memory/store', async () => {
+      await this.checkEndpoint('/api/memory/store', async (signal) => {
         const response = await fetch(`${webUIConfig.backendUrl}/api/memory/store`, {
           method: 'OPTIONS',
           headers: { 'Content-Type': 'application/json' },
+          signal,
         });
         return { status: response.ok ? 'healthy' : 'error' };
       });
 
       // Check plugin endpoints
-      await this.checkEndpoint('/api/plugins/list', async () => {
+      await this.checkEndpoint('/api/plugins', async (_signal) => {
         return await backend.getAvailablePlugins();
       });
 
       // Check analytics endpoints
-      await this.checkEndpoint('/api/analytics/system-metrics', async () => {
+      await this.checkEndpoint('/api/analytics/system-metrics', async (_signal) => {
         return await backend.getSystemMetrics();
       });
 
@@ -253,30 +254,55 @@ class HealthMonitor {
    */
   private async checkEndpoint(
     endpoint: string,
-    checkFunction: () => Promise<any>
+    checkFunction: (signal: AbortSignal) => Promise<any>
   ): Promise<void> {
     const startTime = Date.now();
+    const controller = new AbortController();
 
     try {
+      let timeoutId: NodeJS.Timeout;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          reject(new Error('Health check timeout'));
+        }, webUIConfig.healthCheckTimeout);
+      });
+
       const result = await Promise.race([
-        checkFunction(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Health check timeout')), webUIConfig.healthCheckTimeout)
-        ),
+        checkFunction(controller.signal),
+        timeoutPromise,
       ]);
+      clearTimeout(timeoutId!);
 
       const responseTime = Date.now() - startTime;
 
+      const summarize = (data: any) => {
+        if (Array.isArray(data)) {
+          return { length: data.length };
+        }
+        if (data && typeof data === 'object') {
+          const entries = Object.entries(data).slice(0, 10);
+          return Object.fromEntries(entries);
+        }
+        return data;
+      };
+
+      const status = result?.status === 'error' ? 'error' : 'healthy';
+
       this.metrics.endpoints[endpoint] = {
         endpoint,
-        status: result?.status === 'error' ? 'error' : 'healthy',
+        status,
         responseTime,
         timestamp: new Date().toISOString(),
-        details: result,
+        details: summarize(result),
       };
 
       this.metrics.totalRequests++;
-      this.metrics.successfulRequests++;
+      if (status === 'healthy') {
+        this.metrics.successfulRequests++;
+      } else {
+        this.metrics.failedRequests++;
+      }
 
     } catch (error) {
       const responseTime = Date.now() - startTime;
@@ -341,7 +367,7 @@ class HealthMonitor {
    */
   private triggerAlert(rule: AlertRule): void {
     const alert: Alert = {
-      id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `alert_${Math.random().toString(36).slice(2, 11)}`,
       ruleId: rule.id,
       message: rule.message,
       severity: rule.severity,

@@ -66,4 +66,34 @@ describe('KarenBackendService session handling', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://test/api/auth/me', expect.any(Object));
     expect(assignMock).toHaveBeenCalledWith('/login');
   });
+
+  it('returns cached plugins when service unavailable', async () => {
+    const service = new KarenBackendService({ baseUrl: 'http://test' });
+    // bypass auth
+    // @ts-ignore
+    service.ensureAuthenticated = vi.fn().mockResolvedValue(true);
+
+    const plugins = { plugins: [{ name: 'p1' }] };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        mockResponse(plugins, { status: 200, headers: { 'Content-Type': 'application/json' } })
+      )
+      .mockResolvedValueOnce(
+        mockResponse(
+          { error: 'Service Unavailable', message: 'unavailable', type: 'SERVICE_UNAVAILABLE', timestamp: '' },
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+    global.fetch = fetchMock as any;
+
+    const first = await service.getAvailablePlugins();
+    expect(first).toEqual([{ name: 'p1' }]);
+    expect(fetchMock.mock.calls[0][0]).toBe('http://test/api/plugins');
+
+    const second = await service.getAvailablePlugins();
+    expect(second).toEqual([{ name: 'p1' }]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });
