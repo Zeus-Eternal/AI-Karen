@@ -1,8 +1,9 @@
-
 "use client";
 
-import { useState } from 'react';
-import { Brain, MessageSquare, SettingsIcon as SettingsIconLucide, PanelLeft, Bell, SlidersHorizontal, LayoutGrid, Database, Facebook, BookOpenCheck, Mail, CalendarDays, CloudSun, PlugZap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { Brain, MessageSquare, SettingsIcon as SettingsIconLucide, Bell, SlidersHorizontal, LayoutGrid, Database, Facebook, BookOpenCheck, Mail, CalendarDays, CloudSun, PlugZap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import SettingsDialogComponent from '@/components/settings/SettingsDialog';
 import DatabaseConnectorPluginPage from '@/components/plugins/DatabaseConnectorPluginPage';
@@ -35,7 +36,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from '@/components/ui/separator';
 import NotificationsSection from '@/components/sidebar/NotificationsSection';
-import ModernChatInterface from '@/components/chat/ModernChatInterface';
 import Dashboard from '@/components/dashboard/Dashboard';
 import { webUIConfig } from '@/lib/config';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -43,7 +43,7 @@ import { AuthenticatedHeader } from '@/components/layout/AuthenticatedHeader';
 
 const ExtensionSidebar = dynamic(() => import('@/components/extensions/ExtensionSidebar'));
 
-type ActiveView = 'chat' | 'settings' | 'dashboard' | 'commsCenter' | 'pluginDatabaseConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview';
+type ActiveView = 'settings' | 'dashboard' | 'commsCenter' | 'pluginDatabaseConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview';
 
 export default function HomePage() {
   return (
@@ -54,7 +54,22 @@ export default function HomePage() {
 }
 
 function AuthenticatedHomePage() {
-  const [activeMainView, setActiveMainView] = useState<ActiveView>('chat');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const initialView = (searchParams.get('view') as ActiveView) || 'dashboard';
+  const [activeMainView, setActiveMainView] = useState<ActiveView>(initialView);
+
+  useEffect(() => {
+    setActiveMainView(initialView);
+  }, [initialView]);
+
+  const navigate = (view: ActiveView) => {
+    setActiveMainView(view);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('view', view);
+    router.push(`/?${params.toString()}`);
+  };
 
   return (
     <SidebarProvider>
@@ -98,42 +113,28 @@ function AuthenticatedHomePage() {
               <Separator className="my-1" />
               <AppSidebarContent className="p-2">
                 <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setActiveMainView('chat')}
-                    isActive={activeMainView === 'chat'}
-                    className="w-full"
-                  >
-                    <MessageSquare />
-                    Chat
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setActiveMainView('dashboard')}
-                    isActive={activeMainView === 'dashboard'}
-                    className="w-full"
-                  >
-                    <LayoutGrid />
-                    Dashboard
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={() => setActiveMainView('settings')}
-                      isActive={activeMainView === 'settings'}
-                      className="w-full"
-                    >
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild className="w-full" isActive={pathname === '/chat'}>
+                      <Link href="/chat">
+                        <MessageSquare />
+                        Chat
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={() => navigate('dashboard')} isActive={activeMainView === 'dashboard'} className="w-full">
+                      <LayoutGrid />
+                      Dashboard
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={() => navigate('settings')} isActive={activeMainView === 'settings'} className="w-full">
                       <SettingsIconLucide />
                       Settings
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setActiveMainView('commsCenter')}
-                      isActive={activeMainView === 'commsCenter'}
-                      className="w-full"
-                    >
+                    <SidebarMenuButton onClick={() => navigate('commsCenter')} isActive={activeMainView === 'commsCenter'} className="w-full">
                       <Bell />
                       Comms Center
                     </SidebarMenuButton>
@@ -145,61 +146,37 @@ function AuthenticatedHomePage() {
                   <SidebarGroupLabel className="text-sm">Plugins</SidebarGroupLabel>
                   <SidebarMenu>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('pluginOverview')}
-                        isActive={activeMainView === 'pluginOverview'}
-                        className="w-full"
-                      >
+                      <SidebarMenuButton onClick={() => navigate('pluginOverview')} isActive={activeMainView === 'pluginOverview'} className="w-full">
                         <PlugZap />
                         Plugin Overview
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('pluginDatabaseConnector')}
-                        isActive={activeMainView === 'pluginDatabaseConnector'}
-                        className="w-full"
-                      >
+                      <SidebarMenuButton onClick={() => navigate('pluginDatabaseConnector')} isActive={activeMainView === 'pluginDatabaseConnector'} className="w-full">
                         <Database />
                         Database Connector
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('pluginFacebook')}
-                        isActive={activeMainView === 'pluginFacebook'}
-                        className="w-full"
-                      >
+                      <SidebarMenuButton onClick={() => navigate('pluginFacebook')} isActive={activeMainView === 'pluginFacebook'} className="w-full">
                         <Facebook />
-                        Facebook Integration
+                        Facebook Plugin
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('pluginGmail')}
-                        isActive={activeMainView === 'pluginGmail'}
-                        className="w-full"
-                      >
+                      <SidebarMenuButton onClick={() => navigate('pluginGmail')} isActive={activeMainView === 'pluginGmail'} className="w-full">
                         <Mail />
-                        Gmail Integration
+                        Gmail Plugin
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('pluginDateTime')}
-                        isActive={activeMainView === 'pluginDateTime'}
-                        className="w-full"
-                      >
+                      <SidebarMenuButton onClick={() => navigate('pluginDateTime')} isActive={activeMainView === 'pluginDateTime'} className="w-full">
                         <CalendarDays />
-                        Date/Time Service
+                        Date/Time Plugin
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        onClick={() => setActiveMainView('pluginWeather')}
-                        isActive={activeMainView === 'pluginWeather'}
-                        className="w-full"
-                      >
+                      <SidebarMenuButton onClick={() => navigate('pluginWeather')} isActive={activeMainView === 'pluginWeather'} className="w-full">
                         <CloudSun />
                         Weather Service
                       </SidebarMenuButton>
@@ -215,7 +192,6 @@ function AuthenticatedHomePage() {
 
           <SidebarInset className="flex-1 flex flex-col min-h-0">
             <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6 overflow-y-auto">
-              {activeMainView === 'chat' && <ModernChatInterface />}
               {activeMainView === 'dashboard' && <Dashboard />}
               {activeMainView === 'settings' && <SettingsDialogComponent />}
               {activeMainView === 'pluginDatabaseConnector' && <DatabaseConnectorPluginPage />}
@@ -234,10 +210,9 @@ function AuthenticatedHomePage() {
                   </div>
                   <Separator />
                   <NotificationsSection />
-
-                   <div>
+                  <div>
                     <h3 className="text-lg font-semibold mb-2 pt-4">My Notes (Conceptual)</h3>
-                     <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm min-h-[150px]">
+                    <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm min-h-[150px]">
                       <p className="text-sm text-muted-foreground">This space is reserved for future features.</p>
                       <p className="mt-1 text-sm text-muted-foreground">For example, Karen might save summaries of long conversations or important points she's learned here for your easy review.</p>
                     </div>
