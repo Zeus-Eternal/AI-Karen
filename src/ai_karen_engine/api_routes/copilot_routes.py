@@ -496,6 +496,7 @@ Please provide a helpful response and suggest relevant actions."""
                 logger.debug(
                     f"Write-back error response: {error_response.message}",
                     extra={"correlation_id": correlation_id},
+                )
 
         timings["memory_writeback_ms"] = (
             datetime.utcnow() - writeback_start

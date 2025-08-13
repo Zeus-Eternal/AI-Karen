@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from .unified_schemas import ErrorHandler
+from .unified_schemas import ErrorHandler, ErrorType, FieldError, ValidationUtils
 
 logger = logging.getLogger(__name__)
 
@@ -484,6 +484,97 @@ async def memory_commit(request: MemCommit, http_request: Request):
         raise HTTPException(status_code=403, detail=error_response.dict())
 
     try:
+        # Field validations
+        try:
+            request.text = ValidationUtils.validate_text_content(request.text)
+        except ValueError as e:
+            commit_duration = (datetime.utcnow() - start_time).total_seconds()
+            record_metrics(
+                "commit",
+                "validation_error",
+                commit_duration,
+                request.user_id,
+                request.org_id or "",
+                request.decay,
+                correlation_id,
+            )
+            error_response = ErrorHandler.create_error_response(
+                error_type=ErrorType.VALIDATION_ERROR,
+                message=str(e),
+                correlation_id=correlation_id,
+                path=str(http_request.url.path),
+                status_code=422,
+                field_errors=[
+                    FieldError(
+                        field="text",
+                        message=str(e),
+                        code="invalid_text",
+                        invalid_value=request.text,
+                    )
+                ],
+            )
+            raise HTTPException(status_code=422, detail=error_response.dict())
+
+        try:
+            request.tags = ValidationUtils.validate_tags(request.tags)
+        except ValueError as e:
+            commit_duration = (datetime.utcnow() - start_time).total_seconds()
+            record_metrics(
+                "commit",
+                "validation_error",
+                commit_duration,
+                request.user_id,
+                request.org_id or "",
+                request.decay,
+                correlation_id,
+            )
+            error_response = ErrorHandler.create_error_response(
+                error_type=ErrorType.VALIDATION_ERROR,
+                message=str(e),
+                correlation_id=correlation_id,
+                path=str(http_request.url.path),
+                status_code=422,
+                field_errors=[
+                    FieldError(
+                        field="tags",
+                        message=str(e),
+                        code="invalid_tags",
+                        invalid_value=request.tags,
+                    )
+                ],
+            )
+            raise HTTPException(status_code=422, detail=error_response.dict())
+
+        try:
+            request.importance = ValidationUtils.validate_importance(request.importance)
+        except ValueError as e:
+            commit_duration = (datetime.utcnow() - start_time).total_seconds()
+            record_metrics(
+                "commit",
+                "validation_error",
+                commit_duration,
+                request.user_id,
+                request.org_id or "",
+                request.decay,
+                correlation_id,
+            )
+            error_response = ErrorHandler.create_error_response(
+                error_type=ErrorType.VALIDATION_ERROR,
+                message=str(e),
+                correlation_id=correlation_id,
+                path=str(http_request.url.path),
+                status_code=422,
+                field_errors=[
+                    FieldError(
+                        field="importance",
+                        message=str(e),
+                        code="invalid_importance",
+                        invalid_value=request.importance,
+                    )
+                ],
+            )
+            raise HTTPException(status_code=422, detail=error_response.dict())
+
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(request.user_id, request.org_id)
 
@@ -596,6 +687,100 @@ async def memory_update(
         raise HTTPException(status_code=403, detail=error_response.dict())
 
     try:
+        # Field validations
+        if request.text is not None:
+            try:
+                request.text = ValidationUtils.validate_text_content(request.text)
+            except ValueError as e:
+                update_duration = (datetime.utcnow() - start_time).total_seconds()
+                record_metrics(
+                    "update",
+                    "validation_error",
+                    update_duration,
+                    user_id,
+                    org_id or "",
+                    "",
+                    correlation_id,
+                )
+                error_response = ErrorHandler.create_error_response(
+                    error_type=ErrorType.VALIDATION_ERROR,
+                    message=str(e),
+                    correlation_id=correlation_id,
+                    path=str(http_request.url.path),
+                    status_code=422,
+                    field_errors=[
+                        FieldError(
+                            field="text",
+                            message=str(e),
+                            code="invalid_text",
+                            invalid_value=request.text,
+                        )
+                    ],
+                )
+                raise HTTPException(status_code=422, detail=error_response.dict())
+
+        if request.tags is not None:
+            try:
+                request.tags = ValidationUtils.validate_tags(request.tags)
+            except ValueError as e:
+                update_duration = (datetime.utcnow() - start_time).total_seconds()
+                record_metrics(
+                    "update",
+                    "validation_error",
+                    update_duration,
+                    user_id,
+                    org_id or "",
+                    "",
+                    correlation_id,
+                )
+                error_response = ErrorHandler.create_error_response(
+                    error_type=ErrorType.VALIDATION_ERROR,
+                    message=str(e),
+                    correlation_id=correlation_id,
+                    path=str(http_request.url.path),
+                    status_code=422,
+                    field_errors=[
+                        FieldError(
+                            field="tags",
+                            message=str(e),
+                            code="invalid_tags",
+                            invalid_value=request.tags,
+                        )
+                    ],
+                )
+                raise HTTPException(status_code=422, detail=error_response.dict())
+
+        if request.importance is not None:
+            try:
+                request.importance = ValidationUtils.validate_importance(request.importance)
+            except ValueError as e:
+                update_duration = (datetime.utcnow() - start_time).total_seconds()
+                record_metrics(
+                    "update",
+                    "validation_error",
+                    update_duration,
+                    user_id,
+                    org_id or "",
+                    "",
+                    correlation_id,
+                )
+                error_response = ErrorHandler.create_error_response(
+                    error_type=ErrorType.VALIDATION_ERROR,
+                    message=str(e),
+                    correlation_id=correlation_id,
+                    path=str(http_request.url.path),
+                    status_code=422,
+                    field_errors=[
+                        FieldError(
+                            field="importance",
+                            message=str(e),
+                            code="invalid_importance",
+                            invalid_value=request.importance,
+                        )
+                    ],
+                )
+                raise HTTPException(status_code=422, detail=error_response.dict())
+
         # Apply tenant filtering
         tenant_filters = apply_tenant_filtering(user_id, org_id)
 
