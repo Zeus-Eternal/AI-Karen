@@ -11,19 +11,19 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  MessageSquare, 
-  Grid3X3, 
-  BarChart3, 
-  Settings, 
-  Send, 
-  Bot, 
-  User, 
+import {
+  MessageSquare,
+  Grid3X3,
+  BarChart3,
+  Settings,
+  Send,
+  Bot,
   Sparkles,
   Brain,
   Database,
   Zap
 } from 'lucide-react';
+import { ChatBubble } from './ChatBubble';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getChatService } from '@/services/chatService';
@@ -241,58 +241,9 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
         );
       }
     }
-  ];
+];
 
-  // Message component
-  const MessageComponent = ({ message }: { message: ChatMessage }) => {
-    const isUser = message.role === 'user';
-
-    return (
-      <div className={`flex gap-3 mb-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
-        }`}>
-          {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-        </div>
-        
-        <div className={`flex-1 max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>
-          <div className={`inline-block p-3 rounded-lg ${
-            isUser 
-              ? 'bg-primary text-primary-foreground' 
-              : 'bg-muted border'
-          }`}>
-            <p className="whitespace-pre-wrap">{message.content}</p>
-            
-            {message.aiData && (
-              <div className="mt-2 pt-2 border-t border-border/20">
-                <div className="flex items-center gap-2 text-xs opacity-70">
-                  {message.confidence && (
-                    <Badge variant="outline" className="text-xs">
-                      {Math.round(message.confidence * 100)}% confidence
-                    </Badge>
-                  )}
-                  {message.aiData.keywords && message.aiData.keywords.length > 0 && (
-                    <div className="flex gap-1">
-                      {message.aiData.keywords.slice(0, 3).map((keyword, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-xs">
-                          {keyword}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-            <span>{format(message.timestamp, 'HH:mm')}</span>
-          </div>
-        </div>
-      </div>
-    );
-  };  re
-turn (
+return (
     <div className={`flex flex-col h-full ${className}`}>
       <Tabs value={activeView} onValueChange={setActiveView} className="flex-1 flex flex-col">
         <div className="border-b">
@@ -345,7 +296,12 @@ turn (
                         </div>
                       ) : (
                         messages.map((message) => (
-                          <MessageComponent key={message.id} message={message} />
+                          <ChatBubble
+                            key={message.id}
+                            role={message.role}
+                            content={message.content}
+                            meta={{ confidence: message.confidence }}
+                          />
                         ))
                       )}
                       

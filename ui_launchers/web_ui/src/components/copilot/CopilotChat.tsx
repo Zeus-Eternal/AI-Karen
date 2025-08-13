@@ -7,25 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  MessageSquare, 
-  Send, 
-  Bot, 
-  User, 
-  Code, 
-  FileText, 
-  Lightbulb,
-  Copy,
-  ThumbsUp,
-  ThumbsDown,
-  Loader2,
-  Sparkles
-} from 'lucide-react';
+import { Send, Bot, Code, FileText, Lightbulb, Loader2, Sparkles } from 'lucide-react';
 import { useCopilotKit } from './CopilotKitProvider';
 import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { ChatBubble } from '@/components/chat/ChatBubble';
 
 interface ChatMessage {
   id: string;
@@ -194,116 +181,6 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
     }
   };
 
-  // Copy message content
-  const copyMessage = useCallback(async (content: string) => {
-    try {
-      await navigator.clipboard.writeText(content);
-      toast({
-        title: 'Copied',
-        description: 'Message content copied to clipboard',
-        duration: 2000
-      });
-    } catch (error) {
-      console.error('Failed to copy:', error);
-    }
-  }, [toast]);
-
-  // Rate message
-  const rateMessage = useCallback(async (messageId: string, rating: 'up' | 'down') => {
-    await triggerHooks('copilot_message_rated', {
-      messageId,
-      rating,
-      userId: user?.user_id
-    }, { userId: user?.user_id });
-
-    toast({
-      title: 'Feedback Recorded',
-      description: `Thank you for your ${rating === 'up' ? 'positive' : 'negative'} feedback`,
-      duration: 2000
-    });
-  }, [triggerHooks, user?.user_id, toast]);
-
-  // Message component
-  const MessageComponent = ({ message }: { message: ChatMessage }) => {
-    const isUser = message.role === 'user';
-    const isCode = message.type === 'code' || message.content.includes('```');
-
-    return (
-      <div className={`flex gap-3 mb-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
-        }`}>
-          {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-        </div>
-        
-        <div className={`flex-1 max-w-[80%] ${isUser ? 'text-right' : 'text-left'}`}>
-          <div className={`inline-block p-3 rounded-lg ${
-            isUser 
-              ? 'bg-primary text-primary-foreground' 
-              : 'bg-muted border'
-          }`}>
-            {isCode ? (
-              <pre className="whitespace-pre-wrap font-mono text-sm overflow-x-auto">
-                <code>{message.content}</code>
-              </pre>
-            ) : (
-              <p className="whitespace-pre-wrap">{message.content}</p>
-            )}
-            
-            {message.metadata && (
-              <div className="mt-2 pt-2 border-t border-border/20">
-                <div className="flex items-center gap-2 text-xs opacity-70">
-                  {message.metadata.confidence && (
-                    <Badge variant="outline" className="text-xs">
-                      {Math.round(message.metadata.confidence * 100)}% confidence
-                    </Badge>
-                  )}
-                  {message.type && message.type !== 'text' && (
-                    <Badge variant="secondary" className="text-xs">
-                      {message.type}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-            <span>{format(message.timestamp, 'HH:mm')}</span>
-            
-            {!isUser && (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={() => copyMessage(message.content)}
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={() => rateMessage(message.id, 'up')}
-                >
-                  <ThumbsUp className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={() => rateMessage(message.id, 'down')}
-                >
-                  <ThumbsDown className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <Card className={`flex flex-col ${className}`} style={{ height }}>
@@ -332,11 +209,16 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
                   {enableCodeAssistance && " Try asking me about code or programming concepts!"}
                 </p>
               </div>
-            ) : (
-              messages.map((message) => (
-                <MessageComponent key={message.id} message={message} />
-              ))
-            )}
+              ) : (
+                messages.map((message) => (
+                  <ChatBubble
+                    key={message.id}
+                    role={message.role}
+                    content={message.content}
+                    meta={{ confidence: message.metadata?.confidence }}
+                  />
+                ))
+              )}
             
             {isTyping && (
               <div className="flex gap-3 mb-4">
