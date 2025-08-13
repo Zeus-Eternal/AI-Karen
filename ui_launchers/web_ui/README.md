@@ -74,6 +74,18 @@ The Karen AI Web UI provides a sophisticated chat interface with plugin manageme
 2. Configure environment variables (see Configuration section)
 3. Install dependencies and start development server
 
+#### Meta Display Flags
+
+The chat interface supports toggling metadata badges via environment variables. All default to `true`.
+
+| Variable | Description |
+| --- | --- |
+| `NEXT_PUBLIC_SHOW_MODEL_BADGE` | Show the model name badge |
+| `NEXT_PUBLIC_SHOW_LATENCY_BADGE` | Show latency information |
+| `NEXT_PUBLIC_SHOW_CONFIDENCE_BADGE` | Show confidence percentage |
+
+Set any of these variables to `false` to hide the corresponding badge.
+
 ## Quick Start
 
 ### Installation

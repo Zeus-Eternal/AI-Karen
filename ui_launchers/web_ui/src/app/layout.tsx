@@ -4,6 +4,7 @@ import { Inter, Roboto_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
+import { ThemeBridge } from "@/components/theme/ThemeBridge";
 
 const inter = Inter({
   variable: '--font-sans',
@@ -30,9 +31,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.variable} ${robotoMono.variable} font-sans antialiased`}>
-        <Providers>
-          {children}
-        </Providers>
+        <ThemeBridge>
+          <Providers>
+            {children}
+          </Providers>
+        </ThemeBridge>
         <Toaster />
       </body>
     </html>
