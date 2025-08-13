@@ -7,6 +7,7 @@ import logging
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from contextlib import nullcontext
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -217,11 +218,7 @@ def record_metrics(
                 operation, status, user_id, org_id, correlation_id
             )
 
-        # Record vector latency for search operations
-        if operation == "search":
-            metrics_service.record_vector_latency(
-                duration, "search", status, correlation_id
-            )
+        # Vector latency is recorded via timing context manager
 
     except Exception as e:
         logger.warning(f"Metrics recording failed: {e}")
@@ -245,6 +242,8 @@ async def memory_search(request: MemQuery, http_request: Request):
     """
     start_time = datetime.utcnow()
     correlation_id = get_correlation_id(http_request)
+    metrics_service = get_metrics_service() if METRICS_AVAILABLE else None
+    query_duration = 0.0
 
     # Set correlation ID in context for propagation
     if CORRELATION_AVAILABLE:
@@ -298,7 +297,19 @@ async def memory_search(request: MemQuery, http_request: Request):
                     user_id=request.user_id,
                     top_k=request.top_k,
                 )
-                memories = await memory_service.query_memories(tenant_id, query)
+                query_start = datetime.utcnow()
+                timer = (
+                    metrics_service.time_operation(
+                        "vector_search",
+                        {"operation": "search"},
+                        correlation_id,
+                    )
+                    if metrics_service
+                    else nullcontext()
+                )
+                with timer:
+                    memories = await memory_service.query_memories(tenant_id, query)
+                query_duration = (datetime.utcnow() - query_start).total_seconds()
                 hits = [
                     ContextHit(
                         id=mem.id,
@@ -323,6 +334,7 @@ async def memory_search(request: MemQuery, http_request: Request):
                 hits = []
         else:
             # Fallback mock results
+            fallback_start = datetime.utcnow()
             hits = [
                 ContextHit(
                     id="fallback_mem_1",
@@ -337,9 +349,9 @@ async def memory_search(request: MemQuery, http_request: Request):
                     meta={"source": "fallback"},
                 )
             ]
+            query_duration = (datetime.utcnow() - fallback_start).total_seconds()
 
         # Calculate timing
-        query_duration = (datetime.utcnow() - start_time).total_seconds()
         query_time_ms = query_duration * 1000
 
         # Record metrics

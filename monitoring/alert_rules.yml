@@ -17,3 +17,30 @@ groups:
         annotations:
           summary: 'Availability below SLO for {{ $labels.check }}'
           description: 'Availability dropped below 99% for check {{ $labels.check }}'
+
+  - name: copilot_latency_slo
+    rules:
+      - alert: VectorSearchLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(vector_latency_seconds_bucket[5m])) by (le, operation)) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Vector search p95 latency above 50ms for {{ $labels.operation }}'
+          description: '95th percentile vector search latency exceeded 50ms'
+      - alert: LLMGenerationLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(llm_latency_seconds_bucket[5m])) by (le, provider, model)) > 1.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'LLM generation p95 latency above 1.2s for {{ $labels.provider }}/{{ $labels.model }}'
+          description: '95th percentile LLM generation latency exceeded 1.2s'
+      - alert: TurnTimeHigh
+        expr: histogram_quantile(0.95, sum(rate(total_turn_time_seconds_bucket[5m])) by (le, endpoint)) > 3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'End-to-end turn p95 latency above 3s for {{ $labels.endpoint }}'
+          description: '95th percentile total turn time exceeded 3s'

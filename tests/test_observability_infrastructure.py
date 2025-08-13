@@ -270,6 +270,33 @@ def test_performance_thresholds():
     assert e2e_slo is not None
     assert e2e_slo.target_value == 3.0  # 3 seconds
 
+
+def test_latency_percentiles_under_high_load():
+    """Simulate high-load scenarios and verify p95 latency thresholds"""
+    from src.ai_karen_engine.services import metrics_service as ms
+
+    ms.PROMETHEUS_AVAILABLE = False
+    metrics = ms.MetricsService()
+    for i in range(100):
+        vec = 0.02 if i < 97 else 0.06
+        llm = 0.8 if i < 97 else 1.5
+        turn = 2.5 if i < 97 else 4.0
+        metrics.record_vector_latency(vec)
+        metrics.record_llm_latency(llm, provider="local", model="test")
+        metrics.record_total_turn_time(turn, "copilot_assist")
+
+    stats = metrics.fallback_collector.get_stats()
+    vec_key = next(k for k in stats["histograms"] if k.startswith("vector_latency_seconds"))
+    vec_p95 = stats["histograms"][vec_key]["p95"]
+    llm_key = next(k for k in stats["histograms"] if k.startswith("llm_latency_seconds"))
+    llm_p95 = stats["histograms"][llm_key]["p95"]
+    turn_key = next(k for k in stats["histograms"] if k.startswith("total_turn_time_seconds"))
+    turn_p95 = stats["histograms"][turn_key]["p95"]
+
+    assert vec_p95 < 0.05  # 50ms
+    assert llm_p95 < 1.2
+    assert turn_p95 < 3.0
+
 def test_memory_quality_tracking():
     """Test memory quality metrics tracking"""
     from src.ai_karen_engine.services.metrics_service import get_metrics_service
