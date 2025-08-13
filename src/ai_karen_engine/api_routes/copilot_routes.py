@@ -245,7 +245,7 @@ async def copilot_assist(request: AssistRequest, http_request: Request):
             path=str(http_request.url.path),
             message="Insufficient permissions for copilot assistance",
         )
-        raise HTTPException(status_code=403, detail=error_response.dict())
+        raise HTTPException(status_code=403, detail=error_response.model_dump(mode="json"))
 
     try:
         with turn_timer:
@@ -643,7 +643,7 @@ Please provide a helpful response and suggest relevant actions."""
         error_response = ErrorHandler.create_internal_error_response(
             correlation_id=correlation_id, path=str(http_request.url.path), error=e
         )
-        raise HTTPException(status_code=500, detail=error_response.dict())
+        raise HTTPException(status_code=500, detail=error_response.model_dump(mode="json"))
 
 
 @router.get("/health")

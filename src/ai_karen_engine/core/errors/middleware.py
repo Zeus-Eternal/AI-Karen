@@ -72,7 +72,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             # Return JSON error response
             return JSONResponse(
                 status_code=status_code,
-                content=error_response.dict(),
+                content=error_response.model_dump(mode="json"),
                 headers={
                     "X-Request-ID": request_id,
                     "X-Trace-ID": trace_id

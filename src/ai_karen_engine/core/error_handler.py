@@ -17,4 +17,4 @@ def handle_api_exception(error: Exception, user_message: str | None = None) -> J
     if user_message:
         error_response.message = user_message
     status_code = handler.get_http_status_code(error_response.error_code)
-    return JSONResponse(status_code=status_code, content=error_response.dict())
+    return JSONResponse(status_code=status_code, content=error_response.model_dump(mode="json"))
