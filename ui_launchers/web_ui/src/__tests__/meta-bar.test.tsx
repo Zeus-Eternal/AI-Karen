@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { MetaBar } from '@/components/chat';
+import { webUIConfig } from '@/lib/config';
 
 describe('MetaBar', () => {
   it('renders provided metadata badges', () => {
@@ -20,5 +21,12 @@ describe('MetaBar', () => {
     expect(screen.queryByText(/Latency:/)).toBeNull();
     expect(screen.queryByText(/Confidence:/)).toBeNull();
     expect(screen.queryByText(/Annotations:/)).toBeNull();
+  });
+
+  it('respects config flags to hide badges', () => {
+    webUIConfig.showLatencyBadge = false;
+    render(<MetaBar model="gpt-4" latencyMs={123} confidence={0.9} />);
+    expect(screen.queryByText('Latency: 123ms')).toBeNull();
+    webUIConfig.showLatencyBadge = true;
   });
 });

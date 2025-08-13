@@ -13,6 +13,18 @@ import { webUIConfig, type WebUIConfig } from './config';
 import { getPerformanceMonitor } from './performance-monitor';
 import { getStoredApiKey } from './secure-api-key';
 
+export const SESSION_ID_KEY = 'auth_session_id';
+
+export function initializeSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  let sessionId = localStorage.getItem(SESSION_ID_KEY);
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem(SESSION_ID_KEY, sessionId);
+  }
+  return sessionId;
+}
+
 // Error handling types
 interface WebUIErrorResponse {
   error: string;
@@ -258,6 +270,19 @@ class KarenBackendService {
 
           const apiError = APIError.fromResponse(response, errorDetails);
 
+          if (response.status === 401) {
+            try {
+              const meResp = await fetch(`${this.config.baseUrl}/api/auth/me`, {
+                headers,
+              });
+              if (meResp.status === 401 && typeof window !== 'undefined') {
+                window.location.assign('/login');
+              }
+            } catch {
+              // ignore secondary auth errors
+            }
+          }
+
           // Don't retry non-retryable errors
           if (!apiError.isRetryable || attempt === maxRetries) {
             throw apiError;
@@ -406,6 +431,10 @@ class KarenBackendService {
     }
   }
 
+  private getSessionId(): string {
+    return initializeSessionId();
+  }
+
   // Auto-authentication for memory operations
   private async ensureAuthenticated(): Promise<boolean> {
     // Check if we already have a valid session token
@@ -465,6 +494,7 @@ class KarenBackendService {
     sessionId?: string
   ): Promise<string | null> {
     try {
+      const sid = sessionId ?? this.getSessionId();
       // Ensure we're authenticated before attempting to store memory
       const isAuthenticated = await this.ensureAuthenticated();
       if (!isAuthenticated) {
@@ -474,12 +504,14 @@ class KarenBackendService {
 
       // Prepare the request payload for the secure memory endpoint
       const requestPayload = {
-        user_id: userId || sessionId || 'anonymous',
+        user_id: userId || sid || 'anonymous',
         org_id: null,
         text: content,
         tags: tags || [],
         importance: 5,
-        decay: 'short'
+        decay: 'short',
+        session_id: sid,
+        metadata: metadata || {},
       };
 
       console.log('Storing memory with payload:', requestPayload);
@@ -508,7 +540,7 @@ class KarenBackendService {
                 body: JSON.stringify({
                   content: content,
                   ui_source: 'web',
-                  session_id: sessionId,
+                  session_id: sid,
                   memory_type: 'general',
                   tags: tags || [],
                   metadata: metadata || {},
@@ -545,11 +577,13 @@ class KarenBackendService {
       }
 
       // Transform the query to match the backend format
+      const sid = query.session_id ?? this.getSessionId();
       const backendQuery = {
-        user_id: query.user_id || query.session_id || 'anonymous',
+        user_id: query.user_id || sid || 'anonymous',
         org_id: null,
         query: query.text,
         top_k: query.top_k || 12,
+        session_id: sid,
       };
 
       const response = await this.makeRequest<{ memories: any[] }>('/api/memory/search', {
@@ -747,6 +781,7 @@ class KarenBackendService {
     sessionId?: string
   ): Promise<HandleUserMessageResult> {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sid = sessionId ?? this.getSessionId();
 
     try {
       // Ensure we're authenticated before processing the message
@@ -762,7 +797,7 @@ class KarenBackendService {
       console.log(`[${requestId}] Processing user message:`, {
         message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
         userId,
-        sessionId,
+        sessionId: sid,
         historyLength: conversationHistory.length,
       });
 
@@ -770,7 +805,7 @@ class KarenBackendService {
       const relevantMemories = await this.queryMemories({
         text: message,
         user_id: userId,
-        session_id: sessionId,
+        session_id: sid,
         top_k: 5,
         similarity_threshold: 0.7,
       });
@@ -796,7 +831,7 @@ class KarenBackendService {
             timestamp: msg.timestamp.toISOString(),
           })),
           user_settings: settings,
-          session_id: sessionId,
+          session_id: sid,
           context: {
             relevant_memories: relevantMemories.map(mem => ({
               content: mem.content,
@@ -804,7 +839,7 @@ class KarenBackendService {
               tags: mem.tags,
             })),
             user_id: userId,
-            session_id: sessionId,
+            session_id: sid,
           },
           include_memories: true,
           include_insights: true,
@@ -842,7 +877,7 @@ class KarenBackendService {
           },
           ['conversation', 'chat'],
           userId,
-          sessionId
+          sid
         );
       }
 

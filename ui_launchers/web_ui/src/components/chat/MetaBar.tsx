@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { webUIConfig } from '@/lib/config';
 
 interface MetaBarProps {
   confidence?: number;
@@ -18,7 +19,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
 }) => {
   const items: React.ReactNode[] = [];
 
-  if (model) {
+  if (model && webUIConfig.showModelBadge) {
     items.push(
       <Badge key="model" variant="secondary" className="text-xs">
         Model: {model}
@@ -26,7 +27,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
     );
   }
 
-  if (typeof latencyMs === 'number') {
+  if (typeof latencyMs === 'number' && webUIConfig.showLatencyBadge) {
     items.push(
       <Badge key="latency" variant="secondary" className="text-xs">
         Latency: {latencyMs}ms
@@ -34,7 +35,7 @@ export const MetaBar: React.FC<MetaBarProps> = ({
     );
   }
 
-  if (typeof confidence === 'number') {
+  if (typeof confidence === 'number' && webUIConfig.showConfidenceBadge) {
     items.push(
       <Badge key="confidence" variant="secondary" className="text-xs">
         Confidence: {confidence}

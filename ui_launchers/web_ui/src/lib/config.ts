@@ -49,6 +49,11 @@ export interface WebUIConfig {
 
   // Performance
   enableServiceWorker: boolean;
+
+  // Meta bar display options
+  showModelBadge: boolean;
+  showLatencyBadge: boolean;
+  showConfidenceBadge: boolean;
 }
 
 /**
@@ -241,6 +246,11 @@ export function getWebUIConfig(): WebUIConfig {
 
     // Performance
     enableServiceWorker: parseBooleanEnv(process.env.KAREN_ENABLE_SERVICE_WORKER, false),
+
+    // Meta bar display options
+    showModelBadge: parseBooleanEnv(process.env.NEXT_PUBLIC_SHOW_MODEL_BADGE, true),
+    showLatencyBadge: parseBooleanEnv(process.env.NEXT_PUBLIC_SHOW_LATENCY_BADGE, true),
+    showConfidenceBadge: parseBooleanEnv(process.env.NEXT_PUBLIC_SHOW_CONFIDENCE_BADGE, true),
   };
 }
 
@@ -372,6 +382,11 @@ export function logConfigInfo(config: WebUIConfig): void {
     experimental: config.enableExperimentalFeatures,
     voice: config.enableVoice,
     extensions: config.enableExtensions,
+  });
+  console.log('MetaBar:', {
+    modelBadge: config.showModelBadge,
+    latencyBadge: config.showLatencyBadge,
+    confidenceBadge: config.showConfidenceBadge,
   });
   console.log('Health Checks:', {
     enabled: config.enableHealthChecks,
