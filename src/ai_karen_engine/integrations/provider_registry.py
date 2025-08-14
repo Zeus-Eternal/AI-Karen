@@ -166,43 +166,82 @@ class ProviderRegistry:
     # ---------- Internals ----------
 
     def _register_core_providers(self) -> None:
-        """
-        Best-effort auto-registration of core system providers.
-        CopilotKit provider import path follows repo layout:
-        ai_karen_engine.integrations.providers.copilotkit_provider
-        """
-        try:
-            from ai_karen_engine.integrations.providers.copilotkit_provider import (  # type: ignore
-                CopilotKitProvider,
-            )
-            # Try to import model list if provider exports it; otherwise fall back.
-            models: List[ModelInfo] = []
-            try:
-                from ai_karen_engine.integrations.providers.copilotkit_provider import (  # type: ignore
-                    COPILOTKIT_MODELS,  # expected: List[ModelInfo] or list of names
-                )
-                if isinstance(COPILOTKIT_MODELS, list):
-                    if COPILOTKIT_MODELS and isinstance(COPILOTKIT_MODELS[0], ModelInfo):
-                        models = COPILOTKIT_MODELS  # already typed
-                    else:
-                        # treat as list[str]
-                        models = [ModelInfo(name=str(n)) for n in COPILOTKIT_MODELS]
-            except Exception:  # pragma: no cover
-                # safe default
-                models = [ModelInfo(name="copilot-assist", description="Default CopilotKit model")]
+        """Best-effort auto-registration of core system providers."""
 
-            self.register_provider(
-                name="copilotkit",
-                provider_class=CopilotKitProvider,
-                description="AI-powered development assistance with memory integration and action suggestions",
-                models=models,
-                requires_api_key=False,
-                default_model=models[0].name if models else "copilot-assist",
+        try:
+            from ai_karen_engine.integrations.providers import (
+                CopilotKitProvider,
+                DeepseekProvider,
+                GeminiProvider,
+                HuggingFaceProvider,
+                OllamaProvider,
+                OpenAIProvider,
             )
-            logger.info("Auto-registered core provider: copilotkit")
-        except ImportError:
-            logger.debug("CopilotKit provider not available; skipping auto-registration.")
-        except Exception as e:
+
+            providers: List[Dict[str, Any]] = [
+                {
+                    "name": "ollama",
+                    "cls": OllamaProvider,
+                    "description": "Local Ollama server for running open-source models",
+                    "default_model": "llama3.2:latest",
+                    "requires_api_key": False,
+                    "capabilities": ["text", "embeddings"],
+                },
+                {
+                    "name": "openai",
+                    "cls": OpenAIProvider,
+                    "description": "OpenAI GPT models via API",
+                    "default_model": "gpt-3.5-turbo",
+                    "requires_api_key": True,
+                    "capabilities": ["text", "embeddings"],
+                },
+                {
+                    "name": "gemini",
+                    "cls": GeminiProvider,
+                    "description": "Google Gemini models via API",
+                    "default_model": "gemini-1.5-flash",
+                    "requires_api_key": True,
+                    "capabilities": ["text", "embeddings"],
+                },
+                {
+                    "name": "deepseek",
+                    "cls": DeepseekProvider,
+                    "description": "Deepseek models optimized for coding and reasoning",
+                    "default_model": "deepseek-chat",
+                    "requires_api_key": True,
+                    "capabilities": ["text"],
+                },
+                {
+                    "name": "huggingface",
+                    "cls": HuggingFaceProvider,
+                    "description": "HuggingFace models via Inference API or local execution",
+                    "default_model": "microsoft/DialoGPT-large",
+                    "requires_api_key": True,
+                    "capabilities": ["text", "embeddings"],
+                },
+                {
+                    "name": "copilotkit",
+                    "cls": CopilotKitProvider,
+                    "description": "AI-powered development assistance with memory integration and action suggestions",
+                    "default_model": "gpt-4",
+                    "requires_api_key": True,
+                    "capabilities": ["text", "embeddings"],
+                },
+            ]
+
+            for info in providers:
+                models = [ModelInfo(name=info["default_model"], capabilities=info["capabilities"])]
+                self.register_provider(
+                    name=info["name"],
+                    provider_class=info["cls"],
+                    description=info["description"],
+                    models=models,
+                    requires_api_key=info["requires_api_key"],
+                    default_model=info["default_model"],
+                )
+                logger.info("Auto-registered core provider: %s", info["name"])
+
+        except Exception as e:  # pragma: no cover - best effort
             logger.warning("Failed to register core providers: %s", e)
 
     def _shutdown_instance(self, provider_name: str, instance: Any, cache_key: int) -> None:

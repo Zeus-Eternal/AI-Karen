@@ -42,6 +42,7 @@ class ChatRequest:
     tools: Optional[List[str]] = None
     memory_context: Optional[str] = None
     user_preferences: Optional[Dict[str, Any]] = None
+    preferred_model: Optional[str] = None
     platform: str = "web"
     conversation_id: Optional[str] = None
     stream: bool = True
@@ -91,35 +92,72 @@ class LLMRouter:
         self,
         request: ChatRequest,
         user_preferences: Optional[Dict[str, Any]] = None
-    ) -> Optional[str]:
-        """
-        Select the best available provider based on local-first priority
-        """
+    ) -> Optional[tuple[str, Optional[str]]]:
+        """Select the best available provider based on local-first priority."""
+
         user_preferences = user_preferences or {}
-        
-        # Check if user has a preferred provider
         preferred_provider = user_preferences.get("preferred_llm_provider")
+        preferred_model = request.preferred_model or user_preferences.get("preferred_model")
+
+        # If model specified with provider prefix, split it
+        if preferred_model and ":" in preferred_model:
+            provider_part, model_part = preferred_model.split(":", 1)
+            preferred_provider = preferred_provider or provider_part
+            preferred_model = model_part
+
+        # Validate preferred provider/model combination
+        if preferred_provider and preferred_model:
+            info = self.registry.get_provider_info(preferred_provider)
+            if info and info.get("default_model") == preferred_model and await self._is_provider_healthy(preferred_provider):
+                logger.info(
+                    "Using user preferred provider/model: %s/%s",
+                    preferred_provider,
+                    preferred_model,
+                )
+                return preferred_provider, preferred_model
+            else:
+                logger.warning(
+                    "Preferred model %s not available for provider %s", preferred_model, preferred_provider
+                )
+                preferred_provider = None
+                preferred_model = None
+
+        # If only preferred model specified, find provider by model
+        if preferred_model and not preferred_provider:
+            for name in self.registry.list_providers():
+                info = self.registry.get_provider_info(name)
+                if info and info.get("default_model") == preferred_model:
+                    if await self._is_provider_healthy(name):
+                        logger.info("Selected provider %s for model %s", name, preferred_model)
+                        return name, preferred_model
+            logger.warning("Preferred model %s not available; falling back", preferred_model)
+            preferred_model = None
+
+        # Preferred provider without model
         if preferred_provider and await self._is_provider_healthy(preferred_provider):
             logger.info(f"Using user preferred provider: {preferred_provider}")
-            return preferred_provider
-        
+            info = self.registry.get_provider_info(preferred_provider)
+            model_name = info.get("default_model") if info else None
+            return preferred_provider, model_name
+
         # Get available providers sorted by priority
         available_providers = await self._get_available_providers_by_priority()
-        
+
         # Filter by requirements
-        suitable_providers = []
+        suitable_providers: List[str] = []
         for provider_name in available_providers:
             if await self._meets_requirements(provider_name, request):
                 suitable_providers.append(provider_name)
-        
+
         if not suitable_providers:
             logger.warning("No suitable providers found for request")
             return None
-        
-        # Return the highest priority suitable provider
+
         selected_provider = suitable_providers[0]
+        info = self.registry.get_provider_info(selected_provider)
+        model_name = info.get("default_model") if info else None
         logger.info(f"Selected provider: {selected_provider}")
-        return selected_provider
+        return selected_provider, model_name
     
     async def _get_available_providers_by_priority(self) -> List[str]:
         """Get available providers sorted by priority (local first)"""
@@ -211,13 +249,14 @@ class LLMRouter:
         """
         Process chat request with automatic provider selection and fallback
         """
-        provider_name = await self.select_provider(request, user_preferences)
-        if not provider_name:
+        selection = await self.select_provider(request, user_preferences)
+        if not selection:
             raise RuntimeError("No suitable provider available")
+        provider_name, model_name = selection
         
         # Try primary provider
         try:
-            async for chunk in self._process_with_provider(provider_name, request):
+            async for chunk in self._process_with_provider(provider_name, request, model_name):
                 yield chunk
             return
         except Exception as e:
@@ -242,10 +281,14 @@ class LLMRouter:
     async def _process_with_provider(
         self,
         provider_name: str,
-        request: ChatRequest
+        request: ChatRequest,
+        model_name: Optional[str] = None,
     ) -> AsyncIterator[str]:
         """Process request with a specific provider"""
-        provider = self.registry.get_provider(provider_name)
+        if model_name:
+            provider = self.registry.get_provider(provider_name, model=model_name)
+        else:
+            provider = self.registry.get_provider(provider_name)
         if not provider:
             raise RuntimeError(f"Could not get provider instance: {provider_name}")
         

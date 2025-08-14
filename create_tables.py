@@ -10,9 +10,6 @@ import sys
 from dotenv import load_dotenv
 load_dotenv()
 
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-
 from ai_karen_engine.database.models import Base
 from ai_karen_engine.database.client import get_db_session_context
 

@@ -1020,7 +1020,7 @@ class ChatOrchestrator:
                     message, 
                     language=self._detect_programming_language(message)
                 )
-                
+
                 if code_suggestions:
                     # Use CopilotKit for code-related responses
                     copilot_response = orchestrator.route_with_copilotkit(
@@ -1038,7 +1038,6 @@ class ChatOrchestrator:
                     copilot_response += suggestions_text
                     
                     return copilot_response
-            
             # Use the user's chosen LLM for response generation
             response = orchestrator.route(enhanced_prompt, skill="conversation")
             
@@ -1247,7 +1246,7 @@ class ChatOrchestrator:
             # Check if this is a code-related request for CopilotKit code assistance
             if self._is_code_related_message(message):
                 # Get code suggestions from CopilotKit if available
-                code_suggestions = orchestrator.get_code_suggestions(
+                code_suggestions = await orchestrator.get_code_suggestions(
                     message, 
                     language=self._detect_programming_language(message)
                 )
@@ -1272,7 +1271,7 @@ class ChatOrchestrator:
                     return copilot_response
             
             # Get contextual suggestions from CopilotKit
-            contextual_suggestions = orchestrator.get_contextual_suggestions(
+            contextual_suggestions = await orchestrator.get_contextual_suggestions(
                 message, 
                 context or {}
             )
