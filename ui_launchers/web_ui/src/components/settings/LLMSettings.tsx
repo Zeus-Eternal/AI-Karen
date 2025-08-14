@@ -23,6 +23,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
+import { ErrorHandler } from '@/lib/error-handler';
 
 interface LLMProvider {
   name: string;
@@ -97,9 +98,10 @@ export default function LLMSettings() {
 
     } catch (error) {
       console.error('Failed to load LLM settings:', error);
+      const info = (error as any)?.errorInfo || ErrorHandler.handleApiError(error as any, 'loadSettings');
       toast({
-        title: "Error Loading Settings",
-        description: "Could not load LLM provider settings. Using defaults.",
+        title: info.title || "Error Loading Settings",
+        description: info.message || "Could not load LLM provider settings. Using defaults.",
         variant: "destructive",
       });
     } finally {
@@ -113,6 +115,8 @@ export default function LLMSettings() {
       setProviders(response.providers || []);
     } catch (error) {
       console.error('Failed to load providers:', error);
+      const info = (error as any)?.errorInfo || ErrorHandler.handleApiError(error as any, 'loadProviders');
+      toast({ variant: 'destructive', title: info.title, description: info.message });
       // Use fallback providers if backend is unavailable
       setProviders([
         {
@@ -155,6 +159,8 @@ export default function LLMSettings() {
       setProfiles(response.profiles || []);
     } catch (error) {
       console.error('Failed to load profiles:', error);
+      const info = (error as any)?.errorInfo || ErrorHandler.handleApiError(error as any, 'loadProfiles');
+      toast({ variant: 'destructive', title: info.title, description: info.message });
       // Use fallback profiles
       setProfiles([
         {
@@ -226,9 +232,10 @@ export default function LLMSettings() {
 
     } catch (error) {
       console.error('Failed to save settings:', error);
+      const info = (error as any)?.errorInfo || ErrorHandler.handleApiError(error as any, 'saveSettings');
       toast({
-        title: "Error Saving Settings",
-        description: "Could not save LLM settings. They are saved locally in your browser.",
+        title: info.title || "Error Saving Settings",
+        description: info.message || "Could not save LLM settings. They are saved locally in your browser.",
         variant: "destructive",
       });
     } finally {
@@ -268,9 +275,10 @@ export default function LLMSettings() {
 
     } catch (error) {
       console.error('Health check failed:', error);
+      const info = (error as any)?.errorInfo || ErrorHandler.handleApiError(error as any, 'runHealthCheck');
       toast({
-        title: "Health Check Failed",
-        description: "Could not check provider health status.",
+        title: info.title || "Health Check Failed",
+        description: info.message || "Could not check provider health status.",
         variant: "destructive",
       });
     } finally {

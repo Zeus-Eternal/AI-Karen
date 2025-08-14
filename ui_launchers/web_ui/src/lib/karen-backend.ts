@@ -12,6 +12,8 @@ import type {
 import { webUIConfig, type WebUIConfig } from './config';
 import { getPerformanceMonitor } from './performance-monitor';
 import { getStoredApiKey } from './secure-api-key';
+import { ErrorHandler, type ErrorInfo } from './error-handler';
+import type { ApiError } from './api-client';
 
 export const SESSION_ID_KEY = 'auth_session_id';
 
@@ -40,6 +42,7 @@ class APIError extends Error {
   public status: number;
   public details?: WebUIErrorResponse;
   public isRetryable: boolean;
+  public errorInfo?: ErrorInfo;
 
   constructor(
     message: string,
@@ -74,6 +77,15 @@ interface BackendConfig {
   baseUrl: string;
   apiKey?: string;
   timeout: number;
+}
+
+interface OfflineRequest {
+  endpoint: string;
+  options: RequestInit;
+  useCache: boolean;
+  cacheTtl: number;
+  maxRetries: number;
+  retryDelay: number;
 }
 
 // Memory service types
@@ -164,6 +176,7 @@ class KarenBackendService {
   private requestLogging: boolean;
   private performanceMonitoring: boolean;
   private logLevel: string;
+  private offlineQueue: OfflineRequest[] = [];
 
   constructor(config: Partial<BackendConfig> = {}) {
     this.config = {
@@ -188,6 +201,10 @@ class KarenBackendService {
         performanceMonitoring: this.performanceMonitoring,
         logLevel: this.logLevel,
       });
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', this.replayOfflineQueue);
     }
   }
 
@@ -228,9 +245,17 @@ class KarenBackendService {
 
     // Log request if enabled
     if (this.requestLogging) {
+      let bodyLog: any;
+      if (options.body) {
+        try {
+          bodyLog = JSON.parse(options.body as string);
+        } catch {
+          bodyLog = '[non-JSON body]';
+        }
+      }
       console.log(`[REQUEST] ${options.method || 'GET'} ${url}`, {
         headers: this.debugLogging ? headers : { 'Content-Type': headers['Content-Type'] },
-        body: options.body ? JSON.parse(options.body as string) : undefined,
+        body: bodyLog,
       });
     }
 
@@ -254,9 +279,20 @@ class KarenBackendService {
           // Try to parse structured error response
           let errorDetails: WebUIErrorResponse | undefined;
           try {
-            const errorData = await response.json();
-            if (errorData && typeof errorData === 'object') {
-              errorDetails = errorData as WebUIErrorResponse;
+            const ct = response.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const errorData = await response.json();
+              if (errorData && typeof errorData === 'object') {
+                errorDetails = errorData as WebUIErrorResponse;
+              }
+            } else {
+              const text = await response.text();
+              errorDetails = {
+                error: text || response.statusText,
+                message: text || response.statusText,
+                type: 'HTTP_ERROR',
+                timestamp: new Date().toISOString(),
+              };
             }
           } catch {
             // If we can't parse the error response, create a basic one
@@ -285,6 +321,7 @@ class KarenBackendService {
 
           // Don't retry non-retryable errors
           if (!apiError.isRetryable || attempt === maxRetries) {
+            apiError.errorInfo = ErrorHandler.handleApiError(this.toApiError(apiError, endpoint), endpoint);
             throw apiError;
           }
 
@@ -296,7 +333,18 @@ class KarenBackendService {
           continue;
         }
 
-        const data = await response.json();
+        const contentType = response.headers.get('content-type') || '';
+        let data: any = null;
+        if (contentType.includes('application/json')) {
+          try {
+            data = await response.json();
+          } catch {
+            data = null;
+          }
+        } else {
+          const text = await response.text();
+          data = text ? { body: text } : null;
+        }
         const responseTime = this.performanceMonitoring ? performance.now() - performanceStart : 0;
 
         // Record performance metrics
@@ -348,13 +396,24 @@ class KarenBackendService {
               type: 'TIMEOUT_ERROR',
               timestamp: new Date().toISOString(),
             }, true);
-          } else if (error.message.includes('fetch')) {
-            lastError = new APIError('Network error', 0, {
-              error: 'Network error',
-              message: 'Unable to connect to the backend service',
-              type: 'NETWORK_ERROR',
-              timestamp: new Date().toISOString(),
-            }, true);
+          } else if (error instanceof TypeError) {
+            const online = typeof navigator === 'undefined' ? true : navigator.onLine;
+            if (!online) {
+              lastError = new APIError('Offline', 0, {
+                error: 'Offline',
+                message: 'You appear to be offline. Request queued.',
+                type: 'NETWORK_ERROR',
+                timestamp: new Date().toISOString(),
+              }, false);
+              this.enqueueOfflineRequest({ endpoint, options, useCache, cacheTtl, maxRetries, retryDelay });
+            } else {
+              lastError = new APIError('Network error', 0, {
+                error: 'Network error',
+                message: 'Unable to connect to the backend service',
+                type: 'NETWORK_ERROR',
+                timestamp: new Date().toISOString(),
+              }, true);
+            }
           }
         }
 
@@ -374,6 +433,10 @@ class KarenBackendService {
             );
           }
 
+          if (lastError instanceof APIError) {
+            lastError.errorInfo = ErrorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
+          }
+
           console.error(`Backend request failed for ${endpoint} after ${attempt + 1} attempts:`, lastError);
           throw lastError;
         }
@@ -386,11 +449,47 @@ class KarenBackendService {
     }
 
     // This should never be reached, but just in case
+    if (lastError instanceof APIError && !lastError.errorInfo) {
+      lastError.errorInfo = ErrorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
+    }
     throw lastError || new Error('Unknown error occurred');
   }
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private enqueueOfflineRequest(req: OfflineRequest): void {
+    this.offlineQueue.push(req);
+  }
+
+  private replayOfflineQueue = async (): Promise<void> => {
+    const queued = [...this.offlineQueue];
+    this.offlineQueue = [];
+    for (const req of queued) {
+      try {
+        await this.makeRequest(req.endpoint, req.options, req.useCache, req.cacheTtl, req.maxRetries, req.retryDelay);
+      } catch (err) {
+        console.error('Queued request failed:', err);
+      }
+    }
+  };
+
+  public getOfflineQueueSize(): number {
+    return this.offlineQueue.length;
+  }
+
+  private toApiError(error: APIError, endpoint: string): ApiError {
+    return {
+      name: 'ApiError',
+      message: error.message,
+      status: error.status,
+      endpoint,
+      isNetworkError: error.details?.type === 'NETWORK_ERROR' || error.status === 0,
+      isCorsError: error.details?.type === 'CORS_ERROR' || false,
+      isTimeoutError: error.details?.type === 'TIMEOUT_ERROR' || false,
+      originalError: error,
+    } as ApiError;
   }
 
   // Session token management
