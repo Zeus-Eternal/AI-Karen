@@ -6,6 +6,7 @@ import hashlib
 import logging
 import os
 import time
+from collections import deque
 from typing import List, Optional, Dict, Any
 import numpy as np
 from functools import lru_cache
@@ -19,10 +20,20 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-_METRICS = {}
+_METRICS: Dict[str, deque] = {}
+_METRIC_HISTORY = 100
+
 
 def record_metric(name: str, value: float) -> None:
-    _METRICS.setdefault(name, []).append(value)
+    dq = _METRICS.setdefault(name, deque(maxlen=_METRIC_HISTORY))
+    dq.append(value)
+
+
+def get_metrics(reset: bool = False) -> Dict[str, List[float]]:
+    data = {k: list(v) for k, v in _METRICS.items()}
+    if reset:
+        _METRICS.clear()
+    return data
 
 
 class EmbeddingManager:
