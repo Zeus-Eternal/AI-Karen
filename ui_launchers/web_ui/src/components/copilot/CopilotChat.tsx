@@ -61,6 +61,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const runtimeUrl = useMemo(() => {
     const configManager = getConfigManager();
@@ -125,6 +126,11 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
     setMessages(prev => [...prev, placeholder]);
 
     try {
+      // Abort any existing stream
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const startTime = performance.now();
       const response = await fetch(runtimeUrl, {
         method: 'POST',
@@ -134,7 +140,31 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
           'X-Session-ID': session,
         },
         body: JSON.stringify({ message: content, session_id: session, stream: true }),
+        signal: controller.signal,
       });
+
+      if (!response.ok) {
+        let errorText = `${response.status} ${response.statusText}`;
+        try {
+          const ct = response.headers.get('content-type') || '';
+          if (ct.includes('application/json')) {
+            const errJson = await response.json();
+            errorText = errJson.message || JSON.stringify(errJson);
+          } else {
+            errorText = await response.text();
+          }
+        } catch {
+          // ignore parse errors
+        }
+        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: `Error: ${errorText}` } : m));
+        toast({
+          variant: 'destructive',
+          title: 'Chat Error',
+          description: `HTTP ${response.status} ${response.statusText}`,
+        });
+        setIsTyping(false);
+        return;
+      }
 
       if (!response.body) {
         throw new Error('No response body');
@@ -144,13 +174,18 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       const decoder = new TextDecoder();
       let fullText = '';
       let meta: any = {};
+      let buffer = '';
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean);
-        for (const line of lines) {
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, newlineIndex).trim();
+          buffer = buffer.slice(newlineIndex + 1);
+          if (!line) continue;
           if (line.startsWith('data:')) {
             const data = line.replace(/^data:\s*/, '');
             if (data === '[DONE]') {
@@ -200,6 +235,11 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
         onMessageReceived(finalMessage);
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setIsTyping(false);
+        return;
+      }
+
       console.error('Failed to get AI response:', error);
 
       const errorMessage: ChatMessage = {
@@ -221,6 +261,13 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       setIsTyping(false);
     }
   }, [triggerHooks, user?.user_id, onMessageSent, onMessageReceived, toast, sessionId, runtimeUrl]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      setIsTyping(false);
+    };
+  }, []);
 
   // Handle input submission
   const handleSubmit = (e: React.FormEvent) => {

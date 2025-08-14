@@ -95,12 +95,13 @@ export default function LLMSettings() {
         loadProfiles()
       ]);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load LLM settings:', error);
+      const info = error?.errorInfo;
       toast({
-        title: "Error Loading Settings",
-        description: "Could not load LLM provider settings. Using defaults.",
-        variant: "destructive",
+        title: info?.title || 'Error Loading Settings',
+        description: info?.message || 'Could not load LLM provider settings. Using defaults.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -111,8 +112,12 @@ export default function LLMSettings() {
     try {
       const response = await backend.makeRequestPublic<{ providers: LLMProvider[] }>('/api/llm/providers');
       setProviders(response.providers || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load providers:', error);
+      const info = error?.errorInfo;
+      if (info) {
+        toast({ title: info.title, description: info.message, variant: 'destructive' });
+      }
       // Use fallback providers if backend is unavailable
       setProviders([
         {
@@ -153,8 +158,12 @@ export default function LLMSettings() {
     try {
       const response = await backend.makeRequestPublic<{ profiles: LLMProfile[] }>('/api/llm/profiles');
       setProfiles(response.profiles || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load profiles:', error);
+      const info = error?.errorInfo;
+      if (info) {
+        toast({ title: info.title, description: info.message, variant: 'destructive' });
+      }
       // Use fallback profiles
       setProfiles([
         {

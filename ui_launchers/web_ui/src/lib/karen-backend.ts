@@ -12,6 +12,7 @@ import type {
 import { webUIConfig, type WebUIConfig } from './config';
 import { getPerformanceMonitor } from './performance-monitor';
 import { getStoredApiKey } from './secure-api-key';
+import { ErrorHandler } from './error-handler';
 
 export const SESSION_ID_KEY = 'auth_session_id';
 
@@ -164,6 +165,7 @@ class KarenBackendService {
   private requestLogging: boolean;
   private performanceMonitoring: boolean;
   private logLevel: string;
+  private offlineQueue: Array<{ endpoint: string; options: RequestInit }>; 
 
   constructor(config: Partial<BackendConfig> = {}) {
     this.config = {
@@ -177,6 +179,7 @@ class KarenBackendService {
     this.requestLogging = webUIConfig.requestLogging;
     this.performanceMonitoring = webUIConfig.performanceMonitoring;
     this.logLevel = webUIConfig.logLevel;
+    this.offlineQueue = [];
 
     if (this.debugLogging) {
       console.log('KarenBackendService initialized with config:', {
@@ -188,6 +191,10 @@ class KarenBackendService {
         performanceMonitoring: this.performanceMonitoring,
         logLevel: this.logLevel,
       });
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => this.replayOfflineQueue());
     }
   }
 
@@ -216,6 +223,17 @@ class KarenBackendService {
       ...((options.headers as Record<string, string>) || {}),
     };
 
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      this.offlineQueue.push({ endpoint, options: { ...options, headers } });
+      const apiErr = new APIError('Network offline', 0, {
+        error: 'Network offline',
+        message: 'No internet connection',
+        type: 'NETWORK_ERROR',
+        timestamp: new Date().toISOString(),
+      }, true);
+      this.propagateError(apiErr, endpoint);
+    }
+
     // Try to get stored session token first
     const sessionToken = this.getStoredSessionToken();
     if (sessionToken) {
@@ -228,9 +246,17 @@ class KarenBackendService {
 
     // Log request if enabled
     if (this.requestLogging) {
+      let parsedBody: any = undefined;
+      if (options.body) {
+        try {
+          parsedBody = JSON.parse(options.body as string);
+        } catch {
+          parsedBody = typeof options.body === 'string' ? options.body : '[non-JSON body]';
+        }
+      }
       console.log(`[REQUEST] ${options.method || 'GET'} ${url}`, {
         headers: this.debugLogging ? headers : { 'Content-Type': headers['Content-Type'] },
-        body: options.body ? JSON.parse(options.body as string) : undefined,
+        body: parsedBody,
       });
     }
 
@@ -296,7 +322,18 @@ class KarenBackendService {
           continue;
         }
 
-        const data = await response.json();
+        const contentType = response.headers.get('content-type') || '';
+        let data: any = null;
+        if (contentType.includes('application/json')) {
+          try {
+            data = await response.json();
+          } catch {
+            data = null;
+          }
+        } else {
+          const text = await response.text();
+          data = text ? { body: text } : null;
+        }
         const responseTime = this.performanceMonitoring ? performance.now() - performanceStart : 0;
 
         // Record performance metrics
@@ -318,10 +355,16 @@ class KarenBackendService {
 
         // Log response if enabled
         if (this.requestLogging) {
+          let dataSize = 0;
+          try {
+            dataSize = JSON.stringify(data).length;
+          } catch {
+            dataSize = data && data.body ? data.body.length : 0;
+          }
           console.log(`[RESPONSE] ${response.status} ${options.method || 'GET'} ${url}`, {
             status: response.status,
             responseTime: this.performanceMonitoring ? `${responseTime.toFixed(2)}ms` : undefined,
-            dataSize: JSON.stringify(data).length,
+            dataSize,
             cached: useCache,
           });
         }
@@ -348,13 +391,26 @@ class KarenBackendService {
               type: 'TIMEOUT_ERROR',
               timestamp: new Date().toISOString(),
             }, true);
-          } else if (error.message.includes('fetch')) {
-            lastError = new APIError('Network error', 0, {
-              error: 'Network error',
-              message: 'Unable to connect to the backend service',
-              type: 'NETWORK_ERROR',
+          } else if (error instanceof TypeError) {
+            const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+            const details = online
+              ? {
+                  error: 'Network error',
+                  message: 'Unable to connect to the backend service',
+                  type: 'NETWORK_ERROR',
+                }
+              : {
+                  error: 'Network offline',
+                  message: 'No internet connection',
+                  type: 'NETWORK_ERROR',
+                };
+            lastError = new APIError(details.message, 0, {
+              ...details,
               timestamp: new Date().toISOString(),
-            }, true);
+            }, online);
+            if (!online) {
+              this.offlineQueue.push({ endpoint, options: { ...options, headers } });
+            }
           }
         }
 
@@ -375,7 +431,8 @@ class KarenBackendService {
           }
 
           console.error(`Backend request failed for ${endpoint} after ${attempt + 1} attempts:`, lastError);
-          throw lastError;
+          const apiErr = lastError instanceof APIError ? lastError : new APIError(lastError.message, 0);
+          this.propagateError(apiErr, endpoint);
         }
 
         console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, lastError.message);
@@ -386,11 +443,42 @@ class KarenBackendService {
     }
 
     // This should never be reached, but just in case
-    throw lastError || new Error('Unknown error occurred');
+    const finalErr = lastError instanceof APIError ? lastError : new APIError('Unknown error occurred', 0);
+    this.propagateError(finalErr, endpoint);
   }
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async replayOfflineQueue(): Promise<void> {
+    const queue = [...this.offlineQueue];
+    this.offlineQueue = [];
+    for (const req of queue) {
+      try {
+        await this.makeRequest(req.endpoint, req.options);
+      } catch (err) {
+        console.error('Failed to replay request', err);
+      }
+    }
+  }
+
+  public getOfflineQueueSize(): number {
+    return this.offlineQueue.length;
+  }
+
+  private propagateError(error: APIError, endpoint: string): never {
+    const errorInfo = ErrorHandler.handleApiError({
+      status: error.status,
+      statusText: error.details?.message || error.message,
+      endpoint: `${this.config.baseUrl}${endpoint}`,
+      responseTime: 0,
+      isNetworkError: error.status === 0,
+      isCorsError: false,
+      isTimeoutError: error.status === 408,
+      message: error.message,
+    } as any);
+    throw { apiError: error, errorInfo };
   }
 
   // Session token management

@@ -330,12 +330,16 @@ export const ChatGPTInterface: React.FC<ChatGPTInterfaceProps> = ({
     const initializeChat = async () => {
       if (user && !sessionId && !conversationId) {
         try {
-          const { conversationId: newConversationId, sessionId: newSessionId } = 
+          const { conversationId: newConversationId, sessionId: newSessionId } =
             await chatService.createConversationSession(user.user_id);
           setSessionId(newSessionId);
           setConversationId(newConversationId);
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to create conversation session:', error);
+          const info = error?.errorInfo;
+          if (info) {
+            toast({ title: info.title, description: info.message, variant: 'destructive' });
+          }
         }
       }
 
