@@ -96,15 +96,27 @@ class LLMProfileRouter:
             return fb
         raise RuntimeError(f"No provider for intent '{task_intent}' and no fallback")
 
-    def invoke(self, llm_utils, prompt: str, task_intent: str, **kwargs) -> str:
-        provider = self.select_provider(task_intent)
+    def invoke(self, llm_utils, prompt: str, task_intent: str, preferred_provider: Optional[str] = None, preferred_model: Optional[str] = None, **kwargs) -> str:
+        # Use preferred provider if specified, otherwise use profile-based selection
+        if preferred_provider:
+            provider = preferred_provider
+            logging.info(f"Using preferred provider: {provider}")
+        else:
+            provider = self.select_provider(task_intent)
+        
         start = time.time()
         try:
+            # Pass preferred model if specified
+            if preferred_model:
+                kwargs['model'] = preferred_model
+                logging.info(f"Using preferred model: {preferred_model}")
+            
             result = llm_utils.generate_text(prompt, provider=provider, **kwargs)
             return result
         finally:
-            MODEL_INVOCATIONS_TOTAL.labels(model=provider).inc()
-            AVG_RESPONSE_TIME.labels(model=provider).observe(time.time() - start)
+            model_label = f"{provider}:{preferred_model}" if preferred_model else provider
+            MODEL_INVOCATIONS_TOTAL.labels(model=model_label).inc()
+            AVG_RESPONSE_TIME.labels(model=model_label).observe(time.time() - start)
 
 
 class LLMRouter:

@@ -189,7 +189,7 @@ class AIOrchestrator(BaseService):
     async def _process_conversation_with_memory(
         self, input_data: FlowInput, context: Dict[str, Any]
     ) -> str:
-        """Process conversation using LLM with memory/context awareness."""
+        """Process conversation using LLM with memory/context awareness and proper LLM fallback hierarchy."""
         try:
             # Build dynamic system prompt with user preferences
             system_prompt = self.prompt_manager.build_system_prompt(
@@ -215,22 +215,68 @@ class AIOrchestrator(BaseService):
             
             full_prompt = f"{system_prompt}\n\n{user_prompt}"
 
-            # Use LLM router with built-in fallback mechanism
-            self.logger.info("Attempting LLM call for conversation processing")
+            # Extract LLM preferences from context for proper fallback hierarchy
+            llm_preferences = input_data.context.get("llm_preferences", {}) if input_data.context else {}
+            preferred_provider = llm_preferences.get("preferred_llm_provider", "ollama")
+            preferred_model = llm_preferences.get("preferred_model", "llama3.2:latest")
             
-            raw = self.llm_router.invoke(
-                self.llm_utils,
-                full_prompt,
-                task_intent=FlowType.CONVERSATION_PROCESSING.value,
-            )
+            self.logger.info(f"Processing conversation with LLM preferences: {preferred_provider}:{preferred_model}")
+
+            # Implement proper LLM response hierarchy:
+            # 1. User's chosen LLM (like Llama)
+            # 2. System default LLMs if user choice fails  
+            # 3. Hardcoded responses as final fallback
             
-            if isinstance(raw, str) and raw.strip():
-                response = raw.strip()
-                self.logger.info("Successfully got LLM response")
-                return response[:4000] if len(response) > 4000 else response
-            else:
-                self.logger.warning("Empty response from LLM")
-                return await self._fallback_conversation_response(input_data, context, provider_missing=True)
+            # Step 1: Try user's chosen LLM
+            try:
+                self.logger.info(f"Attempting user's chosen LLM: {preferred_provider}:{preferred_model}")
+                raw = self.llm_router.invoke(
+                    self.llm_utils,
+                    full_prompt,
+                    task_intent=FlowType.CONVERSATION_PROCESSING.value,
+                    preferred_provider=preferred_provider,
+                    preferred_model=preferred_model,
+                )
+                
+                if isinstance(raw, str) and raw.strip():
+                    response = raw.strip()
+                    self.logger.info(f"Successfully got response from user's chosen LLM: {preferred_provider}")
+                    return response[:4000] if len(response) > 4000 else response
+                else:
+                    self.logger.warning(f"Empty response from user's chosen LLM: {preferred_provider}")
+                    
+            except Exception as e:
+                self.logger.warning(f"User's chosen LLM ({preferred_provider}) failed: {e}")
+            
+            # Step 2: Try system default LLMs
+            default_providers = ["ollama:llama3.2:latest", "openai:gpt-3.5-turbo", "huggingface:distilbert-base-uncased"]
+            for provider_model in default_providers:
+                try:
+                    provider, model = provider_model.split(":", 1)
+                    self.logger.info(f"Attempting system default LLM: {provider}:{model}")
+                    
+                    raw = self.llm_router.invoke(
+                        self.llm_utils,
+                        full_prompt,
+                        task_intent=FlowType.CONVERSATION_PROCESSING.value,
+                        preferred_provider=provider,
+                        preferred_model=model,
+                    )
+                    
+                    if isinstance(raw, str) and raw.strip():
+                        response = raw.strip()
+                        self.logger.info(f"Successfully got response from system default LLM: {provider}")
+                        return response[:4000] if len(response) > 4000 else response
+                    else:
+                        self.logger.warning(f"Empty response from system default LLM: {provider}")
+                        
+                except Exception as e:
+                    self.logger.debug(f"System default LLM ({provider_model}) failed: {e}")
+                    continue
+            
+            # Step 3: Use hardcoded fallback response
+            self.logger.info("All LLMs failed, using hardcoded fallback response")
+            return await self._fallback_conversation_response(input_data, context, provider_missing=True)
             
         except Exception as ex:
             self.logger.error(f"LLM processing failed with unexpected error: {ex}")

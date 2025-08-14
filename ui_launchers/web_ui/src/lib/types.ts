@@ -4,6 +4,7 @@ export type MessageRole = 'user' | 'assistant' | 'system';
 export interface AiData {
   keywords?: string[];
   knowledgeGraphInsights?: string;
+  confidence?: number;
 }
 
 export interface ChatMessage {

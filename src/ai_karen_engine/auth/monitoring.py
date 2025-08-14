@@ -675,39 +675,9 @@ class AuthMonitor:
 
     def _setup_structured_logging(self) -> None:
         """Set up structured logging for authentication events."""
-
-        # Create a custom formatter for structured logs
-        class StructuredFormatter(logging.Formatter):
-            def format(self, record):
-                # Create structured log entry
-                log_entry = {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "level": record.levelname,
-                    "logger": record.name,
-                    "message": record.getMessage(),
-                }
-
-                # Add extra fields if present
-                if hasattr(record, "auth_event"):
-                    log_entry["auth_event"] = record.auth_event
-                if hasattr(record, "event_id"):
-                    log_entry["event_id"] = record.event_id
-                if hasattr(record, "user_id"):
-                    log_entry["user_id"] = record.user_id
-                if hasattr(record, "ip_address"):
-                    log_entry["ip_address"] = record.ip_address
-
-                return json.dumps(log_entry)
-
-        # Add structured handler if not already present
-        if not any(
-            isinstance(h.formatter, StructuredFormatter) for h in self.logger.handlers
-        ):
-            handler = logging.StreamHandler()
-            handler.setFormatter(StructuredFormatter())
-            self.logger.addHandler(handler)
-        # Prevent duplicate logs from propagating to root logger
-        self.logger.propagate = False
+        # Use the main logging configuration instead of creating custom handlers
+        # This ensures consistent log formatting across the application
+        pass
 
     async def record_auth_event(self, event: AuthEvent) -> None:
         """Record an authentication event for monitoring."""

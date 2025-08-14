@@ -930,7 +930,7 @@ class ChatOrchestrator:
         active_instructions: List[Any],     # List of ExtractedInstruction objects
         processing_context: ProcessingContext
     ) -> str:
-        """Generate AI response using enhanced context integration and instruction following."""
+        """Generate AI response using enhanced context integration and instruction following with proper LLM fallback hierarchy."""
         # Check for code execution requests
         code_execution_result = await self._handle_code_execution_request(
             message, processing_context
@@ -950,16 +950,74 @@ class ChatOrchestrator:
             message, integrated_context, active_instructions
         )
         
-        # Try to use CopilotKit for enhanced AI response generation
+        # Implement proper LLM response hierarchy:
+        # 1. User's chosen LLM (like Llama)
+        # 2. System default LLMs if user choice fails  
+        # 3. Hardcoded responses as final fallback
+        
+        # Get user preferences from processing context
+        user_llm_choice = processing_context.metadata.get('preferred_llm_provider', 'ollama')
+        user_model_choice = processing_context.metadata.get('preferred_model', 'llama3.2:latest')
+        
+        logger.info(f"Attempting LLM response with user choice: {user_llm_choice}:{user_model_choice}")
+        
+        # Step 1: Try user's chosen LLM
+        try:
+            response = await self._try_user_chosen_llm(
+                enhanced_prompt, message, parsed_message, integrated_context, active_instructions, 
+                user_llm_choice, user_model_choice
+            )
+            if response:
+                logger.info(f"Successfully generated response using user's chosen LLM: {user_llm_choice}")
+                return response
+        except Exception as e:
+            logger.warning(f"User's chosen LLM ({user_llm_choice}) failed: {e}")
+        
+        # Step 2: Try system default LLMs
+        try:
+            response = await self._try_system_default_llms(
+                enhanced_prompt, message, parsed_message, integrated_context, active_instructions
+            )
+            if response:
+                logger.info("Successfully generated response using system default LLM")
+                return response
+        except Exception as e:
+            logger.warning(f"System default LLMs failed: {e}")
+        
+        # Step 3: Use hardcoded fallback response
+        logger.info("Using hardcoded fallback response")
+        return await self._generate_enhanced_fallback_response(
+            message, parsed_message, integrated_context, active_instructions
+        )
+    
+    async def _try_user_chosen_llm(
+        self,
+        enhanced_prompt: str,
+        message: str,
+        parsed_message: ParsedMessage,
+        integrated_context: Optional[Any],
+        active_instructions: List[Any],
+        provider: str,
+        model: str
+    ) -> Optional[str]:
+        """Try to generate response using user's chosen LLM provider and model."""
         try:
             from ai_karen_engine.llm_orchestrator import get_orchestrator
             orchestrator = get_orchestrator()
             
-            # Check if this is a code-related request for CopilotKit code assistance
+            # Try to get the specific provider/model combination
+            model_id = f"{provider}:{model}"
+            model_info = orchestrator.registry.get(model_id)
+            
+            if not model_info:
+                logger.debug(f"User's chosen model {model_id} not available in registry")
+                return None
+            
+            # Check if this is a code-related request for enhanced assistance
             if self._is_code_related_message(message):
-                # Get code suggestions from CopilotKit if available
-                code_suggestions = orchestrator.get_code_suggestions(
-                    enhanced_prompt, 
+                # Get code suggestions if available
+                code_suggestions = await orchestrator.get_code_suggestions(
+                    message, 
                     language=self._detect_programming_language(message)
                 )
                 
@@ -971,48 +1029,97 @@ class ChatOrchestrator:
                     )
                     
                     # Add code suggestions to the response
-                    if code_suggestions:
-                        suggestions_text = "\n\nCode suggestions:\n"
-                        for i, suggestion in enumerate(code_suggestions[:3], 1):  # Limit to top 3
-                            suggestions_text += f"{i}. {suggestion.get('explanation', 'Code suggestion')}\n"
-                            suggestions_text += f"   ```{suggestion.get('language', 'python')}\n"
-                            suggestions_text += f"   {suggestion.get('content', '')}\n"
-                            suggestions_text += f"   ```\n"
-                        copilot_response += suggestions_text
+                    suggestions_text = "\n\nCode suggestions:\n"
+                    for i, suggestion in enumerate(code_suggestions[:3], 1):  # Limit to top 3
+                        suggestions_text += f"{i}. {suggestion.get('explanation', 'Code suggestion')}\n"
+                        suggestions_text += f"   ```{suggestion.get('language', 'python')}\n"
+                        suggestions_text += f"   {suggestion.get('content', '')}\n"
+                        suggestions_text += f"   ```\n"
+                    copilot_response += suggestions_text
                     
                     return copilot_response
             
-            # Get contextual suggestions from CopilotKit
-            contextual_suggestions = orchestrator.get_contextual_suggestions(
-                enhanced_prompt, 
-                integrated_context.to_dict() if integrated_context else {}
-            )
+            # Use the user's chosen LLM for response generation
+            response = orchestrator.route(enhanced_prompt, skill="conversation")
             
-            # Use CopilotKit for enhanced response generation
-            copilot_response = orchestrator.route_with_copilotkit(
-                enhanced_prompt, 
-                context=integrated_context.to_dict() if integrated_context else {}
-            )
+            # Get contextual suggestions if available
+            try:
+                contextual_suggestions = await orchestrator.get_contextual_suggestions(
+                    message, 
+                    integrated_context.to_dict() if integrated_context else {}
+                )
+                
+                # Add contextual suggestions if available
+                if contextual_suggestions:
+                    suggestions_text = "\n\nSuggestions:\n"
+                    for i, suggestion in enumerate(contextual_suggestions[:2], 1):  # Limit to top 2
+                        if suggestion.get('actionable', True):
+                            suggestions_text += f"• {suggestion.get('content', 'AI suggestion')}\n"
+                    response += suggestions_text
+            except Exception as e:
+                logger.debug(f"Failed to get contextual suggestions: {e}")
             
-            # Add contextual suggestions if available
-            if contextual_suggestions:
-                suggestions_text = "\n\nSuggestions:\n"
-                for i, suggestion in enumerate(contextual_suggestions[:2], 1):  # Limit to top 2
-                    if suggestion.get('actionable', True):
-                        suggestions_text += f"• {suggestion.get('content', 'AI suggestion')}\n"
-                copilot_response += suggestions_text
-            
-            return copilot_response
+            return response
             
         except Exception as e:
-            logger.warning(f"CopilotKit integration failed, falling back to enhanced standard response: {e}")
-            # Fall back to enhanced standard response generation
-            pass
-        
-        # Enhanced standard response generation (fallback)
-        return await self._generate_enhanced_fallback_response(
-            message, parsed_message, integrated_context, active_instructions
-        )
+            logger.error(f"User's chosen LLM ({provider}:{model}) failed: {e}")
+            return None
+    
+    async def _try_system_default_llms(
+        self,
+        enhanced_prompt: str,
+        message: str,
+        parsed_message: ParsedMessage,
+        integrated_context: Optional[Any],
+        active_instructions: List[Any]
+    ) -> Optional[str]:
+        """Try to generate response using system default LLMs in priority order."""
+        try:
+            from ai_karen_engine.llm_orchestrator import get_orchestrator
+            orchestrator = get_orchestrator()
+            
+            # Define system default LLMs in priority order
+            default_providers = [
+                "ollama:llama3.2:latest",
+                "openai:gpt-3.5-turbo", 
+                "copilotkit:copilot-assist",
+                "huggingface:distilbert-base-uncased"
+            ]
+            
+            for provider_model in default_providers:
+                try:
+                    provider, model = provider_model.split(":", 1)
+                    model_id = f"{provider}:{model}"
+                    model_info = orchestrator.registry.get(model_id)
+                    
+                    if not model_info:
+                        logger.debug(f"System default model {model_id} not available")
+                        continue
+                    
+                    logger.info(f"Trying system default LLM: {model_id}")
+                    
+                    # Use enhanced routing for response generation
+                    response = await orchestrator.enhanced_route(
+                        enhanced_prompt,
+                        skill="conversation"
+                    )
+                    
+                    if response:
+                        logger.info(f"Successfully used system default LLM: {model_id}")
+                        return response
+                        
+                except Exception as e:
+                    logger.debug(f"System default LLM {provider_model} failed: {e}")
+                    continue
+            
+            # If no specific models work, try generic routing
+            logger.info("Trying generic LLM routing as final system default")
+            response = orchestrator.route(enhanced_prompt, skill="conversation")
+            return response
+            
+        except Exception as e:
+            logger.error(f"All system default LLMs failed: {e}")
+            return None
     
     async def _build_enhanced_prompt(
         self,

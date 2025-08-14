@@ -1,5 +1,9 @@
 {
   "plugin_api_version": "1.0",
+  "name": "hook-workflow-demo",
+  "module": "ai_karen_engine.plugins.hook_workflow_demo.handler",
+  "entry_point": "run",
+  "plugin_type": "example",
   "intent": "hook_workflow_demo",
   "enable_external_workflow": true,
   "workflow_slug": "hook_demo_workflow",
@@ -18,11 +22,7 @@
     "demo",
     "orchestration"
   ],
-  "dependencies": {
-    "system_services": [],
-    "external_apis": [],
-    "python_packages": []
-  },
+  "dependencies": [],
   "permissions": {
     "data_access": [
       "read"

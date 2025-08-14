@@ -325,8 +325,25 @@ async def get_current_user_route(
     user_data: Dict[str, Any] = Depends(get_current_user),
 ) -> UserResponse:
     """Get current user information"""
-
-    return UserResponse(**user_data)
+    
+    # Handle both dictionary and UserData object formats
+    if hasattr(user_data, '__dict__'):
+        # Convert UserData object to dictionary
+        user_dict = user_data.__dict__ if hasattr(user_data, '__dict__') else {}
+    elif isinstance(user_data, dict):
+        user_dict = user_data
+    else:
+        # Try to convert to dict using dataclass fields if it's a dataclass
+        try:
+            from dataclasses import asdict, is_dataclass
+            if is_dataclass(user_data):
+                user_dict = asdict(user_data)
+            else:
+                user_dict = dict(user_data) if user_data else {}
+        except Exception:
+            user_dict = {}
+    
+    return UserResponse(**user_dict)
 
 
 async def get_tenant_from_user(

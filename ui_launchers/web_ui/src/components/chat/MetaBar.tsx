@@ -9,6 +9,11 @@ interface MetaBarProps {
   annotations?: number;
   latencyMs?: number;
   model?: string;
+  persona?: string;
+  mood?: string;
+  intent?: string;
+  reasoning?: string;
+  sources?: string[];
 }
 
 export const MetaBar: React.FC<MetaBarProps> = ({
@@ -16,6 +21,11 @@ export const MetaBar: React.FC<MetaBarProps> = ({
   annotations,
   latencyMs,
   model,
+  persona,
+  mood,
+  intent,
+  reasoning,
+  sources,
 }) => {
   const items: React.ReactNode[] = [];
 
@@ -47,6 +57,46 @@ export const MetaBar: React.FC<MetaBarProps> = ({
     items.push(
       <Badge key="annotations" variant="secondary" className="text-xs">
         Annotations: {annotations}
+      </Badge>,
+    );
+  }
+
+  if (persona) {
+    items.push(
+      <Badge key="persona" variant="outline" className="text-xs">
+        Persona: {persona}
+      </Badge>,
+    );
+  }
+
+  if (mood) {
+    items.push(
+      <Badge key="mood" variant="outline" className="text-xs">
+        Mood: {mood}
+      </Badge>,
+    );
+  }
+
+  if (intent) {
+    items.push(
+      <Badge key="intent" variant="outline" className="text-xs">
+        Intent: {intent}
+      </Badge>,
+    );
+  }
+
+  if (reasoning) {
+    items.push(
+      <Badge key="reasoning" variant="outline" className="text-xs" title={reasoning}>
+        Reasoning: {reasoning.length > 30 ? reasoning.substring(0, 30) + '...' : reasoning}
+      </Badge>,
+    );
+  }
+
+  if (sources && sources.length > 0) {
+    items.push(
+      <Badge key="sources" variant="outline" className="text-xs">
+        Sources: {sources.length}
       </Badge>,
     );
   }

@@ -35,6 +35,7 @@ from ai_karen_engine.api_routes.code_execution_routes import (
     router as code_execution_router,
 )
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
+from ai_karen_engine.api_routes.copilot_routes import router as copilot_router
 from ai_karen_engine.api_routes.events import router as events_router
 from ai_karen_engine.api_routes.file_attachment_routes import (
     router as file_attachment_router,
@@ -116,6 +117,9 @@ def configure_logging():
                 },
             },
             "formatters": {
+                "standard": {
+                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                },
                 "json": {
                     "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
                     "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(lineno)d %(pathname)s",
@@ -128,7 +132,7 @@ def configure_logging():
             "handlers": {
                 "console": {
                     "class": "logging.StreamHandler",
-                    "formatter": "json",
+                    "formatter": "standard",
                     "stream": "ext://sys.stdout",
                     "filters": ["suppress_invalid_http"],
                 },
@@ -306,6 +310,7 @@ def create_app() -> FastAPI:
     app.include_router(web_api_router, prefix="/api/web", tags=["web-api"])
     app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
     app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
+    app.include_router(copilot_router, prefix="/copilot", tags=["copilot"])
     app.include_router(
         conversation_router, prefix="/api/conversations", tags=["conversations"]
     )

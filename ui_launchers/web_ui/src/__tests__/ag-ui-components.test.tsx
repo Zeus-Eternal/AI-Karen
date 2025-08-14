@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { ConversationGrid, ConversationRow } from '@/components/chat/ConversationGrid';
 import { ChatAnalyticsChart, ChatAnalyticsData } from '@/components/chat/ChatAnalyticsChart';
 import { MemoryGrid, MemoryRow } from '@/components/chat/MemoryGrid';
-import { EnhancedChatInterface } from '@/components/chat/EnhancedChatInterface';
+import { ChatInterface } from '@/components/chat/ChatInterface';
 import { HookProvider } from '@/contexts/HookContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 
@@ -422,11 +422,11 @@ describe('AG-UI Components', () => {
     });
   });
 
-  describe('EnhancedChatInterface', () => {
+  describe('ChatInterface', () => {
     it('renders with tabs by default', () => {
       render(
         <TestWrapper>
-          <EnhancedChatInterface />
+          <ChatInterface />
         </TestWrapper>
       );
 
@@ -438,7 +438,7 @@ describe('AG-UI Components', () => {
     it('renders without tabs when showTabs is false', () => {
       render(
         <TestWrapper>
-          <EnhancedChatInterface showTabs={false} />
+          <ChatInterface showTabs={false} />
         </TestWrapper>
       );
 
@@ -449,7 +449,7 @@ describe('AG-UI Components', () => {
       const user = userEvent.setup();
       render(
         <TestWrapper>
-          <EnhancedChatInterface />
+          <ChatInterface />
         </TestWrapper>
       );
 
@@ -463,7 +463,7 @@ describe('AG-UI Components', () => {
     it('registers chat hooks on mount', () => {
       render(
         <TestWrapper>
-          <EnhancedChatInterface />
+          <ChatInterface />
         </TestWrapper>
       );
 
@@ -485,7 +485,7 @@ describe('AG-UI Components', () => {
       const user = userEvent.setup();
       render(
         <TestWrapper>
-          <EnhancedChatInterface />
+          <ChatInterface />
         </TestWrapper>
       );
 
