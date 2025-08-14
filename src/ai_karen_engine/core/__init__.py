@@ -1,5 +1,4 @@
-"""
-Core infrastructure for AI Karen engine.
+"""Core infrastructure for AI Karen engine.
 
 This module provides the foundational components for the AI Karen engine including:
 - Service infrastructure and dependency injection
@@ -7,7 +6,16 @@ This module provides the foundational components for the AI Karen engine includi
 - FastAPI gateway and middleware
 """
 
-from ai_karen_engine.core.errors import (  # type: ignore
+from __future__ import annotations
+
+from ai_karen_engine.core.default_models import (
+    get_classifier,
+    get_embedding_manager,
+    get_spacy_client,
+    load_default_models,
+)
+from ai_karen_engine.core.degraded_mode import generate_degraded_mode_response
+from ai_karen_engine.core.errors import (
     AIProcessingError,
     AuthenticationError,
     AuthorizationError,
@@ -22,13 +30,14 @@ from ai_karen_engine.core.errors import (  # type: ignore
     ValidationError,
     error_middleware,
 )
-from ai_karen_engine.core.gateway import (  # type: ignore
+from ai_karen_engine.core.gateway import (
     KarenApp,
     create_app,
     setup_middleware,
     setup_routing,
 )
-from ai_karen_engine.core.logging import (  # type: ignore
+from ai_karen_engine.core.health_checker import HealthChecker, ProviderStatus
+from ai_karen_engine.core.logging import (
     JSONFormatter,
     KarenLogger,
     LogFormat,
@@ -38,7 +47,8 @@ from ai_karen_engine.core.logging import (  # type: ignore
     get_logger,
     logging_middleware,
 )
-from ai_karen_engine.core.services import (  # type: ignore
+from ai_karen_engine.core.response_envelope import build_response_envelope
+from ai_karen_engine.core.services import (
     BaseService,
     ServiceConfig,
     ServiceContainer,
@@ -49,6 +59,12 @@ from ai_karen_engine.core.services import (  # type: ignore
     inject,
     service,
 )
+
+# mypy: ignore-errors
+
+
+# mypy: ignore-errors
+
 
 __all__ = [
     # Services
@@ -89,18 +105,14 @@ __all__ = [
     "KarenApp",
     "setup_middleware",
     "setup_routing",
-]
-
-from ai_karen_engine.core.default_models import (  # type: ignore
-    get_classifier,
-    get_embedding_manager,
-    get_spacy_client,
-    load_default_models,
-)
-
-__all__ += [
+    # Default models
     "load_default_models",
     "get_embedding_manager",
     "get_spacy_client",
     "get_classifier",
+    # Health & Response utilities
+    "HealthChecker",
+    "ProviderStatus",
+    "build_response_envelope",
+    "generate_degraded_mode_response",
 ]
