@@ -7,6 +7,15 @@ This module provides the foundational components for the AI Karen engine includi
 - FastAPI gateway and middleware
 """
 
+# mypy: ignore-errors
+
+from ai_karen_engine.core.default_models import (  # type: ignore
+    get_classifier,
+    get_embedding_manager,
+    get_spacy_client,
+    load_default_models,
+)
+from ai_karen_engine.core.degraded_mode import generate_degraded_mode_response
 from ai_karen_engine.core.errors import (  # type: ignore
     AIProcessingError,
     AuthenticationError,
@@ -28,6 +37,7 @@ from ai_karen_engine.core.gateway import (  # type: ignore
     setup_middleware,
     setup_routing,
 )
+from ai_karen_engine.core.health_checker import HealthChecker, ProviderStatus
 from ai_karen_engine.core.logging import (  # type: ignore
     JSONFormatter,
     KarenLogger,
@@ -38,6 +48,7 @@ from ai_karen_engine.core.logging import (  # type: ignore
     get_logger,
     logging_middleware,
 )
+from ai_karen_engine.core.response_envelope import build_response_envelope
 from ai_karen_engine.core.services import (  # type: ignore
     BaseService,
     ServiceConfig,
@@ -89,18 +100,14 @@ __all__ = [
     "KarenApp",
     "setup_middleware",
     "setup_routing",
-]
-
-from ai_karen_engine.core.default_models import (  # type: ignore
-    get_classifier,
-    get_embedding_manager,
-    get_spacy_client,
-    load_default_models,
-)
-
-__all__ += [
+    # Default models
     "load_default_models",
     "get_embedding_manager",
     "get_spacy_client",
     "get_classifier",
+    # Additional utilities
+    "HealthChecker",
+    "ProviderStatus",
+    "build_response_envelope",
+    "generate_degraded_mode_response",
 ]
