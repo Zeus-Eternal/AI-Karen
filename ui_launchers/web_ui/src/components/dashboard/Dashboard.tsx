@@ -7,7 +7,7 @@ import AuditLogTable from '../analytics/AuditLogTable';
 export default function Dashboard() {
   const { user } = useAuth();
   if (!user) return null;
-  const isAdmin = user.roles.includes('admin') || user.roles.includes('super_admin');
+  const isAdmin = user.roles?.includes('admin') || user.roles?.includes('super_admin');
   return (
     <div className="space-y-4">
       {isAdmin ? (

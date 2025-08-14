@@ -149,12 +149,9 @@ function ChatView() {
 
           <SidebarInset className="flex-1 flex flex-col min-h-0">
             <MetaBar />
-            <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6 overflow-y-auto">
+            <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6">
               <CopilotChat className="flex-1" />
             </main>
-            <div className="p-4 border-t">
-              <InputBox onSend={async () => {}} />
-            </div>
           </SidebarInset>
         </div>
       </div>

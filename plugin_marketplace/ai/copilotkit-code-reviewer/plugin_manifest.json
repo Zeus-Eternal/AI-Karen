@@ -15,7 +15,7 @@
   "author": "Kari Team",
   "license": "MPL-2.0",
   "entry_point": "run",
-  "plugin_type": "code_analysis",
+  "plugin_type": "ai",
   "capabilities": [
     "code_review",
     "security_analysis",
@@ -34,10 +34,10 @@
     "php",
     "ruby"
   ],
-  "dependencies": {
-    "copilotkit": ">=1.0.0",
-    "ai_karen_engine": ">=1.0.0"
-  },
+  "dependencies": [
+    "copilotkit>=1.0.0",
+    "ai_karen_engine>=1.0.0"
+  ],
   "permissions": {
     "data_access": [
       "read",

@@ -14,7 +14,7 @@
   "author": "Kari Team",
   "license": "MPL-2.0",
   "entry_point": "run",
-  "plugin_type": "ai_assistance",
+  "plugin_type": "ai",
   "capabilities": [
     "code_analysis",
     "error_debugging",
@@ -30,10 +30,10 @@
     "rust",
     "go"
   ],
-  "dependencies": {
-    "copilotkit": ">=1.0.0",
-    "ai_karen_engine": ">=1.0.0"
-  },
+  "dependencies": [
+    "copilotkit>=1.0.0",
+    "ai_karen_engine>=1.0.0"
+  ],
   "hooks": {
     "pre_execution": [
       "validate_code_input"

@@ -12,6 +12,8 @@ import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ChatBubble } from '@/components/chat/ChatBubble';
+import { ChatErrorBoundary } from '@/components/chat/ErrorBoundary';
+import { useInputPreservation } from '@/hooks/use-input-preservation';
 import { getConfigManager } from '@/lib/endpoint-config';
 
 interface ChatMessage {
@@ -21,12 +23,17 @@ interface ChatMessage {
   timestamp: Date;
   type?: 'text' | 'code' | 'suggestion' | 'analysis';
   language?: string;
+  status?: 'sending' | 'sent' | 'generating' | 'completed' | 'error';
   metadata?: {
     confidence?: number;
     latencyMs?: number;
     model?: string;
     sources?: string[];
     reasoning?: string;
+    persona?: string;
+    mood?: string;
+    intent?: string;
+    status?: 'sending' | 'sent' | 'generating' | 'completed' | 'error';
   };
 }
 
@@ -128,7 +135,12 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       content: '',
       timestamp: new Date(),
       type: type === 'code' ? 'code' : 'text',
-      metadata: {},
+      metadata: {
+        status: 'generating',
+        confidence: undefined,
+        latencyMs: undefined,
+        model: undefined,
+      },
     };
     setMessages(prev => [...prev, placeholder]);
 
@@ -137,10 +149,14 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       abortControllerRef.current = controller;
 
       const startTime = performance.now();
+      // Get authentication token
+      const authToken = localStorage.getItem('karen_access_token') || sessionStorage.getItem('kari_session_token');
+      
       const response = await fetch(runtimeUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
           ...(user?.user_id && { 'X-User-ID': user.user_id }),
           'X-Session-ID': session,
         },
@@ -176,66 +192,137 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
         throw new Error('No response body');
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+      // Handle response parsing
       let fullText = '';
       let meta: any = {};
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
       let buffer = '';
+      let isCompleteJson = false;
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
+        
         buffer += decoder.decode(value, { stream: true });
+        
+        // If this looks like a complete JSON response (not streaming), handle it differently
+        if (!isCompleteJson && buffer.trim().startsWith('{') && buffer.trim().endsWith('}')) {
+          try {
+            const jsonResponse = JSON.parse(buffer.trim());
+            
+            if (jsonResponse.answer) {
+              fullText = jsonResponse.answer;
+            } else if (jsonResponse.text) {
+              fullText = jsonResponse.text;
+            } else if (typeof jsonResponse === 'string') {
+              fullText = jsonResponse;
+            }
+            
+            // Extract metadata
+            if (jsonResponse.meta) {
+              meta = { ...meta, ...jsonResponse.meta };
+            }
+            if (jsonResponse.timings) {
+              meta.latencyMs = jsonResponse.timings.total_ms;
+            }
+            if (jsonResponse.context) {
+              meta.sources = jsonResponse.context;
+            }
+            
+            // Update message with final content
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+            isCompleteJson = true;
+            break; // Exit the loop since we have the complete response
+          } catch {
+            // Not a complete JSON, continue with streaming logic
+          }
+        }
+        
+        // Handle streaming response
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
+        
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) continue;
+          
+          // Handle both SSE format (data:) and direct JSON
+          let data = trimmed;
           if (trimmed.startsWith('data:')) {
-            const data = trimmed.replace(/^data:\s*/, '');
+            data = trimmed.replace(/^data:\s*/, '');
             if (data === '[DONE]') {
               continue;
             }
-            try {
-              const json = JSON.parse(data);
-              if (json.text) {
-                fullText += json.text;
-                setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
-              }
-              if (json.meta) {
-                meta = { ...meta, ...json.meta };
-              }
-            } catch {
+          }
+          
+          try {
+            const json = JSON.parse(data);
+            
+            // Extract the actual message content
+            if (json.answer) {
+              fullText = json.answer; // Use assignment for complete responses
+              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+            } else if (json.text) {
+              fullText += json.text; // Use concatenation for streaming text
+              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+            }
+            
+            // Extract metadata
+            if (json.meta) {
+              meta = { ...meta, ...json.meta };
+            }
+            if (json.timings) {
+              meta.latencyMs = json.timings.total_ms;
+            }
+            if (json.context) {
+              meta.sources = json.context;
+            }
+          } catch {
+            // If it's not valid JSON, treat as plain text only if it doesn't look like JSON
+            if (!data.startsWith('{') && !data.startsWith('[')) {
               fullText += data;
               setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
             }
-          } else {
-            fullText += trimmed;
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
           }
         }
       }
 
-      if (buffer.trim()) {
+      // Handle remaining buffer if not already processed as complete JSON
+      if (!isCompleteJson && buffer.trim()) {
         const trimmed = buffer.trim();
+        let data = trimmed;
         if (trimmed.startsWith('data:')) {
-          const data = trimmed.replace(/^data:\s*/, '');
-          try {
-            const json = JSON.parse(data);
-            if (json.text) {
-              fullText += json.text;
-              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
-            }
-            if (json.meta) {
-              meta = { ...meta, ...json.meta };
-            }
-          } catch {
+          data = trimmed.replace(/^data:\s*/, '');
+        }
+        
+        try {
+          const json = JSON.parse(data);
+          
+          if (json.answer) {
+            fullText = json.answer;
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+          } else if (json.text) {
+            fullText += json.text;
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+          }
+          
+          if (json.meta) {
+            meta = { ...meta, ...json.meta };
+          }
+          if (json.timings) {
+            meta.latencyMs = json.timings.total_ms;
+          }
+          if (json.context) {
+            meta.sources = json.context;
+          }
+        } catch {
+          // Only add non-JSON data as text
+          if (!data.startsWith('{') && !data.startsWith('[')) {
             fullText += data;
             setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
           }
-        } else {
-          fullText += trimmed;
-          setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
         }
       }
 
@@ -247,6 +334,11 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
           confidence: meta.confidence,
           model: meta.model,
           latencyMs: latency,
+          persona: meta.persona,
+          mood: meta.mood,
+          intent: meta.intent,
+          reasoning: meta.reasoning,
+          sources: meta.sources,
         },
       };
 
@@ -336,6 +428,11 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
                       confidence: message.metadata?.confidence,
                       latencyMs: message.metadata?.latencyMs,
                       model: message.metadata?.model,
+                      persona: message.metadata?.persona,
+                      mood: message.metadata?.mood,
+                      intent: message.metadata?.intent,
+                      reasoning: message.metadata?.reasoning,
+                      sources: message.metadata?.sources,
                     }}
                   />
                 ))

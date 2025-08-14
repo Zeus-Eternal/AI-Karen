@@ -884,7 +884,11 @@ class KarenBackendService {
     conversationHistory: ChatMessage[],
     settings: KarenSettings,
     userId?: string,
-    sessionId?: string
+    sessionId?: string,
+    llmPreferences?: {
+      preferredLLMProvider?: string;
+      preferredModel?: string;
+    }
   ): Promise<HandleUserMessageResult> {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const sid = sessionId ?? this.getSessionId();
@@ -949,6 +953,11 @@ class KarenBackendService {
           },
           include_memories: true,
           include_insights: true,
+          // Include LLM preferences for proper fallback hierarchy
+          llm_preferences: {
+            preferred_llm_provider: llmPreferences?.preferredLLMProvider || 'ollama',
+            preferred_model: llmPreferences?.preferredModel || 'llama3.2:latest',
+          },
         }),
       });
 

@@ -384,12 +384,12 @@ class HealthMonitor {
       this.alerts = this.alerts.slice(0, 100);
     }
 
-    // Log alert
-    const logLevel = alert.severity === 'critical' ? 'error' : 
-                    alert.severity === 'high' ? 'error' :
+    // Log alert with appropriate level (avoid console.error for health monitoring alerts)
+    const logLevel = alert.severity === 'critical' ? 'warn' : 
+                    alert.severity === 'high' ? 'warn' :
                     alert.severity === 'medium' ? 'warn' : 'info';
 
-    console[logLevel](`🚨 [${alert.severity.toUpperCase()}] ${alert.message}`, {
+    console[logLevel](`🚨 [${alert.severity.toUpperCase()}] Health Alert: ${alert.message}`, {
       alertId: alert.id,
       ruleId: alert.ruleId,
       timestamp: alert.timestamp,
@@ -406,7 +406,7 @@ class HealthMonitor {
       try {
         listener(alert);
       } catch (error) {
-        console.error('Error in alert listener:', error);
+        console.warn('Error in alert listener:', error);
       }
     });
   }

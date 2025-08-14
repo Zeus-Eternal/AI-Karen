@@ -73,6 +73,9 @@ class ConversationProcessingRequest(BaseModel):
     session_id: Optional[str] = Field(None, description="Session ID")
     include_memories: bool = Field(True, description="Include memory integration")
     include_insights: bool = Field(True, description="Include AI insights")
+    llm_preferences: Optional[Dict[str, str]] = Field(
+        None, description="User's LLM preferences for fallback hierarchy"
+    )
 
 
 class FlowResponse(BaseModel):
@@ -197,9 +200,9 @@ async def conversation_processing(
     request: ConversationProcessingRequest,
     ai_orchestrator: AIOrchestrator = Depends(get_ai_orchestrator_service),
 ):
-    """Process conversation with memory integration and AI insights."""
+    """Process conversation with memory integration and AI insights using proper LLM fallback hierarchy."""
     try:
-        # Create flow input with additional context
+        # Create flow input with additional context including LLM preferences
         context = request.context or {}
         context.update(
             {
@@ -208,6 +211,11 @@ async def conversation_processing(
                 "tenant_id": "default",  # Use default tenant for Web UI API
             }
         )
+        
+        # Add LLM preferences to context for proper fallback hierarchy
+        if request.llm_preferences:
+            context["llm_preferences"] = request.llm_preferences
+            logger.info(f"Using LLM preferences: {request.llm_preferences}")
 
         flow_input = build_flow_input(
             prompt=request.prompt,
@@ -217,7 +225,7 @@ async def conversation_processing(
             session_id=request.session_id,
         )
 
-        # Process conversation flow
+        # Process conversation flow with LLM preferences
         start_time = datetime.utcnow()
         result = await ai_orchestrator.conversation_processing_flow(flow_input)
         processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000

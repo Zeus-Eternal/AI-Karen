@@ -1,7 +1,7 @@
 
 import type { Metadata } from 'next';
 import { Inter, Roboto_Mono } from 'next/font/google';
-import './globals.css';
+import '../styles/globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
 import { ThemeBridge } from "@/components/theme/ThemeBridge";

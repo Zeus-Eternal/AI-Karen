@@ -1,5 +1,5 @@
 /* Karen Alert System Styles */
-@import '../styles/karen-alerts.css';
+@import "../styles/karen-alerts.css";
 
 @tailwind base;
 @tailwind components;
@@ -46,7 +46,7 @@
   }
 
   .dark {
-    --background: 0 0% 20%; /* Dark charcoal */
+    --background: 210 11% 12%; /* #1e1e1e equivalent in HSL */
     --foreground: 0 0% 95%; /* Light gray for text */
 
     --card: 0 0% 16%;
@@ -79,7 +79,7 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    
+
     /* Sidebar specific theme variables for dark mode */
     --sidebar-background: 0 0% 18%; /* Slightly lighter than main dark background */
     --sidebar-foreground: 0 0% 90%;

@@ -27,6 +27,8 @@ export interface ProcessMessageOptions {
   sessionId?: string;
   storeInMemory?: boolean;
   generateSummary?: boolean;
+  preferredLLMProvider?: string;
+  preferredModel?: string;
 }
 
 export class ChatService {
@@ -46,7 +48,11 @@ export class ChatService {
         conversationHistory,
         settings,
         options.userId,
-        options.sessionId
+        options.sessionId,
+        {
+          preferredLLMProvider: options.preferredLLMProvider,
+          preferredModel: options.preferredModel,
+        }
       );
 
       return response;

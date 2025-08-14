@@ -2,8 +2,8 @@
 export { CopilotChat as ChatInterface } from '../copilot';
 export { CopilotChat } from '../copilot';
 
-// Export legacy interface for backward compatibility (deprecated)
-export { default as LegacyChatInterface } from './ChatInterface';
+// Export enhanced chat interfaces
+export { ChatInterface as EnhancedChatInterface, LegacyChatInterface } from './ChatInterface';
 
 // Export supporting components
 export { MessageBubble } from './MessageBubble';
@@ -19,5 +19,3 @@ export type { ChatAnalyticsData } from './ChatAnalyticsChart';
 
 export { MemoryGrid } from './MemoryGrid';
 export type { MemoryRow } from './MemoryGrid';
-
-export { EnhancedChatInterface } from './EnhancedChatInterface';
