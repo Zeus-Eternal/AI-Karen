@@ -61,6 +61,7 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const runtimeUrl = useMemo(() => {
     const configManager = getConfigManager();
@@ -74,9 +75,13 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input on mount
+  // Focus input on mount and cleanup on unmount
   useEffect(() => {
     inputRef.current?.focus();
+    return () => {
+      abortControllerRef.current?.abort();
+      setIsTyping(false);
+    };
   }, []);
 
   // Send message
@@ -90,6 +95,9 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       timestamp: new Date(),
       type,
     };
+
+    abortControllerRef.current?.abort();
+    setIsTyping(false);
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
@@ -125,6 +133,9 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
     setMessages(prev => [...prev, placeholder]);
 
     try {
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const startTime = performance.now();
       const response = await fetch(runtimeUrl, {
         method: 'POST',
@@ -134,7 +145,32 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
           'X-Session-ID': session,
         },
         body: JSON.stringify({ message: content, session_id: session, stream: true }),
+        signal: controller.signal,
       });
+
+      if (!response.ok) {
+        let errorText = '';
+        try {
+          const ct = response.headers.get('content-type') || '';
+          if (ct.includes('application/json')) {
+            const err = await response.json();
+            errorText = err?.message || err?.error || JSON.stringify(err);
+          } else {
+            errorText = await response.text();
+          }
+        } catch {
+          errorText = response.statusText;
+        }
+
+        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: `Error: ${errorText || response.statusText}` } : m));
+        toast({
+          variant: 'destructive',
+          title: 'Chat Error',
+          description: `HTTP ${response.status}: ${errorText || response.statusText}`,
+        });
+        setIsTyping(false);
+        return;
+      }
 
       if (!response.body) {
         throw new Error('No response body');
@@ -144,15 +180,19 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       const decoder = new TextDecoder();
       let fullText = '';
       let meta: any = {};
+      let buffer = '';
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean);
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
         for (const line of lines) {
-          if (line.startsWith('data:')) {
-            const data = line.replace(/^data:\s*/, '');
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          if (trimmed.startsWith('data:')) {
+            const data = trimmed.replace(/^data:\s*/, '');
             if (data === '[DONE]') {
               continue;
             }
@@ -170,9 +210,32 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
               setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
             }
           } else {
-            fullText += line;
+            fullText += trimmed;
             setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
           }
+        }
+      }
+
+      if (buffer.trim()) {
+        const trimmed = buffer.trim();
+        if (trimmed.startsWith('data:')) {
+          const data = trimmed.replace(/^data:\s*/, '');
+          try {
+            const json = JSON.parse(data);
+            if (json.text) {
+              fullText += json.text;
+              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+            }
+            if (json.meta) {
+              meta = { ...meta, ...json.meta };
+            }
+          } catch {
+            fullText += data;
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+          }
+        } else {
+          fullText += trimmed;
+          setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
         }
       }
 
@@ -200,6 +263,10 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
         onMessageReceived(finalMessage);
       }
     } catch (error) {
+      if ((error as any)?.name === 'AbortError') {
+        setIsTyping(false);
+        return;
+      }
       console.error('Failed to get AI response:', error);
 
       const errorMessage: ChatMessage = {
