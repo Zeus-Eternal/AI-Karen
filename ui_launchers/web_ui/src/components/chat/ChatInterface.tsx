@@ -54,7 +54,7 @@ import {
 } from 'lucide-react';
 
 // Sub-components
-import { CopilotChat } from '@/components/copilot';
+import { CopilotChat } from '@/components/chat/copilot';
 import { ConversationGrid, type ConversationRow } from './ConversationGrid';
 import { ChatAnalyticsChart, type ChatAnalyticsData } from './ChatAnalyticsChart';
 import { MessageBubble as SimpleMessageBubble } from './MessageBubble';

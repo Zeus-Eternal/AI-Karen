@@ -16,7 +16,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { MetaBar } from "@/components/chat";
 import InputBox from "@/components/chat/InputBox";
-import { CopilotChat } from "@/components/copilot";
+import { CopilotChat } from "@/components/chat/copilot";
 import { webUIConfig } from "@/lib/config";
 import { Button } from "@/components/ui/button";
 import {

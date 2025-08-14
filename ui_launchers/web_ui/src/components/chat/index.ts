@@ -1,6 +1,6 @@
 // Export CopilotChat interface as default
-export { CopilotChat as ChatInterface } from '../copilot';
-export { CopilotChat } from '../copilot';
+export { CopilotChat as ChatInterface } from './copilot';
+export { CopilotChat } from './copilot';
 
 // Export enhanced chat interfaces
 export { ChatInterface as EnhancedChatInterface, LegacyChatInterface } from './ChatInterface';
