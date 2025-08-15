@@ -23,6 +23,7 @@ import {
 import { useFeature } from '@/hooks/use-feature';
 import { useTelemetry } from '@/hooks/use-telemetry';
 import { useVoiceInput } from '@/hooks/use-voice-input';
+import { useKeyboardNavigation, createChatKeyboardShortcuts } from '@/hooks/use-keyboard-navigation';
 import { RBACGuard } from '@/components/security/RBACGuard';
 
 interface ComposerProps {
@@ -32,6 +33,9 @@ interface ComposerProps {
   maxLength?: number;
   className?: string;
   features?: ComposerFeatures;
+  onAbort?: () => void;
+  onClear?: () => void;
+  autoFocus?: boolean;
 }
 
 interface ComposerFeatures {
@@ -83,13 +87,18 @@ export const Composer: React.FC<ComposerProps> = ({
   placeholder = "Type your message...",
   maxLength = MAX_LENGTH,
   className = '',
-  features = {}
+  features = {},
+  onAbort,
+  onClear,
+  autoFocus = false
 }) => {
   const [input, setInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedQuickActionIndex, setSelectedQuickActionIndex] = useState(-1);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const { track } = useTelemetry();
   
   // Feature flags
@@ -113,6 +122,51 @@ export const Composer: React.FC<ComposerProps> = ({
     onError: (error) => {
       setError(`Voice input error: ${error.message}`);
       track('voice_input_error', { error: error.message });
+    }
+  });
+
+  // Focus management
+  const focusInput = useCallback(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  // Clear input and focus
+  const clearInput = useCallback(() => {
+    setInput('');
+    setError(null);
+    setSelectedQuickActionIndex(-1);
+    focusInput();
+    track('composer_input_cleared');
+  }, [focusInput, track]);
+
+  // Keyboard shortcuts
+  const keyboardShortcuts = createChatKeyboardShortcuts({
+    onSend: () => handleSubmit(),
+    onAbort: onAbort,
+    onClear: onClear || clearInput,
+    onFocusInput: focusInput,
+    onToggleVoice: voiceEnabled && voiceSupported ? handleVoiceToggle : undefined
+  });
+
+  // Keyboard navigation
+  const { containerRef } = useKeyboardNavigation({
+    shortcuts: keyboardShortcuts,
+    autoFocus: autoFocus,
+    onEscape: () => {
+      if (isRecording) {
+        stopRecording();
+      } else if (input.trim()) {
+        clearInput();
+      } else {
+        onAbort?.();
+      }
+    },
+    onEnter: () => {
+      if (selectedQuickActionIndex >= 0) {
+        handleQuickAction(quickActions[selectedQuickActionIndex]);
+      } else {
+        handleSubmit();
+      }
     }
   });
 
@@ -150,17 +204,89 @@ export const Composer: React.FC<ComposerProps> = ({
     }
   }, [input, isSubmitting, isDisabled, onSubmit, track]);
 
-  // Handle keyboard shortcuts
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  // Enhanced keyboard handling for textarea
+  const handleTextareaKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const { key, shiftKey, ctrlKey, altKey } = e;
+
+    // Handle Enter key
+    if (key === 'Enter' && !shiftKey) {
       e.preventDefault();
-      handleSubmit();
-    } else if (e.key === 'Escape') {
-      setInput('');
-      setError(null);
-      textareaRef.current?.blur();
+      if (selectedQuickActionIndex >= 0) {
+        handleQuickAction(quickActions[selectedQuickActionIndex]);
+      } else {
+        handleSubmit();
+      }
+      return;
     }
-  }, [handleSubmit]);
+
+    // Handle Escape key
+    if (key === 'Escape') {
+      e.preventDefault();
+      if (isRecording) {
+        stopRecording();
+      } else if (input.trim()) {
+        clearInput();
+      } else {
+        textareaRef.current?.blur();
+        onAbort?.();
+      }
+      return;
+    }
+
+    // Handle quick action navigation with arrow keys
+    if (quickActionsEnabled && (key === 'ArrowUp' || key === 'ArrowDown') && ctrlKey) {
+      e.preventDefault();
+      const maxIndex = quickActions.length - 1;
+      
+      if (key === 'ArrowDown') {
+        setSelectedQuickActionIndex(prev => 
+          prev < maxIndex ? prev + 1 : 0
+        );
+      } else {
+        setSelectedQuickActionIndex(prev => 
+          prev > 0 ? prev - 1 : maxIndex
+        );
+      }
+      track('quick_action_navigation', { direction: key === 'ArrowDown' ? 'down' : 'up' });
+      return;
+    }
+
+    // Handle Tab for quick actions
+    if (key === 'Tab' && quickActionsEnabled && !shiftKey && ctrlKey) {
+      e.preventDefault();
+      setSelectedQuickActionIndex(prev => 
+        prev < quickActions.length - 1 ? prev + 1 : -1
+      );
+      return;
+    }
+
+    // Handle voice toggle shortcut
+    if (key === 'm' && ctrlKey && voiceEnabled && voiceSupported) {
+      e.preventDefault();
+      handleVoiceToggle();
+      return;
+    }
+
+    // Clear selection when typing
+    if (selectedQuickActionIndex >= 0 && key.length === 1) {
+      setSelectedQuickActionIndex(-1);
+    }
+  }, [
+    handleSubmit, 
+    handleQuickAction, 
+    quickActions, 
+    selectedQuickActionIndex,
+    quickActionsEnabled,
+    isRecording,
+    stopRecording,
+    clearInput,
+    onAbort,
+    input,
+    voiceEnabled,
+    voiceSupported,
+    handleVoiceToggle,
+    track
+  ]);
 
   // Handle quick action selection
   const handleQuickAction = useCallback((action: typeof quickActions[0]) => {
@@ -176,31 +302,55 @@ export const Composer: React.FC<ComposerProps> = ({
     } else {
       startRecording();
     }
-  }, [isRecording, startRecording, stopRecording]);
+    track('voice_toggle', { isRecording: !isRecording });
+  }, [isRecording, startRecording, stopRecording, track]);
 
   // Input validation
   const isOverLimit = input.length > maxLength;
   const isNearLimit = input.length > WARNING_THRESHOLD;
   const canSubmit = input.trim() && !isSubmitting && !isDisabled && !isOverLimit;
 
+  // Sync container refs
+  useEffect(() => {
+    if (composerRef.current) {
+      containerRef.current = composerRef.current;
+    }
+  }, [containerRef]);
+
   return (
-    <div className={`border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${className}`}>
+    <div 
+      ref={composerRef}
+      className={`border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${className}`}
+      role="region"
+      aria-label="Message composer"
+    >
       <div className="container max-w-4xl mx-auto p-4">
         {/* Quick Actions */}
         {quickActionsEnabled && (
-          <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-2">
+          <div 
+            className="flex items-center gap-2 mb-3 overflow-x-auto pb-2"
+            role="toolbar"
+            aria-label="Quick actions"
+          >
             <span className="text-xs text-muted-foreground whitespace-nowrap">Quick actions:</span>
             {quickActions.map((action, index) => (
               <RBACGuard key={index} permission={action.permission} fallback={null}>
                 <Button
-                  variant="outline"
+                  variant={selectedQuickActionIndex === index ? "default" : "outline"}
                   size="sm"
                   onClick={() => handleQuickAction(action)}
                   disabled={isDisabled || isSubmitting}
-                  className="flex items-center gap-1.5 text-xs whitespace-nowrap"
+                  className={`flex items-center gap-1.5 text-xs whitespace-nowrap ${
+                    selectedQuickActionIndex === index ? 'ring-2 ring-primary' : ''
+                  }`}
+                  aria-pressed={selectedQuickActionIndex === index}
+                  aria-describedby={`quick-action-${index}-desc`}
                 >
                   <action.icon className="h-3 w-3" />
                   {action.label}
+                  <span id={`quick-action-${index}-desc`} className="sr-only">
+                    {action.prompt}
+                  </span>
                 </Button>
               </RBACGuard>
             ))}
@@ -213,7 +363,7 @@ export const Composer: React.FC<ComposerProps> = ({
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onKeyDown={handleTextareaKeyDown}
             placeholder={placeholder}
             disabled={isDisabled || isSubmitting}
             maxLength={maxLength}
@@ -221,7 +371,13 @@ export const Composer: React.FC<ComposerProps> = ({
               isOverLimit ? 'border-destructive focus-visible:ring-destructive' : ''
             }`}
             aria-label="Message input"
-            aria-describedby={error ? 'composer-error' : undefined}
+            aria-describedby={[
+              error ? 'composer-error' : '',
+              'composer-help',
+              selectedQuickActionIndex >= 0 ? `quick-action-${selectedQuickActionIndex}-desc` : ''
+            ].filter(Boolean).join(' ')}
+            aria-invalid={isOverLimit}
+            autoFocus={autoFocus}
           />
 
           {/* Action Buttons */}
@@ -324,10 +480,38 @@ export const Composer: React.FC<ComposerProps> = ({
         </div>
 
         {/* Help Text */}
-        <div className="text-xs text-muted-foreground text-center mt-2">
-          Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Enter</kbd> to send, 
-          <kbd className="px-1 py-0.5 bg-muted rounded text-xs ml-1">Shift+Enter</kbd> for new line,
-          <kbd className="px-1 py-0.5 bg-muted rounded text-xs ml-1">Esc</kbd> to clear
+        <div id="composer-help" className="text-xs text-muted-foreground text-center mt-2">
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+            <span>
+              <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Enter</kbd> to send
+            </span>
+            <span>
+              <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Shift+Enter</kbd> for new line
+            </span>
+            <span>
+              <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Esc</kbd> to clear
+            </span>
+            {quickActionsEnabled && (
+              <>
+                <span>
+                  <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+↑/↓</kbd> navigate actions
+                </span>
+                <span>
+                  <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+Tab</kbd> select action
+                </span>
+              </>
+            )}
+            {voiceEnabled && voiceSupported && (
+              <span>
+                <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+M</kbd> toggle voice
+              </span>
+            )}
+          </div>
+          {selectedQuickActionIndex >= 0 && (
+            <div className="mt-1 text-primary">
+              Selected: {quickActions[selectedQuickActionIndex].label}
+            </div>
+          )}
         </div>
       </div>
     </div>
