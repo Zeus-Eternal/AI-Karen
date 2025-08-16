@@ -90,22 +90,16 @@ class WebUIMemoryQuery(BaseModel):
     
     def to_memory_query(self) -> MemoryQuery:
         """Convert to base MemoryQuery for compatibility."""
-        # Build metadata filter to include user_id, session_id, and tags
-        metadata_filter = {}
-        if self.user_id:
-            metadata_filter["user_id"] = self.user_id
-        if self.session_id:
-            metadata_filter["session_id"] = self.session_id
-        if self.tags:
-            metadata_filter["tags"] = self.tags
-            
         return MemoryQuery(
             text=self.text,
-            metadata_filter=metadata_filter,
+            user_id=self.user_id,
+            session_id=self.session_id,
+            conversation_id=self.conversation_id,
+            tags=self.tags,
             time_range=self.time_range,
             top_k=self.top_k,
             similarity_threshold=self.similarity_threshold,
-            include_embeddings=self.include_embeddings
+            include_embeddings=self.include_embeddings,
         )
 
 
