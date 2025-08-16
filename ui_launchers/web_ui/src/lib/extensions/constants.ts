@@ -110,7 +110,8 @@ export const DEFAULT_RATE_LIMITS = {
 export const API_ENDPOINTS = {
   EXTENSIONS: '/api/extensions',
   PLUGINS: '/api/plugins',
-  PROVIDERS: '/api/providers',
+  PROVIDERS: '/api/llm/providers',
+  LLM_PROFILES: '/api/llm/profiles',
   MODELS: '/api/models',
   MARKETPLACE: '/api/marketplace',
   HEALTH: '/api/health',
