@@ -12,6 +12,8 @@ import time
 from typing import Dict, Any, Optional
 
 from ui_logic.utils.api import ping_services
+from ai_karen_engine.integrations.provider_status import collect_provider_statuses
+from ai_karen_engine.integrations.diagnostic_prompt import make_admin_diagnostic_prompt
 
 def get_system_diagnostics() -> Dict[str, Any]:
     """
@@ -74,6 +76,14 @@ def get_system_diagnostics() -> Dict[str, Any]:
         info["services"] = ping_services()
     except Exception as e:
         info["services"] = {"error": f"Service ping failed: {e}"}
+
+    # LLM provider statuses
+    try:
+        statuses = collect_provider_statuses()
+        info["llm_providers"] = statuses
+        info["llm_prompt"] = make_admin_diagnostic_prompt(statuses)
+    except Exception as e:
+        info["llm_providers_error"] = str(e)
 
     # --- Network info (IP, safe subset) ---
     try:

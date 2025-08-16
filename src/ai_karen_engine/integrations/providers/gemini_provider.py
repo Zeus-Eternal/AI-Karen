@@ -365,3 +365,18 @@ class GeminiProvider(LLMProviderBase):
                 "status": "unhealthy",
                 "error": str(ex)
             }
+
+    # Lightweight status helpers -------------------------------------------------
+
+    def ping(self) -> bool:
+        try:
+            self.health_check()
+            return True
+        except Exception:
+            return False
+
+    def available_models(self) -> list[str]:
+        try:
+            return self.get_models()
+        except Exception:
+            return [self.model]

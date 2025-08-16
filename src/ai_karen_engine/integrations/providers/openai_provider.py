@@ -372,3 +372,20 @@ class OpenAIProvider(LLMProviderBase):
             }
         except Exception as ex:
             return {"status": "unhealthy", "error": str(ex)}
+
+    # Lightweight status helpers -------------------------------------------------
+
+    def ping(self) -> bool:
+        """Return True if the provider responds to a minimal request."""
+        try:
+            self.health_check()
+            return True
+        except Exception:
+            return False
+
+    def available_models(self) -> list[str]:
+        """Return a best-effort list of models for this provider."""
+        try:
+            return self.get_models()
+        except Exception:
+            return [self.model]

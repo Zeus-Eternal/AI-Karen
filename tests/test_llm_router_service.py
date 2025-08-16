@@ -33,6 +33,12 @@ class DummyRegistry:
     def list_providers(self) -> list[str]:
         return list(self.status_map.keys())
 
+    def default_chain(self, healthy_only: bool = False) -> list[str]:
+        names = self.list_providers()
+        if healthy_only:
+            names = [n for n in names if self.status_map.get(n) == "healthy"]
+        return names
+
     def get_provider(self, name: str) -> DummyProvider | None:
         if self.status_map.get(name) != "fail_create":
             return DummyProvider(name)
