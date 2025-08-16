@@ -12,6 +12,7 @@ hnswlib
 duckdb
 huggingface_hub
 openai
+ollama
 requests
 llama-cpp-python
 scikit-learn==1.5.*
@@ -53,4 +54,6 @@ argon2-cffi
 copilotkit
 sse-starlette
 pre-commit
+httptools
 python-json-logger
+python

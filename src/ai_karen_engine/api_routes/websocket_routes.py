@@ -110,11 +110,45 @@ def get_chat_orchestrator() -> ChatOrchestrator:
     """Create or return the chat orchestrator instance."""
     from ai_karen_engine.chat.memory_processor import MemoryProcessor
     from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
+    from ai_karen_engine.database.memory_manager import MemoryManager
+    from ai_karen_engine.database.client import MultiTenantPostgresClient
+    from ai_karen_engine.core.milvus_client import MilvusClient
+    from ai_karen_engine.core import default_models
+
+    try:
+        # Initialize required components for memory manager
+        db_client = MultiTenantPostgresClient()
+        milvus_client = MilvusClient()
+        
+        # Load embedding manager (async operation handled gracefully)
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're in an async context, we can't await here
+                # Use a fallback or initialize without embedding manager
+                embedding_manager = None
+            else:
+                loop.run_until_complete(default_models.load_default_models())
+                embedding_manager = default_models.get_embedding_manager()
+        except Exception as e:
+            logger.warning(f"Failed to load embedding manager: {e}")
+            embedding_manager = None
+        
+        # Create memory manager instance
+        memory_manager = MemoryManager(
+            db_client=db_client,
+            milvus_client=milvus_client,
+            embedding_manager=embedding_manager
+        )
+    except Exception as e:
+        logger.warning(f"Failed to create memory manager: {e}")
+        memory_manager = None
 
     memory_processor = MemoryProcessor(
         spacy_service=nlp_service_manager.spacy_service,
         distilbert_service=nlp_service_manager.distilbert_service,
-        memory_manager=None,  # Will be injected later
+        memory_manager=memory_manager,
     )
 
     return ChatOrchestrator(memory_processor=memory_processor)

@@ -261,7 +261,7 @@ class AIOrchestrator(BaseService):
                 self.logger.warning(f"User's chosen LLM ({preferred_provider}) failed: {e}")
             
             # Step 2: Try system default LLMs
-            default_providers = ["ollama:llama3.2:latest", "openai:gpt-3.5-turbo", "huggingface:distilbert-base-uncased"]
+            default_providers = ["ollama:llama3.2:1b", "ollama:llama3.2:latest", "openai:gpt-3.5-turbo", "huggingface:distilbert-base-uncased"]
             for provider_model in default_providers:
                 try:
                     provider, model = provider_model.split(":", 1)

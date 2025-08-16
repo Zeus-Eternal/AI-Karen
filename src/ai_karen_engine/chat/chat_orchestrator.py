@@ -1079,7 +1079,8 @@ class ChatOrchestrator:
             
             # Define system default LLMs in priority order
             default_providers = [
-                "ollama:llama3.2:latest",
+                "ollama:llama3.2:1b",  # Use available model instead of :latest
+                "ollama:llama3.2:latest",  # Keep as fallback
                 "openai:gpt-3.5-turbo", 
                 "copilotkit:copilot-assist",
                 "huggingface:distilbert-base-uncased"

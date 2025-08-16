@@ -15,6 +15,9 @@ import { Separator } from '@/components/ui/separator';
 import { X, Save, LogOut, Loader2, Key, Eye, EyeOff } from 'lucide-react';
 import { authService } from '@/services/authService';
 
+// Safe array helper to prevent .map() on undefined
+const toArray = <T,>(v: T[] | null | undefined): T[] => (Array.isArray(v) ? v : []);
+
 interface UserProfileProps {
   onClose?: () => void;
 }
@@ -288,6 +291,17 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     }
   };
 
+  // Show loading state while auth is initializing
+  if (isLoading) {
+    return (
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!user) {
     return null;
   }
@@ -344,7 +358,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Roles</Label>
               <div className="flex flex-wrap gap-1 mt-1">
-                {user.roles.map((role) => (
+                {toArray(user.roles).map((role) => (
                   <Badge key={role} variant="secondary">
                     {role}
                   </Badge>
