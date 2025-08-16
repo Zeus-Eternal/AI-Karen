@@ -19,13 +19,6 @@ async def list_providers():
         ]
     }
 
-
-@router.get("/llm/providers")
-async def legacy_list_providers():
-    """Backward compatible endpoint for old /api/llm/providers path."""
-    return await list_providers()
-
-
 @router.get("/settings")
 async def get_settings(user: UserPrefs = Depends(get_user_prefs)):
     return {
