@@ -276,6 +276,7 @@ class KarenBackendService {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
+          console.error('KarenBackendService 4xx/5xx', response.status, url);
           // Try to parse structured error response
           let errorDetails: WebUIErrorResponse | undefined;
           try {
