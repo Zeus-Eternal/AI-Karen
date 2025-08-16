@@ -1,9 +1,5 @@
-// Export CopilotChat interface as default
-export { CopilotChat as ChatInterface } from './copilot';
+export { default as ChatInterface } from './ChatInterface';
 export { CopilotChat } from './copilot';
-
-// Export enhanced chat interfaces
-export { ChatInterface as EnhancedChatInterface, LegacyChatInterface } from './ChatInterface';
 
 // Export supporting components
 export { MessageBubble } from './MessageBubble';

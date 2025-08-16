@@ -117,7 +117,12 @@ def configure_logging():
             "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
             "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(lineno)d %(pathname)s",
         }
-    except Exception:
+    except ImportError:
+        json_formatter = {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        }
+    except Exception as exc:  # pragma: no cover - unexpected config issues
+        logging.getLogger(__name__).exception("Unexpected logging setup error: %s", exc)
         json_formatter = {
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         }

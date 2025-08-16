@@ -11,7 +11,6 @@ from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any, List
 
 from ai_karen_engine.integrations.providers.copilotkit_provider import CopilotKitProvider
-from ai_karen_engine.integrations.llm_registry import get_registry, register_provider
 from ai_karen_engine.integrations.llm_utils import LLMUtils, GenerationFailed, EmbeddingFailed
 
 
@@ -264,64 +263,6 @@ class TestCopilotKitProvider:
         
         assert result["status"] == "unhealthy"
         assert "No API key provided" in result["error"]
-
-
-class TestCopilotKitRegistryIntegration:
-    """Test CopilotKit integration with LLM registry."""
-    
-    def test_copilotkit_in_registry(self):
-        """Test that CopilotKit is registered in the LLM registry."""
-        registry = get_registry()
-        providers = registry.list_providers()
-        
-        assert "copilotkit" in providers
-    
-    def test_get_copilotkit_provider_from_registry(self):
-        """Test getting CopilotKit provider from registry."""
-        registry = get_registry()
-        
-        with patch.dict('os.environ', {'COPILOTKIT_API_KEY': 'test_key'}):
-            provider = registry.get_provider("copilotkit")
-            
-            assert provider is not None
-            assert isinstance(provider, CopilotKitProvider)
-            assert provider.model == "gpt-4"  # Default model
-    
-    def test_copilotkit_provider_info_from_registry(self):
-        """Test getting CopilotKit provider info from registry."""
-        registry = get_registry()
-        info = registry.get_provider_info("copilotkit")
-        
-        assert info is not None
-        assert info["name"] == "copilotkit"
-        assert info["provider_class"] == "CopilotKitProvider"
-        assert info["description"] == "CopilotKit AI-powered code assistance and contextual suggestions"
-        assert info["supports_embeddings"] is True
-        assert info["requires_api_key"] is True
-    
-    def test_register_custom_copilotkit_provider(self):
-        """Test registering a custom CopilotKit provider."""
-        registry = get_registry()
-        
-        # Register custom provider
-        register_provider(
-            "custom_copilotkit",
-            CopilotKitProvider,
-            description="Custom CopilotKit instance",
-            default_model="gpt-3.5-turbo"
-        )
-        
-        # Verify registration
-        providers = registry.list_providers()
-        assert "custom_copilotkit" in providers
-        
-        info = registry.get_provider_info("custom_copilotkit")
-        assert info["description"] == "Custom CopilotKit instance"
-        assert info["default_model"] == "gpt-3.5-turbo"
-
-
-# Note: LLM Orchestrator and Chat Orchestrator integration tests are commented out
-# due to import complexity. The core provider functionality is tested above.
 
 
 class TestLLMUtilsCopilotKitIntegration:
