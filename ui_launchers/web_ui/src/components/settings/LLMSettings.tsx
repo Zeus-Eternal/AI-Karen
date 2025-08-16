@@ -69,6 +69,7 @@ export default function LLMSettings() {
   const [loading, setLoading] = useState(true);
   const [healthChecking, setHealthChecking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [providerWarning, setProviderWarning] = useState<string | null>(null);
   const { toast } = useToast();
 
   const backend = getKarenBackend();
@@ -111,45 +112,51 @@ export default function LLMSettings() {
 
   const loadProviders = async () => {
     try {
-      const response = await backend.makeRequestPublic<{ providers: LLMProvider[] }>('/api/llm/providers');
+      const response = await backend.makeRequestPublic<{ providers: LLMProvider[] }>('/api/providers');
       setProviders(response.providers || []);
+      setProviderWarning(null);
     } catch (error) {
       console.error('Failed to load providers:', error);
       const info = (error as any)?.errorInfo || ErrorHandler.handleApiError(error as any, 'loadProviders');
-      toast({ variant: 'destructive', title: info.title, description: info.message });
-      // Use fallback providers if backend is unavailable
-      setProviders([
-        {
-          name: 'ollama',
-          provider_class: 'OllamaProvider',
-          description: 'Local Ollama server for running open-source models',
-          supports_streaming: true,
-          supports_embeddings: true,
-          requires_api_key: false,
-          default_model: 'llama3.2:latest',
-          health_status: 'unknown'
-        },
-        {
-          name: 'openai',
-          provider_class: 'OpenAIProvider',
-          description: 'OpenAI GPT models via API',
-          supports_streaming: true,
-          supports_embeddings: true,
-          requires_api_key: true,
-          default_model: 'gpt-3.5-turbo',
-          health_status: 'unknown'
-        },
-        {
-          name: 'gemini',
-          provider_class: 'GeminiProvider',
-          description: 'Google Gemini models via API',
-          supports_streaming: true,
-          supports_embeddings: true,
-          requires_api_key: true,
-          default_model: 'gemini-1.5-flash',
-          health_status: 'unknown'
-        }
-      ]);
+      if ((error as any)?.message?.includes('HTTP 404')) {
+        setProviders([]);
+        setProviderWarning('Provider endpoint not found. Check NEXT_PUBLIC_KAREN_API_BASE / server routes.');
+      } else {
+        toast({ variant: 'destructive', title: info.title, description: info.message });
+        // Use fallback providers if backend is unavailable
+        setProviders([
+          {
+            name: 'ollama',
+            provider_class: 'OllamaProvider',
+            description: 'Local Ollama server for running open-source models',
+            supports_streaming: true,
+            supports_embeddings: true,
+            requires_api_key: false,
+            default_model: 'llama3.2:latest',
+            health_status: 'unknown'
+          },
+          {
+            name: 'openai',
+            provider_class: 'OpenAIProvider',
+            description: 'OpenAI GPT models via API',
+            supports_streaming: true,
+            supports_embeddings: true,
+            requires_api_key: true,
+            default_model: 'gpt-3.5-turbo',
+            health_status: 'unknown'
+          },
+          {
+            name: 'gemini',
+            provider_class: 'GeminiProvider',
+            description: 'Google Gemini models via API',
+            supports_streaming: true,
+            supports_embeddings: true,
+            requires_api_key: true,
+            default_model: 'gemini-1.5-flash',
+            health_status: 'unknown'
+          }
+        ]);
+      }
     }
   };
 
@@ -323,6 +330,13 @@ export default function LLMSettings() {
 
   return (
     <div className="space-y-6">
+      {providerWarning && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Provider Endpoint Missing</AlertTitle>
+          <AlertDescription>{providerWarning}</AlertDescription>
+        </Alert>
+      )}
       {/* Profile Selection */}
       <Card>
         <CardHeader>

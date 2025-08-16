@@ -47,6 +47,7 @@ from ai_karen_engine.api_routes.tool_routes import router as tool_router
 from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
 from ai_karen_engine.api_routes.websocket_routes import router as websocket_router
 from ai_karen_engine.api_routes.chat_runtime import router as chat_runtime_router
+from ai_karen_engine.api_routes.settings_routes import router as settings_router
 from ai_karen_engine.server.middleware import configure_middleware
 from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS, PLUGIN_MAP
 from ai_karen_engine.server.startup import create_lifespan
@@ -330,6 +331,7 @@ def create_app() -> FastAPI:
     app.include_router(file_attachment_router, prefix="/api/files", tags=["files"])
     app.include_router(code_execution_router, prefix="/api/code", tags=["code"])
     app.include_router(chat_runtime_router, prefix="/api", tags=["chat-runtime"])
+    app.include_router(settings_router)
 
     # Setup developer API with enhanced debugging capabilities
     setup_developer_api(app)
