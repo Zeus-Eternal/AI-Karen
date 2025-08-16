@@ -175,8 +175,11 @@ curl -X PUT "http://localhost:9200/ai_karen_index"
 ### 4. Start Backend API
 
 ```bash
-# Start FastAPI server
+# Start FastAPI server (recommended)
 uvicorn main:create_app --factory --reload --host 0.0.0.0 --port 8000
+
+# Or use the helper script
+python start_server.py
 
 # Verify API is running
 curl http://localhost:8000/health

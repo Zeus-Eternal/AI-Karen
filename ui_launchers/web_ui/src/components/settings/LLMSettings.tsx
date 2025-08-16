@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { ErrorHandler } from '@/lib/error-handler';
+import { API_ENDPOINTS } from '@/lib/extensions/constants';
 
 interface LLMProvider {
   name: string;
@@ -112,19 +113,23 @@ export default function LLMSettings() {
 
   const loadProviders = async () => {
     try {
-      const response = await backend.makeRequestPublic<{ providers: LLMProvider[] }>('/api/providers');
+      const response = await backend.makeRequestPublic<{ providers: LLMProvider[] }>(API_ENDPOINTS.PROVIDERS);
       setProviders(response.providers || []);
       setProviderWarning(null);
     } catch (error) {
       console.error('Failed to load providers:', error);
       const info = (error as any)?.errorInfo || ErrorHandler.handleApiError(error as any, 'loadProviders');
-      if ((error as any)?.message?.includes('HTTP 404')) {
-        setProviders([]);
-        setProviderWarning('Provider endpoint not found. Check NEXT_PUBLIC_KAREN_API_BASE / server routes.');
-      } else {
-        toast({ variant: 'destructive', title: info.title, description: info.message });
-        // Use fallback providers if backend is unavailable
-        setProviders([
+      const status = (error as any)?.status || (error as any)?.response?.status;
+      const url = API_ENDPOINTS.PROVIDERS;
+      toast({
+        variant: 'destructive',
+        title: info.title,
+        description: `${info.message} (URL: ${url}, status: ${status ?? 'unknown'})`
+      });
+      console.warn('Using fallback providers due to backend error');
+      // Use fallback providers if backend is unavailable
+      setProviderWarning('Using fallback providers due to backend error.');
+      setProviders([
           {
             name: 'ollama',
             provider_class: 'OllamaProvider',
@@ -156,13 +161,12 @@ export default function LLMSettings() {
             health_status: 'unknown'
           }
         ]);
-      }
     }
   };
 
   const loadProfiles = async () => {
     try {
-      const response = await backend.makeRequestPublic<{ profiles: LLMProfile[] }>('/api/llm/profiles');
+      const response = await backend.makeRequestPublic<{ profiles: LLMProfile[] }>(API_ENDPOINTS.LLM_PROFILES);
       setProfiles(response.profiles || []);
     } catch (error) {
       console.error('Failed to load profiles:', error);
