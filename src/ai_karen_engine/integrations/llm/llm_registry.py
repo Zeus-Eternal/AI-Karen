@@ -8,20 +8,9 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from ai_karen_engine.integrations.providers.deepseek_provider import (  # type: ignore[import-not-found]
-    DeepseekProvider,
-)
-from ai_karen_engine.integrations.providers.gemini_provider import (  # type: ignore[import-not-found]
-    GeminiProvider,
-)
-from ai_karen_engine.integrations.providers.huggingface_provider import (  # type: ignore[import-not-found]
-    HuggingFaceProvider,
-)
-from ai_karen_engine.integrations.providers.ollama_provider import (  # type: ignore[import-not-found]
-    OllamaProvider,
-)
-from ai_karen_engine.integrations.providers.openai_provider import (  # type: ignore[import-not-found]
-    OpenAIProvider,
+from ai_karen_engine.integrations.llm_registry import (
+    LLMRegistry as GlobalRegistry,
+    get_registry,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,15 +25,11 @@ class InvocationResult:
 class LLMRegistry:
     """Simple registry coordinating multiple LLM providers."""
 
-    def __init__(self) -> None:
-        self._providers: Dict[str, Any] = {
-            "ollama": OllamaProvider(),
-            "openai": OpenAIProvider(),
-            "gemini": GeminiProvider(),
-            "deepseek": DeepseekProvider(),
-            "huggingface": HuggingFaceProvider(),
-        }
-        self._order = ["ollama", "openai", "gemini", "deepseek", "huggingface"]
+    def __init__(self, registry: Optional[GlobalRegistry] = None) -> None:
+        self.registry = registry or get_registry()
+
+    def default_chain(self, healthy_only: bool = True) -> List[str]:
+        return self.registry.default_chain(healthy_only=healthy_only)
 
     async def invoke(
         self,
@@ -55,14 +40,13 @@ class LLMRegistry:
         **kwargs: Any,
     ) -> InvocationResult:
         """Invoke an LLM with fallback hierarchy."""
-        order: List[str] = []
+        order: List[str] = self.default_chain(healthy_only=True)
         if preferred_provider:
-            order.append(preferred_provider.lower())
-        order.extend([p for p in self._order if p not in order])
+            order = [preferred_provider.lower()] + [p for p in order if p != preferred_provider.lower()]
 
         last_error: Optional[Exception] = None
         for name in order:
-            provider = self._providers.get(name)
+            provider = self.registry.get_provider(name)
             if not provider:
                 continue
             model = (
@@ -88,4 +72,5 @@ class LLMRegistry:
 
     def select_provider(self, task_intent: str) -> str:
         """Return default provider based on intent (currently static)."""
-        return self._order[0]
+        chain = self.default_chain(healthy_only=False)
+        return chain[0] if chain else ""

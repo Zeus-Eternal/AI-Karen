@@ -534,3 +534,11 @@ class CopilotKitProvider(BaseLLMProvider, HookMixin):
             "api_configured": bool(self.api_key),
             "client_initialized": self.client is not None,
         }
+
+    # Lightweight status helpers -------------------------------------------------
+
+    def ping(self) -> bool:
+        return self.is_available()
+
+    def available_models(self) -> list[str]:
+        return list({v for v in self.models.values() if v})

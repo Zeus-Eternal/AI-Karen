@@ -16,6 +16,7 @@ import logging.config
 import ssl
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -107,6 +108,18 @@ def configure_logging():
     """Configure production-grade logging"""
     Path("logs").mkdir(exist_ok=True)
 
+    try:
+        from pythonjsonlogger import jsonlogger  # type: ignore
+
+        json_formatter: Dict[str, Any] = {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(lineno)d %(pathname)s",
+        }
+    except Exception:
+        json_formatter = {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        }
+
     logging.config.dictConfig(
         {
             "version": 1,
@@ -120,10 +133,7 @@ def configure_logging():
                 "standard": {
                     "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 },
-                "json": {
-                    "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-                    "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(lineno)d %(pathname)s",
-                },
+                "json": json_formatter,
                 "access": {
                     "()": "uvicorn.logging.AccessFormatter",
                     "fmt": '%(asctime)s - %(client_addr)s - "%(request_line)s" %(status_code)s',

@@ -71,6 +71,19 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
     return json.loads(text)
 
 
+def build_chain(preferred: Optional[str], registry, local_model: str) -> List[str]:
+    """Construct provider chain based on preference and registry state."""
+
+    chain: List[str] = []
+    if preferred:
+        chain.append(preferred)
+    for name in registry.default_chain(healthy_only=True):
+        if name not in chain:
+            chain.append(name)
+    chain.append(f"local:{local_model}")
+    return chain
+
+
 class LLMProfileRouter:
     """Route LLM requests according to intent profiles."""
 
@@ -125,13 +138,11 @@ class LLMRouter:
     def __init__(
         self,
         registry=None,
-        local_priority: Optional[List[str]] = None,
-        remote_priority: Optional[List[str]] = None,
+        local_model: str = "llama3.2:latest",
     ) -> None:
         self.registry = registry or get_registry()
         self.logger = logging.getLogger("kari.llm_router")
-        self.local_priority = local_priority or ["ollama", "llama.cpp", "llama_cpp"]
-        self.remote_priority = remote_priority or ["openai", "gemini", "deepseek", "huggingface"]
+        self.local_model = local_model
 
     def _is_healthy(self, name: str) -> bool:
         """Check if a provider is healthy using the registry health check."""
@@ -162,34 +173,19 @@ class LLMRouter:
         """
 
         pref = (user_preferences or {}).get("provider")
-        if pref:
-            if self._is_healthy(pref):
-                provider = self._get_provider(pref)
-                if provider:
-                    return provider
-            else:
-                self.logger.warning("Preferred provider %s unavailable; falling back", pref)
-        for name in self.local_priority:
-            if self._is_healthy(name):
-                provider = self._get_provider(name)
-                if provider:
-                    return provider
+        chain = build_chain(pref, self.registry, self.local_model)
 
-        remote_order = (user_preferences or {}).get("remote_priority", self.remote_priority)
-        if not isinstance(remote_order, list):
-            self.logger.warning("Invalid remote priority %s; using default order", remote_order)
-            remote_order = self.remote_priority
-
-        for name in remote_order:
-            if name in self.local_priority:
-                continue
-            if self._is_healthy(name):
-                provider = self._get_provider(name)
-                if provider:
-                    return provider
-
-        for name in self.registry.list_providers():
-            if name in self.local_priority or name in remote_order:
+        for name in chain:
+            if name.startswith("local:"):
+                model = name.split(":", 1)[1]
+                if self._is_healthy("ollama"):
+                    provider = self._get_provider("ollama")
+                    if provider:
+                        try:
+                            provider.model = model
+                        except Exception:
+                            pass
+                        return provider
                 continue
             if self._is_healthy(name):
                 provider = self._get_provider(name)

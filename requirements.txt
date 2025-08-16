@@ -53,3 +53,4 @@ argon2-cffi
 copilotkit
 sse-starlette
 pre-commit
+python-json-logger

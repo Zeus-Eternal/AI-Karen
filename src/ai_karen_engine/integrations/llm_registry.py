@@ -53,6 +53,14 @@ class LLMRegistry:
         self.registry_path = registry_path or Path("models/llm_registry.json")
         self._providers: Dict[str, LLMProviderBase] = {}
         self._registrations: Dict[str, ProviderRegistration] = {}
+        self._priorities: List[str] = [
+            "ollama",
+            "openai",
+            "gemini",
+            "deepseek",
+            "huggingface",
+            "copilotkit",
+        ]
 
         # Register built-in providers
         self._register_builtin_providers()
@@ -259,6 +267,32 @@ class LLMRegistry:
     def list_providers(self) -> List[str]:
         """Get list of registered provider names."""
         return list(self._registrations.keys())
+
+    def default_chain(self, healthy_only: bool = False) -> List[str]:
+        """Return providers ordered by built-in priority.
+
+        Parameters
+        ----------
+        healthy_only: bool
+            If True, only include providers with health_status "healthy".
+        """
+
+        ordered: List[str] = []
+        for name in self._priorities:
+            if name not in self._registrations:
+                continue
+            if healthy_only and self._registrations[name].health_status not in ("healthy", "unknown"):
+                continue
+            ordered.append(name)
+
+        for name in self._registrations:
+            if name in ordered:
+                continue
+            if healthy_only and self._registrations[name].health_status not in ("healthy", "unknown"):
+                continue
+            ordered.append(name)
+
+        return ordered
 
     def get_provider_info(self, name: str) -> Optional[Dict[str, Any]]:
         """Get provider registration information."""

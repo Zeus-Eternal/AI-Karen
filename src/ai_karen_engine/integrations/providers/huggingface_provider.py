@@ -304,3 +304,20 @@ class HuggingFaceProvider(LLMProviderBase):
             "supports_streaming": False,  # Can be implemented later
             "supports_embeddings": True
         }
+
+    # Lightweight status helpers -------------------------------------------------
+
+    def ping(self) -> bool:
+        try:
+            self.health_check()
+            return True
+        except Exception:
+            return False
+
+    def available_models(self) -> list[str]:
+        if self.use_local:
+            return [self.model]
+        try:
+            return self.get_models()
+        except Exception:
+            return [self.model]
