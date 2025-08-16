@@ -57,6 +57,10 @@ class MemoryQuery:
     """Represents a memory query with all parameters."""
 
     text: str
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    conversation_id: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
     scope: Optional[str] = None
     kind: Optional[str] = None
     metadata_filter: Dict[str, Any] = field(default_factory=dict)
@@ -66,9 +70,13 @@ class MemoryQuery:
     include_embeddings: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for logging."""
+        """Convert to dictionary for logging and caching."""
         return {
             "text": self.text[:100] + "..." if len(self.text) > 100 else self.text,
+            "user_id": self.user_id,
+            "session_id": self.session_id,
+            "conversation_id": self.conversation_id,
+            "tags": self.tags,
             "scope": self.scope,
             "kind": self.kind,
             "metadata_filter": self.metadata_filter,
@@ -493,11 +501,18 @@ class MemoryManager:
 
     def _build_metadata_filter(self, query: MemoryQuery) -> Optional[Dict[str, Any]]:
         """Build metadata filter for vector search."""
-        metadata_filter = {}
+        metadata_filter: Dict[str, Any] = dict(query.metadata_filter)
 
+        if query.user_id:
+            metadata_filter["user_id"] = query.user_id
+        if query.session_id:
+            metadata_filter["session_id"] = query.session_id
+        if query.conversation_id:
+            metadata_filter["conversation_id"] = query.conversation_id
+        if query.tags:
+            metadata_filter["tags"] = query.tags
         if query.scope:
             metadata_filter["scope"] = query.scope
-
         if query.kind:
             metadata_filter["kind"] = query.kind
 
@@ -548,12 +563,30 @@ class MemoryManager:
         """Apply additional filters to memory results."""
         filtered = memories
 
-        # Filter by metadata
+        # Filter by explicit metadata filter
         if query.metadata_filter:
             filtered = [
                 m
                 for m in filtered
                 if all(m.metadata.get(k) == v for k, v in query.metadata_filter.items())
+            ]
+
+        # Filter by user/session/conversation identifiers
+        if query.user_id:
+            filtered = [m for m in filtered if m.metadata.get("user_id") == query.user_id]
+        if query.session_id:
+            filtered = [m for m in filtered if m.metadata.get("session_id") == query.session_id]
+        if query.conversation_id:
+            filtered = [
+                m for m in filtered if m.metadata.get("conversation_id") == query.conversation_id
+            ]
+
+        # Filter by tags
+        if query.tags:
+            filtered = [
+                m
+                for m in filtered
+                if all(tag in (m.metadata.get("tags") or []) for tag in query.tags)
             ]
 
         return filtered
