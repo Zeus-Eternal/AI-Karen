@@ -24,6 +24,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
     password: '',
+    totp_code: '',
   });
   const [error, setError] = useState<string>('');
   const [showTwoFactor, setShowTwoFactor] = useState(false);
@@ -55,7 +56,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
       setError(errorMessage);
       
       // Check if 2FA is required
-      if (errorMessage.toLowerCase().includes('2fa') || errorMessage.toLowerCase().includes('two factor')) {
+      if (errorMessage.toLowerCase().includes('2fa') || 
+          errorMessage.toLowerCase().includes('two factor') || 
+          errorMessage.toLowerCase().includes('two-factor')) {
         setShowTwoFactor(true);
       }
     }
@@ -177,6 +180,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               type="submit"
               disabled={isLoading || validation.validationState.hasErrors}
               className="w-full"
+              data-testid="submit-button"
             >
               {isLoading ? (
                 <>

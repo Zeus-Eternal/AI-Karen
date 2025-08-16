@@ -346,6 +346,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
 
   // Filter data by cluster
   const filteredData = React.useMemo(() => {
+    if (!networkData?.nodes || !networkData?.edges) return { nodes: [], edges: [] };
     if (!selectedCluster) return networkData;
 
     const filteredNodes = networkData.nodes.filter(node => node.cluster === selectedCluster);
@@ -359,9 +360,10 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
 
   // Get unique clusters for filter
   const clusters = React.useMemo(() => {
+    if (!networkData?.nodes) return [];
     const clusterSet = new Set(networkData.nodes.map(node => node.cluster));
     return Array.from(clusterSet).sort();
-  }, [networkData.nodes]);
+  }, [networkData?.nodes]);
 
   if (error) {
     return (

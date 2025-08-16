@@ -16,7 +16,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { MetaBar } from "@/components/chat";
 import InputBox from "@/components/chat/InputBox";
-import { CopilotChat } from "@/components/chat/copilot";
+import { ChatInterface } from "@/components/chat/copilot";
 import { webUIConfig } from "@/lib/config";
 import { Button } from "@/components/ui/button";
 import {
@@ -150,7 +150,20 @@ function ChatView() {
           <SidebarInset className="flex-1 flex flex-col min-h-0">
             <MetaBar />
             <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6">
-              <CopilotChat className="flex-1" />
+              <ChatInterface 
+                className="flex-1" 
+                useCopilotKit={true}
+                enableCodeAssistance={true}
+                enableContextualHelp={true}
+                enableDocGeneration={true}
+                showTabs={true}
+                showSettings={true}
+                enableVoiceInput={false}
+                enableFileUpload={true}
+                enableAnalytics={true}
+                enableExport={true}
+                enableSharing={false}
+              />
             </main>
           </SidebarInset>
         </div>

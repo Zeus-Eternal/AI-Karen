@@ -227,7 +227,7 @@ class HealthMonitor {
       });
 
       // Check analytics endpoints
-      await this.checkEndpoint('/api/analytics/system-metrics', async (_signal) => {
+      await this.checkEndpoint('/api/web/analytics/system', async (_signal) => {
         return await backend.getSystemMetrics();
       });
 

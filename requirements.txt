@@ -13,8 +13,6 @@ duckdb
 huggingface_hub
 openai
 requests
-streamlit
-streamlit-autorefresh
 llama-cpp-python
 scikit-learn==1.5.*
 spacy==3.7.*
@@ -54,3 +52,4 @@ bcrypt
 argon2-cffi
 copilotkit
 sse-starlette
+pre-commit

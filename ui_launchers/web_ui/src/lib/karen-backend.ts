@@ -818,7 +818,7 @@ class KarenBackendService {
   // Analytics Service Integration
   async getSystemMetrics(): Promise<SystemMetrics> {
     try {
-      return await this.makeRequest<SystemMetrics>('/api/analytics/system-metrics', {}, true, 60000); // 1 minute cache
+      return await this.makeRequest<SystemMetrics>('/api/web/analytics/system', {}, true, 60000); // 1 minute cache
     } catch (error) {
       console.error('Failed to get system metrics:', error);
       // Return mock data as fallback

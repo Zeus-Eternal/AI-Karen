@@ -168,6 +168,7 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(({
         <Input
           ref={ref}
           id={fieldId}
+          data-testid={`input-${name}`}
           type={getInputType()}
           autoComplete={getAutoComplete()}
           inputMode={getInputMode()}

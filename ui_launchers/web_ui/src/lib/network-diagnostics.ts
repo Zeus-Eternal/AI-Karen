@@ -248,7 +248,7 @@ class NetworkDiagnostics {
       {
         name: 'System Metrics Endpoint',
         description: 'Test system metrics endpoint',
-        endpoint: '/api/analytics/system-metrics',
+        endpoint: '/api/web/analytics/system',
         method: 'GET',
       },
     ];

@@ -10,6 +10,24 @@ export default defineConfig({
     typecheck: {
       tsconfig: './tsconfig.json',
     },
+    server: {
+      deps: {
+        inline: [
+          '@mui/material',
+          '@mui/system',
+          '@mui/icons-material',
+          '@mui/lab',
+          '@mui/x-data-grid',
+          '@emotion/react',
+          '@emotion/styled',
+          '@emotion/cache',
+          '@emotion/serialize',
+          '@emotion/utils',
+          /^@mui\//,
+          /^@emotion\//
+        ]
+      }
+    }
   },
   resolve: {
     alias: {

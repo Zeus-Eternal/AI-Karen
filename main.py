@@ -539,10 +539,10 @@ if __name__ == "__main__":
         "loop": "auto",  # Auto-select the best event loop
         "server_header": False,  # Disable server header to reduce attack surface
         "date_header": False,  # Disable date header for performance
-        # Add limits to prevent resource exhaustion from invalid requests
-        "limit_concurrency": 100,
-        "limit_max_requests": 1000,
-        "backlog": 2048,
+        # Production-ready limits to prevent resource exhaustion
+        "limit_concurrency": 200,  # Increased for production
+        "limit_max_requests": 10000,  # Increased for production (10x more)
+        "backlog": 4096,  # Increased backlog for better handling
     }
 
     if ssl_context:

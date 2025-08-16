@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { ConversationGrid, ConversationRow } from '@/components/chat/ConversationGrid';
 import { ChatAnalyticsChart, ChatAnalyticsData } from '@/components/chat/ChatAnalyticsChart';
 import { MemoryGrid, MemoryRow } from '@/components/chat/MemoryGrid';
-import { ChatInterface } from '@/components/chat/ChatInterface';
+import ChatInterface from '@/components/chat/ChatInterface';
 import { HookProvider } from '@/contexts/HookContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 

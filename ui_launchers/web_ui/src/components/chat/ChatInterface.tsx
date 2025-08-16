@@ -1,31 +1,3 @@
-// src/components/chat/ChatInterface.tsx
-'use client';
-
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-  FormEvent,
-} from 'react';
-import type { ChatMessage, KarenSettings } from '@/lib/types';
-import { format } from 'date-fns';
-import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useHooks } from '@/contexts/HookContext';
-import { sanitizeInput } from '@/lib/utils';
-import { getChatService } from '@/services/chatService';
-import { DEFAULT_KAREN_SETTINGS } from '@/lib/constants';
-
-// UI Components
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -34,22 +6,63 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Bot, Code, FileText, Lightbulb, Loader2, Sparkles } from 'lucide-react';
-import { useCopilotKit } from './CopilotKitProvider';
-import { useHooks } from '@/contexts/HookContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { ChatBubble } from '@/components/chat/ChatBubble';
-import { ChatErrorBoundary } from '@/components/chat/ErrorBoundary';
-import { useInputPreservation } from '@/hooks/use-input-preservation';
-import { getConfigManager } from '@/lib/endpoint-config';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Send, 
+  Bot, 
+  Code, 
+  FileText, 
+  Lightbulb, 
+  Loader2, 
+  Sparkles,
+  Settings,
+  Mic,
+  MicOff,
+  Paperclip,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
+  RefreshCw,
+  Download,
+  Share,
+  Maximize2,
+  Minimize2,
+  Zap,
+  AlertCircle,
+  CheckCircle,
+  BarChart3,
+  TrendingUp,
+  Clock,
+  Target,
+  Brain,
+  Cpu,
+  Activity,
+  MessageSquare
+} from 'lucide-react';
 
+// Context and Hooks
+import { useAuth } from '@/contexts/AuthContext';
+import { useHooks } from '@/contexts/HookContext';
+import { useToast } from '@/hooks/use-toast';
+import { useInputPreservation } from '@/hooks/use-input-preservation';
+
+// Components
+import { ChatBubble } from '@/components/chat/ChatBubble';
+import { ChatErrorBoundary } from '@/components/error/ChatErrorBoundary';
+import { CopilotTextarea } from '@/components/chat/copilot/CopilotTextarea';
+
+// Utils and Config
+import { getConfigManager } from '@/lib/endpoint-config';
+import { sanitizeInput } from '@/lib/utils';
+
+// Types
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
-  type?: 'text' | 'code' | 'suggestion' | 'analysis';
+  type?: 'text' | 'code' | 'suggestion' | 'analysis' | 'documentation';
   language?: string;
   status?: 'sending' | 'sent' | 'generating' | 'completed' | 'error';
   metadata?: {
@@ -61,101 +74,406 @@ interface ChatMessage {
     persona?: string;
     mood?: string;
     intent?: string;
-    status?: 'sending' | 'sent' | 'generating' | 'completed' | 'error';
+    tokens?: number;
+    cost?: number;
+    suggestions?: any[];
+    analysis?: any;
+    rating?: 'up' | 'down';
+    codeAnalysis?: {
+      issues: Array<{
+        type: string;
+        severity: 'error' | 'warning' | 'info';
+        message: string;
+        line?: number;
+        suggestions?: string[];
+      }>;
+      metrics: {
+        complexity: number;
+        maintainability: number;
+        performance: number;
+      };
+      suggestions: string[];
+    };
   };
 }
 
-interface CopilotChatProps {
+interface ChatSettings {
+  model: string;
+  temperature: number;
+  maxTokens: number;
+  enableStreaming: boolean;
+  enableSuggestions: boolean;
+  enableCodeAnalysis: boolean;
+  enableVoiceInput: boolean;
+  theme: 'light' | 'dark' | 'auto';
+  language: string;
+  autoSave: boolean;
+  showTimestamps: boolean;
+  enableNotifications: boolean;
+}
+
+interface ChatAnalytics {
+  totalMessages: number;
+  userMessages: number;
+  assistantMessages: number;
+  averageResponseTime: number;
+  averageConfidence: number;
+  totalTokens: number;
+  totalCost: number;
+  sessionDuration: number;
+  topTopics: string[];
+  codeLanguages: string[];
+  errorRate: number;
+}
+
+interface ChatInterfaceProps {
+  // Core Props
   initialMessages?: ChatMessage[];
   onMessageSent?: (message: ChatMessage) => void;
   onMessageReceived?: (message: ChatMessage) => void;
+  
+  // CopilotKit Integration
+  useCopilotKit?: boolean;
   enableCodeAssistance?: boolean;
   enableContextualHelp?: boolean;
+  enableDocGeneration?: boolean;
+  
+  // UI Configuration
   className?: string;
   height?: string;
+  showHeader?: boolean;
+  showTabs?: boolean;
+  showSettings?: boolean;
+  enableVoiceInput?: boolean;
+  enableFileUpload?: boolean;
+  
+  // Advanced Features
+  enableAnalytics?: boolean;
+  enableExport?: boolean;
+  enableSharing?: boolean;
+  enableCollaboration?: boolean;
+  maxMessages?: number;
+  
+  // Customization
+  placeholder?: string;
+  welcomeMessage?: string;
+  theme?: 'light' | 'dark' | 'auto';
+  
+  // Callbacks
+  onSettingsChange?: (settings: ChatSettings) => void;
+  onExport?: (messages: ChatMessage[]) => void;
+  onShare?: (messages: ChatMessage[]) => void;
+  onAnalyticsUpdate?: (analytics: ChatAnalytics) => void;
 }
 
-export const CopilotChat: React.FC<CopilotChatProps> = ({
+const defaultSettings: ChatSettings = {
+  model: 'gpt-4',
+  temperature: 0.7,
+  maxTokens: 2000,
+  enableStreaming: true,
+  enableSuggestions: true,
+  enableCodeAnalysis: true,
+  enableVoiceInput: false,
+  theme: 'auto',
+  language: 'javascript',
+  autoSave: true,
+  showTimestamps: true,
+  enableNotifications: true
+};
+
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({
+  // Core Props
   initialMessages = [],
   onMessageSent,
   onMessageReceived,
+  
+  // CopilotKit Integration
+  useCopilotKit = true,
   enableCodeAssistance = true,
   enableContextualHelp = true,
+  enableDocGeneration = true,
+  
+  // UI Configuration
   className = '',
-  height = '600px'
+  height = '600px',
+  showHeader = true,
+  showTabs = true,
+  showSettings = true,
+  enableVoiceInput = false,
+  enableFileUpload = true,
+  
+  // Advanced Features
+  enableAnalytics = true,
+  enableExport = true,
+  enableSharing = true,
+  enableCollaboration = false,
+  maxMessages = 1000,
+  
+  // Customization
+  placeholder = 'Ask me anything about code, get suggestions, or request help...',
+  welcomeMessage,
+  theme = 'auto',
+  
+  // Callbacks
+  onSettingsChange,
+  onExport,
+  onShare,
+  onAnalyticsUpdate
 }) => {
+  // Hooks
   const { user } = useAuth();
   const { triggerHooks } = useHooks();
   const { toast } = useToast();
-  const { config, isLoading } = useCopilotKit();
-
+  const configManager = getConfigManager();
+  
+  // CopilotKit Integration (conditional) - Production-ready approach
+  const [copilotKit, setCopilotKit] = useState<any>(null);
+  const [copilotKitError, setCopilotKitError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    let mounted = true;
+    
+    if (useCopilotKit) {
+      // Dynamically import CopilotKit only when needed - Production safe
+      const loadCopilotKit = async () => {
+        try {
+          const module = await import('@/components/chat/copilot/CopilotKitProvider');
+          if (!mounted) return; // Prevent state update if component unmounted
+          
+          if (module.useCopilotKit) {
+            try {
+              // Note: We can't call the hook here as it violates rules of hooks
+              // Instead, we'll set a flag that CopilotKit is available
+              setCopilotKit({ available: true, config: { endpoints: { assist: '/copilot/assist' } } });
+            } catch (hookError) {
+              console.warn('CopilotKit hook failed:', hookError);
+              setCopilotKitError('CopilotKit hook not available');
+            }
+          } else {
+            setCopilotKitError('CopilotKit hook not found in module');
+          }
+        } catch (importError) {
+          if (!mounted) return;
+          console.warn('CopilotKit module not available:', importError);
+          setCopilotKitError('CopilotKit module not found');
+        }
+      };
+      
+      loadCopilotKit();
+    }
+    
+    return () => {
+      mounted = false;
+    };
+  }, [useCopilotKit]);
+  
+  // State Management
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
+  const [codeValue, setCodeValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [settings, setSettings] = useState<ChatSettings>(defaultSettings);
+  const [activeTab, setActiveTab] = useState<'chat' | 'code' | 'analytics'>('chat');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const [analytics, setAnalytics] = useState<ChatAnalytics>({
+    totalMessages: 0,
+    userMessages: 0,
+    assistantMessages: 0,
+    averageResponseTime: 0,
+    averageConfidence: 0,
+    totalTokens: 0,
+    totalCost: 0,
+    sessionDuration: 0,
+    topTopics: [],
+    codeLanguages: [],
+    errorRate: 0
+  });
+  const [sessionStartTime] = useState(Date.now());
   
+  // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const codeTextareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  
+  // Input preservation
+  const { preserveInput, restoreInput, clearPreservedInput } = useInputPreservation('chat-interface');
+  
+  // Runtime URL configuration
   const runtimeUrl = useMemo(() => {
-    const configManager = getConfigManager();
     const baseUrl = configManager.getBackendUrl();
-    const assistEndpoint = config.endpoints.assist;
-    return `${baseUrl.replace(/\/+$/, '')}${assistEndpoint}`;
-  }, [config.endpoints.assist]);
+    const endpoint = useCopilotKit && copilotKit ? copilotKit.config?.endpoints?.assist || '/copilot/assist' : '/api/chat/runtime';
+    return `${baseUrl.replace(/\/+$/, '')}${endpoint}`;
+  }, [configManager, useCopilotKit, copilotKit]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Initialize session and welcome message
+  useEffect(() => {
+    const initializeChat = async () => {
+      if (sessionId) return;
+      
+      const newSessionId = crypto.randomUUID();
+      const newConversationId = crypto.randomUUID();
+      
+      setSessionId(newSessionId);
+      setConversationId(newConversationId);
+      
+      // Add welcome message if provided and no initial messages
+      if (welcomeMessage && messages.length === 0) {
+        const welcome: ChatMessage = {
+          id: `welcome-${Date.now()}`,
+          role: 'assistant',
+          content: welcomeMessage,
+          timestamp: new Date(),
+          type: 'text',
+          metadata: { confidence: 1.0 }
+        };
+        setMessages([welcome]);
+      } else if (messages.length === 0) {
+        // Default welcome message
+        const defaultWelcome: ChatMessage = {
+          id: `welcome-${Date.now()}`,
+          role: 'assistant',
+          content: `Hello${user?.email ? ` ${user.email.split('@')[0]}` : ''}! I'm your AI assistant with advanced capabilities. I can help you with:
+
+• **Code Development** - Write, debug, and optimize code
+• **Documentation** - Generate comprehensive docs
+• **Analysis** - Analyze code quality and performance
+• **Suggestions** - Provide contextual recommendations
+
+${useCopilotKit ? '🚀 **CopilotKit Enhanced** - Advanced AI features enabled!' : ''}
+
+What would you like to work on today?`,
+          timestamp: new Date(),
+          type: 'text',
+          metadata: { confidence: 1.0 }
+        };
+        setMessages([defaultWelcome]);
+      }
+      
+      // Restore preserved input
+      const preserved = restoreInput();
+      if (preserved) {
+        setInputValue(preserved);
+      }
+    };
+    
+    initializeChat();
+  }, [sessionId, welcomeMessage, messages.length, restoreInput, user, useCopilotKit]);
+
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  // Focus input on mount and cleanup on unmount
+  // Preserve input on changes
   useEffect(() => {
-    inputRef.current?.focus();
+    if (inputValue) {
+      preserveInput(inputValue);
+    }
+  }, [inputValue, preserveInput]);
+
+  // Update analytics
+  useEffect(() => {
+    const newAnalytics: ChatAnalytics = {
+      totalMessages: messages.length,
+      userMessages: messages.filter(m => m.role === 'user').length,
+      assistantMessages: messages.filter(m => m.role === 'assistant').length,
+      averageResponseTime: Math.round(
+        messages.reduce((acc, m) => acc + (m.metadata?.latencyMs || 0), 0) / 
+        messages.filter(m => m.metadata?.latencyMs).length
+      ) || 0,
+      averageConfidence: Math.round(
+        messages.reduce((acc, m) => acc + (m.metadata?.confidence || 0), 0) / 
+        messages.filter(m => m.metadata?.confidence).length * 100
+      ) || 0,
+      totalTokens: messages.reduce((acc, m) => acc + (m.metadata?.tokens || 0), 0),
+      totalCost: messages.reduce((acc, m) => acc + (m.metadata?.cost || 0), 0),
+      sessionDuration: Math.round((Date.now() - sessionStartTime) / 1000),
+      topTopics: [...new Set(messages.map(m => m.metadata?.intent).filter(Boolean))].slice(0, 5),
+      codeLanguages: [...new Set(messages.map(m => m.language).filter(Boolean))],
+      errorRate: Math.round(
+        messages.filter(m => m.metadata?.status === 'error').length / messages.length * 100
+      ) || 0
+    };
+    
+    setAnalytics(newAnalytics);
+    if (onAnalyticsUpdate) {
+      onAnalyticsUpdate(newAnalytics);
+    }
+  }, [messages, sessionStartTime, onAnalyticsUpdate]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
+      mediaRecorderRef.current?.stop();
       setIsTyping(false);
+      setIsRecording(false);
     };
   }, []);
 
-  // Send message
-  const sendMessage = useCallback(async (content: string, type: ChatMessage['type'] = 'text') => {
-    if (!content.trim()) return;
+  // Core message sending logic
+  const sendMessage = useCallback(async (
+    content: string, 
+    type: ChatMessage['type'] = 'text',
+    options: {
+      language?: string;
+      context?: any;
+      enableAnalysis?: boolean;
+    } = {}
+  ) => {
+    if (!content.trim() || isTyping) return;
 
+    const sanitizedContent = sanitizeInput(content.trim());
     const userMessage: ChatMessage = {
       id: `msg_${Date.now()}_user`,
       role: 'user',
-      content: content.trim(),
+      content: sanitizedContent,
       timestamp: new Date(),
       type,
+      language: options.language || settings.language,
     };
 
+    // Abort any ongoing requests
     abortControllerRef.current?.abort();
     setIsTyping(false);
 
-    setMessages(prev => [...prev, userMessage]);
+    // Add user message
+    setMessages(prev => {
+      const newMessages = [...prev, userMessage];
+      // Limit messages if maxMessages is set
+      return maxMessages && newMessages.length > maxMessages 
+        ? newMessages.slice(-maxMessages) 
+        : newMessages;
+    });
+    
     setInputValue('');
+    setCodeValue('');
+    clearPreservedInput();
     setIsTyping(true);
 
-    // Trigger hook for message sent
-    await triggerHooks('copilot_message_sent', {
+    // Trigger hooks
+    await triggerHooks('chat_message_sent', {
       messageId: userMessage.id,
-      content: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+      content: sanitizedContent.substring(0, 100) + (sanitizedContent.length > 100 ? '...' : ''),
       type,
+      language: options.language,
       userId: user?.user_id,
+      sessionId,
+      conversationId
     }, { userId: user?.user_id });
 
     if (onMessageSent) {
       onMessageSent(userMessage);
     }
 
-    // Ensure we have a session ID
-    const session = sessionId || crypto.randomUUID();
-    if (!sessionId) {
-      setSessionId(session);
-    }
-
+    // Create assistant message placeholder
     const assistantId = `msg_${Date.now()}_assistant`;
     const placeholder: ChatMessage = {
       id: assistantId,
@@ -165,1346 +483,1047 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
       type: type === 'code' ? 'code' : 'text',
       metadata: {
         status: 'generating',
-        confidence: undefined,
-        latencyMs: undefined,
-        model: undefined,
+        model: settings.model,
       },
     };
+    
     setMessages(prev => [...prev, placeholder]);
 
     try {
       const controller = new AbortController();
       abortControllerRef.current = controller;
-
       const startTime = performance.now();
-      // Get authentication token
+
+      // Prepare request payload based on endpoint
+      const payload = useCopilotKit && copilotKit ? {
+        // CopilotKit payload format
+        message: sanitizedContent,
+        session_id: sessionId,
+        conversation_id: conversationId,
+        stream: settings.enableStreaming,
+        model: settings.model,
+        temperature: settings.temperature,
+        max_tokens: settings.maxTokens,
+        type,
+        language: options.language || settings.language,
+        context: options.context,
+        user_id: user?.user_id,
+        enable_analysis: options.enableAnalysis || enableCodeAssistance,
+        enable_suggestions: settings.enableSuggestions,
+        copilot_features: {
+          code_assistance: enableCodeAssistance,
+          contextual_help: enableContextualHelp,
+          doc_generation: enableDocGeneration
+        }
+      } : {
+        // Chat Runtime payload format
+        message: sanitizedContent,
+        context: {
+          type,
+          language: options.language || settings.language,
+          session_id: sessionId,
+          user_id: user?.user_id,
+          enable_analysis: options.enableAnalysis || enableCodeAssistance,
+          enable_suggestions: settings.enableSuggestions,
+          model: settings.model,
+          temperature: settings.temperature,
+          max_tokens: settings.maxTokens,
+          ...options.context
+        },
+        conversation_id: conversationId,
+        stream: settings.enableStreaming,
+        platform: 'web',
+        user_preferences: {
+          model: settings.model,
+          temperature: settings.temperature,
+          max_tokens: settings.maxTokens,
+          language: settings.language
+        }
+      };
+
+      // Get authentication headers
       const authToken = localStorage.getItem('karen_access_token') || sessionStorage.getItem('kari_session_token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+        ...(user?.user_id && { 'X-User-ID': user.user_id }),
+        'X-Session-ID': sessionId || '',
+        'X-Conversation-ID': conversationId || '',
+      };
+
+      // Debug logging to diagnose connection issues
+      console.log('Sending chat request to:', runtimeUrl);
+      console.log('Request payload:', payload);
+      console.log('Request headers:', headers);
       
       const response = await fetch(runtimeUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
-          ...(user?.user_id && { 'X-User-ID': user.user_id }),
-          'X-Session-ID': session,
-        },
-        body: JSON.stringify({ message: content, session_id: session, stream: true }),
+        headers,
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
 
-      if (!response.ok) {
-        let errorText = '';
-        try {
-          const ct = response.headers.get('content-type') || '';
-          if (ct.includes('application/json')) {
-            const err = await response.json();
-            errorText = err?.message || err?.error || JSON.stringify(err);
-          } else {
-            errorText = await response.text();
-          }
-        } catch {
-          errorText = response.statusText;
-        }
+      // Production logging (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      }
 
-        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: `Error: ${errorText || response.statusText}` } : m));
-        toast({
-          variant: 'destructive',
-          title: 'Chat Error',
-          description: `HTTP ${response.status}: ${errorText || response.statusText}`,
-        });
-        setIsTyping(false);
-        return;
+      if (!response.ok) {
+        let errorDetails = '';
+        try {
+          const errorText = await response.text();
+          errorDetails = errorText;
+          if (process.env.NODE_ENV === 'development') {
+          console.error('Error response body:', errorText);
+        }
+        } catch (e) {
+          console.error('Could not read error response:', e);
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`);
       }
 
       if (!response.body) {
         throw new Error('No response body');
       }
 
-      // Handle response parsing
+      // Handle streaming or complete response
       let fullText = '';
-      let meta: any = {};
+      let metadata: any = {};
       
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let isCompleteJson = false;
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        
-        buffer += decoder.decode(value, { stream: true });
-        
-        // If this looks like a complete JSON response (not streaming), handle it differently
-        if (!isCompleteJson && buffer.trim().startsWith('{') && buffer.trim().endsWith('}')) {
-          try {
-            const jsonResponse = JSON.parse(buffer.trim());
-            
-            if (jsonResponse.answer) {
-              fullText = jsonResponse.answer;
-            } else if (jsonResponse.text) {
-              fullText = jsonResponse.text;
-            } else if (typeof jsonResponse === 'string') {
-              fullText = jsonResponse;
-            }
-            
-            // Extract metadata
-            if (jsonResponse.meta) {
-              meta = { ...meta, ...jsonResponse.meta };
-            }
-            if (jsonResponse.timings) {
-              meta.latencyMs = jsonResponse.timings.total_ms;
-            }
-            if (jsonResponse.context) {
-              meta.sources = jsonResponse.context;
-            }
-            
-            // Update message with final content
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
-            isCompleteJson = true;
-            break; // Exit the loop since we have the complete response
-          } catch {
-            // Not a complete JSON, continue with streaming logic
-          }
-        }
-        
+      if (settings.enableStreaming && response.headers.get('content-type')?.includes('text/stream')) {
         // Handle streaming response
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
           
-          // Handle both SSE format (data:) and direct JSON
-          let data = trimmed;
-          if (trimmed.startsWith('data:')) {
-            data = trimmed.replace(/^data:\s*/, '');
-            if (data === '[DONE]') {
-              continue;
-            }
-          }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
           
-          try {
-            const json = JSON.parse(data);
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed === 'data: [DONE]') continue;
             
-            // Extract the actual message content
-            if (json.answer) {
-              fullText = json.answer; // Use assignment for complete responses
-              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
-            } else if (json.text) {
-              fullText += json.text; // Use concatenation for streaming text
-              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+            let data = trimmed;
+            if (trimmed.startsWith('data:')) {
+              data = trimmed.replace(/^data:\s*/, '');
             }
             
-            // Extract metadata
-            if (json.meta) {
-              meta = { ...meta, ...json.meta };
-            }
-            if (json.timings) {
-              meta.latencyMs = json.timings.total_ms;
-            }
-            if (json.context) {
-              meta.sources = json.context;
-            }
-          } catch {
-            // If it's not valid JSON, treat as plain text only if it doesn't look like JSON
-            if (!data.startsWith('{') && !data.startsWith('[')) {
-              fullText += data;
-              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
+            try {
+              const json = JSON.parse(data);
+              
+              if (json.content || json.text || json.answer) {
+                const newContent = json.content || json.text || json.answer;
+                fullText += newContent;
+                
+                // Update message in real-time
+                setMessages(prev => prev.map(m => 
+                  m.id === assistantId 
+                    ? { ...m, content: fullText }
+                    : m
+                ));
+              }
+              
+              // Extract metadata
+              if (json.metadata || json.meta) {
+                metadata = { ...metadata, ...(json.metadata || json.meta) };
+              }
+              
+            } catch (e) {
+              // Handle non-JSON streaming data
+              if (!data.startsWith('{')) {
+                fullText += data;
+                setMessages(prev => prev.map(m => 
+                  m.id === assistantId 
+                    ? { ...m, content: fullText }
+                    : m
+                ));
+              }
             }
           }
         }
+      } else {
+        // Handle complete JSON response
+        const result = await response.json();
+        fullText = result.answer || result.content || result.text || result.message || '';
+        metadata = result.metadata || result.meta || {};
       }
 
-      // Handle remaining buffer if not already processed as complete JSON
-      if (!isCompleteJson && buffer.trim()) {
-        const trimmed = buffer.trim();
-        let data = trimmed;
-        if (trimmed.startsWith('data:')) {
-          data = trimmed.replace(/^data:\s*/, '');
-        }
-        
-        try {
-          const json = JSON.parse(data);
-          
-          if (json.answer) {
-            fullText = json.answer;
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
-          } else if (json.text) {
-            fullText += json.text;
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
-          }
-          
-          if (json.meta) {
-            meta = { ...meta, ...json.meta };
-          }
-          if (json.timings) {
-            meta.latencyMs = json.timings.total_ms;
-          }
-          if (json.context) {
-            meta.sources = json.context;
-          }
-        } catch {
-          // Only add non-JSON data as text
-          if (!data.startsWith('{') && !data.startsWith('[')) {
-            fullText += data;
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m));
-          }
-        }
-      }
-
+      // Calculate final metrics
       const latency = Math.round(performance.now() - startTime);
+      
+      // Create final message
       const finalMessage: ChatMessage = {
         ...placeholder,
         content: fullText.trim(),
         metadata: {
-          confidence: meta.confidence,
-          model: meta.model,
+          ...metadata,
           latencyMs: latency,
-          persona: meta.persona,
-          mood: meta.mood,
-          intent: meta.intent,
-          reasoning: meta.reasoning,
-          sources: meta.sources,
+          model: settings.model,
+          tokens: metadata.tokens || Math.ceil(fullText.length / 4),
+          cost: metadata.cost || 0,
+          status: 'completed'
         },
       };
 
-      setMessages(prev => prev.map(m => m.id === assistantId ? finalMessage : m));
+      // Update message
+      setMessages(prev => prev.map(m => 
+        m.id === assistantId ? finalMessage : m
+      ));
 
-      await triggerHooks('copilot_message_received', {
+      // Trigger hooks
+      await triggerHooks('chat_message_received', {
         messageId: assistantId,
         confidence: finalMessage.metadata?.confidence,
         type: finalMessage.type,
+        latencyMs: latency,
+        model: settings.model,
         userId: user?.user_id,
+        sessionId,
+        conversationId
       }, { userId: user?.user_id });
 
       if (onMessageReceived) {
         onMessageReceived(finalMessage);
       }
+
     } catch (error) {
       if ((error as any)?.name === 'AbortError') {
         setIsTyping(false);
         return;
       }
-      console.error('Failed to get AI response:', error);
-
+      
+      console.error('Chat error:', error);
+      console.error('Error details:', {
+        name: (error as any)?.name,
+        message: (error as any)?.message,
+        stack: (error as any)?.stack,
+        cause: (error as any)?.cause
+      });
+      
+      // Provide more specific error messages
+      let errorContent = 'I apologize, but I encountered an error processing your request. Please try again.';
+      let errorTitle = 'Chat Error';
+      
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        errorContent = 'Unable to connect to the AI service. Please check if the backend is running and try again.';
+        errorTitle = 'Connection Error';
+        
+        // Test basic connectivity
+        console.log('Testing backend connectivity...');
+        fetch(configManager.getBackendUrl() + '/health')
+          .then(response => {
+            console.log('Backend health check:', response.status);
+            if (response.ok) {
+              console.log('Backend is accessible, but chat endpoint may have issues');
+            }
+          })
+          .catch(healthError => {
+            console.error('Backend health check failed:', healthError);
+          });
+      }
+      
       const errorMessage: ChatMessage = {
         id: assistantId,
         role: 'assistant',
-        content: 'I apologize, but I encountered an error processing your request. Please try again.',
+        content: errorContent,
         timestamp: new Date(),
         type: 'text',
+        metadata: { status: 'error' }
       };
 
-      setMessages(prev => prev.map(m => m.id === assistantId ? errorMessage : m));
+      setMessages(prev => prev.map(m => 
+        m.id === assistantId ? errorMessage : m
+      ));
 
       toast({
         variant: 'destructive',
-        title: 'Chat Error',
-        description: 'Failed to get AI response. Please try again.',
+        title: errorTitle,
+        description: error instanceof Error ? error.message : 'Failed to get AI response',
       });
     } finally {
       setIsTyping(false);
     }
-  }, [triggerHooks, user?.user_id, onMessageSent, onMessageReceived, toast, sessionId, runtimeUrl]);
+  }, [
+    isTyping, settings, sessionId, conversationId, user?.user_id, triggerHooks, 
+    onMessageSent, onMessageReceived, runtimeUrl, useCopilotKit, copilotKit, enableCodeAssistance,
+    enableContextualHelp, enableDocGeneration, maxMessages, clearPreservedInput, toast, configManager
+  ]);
 
-  // Handle input submission
-  const handleSubmit = (e: React.FormEvent) => {
+  // Handle form submission
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim() && !isLoading && !isTyping) {
-      const messageType = inputValue.includes('```') || inputValue.includes('function') || inputValue.includes('class') ? 'code' : 'text';
-      sendMessage(inputValue, messageType);
+    const content = activeTab === 'code' ? codeValue : inputValue;
+    if (content.trim() && !isTyping) {
+      const messageType = activeTab === 'code' || content.includes('```') || 
+                         content.includes('function') || 
+                         content.includes('class') ? 'code' : 'text';
+      sendMessage(content, messageType, { 
+        language: settings.language,
+        enableAnalysis: activeTab === 'code' || enableCodeAssistance 
+      });
     }
-  };
+  }, [inputValue, codeValue, activeTab, isTyping, sendMessage, settings.language, enableCodeAssistance]);
 
+  // Quick action handlers
+  const handleQuickAction = useCallback((action: string, prompt: string, type: ChatMessage['type'] = 'text') => {
+    if (isTyping) return;
+    sendMessage(prompt, type, { enableAnalysis: action === 'debug' || action === 'analyze' });
+  }, [isTyping, sendMessage]);
 
-  return (
-    <Card className={`flex flex-col ${className}`} style={{ height }}>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5" />
-          AI Assistant
-          {config.features.chatAssistance && (
-            <Badge variant="secondary" className="text-xs">
-              Enhanced with CopilotKit
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="flex-1 flex flex-col p-0">
-        {/* Messages Area */}
-        <ScrollArea className="flex-1 px-4">
-          <div className="space-y-4 pb-4">
-            {messages.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium mb-2">Welcome to AI Assistant</p>
-                <p className="text-sm">
-                  I can help you with code, answer questions, and provide suggestions.
-                  {enableCodeAssistance && " Try asking me about code or programming concepts!"}
-                </p>
-              </div>
-              ) : (
-                messages.map((message) => (
-                  <ChatBubble
-                    key={message.id}
-                    role={message.role}
-                    content={message.content}
-                    meta={{
-                      confidence: message.metadata?.confidence,
-                      latencyMs: message.metadata?.latencyMs,
-                      model: message.metadata?.model,
-                      persona: message.metadata?.persona,
-                      mood: message.metadata?.mood,
-                      intent: message.metadata?.intent,
-                      reasoning: message.metadata?.reasoning,
-                      sources: message.metadata?.sources,
-                    }}
-                  />
-                ))
-              )}
-            
-            {isTyping && (
-              <div className="flex gap-3 mb-4">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                  <Bot className="h-4 w-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="inline-block p-3 rounded-lg bg-muted border">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm text-muted-foreground">AI is thinking...</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-
-        {/* Input Area */}
-        <div className="border-t p-4">
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Ask me anything about code, get suggestions, or request help..."
-              disabled={isLoading || isTyping}
-              className="flex-1"
-            />
-            <Button 
-              type="submit" 
-              disabled={!inputValue.trim() || isLoading || isTyping}
-              size="sm"
-            >
-              {isLoading || isTyping ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </form>
-          
-          {/* Quick Actions */}
-          <div className="flex items-center gap-2 mt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => sendMessage("Help me debug this code", 'code')}
-              disabled={isLoading || isTyping}
-            >
-              <Code className="h-3 w-3 mr-1" />
-              Debug Code
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => sendMessage("Explain this concept", 'text')}
-              disabled={isLoading || isTyping}
-            >
-              <Lightbulb className="h-3 w-3 mr-1" />
-              Explain
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => sendMessage("Generate documentation", 'text')}
-              disabled={isLoading || isTyping}
-            >
-              <FileText className="h-3 w-3 mr-1" />
-              Document
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-// Icons
-import {
-  Loader2,
-  SendHorizontal,
-  Mic,
-  AlertTriangle,
-  Sparkles,
-  Copy,
-  ThumbsUp,
-  ThumbsDown,
-  MoreHorizontal,
-  Bot,
-  User,
-  MessageSquare,
-  BarChart3,
-  Grid3X3,
-  Settings as SettingsIcon,
-  Maximize2,
-  Minimize2,
-  Paperclip,
-  Smile,
-  ArrowUp,
-  Zap,
-  Brain,
-} from 'lucide-react';
-
-// Sub-components
-import { CopilotChat } from '@/components/chat/copilot';
-import { ConversationGrid, type ConversationRow } from './ConversationGrid';
-import { ChatAnalyticsChart, type ChatAnalyticsData } from './ChatAnalyticsChart';
-import { MessageBubble as SimpleMessageBubble } from './MessageBubble';
-
-// Constants
-const MAX_INPUT_LENGTH = 4000;
-const WARNING_THRESHOLD = 3500;
-
-/* -------------------------------------------------------------------------- */
-/*                               Helper Functions                             */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Converts confidence value to percentage
- */
-const confidenceToPercentage = (conf?: number | string | null): number | null => {
-  if (typeof conf === 'number' && isFinite(conf)) return Math.round(conf * 100);
-  if (typeof conf === 'string') {
-    const num = Number(conf);
-    if (!Number.isNaN(num)) return Math.round(num * 100);
-  }
-  return null;
-};
-
-/* -------------------------------------------------------------------------- */
-/*                            Fancy Message Bubble                            */
-/* -------------------------------------------------------------------------- */
-
-interface FancyMessageBubbleProps {
-  message: ChatMessage;
-  isLast: boolean;
-  onCopy: (content: string) => void;
-  onRate: (messageId: string, rating: 'up' | 'down') => void;
-}
-
-const FancyMessageBubble: React.FC<FancyMessageBubbleProps> = ({
-  message,
-  isLast,
-  onCopy,
-  onRate,
-}) => {
-  const isUser = message.role === 'user';
-  const confidencePercentage = confidenceToPercentage(message.aiData?.confidence);
-  const [isHovered, setIsHovered] = useState(false);
-  const [showActions, setShowActions] = useState(false);
-
-  const bubbleVariants = {
-    initial: { opacity: 0, y: 20, scale: 0.95 },
-    animate: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: { type: 'spring', stiffness: 500, damping: 30, mass: 1 },
-    },
-    exit: { opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.2 } },
-  };
-
-  const actionVariants = {
-    hidden: { opacity: 0, scale: 0.8, y: 5 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      transition: { type: 'spring', stiffness: 400, damping: 25 },
-    },
-  };
-
-  return (
-    <motion.div
-      variants={bubbleVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      className={`flex gap-3 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'} group`}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-    >
-      <motion.div
-        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${
-          isUser
-            ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
-            : 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white'
-        }`}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-      </motion.div>
-
-      <div className={`flex-1 max-w-[85%] md:max-w-[75%] ${isUser ? 'text-right' : 'text-left'}`}>
-        <motion.div
-          className={`inline-block p-4 rounded-2xl shadow-sm relative ${
-            isUser
-              ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
-              : 'bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100'
-          }`}
-          whileHover={{ scale: 1.01, boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }}
-          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-        >
-          <div className="whitespace-pre-wrap break-words leading-relaxed">
-            {message.content}
-          </div>
-
-          {!isUser && (
-            <div className="mt-3 pt-3 border-t border-gray-200/20">
-              <div className="flex items-center gap-2 text-xs">
-                {confidencePercentage !== null && (
-                  <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">
-                    {confidencePercentage}% confidence
-                  </Badge>
-                )}
-                <Badge variant="outline" className="text-xs">
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  AI Enhanced
-                </Badge>
-              </div>
-            </div>
-          )}
-
-          {isLast && !isUser && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute -bottom-6 left-4 flex items-center gap-1 text-xs text-gray-500"
-            >
-              {[0, 0.2, 0.4].map((delay) => (
-                <motion.div
-                  key={delay}
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ repeat: Infinity, duration: 1.5, delay }}
-                  className="w-1 h-1 bg-emerald-500 rounded-full"
-                />
-              ))}
-            </motion.div>
-          )}
-        </motion.div>
-
-        <AnimatePresence>
-          {(isHovered || showActions) && !isUser && (
-            <motion.div
-              variants={actionVariants}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              className="flex items-center gap-1 mt-2 text-xs text-gray-500"
-            >
-              <span className="mr-2">{format(message.timestamp, 'HH:mm')}</span>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => onCopy(message.content)}
-                aria-label="Copy message"
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => onRate(message.id, 'up')}
-                aria-label="Rate up"
-              >
-                <ThumbsUp className="h-3 w-3" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => onRate(message.id, 'down')}
-                aria-label="Rate down"
-              >
-                <ThumbsDown className="h-3 w-3" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => setShowActions(!showActions)}
-                aria-label="More actions"
-              >
-                <MoreHorizontal className="h-3 w-3" />
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {isUser && (
-          <div className="text-xs text-gray-500 mt-1">
-            {format(message.timestamp, 'HH:mm')}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-};
-
-/* -------------------------------------------------------------------------- */
-/*                            ChatGPT Interface                               */
-/* -------------------------------------------------------------------------- */
-
-interface ChatGPTInterfaceProps {
-  className?: string;
-  height?: string;
-  showHeader?: boolean;
-  enableVoice?: boolean;
-  enableAttachments?: boolean;
-  placeholder?: string;
-}
-
-export const ChatGPTInterface: React.FC<ChatGPTInterfaceProps> = ({
-  className = '',
-  height = '100vh',
-  showHeader = true,
-  enableVoice = true,
-  enableAttachments = false,
-  placeholder = 'Message ChatGPT...',
-}) => {
-  const { user, isAuthenticated } = useAuth();
-  const { toast } = useToast();
-  const chatService = getChatService();
-
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [inputError, setInputError] = useState<string | null>(null);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-
-  const inputScale = useMotionValue(1);
-  const inputY = useMotionValue(0);
-
-  // Initialize chat session
-  useEffect(() => {
-    const initializeChat = async () => {
-      if (!user || sessionId || conversationId) return;
-
-      try {
-        const { conversationId: cId, sessionId: sId } =
-          await chatService.createConversationSession(user.user_id);
-        setSessionId(sId);
-        setConversationId(cId);
-      } catch (error) {
-        console.error('Failed to create conversation session:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Session Error',
-          description: 'Failed to initialize chat session',
-        });
-      }
-    };
-
-    if (isAuthenticated) {
-      void initializeChat();
+  // Code analysis handler
+  const handleCodeAnalysis = useCallback(async () => {
+    if (!codeValue.trim() || isAnalyzing) return;
+    
+    setIsAnalyzing(true);
+    try {
+      const analysisPrompt = `Analyze this ${settings.language} code for issues, performance, and best practices:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``;
+      await sendMessage(analysisPrompt, 'analysis', { 
+        language: settings.language, 
+        enableAnalysis: true,
+        context: { code: codeValue, analysisType: 'comprehensive' }
+      });
+    } finally {
+      setIsAnalyzing(false);
     }
-  }, [user, isAuthenticated, sessionId, conversationId, chatService, toast]);
+  }, [codeValue, settings.language, isAnalyzing, sendMessage]);
 
-  // Set welcome message
-  useEffect(() => {
-    if (messages.length > 0 || !isAuthenticated) return;
-
-    const welcomeMessage = user?.email
-      ? `Hello ${user.email.split('@')[0]}! I'm your AI assistant. How can I help you today?`
-      : "Hello! I'm your AI assistant. How can I help you today?";
-
-    setMessages([
-      {
-        id: `welcome-${Date.now()}`,
-        role: 'assistant',
-        content: welcomeMessage,
-        timestamp: new Date(),
-        aiData: {
-          confidence: 1.0,
-          knowledgeGraphInsights: "I'm ready to assist you with any questions or tasks!",
-        },
-        shouldAutoPlay: false,
-      },
-    ]);
-  }, [user, isAuthenticated, messages.length]);
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
-
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (!content.trim() || isLoading || isTyping) return;
-
-      const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: content.trim(),
-        timestamp: new Date(),
+  // Voice input handlers
+  const startRecording = useCallback(async () => {
+    if (!enableVoiceInput || isRecording) return;
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      
+      const chunks: BlobPart[] = [];
+      mediaRecorder.ondataavailable = (event) => {
+        chunks.push(event.data);
       };
+      
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        // TODO: Implement speech-to-text conversion
+        toast({
+          title: 'Voice Input',
+          description: 'Speech-to-text conversion would be implemented here',
+        });
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Voice Input Error',
+        description: 'Failed to access microphone',
+      });
+    }
+  }, [enableVoiceInput, isRecording, toast]);
 
-      setMessages((prev) => [...prev, userMessage]);
-      setInputValue('');
-      setIsTyping(true);
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+    }
+  }, [isRecording]);
 
-      try {
-        const settings: KarenSettings = {
-          ...DEFAULT_KAREN_SETTINGS,
-          ...(user?.preferences ? {
-            memoryDepth: user.preferences.memoryDepth,
-            personalityTone: user.preferences.personalityTone,
-            personalityVerbosity: user.preferences.personalityVerbosity,
-            customPersonaInstructions: user.preferences.customPersonaInstructions || '',
-          } : {}),
-        };
+  // Message actions
+  const handleMessageAction = useCallback(async (messageId: string, action: string) => {
+    const message = messages.find(m => m.id === messageId);
+    if (!message) return;
 
-        const result = await chatService.processUserMessage(
-          content,
-          messages.filter((m) => m.role !== 'system'),
-          settings,
-          {
-            userId: user?.user_id,
-            sessionId: sessionId || undefined,
-            storeInMemory: true,
-            generateSummary: messages.length > 10,
-            // Pass user's LLM preferences for proper fallback hierarchy
-            preferredLLMProvider: user?.preferences?.preferredLLMProvider || 'ollama',
-            preferredModel: user?.preferences?.preferredModel || 'llama3.2:latest',
-          },
-        );
-
-        const assistantMessage: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: result.finalResponse,
-          timestamp: new Date(),
-          aiData: result.aiDataForFinalResponse,
-          shouldAutoPlay: false,
-        };
-
-        setMessages((prev) => [...prev, assistantMessage]);
-
-        if (conversationId) {
-          await chatService.addMessageToConversation(conversationId, userMessage);
+    switch (action) {
+      case 'copy':
+        await navigator.clipboard.writeText(message.content);
+        toast({ title: 'Copied', description: 'Message copied to clipboard' });
+        break;
+        
+      case 'rate_up':
+      case 'rate_down':
+        const rating = action === 'rate_up' ? 'up' : 'down';
+        setMessages(prev => prev.map(m => 
+          m.id === messageId 
+            ? { ...m, metadata: { ...m.metadata, rating } }
+            : m
+        ));
+        
+        await triggerHooks('chat_message_rated', {
+          messageId,
+          rating,
+          userId: user?.user_id
+        }, { userId: user?.user_id });
+        
+        toast({ 
+          title: 'Feedback Recorded', 
+          description: `Message rated ${rating}` 
+        });
+        break;
+        
+      case 'regenerate':
+        if (message.role === 'assistant') {
+          const userMessage = messages[messages.findIndex(m => m.id === messageId) - 1];
+          if (userMessage) {
+            sendMessage(userMessage.content, userMessage.type);
+          }
         }
-      } catch (error) {
-        console.error('Failed to process message:', error);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `error-${Date.now()}`,
-            role: 'assistant',
-            content: 'Sorry, I encountered an error. Please try again.',
-            timestamp: new Date(),
-          },
-        ]);
-        toast({
-          variant: 'destructive',
-          title: 'Processing Error',
-          description: 'Failed to send message. Please try again.',
+        break;
+        
+      case 'select':
+        setSelectedMessages(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(messageId)) {
+            newSet.delete(messageId);
+          } else {
+            newSet.add(messageId);
+          }
+          return newSet;
         });
-      } finally {
-        setIsTyping(false);
-      }
-    },
-    [messages, isLoading, isTyping, user, sessionId, conversationId, chatService, toast],
-  );
+        break;
+    }
+  }, [messages, toast, triggerHooks, user?.user_id, sendMessage]);
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (inputValue.trim()) {
-        void sendMessage(inputValue);
-      }
-    },
-    [inputValue, sendMessage],
-  );
+  // Settings handlers
+  const handleSettingsChange = useCallback((newSettings: Partial<ChatSettings>) => {
+    const updatedSettings = { ...settings, ...newSettings };
+    setSettings(updatedSettings);
+    if (onSettingsChange) {
+      onSettingsChange(updatedSettings);
+    }
+  }, [settings, onSettingsChange]);
 
-  const handleCopy = useCallback(
-    async (content: string) => {
-      try {
-        await navigator.clipboard.writeText(content);
-        toast({
-          title: 'Copied',
-          description: 'Message copied to clipboard',
-          duration: 2000,
-        });
-      } catch (error) {
-        console.error('Failed to copy text:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Copy Failed',
-          description: 'Could not copy message to clipboard',
-        });
-      }
-    },
-    [toast],
-  );
+  // Export/Share handlers
+  const handleExport = useCallback(() => {
+    if (onExport) {
+      onExport(messages);
+    } else {
+      const exportData = {
+        messages,
+        sessionId,
+        conversationId,
+        timestamp: new Date().toISOString(),
+        settings,
+        analytics
+      };
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+        type: 'application/json' 
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chat-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }, [messages, sessionId, conversationId, settings, analytics, onExport]);
 
-  const handleRate = useCallback(
-    async (messageId: string, rating: 'up' | 'down') => {
-      try {
-        // In a real app, you would send this rating to your backend
-        toast({
-          title: 'Feedback Recorded',
-          description: `Thank you for your ${rating === 'up' ? 'positive' : 'negative'} feedback!`,
-          duration: 2000,
-        });
-      } catch (error) {
-        console.error('Failed to record rating:', error);
-      }
-    },
-    [toast],
-  );
-
-  const quickActions = useMemo(() => [
-    { icon: Brain, label: 'Explain', action: () => setInputValue('Can you explain this concept to me?') },
-    { icon: Zap, label: 'Analyze', action: () => setInputValue('Please analyze this for me.') },
-    { icon: MessageSquare, label: 'Summarize', action: () => setInputValue('Can you summarize the key points?') },
-  ], []);
-
-  if (!isAuthenticated) {
-    return (
-      <Card className="flex items-center justify-center h-64">
-        <CardContent>
-          <div className="text-center">
-            <Bot className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600">Please sign in to start chatting</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div
-      className={`flex flex-col bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 ${className}`}
-      style={{ height }}
-    >
-      {showHeader && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white/80 backdrop-blur-sm dark:bg-gray-800/80"
-        >
-          <div className="flex items-center gap-3">
-            <motion.div
-              className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-sm"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Bot className="h-4 w-4" />
-            </motion.div>
-            <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                AI Assistant
-              </h2>
-              <p className="text-xs text-gray-500">Enhanced with modern AI</p>
+  // Render components
+  const renderChatTab = () => (
+    <div className="flex-1 flex flex-col">
+      {/* Messages Area */}
+      <ScrollArea className="flex-1 px-4">
+        <div className="space-y-4 pb-4">
+          {messages.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <div className="text-lg font-medium mb-2">
+                Welcome to AI Assistant
+                {useCopilotKit && <Badge variant="secondary" className="ml-2 text-xs">CopilotKit Enhanced</Badge>}
+              </div>
+              <div className="text-sm">
+                I can help you with code, answer questions, and provide suggestions.
+                {enableCodeAssistance && " Try asking me about code or programming concepts!"}
+              </div>
             </div>
-          </div>
-
-          <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-            <Sparkles className="h-3 w-3 mr-1" />
-            Online
-          </Badge>
-        </motion.div>
-      )}
-
-      <ScrollArea className="flex-1 px-4 py-6" ref={scrollAreaRef}>
-        <div className="max-w-4xl mx-auto space-y-1">
-          <AnimatePresence mode="popLayout">
-            {messages.map((message, index) => (
-              <FancyMessageBubble
-                key={message.id}
-                message={message}
-                isLast={index === messages.length - 1}
-                onCopy={handleCopy}
-                onRate={handleRate}
-              />
-            ))}
-            
-            {isTyping && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="flex gap-3 mb-6"
-              >
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-sm">
-                  <Bot className="h-4 w-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="inline-block p-4 rounded-2xl bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700">
-                    <div className="flex items-center gap-2">
-                      {[0, 0.2, 0.4].map((delay) => (
-                        <motion.div
-                          key={delay}
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ repeat: Infinity, duration: 1.5, delay }}
-                          className="w-2 h-2 bg-emerald-500 rounded-full"
-                        />
-                      ))}
-                      <span className="text-sm text-gray-500 ml-2">
-                        AI is thinking...
-                      </span>
+          ) : (
+            messages.map((message) => (
+              <div key={message.id} className="group relative">
+                <ChatBubble
+                  role={message.role}
+                  content={message.content}
+                  meta={{
+                    confidence: message.metadata?.confidence,
+                    latencyMs: message.metadata?.latencyMs,
+                    model: message.metadata?.model,
+                    persona: message.metadata?.persona,
+                    mood: message.metadata?.mood,
+                    intent: message.metadata?.intent,
+                    reasoning: message.metadata?.reasoning,
+                    sources: message.metadata?.sources,
+                  }}
+                />
+                
+                {/* Message Actions */}
+                {message.role === 'assistant' && (
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => handleMessageAction(message.id, 'copy')}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => handleMessageAction(message.id, 'rate_up')}
+                      >
+                        <ThumbsUp className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => handleMessageAction(message.id, 'rate_down')}
+                      >
+                        <ThumbsDown className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => handleMessageAction(message.id, 'regenerate')}
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
                     </div>
                   </div>
+                )}
+              </div>
+            ))
+          )}
+          
+          {isTyping && (
+            <div className="flex gap-3 mb-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                <Bot className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <div className="inline-block p-3 rounded-lg bg-muted border">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                  </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+            </div>
+          )}
+          
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
-      <div className="border-t border-gray-200 dark:border-gray-700 bg-white/80 backdrop-blur-sm dark:bg-gray-800/80 p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-2">
-            {quickActions.map((action, index) => (
-              <motion.button
-                key={index}
-                onClick={action.action}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-full whitespace-nowrap transition-colors"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={isLoading || isTyping}
-                aria-label={action.label}
-              >
-                <action.icon className="h-3 w-3" />
-                {action.label}
-              </motion.button>
-            ))}
-          </div>
-
-          <form onSubmit={handleSubmit} className="flex items-end gap-3">
-            {enableVoice && (
-              <motion.button
+      {/* Input Area */}
+      <div className="border-t p-4">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <div className="flex-1 relative">
+            <Input
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder={placeholder}
+              disabled={isTyping}
+              className="pr-20"
+            />
+            
+            {/* Voice Input Button */}
+            {enableVoiceInput && (
+              <Button
                 type="button"
-                className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 flex items-center justify-center"
-                disabled={isLoading || isTyping}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsRecording(!isRecording)}
-                aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+                variant="ghost"
+                size="sm"
+                className="absolute right-12 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isTyping}
               >
                 {isRecording ? (
-                  <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75" />
-                    <Mic className="h-4 w-4 relative text-white" />
-                  </div>
+                  <MicOff className="h-4 w-4 text-red-500" />
                 ) : (
                   <Mic className="h-4 w-4" />
                 )}
-              </motion.button>
+              </Button>
             )}
-
-            <div className="flex-1 relative">
-              <motion.div style={{ scale: inputScale, y: inputY }} className="relative">
-                <Input
-                  ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setInputValue(value);
-
-                    if (value.length > MAX_INPUT_LENGTH) {
-                      setInputError(`Message too long (${value.length}/${MAX_INPUT_LENGTH} characters)`);
-                    } else if (value.length > WARNING_THRESHOLD) {
-                      setInputError(`Approaching limit (${value.length}/${MAX_INPUT_LENGTH} characters)`);
-                    } else {
-                      setInputError(null);
-                    }
-                  }}
-                  placeholder={placeholder}
-                  disabled={isLoading || isTyping}
-                  maxLength={MAX_INPUT_LENGTH}
-                  className="pr-12 py-3 rounded-2xl border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[48px] focus-visible:outline-none"
-                  onFocus={() => {
-                    inputScale.set(1.01);
-                    inputY.set(-1);
-                  }}
-                  onBlur={() => {
-                    inputScale.set(1);
-                    inputY.set(0);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (inputValue.trim() && !isLoading && !isTyping) {
-                        handleSubmit(e);
-                      }
-                    }
-                    if (e.key === 'Escape') {
-                      setInputValue('');
-                      inputRef.current?.blur();
-                    }
-                  }}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
-                />
-
-                {enableAttachments && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-12 top-1/2 -translate-y-1/2 h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
-                    disabled={isLoading || isTyping}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => inputRef.current?.focus()}
-                    aria-label="Attach file"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
-                )}
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
-                  disabled={isLoading || isTyping}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => inputRef.current?.focus()}
-                  aria-label="Add emoji"
-                >
-                  <Smile className="h-4 w-4" />
-                </Button>
-              </motion.div>
-            </div>
-
-            <motion.button
-              type="submit"
-              disabled={!inputValue.trim() || isLoading || isTyping}
-              className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                inputValue.trim() && !isLoading && !isTyping
-                  ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-              }`}
-              whileHover={inputValue.trim() && !isLoading && !isTyping ? { scale: 1.05 } : {}}
-              whileTap={inputValue.trim() && !isLoading && !isTyping ? { scale: 0.95 } : {}}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={(e) => {
-                e.preventDefault();
-                if (inputValue.trim() && !isLoading && !isTyping) {
-                  handleSubmit(e);
-                }
-                setTimeout(() => inputRef.current?.focus(), 0);
-              }}
-              aria-label="Send message"
-            >
-              {isLoading || isTyping ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowUp className="h-4 w-4" />
-              )}
-            </motion.button>
-          </form>
-
-          {(inputValue.length > WARNING_THRESHOLD || inputError) && (
-            <div className="flex items-center justify-between mt-2 px-1">
-              <div className="flex items-center gap-2">
-                {inputError && (
-                  <div className="flex items-center gap-1 text-xs text-red-500">
-                    <AlertTriangle className="h-3 w-3" />
-                    <span>{inputError}</span>
-                  </div>
-                )}
-              </div>
-              <div
-                className={`text-xs ${
-                  inputValue.length > MAX_INPUT_LENGTH
-                    ? 'text-red-500'
-                    : inputValue.length > WARNING_THRESHOLD
-                    ? 'text-yellow-500'
-                    : 'text-gray-500'
-                }`}
+            
+            {/* File Upload Button */}
+            {enableFileUpload && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-6 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                disabled={isTyping}
               >
-                {inputValue.length}/{MAX_INPUT_LENGTH}
-              </div>
-            </div>
-          )}
-
-          <p className="text-xs text-gray-500 text-center mt-3">
-            AI can make mistakes. Consider checking important information.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* -------------------------------------------------------------------------- */
-/*                            Legacy Chat Interface                           */
-/* -------------------------------------------------------------------------- */
-
-export const LegacyChatInterface: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
-  const chatService = getChatService();
-  const { toast } = useToast();
-
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [isSuggestingStarter, setIsSuggestingStarter] = useState(false);
-
-  const viewportRef = useRef<HTMLDivElement>(null);
-
-  // Initialize chat session
-  useEffect(() => {
-    const initializeChat = async () => {
-      if (!user || sessionId || conversationId) return;
-
-      try {
-        const { conversationId: cId, sessionId: sId } =
-          await chatService.createConversationSession(user.user_id);
-        setSessionId(sId);
-        setConversationId(cId);
-      } catch (error) {
-        console.error('Failed to create conversation session:', error);
-      }
-    };
-
-    if (isAuthenticated) {
-      void initializeChat();
-    }
-  }, [user, isAuthenticated, sessionId, conversationId, chatService]);
-
-  // Set welcome message
-  useEffect(() => {
-    if (messages.length > 0 || !isAuthenticated) return;
-
-    const welcomeMessage = user?.email
-      ? `Hello ${user.email}! I'm Karen, your intelligent assistant. How can I help you today?`
-      : "Hello! I'm Karen, your intelligent assistant. How can I help you today?";
-
-    setMessages([
-      {
-        id: `karen-initial-${Date.now()}`,
-        role: 'assistant',
-        content: welcomeMessage,
-        timestamp: new Date(),
-        aiData: {
-          knowledgeGraphInsights:
-            'Karen AI aims to be a human-like AI assistant with advanced memory and learning capabilities.',
-        },
-        shouldAutoPlay: false,
-      },
-    ]);
-  }, [user, isAuthenticated, messages.length]);
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    viewportRef.current?.scrollTo({
-      top: viewportRef.current.scrollHeight,
-      behavior: 'smooth',
-    });
-  }, [messages]);
-
-  const handleSubmit = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: sanitizeInput(input.trim()),
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      const settings: KarenSettings = DEFAULT_KAREN_SETTINGS;
-      const result = await chatService.processUserMessage(
-        userMessage.content,
-        messages.filter((m) => m.role !== 'system'),
-        settings,
-        {
-          userId: user?.user_id,
-          sessionId: sessionId || undefined,
-          storeInMemory: true,
-          generateSummary: messages.length > 10,
-        },
-      );
-
-      if (conversationId) {
-        await chatService.addMessageToConversation(conversationId, userMessage);
-      }
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: result.finalResponse,
-          timestamp: new Date(),
-          aiData: result.aiDataForFinalResponse,
-          shouldAutoPlay: false,
-          widget: result.widget,
-        },
-      ]);
-    } catch (error: any) {
-      console.error('Error processing message:', error);
-      const errorMessage = error?.message?.startsWith('Karen: ')
-        ? error.message
-        : 'Karen: I encountered an issue processing your request. Please try again.';
-      
-      toast({
-        variant: 'destructive',
-        title: 'Processing Error',
-        description: errorMessage.replace(/^Karen:\s*/, ''),
-      });
-      
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}`,
-          role: 'system',
-          content: errorMessage,
-          timestamp: new Date(),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    void handleSubmit();
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <Card className="flex items-center justify-center h-64">
-        <CardContent>
-          <div className="text-center">
-            <Bot className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600">Please sign in to chat with Karen</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <ScrollArea className="flex-1 p-4 md:p-6" viewportRef={viewportRef}>
-        <div className="max-w-4xl mx-auto w-full space-y-1 pb-4">
-          {messages.map((message) => (
-            <SimpleMessageBubble key={message.id} message={message} />
-          ))}
-        </div>
-      </ScrollArea>
-
-      <div className="border-t border-border p-3 md:p-4 bg-background/80 backdrop-blur-sm sticky bottom-0">
-        <div className="max-w-4xl mx-auto mb-2 flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsSuggestingStarter(true)}
-            disabled={isLoading || isSuggestingStarter}
-            className="shadow-sm hover:shadow-md transition-shadow duration-150 ease-in-out rounded-lg border-border/70 hover:border-border"
-            aria-label="Get conversation starter"
-          >
-            {isSuggestingStarter ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="mr-2 h-4 w-4 text-primary/80" />
+                <Paperclip className="h-4 w-4" />
+              </Button>
             )}
-            {isSuggestingStarter ? 'Getting idea...' : 'Need an idea? Get a starter'}
-          </Button>
-        </div>
-
-        <form onSubmit={handleFormSubmit} className="max-w-4xl mx-auto flex gap-2 md:gap-3 items-center">
-          <Input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Karen anything…"
-            className="flex-1 text-sm md:text-base h-11 md:h-12 rounded-lg focus-visible:ring-primary focus-visible:ring-offset-0"
-            disabled={isLoading}
-            aria-label="Chat input"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            className="h-11 w-11 md:h-12 md:w-12 p-0 rounded-lg bg-primary hover:bg-primary/90 shrink-0"
-            disabled={isLoading || !input.trim()}
-            aria-label="Send message"
+          </div>
+          
+          <Button 
+            type="submit" 
+            disabled={!inputValue.trim() || isTyping}
+            size="sm"
           >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+            {isTyping ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <SendHorizontal className="h-5 w-5" />
+              <Send className="h-4 w-4" />
             )}
           </Button>
         </form>
+        
+        {/* Quick Actions */}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleQuickAction('debug', "Help me debug this code", 'code')}
+            disabled={isTyping}
+          >
+            <Code className="h-3 w-3 mr-1" />
+            Debug Code
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleQuickAction('explain', "Explain this concept", 'text')}
+            disabled={isTyping}
+          >
+            <Lightbulb className="h-3 w-3 mr-1" />
+            Explain
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleQuickAction('docs', "Generate documentation", 'documentation')}
+            disabled={isTyping}
+          >
+            <FileText className="h-3 w-3 mr-1" />
+            Document
+          </Button>
+          {useCopilotKit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleQuickAction('optimize', "Optimize this code", 'code')}
+              disabled={isTyping}
+            >
+              <Zap className="h-3 w-3 mr-1" />
+              Optimize
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
+
+  const renderCodeTab = () => (
+    <div className="flex-1 flex flex-col p-4">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+          <Code className="h-5 w-5" />
+          Code Assistant
+          {useCopilotKit && <Badge variant="secondary" className="text-xs">AI Enhanced</Badge>}
+        </h3>
+        <div className="text-sm text-muted-foreground">
+          Write code with AI assistance, get suggestions, and analyze your code.
+        </div>
+      </div>
+      
+      {/* Language Selector */}
+      <div className="mb-4">
+        <select
+          value={settings.language}
+          onChange={(e) => handleSettingsChange({ language: e.target.value })}
+          className="px-3 py-1 border rounded-md text-sm"
+        >
+          <option value="javascript">JavaScript</option>
+          <option value="typescript">TypeScript</option>
+          <option value="python">Python</option>
+          <option value="java">Java</option>
+          <option value="cpp">C++</option>
+          <option value="csharp">C#</option>
+          <option value="go">Go</option>
+          <option value="rust">Rust</option>
+          <option value="php">PHP</option>
+          <option value="ruby">Ruby</option>
+        </select>
+      </div>
+      
+      {useCopilotKit ? (
+        <CopilotTextarea
+          value={codeValue}
+          onChange={setCodeValue}
+          placeholder="Write your code here... AI will provide suggestions as you type."
+          language={settings.language}
+          enableSuggestions={settings.enableSuggestions}
+          enableCodeAnalysis={settings.enableCodeAnalysis}
+          enableDocGeneration={enableDocGeneration}
+          className="flex-1"
+          rows={15}
+          disabled={isTyping}
+        />
+      ) : (
+        <Textarea
+          ref={codeTextareaRef}
+          value={codeValue}
+          onChange={(e) => setCodeValue(e.target.value)}
+          placeholder="Write your code here..."
+          className="flex-1 font-mono text-sm resize-none"
+          rows={15}
+          disabled={isTyping}
+        />
+      )}
+      
+      <div className="flex gap-2 mt-4">
+        <Button
+          onClick={() => sendMessage(codeValue, 'code', { language: settings.language, enableAnalysis: true })}
+          disabled={!codeValue.trim() || isTyping}
+        >
+          {isTyping ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+          Send Code
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleCodeAnalysis}
+          disabled={!codeValue.trim() || isTyping || isAnalyzing}
+        >
+          {isAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <AlertCircle className="h-4 w-4 mr-2" />}
+          Analyze
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => handleQuickAction('optimize', `Optimize this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, 'code')}
+          disabled={!codeValue.trim() || isTyping}
+        >
+          <Zap className="h-4 w-4 mr-2" />
+          Optimize
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => handleQuickAction('docs', `Generate documentation for this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, 'documentation')}
+          disabled={!codeValue.trim() || isTyping}
+        >
+          <FileText className="h-4 w-4 mr-2" />
+          Document
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderAnalyticsTab = () => (
+    <div className="flex-1 p-4">
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" />
+          Chat Analytics
+          <Badge variant="outline" className="text-xs">Real-time</Badge>
+        </h3>
+        <div className="text-sm text-muted-foreground">
+          View conversation statistics, performance metrics, and insights.
+        </div>
+      </div>
+      
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium">Messages</span>
+            </div>
+            <div className="text-2xl font-bold">{analytics.totalMessages}</div>
+            <div className="text-xs text-muted-foreground">
+              {analytics.userMessages} sent, {analytics.assistantMessages} received
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="h-4 w-4 text-green-500" />
+              <span className="text-sm font-medium">Response Time</span>
+            </div>
+            <div className="text-2xl font-bold">{analytics.averageResponseTime}ms</div>
+            <div className="text-xs text-muted-foreground">Average latency</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="h-4 w-4 text-purple-500" />
+              <span className="text-sm font-medium">Confidence</span>
+            </div>
+            <div className="text-2xl font-bold">{analytics.averageConfidence}%</div>
+            <div className="text-xs text-muted-foreground">AI confidence</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-medium">Session</span>
+            </div>
+            <div className="text-2xl font-bold">{Math.floor(analytics.sessionDuration / 60)}m</div>
+            <div className="text-xs text-muted-foreground">{analytics.sessionDuration % 60}s active</div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Advanced Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              Usage Statistics
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Total Tokens</span>
+              <Badge variant="outline">{analytics.totalTokens.toLocaleString()}</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Estimated Cost</span>
+              <Badge variant="outline">${analytics.totalCost.toFixed(4)}</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Error Rate</span>
+              <Badge variant={analytics.errorRate > 10 ? "destructive" : "secondary"}>
+                {analytics.errorRate}%
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Top Topics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {analytics.topTopics.length > 0 ? (
+                analytics.topTopics.map((topic, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-sm capitalize">{topic}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground">No topics identified yet</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Code Languages */}
+      {analytics.codeLanguages.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Code className="h-4 w-4" />
+              Programming Languages
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {analytics.codeLanguages.map((lang, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {lang}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Recent Messages
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {messages.slice(-5).map((message) => (
+              <div key={message.id} className="flex items-start gap-3 p-2 rounded-lg bg-muted/50">
+                <div className={`w-2 h-2 rounded-full mt-2 ${
+                  message.role === 'user' ? 'bg-blue-500' : 'bg-green-500'
+                }`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium capitalize">{message.role}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {message.type}
+                    </Badge>
+                    {message.metadata?.confidence && (
+                      <Badge variant="secondary" className="text-xs">
+                        {Math.round(message.metadata.confidence * 100)}%
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground line-clamp-2">
+                    {message.content}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+                    <span>{message.timestamp.toLocaleTimeString()}</span>
+                    {message.metadata?.latencyMs && (
+                      <span>• {message.metadata.latencyMs}ms</span>
+                    )}
+                    {message.metadata?.tokens && (
+                      <span>• {message.metadata.tokens} tokens</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
+    <ChatErrorBoundary>
+      <Card className={`flex flex-col ${className} ${isFullscreen ? 'fixed inset-0 z-50' : ''}`} 
+            style={isFullscreen ? { height: '100vh' } : { height }}>
+        
+        {/* Header */}
+        {showHeader && (
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                AI Assistant
+                {useCopilotKit && (
+                  <Badge variant="secondary" className="text-xs">
+                    CopilotKit Enhanced
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-xs">
+                  Production Ready
+                </Badge>
+              </CardTitle>
+              
+              <div className="flex items-center gap-2">
+                {selectedMessages.size > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedMessages.size} selected
+                  </Badge>
+                )}
+                
+                {enableExport && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleExport}
+                    className="h-8 w-8 p-0"
+                    title="Export Chat"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                )}
+                
+                {enableSharing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onShare?.(messages)}
+                    className="h-8 w-8 p-0"
+                    title="Share Chat"
+                  >
+                    <Share className="h-4 w-4" />
+                  </Button>
+                )}
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  className="h-8 w-8 p-0"
+                  title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                >
+                  {isFullscreen ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
+                </Button>
+                
+                {showSettings && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    title="Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+        )}
+
+        <CardContent className="flex-1 flex flex-col p-0">
+          {showTabs ? (
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex-1 flex flex-col">
+              <TabsList className="grid w-full grid-cols-3 mx-4 mt-4">
+                <TabsTrigger value="chat" className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Chat
+                </TabsTrigger>
+                <TabsTrigger value="code" className="flex items-center gap-2">
+                  <Code className="h-4 w-4" />
+                  Code
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="chat" className="flex-1 flex flex-col mt-0">
+                {renderChatTab()}
+              </TabsContent>
+              
+              <TabsContent value="code" className="flex-1 flex flex-col mt-0">
+                {renderCodeTab()}
+              </TabsContent>
+              
+              <TabsContent value="analytics" className="flex-1 flex flex-col mt-0">
+                {renderAnalyticsTab()}
+              </TabsContent>
+            </Tabs>
+          ) : (
+            renderChatTab()
+          )}
+        </CardContent>
+      </Card>
+    </ChatErrorBoundary>
+  );
 };
 
-/* -------------------------------------------------------------------------- */
-/*                               Dev Smoke Tests                              */
-/* -------------------------------------------------------------------------- */
-
-if (typeof window !== 'undefined' && window.location.search.includes('run-ui-tests')) {
-  console.group('ChatInterface – Smoke Tests');
-  try {
-    // Confidence conversion tests
-    console.assert(confidenceToPercentage(0.85) === 85, '0.85 => 85%');
-    console.assert(confidenceToPercentage('0.501') === 50, '"0.501" => 50%');
-    console.assert(confidenceToPercentage(null) === null, 'null => null');
-    console.assert(confidenceToPercentage('invalid') === null, 'invalid string => null');
-    console.assert(confidenceToPercentage(undefined) === null, 'undefined => null');
-    
-    console.info('✅ All smoke tests passed');
-  } catch (error) {
-    console.error('Smoke test failure:', error);
-  } finally {
-    console.groupEnd();
-  }
-}
+export default ChatInterface;

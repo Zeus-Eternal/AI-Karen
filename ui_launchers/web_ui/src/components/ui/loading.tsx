@@ -309,19 +309,20 @@ export function useLoadingState(initialState = false) {
     setIsLoading(false);
   }, []);
 
-  const withLoading = React.useCallback(async <T>(
-    asyncFn: () => Promise<T>
-  ): Promise<T | null> => {
-    try {
-      startLoading();
-      const result = await asyncFn();
-      stopLoading();
-      return result;
-    } catch (err) {
-      setLoadingError(err instanceof Error ? err : new Error('Unknown error'));
-      return null;
-    }
-  }, [startLoading, stopLoading, setLoadingError]);
+  const withLoading = React.useCallback(
+    async <T,>(asyncFn: () => Promise<T>): Promise<T | null> => {
+      try {
+        startLoading();
+        const result = await asyncFn();
+        stopLoading();
+        return result;
+      } catch (err) {
+        setLoadingError(err instanceof Error ? err : new Error('Unknown error'));
+        return null;
+      }
+    },
+    [startLoading, stopLoading, setLoadingError]
+  );
 
   return {
     isLoading,

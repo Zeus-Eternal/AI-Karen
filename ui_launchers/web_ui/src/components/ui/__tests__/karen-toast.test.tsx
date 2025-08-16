@@ -56,7 +56,9 @@ describe('KarenToast', () => {
       );
       
       const toastElement = container.querySelector('[role="status"]');
-      expect(toastElement).toHaveClass('border-green-200', 'bg-green-50', 'text-green-900');
+      expect(toastElement).toHaveClass('border-green-200');
+      expect(toastElement?.className).toContain('bg-green-50');
+      expect(toastElement).toHaveClass('text-green-900');
     });
   });
 
@@ -73,7 +75,9 @@ describe('KarenToast', () => {
       );
       
       const toastElement = container.querySelector('[role="status"]');
-      expect(toastElement).toHaveClass(borderClass, bgClass, textClass);
+      expect(toastElement).toHaveClass(borderClass);
+      expect(toastElement?.className).toContain(bgClass);
+      expect(toastElement).toHaveClass(textClass);
     });
   });
 

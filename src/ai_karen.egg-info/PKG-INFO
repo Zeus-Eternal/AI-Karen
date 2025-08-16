@@ -382,6 +382,8 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 License-File: LICENSE-commercial.txt
 License-File: LICENSE.md
+Provides-Extra: argon2
+Requires-Dist: argon2-cffi; extra == "argon2"
 Dynamic: license-file
 
 # AI-Karen: Production AI Platform
@@ -434,6 +436,31 @@ config = AuthConfig.from_environment("production")
 
 Example configuration files are provided in `config/auth_config.yaml`
 and `config/auth_config.json`.
+
+### Production Authentication Setup
+
+AI-Karen ships with a production-ready authentication stack featuring
+PostgreSQL storage, bcrypt password hashing, JWT token management,
+Redis-backed sessions, and multi-tenant support. See
+[Production Authentication Setup](docs/PRODUCTION_AUTH_SETUP.md) for
+full deployment instructions.
+
+**Environment Variables**
+
+```bash
+cp config/production_auth_config.env .env
+# Edit .env with secure production values
+```
+
+**Migration Script**
+
+Initialize the authentication database schema:
+
+```bash
+python scripts/run_auth_migration.py
+# Optional dry run
+python scripts/run_auth_migration.py --dry-run
+```
 
 ---
 
@@ -818,11 +845,20 @@ curl -X POST http://localhost:8000/plugins/reload
 ### Health Checks
 
 ```bash
+# Verify backend is listening on port 8000
+ss -ltnp | grep :8000 || lsof -iTCP:8000 -sTCP:LISTEN
+
 # System health
 curl http://localhost:8000/health
 
+# API health
+curl http://localhost:8000/api/health
+
 # Detailed health summary
 curl http://localhost:8000/api/health/summary
+
+# Metrics
+curl http://localhost:8000/metrics
 
 # Service-specific health
 curl http://localhost:8000/api/services/postgres/health

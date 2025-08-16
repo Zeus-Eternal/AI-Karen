@@ -8,8 +8,6 @@ with the existing AI Karen architecture.
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.core.services.base import BaseService, ServiceConfig
-from ai_karen_engine.integrations.llm_router import LLMProfileRouter
-from ai_karen_engine.integrations.llm_utils import LLMUtils
 from ai_karen_engine.models.shared_types import (  # ← ensure FlowType is imported
     AiData, DecideActionInput, FlowInput, FlowOutput, FlowType, PluginInfo,
     ToolType)
@@ -31,10 +29,24 @@ class AIOrchestrator(BaseService):
         self.decision_engine = DecisionEngine()
         self.context_manager = ContextManager()  # Will be updated with memory service during initialization
         self.prompt_manager = PromptManager()
-        self.llm_utils = LLMUtils()
-        self.llm_router = LLMProfileRouter()
+        self.llm_utils = None  # Will be initialized lazily
+        self.llm_router = None  # Will be initialized lazily
         self._memory_service = None
         self._initialized = False
+
+    def _get_llm_router(self):
+        """Lazily initialize LLM router to avoid circular imports."""
+        if self.llm_router is None:
+            from ai_karen_engine.integrations.llm_router import LLMProfileRouter
+            self.llm_router = LLMProfileRouter()
+        return self.llm_router
+
+    def _get_llm_utils(self):
+        """Lazily initialize LLM utils to avoid circular imports."""
+        if self.llm_utils is None:
+            from ai_karen_engine.integrations.llm_utils import LLMUtils
+            self.llm_utils = LLMUtils()
+        return self.llm_utils
 
     async def initialize(self) -> None:
         """Initialize the AI Orchestrator service."""
@@ -230,8 +242,8 @@ class AIOrchestrator(BaseService):
             # Step 1: Try user's chosen LLM
             try:
                 self.logger.info(f"Attempting user's chosen LLM: {preferred_provider}:{preferred_model}")
-                raw = self.llm_router.invoke(
-                    self.llm_utils,
+                raw = self._get_llm_router().invoke(
+                    self._get_llm_utils(),
                     full_prompt,
                     task_intent=FlowType.CONVERSATION_PROCESSING.value,
                     preferred_provider=preferred_provider,
@@ -255,8 +267,8 @@ class AIOrchestrator(BaseService):
                     provider, model = provider_model.split(":", 1)
                     self.logger.info(f"Attempting system default LLM: {provider}:{model}")
                     
-                    raw = self.llm_router.invoke(
-                        self.llm_utils,
+                    raw = self._get_llm_router().invoke(
+                        self._get_llm_utils(),
                         full_prompt,
                         task_intent=FlowType.CONVERSATION_PROCESSING.value,
                         preferred_provider=provider,
@@ -665,8 +677,8 @@ Enhanced response:"""
 
             self.logger.info("Attempting to enhance response with LLM")
             
-            raw = self.llm_router.invoke(
-                self.llm_utils,
+            raw = self._get_llm_router().invoke(
+                self._get_llm_utils(),
                 enhancement_prompt,
                 task_intent="conversation_processing",
             )
