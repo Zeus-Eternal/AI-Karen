@@ -9,11 +9,21 @@ from collections import defaultdict, deque
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 logger = logging.getLogger(__name__)
 
 # Graceful imports with fallback mechanisms
+if TYPE_CHECKING:  # pragma: no cover - type check only
+    from prometheus_client import (
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        Info,
+        Summary,
+    )
+
 try:
     from prometheus_client import (
         CONTENT_TYPE_LATEST,
@@ -27,7 +37,7 @@ try:
     )
 
     PROMETHEUS_AVAILABLE = True
-except ImportError:
+except Exception:  # pragma: no cover - optional dependency
     logger.warning("Prometheus client not available, using fallback metrics")
     # Define lightweight fallbacks to avoid import-time NameError when
     # Prometheus isn't installed. These stubs satisfy type annotations and
