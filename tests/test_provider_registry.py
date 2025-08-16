@@ -27,8 +27,7 @@ def test_register_and_get_provider():
     assert registry.list_models("dummy") == ["base"]
 
 
-def test_default_copilotkit_registration():
+def test_no_copilotkit_registration_by_default():
     registry = get_provider_registry()
-    assert "copilotkit" in registry.list_providers()
-    assert "gpt-4" in registry.list_models("copilotkit")
+    assert "copilotkit" not in registry.list_providers()
 

@@ -1,6 +1,8 @@
-"""
-Production-grade memory management system for AI Karen.
-Integrates Milvus, Redis, Postgres, and Elasticsearch for comprehensive memory operations.
+"""Utilities for storing and querying memory entries.
+
+This module wraps database access and optional Milvus vector operations. When
+the Milvus client is unavailable the manager degrades gracefully, skipping
+vector actions and falling back to metadata-only behaviour.
 """
 
 import json
@@ -94,7 +96,7 @@ class MemoryManager:
     def __init__(
         self,
         db_client: MultiTenantPostgresClient,
-        milvus_client: MilvusClient,
+        milvus_client: Optional[MilvusClient] = None,
         embedding_manager: EmbeddingManager,
         redis_client: Optional[Any] = None,
         elasticsearch_client: Optional[Any] = None,
@@ -207,11 +209,14 @@ class MemoryManager:
             if metadata:
                 vector_metadata.update(metadata)
 
-            await self.milvus_client.insert(
-                collection_name=collection_name,
-                vectors=[embedding.tolist()],
-                metadata=[vector_metadata],
-            )
+            if self.milvus_client:
+                await self.milvus_client.insert(
+                    collection_name=collection_name,
+                    vectors=[embedding.tolist()],
+                    metadata=[vector_metadata],
+                )
+            else:
+                logger.warning("Milvus client unavailable - skipping vector insert")
 
             # Store metadata in Postgres
             async with self.db_client.get_async_session() as session:
@@ -295,6 +300,10 @@ class MemoryManager:
             # Build metadata filter
             metadata_filter = self._build_metadata_filter(query)
 
+            if not self.milvus_client:
+                logger.warning("Milvus client unavailable - returning empty results")
+                return []
+
             vector_results = await self.milvus_client.search(
                 collection_name=collection_name,
                 query_vectors=[query_embedding.tolist()],
@@ -368,10 +377,13 @@ class MemoryManager:
         try:
             # Delete from vector database
             collection_name = self._get_collection_name(tenant_id)
-            await self.milvus_client.delete(
-                collection_name=collection_name,
-                filter_expr=f"memory_id == '{memory_id}'",
-            )
+            if self.milvus_client:
+                await self.milvus_client.delete(
+                    collection_name=collection_name,
+                    filter_expr=f"memory_id == '{memory_id}'",
+                )
+            else:
+                logger.warning("Milvus client unavailable - skipping vector delete")
 
             # Delete from Postgres
             async with self.db_client.get_async_session() as session:
@@ -481,6 +493,10 @@ class MemoryManager:
                 metadata["scope"] = scope
             if kind:
                 metadata["kind"] = kind
+            if not self.milvus_client:
+                logger.warning("Milvus client unavailable - assuming content is surprising")
+                return True
+
             results = await self.milvus_client.search(
                 collection_name=collection_name,
                 query_vectors=[embedding.tolist()],

@@ -25,7 +25,7 @@ async def test_transform_web_ui_memory_query():
     result = await transform_web_ui_memory_query(query)
     assert isinstance(result, MemQuery)
     assert result.query == "hello"
-    assert result.user_id == "s1"
+    assert result.user_id == "u1"
     assert result.top_k == 3
 
 

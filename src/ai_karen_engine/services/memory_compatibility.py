@@ -48,10 +48,10 @@ async def transform_web_ui_memory_query(web_ui_query: WebUIMemoryQuery) -> MemQu
         if len(web_ui_query.time_range) == 2:
             time_range_start, time_range_end = tuple(web_ui_query.time_range)
     return MemQuery(
-        user_id=web_ui_query.session_id or "default_user",
+        user_id=web_ui_query.user_id or web_ui_query.session_id or "default_user",
         org_id=None,
         query=web_ui_query.text,
-        top_k=web_ui_query.top_k or 12
+        top_k=web_ui_query.top_k or 12,
     )
 
 

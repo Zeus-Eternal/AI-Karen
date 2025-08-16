@@ -1,6 +1,8 @@
-"""
-Comprehensive Metrics Collection System - Phase 4.1.d
-Production-ready metrics for turn health, memory quality, and model performance.
+"""AI-Karen metrics service.
+
+Provides production-ready metrics for turn health, memory quality, and model
+performance. Integrates with Prometheus when available while offering graceful
+fallbacks so the service can operate without the optional dependency.
 """
 
 import logging

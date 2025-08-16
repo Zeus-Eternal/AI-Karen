@@ -13,7 +13,6 @@ from typing import Any, Dict, List, Optional, Type
 
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
 from ai_karen_engine.integrations.providers import (
-    CopilotKitProvider,
     DeepseekProvider,
     GeminiProvider,
     HuggingFaceProvider,
@@ -115,15 +114,6 @@ class LLMRegistry:
                 "supports_embeddings": True,
                 "requires_api_key": True,
                 "default_model": "microsoft/DialoGPT-large",
-            },
-            {
-                "name": "copilotkit",
-                "provider_class": "CopilotKitProvider",
-                "description": "CopilotKit AI-powered code assistance and contextual suggestions",
-                "supports_streaming": False,
-                "supports_embeddings": True,
-                "requires_api_key": True,
-                "default_model": "gpt-4",
             },
         ]
 
@@ -259,7 +249,6 @@ class LLMRegistry:
             "GeminiProvider": GeminiProvider,
             "DeepseekProvider": DeepseekProvider,
             "HuggingFaceProvider": HuggingFaceProvider,
-            "CopilotKitProvider": CopilotKitProvider,
         }
 
         return class_map.get(class_name)

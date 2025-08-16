@@ -42,6 +42,7 @@ class ProviderRegistration:
     models: List[ModelInfo] = field(default_factory=list)
     requires_api_key: bool = False
     default_model: Optional[str] = None
+    category: str = "LLM"
 
 
 # -----------------------------
@@ -71,6 +72,7 @@ class ProviderRegistry:
         models: Optional[List[ModelInfo]] = None,
         requires_api_key: bool = False,
         default_model: Optional[str] = None,
+        category: str = "LLM",
     ) -> None:
         """Register (or overwrite) a provider with optional models."""
         with self._lock:
@@ -81,6 +83,7 @@ class ProviderRegistry:
                 models=models or [],
                 requires_api_key=requires_api_key,
                 default_model=default_model,
+                category=category,
             )
             # Ensure an instance bucket exists
             self._instances.setdefault(name, {})
@@ -108,8 +111,14 @@ class ProviderRegistry:
         with self._lock:
             return self._registrations.get(name)
 
-    def list_providers(self) -> List[str]:
+    def list_providers(self, category: Optional[str] = None) -> List[str]:
         with self._lock:
+            if category:
+                return [
+                    name
+                    for name, reg in self._registrations.items()
+                    if reg.category == category
+                ]
             return list(self._registrations.keys())
 
     def list_models(self, provider_name: str) -> List[str]:
@@ -170,7 +179,6 @@ class ProviderRegistry:
 
         try:
             from ai_karen_engine.integrations.providers import (
-                CopilotKitProvider,
                 DeepseekProvider,
                 GeminiProvider,
                 HuggingFaceProvider,
@@ -216,14 +224,6 @@ class ProviderRegistry:
                     "cls": HuggingFaceProvider,
                     "description": "HuggingFace models via Inference API or local execution",
                     "default_model": "microsoft/DialoGPT-large",
-                    "requires_api_key": True,
-                    "capabilities": ["text", "embeddings"],
-                },
-                {
-                    "name": "copilotkit",
-                    "cls": CopilotKitProvider,
-                    "description": "AI-powered development assistance with memory integration and action suggestions",
-                    "default_model": "gpt-4",
                     "requires_api_key": True,
                     "capabilities": ["text", "embeddings"],
                 },
