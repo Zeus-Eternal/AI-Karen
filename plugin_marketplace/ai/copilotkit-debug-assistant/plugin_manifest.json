@@ -31,8 +31,16 @@
     "go"
   ],
   "dependencies": [
-    "copilotkit>=1.0.0",
-    "ai_karen_engine>=1.0.0"
+    {
+      "name": "copilotkit",
+      "min_version": "1.0.0",
+      "optional": true
+    },
+    {
+      "name": "ai_karen_engine",
+      "min_version": "1.0.0",
+      "optional": true
+    }
   ],
   "hooks": {
     "pre_execution": [
