@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional, Union
 from ai_karen_engine.inference.huggingface_service import get_huggingface_service
 from ai_karen_engine.inference.llama_tools import get_llama_tools
 from ai_karen_engine.inference.model_store import get_model_store
-from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_system
+from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_manager
 from ai_karen_engine.integrations.registry import get_registry
 from ai_karen_engine.services.job_manager import get_job_manager
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
@@ -684,8 +684,8 @@ def _register_job_handlers():
 
 # Initialize job handlers when module is imported
 _register_job_handlers()
-# ---
---------------------------
+
+# -----------------------------
 # Provider Management Endpoints
 # -----------------------------
 
@@ -694,7 +694,7 @@ async def list_providers():
     """List all available LLM providers (excluding CopilotKit)."""
     try:
         registry = get_registry()
-        dynamic_system = get_dynamic_provider_system()
+        dynamic_system = get_dynamic_provider_manager()
         
         providers = []
         
@@ -757,7 +757,7 @@ async def validate_provider(request: ProviderValidationRequest):
                 detail="CopilotKit is not an LLM provider and should not be validated here"
             )
         
-        dynamic_system = get_dynamic_provider_system()
+        dynamic_system = get_dynamic_provider_manager()
         
         # Validate provider configuration
         is_valid = await dynamic_system.validate_provider_async(
@@ -807,7 +807,7 @@ async def get_provider_models(provider_id: str):
                 detail="CopilotKit is not an LLM provider"
             )
         
-        dynamic_system = get_dynamic_provider_system()
+        dynamic_system = get_dynamic_provider_manager()
         
         try:
             # Try dynamic model discovery first
@@ -854,7 +854,7 @@ async def get_llm_health():
     """Get health status of providers, runtimes, and related services."""
     try:
         registry = get_registry()
-        dynamic_system = get_dynamic_provider_system()
+        dynamic_system = get_dynamic_provider_manager()
         model_store = get_model_store()
         job_manager = get_job_manager()
         

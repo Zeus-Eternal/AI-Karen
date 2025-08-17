@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Progress } from '@/components/ui/progress';
 import {
   Brain,
   CheckCircle2,
@@ -26,7 +28,21 @@ import {
   Filter,
   Zap,
   Shield,
-  Eye
+  Eye,
+  Database,
+  Cloud,
+  HardDrive,
+  Users,
+  Download,
+  Upload,
+  Trash2,
+  Edit,
+  Plus,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  Lock
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { ErrorHandler } from '@/lib/error-handler';

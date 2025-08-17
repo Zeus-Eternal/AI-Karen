@@ -104,14 +104,14 @@ class HFModel:
         """Infer model metadata from name and tags."""
         name_lower = self.id.lower()
         
-        # Infer family
+        # Infer family (order matters - check more specific patterns first)
         families = {
+            "codellama": ["codellama", "code-llama"],
             "llama": ["llama", "alpaca", "vicuna"],
             "mistral": ["mistral", "mixtral"],
             "qwen": ["qwen", "qwen2"],
             "phi": ["phi", "phi-2", "phi-3"],
             "gemma": ["gemma"],
-            "codellama": ["codellama", "code-llama"],
             "bert": ["bert", "distilbert", "roberta"],
             "gpt": ["gpt", "gpt2", "gpt-neo", "gpt-j"]
         }
@@ -128,10 +128,12 @@ class HFModel:
                 self.parameters = pattern.upper()
                 break
         
-        # Infer quantization from tags or name
+        # Infer quantization from tags, name, or filenames
         quant_patterns = ["q2_k", "q3_k", "q4_k_m", "q5_k_m", "q6_k", "q8_0", "iq2_m", "iq3_m", "fp16", "bf16", "int8", "int4"]
         for pattern in quant_patterns:
-            if pattern in name_lower or any(pattern in tag.lower() for tag in self.tags):
+            if (pattern in name_lower or 
+                any(pattern in tag.lower() for tag in self.tags) or
+                any(pattern in f.get("rfilename", "").lower() for f in self.files)):
                 self.quantization = pattern.upper()
                 break
         
@@ -699,12 +701,12 @@ class HuggingFaceService:
         id_lower = model_id.lower()
         
         families = {
+            "codellama": ["codellama", "code-llama"],
             "llama": ["llama", "alpaca", "vicuna"],
             "mistral": ["mistral", "mixtral"],
             "qwen": ["qwen", "qwen2"],
             "phi": ["phi", "phi-2", "phi-3"],
             "gemma": ["gemma"],
-            "codellama": ["codellama", "code-llama"],
             "bert": ["bert", "distilbert", "roberta"],
             "gpt": ["gpt", "gpt2", "gpt-neo", "gpt-j"]
         }
