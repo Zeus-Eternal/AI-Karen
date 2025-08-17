@@ -8,7 +8,7 @@ import { CopilotKit } from '@copilotkit/react-core';
 import MemoryGrid from './MemoryGrid';
 import MemoryNetworkVisualization from './MemoryNetworkVisualization';
 import MemoryEditor from './MemoryEditor';
-import { AgChartsReact } from 'ag-charts-react';
+import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -604,7 +604,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
                           {chartConfig.title}
                         </h3>
                         <div style={{ height: '300px' }}>
-                          <AgChartsReact options={chartConfig as AgChartOptions} />
+                          <AgCharts options={chartConfig as AgChartOptions} />
                         </div>
                       </div>
                     ))}

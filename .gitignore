@@ -77,3 +77,4 @@ llm_settings.json
 .env
 .env.local
 config/llm_settings.local.json
+/src-bak

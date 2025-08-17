@@ -195,8 +195,9 @@ test.describe('Network Failure Scenarios', () => {
     // Should redirect to login
     await expect(page).toHaveURL('/login');
     await expect(page.locator('[data-testid="session-expired-message"]')).toBeVisible();
-  });  test('C
-ORS and cross-origin issues', async ({ page }) => {
+  });
+
+  test('CORS and cross-origin issues', async ({ page }) => {
     await loginUser(page);
     
     // Simulate CORS error

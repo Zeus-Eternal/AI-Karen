@@ -24,6 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover - type check only
         Histogram,
         Info,
         Summary,
+        generate_latest,
     )
 
 try:
@@ -45,8 +46,26 @@ except Exception:  # pragma: no cover - optional dependency
     # Prometheus isn't installed. These stubs satisfy type annotations and
     # allow the service to operate in a degraded mode without the optional
     # dependency.
-    CollectorRegistry = Any  # type: ignore[assignment]
-    Counter = Histogram = Gauge = Summary = Info = None  # type: ignore[assignment]
+    
+    class _DummyRegistry:
+        """Dummy registry for when Prometheus is not available"""
+        pass
+    
+    class _DummyMetric:
+        """Dummy metric for when Prometheus is not available"""
+        def __init__(self, *args, **kwargs):
+            pass
+        def inc(self, *args, **kwargs):
+            pass
+        def observe(self, *args, **kwargs):
+            pass
+        def set(self, *args, **kwargs):
+            pass
+        def info(self, *args, **kwargs):
+            pass
+    
+    CollectorRegistry = _DummyRegistry  # type: ignore[assignment]
+    Counter = Histogram = Gauge = Summary = Info = _DummyMetric  # type: ignore[assignment]
 
     def generate_latest(*_args, **_kwargs) -> bytes:  # type: ignore[override]
         return b""

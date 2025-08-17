@@ -29,7 +29,7 @@ interface LoadingProps {
 /**
  * Primary loading component
  */
-export const Loading: React.FC<LoadingProps> = ({
+const Loading: React.FC<LoadingProps> = ({
   size = 'md',
   variant = 'spinner',
   message,
@@ -129,7 +129,7 @@ export const Loading: React.FC<LoadingProps> = ({
 /**
  * Page-level loading component for Next.js pages
  */
-export const PageLoading: React.FC<{ message?: string }> = ({ 
+const PageLoading: React.FC<{ message?: string }> = ({ 
   message = "Loading..." 
 }) => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -180,7 +180,7 @@ export const PageLoading: React.FC<{ message?: string }> = ({
 /**
  * Component loading wrapper for Suspense boundaries
  */
-export const ComponentLoading: React.FC<{ 
+const ComponentLoading: React.FC<{ 
   message?: string;
   variant?: 'card' | 'inline' | 'overlay';
 }> = ({ 
@@ -228,7 +228,7 @@ export const ComponentLoading: React.FC<{
 /**
  * Chat-specific loading component
  */
-export const ChatLoading: React.FC = () => (
+const ChatLoading: React.FC = () => (
   <div className="flex gap-3 mb-6">
     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow-sm">
       <Bot className="h-4 w-4" />
@@ -254,7 +254,7 @@ export const ChatLoading: React.FC = () => (
 /**
  * Higher-order component for adding loading states
  */
-export function withLoading<P extends object>(
+function withLoading<P extends object>(
   Component: React.ComponentType<P>,
   LoadingComponent: React.ComponentType = Loading
 ) {
@@ -272,7 +272,7 @@ export function withLoading<P extends object>(
 /**
  * Suspense wrapper with consistent loading UI
  */
-export const SuspenseWrapper: React.FC<{
+const SuspenseWrapper: React.FC<{
   children: React.ReactNode;
   fallback?: React.ReactNode;
   message?: string;
@@ -291,7 +291,7 @@ export const SuspenseWrapper: React.FC<{
 /**
  * Loading state hook for consistent loading management
  */
-export function useLoadingState(initialState = false) {
+function useLoadingState(initialState = false) {
   const [isLoading, setIsLoading] = React.useState(initialState);
   const [error, setError] = React.useState<Error | null>(null);
 

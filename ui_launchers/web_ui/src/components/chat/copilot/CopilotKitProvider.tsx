@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getConfigManager } from '@/lib/endpoint-config';
 import { getApiClient } from '@/lib/api-client';
 
-interface CopilotKitConfig {
+export interface CopilotKitConfig {
   apiKey?: string;
   baseUrl: string;
   fallbackUrls: string[];
@@ -33,7 +33,7 @@ interface CopilotKitConfig {
   };
 }
 
-interface CopilotContextType {
+export interface CopilotContextType {
   config: CopilotKitConfig;
   isEnabled: boolean;
   isLoading: boolean;

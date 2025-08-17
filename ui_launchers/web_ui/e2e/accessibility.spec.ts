@@ -81,8 +81,9 @@ test.describe('Accessibility Tests', () => {
     const messageList = page.locator('[data-testid="message-list"]');
     await expect(messageList).toHaveAttribute('role', 'log');
     await expect(messageList).toHaveAttribute('aria-label', /conversation history/i);
-  });  test('
-Keyboard navigation throughout chat interface', async ({ page }) => {
+  });
+
+  test('Keyboard navigation throughout chat interface', async ({ page }) => {
     await loginUser(page);
     
     // Test Tab order

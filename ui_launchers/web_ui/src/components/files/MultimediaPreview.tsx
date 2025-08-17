@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { AgChartsReact } from 'ag-charts-react';
+import { AgCharts } from 'ag-charts-react';
 import { AgChartOptions } from 'ag-charts-community';
 import { 
   Image, 
@@ -303,7 +303,7 @@ const ImagePreview: React.FC<{ file: FileMetadata; analysis?: MultimediaAnalysis
               </CardHeader>
               <CardContent>
                 {analysis.confidence_scores && Object.keys(analysis.confidence_scores).length > 0 ? (
-                  <AgChartsReact options={confidenceChartOptions} />
+                  <AgCharts options={confidenceChartOptions} />
                 ) : (
                   <p className="text-muted-foreground">No confidence data available</p>
                 )}

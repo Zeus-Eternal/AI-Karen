@@ -16,7 +16,7 @@ export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 export { Progress } from './progress';
 export { Skeleton } from './skeleton';
 export { Toaster } from './toaster';
-export { useToast, toast } from './use-toast';
+export { useToast, toast } from '../../hooks/use-toast';
 
 // Enhanced UI Components
 export { 
@@ -32,7 +32,7 @@ export {
 } from './loading-states';
 
 export {
-  Loading,
+  default as Loading,
   PageLoading,
   ComponentLoading,
   ChatLoading,

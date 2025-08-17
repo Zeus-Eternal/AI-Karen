@@ -71,8 +71,9 @@ test.describe('Complete Chat User Journeys', () => {
     
     // Verify final state
     await expect(page.locator('[data-testid="assistant-message"]')).toHaveCount(2);
-  });  test('
-Code interaction journey: Request code → Copy code → Edit message', async ({ page }) => {
+  });
+
+  test('Code interaction journey: Request code → Copy code → Edit message', async ({ page }) => {
     await loginUser(page);
     
     // Send message requesting code

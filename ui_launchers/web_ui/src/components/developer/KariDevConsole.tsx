@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { AgChartsReact } from "ag-charts-react";
+import { AgCharts } from "ag-charts-react";
 import { ColDef } from "ag-grid-community";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { Button } from "@/src/components/ui/button";
-import { Badge } from "@/src/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
-import { Input } from "@/src/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { 
   Terminal, 
   Zap, 
@@ -25,7 +25,7 @@ import {
   Layers,
   GitBranch
 } from "lucide-react";
-import { useToast } from "@/src/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface DevMetrics {
   plugins: {
@@ -594,7 +594,7 @@ export default function KariDevConsole() {
               </CardHeader>
               <CardContent>
                 <div style={{ height: 300, width: "100%" }}>
-                  <AgChartsReact options={performanceChartOptions} />
+                  <AgCharts options={performanceChartOptions} />
                 </div>
               </CardContent>
             </Card>

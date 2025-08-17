@@ -21,7 +21,7 @@ import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-interface AISuggestion {
+export interface AISuggestion {
   id: string;
   type: 'completion' | 'refactor' | 'debug' | 'optimize' | 'explain';
   content: string;
@@ -30,7 +30,7 @@ interface AISuggestion {
   language?: string;
 }
 
-interface CopilotTextareaProps {
+export interface CopilotTextareaProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;

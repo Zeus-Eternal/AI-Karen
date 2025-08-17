@@ -57,3 +57,8 @@ pre-commit
 httptools
 python-json-logger
 python
+langgraph
+langchain-core
+langchain-community
+cryptography
+duckdb

@@ -115,7 +115,7 @@ class MemoryProcessor:
         self,
         spacy_service: SpacyService,
         distilbert_service: DistilBertService,
-        memory_manager: MemoryManager,
+        memory_manager: Optional[MemoryManager],
         similarity_threshold: float = 0.7,
         deduplication_threshold: float = 0.95,
         max_context_memories: int = 10,
@@ -298,6 +298,10 @@ class MemoryProcessor:
                 query.tags.extend(entity_tags)
             
             # Retrieve memories using semantic search
+            if self.memory_manager is None:
+                logger.warning("Memory manager is not available, skipping memory retrieval")
+                return []
+            
             memories = await self.memory_manager.query_memories("default_tenant", query)
             
             # Calculate semantic similarity scores
@@ -667,6 +671,10 @@ class MemoryProcessor:
                 metadata_filter={"type": memory.memory_type.value}
             )
             
+            if self.memory_manager is None:
+                logger.warning("Memory manager is not available, skipping similarity check")
+                return False
+            
             similar_memories = await self.memory_manager.query_memories("default_tenant", query)
             
             # Check if any are too similar
@@ -694,6 +702,10 @@ class MemoryProcessor:
                 "conversation_id": memory.conversation_id,
                 **memory.metadata
             }
+            
+            if self.memory_manager is None:
+                logger.warning("Memory manager is not available, skipping memory storage")
+                return None
             
             memory_id = await self.memory_manager.store_memory(
                 tenant_id="default_tenant",
@@ -996,6 +1008,20 @@ class MemoryProcessor:
                 time_range=time_range
             )
             
+            if self.memory_manager is None:
+                logger.warning("Memory manager is not available, returning empty analytics")
+                return {
+                    "total_memories": 0,
+                    "memory_types": {},
+                    "confidence_distribution": {},
+                    "temporal_distribution": {},
+                    "extraction_methods": {},
+                    "avg_similarity_scores": {},
+                    "recent_activity": [],
+                    "top_entities": [],
+                    "memory_quality_score": 0.0
+                }
+            
             memories = await self.memory_manager.query_memories("default_tenant", query)
             
             if not memories:
@@ -1160,7 +1186,8 @@ class MemoryProcessor:
                     preference_content = f"User tends to {category.replace('_', ' ')}: {top_pattern[0]}"
                     
                     # Store as a learned preference
-                    await self.memory_manager.store_memory(
+                    if self.memory_manager is not None:
+                        await self.memory_manager.store_memory(
                         tenant_id="default_tenant",
                         content=preference_content,
                         user_id=user_id,

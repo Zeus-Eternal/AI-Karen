@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import DeveloperNav from "@/src/components/layout/DeveloperNav";
+import DeveloperNav from "@/components/layout/DeveloperNav";
 
 export const metadata: Metadata = {
   title: {

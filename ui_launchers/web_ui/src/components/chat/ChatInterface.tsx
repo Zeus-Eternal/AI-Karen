@@ -52,6 +52,7 @@ import { ChatBubble } from '@/components/chat/ChatBubble';
 import { ChatErrorBoundary } from '@/components/error/ChatErrorBoundary';
 import { CopilotTextarea } from '@/components/chat/copilot/CopilotTextarea';
 import AnalyticsTab from './AnalyticsTab';
+import { DegradedModeBanner } from '@/components/ui/degraded-mode-banner';
 
 // Utils and Config
 import { getConfigManager } from '@/lib/endpoint-config';
@@ -931,6 +932,19 @@ What would you like to work on today?`,
   // Render components
   const renderChatTab = () => (
     <div className="flex-1 flex flex-col">
+      {/* Degraded Mode Banner */}
+      <div className="px-4 pt-4">
+        <DegradedModeBanner 
+          onRetry={() => {
+            // Refresh the chat interface or attempt to reconnect
+            window.location.reload();
+          }}
+          onDismiss={() => {
+            // Banner will handle its own dismissal
+          }}
+        />
+      </div>
+      
       {/* Messages Area */}
       <ScrollArea className="flex-1 px-4">
         <div className="space-y-4 pb-4">

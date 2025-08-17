@@ -198,8 +198,9 @@ st('Chat interaction performance', async ({ page }) => {
     staticResponses.forEach(response => {
       expect(response.status).toBe(200);
     });
-  });  test('
-Streaming performance and backpressure', async ({ page }) => {
+  });
+
+  test('Streaming performance and backpressure', async ({ page }) => {
     await loginUser(page);
     
     // Mock streaming response with many tokens
