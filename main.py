@@ -51,6 +51,8 @@ from ai_karen_engine.api_routes.llm_routes import router as llm_router
 from ai_karen_engine.api_routes.orchestration_routes import router as orchestration_router
 from ai_karen_engine.api_routes.settings_routes import router as settings_router
 from ai_karen_engine.api_routes.degraded_mode_routes import router as degraded_mode_router
+from ai_karen_engine.api_routes.copilotkit_settings_routes import router as copilotkit_settings_router
+from ai_karen_engine.api_routes.dynamic_provider_routes import router as dynamic_provider_router
 from ai_karen_engine.server.middleware import configure_middleware
 from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS, PLUGIN_MAP
 from ai_karen_engine.server.startup import create_lifespan
@@ -343,6 +345,8 @@ def create_app() -> FastAPI:
     app.include_router(orchestration_router, tags=["orchestration"])
     app.include_router(settings_router)
     app.include_router(degraded_mode_router, tags=["degraded-mode"])
+    app.include_router(copilotkit_settings_router, tags=["copilotkit-settings"])
+    app.include_router(dynamic_provider_router, tags=["dynamic-providers"])
 
     # Setup developer API with enhanced debugging capabilities
     setup_developer_api(app)

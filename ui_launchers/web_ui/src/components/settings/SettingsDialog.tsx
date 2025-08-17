@@ -10,7 +10,8 @@ import PrivacySettings from "./PrivacySettings";
 import VoiceSettings from "./VoiceSettings";
 import PersonaSettings from "./PersonaSettings";
 import LLMSettings from "./LLMSettings";
-import { Cog, KeyRound, BookText, Bell, Shield, Speaker, UserCog, Brain } from "lucide-react";
+import CopilotKitSettings from "./CopilotKitSettings";
+import { Cog, KeyRound, BookText, Bell, Shield, Speaker, UserCog, Brain, Bot } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 /**
@@ -33,6 +34,9 @@ export default function SettingsDialog() {
         <TabsList className="flex flex-wrap w-full justify-start shrink-0">
           <TabsTrigger value="llm">
             <Brain className="mr-1 sm:mr-2 h-4 w-4" /> LLM
+          </TabsTrigger>
+          <TabsTrigger value="copilotkit">
+            <Bot className="mr-1 sm:mr-2 h-4 w-4" /> CopilotKit
           </TabsTrigger>
           <TabsTrigger value="api-key">
             <KeyRound className="mr-1 sm:mr-2 h-4 w-4" /> API Key
@@ -61,6 +65,9 @@ export default function SettingsDialog() {
         <div className="mt-4"> 
           <TabsContent value="llm">
             <LLMSettings />
+          </TabsContent>
+          <TabsContent value="copilotkit">
+            <CopilotKitSettings />
           </TabsContent>
           <TabsContent value="api-key">
             <ApiKeyManager />

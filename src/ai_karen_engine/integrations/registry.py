@@ -445,12 +445,16 @@ class LLMRegistry:
     
     # ---------- Listing and Discovery ----------
     
-    def list_providers(self, category: Optional[str] = None, healthy_only: bool = False) -> List[str]:
+    def list_providers(self, category: Optional[str] = None, healthy_only: bool = False, llm_only: bool = False) -> List[str]:
         """List registered providers."""
         with self._lock:
             providers = []
             for name, spec in self._providers.items():
                 if category and spec.category != category:
+                    continue
+                
+                # Filter out non-LLM providers when llm_only is True
+                if llm_only and spec.category != "LLM":
                     continue
                 
                 if healthy_only:

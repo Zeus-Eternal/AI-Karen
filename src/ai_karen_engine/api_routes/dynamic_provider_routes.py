@@ -163,7 +163,7 @@ async def list_providers(
             provider_names = provider_manager.get_llm_providers(healthy_only=healthy_only)
         else:
             # Get all providers and filter by health if requested
-            provider_names = provider_manager.registry.list_providers(healthy_only=healthy_only)
+            provider_names = provider_manager.registry.list_providers(healthy_only=healthy_only, llm_only=False)
         
         providers = []
         for name in provider_names:
