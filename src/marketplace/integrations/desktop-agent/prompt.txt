@@ -1,0 +1,14 @@
+# Desktop Agent
+
+This plugin automates local desktop actions using PyAutoGUI.
+Supported actions:
+- open_app: open an application by name
+- type_text: type the provided text into the active window
+- screenshot: capture a screenshot and return the file path
+
+Inputs:
+- action: one of "open_app", "type_text", "screenshot"
+- target: parameter for the action (app name or text)
+
+Outputs:
+- status message describing the result

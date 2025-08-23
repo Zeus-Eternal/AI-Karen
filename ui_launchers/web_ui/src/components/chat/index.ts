@@ -1,10 +1,17 @@
-export { default as ChatInterface } from './ChatInterface';
+export { ChatInterface } from './ChatInterface';
 export { CopilotChat } from './copilot';
 
 // Export supporting components
 export { MessageBubble } from './MessageBubble';
 export { MetaBar } from './MetaBar';
 export { ChatBubble } from './ChatBubble';
+
+// Export copilot components
+export { default as CopilotActions } from './CopilotActions';
+export { default as CopilotArtifacts } from './CopilotArtifacts';
+export { default as EnhancedMessageBubble } from './EnhancedMessageBubble';
+export type { CopilotAction, ChatContext } from './CopilotActions';
+export type { CopilotArtifact } from './CopilotArtifacts';
 
 // Export AG-UI components
 export { ConversationGrid } from './ConversationGrid';

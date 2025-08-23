@@ -36,6 +36,7 @@ src/ai_karen_engine/api_routes/hook_middleware.py
 src/ai_karen_engine/api_routes/hook_routes.py
 src/ai_karen_engine/api_routes/llm_routes.py
 src/ai_karen_engine/api_routes/memory_routes.py
+src/ai_karen_engine/api_routes/model_management_routes.py
 src/ai_karen_engine/api_routes/orchestration_routes.py
 src/ai_karen_engine/api_routes/persona_routes.py
 src/ai_karen_engine/api_routes/plugin_routes.py
@@ -623,6 +624,8 @@ tests/test_hook_api_routes.py
 tests/test_hook_middleware.py
 tests/test_hook_system.py
 tests/test_http_validator.py
+tests/test_huggingface_api.py
+tests/test_huggingface_service_unit.py
 tests/test_ice_integration.py
 tests/test_ice_multi_hop.py
 tests/test_imports.py

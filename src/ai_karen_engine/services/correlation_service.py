@@ -1,162 +1,482 @@
 """
-Correlation Service for Request Tracking
-Provides correlation ID management and request lifecycle tracking.
+Correlation Service
+
+This module provides correlation ID tracking for copilot operations
+across services with structured logging and audit trail support.
 """
 
-import uuid
 import logging
-from contextvars import ContextVar
-from typing import Optional, Dict, Any
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
 from enum import Enum
-
-# Context variable for request correlation
-request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
 
 logger = logging.getLogger(__name__)
 
 
-class Phase(str, Enum):
-    """Authentication lifecycle phases"""
+class Phase(Enum):
+    """Operation phases for correlation tracking."""
     START = "start"
+    PROCESSING = "processing"
     FINISH = "finish"
+    ERROR = "error"
+
+
+@dataclass
+class CorrelationContext:
+    """Context information for correlated operations."""
+    correlation_id: str
+    operation_type: str
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    
+    # Request context
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    surface: Optional[str] = None  # "chat", "copilot", "api"
+    
+    # Operation tracking
+    started_at: datetime = field(default_factory=datetime.utcnow)
+    current_phase: Phase = Phase.START
+    steps_completed: List[str] = field(default_factory=list)
+    
+    # Metadata
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class CorrelationService:
-    """Service for managing request correlation and tracking"""
+    """
+    Service for tracking operations across multiple services with correlation IDs.
+    """
     
-    @staticmethod
-    def get_or_create_correlation_id(headers: Dict[str, str]) -> str:
-        """Get correlation ID from headers or create a new one"""
-        correlation_id = headers.get("x-correlation-id") or headers.get("x-request-id")
+    def __init__(self):
+        """Initialize correlation service."""
+        self.active_operations: Dict[str, CorrelationContext] = {}
+        self.operation_history: List[CorrelationContext] = []
+        self.max_history_size = 1000
+    
+    def start_operation(
+        self,
+        operation_type: str,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        surface: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Start tracking a new operation.
+        
+        Args:
+            operation_type: Type of operation (e.g., "copilot_action", "settings_change")
+            user_id: User performing the operation
+            session_id: Session ID
+            ip_address: Client IP address
+            user_agent: Client user agent
+            surface: Interface used
+            correlation_id: Existing correlation ID (generates new if None)
+            metadata: Additional metadata
+            
+        Returns:
+            Correlation ID for the operation
+        """
         if not correlation_id:
             correlation_id = str(uuid.uuid4())
+        
+        context = CorrelationContext(
+            correlation_id=correlation_id,
+            operation_type=operation_type,
+            user_id=user_id,
+            session_id=session_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            surface=surface,
+            metadata=metadata or {}
+        )
+        
+        self.active_operations[correlation_id] = context
+        
+        logger.info(
+            f"Started operation: {operation_type}",
+            extra={
+                "correlation_id": correlation_id,
+                "operation_type": operation_type,
+                "user_id": user_id,
+                "surface": surface
+            }
+        )
+        
         return correlation_id
     
-    @staticmethod
-    def set_correlation_id(correlation_id: str) -> None:
-        """Set correlation ID in context"""
-        request_id_ctx.set(correlation_id)
+    def update_operation(
+        self,
+        correlation_id: str,
+        phase: Phase,
+        step: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Update an operation's phase and progress.
+        
+        Args:
+            correlation_id: Correlation ID of the operation
+            phase: Current phase of the operation
+            step: Current step being performed
+            metadata: Additional metadata to merge
+            
+        Returns:
+            True if operation was found and updated, False otherwise
+        """
+        if correlation_id not in self.active_operations:
+            logger.warning(f"Attempted to update unknown operation: {correlation_id}")
+            return False
+        
+        context = self.active_operations[correlation_id]
+        context.current_phase = phase
+        
+        if step:
+            context.steps_completed.append(f"{datetime.utcnow().isoformat()}: {step}")
+        
+        if metadata:
+            context.metadata.update(metadata)
+        
+        logger.debug(
+            f"Updated operation: {context.operation_type} - {phase.value}",
+            extra={
+                "correlation_id": correlation_id,
+                "operation_type": context.operation_type,
+                "phase": phase.value,
+                "step": step
+            }
+        )
+        
+        return True
     
-    @staticmethod
-    def get_correlation_id() -> str:
-        """Get correlation ID from context"""
-        correlation_id = request_id_ctx.get()
-        return correlation_id or str(uuid.uuid4())
+    def complete_operation(
+        self,
+        correlation_id: str,
+        success: bool = True,
+        error_message: Optional[str] = None,
+        result_metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Complete an operation and move it to history.
+        
+        Args:
+            correlation_id: Correlation ID of the operation
+            success: Whether the operation completed successfully
+            error_message: Error message if operation failed
+            result_metadata: Final result metadata
+            
+        Returns:
+            True if operation was found and completed, False otherwise
+        """
+        if correlation_id not in self.active_operations:
+            logger.warning(f"Attempted to complete unknown operation: {correlation_id}")
+            return False
+        
+        context = self.active_operations[correlation_id]
+        context.current_phase = Phase.FINISH if success else Phase.ERROR
+        
+        if result_metadata:
+            context.metadata.update(result_metadata)
+        
+        if error_message:
+            context.metadata["error_message"] = error_message
+        
+        # Add completion metadata
+        context.metadata.update({
+            "completed_at": datetime.utcnow().isoformat(),
+            "success": success,
+            "duration_seconds": (datetime.utcnow() - context.started_at).total_seconds()
+        })
+        
+        # Move to history
+        self.operation_history.append(context)
+        del self.active_operations[correlation_id]
+        
+        # Trim history if needed
+        if len(self.operation_history) > self.max_history_size:
+            self.operation_history = self.operation_history[-self.max_history_size:]
+        
+        logger.info(
+            f"Completed operation: {context.operation_type}",
+            extra={
+                "correlation_id": correlation_id,
+                "operation_type": context.operation_type,
+                "success": success,
+                "duration_seconds": context.metadata["duration_seconds"]
+            }
+        )
+        
+        return True
+    
+    def get_operation_context(self, correlation_id: str) -> Optional[CorrelationContext]:
+        """
+        Get context for an active operation.
+        
+        Args:
+            correlation_id: Correlation ID to look up
+            
+        Returns:
+            CorrelationContext if found, None otherwise
+        """
+        return self.active_operations.get(correlation_id)
+    
+    def get_operation_history(
+        self,
+        operation_type: Optional[str] = None,
+        user_id: Optional[str] = None,
+        limit: int = 100
+    ) -> List[CorrelationContext]:
+        """
+        Get operation history with optional filtering.
+        
+        Args:
+            operation_type: Filter by operation type
+            user_id: Filter by user ID
+            limit: Maximum number of operations to return
+            
+        Returns:
+            List of historical operations
+        """
+        filtered_history = self.operation_history
+        
+        if operation_type:
+            filtered_history = [op for op in filtered_history if op.operation_type == operation_type]
+        
+        if user_id:
+            filtered_history = [op for op in filtered_history if op.user_id == user_id]
+        
+        # Sort by start time (most recent first) and limit
+        filtered_history.sort(key=lambda x: x.started_at, reverse=True)
+        return filtered_history[:limit]
+    
+    def get_active_operations(
+        self,
+        operation_type: Optional[str] = None,
+        user_id: Optional[str] = None
+    ) -> List[CorrelationContext]:
+        """
+        Get currently active operations with optional filtering.
+        
+        Args:
+            operation_type: Filter by operation type
+            user_id: Filter by user ID
+            
+        Returns:
+            List of active operations
+        """
+        operations = list(self.active_operations.values())
+        
+        if operation_type:
+            operations = [op for op in operations if op.operation_type == operation_type]
+        
+        if user_id:
+            operations = [op for op in operations if op.user_id == user_id]
+        
+        return operations
+    
+    def cleanup_stale_operations(self, max_age_hours: int = 24) -> int:
+        """
+        Clean up operations that have been active for too long.
+        
+        Args:
+            max_age_hours: Maximum age in hours before considering stale
+            
+        Returns:
+            Number of operations cleaned up
+        """
+        from datetime import timedelta
+        
+        cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+        stale_operations = []
+        
+        for correlation_id, context in self.active_operations.items():
+            if context.started_at < cutoff_time:
+                stale_operations.append(correlation_id)
+        
+        # Move stale operations to history with error status
+        for correlation_id in stale_operations:
+            context = self.active_operations[correlation_id]
+            context.current_phase = Phase.ERROR
+            context.metadata.update({
+                "error_message": "Operation timed out",
+                "completed_at": datetime.utcnow().isoformat(),
+                "success": False,
+                "stale_cleanup": True
+            })
+            
+            self.operation_history.append(context)
+            del self.active_operations[correlation_id]
+        
+        if stale_operations:
+            logger.warning(f"Cleaned up {len(stale_operations)} stale operations")
+        
+        return len(stale_operations)
+
+
+# Global correlation service instance
+_correlation_service_instance: Optional[CorrelationService] = None
+
+
+def get_correlation_service() -> CorrelationService:
+    """Get global correlation service instance."""
+    global _correlation_service_instance
+    if _correlation_service_instance is None:
+        _correlation_service_instance = CorrelationService()
+    return _correlation_service_instance
 
 
 def get_request_id() -> str:
-    """Get current request ID from context"""
-    rid = request_id_ctx.get()
-    return rid or str(uuid.uuid4())
+    """Generate a new request/correlation ID."""
+    return str(uuid.uuid4())
+
+
+# Convenience functions for common operations
+def start_copilot_operation(
+    capability: str,
+    user_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    user_agent: Optional[str] = None,
+    surface: str = "copilot",
+    files: Optional[List[str]] = None
+) -> str:
+    """Start tracking a copilot operation."""
+    correlation_service = get_correlation_service()
+    
+    metadata = {
+        "capability": capability,
+        "files_count": len(files) if files else 0
+    }
+    
+    if files:
+        metadata["files"] = files
+    
+    return correlation_service.start_operation(
+        operation_type="copilot_action",
+        user_id=user_id,
+        session_id=session_id,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        surface=surface,
+        metadata=metadata
+    )
+
+
+def start_settings_operation(
+    setting_type: str,
+    user_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    user_agent: Optional[str] = None
+) -> str:
+    """Start tracking a settings change operation."""
+    correlation_service = get_correlation_service()
+    
+    return correlation_service.start_operation(
+        operation_type="settings_change",
+        user_id=user_id,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        surface="api",
+        metadata={"setting_type": setting_type}
+    )
 
 
 def auth_event(
-    event_type: str,
+    event_name: str,
     phase: Phase,
-    *,
     success: Optional[bool] = None,
-    level: Optional[int] = None,
-    **fields: Any
+    user_id: Optional[str] = None,
+    email: Optional[str] = None,
+    auth_method: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    user_agent: Optional[str] = None,
+    request_id: Optional[str] = None,
+    processing_time_ms: Optional[float] = None,
+    details: Optional[Dict[str, Any]] = None,
+    error: Optional[str] = None,
+    risk_score: Optional[float] = None,
+    security_flags: Optional[List[str]] = None,
+    blocked_by_security: Optional[bool] = None,
+    service_version: Optional[str] = None
 ) -> None:
     """
-    Log authentication events with proper lifecycle management.
+    Log authentication events with correlation tracking.
     
-    Args:
-        event_type: Type of auth event (e.g., 'session_validated')
-        phase: Lifecycle phase (start or finish)
-        success: Success status (None for start, bool for finish)
-        level: Log level override
-        **fields: Additional event fields
+    This function provides compatibility with the existing auth event logging
+    while integrating with the correlation service.
     """
-    rid = fields.pop("request_id", None) or get_request_id()
+    correlation_service = get_correlation_service()
     
-    # Enforce lifecycle contract
-    if phase == Phase.START:
-        success = None  # Never set success on start
-        level = level or logging.INFO
-        msg = f"AUTH_EVENT: {event_type} START"
-    else:
-        # finish phase must carry success
-        if success is None:
-            success = False
-        msg = f"AUTH_EVENT: {event_type} {'SUCCESS' if success else 'FAILED'}"
-        level = level or (logging.INFO if success else logging.WARNING)
-    
-    payload: Dict[str, Any] = dict(
-        event_id=rid,
-        request_id=rid,
-        event_type=event_type,
-        phase=phase.value,
-        success=success,
-        **fields,
-    )
-    
-    # Get auth logger
-    auth_logger = logging.getLogger("ai_karen_engine.auth")
-    auth_logger.log(level, msg, extra={"auth_event": payload, **payload})
-
-
-def create_correlation_logger(name: str) -> logging.Logger:
-    """Create a logger that includes correlation ID in all messages"""
-    logger = logging.getLogger(name)
-    
-    class CorrelationFilter(logging.Filter):
-        def filter(self, record):
-            record.correlation_id = get_request_id()
-            return True
-    
-    logger.addFilter(CorrelationFilter())
-    return logger
-
-
-# Correlation tracker for complex operations
-class CorrelationTracker:
-    """Track complex operations across multiple phases"""
-    
-    def __init__(self):
-        self.traces: Dict[str, Dict[str, Any]] = {}
-    
-    def start_trace(self, correlation_id: str, operation: str, metadata: Dict[str, Any]) -> None:
-        """Start tracking an operation"""
-        self.traces[correlation_id] = {
-            "operation": operation,
-            "start_time": logging.time.time(),
-            "metadata": metadata,
-            "phases": []
-        }
-    
-    def add_phase(self, correlation_id: str, phase: str, data: Dict[str, Any]) -> None:
-        """Add a phase to the trace"""
-        if correlation_id in self.traces:
-            self.traces[correlation_id]["phases"].append({
-                "phase": phase,
-                "timestamp": logging.time.time(),
-                "data": data
-            })
-    
-    def end_trace(self, correlation_id: str, status: str, final_data: Dict[str, Any]) -> None:
-        """End tracking an operation"""
-        if correlation_id in self.traces:
-            trace = self.traces.pop(correlation_id)
-            total_duration = logging.time.time() - trace["start_time"]
-            
-            logger.info(
-                f"Operation {trace['operation']} completed",
-                extra={
-                    "correlation_id": correlation_id,
-                    "operation": trace["operation"],
-                    "status": status,
-                    "total_duration": total_duration,
-                    "phases": trace["phases"],
-                    "final_data": final_data
+    # Create or update correlation context
+    if request_id:
+        if phase == Phase.START:
+            correlation_service.start_operation(
+                operation_type="auth_event",
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                surface="auth",
+                correlation_id=request_id,
+                metadata={
+                    "event_name": event_name,
+                    "auth_method": auth_method,
+                    "email": email,
+                    "service_version": service_version
                 }
             )
-
-
-# Global tracker instance
-_correlation_tracker = CorrelationTracker()
-
-
-def get_correlation_tracker() -> CorrelationTracker:
-    """Get the global correlation tracker"""
-    return _correlation_tracker
+        else:
+            # Update existing operation
+            update_metadata = {
+                "phase": phase.value,
+                "success": success,
+                "processing_time_ms": processing_time_ms,
+                "risk_score": risk_score,
+                "security_flags": security_flags or [],
+                "blocked_by_security": blocked_by_security
+            }
+            
+            if details:
+                update_metadata.update(details)
+            
+            if error:
+                update_metadata["error"] = error
+            
+            correlation_service.update_operation(
+                correlation_id=request_id,
+                phase=phase,
+                step=f"{event_name}_{phase.value}",
+                metadata=update_metadata
+            )
+            
+            # Complete operation if this is the final phase
+            if phase in [Phase.FINISH, Phase.ERROR]:
+                correlation_service.complete_operation(
+                    correlation_id=request_id,
+                    success=success if success is not None else phase == Phase.FINISH,
+                    error_message=error,
+                    result_metadata=update_metadata
+                )
+    
+    # Log the event
+    logger.info(
+        f"Auth event: {event_name} - {phase.value}",
+        extra={
+            "event_name": event_name,
+            "phase": phase.value,
+            "success": success,
+            "user_id": user_id,
+            "email": email,
+            "auth_method": auth_method,
+            "request_id": request_id,
+            "processing_time_ms": processing_time_ms,
+            "risk_score": risk_score,
+            "security_flags": security_flags,
+            "blocked_by_security": blocked_by_security
+        }
+    )

@@ -1,546 +1,649 @@
 """
-Comprehensive Audit Logging System - Phase 4.1.c
-Implements structured audit logs with correlation IDs and PII protection for all memory operations.
+Audit Logger Service
+
+This module provides comprehensive audit logging for copilot operations
+with correlation IDs, structured logging, and security event tracking.
 """
 
-import hashlib
 import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, asdict
-from enum import Enum
 
 logger = logging.getLogger(__name__)
 
-class AuditEventType(str, Enum):
-    """Types of audit events"""
-    MEMORY_CREATE = "memory_create"
-    MEMORY_READ = "memory_read"
-    MEMORY_UPDATE = "memory_update"
-    MEMORY_DELETE = "memory_delete"
-    MEMORY_SEARCH = "memory_search"
-    MEMORY_CONFIRM = "memory_confirm"
-    CONTEXT_BUILD = "context_build"
-    TENANT_ACCESS = "tenant_access"
-    SECURITY_INCIDENT = "security_incident"
-    AUTHENTICATION = "authentication"
-    AUTHORIZATION = "authorization"
-
-class AuditLevel(str, Enum):
-    """Audit logging levels"""
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-    CRITICAL = "critical"
-
-@dataclass
-class AuditContext:
-    """Context information for audit events"""
-    user_id: str
-    tenant_id: Optional[str] = None
-    org_id: Optional[str] = None
-    session_id: Optional[str] = None
-    correlation_id: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    request_path: Optional[str] = None
-    request_method: Optional[str] = None
 
 @dataclass
 class AuditEvent:
-    """Structured audit event"""
-    event_type: AuditEventType
-    level: AuditLevel
+    """Audit event data structure."""
+    event_type: str
+    user_id: Optional[str]
+    session_id: Optional[str]
+    correlation_id: str
     timestamp: datetime
-    context: AuditContext
-    resource_type: str
-    resource_id: Optional[str] = None
-    action: str = ""
-    outcome: str = "success"  # success, failure, partial
-    details: Optional[Dict[str, Any]] = None
+    details: Dict[str, Any]
+    
+    # Security and context
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    surface: Optional[str] = None  # "chat", "copilot", "api"
+    
+    # Result information
+    success: bool = True
     error_message: Optional[str] = None
-    duration_ms: Optional[float] = None
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for logging"""
-        event_dict = asdict(self)
-        # Convert datetime to ISO string
-        event_dict["timestamp"] = self.timestamp.isoformat()
-        return event_dict
+        """Convert to dictionary for JSON serialization."""
+        data = asdict(self)
+        data['timestamp'] = self.timestamp.isoformat()
+        return data
 
-class PIIProtector:
-    """Protects PII in audit logs"""
-    
-    def __init__(self):
-        self.logger = logging.getLogger(f"{__name__}.PIIProtector")
-        
-        # PII patterns to detect and protect
-        self.pii_patterns = {
-            "email": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
-            "phone": r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',
-            "ssn": r'\b\d{3}-?\d{2}-?\d{4}\b',
-            "credit_card": r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',
-            "ip_address": r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
-        }
-    
-    def create_content_hash(self, content: str) -> str:
-        """Create SHA-256 hash of content for audit purposes"""
-        return hashlib.sha256(content.encode('utf-8')).hexdigest()
-    
-    def create_shard_id(self, content: str, user_id: str, timestamp: datetime) -> str:
-        """Create unique shard ID for content tracking"""
-        shard_data = f"{content[:100]}{user_id}{timestamp.isoformat()}"
-        return hashlib.sha256(shard_data.encode('utf-8')).hexdigest()[:16]
-    
-    def extract_content_metadata(self, content: str) -> Dict[str, Any]:
-        """Extract safe metadata from content without storing PII"""
-        import re
-        
-        metadata = {
-            "content_length": len(content),
-            "word_count": len(content.split()),
-            "line_count": content.count('\n') + 1,
-            "has_urls": bool(re.search(r'https?://', content)),
-            "has_mentions": bool(re.search(r'@\w+', content)),
-            "has_hashtags": bool(re.search(r'#\w+', content)),
-            "content_hash": self.create_content_hash(content),
-            "content_preview": content[:50] + "..." if len(content) > 50 else content
-        }
-        
-        # Check for potential PII
-        pii_detected = {}
-        for pii_type, pattern in self.pii_patterns.items():
-            matches = re.findall(pattern, content, re.IGNORECASE)
-            if matches:
-                pii_detected[pii_type] = len(matches)
-        
-        if pii_detected:
-            metadata["pii_detected"] = pii_detected
-            metadata["contains_pii"] = True
-        else:
-            metadata["contains_pii"] = False
-        
-        return metadata
-    
-    def sanitize_for_logging(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Sanitize data for safe logging (remove/hash PII)"""
-        import re
-        
-        sanitized = {}
-        
-        for key, value in data.items():
-            if isinstance(value, str):
-                # Replace potential PII with placeholders
-                sanitized_value = value
-                for pii_type, pattern in self.pii_patterns.items():
-                    sanitized_value = re.sub(pattern, f"[{pii_type.upper()}_REDACTED]", sanitized_value, flags=re.IGNORECASE)
-                
-                # Truncate long strings
-                if len(sanitized_value) > 200:
-                    sanitized_value = sanitized_value[:200] + "...[TRUNCATED]"
-                
-                sanitized[key] = sanitized_value
-            elif isinstance(value, dict):
-                sanitized[key] = self.sanitize_for_logging(value)
-            elif isinstance(value, list):
-                sanitized[key] = [
-                    self.sanitize_for_logging(item) if isinstance(item, dict) else str(item)[:100]
-                    for item in value[:10]  # Limit list size
-                ]
-            else:
-                sanitized[key] = value
-        
-        return sanitized
 
 class AuditLogger:
-    """Main audit logging service"""
+    """
+    Comprehensive audit logger for copilot operations.
     
-    def __init__(self):
-        self.logger = logging.getLogger(f"{__name__}.AuditLogger")
-        self.pii_protector = PIIProtector()
+    Provides structured logging with correlation IDs, security event tracking,
+    and configurable output formats for compliance and monitoring.
+    """
+    
+    def __init__(self, log_dir: Optional[Path] = None, enable_file_logging: bool = True):
+        """
+        Initialize audit logger.
         
-        # Configure structured logging
-        self.audit_logger = logging.getLogger("audit")
+        Args:
+            log_dir: Directory for audit log files (default: logs/audit)
+            enable_file_logging: Whether to write audit logs to files
+        """
+        self.log_dir = log_dir or Path("logs/audit")
+        self.enable_file_logging = enable_file_logging
+        
+        if self.enable_file_logging:
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Configure structured logger
+        self.audit_logger = logging.getLogger("kari.audit")
         self.audit_logger.setLevel(logging.INFO)
         
-        # Create audit-specific handler if not exists
-        if not self.audit_logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                '%(asctime)s - AUDIT - %(levelname)s - %(message)s'
-            )
-            handler.setFormatter(formatter)
-            self.audit_logger.addHandler(handler)
+        # Add file handler if enabled
+        if self.enable_file_logging:
+            self._setup_file_handler()
+        
+        # Event type registry for validation
+        self.registered_event_types = {
+            # Copilot events
+            "copilot.api_key.set",
+            "copilot.api_key.removed",
+            "copilot.cloud_toggle",
+            "copilot.profile.changed",
+            "copilot.action.started",
+            "copilot.action.completed",
+            "copilot.action.failed",
+            
+            # LLM routing events
+            "llm.route.decision",
+            "llm.route.fallback",
+            "llm.route.error",
+            
+            # Security events
+            "auth.login.success",
+            "auth.login.failed",
+            "auth.permission.denied",
+            "settings.modified",
+            "secret.accessed",
+            "secret.validation.failed",
+            "secret.format.invalid",
+            
+            # System events
+            "system.startup",
+            "system.shutdown",
+            "system.error",
+            
+            # Additional copilot security events
+            "copilot.policy.violation",
+            "copilot.provider.blocked",
+            "copilot.routing.denied"
+        }
     
-    def _generate_correlation_id(self) -> str:
-        """Generate correlation ID if not provided"""
-        return str(uuid.uuid4())
-    
-    def log_event(self, event: AuditEvent):
-        """Log audit event with structured format"""
+    def _setup_file_handler(self) -> None:
+        """Setup file handler for audit logging."""
         try:
-            # Convert to dictionary
-            event_dict = event.to_dict()
+            # Create daily rotating log file
+            log_file = self.log_dir / f"audit_{datetime.now().strftime('%Y%m%d')}.log"
             
-            # Sanitize for PII protection
-            sanitized_event = self.pii_protector.sanitize_for_logging(event_dict)
+            file_handler = logging.FileHandler(log_file, encoding='utf-8')
+            file_handler.setLevel(logging.INFO)
             
-            # Log with appropriate level
-            log_message = json.dumps(sanitized_event, default=str)
+            # JSON formatter for structured logging
+            formatter = logging.Formatter('%(message)s')
+            file_handler.setFormatter(formatter)
             
-            if event.level == AuditLevel.CRITICAL:
-                self.audit_logger.critical(log_message)
-            elif event.level == AuditLevel.ERROR:
-                self.audit_logger.error(log_message)
-            elif event.level == AuditLevel.WARNING:
-                self.audit_logger.warning(log_message)
-            else:
-                self.audit_logger.info(log_message)
+            self.audit_logger.addHandler(file_handler)
             
         except Exception as e:
-            self.logger.error(f"Failed to log audit event: {e}")
+            logger.error(f"Failed to setup audit file handler: {e}")
     
-    def log_memory_create(
+    async def log_event(
         self,
-        context: AuditContext,
-        memory_content: str,
-        memory_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        duration_ms: Optional[float] = None,
-        outcome: str = "success",
+        event_type: str,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+        correlation_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        surface: Optional[str] = None,
+        success: bool = True,
         error_message: Optional[str] = None
-    ):
-        """Log memory creation event"""
-        # Extract safe metadata from content
-        content_metadata = self.pii_protector.extract_content_metadata(memory_content)
+    ) -> str:
+        """
+        Log an audit event.
         
-        # Create shard ID for tracking
-        shard_id = self.pii_protector.create_shard_id(
-            memory_content, context.user_id, datetime.utcnow()
-        )
+        Args:
+            event_type: Type of event (must be registered)
+            user_id: ID of the user performing the action
+            session_id: Session ID for the action
+            details: Additional event details
+            correlation_id: Correlation ID for tracking related events
+            ip_address: Client IP address
+            user_agent: Client user agent
+            surface: Interface used (chat, copilot, api)
+            success: Whether the action was successful
+            error_message: Error message if action failed
+            
+        Returns:
+            Correlation ID for the logged event
+        """
+        # Generate correlation ID if not provided
+        if not correlation_id:
+            correlation_id = str(uuid.uuid4())
         
-        details = {
-            "shard_id": shard_id,
-            "content_metadata": content_metadata,
-            "memory_metadata": metadata or {}
-        }
+        # Validate event type
+        if event_type not in self.registered_event_types:
+            logger.warning(f"Unregistered audit event type: {event_type}")
         
+        # Create audit event
         event = AuditEvent(
-            event_type=AuditEventType.MEMORY_CREATE,
-            level=AuditLevel.ERROR if outcome == "failure" else AuditLevel.INFO,
+            event_type=event_type,
+            user_id=user_id,
+            session_id=session_id,
+            correlation_id=correlation_id,
             timestamp=datetime.utcnow(),
-            context=context,
-            resource_type="memory",
-            resource_id=memory_id,
-            action="create",
-            outcome=outcome,
-            details=details,
-            error_message=error_message,
-            duration_ms=duration_ms
-        )
-        
-        self.log_event(event)
-    
-    def log_memory_read(
-        self,
-        context: AuditContext,
-        query: str,
-        results_count: int,
-        memory_ids: Optional[List[str]] = None,
-        duration_ms: Optional[float] = None,
-        outcome: str = "success",
-        error_message: Optional[str] = None
-    ):
-        """Log memory read/search event"""
-        # Create query metadata without storing full query
-        query_metadata = self.pii_protector.extract_content_metadata(query)
-        
-        details = {
-            "query_metadata": query_metadata,
-            "results_count": results_count,
-            "memory_shard_ids": memory_ids[:10] if memory_ids else [],  # Limit to first 10
-            "total_results": len(memory_ids) if memory_ids else 0
-        }
-        
-        event = AuditEvent(
-            event_type=AuditEventType.MEMORY_READ,
-            level=AuditLevel.ERROR if outcome == "failure" else AuditLevel.INFO,
-            timestamp=datetime.utcnow(),
-            context=context,
-            resource_type="memory",
-            action="read",
-            outcome=outcome,
-            details=details,
-            error_message=error_message,
-            duration_ms=duration_ms
-        )
-        
-        self.log_event(event)
-    
-    def log_memory_update(
-        self,
-        context: AuditContext,
-        memory_id: str,
-        updated_fields: Dict[str, Any],
-        duration_ms: Optional[float] = None,
-        outcome: str = "success",
-        error_message: Optional[str] = None
-    ):
-        """Log memory update event"""
-        # Sanitize updated fields
-        sanitized_fields = self.pii_protector.sanitize_for_logging(updated_fields)
-        
-        details = {
-            "updated_fields": sanitized_fields,
-            "field_count": len(updated_fields)
-        }
-        
-        event = AuditEvent(
-            event_type=AuditEventType.MEMORY_UPDATE,
-            level=AuditLevel.ERROR if outcome == "failure" else AuditLevel.INFO,
-            timestamp=datetime.utcnow(),
-            context=context,
-            resource_type="memory",
-            resource_id=memory_id,
-            action="update",
-            outcome=outcome,
-            details=details,
-            error_message=error_message,
-            duration_ms=duration_ms
-        )
-        
-        self.log_event(event)
-    
-    def log_memory_delete(
-        self,
-        context: AuditContext,
-        memory_id: str,
-        delete_type: str = "soft",  # soft, hard
-        duration_ms: Optional[float] = None,
-        outcome: str = "success",
-        error_message: Optional[str] = None
-    ):
-        """Log memory deletion event"""
-        details = {
-            "delete_type": delete_type,
-            "permanent": delete_type == "hard"
-        }
-        
-        event = AuditEvent(
-            event_type=AuditEventType.MEMORY_DELETE,
-            level=AuditLevel.WARNING if delete_type == "hard" else AuditLevel.INFO,
-            timestamp=datetime.utcnow(),
-            context=context,
-            resource_type="memory",
-            resource_id=memory_id,
-            action="delete",
-            outcome=outcome,
-            details=details,
-            error_message=error_message,
-            duration_ms=duration_ms
-        )
-        
-        self.log_event(event)
-    
-    def log_context_build(
-        self,
-        context: AuditContext,
-        query: str,
-        memories_used: int,
-        context_tokens: int,
-        duration_ms: Optional[float] = None,
-        outcome: str = "success",
-        error_message: Optional[str] = None
-    ):
-        """Log context building event"""
-        query_metadata = self.pii_protector.extract_content_metadata(query)
-        
-        details = {
-            "query_metadata": query_metadata,
-            "memories_used": memories_used,
-            "context_tokens": context_tokens,
-            "context_efficiency": memories_used / max(context_tokens, 1)
-        }
-        
-        event = AuditEvent(
-            event_type=AuditEventType.CONTEXT_BUILD,
-            level=AuditLevel.ERROR if outcome == "failure" else AuditLevel.INFO,
-            timestamp=datetime.utcnow(),
-            context=context,
-            resource_type="context",
-            action="build",
-            outcome=outcome,
-            details=details,
-            error_message=error_message,
-            duration_ms=duration_ms
-        )
-        
-        self.log_event(event)
-    
-    def log_tenant_access(
-        self,
-        context: AuditContext,
-        target_tenant_id: str,
-        access_granted: bool,
-        resource_type: str = "data",
-        duration_ms: Optional[float] = None
-    ):
-        """Log tenant access attempt"""
-        details = {
-            "target_tenant_id": target_tenant_id,
-            "access_granted": access_granted,
-            "resource_type": resource_type,
-            "cross_tenant_access": target_tenant_id != context.tenant_id
-        }
-        
-        event = AuditEvent(
-            event_type=AuditEventType.TENANT_ACCESS,
-            level=AuditLevel.WARNING if not access_granted else AuditLevel.INFO,
-            timestamp=datetime.utcnow(),
-            context=context,
-            resource_type=resource_type,
-            action="access",
-            outcome="success" if access_granted else "failure",
-            details=details,
-            duration_ms=duration_ms
-        )
-        
-        self.log_event(event)
-    
-    def log_security_incident(
-        self,
-        context: AuditContext,
-        incident_type: str,
-        incident_details: Dict[str, Any],
-        severity: str = "medium"
-    ):
-        """Log security incident"""
-        sanitized_details = self.pii_protector.sanitize_for_logging(incident_details)
-        
-        details = {
-            "incident_type": incident_type,
-            "severity": severity,
-            "incident_details": sanitized_details
-        }
-        
-        level = AuditLevel.CRITICAL if severity == "high" else AuditLevel.WARNING
-        
-        event = AuditEvent(
-            event_type=AuditEventType.SECURITY_INCIDENT,
-            level=level,
-            timestamp=datetime.utcnow(),
-            context=context,
-            resource_type="security",
-            action="incident",
-            outcome="detected",
-            details=details
-        )
-        
-        self.log_event(event)
-    
-    def log_authentication(
-        self,
-        context: AuditContext,
-        auth_method: str,
-        outcome: str = "success",
-        error_message: Optional[str] = None
-    ):
-        """Log authentication event"""
-        details = {
-            "auth_method": auth_method,
-            "session_created": outcome == "success"
-        }
-        
-        event = AuditEvent(
-            event_type=AuditEventType.AUTHENTICATION,
-            level=AuditLevel.WARNING if outcome == "failure" else AuditLevel.INFO,
-            timestamp=datetime.utcnow(),
-            context=context,
-            resource_type="authentication",
-            action="authenticate",
-            outcome=outcome,
-            details=details,
+            details=details or {},
+            ip_address=ip_address,
+            user_agent=user_agent,
+            surface=surface,
+            success=success,
             error_message=error_message
         )
         
-        self.log_event(event)
+        # Log the event
+        await self._write_audit_event(event)
+        
+        return correlation_id
     
-    def log_authorization(
+    async def _write_audit_event(self, event: AuditEvent) -> None:
+        """Write audit event to configured outputs."""
+        try:
+            # Convert to JSON for structured logging
+            event_json = json.dumps(event.to_dict(), ensure_ascii=False)
+            
+            # Log to structured logger (will go to file if configured)
+            self.audit_logger.info(event_json)
+            
+            # Also log to main logger for debugging
+            logger.debug(f"Audit event: {event.event_type} - {event.correlation_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to write audit event: {e}")
+    
+    async def log_copilot_action(
         self,
-        context: AuditContext,
-        required_scopes: List[str],
-        user_scopes: List[str],
-        outcome: str = "success",
-        error_message: Optional[str] = None
-    ):
-        """Log authorization event"""
+        action_type: str,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        capability: Optional[str] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        files_affected: Optional[List[str]] = None,
+        success: bool = True,
+        error_message: Optional[str] = None,
+        correlation_id: Optional[str] = None
+    ) -> str:
+        """
+        Log a copilot action with standardized details.
+        
+        Args:
+            action_type: Type of copilot action (started, completed, failed)
+            user_id: User performing the action
+            session_id: Session ID
+            capability: Copilot capability used
+            provider: LLM provider used
+            model: Model used
+            files_affected: List of files affected by the action
+            success: Whether action was successful
+            error_message: Error message if failed
+            correlation_id: Correlation ID for tracking
+            
+        Returns:
+            Correlation ID for the logged event
+        """
         details = {
-            "required_scopes": required_scopes,
-            "user_scopes": user_scopes,
-            "scope_match": set(required_scopes).issubset(set(user_scopes))
+            "capability": capability,
+            "provider": provider,
+            "model": model,
+            "files_affected": files_affected or [],
+            "file_count": len(files_affected) if files_affected else 0
         }
         
-        event = AuditEvent(
-            event_type=AuditEventType.AUTHORIZATION,
-            level=AuditLevel.WARNING if outcome == "failure" else AuditLevel.INFO,
-            timestamp=datetime.utcnow(),
-            context=context,
-            resource_type="authorization",
-            action="authorize",
-            outcome=outcome,
+        return await self.log_event(
+            event_type=f"copilot.action.{action_type}",
+            user_id=user_id,
+            session_id=session_id,
             details=details,
+            correlation_id=correlation_id,
+            success=success,
             error_message=error_message
         )
+    
+    async def log_llm_routing(
+        self,
+        decision_type: str,
+        provider: str,
+        model: str,
+        routing_reason: str,
+        confidence: float,
+        privacy_level: str,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        correlation_id: Optional[str] = None
+    ) -> str:
+        """
+        Log LLM routing decision.
         
-        self.log_event(event)
+        Args:
+            decision_type: Type of routing decision (decision, fallback, error)
+            provider: Selected provider
+            model: Selected model
+            routing_reason: Reason for routing decision
+            confidence: Confidence score
+            privacy_level: Privacy level constraint
+            user_id: User ID
+            session_id: Session ID
+            correlation_id: Correlation ID
+            
+        Returns:
+            Correlation ID for the logged event
+        """
+        details = {
+            "provider": provider,
+            "model": model,
+            "routing_reason": routing_reason,
+            "confidence": confidence,
+            "privacy_level": privacy_level
+        }
+        
+        return await self.log_event(
+            event_type=f"llm.route.{decision_type}",
+            user_id=user_id,
+            session_id=session_id,
+            details=details,
+            correlation_id=correlation_id
+        )
+    
+    async def log_settings_change(
+        self,
+        setting_name: str,
+        old_value: Any,
+        new_value: Any,
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None
+    ) -> str:
+        """
+        Log settings modification.
+        
+        Args:
+            setting_name: Name of the setting changed
+            old_value: Previous value (will be masked if sensitive)
+            new_value: New value (will be masked if sensitive)
+            user_id: User making the change
+            correlation_id: Correlation ID
+            
+        Returns:
+            Correlation ID for the logged event
+        """
+        # Mask sensitive values
+        masked_old = self._mask_sensitive_value(setting_name, old_value)
+        masked_new = self._mask_sensitive_value(setting_name, new_value)
+        
+        details = {
+            "setting_name": setting_name,
+            "old_value": masked_old,
+            "new_value": masked_new,
+            "is_sensitive": self._is_sensitive_setting(setting_name)
+        }
+        
+        return await self.log_event(
+            event_type="settings.modified",
+            user_id=user_id,
+            details=details,
+            correlation_id=correlation_id
+        )
+    
+    def _mask_sensitive_value(self, setting_name: str, value: Any) -> Any:
+        """Mask sensitive values in audit logs."""
+        if self._is_sensitive_setting(setting_name):
+            if isinstance(value, str) and value:
+                return f"***{value[-4:]}" if len(value) > 4 else "***"
+            elif value is not None:
+                return "***MASKED***"
+        return value
+    
+    def _is_sensitive_setting(self, setting_name: str) -> bool:
+        """Check if a setting contains sensitive data."""
+        sensitive_keywords = ["key", "secret", "password", "token", "credential"]
+        return any(keyword in setting_name.lower() for keyword in sensitive_keywords)
+    
+    async def get_audit_events(
+        self,
+        event_type: Optional[str] = None,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve audit events based on filters.
+        
+        Args:
+            event_type: Filter by event type
+            user_id: Filter by user ID
+            session_id: Filter by session ID
+            correlation_id: Filter by correlation ID
+            start_time: Filter events after this time
+            end_time: Filter events before this time
+            limit: Maximum number of events to return
+            
+        Returns:
+            List of audit events matching the filters
+        """
+        # This is a simplified implementation
+        # In production, this would query a database or log aggregation system
+        events = []
+        
+        try:
+            # Read from current day's log file
+            log_file = self.log_dir / f"audit_{datetime.now().strftime('%Y%m%d')}.log"
+            
+            if log_file.exists():
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        try:
+                            event_data = json.loads(line.strip())
+                            
+                            # Apply filters
+                            if event_type and event_data.get('event_type') != event_type:
+                                continue
+                            
+                            if user_id and event_data.get('user_id') != user_id:
+                                continue
+                            
+                            if session_id and event_data.get('session_id') != session_id:
+                                continue
+                            
+                            if correlation_id and event_data.get('correlation_id') != correlation_id:
+                                continue
+                            
+                            # Time filters would be applied here
+                            
+                            events.append(event_data)
+                            
+                            if len(events) >= limit:
+                                break
+                                
+                        except json.JSONDecodeError:
+                            continue
+            
+        except Exception as e:
+            logger.error(f"Failed to retrieve audit events: {e}")
+        
+        return events
+    
+    async def log_security_validation(
+        self,
+        validation_type: str,
+        success: bool,
+        details: Dict[str, Any],
+        user_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
+    ) -> str:
+        """
+        Log security validation events.
+        
+        Args:
+            validation_type: Type of validation (api_key, format, policy)
+            success: Whether validation passed
+            details: Validation details and results
+            user_id: User performing the action
+            correlation_id: Correlation ID
+            ip_address: Client IP address
+            user_agent: Client user agent
+            
+        Returns:
+            Correlation ID for the logged event
+        """
+        event_type = f"secret.validation.{'passed' if success else 'failed'}"
+        if validation_type == "format":
+            event_type = f"secret.format.{'valid' if success else 'invalid'}"
+        elif validation_type == "policy":
+            event_type = f"copilot.policy.{'allowed' if success else 'violation'}"
+        
+        return await self.log_event(
+            event_type=event_type,
+            user_id=user_id,
+            details={
+                "validation_type": validation_type,
+                **details
+            },
+            correlation_id=correlation_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            surface="api",
+            success=success
+        )
+    
+    async def log_provider_routing(
+        self,
+        provider: str,
+        model: str,
+        routing_decision: str,
+        policy_applied: str,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        correlation_id: Optional[str] = None
+    ) -> str:
+        """
+        Log LLM provider routing decisions with policy enforcement.
+        
+        Args:
+            provider: Selected provider
+            model: Selected model
+            routing_decision: Routing decision made
+            policy_applied: Policy that was applied
+            user_id: User ID
+            session_id: Session ID
+            correlation_id: Correlation ID
+            
+        Returns:
+            Correlation ID for the logged event
+        """
+        details = {
+            "provider": provider,
+            "model": model,
+            "routing_decision": routing_decision,
+            "policy_applied": policy_applied,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        return await self.log_event(
+            event_type="llm.route.decision",
+            user_id=user_id,
+            session_id=session_id,
+            details=details,
+            correlation_id=correlation_id,
+            surface="copilot"
+        )
+    
+    async def log_correlation_chain(
+        self,
+        correlation_id: str,
+        operation_type: str,
+        step: str,
+        details: Dict[str, Any],
+        user_id: Optional[str] = None,
+        success: bool = True,
+        error_message: Optional[str] = None
+    ) -> None:
+        """
+        Log a step in a correlation chain for tracking operations across services.
+        
+        Args:
+            correlation_id: Correlation ID linking related operations
+            operation_type: Type of operation (copilot_action, settings_change, etc.)
+            step: Current step in the operation
+            details: Step-specific details
+            user_id: User performing the operation
+            success: Whether this step was successful
+            error_message: Error message if step failed
+        """
+        await self.log_event(
+            event_type=f"{operation_type}.step",
+            user_id=user_id,
+            details={
+                "operation_type": operation_type,
+                "step": step,
+                "step_details": details
+            },
+            correlation_id=correlation_id,
+            success=success,
+            error_message=error_message,
+            surface="system"
+        )
+    
+    async def get_audit_summary(
+        self,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """
+        Get audit summary statistics.
+        
+        Args:
+            start_time: Start time for summary
+            end_time: End time for summary
+            
+        Returns:
+            Dictionary with audit statistics
+        """
+        # This would be implemented with proper log aggregation in production
+        return {
+            "total_events": 0,
+            "event_types": {},
+            "users": {},
+            "success_rate": 0.0,
+            "time_range": {
+                "start": start_time.isoformat() if start_time else None,
+                "end": end_time.isoformat() if end_time else None
+            }
+        }
+    
+    async def get_correlation_events(
+        self,
+        correlation_id: str,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Get all events for a specific correlation ID.
+        
+        Args:
+            correlation_id: Correlation ID to search for
+            limit: Maximum number of events to return
+            
+        Returns:
+            List of events with the same correlation ID
+        """
+        return await self.get_audit_events(
+            correlation_id=correlation_id,
+            limit=limit
+        )
+    
+    async def get_security_events(
+        self,
+        event_types: Optional[List[str]] = None,
+        user_id: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Get security-related audit events.
+        
+        Args:
+            event_types: Specific security event types to filter
+            user_id: Filter by user ID
+            start_time: Filter events after this time
+            end_time: Filter events before this time
+            limit: Maximum number of events to return
+            
+        Returns:
+            List of security events
+        """
+        security_event_types = [
+            "auth.login.failed",
+            "auth.permission.denied", 
+            "secret.validation.failed",
+            "secret.format.invalid",
+            "copilot.policy.violation",
+            "copilot.provider.blocked",
+            "copilot.routing.denied"
+        ]
+        
+        if event_types:
+            # Filter to only security events
+            event_types = [et for et in event_types if et in security_event_types]
+        else:
+            event_types = security_event_types
+        
+        all_events = []
+        for event_type in event_types:
+            events = await self.get_audit_events(
+                event_type=event_type,
+                user_id=user_id,
+                start_time=start_time,
+                end_time=end_time,
+                limit=limit
+            )
+            all_events.extend(events)
+        
+        # Sort by timestamp and limit
+        all_events.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        return all_events[:limit]
+
 
 # Global audit logger instance
-_audit_logger = None
+_audit_logger_instance: Optional[AuditLogger] = None
+
 
 def get_audit_logger() -> AuditLogger:
-    """Get or create audit logger instance"""
-    global _audit_logger
-    
-    if _audit_logger is None:
-        _audit_logger = AuditLogger()
-    
-    return _audit_logger
-
-# Utility functions for easy integration
-def create_audit_context(
-    user_id: str,
-    tenant_id: Optional[str] = None,
-    org_id: Optional[str] = None,
-    session_id: Optional[str] = None,
-    correlation_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
-    user_agent: Optional[str] = None,
-    request_path: Optional[str] = None,
-    request_method: Optional[str] = None
-) -> AuditContext:
-    """Create audit context"""
-    return AuditContext(
-        user_id=user_id,
-        tenant_id=tenant_id,
-        org_id=org_id,
-        session_id=session_id,
-        correlation_id=correlation_id or str(uuid.uuid4()),
-        ip_address=ip_address,
-        user_agent=user_agent,
-        request_path=request_path,
-        request_method=request_method
-    )
-
-# Export public interface
-__all__ = [
-    "AuditLogger",
-    "AuditEvent",
-    "AuditContext",
-    "AuditEventType",
-    "AuditLevel",
-    "PIIProtector",
-    "get_audit_logger",
-    "create_audit_context"
-]
+    """Get global audit logger instance."""
+    global _audit_logger_instance
+    if _audit_logger_instance is None:
+        _audit_logger_instance = AuditLogger()
+    return _audit_logger_instance

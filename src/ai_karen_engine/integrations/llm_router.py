@@ -47,33 +47,60 @@ except Exception:  # pragma: no cover - optional
 
     Counter = Histogram = _DummyMetric
 
-MODEL_INVOCATIONS_TOTAL = (
-    Counter(
-        "model_invocations_total",
-        "Total LLM model invocations",
-        ["model"],
-    )
-    if METRICS_ENABLED
-    else Counter()
-)
-FALLBACK_RATE = (
-    Counter(
-        "fallback_rate",
-        "Fallback invocations",
-        ["profile"],
-    )
-    if METRICS_ENABLED
-    else Counter()
-)
-AVG_RESPONSE_TIME = (
-    Histogram(
-        "avg_response_time",
-        "LLM response time",
-        ["model"],
-    )
-    if METRICS_ENABLED
-    else Histogram()
-)
+def _create_metrics():
+    """Create metrics with collision handling."""
+    if not METRICS_ENABLED:
+        return _DummyMetric(), _DummyMetric(), _DummyMetric()
+    
+    try:
+        model_invocations = Counter(
+            "model_invocations_total",
+            "Total LLM model invocations",
+            ["model"],
+        )
+    except ValueError:
+        # Metric already exists, get existing one
+        from prometheus_client import REGISTRY
+        for collector in list(REGISTRY._collector_to_names.keys()):
+            if hasattr(collector, '_name') and collector._name == 'model_invocations_total':
+                model_invocations = collector
+                break
+        else:
+            model_invocations = _DummyMetric()
+    
+    try:
+        fallback_rate = Counter(
+            "fallback_rate",
+            "Fallback invocations",
+            ["profile"],
+        )
+    except ValueError:
+        from prometheus_client import REGISTRY
+        for collector in list(REGISTRY._collector_to_names.keys()):
+            if hasattr(collector, '_name') and collector._name == 'fallback_rate':
+                fallback_rate = collector
+                break
+        else:
+            fallback_rate = _DummyMetric()
+    
+    try:
+        avg_response_time = Histogram(
+            "avg_response_time",
+            "LLM response time",
+            ["model"],
+        )
+    except ValueError:
+        from prometheus_client import REGISTRY
+        for collector in list(REGISTRY._collector_to_names.keys()):
+            if hasattr(collector, '_name') and collector._name == 'avg_response_time':
+                avg_response_time = collector
+                break
+        else:
+            avg_response_time = _DummyMetric()
+    
+    return model_invocations, fallback_rate, avg_response_time
+
+MODEL_INVOCATIONS_TOTAL, FALLBACK_RATE, AVG_RESPONSE_TIME = _create_metrics()
 
 # -----------------------------
 # Routing Data Models
@@ -609,7 +636,7 @@ class IntelligentLLMRouter:
         if not model_id:
             return None
         
-        confidence = self._calculate_confidence(request, preferred_provider, preferred_runtime)
+        confidence = self._calculate_confidence(request, preferred_provider, preferred_runtime, model_id)
         
         return RouteDecision(
             provider=preferred_provider,
@@ -821,23 +848,45 @@ class IntelligentLLMRouter:
         else:
             return "default-model"
     
-    def _calculate_confidence(self, request: RoutingRequest, provider: str, runtime: str) -> float:
-        """Calculate confidence score for routing decision."""
-        confidence = 0.5  # Base confidence
-        
-        # Boost confidence for exact matches
-        if provider == self._get_policy_provider(request):
-            confidence += 0.2
-        if runtime == self._get_policy_runtime(request):
-            confidence += 0.2
-        
-        # Boost for health
-        if self._is_provider_healthy(provider):
-            confidence += 0.1
-        if self._is_runtime_healthy(runtime):
-            confidence += 0.1
-        
-        return min(confidence, 1.0)
+    def _calculate_confidence(self, request: RoutingRequest, provider: str, runtime: str, model_id: str = None) -> float:
+        """Calculate confidence score for routing decision using advanced scoring."""
+        try:
+            from ai_karen_engine.integrations.confidence_scoring import get_confidence_scorer
+            
+            scorer = get_confidence_scorer()
+            confidence, metadata = scorer.score_routing_decision(
+                request=request,
+                provider=provider,
+                runtime=runtime,
+                model_id=model_id or "default",
+                policy=self.policy,
+            )
+            
+            # Store metadata for debugging (could be returned in dry-run)
+            if hasattr(self, '_last_confidence_metadata'):
+                self._last_confidence_metadata = metadata
+            
+            return confidence
+            
+        except Exception as e:
+            self.logger.warning(f"Advanced confidence scoring failed, using fallback: {e}")
+            
+            # Fallback to simple confidence calculation
+            confidence = 0.5  # Base confidence
+            
+            # Boost confidence for exact matches
+            if provider == self._get_policy_provider(request):
+                confidence += 0.2
+            if runtime == self._get_policy_runtime(request):
+                confidence += 0.2
+            
+            # Boost for health
+            if self._is_provider_healthy(provider):
+                confidence += 0.1
+            if self._is_runtime_healthy(runtime):
+                confidence += 0.1
+            
+            return min(confidence, 1.0)
     
     def _build_fallback_chain(self, request: RoutingRequest) -> List[str]:
         """Build fallback chain for the request."""

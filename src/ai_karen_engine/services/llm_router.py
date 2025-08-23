@@ -72,7 +72,7 @@ class LLMRouter:
             "gemini": ProviderPriority.REMOTE,
             "deepseek": ProviderPriority.REMOTE,
             "huggingface": ProviderPriority.FALLBACK,
-            "copilotkit": ProviderPriority.REMOTE,
+            # CopilotKit removed - it's a UI framework, not an LLM provider
         }
         
         # Initialize health monitoring

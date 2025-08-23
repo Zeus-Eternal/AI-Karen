@@ -1,14 +1,21 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
+  root: __dirname, // make resolution deterministic for the extension
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['node_modules', '.next', 'dist', 'coverage'],
+    setupFiles: [path.resolve(__dirname, 'vitest.setup.ts')], // use a root file
     typecheck: {
-      tsconfig: './tsconfig.json',
+      tsconfig: path.resolve(__dirname, 'tsconfig.json'),
     },
     server: {
       deps: {
@@ -27,11 +34,19 @@ export default defineConfig({
           /^@emotion\//
         ]
       }
+    },
+    css: false,
+    restoreMocks: true,
+    clearMocks: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      all: false
     }
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      '@': path.resolve(__dirname, 'src'),
     },
   },
 });

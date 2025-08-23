@@ -25,6 +25,6 @@
       "@ag-charts-community/*": ["./node_modules/ag-charts-community/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "vitest.d.ts"],
   "exclude": ["node_modules"]
 }

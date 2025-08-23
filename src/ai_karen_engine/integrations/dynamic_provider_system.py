@@ -259,13 +259,12 @@ class DynamicProviderManager:
         self.registry.register_provider(local_spec)
         
         # CopilotKit (NOT an LLM provider - UI framework)
-        # Note: CopilotKit should be configured separately in its own settings section
         copilotkit_spec = DynamicProviderSpec(
             name="copilotkit",
             requires_api_key=False,
             description="AI-powered development assistance framework (not an LLM provider)",
             category="UI_FRAMEWORK",  # Not LLM!
-            capabilities={"ui_assistance", "code_suggestions", "development_tools"},
+            capabilities={"ui_assistance", "code_suggestions"},
             discover=lambda: [],  # No models to discover
             validate=lambda config: {"valid": True, "message": "CopilotKit is a UI framework"},
             health_check=lambda: {"status": "healthy", "message": "CopilotKit UI framework available"},

@@ -1,0 +1,23 @@
+{
+  "plugin_api_version": "1.0",
+  "enable_external_workflow": false,
+  "required_roles": [
+    "user"
+  ],
+  "intent": "greet",
+  "trusted_ui": false,
+  "capabilities": {
+    "memory": {
+      "read": true,
+      "write": true
+    }
+  },
+  "module": "ai_karen_engine.plugins.hello_world.handler",
+  "name": "hello-world",
+  "version": "0.1.0",
+  "description": "Example plugin that prints a greeting.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "entry_point": "run",
+  "plugin_type": "example"
+}

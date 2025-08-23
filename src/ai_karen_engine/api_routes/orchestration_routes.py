@@ -22,7 +22,7 @@ from ..core.langgraph_orchestrator import (
     LangGraphOrchestrator
 )
 from ..core.streaming_integration import get_streaming_manager, StreamingManager
-from ..auth.core import get_current_user  # Assuming this exists
+from ..services.auth_utils import get_current_user
 
 logger = logging.getLogger(__name__)
 

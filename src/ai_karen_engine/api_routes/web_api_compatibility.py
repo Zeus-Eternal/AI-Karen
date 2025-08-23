@@ -1102,6 +1102,26 @@ async def get_usage_analytics_compatibility(http_request: Request):
         )
 
 
+# Add the analytics route that the frontend expects at /api/analytics/usage
+# This is a workaround since the main analytics router isn't working
+from pydantic import BaseModel, Field
+from typing import List
+
+class FrontendUsageAnalytics(BaseModel):
+    """Usage analytics format expected by frontend."""
+    total_interactions: int = Field(..., description="Total number of interactions")
+    unique_users: int = Field(..., description="Number of unique users")
+    popular_features: List[Dict[str, Any]] = Field(default_factory=list, description="Most popular features")
+    peak_hours: List[int] = Field(default_factory=list, description="Peak usage hours (0-23)")
+    user_satisfaction: float = Field(..., description="User satisfaction score (0-100)")
+    time_range: str = Field(..., description="Time range for the analytics")
+    timestamp: str = Field(..., description="Timestamp when analytics were generated")
+
+
+# Note: This route will be accessible at /api/web/analytics/usage-frontend
+# but we need it at /api/analytics/usage. We'll handle this with a separate approach.
+
+
 @router.get("/health", response_model=WebUIHealthCheck)
 async def health_check_compatibility(http_request: Request):
     """

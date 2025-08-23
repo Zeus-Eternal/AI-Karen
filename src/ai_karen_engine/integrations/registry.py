@@ -445,16 +445,12 @@ class LLMRegistry:
     
     # ---------- Listing and Discovery ----------
     
-    def list_providers(self, category: Optional[str] = None, healthy_only: bool = False, llm_only: bool = False) -> List[str]:
+    def list_providers(self, category: Optional[str] = None, healthy_only: bool = False) -> List[str]:
         """List registered providers."""
         with self._lock:
             providers = []
             for name, spec in self._providers.items():
                 if category and spec.category != category:
-                    continue
-                
-                # Filter out non-LLM providers when llm_only is True
-                if llm_only and spec.category != "LLM":
                     continue
                 
                 if healthy_only:
@@ -465,6 +461,10 @@ class LLMRegistry:
                 providers.append(name)
             
             return providers
+    
+    def list_llm_providers(self, healthy_only: bool = False) -> List[str]:
+        """List only LLM providers (excludes UI frameworks like CopilotKit)."""
+        return self.list_providers(category="LLM", healthy_only=healthy_only)
     
     def list_runtimes(self, healthy_only: bool = False) -> List[str]:
         """List registered runtimes."""
@@ -507,6 +507,9 @@ class LLMRegistry:
             description="OpenAI GPT models via API",
             category="LLM",
             capabilities={"streaming", "embeddings", "function_calling", "vision"},
+            discover=self._discover_openai_models,
+            validate=self._validate_openai_key,
+            health_check=self._health_check_openai,
             fallback_models=[
                 {"id": "gpt-4o", "name": "GPT-4o", "family": "gpt", "capabilities": ["text", "vision"]},
                 {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "family": "gpt", "capabilities": ["text"]},
@@ -522,6 +525,9 @@ class LLMRegistry:
             description="Google Gemini models via API",
             category="LLM",
             capabilities={"streaming", "embeddings", "vision"},
+            discover=self._discover_gemini_models,
+            validate=self._validate_gemini_key,
+            health_check=self._health_check_gemini,
             fallback_models=[
                 {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro", "family": "gemini", "capabilities": ["text", "vision"]},
                 {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash", "family": "gemini", "capabilities": ["text", "vision"]},
@@ -536,6 +542,9 @@ class LLMRegistry:
             description="DeepSeek models optimized for coding and reasoning",
             category="LLM",
             capabilities={"streaming", "function_calling"},
+            discover=self._discover_deepseek_models,
+            validate=self._validate_deepseek_key,
+            health_check=self._health_check_deepseek,
             fallback_models=[
                 {"id": "deepseek-chat", "name": "DeepSeek Chat", "family": "deepseek", "capabilities": ["text", "code"]},
                 {"id": "deepseek-coder", "name": "DeepSeek Coder", "family": "deepseek", "capabilities": ["code"]},
@@ -550,6 +559,9 @@ class LLMRegistry:
             description="HuggingFace Hub models and local execution",
             category="LLM",
             capabilities={"local_execution", "model_download", "embeddings"},
+            discover=self._discover_huggingface_models,
+            validate=self._validate_huggingface_key,
+            health_check=self._health_check_huggingface,
             fallback_models=[
                 {"id": "microsoft/DialoGPT-large", "name": "DialoGPT Large", "family": "gpt", "format": "safetensors"},
                 {"id": "microsoft/DialoGPT-medium", "name": "DialoGPT Medium", "family": "gpt", "format": "safetensors"},
@@ -564,9 +576,22 @@ class LLMRegistry:
             description="Local model files (GGUF, safetensors, etc.)",
             category="LLM",
             capabilities={"local_execution", "privacy"},
+            discover=self._discover_local_models,
+            health_check=self._health_check_local,
             fallback_models=[]  # Will be populated by scanning local files
         )
         self.register_provider(local_spec)
+        
+        # CopilotKit Provider (UI Framework - NOT an LLM provider)
+        copilotkit_spec = ProviderSpec(
+            name="copilotkit",
+            requires_api_key=False,
+            description="CopilotKit UI framework for AI-powered interfaces",
+            category="UI_FRAMEWORK",  # Separate category to exclude from LLM lists
+            capabilities={"ui_integration", "code_assistance", "contextual_help"},
+            fallback_models=[]  # No models - it's a UI framework
+        )
+        self.register_provider(copilotkit_spec)
     
     def _register_core_runtimes(self) -> None:
         """Register core model runtimes."""
@@ -672,6 +697,281 @@ class LLMRegistry:
                 logger.info(f"Shutdown {component_name} instance")
         except Exception as e:
             logger.warning(f"Error shutting down {component_name}: {e}")
+    
+    # ---------- Provider Discovery and Validation Methods ----------
+    
+    def _discover_openai_models(self) -> List[Dict[str, Any]]:
+        """Discover available OpenAI models."""
+        try:
+            # This would normally make an API call to OpenAI
+            # For now, return enhanced fallback models
+            return [
+                {
+                    "id": "gpt-4o",
+                    "name": "GPT-4o",
+                    "family": "gpt",
+                    "capabilities": ["text", "vision", "function_calling"],
+                    "context_length": 128000,
+                    "parameters": "Unknown"
+                },
+                {
+                    "id": "gpt-4o-mini", 
+                    "name": "GPT-4o Mini",
+                    "family": "gpt",
+                    "capabilities": ["text", "function_calling"],
+                    "context_length": 128000,
+                    "parameters": "Unknown"
+                },
+                {
+                    "id": "gpt-3.5-turbo",
+                    "name": "GPT-3.5 Turbo", 
+                    "family": "gpt",
+                    "capabilities": ["text", "function_calling"],
+                    "context_length": 16385,
+                    "parameters": "Unknown"
+                }
+            ]
+        except Exception as e:
+            logger.warning(f"OpenAI model discovery failed: {e}")
+            return []
+    
+    def _validate_openai_key(self, config: Dict[str, Any]) -> bool:
+        """Validate OpenAI API key."""
+        try:
+            api_key = config.get("api_key", "")
+            if not api_key or not api_key.startswith("sk-"):
+                return False
+            
+            # Basic format validation - real validation would make API call
+            return len(api_key) > 20 and api_key.startswith("sk-")
+        except Exception as e:
+            logger.warning(f"OpenAI key validation failed: {e}")
+            return False
+    
+    def _health_check_openai(self) -> Dict[str, Any]:
+        """Health check for OpenAI provider."""
+        try:
+            # This would normally make a test API call
+            return {
+                "status": "healthy",
+                "message": "OpenAI provider available",
+                "capabilities": {"streaming": True, "embeddings": True, "vision": True}
+            }
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "error": str(e)
+            }
+    
+    def _discover_gemini_models(self) -> List[Dict[str, Any]]:
+        """Discover available Gemini models."""
+        try:
+            return [
+                {
+                    "id": "gemini-1.5-pro",
+                    "name": "Gemini 1.5 Pro",
+                    "family": "gemini",
+                    "capabilities": ["text", "vision", "code"],
+                    "context_length": 2000000,
+                    "parameters": "Unknown"
+                },
+                {
+                    "id": "gemini-1.5-flash",
+                    "name": "Gemini 1.5 Flash",
+                    "family": "gemini", 
+                    "capabilities": ["text", "vision", "code"],
+                    "context_length": 1000000,
+                    "parameters": "Unknown"
+                }
+            ]
+        except Exception as e:
+            logger.warning(f"Gemini model discovery failed: {e}")
+            return []
+    
+    def _validate_gemini_key(self, config: Dict[str, Any]) -> bool:
+        """Validate Gemini API key."""
+        try:
+            api_key = config.get("api_key", "")
+            # Basic format validation for Google API keys
+            return bool(api_key and len(api_key) > 20)
+        except Exception as e:
+            logger.warning(f"Gemini key validation failed: {e}")
+            return False
+    
+    def _health_check_gemini(self) -> Dict[str, Any]:
+        """Health check for Gemini provider."""
+        try:
+            return {
+                "status": "healthy",
+                "message": "Gemini provider available",
+                "capabilities": {"streaming": True, "vision": True, "code": True}
+            }
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "error": str(e)
+            }
+    
+    def _discover_deepseek_models(self) -> List[Dict[str, Any]]:
+        """Discover available DeepSeek models."""
+        try:
+            return [
+                {
+                    "id": "deepseek-chat",
+                    "name": "DeepSeek Chat",
+                    "family": "deepseek",
+                    "capabilities": ["text", "code", "reasoning"],
+                    "context_length": 32768,
+                    "parameters": "67B"
+                },
+                {
+                    "id": "deepseek-coder",
+                    "name": "DeepSeek Coder",
+                    "family": "deepseek",
+                    "capabilities": ["code", "reasoning"],
+                    "context_length": 16384,
+                    "parameters": "33B"
+                }
+            ]
+        except Exception as e:
+            logger.warning(f"DeepSeek model discovery failed: {e}")
+            return []
+    
+    def _validate_deepseek_key(self, config: Dict[str, Any]) -> bool:
+        """Validate DeepSeek API key."""
+        try:
+            api_key = config.get("api_key", "")
+            # Basic format validation
+            return bool(api_key and len(api_key) > 20)
+        except Exception as e:
+            logger.warning(f"DeepSeek key validation failed: {e}")
+            return False
+    
+    def _health_check_deepseek(self) -> Dict[str, Any]:
+        """Health check for DeepSeek provider."""
+        try:
+            return {
+                "status": "healthy",
+                "message": "DeepSeek provider available",
+                "capabilities": {"streaming": True, "code": True, "reasoning": True}
+            }
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "error": str(e)
+            }
+    
+    def _discover_huggingface_models(self) -> List[Dict[str, Any]]:
+        """Discover available HuggingFace models."""
+        try:
+            return [
+                {
+                    "id": "microsoft/DialoGPT-large",
+                    "name": "DialoGPT Large",
+                    "family": "gpt",
+                    "format": "safetensors",
+                    "capabilities": ["text", "conversation"],
+                    "parameters": "774M"
+                },
+                {
+                    "id": "microsoft/DialoGPT-medium",
+                    "name": "DialoGPT Medium", 
+                    "family": "gpt",
+                    "format": "safetensors",
+                    "capabilities": ["text", "conversation"],
+                    "parameters": "355M"
+                }
+            ]
+        except Exception as e:
+            logger.warning(f"HuggingFace model discovery failed: {e}")
+            return []
+    
+    def _validate_huggingface_key(self, config: Dict[str, Any]) -> bool:
+        """Validate HuggingFace API key (optional)."""
+        try:
+            api_key = config.get("api_key", "")
+            # HuggingFace keys are optional for many models
+            if not api_key:
+                return True  # Valid to not have a key
+            # Basic format validation for HF tokens
+            return bool(api_key and len(api_key) > 10)
+        except Exception as e:
+            logger.warning(f"HuggingFace key validation failed: {e}")
+            return True  # Default to valid since key is optional
+    
+    def _health_check_huggingface(self) -> Dict[str, Any]:
+        """Health check for HuggingFace provider."""
+        try:
+            return {
+                "status": "healthy",
+                "message": "HuggingFace provider available",
+                "capabilities": {"local_execution": True, "model_download": True}
+            }
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "error": str(e)
+            }
+    
+    def _discover_local_models(self) -> List[Dict[str, Any]]:
+        """Discover local model files."""
+        try:
+            # This would scan local directories for model files
+            # For now, return empty list as placeholder
+            models = []
+            
+            # Scan common model directories
+            model_dirs = [
+                Path("models"),
+                Path("~/.cache/huggingface/hub").expanduser(),
+                Path("~/.ollama/models").expanduser()
+            ]
+            
+            for model_dir in model_dirs:
+                if model_dir.exists():
+                    # Scan for GGUF files
+                    for gguf_file in model_dir.rglob("*.gguf"):
+                        models.append({
+                            "id": gguf_file.stem,
+                            "name": gguf_file.stem.replace("-", " ").title(),
+                            "family": "unknown",
+                            "format": "gguf",
+                            "local_path": str(gguf_file),
+                            "capabilities": ["text"],
+                            "size": gguf_file.stat().st_size if gguf_file.exists() else None
+                        })
+                    
+                    # Scan for safetensors files
+                    for st_file in model_dir.rglob("*.safetensors"):
+                        if "model" in st_file.name:  # Likely a model file
+                            models.append({
+                                "id": st_file.parent.name,
+                                "name": st_file.parent.name.replace("-", " ").title(),
+                                "family": "unknown",
+                                "format": "safetensors",
+                                "local_path": str(st_file.parent),
+                                "capabilities": ["text"],
+                                "size": st_file.stat().st_size if st_file.exists() else None
+                            })
+            
+            return models[:10]  # Limit to first 10 found
+        except Exception as e:
+            logger.warning(f"Local model discovery failed: {e}")
+            return []
+    
+    def _health_check_local(self) -> Dict[str, Any]:
+        """Health check for local provider."""
+        try:
+            return {
+                "status": "healthy",
+                "message": "Local provider available",
+                "capabilities": {"local_execution": True, "privacy": True}
+            }
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "error": str(e)
+            }
 
 
 # -----------------------------

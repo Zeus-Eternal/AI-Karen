@@ -26,4 +26,4 @@ export { default as SystemExtensionsList } from './system/SystemExtensionsList';
 export * from './shared';
 
 // Marketplace components
-export * from './marketplace';
+// export * from './marketplace'; // TODO: Enable when marketplace components are implemented

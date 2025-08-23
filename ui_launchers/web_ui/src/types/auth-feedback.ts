@@ -241,9 +241,9 @@ export class FeedbackMessageFactory {
 }
 
 /**
- * Feedback state management types
+ * Extended feedback state management types
  */
-export interface FeedbackState {
+export interface ExtendedFeedbackState {
   message: FeedbackMessage | null;
   isVisible: boolean;
   queue: FeedbackMessage[];
@@ -262,7 +262,7 @@ export type FeedbackAction =
 /**
  * Feedback reducer for state management
  */
-export function feedbackReducer(state: FeedbackState, action: FeedbackAction): FeedbackState {
+export function feedbackReducer(state: ExtendedFeedbackState, action: FeedbackAction): ExtendedFeedbackState {
   switch (action.type) {
     case 'SHOW_MESSAGE':
       return {
@@ -310,7 +310,7 @@ export function feedbackReducer(state: FeedbackState, action: FeedbackAction): F
 /**
  * Initial feedback state
  */
-export const initialFeedbackState: FeedbackState = {
+export const initialFeedbackState: ExtendedFeedbackState = {
   message: null,
   isVisible: false,
   queue: []

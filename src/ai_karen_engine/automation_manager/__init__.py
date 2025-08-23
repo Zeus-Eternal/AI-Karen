@@ -17,6 +17,8 @@ import hashlib
 import hmac
 import logging
 import os
+import platform
+import stat
 import threading
 import time
 import uuid
@@ -76,6 +78,52 @@ try:
 except ImportError:
     NUMA_ENABLED = False
 
+# === Cross-Platform Permission Handling ===
+def _set_secure_permissions(path: Path) -> bool:
+    """
+    Set secure permissions on a directory in a cross-platform manner.
+    
+    Args:
+        path: Path to the directory to secure
+        
+    Returns:
+        bool: True if permissions were set successfully, False otherwise
+    """
+    try:
+        # Detect operating system
+        system = platform.system().lower()
+        
+        if system == "windows":
+            # On Windows, we rely on default NTFS permissions
+            # which are typically secure for user directories
+            log.info(f"Windows detected - using default permissions for {path}")
+            return True
+        else:
+            # POSIX systems (Linux, macOS, Unix-like)
+            log.info(f"POSIX system detected ({system}) - setting restrictive permissions for {path}")
+            
+            # Set directory permissions to 0o700 (owner read/write/execute only)
+            path.chmod(stat.S_IRWXU)  # 0o700
+            
+            # Verify permissions were set correctly
+            current_perms = path.stat().st_mode & 0o777
+            if current_perms == 0o700:
+                log.info(f"Successfully set secure permissions (0o700) on {path}")
+                return True
+            else:
+                log.warning(f"Permission verification failed for {path}: expected 0o700, got {oct(current_perms)}")
+                return False
+                
+    except PermissionError as e:
+        log.warning(f"Permission denied when setting secure permissions on {path}: {e}")
+        return False
+    except OSError as e:
+        log.warning(f"OS error when setting secure permissions on {path}: {e}")
+        return False
+    except Exception as e:
+        log.warning(f"Unexpected error when setting secure permissions on {path}: {e}")
+        return False
+
 # === DuckDB Hardening ===
 def _resolve_secure_db_path() -> Path:
     """
@@ -83,50 +131,130 @@ def _resolve_secure_db_path() -> Path:
       1) Respect KARI_SECURE_DB_PATH (supports ~ expansion)
       2) Use /secure/kari_automation.db if /secure exists & is writable (container)
       3) Fall back to per-user secure dir: ~/.kari/secure/kari_automation.db
+      4) Emergency fallback to temp directory if all else fails
     """
+    # Try environment variable path first
     env_path = os.getenv("KARI_SECURE_DB_PATH")
     if env_path:
         p = Path(os.path.expanduser(env_path))
-        p.parent.mkdir(mode=0o700, exist_ok=True)
-        return p
+        try:
+            # Create parent directories with proper cross-platform handling
+            p.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Set secure permissions using cross-platform function
+            perm_success = _set_secure_permissions(p.parent)
+            if perm_success:
+                log.info(f"Successfully created and secured environment path: {p.parent}")
+            else:
+                log.warning(f"Created environment path but failed to set secure permissions: {p.parent}")
+            
+            return p
+        except (PermissionError, OSError) as e:
+            log.warning(f"Failed to create directory {p.parent}: {e}")
+            # Fall through to try other options
 
+    # Try container secure directory
     container_secure = Path("/secure")
     if container_secure.exists() and os.access(container_secure, os.W_OK):
-        container_secure.mkdir(mode=0o700, exist_ok=True)
-        return container_secure / "kari_automation.db"
+        try:
+            # Container directory should already exist, just ensure it's accessible
+            db_path = container_secure / "kari_automation.db"
+            
+            # Try to set secure permissions on container directory
+            perm_success = _set_secure_permissions(container_secure)
+            if perm_success:
+                log.info(f"Successfully secured container directory: {container_secure}")
+            else:
+                log.warning(f"Using container directory but failed to set secure permissions: {container_secure}")
+            
+            return db_path
+        except (PermissionError, OSError) as e:
+            log.warning(f"Failed to secure container directory: {e}")
+            # Fall through to user secure directory
 
+    # Try user secure directory
     user_secure = Path.home() / ".kari" / "secure"
-    user_secure.mkdir(mode=0o700, exist_ok=True)
-    return user_secure / "kari_automation.db"
+    try:
+        # Create all parent directories recursively
+        user_secure.mkdir(parents=True, exist_ok=True)
+        
+        # Set secure permissions using cross-platform function
+        perm_success = _set_secure_permissions(user_secure)
+        if perm_success:
+            log.info(f"Successfully created and secured user directory: {user_secure}")
+        else:
+            log.warning(f"Created user directory but failed to set secure permissions: {user_secure}")
+        
+        return user_secure / "kari_automation.db"
+    except (PermissionError, OSError) as e:
+        log.error(f"Failed to create user secure directory {user_secure}: {e}")
+        
+        # Emergency fallback to temp directory
+        try:
+            import tempfile
+            temp_dir = Path(tempfile.gettempdir()) / "kari_secure"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Try to set permissions on temp directory
+            perm_success = _set_secure_permissions(temp_dir)
+            if perm_success:
+                log.warning(f"Using emergency temp directory with secure permissions: {temp_dir}")
+            else:
+                log.warning(f"Using emergency temp directory without secure permissions: {temp_dir}")
+            
+            return temp_dir / "kari_automation.db"
+        except Exception as temp_e:
+            log.critical(f"Emergency fallback to temp directory failed: {temp_e}")
+            raise RuntimeError(f"Unable to create any secure database directory. Last error: {e}")
 
 
 DB_PATH = _resolve_secure_db_path()
 
 
 def init_secure_db():
-    # Lazily ensure the secure directory exists; avoid doing this at import time.
+    """
+    Initialize the secure database with cross-platform directory creation and permission handling.
+    """
     global DB_PATH
     parent = DB_PATH.parent
+    
     try:
+        # Ensure the parent directory exists with proper permissions
         parent.mkdir(parents=True, exist_ok=True)
-        # Enforce restrictive perms on POSIX; no-op on Windows.
-        if os.name != "nt":
-            try:
-                os.chmod(parent, 0o700)
-            except Exception:
-                log.warning("Could not set permissions 0700 on %s", parent)
-    except PermissionError:
-        # Fall back to per-user secure dir if the chosen parent is not writable.
+        
+        # Set secure permissions using cross-platform function
+        perm_success = _set_secure_permissions(parent)
+        if not perm_success:
+            log.warning(f"Database directory created but secure permissions could not be set: {parent}")
+        
+    except PermissionError as e:
+        log.warning(f"Permission denied creating database directory {parent}: {e}")
+        
+        # Fall back to per-user secure dir if the chosen parent is not writable
         fallback = Path.home() / ".kari" / "secure"
-        fallback.mkdir(parents=True, exist_ok=True)
-        if os.name != "nt":
-            try:
-                os.chmod(fallback, 0o700)
-            except Exception:
-                log.warning("Could not set permissions 0700 on %s", fallback)
-        log.warning("No permission for %s; falling back to %s", parent, fallback)
-        DB_PATH = fallback / "kari_automation.db"
-        parent = fallback
+        try:
+            fallback.mkdir(parents=True, exist_ok=True)
+            
+            # Set secure permissions on fallback directory
+            perm_success = _set_secure_permissions(fallback)
+            if perm_success:
+                log.info(f"Successfully created fallback directory with secure permissions: {fallback}")
+            else:
+                log.warning(f"Fallback directory created but secure permissions could not be set: {fallback}")
+            
+            DB_PATH = fallback / "kari_automation.db"
+            parent = fallback
+            log.warning(f"No permission for original path; using fallback: {fallback}")
+            
+        except Exception as fallback_e:
+            log.error(f"Fallback directory creation also failed: {fallback_e}")
+            # Continue with original path and hope for the best
+            log.warning(f"Continuing with potentially insecure database path: {DB_PATH}")
+    
+    except OSError as e:
+        log.error(f"OS error creating database directory {parent}: {e}")
+        # Continue with existing path
+        log.warning(f"Continuing with existing database path despite errors: {DB_PATH}")
 
     log.info("Automation DB path: %s", DB_PATH)
     conn = duckdb.connect(str(DB_PATH))
@@ -206,7 +334,7 @@ class SecureThreadPoolExecutor(concurrent.futures.ThreadPoolExecutor):
 # === Core Automation Engine ===
 class AutomationManager:
     _instance = None
-    _lock = threading.Lock()
+    _lock = threading.RLock()  # Use RLock to allow same thread to acquire multiple times
 
     def __new__(cls):
         with cls._lock:

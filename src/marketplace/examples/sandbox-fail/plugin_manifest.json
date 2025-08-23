@@ -1,0 +1,18 @@
+{
+  "name": "sandbox-fail",
+  "version": "0.1.0",
+  "plugin_api_version": "1.0",
+  "enable_external_workflow": false,
+  "required_roles": [
+    "user"
+  ],
+  "intent": "sandbox_fail",
+  "trusted_ui": false,
+  "sandbox": true,
+  "description": "Example plugin demonstrating sandbox failure.",
+  "author": "Kari Team",
+  "license": "MPL-2.0",
+  "module": "ai_karen_engine.plugins.sandbox_fail.handler",
+  "entry_point": "run",
+  "plugin_type": "example"
+}

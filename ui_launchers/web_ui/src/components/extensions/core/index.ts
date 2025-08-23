@@ -1,4 +1,4 @@
-export { ExtensionProvider } from './ExtensionProvider';
+export { ExtensionProvider } from '../../../extensions/ExtensionContext';
 export { default as ExtensionSidebar, type ExtensionSidebarProps } from './ExtensionSidebar';
 export { default as ExtensionHeader, type ExtensionHeaderProps } from './ExtensionHeader';
 export { default as ExtensionStats } from './ExtensionStats';

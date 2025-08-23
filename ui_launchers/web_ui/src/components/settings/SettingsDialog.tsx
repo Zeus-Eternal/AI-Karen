@@ -11,8 +11,9 @@ import VoiceSettings from "./VoiceSettings";
 import PersonaSettings from "./PersonaSettings";
 import LLMSettings from "./LLMSettings";
 import CopilotKitSettings from "./CopilotKitSettings";
-import { Cog, KeyRound, BookText, Bell, Shield, Speaker, UserCog, Brain, Bot } from "lucide-react";
+import { Cog, KeyRound, BookText, Bell, Shield, Speaker, UserCog, Brain, MessageSquare } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 /**
  * @file SettingsDialog.tsx
@@ -36,7 +37,7 @@ export default function SettingsDialog() {
             <Brain className="mr-1 sm:mr-2 h-4 w-4" /> LLM
           </TabsTrigger>
           <TabsTrigger value="copilotkit">
-            <Bot className="mr-1 sm:mr-2 h-4 w-4" /> CopilotKit
+            <MessageSquare className="mr-1 sm:mr-2 h-4 w-4" /> CopilotKit
           </TabsTrigger>
           <TabsTrigger value="api-key">
             <KeyRound className="mr-1 sm:mr-2 h-4 w-4" /> API Key
@@ -64,10 +65,14 @@ export default function SettingsDialog() {
         {/* This div ensures padding and allows content to grow within the main scrollable area */}
         <div className="mt-4"> 
           <TabsContent value="llm">
-            <LLMSettings />
+            <ErrorBoundary>
+              <LLMSettings />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="copilotkit">
-            <CopilotKitSettings />
+            <ErrorBoundary>
+              <CopilotKitSettings />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="api-key">
             <ApiKeyManager />
