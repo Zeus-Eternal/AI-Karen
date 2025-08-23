@@ -1,0 +1,167 @@
+{
+  "timestamp": "1755993128.3796713",
+  "overall_completion": 128.2051282051282,
+  "categories": {
+    "e2e_tests": {
+      "status": "\u2705",
+      "completion_rate": 100.0,
+      "found": 11,
+      "required": 11,
+      "missing": 0
+    },
+    "integration_tests": {
+      "status": "\u2705",
+      "completion_rate": 168.75,
+      "found": 27,
+      "required": 16,
+      "missing": 0
+    },
+    "load_tests": {
+      "status": "\u2705",
+      "completion_rate": 100.0,
+      "found": 8,
+      "required": 8,
+      "missing": 0
+    },
+    "documentation": {
+      "status": "\u2705",
+      "completion_rate": 100.0,
+      "found": 2,
+      "required": 2,
+      "missing": 0
+    },
+    "test_runner": {
+      "status": "\u2705",
+      "completion_rate": 100.0,
+      "found": 2,
+      "required": 2,
+      "missing": 0
+    }
+  },
+  "details": {
+    "e2e_tests": {
+      "required": [
+        "test_complete_login_to_logout_journey",
+        "test_session_persistence_across_page_refresh",
+        "test_automatic_token_refresh_flow",
+        "test_session_expiry_with_intelligent_error",
+        "test_multiple_concurrent_requests_with_refresh",
+        "test_admin_access_with_role_validation",
+        "test_api_key_missing_error_response",
+        "test_rate_limit_error_response",
+        "test_database_error_response",
+        "test_session_performance_under_load",
+        "test_graceful_degradation_on_service_failure"
+      ],
+      "found": [
+        "test_session_expiry_with_intelligent_error",
+        "test_database_error_response",
+        "test_session_persistence_across_page_refresh",
+        "test_admin_access_with_role_validation",
+        "test_api_key_missing_error_response",
+        "test_graceful_degradation_on_service_failure",
+        "test_session_performance_under_load",
+        "test_automatic_token_refresh_flow",
+        "test_complete_login_to_logout_journey",
+        "test_multiple_concurrent_requests_with_refresh",
+        "test_rate_limit_error_response"
+      ],
+      "missing": []
+    },
+    "integration_tests": {
+      "required": [
+        "test_openai_api_key_classification_accuracy",
+        "test_anthropic_api_key_classification_accuracy",
+        "test_session_expiry_classification_accuracy",
+        "test_rate_limit_classification_accuracy",
+        "test_database_error_classification_accuracy",
+        "test_provider_unavailable_classification_accuracy",
+        "test_network_error_classification_accuracy",
+        "test_validation_error_classification_accuracy",
+        "test_response_completeness",
+        "test_next_steps_quality",
+        "test_response_tone_consistency",
+        "test_response_specificity",
+        "test_provider_health_context_integration",
+        "test_ai_enhanced_response_generation",
+        "test_deterministic_classification",
+        "test_response_stability_over_time"
+      ],
+      "found": [
+        "test_rate_limit_classification_accuracy",
+        "test_network_error_classification_accuracy",
+        "test_ai_response_quality_validation",
+        "test_consistent_next_steps_ordering",
+        "test_unknown_provider_handling",
+        "test_response_completeness",
+        "test_response_tone_consistency",
+        "test_multiple_error_patterns_in_message",
+        "test_very_long_error_message",
+        "test_anthropic_api_key_classification_accuracy",
+        "test_deterministic_classification",
+        "test_session_expiry_classification_accuracy",
+        "test_response_stability_over_time",
+        "test_database_error_classification_accuracy",
+        "test_response_specificity",
+        "test_openai_api_key_classification_accuracy",
+        "test_provider_unavailable_classification_accuracy",
+        "test_validation_error_classification_accuracy",
+        "test_special_characters_in_error",
+        "test_help_url_relevance",
+        "test_empty_error_message",
+        "test_provider_health_caching",
+        "test_provider_health_context_integration",
+        "test_ai_enhanced_response_generation",
+        "test_next_steps_quality",
+        "test_unhealthy_provider_recommendations",
+        "test_ai_fallback_on_failure"
+      ],
+      "missing": []
+    },
+    "load_tests": {
+      "required": [
+        "test_concurrent_login_requests",
+        "test_login_endpoint_sustained_load",
+        "test_concurrent_token_refresh",
+        "test_token_refresh_memory_usage",
+        "test_concurrent_protected_requests",
+        "test_mixed_workload_performance",
+        "test_memory_leak_detection",
+        "test_cpu_usage_under_load"
+      ],
+      "found": [
+        "test_mixed_workload_performance",
+        "test_concurrent_protected_requests",
+        "test_login_endpoint_sustained_load",
+        "test_token_refresh_memory_usage",
+        "test_memory_leak_detection",
+        "test_concurrent_login_requests",
+        "test_cpu_usage_under_load",
+        "test_concurrent_token_refresh"
+      ],
+      "missing": []
+    },
+    "documentation": {
+      "required": [
+        "authentication_api.md",
+        "authentication_troubleshooting.md"
+      ],
+      "found": [
+        "authentication_api.md",
+        "authentication_troubleshooting.md"
+      ],
+      "missing": []
+    },
+    "test_runner": {
+      "required": [
+        "run_comprehensive_tests.py",
+        "validate_test_implementation.py"
+      ],
+      "found": [
+        "run_comprehensive_tests.py",
+        "validate_test_implementation.py"
+      ],
+      "missing": []
+    }
+  }
+}

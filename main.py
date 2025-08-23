@@ -32,6 +32,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from ai_karen_engine.api_routes.ai_orchestrator_routes import router as ai_router
 from ai_karen_engine.api_routes.audit import router as audit_router
 from ai_karen_engine.api_routes.auth import router as auth_router
+from ai_karen_engine.api_routes.auth_session_routes import router as auth_session_router
 from ai_karen_engine.api_routes.code_execution_routes import (
     router as code_execution_router,
 )
@@ -51,6 +52,7 @@ from ai_karen_engine.api_routes.llm_routes import router as llm_router
 from ai_karen_engine.api_routes.provider_routes import router as provider_router
 from ai_karen_engine.api_routes.profile_routes import router as profile_router
 from ai_karen_engine.api_routes.settings_routes import router as settings_router
+from ai_karen_engine.api_routes.error_response_routes import router as error_response_router
 from ai_karen_engine.server.middleware import configure_middleware
 from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS, PLUGIN_MAP
 from ai_karen_engine.server.startup import create_lifespan
@@ -324,6 +326,7 @@ def create_app() -> FastAPI:
     configure_middleware(app, settings, REQUEST_COUNT, REQUEST_LATENCY, ERROR_COUNT)
 
     app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
+    app.include_router(auth_session_router, prefix="/api", tags=["authentication-session"])
     app.include_router(events_router, prefix="/api/events", tags=["events"])
     app.include_router(websocket_router, prefix="/api/ws", tags=["websocket"])
     app.include_router(web_api_router, prefix="/api/web", tags=["web-api"])
@@ -342,6 +345,7 @@ def create_app() -> FastAPI:
     app.include_router(llm_router, prefix="/api/llm", tags=["llm"])
     app.include_router(provider_router, prefix="/api/providers", tags=["providers"])
     app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
+    app.include_router(error_response_router, prefix="/api", tags=["error-response"])
     app.include_router(settings_router)
 
     # Setup developer API with enhanced debugging capabilities

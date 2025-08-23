@@ -1,16 +1,19 @@
 """
-Token management for the consolidated authentication service.
+Enhanced token management for the consolidated authentication service.
 
 This module provides JWT token creation, validation, and management
-for access tokens, refresh tokens, and other authentication tokens.
+for access tokens, refresh tokens, and other authentication tokens
+with enhanced security features including token rotation and JTI tracking.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import secrets
+import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set, Tuple
 
 try:
     import jwt
@@ -21,91 +24,185 @@ except ImportError:
 from ai_karen_engine.auth.config import JWTConfig
 from ai_karen_engine.auth.exceptions import InvalidTokenError, TokenExpiredError
 from ai_karen_engine.auth.models import UserData
+from ai_karen_engine.core.cache import get_token_cache, get_request_deduplicator
+from ai_karen_engine.services.audit_logging import get_audit_logger
 
 
-class TokenManager:
+class EnhancedTokenManager:
     """
-    JWT token manager for authentication tokens.
+    Enhanced JWT token manager for authentication tokens with security features.
 
     Handles creation and validation of access tokens, refresh tokens,
-    and other authentication-related tokens.
+    and other authentication-related tokens with token rotation,
+    JTI tracking for replay prevention, and enhanced security.
     """
 
     def __init__(self, config: JWTConfig) -> None:
-        """Initialize token manager with JWT configuration."""
+        """Initialize enhanced token manager with JWT configuration."""
         self.config = config
+        self._revoked_jtis: Set[str] = set()  # In-memory JTI blacklist
+        self._issued_jtis: Set[str] = set()   # Track issued JTIs
+        self._token_cache = get_token_cache()
+        self._deduplicator = get_request_deduplicator()
+        self._audit_logger = get_audit_logger()
 
         if jwt is None:
             raise ImportError(
                 "PyJWT is required for token management. Install with: pip install PyJWT"
             )
 
+    def _generate_jti(self) -> str:
+        """Generate a unique JTI (JWT ID) for token tracking."""
+        jti = secrets.token_hex(16)
+        # Ensure uniqueness
+        while jti in self._issued_jtis:
+            jti = secrets.token_hex(16)
+        self._issued_jtis.add(jti)
+        return jti
+
+    def _is_jti_revoked(self, jti: str) -> bool:
+        """Check if a JTI has been revoked."""
+        return jti in self._revoked_jtis
+
+    def _revoke_jti(self, jti: str) -> None:
+        """Revoke a JTI to prevent token reuse."""
+        self._revoked_jtis.add(jti)
+
     async def create_access_token(
         self, user_data: UserData, expires_delta: Optional[timedelta] = None
     ) -> str:
         """
-        Create a JWT access token for a user.
+        Create a JWT access token for a user with enhanced security.
 
         Args:
             user_data: User data to encode in token
-            expires_delta: Custom expiration time (optional)
+            expires_delta: Custom expiration time (optional, defaults to 15 minutes)
 
         Returns:
             JWT access token string
         """
-        if expires_delta:
-            expire = datetime.now(timezone.utc) + expires_delta
-        else:
-            expire = datetime.now(timezone.utc) + self.config.access_token_expiry
+        start_time = time.time()
+        
+        try:
+            if expires_delta:
+                expire = datetime.now(timezone.utc) + expires_delta
+            else:
+                # Use 15 minutes for access tokens as per requirements
+                expire = datetime.now(timezone.utc) + timedelta(minutes=15)
 
-        payload = {
-            "sub": user_data.user_id,
-            "email": user_data.email,
-            "full_name": user_data.full_name,
-            "roles": user_data.roles,
-            "tenant_id": user_data.tenant_id,
-            "is_verified": user_data.is_verified,
-            "is_active": user_data.is_active,
-            "exp": expire,
-            "iat": datetime.now(timezone.utc),
-            "type": "access",
-        }
+            now = datetime.now(timezone.utc)
+            jti = self._generate_jti()
 
-        return jwt.encode(
-            payload, self.config.secret_key, algorithm=self.config.algorithm
-        )
+            payload = {
+                "sub": user_data.user_id,
+                "email": user_data.email,
+                "full_name": user_data.full_name,
+                "roles": user_data.roles,
+                "tenant_id": user_data.tenant_id,
+                "is_verified": user_data.is_verified,
+                "is_active": user_data.is_active,
+                "exp": int(expire.timestamp()),
+                "iat": int(now.timestamp()),
+                "nbf": int(now.timestamp()),  # Not before
+                "jti": jti,
+                "typ": "access",
+            }
+
+            token = jwt.encode(
+                payload, self.config.secret_key, algorithm=self.config.algorithm
+            )
+            
+            # Audit log token creation performance
+            duration_ms = (time.time() - start_time) * 1000
+            self._audit_logger.log_token_operation_performance(
+                operation_name="create_access_token",
+                duration_ms=duration_ms,
+                success=True,
+                user_id=user_data.user_id,
+                tenant_id=user_data.tenant_id,
+                token_jti=jti
+            )
+            
+            return token
+            
+        except Exception as e:
+            # Audit log token creation failure
+            duration_ms = (time.time() - start_time) * 1000
+            self._audit_logger.log_token_operation_performance(
+                operation_name="create_access_token",
+                duration_ms=duration_ms,
+                success=False,
+                user_id=user_data.user_id,
+                tenant_id=user_data.tenant_id,
+                error_message=str(e)
+            )
+            raise
 
     async def create_refresh_token(
         self, user_data: UserData, expires_delta: Optional[timedelta] = None
     ) -> str:
         """
-        Create a JWT refresh token for a user.
+        Create a JWT refresh token for a user with enhanced security.
 
         Args:
             user_data: User data to encode in token
-            expires_delta: Custom expiration time (optional)
+            expires_delta: Custom expiration time (optional, defaults to 7 days)
 
         Returns:
             JWT refresh token string
         """
-        if expires_delta:
-            expire = datetime.now(timezone.utc) + expires_delta
-        else:
-            expire = datetime.now(timezone.utc) + self.config.refresh_token_expiry
+        start_time = time.time()
+        
+        try:
+            if expires_delta:
+                expire = datetime.now(timezone.utc) + expires_delta
+            else:
+                # Use 7 days for refresh tokens as per requirements
+                expire = datetime.now(timezone.utc) + timedelta(days=7)
 
-        payload = {
-            "sub": user_data.user_id,
-            "email": user_data.email,
-            "tenant_id": user_data.tenant_id,
-            "exp": expire,
-            "iat": datetime.now(timezone.utc),
-            "type": "refresh",
-            "jti": secrets.token_hex(16),  # Unique token ID for revocation
-        }
+            now = datetime.now(timezone.utc)
+            jti = self._generate_jti()
 
-        return jwt.encode(
-            payload, self.config.secret_key, algorithm=self.config.algorithm
-        )
+            payload = {
+                "sub": user_data.user_id,
+                "email": user_data.email,
+                "tenant_id": user_data.tenant_id,
+                "exp": int(expire.timestamp()),
+                "iat": int(now.timestamp()),
+                "nbf": int(now.timestamp()),  # Not before
+                "jti": jti,
+                "typ": "refresh",
+            }
+
+            token = jwt.encode(
+                payload, self.config.secret_key, algorithm=self.config.algorithm
+            )
+            
+            # Audit log token creation performance
+            duration_ms = (time.time() - start_time) * 1000
+            self._audit_logger.log_token_operation_performance(
+                operation_name="create_refresh_token",
+                duration_ms=duration_ms,
+                success=True,
+                user_id=user_data.user_id,
+                tenant_id=user_data.tenant_id,
+                token_jti=jti
+            )
+            
+            return token
+            
+        except Exception as e:
+            # Audit log token creation failure
+            duration_ms = (time.time() - start_time) * 1000
+            self._audit_logger.log_token_operation_performance(
+                operation_name="create_refresh_token",
+                duration_ms=duration_ms,
+                success=False,
+                user_id=user_data.user_id,
+                tenant_id=user_data.tenant_id,
+                error_message=str(e)
+            )
+            raise
 
     async def create_password_reset_token(
         self, user_data: UserData, expires_delta: Optional[timedelta] = None
@@ -177,7 +274,7 @@ class TokenManager:
         self, token: str, expected_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Validate a JWT token and return its payload.
+        Validate a JWT token with enhanced security checks and caching.
 
         Args:
             token: JWT token to validate
@@ -190,28 +287,121 @@ class TokenManager:
             InvalidTokenError: If token is invalid or malformed
             TokenExpiredError: If token has expired
         """
+        # Check cache first for valid tokens
+        cached_result = self._token_cache.get_validation_result(token)
+        if cached_result is not None:
+            if cached_result.get("valid"):
+                payload = cached_result["payload"]
+                # Still check if JTI was revoked after caching
+                jti = payload.get("jti")
+                if jti and self._is_jti_revoked(jti):
+                    self._token_cache.invalidate_token(token)
+                    raise InvalidTokenError(
+                        "Token has been revoked",
+                        token_type=expected_type,
+                    )
+                return payload
+            else:
+                # Cached invalid result
+                error_type = cached_result.get("error_type")
+                error_message = cached_result.get("error_message", "Token validation failed")
+                if "expired" in error_message.lower():
+                    raise TokenExpiredError(token_type=expected_type)
+                else:
+                    raise InvalidTokenError(error_message, token_type=expected_type)
+
+        # Deduplicate simultaneous validation requests for the same token
+        return await self._deduplicator.deduplicate(
+            self._validate_token_uncached, token, expected_type
+        )
+
+    async def _validate_token_uncached(
+        self, token: str, expected_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Internal method to validate token without caching (used by deduplicator).
+        """
         try:
+            # Decode token with all validations
             payload = jwt.decode(
-                token, self.config.secret_key, algorithms=[self.config.algorithm]
+                token, 
+                self.config.secret_key, 
+                algorithms=[self.config.algorithm],
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_nbf": True,
+                    "verify_iat": True,
+                    "require": ["exp", "iat", "jti", "sub", "typ"]
+                }
             )
 
             # Check token type if specified
-            if expected_type and payload.get("type") != expected_type:
-                raise InvalidTokenError(
-                    f"Invalid token type. Expected {expected_type}, got {payload.get('type')}",
-                    token_type=expected_type,
+            token_type = payload.get("typ")
+            if expected_type and token_type != expected_type:
+                error_msg = f"Invalid token type. Expected {expected_type}, got {token_type}"
+                # Cache the invalid result
+                self._token_cache.cache_validation_result(
+                    token, 
+                    {"valid": False, "error_message": error_msg, "error_type": expected_type},
+                    custom_ttl=60  # Cache invalid results for shorter time
                 )
+                raise InvalidTokenError(error_msg, token_type=expected_type)
+
+            # Check if JTI is revoked (replay prevention)
+            jti = payload.get("jti")
+            if jti and self._is_jti_revoked(jti):
+                error_msg = "Token has been revoked"
+                # Don't cache revoked tokens as revocation status can change
+                raise InvalidTokenError(error_msg, token_type=token_type)
+
+            # Additional security checks
+            now = datetime.now(timezone.utc).timestamp()
+            
+            # Check not-before time
+            nbf = payload.get("nbf")
+            if nbf and now < nbf:
+                error_msg = "Token not yet valid"
+                self._token_cache.cache_validation_result(
+                    token, 
+                    {"valid": False, "error_message": error_msg, "error_type": expected_type},
+                    custom_ttl=30
+                )
+                raise InvalidTokenError(error_msg, token_type=token_type)
+
+            # Cache successful validation
+            # Calculate remaining TTL based on token expiry
+            exp_timestamp = payload.get("exp", 0)
+            remaining_ttl = max(30, int(exp_timestamp - now) - 60)  # Cache until 1 min before expiry
+            
+            self._token_cache.cache_validation_result(
+                token,
+                {"valid": True, "payload": payload},
+                custom_ttl=min(remaining_ttl, 300)  # Max 5 minutes cache
+            )
 
             return payload
 
         except jwt.ExpiredSignatureError:
+            error_msg = "Token has expired"
+            self._token_cache.cache_validation_result(
+                token,
+                {"valid": False, "error_message": error_msg, "error_type": expected_type},
+                custom_ttl=60
+            )
             raise TokenExpiredError(token_type=expected_type)
         except jwt.InvalidTokenError as e:
-            raise InvalidTokenError(f"Invalid token: {e}", token_type=expected_type)
-        except Exception as e:
-            raise InvalidTokenError(
-                f"Token validation failed: {e}", token_type=expected_type
+            error_msg = f"Invalid token: {e}"
+            self._token_cache.cache_validation_result(
+                token,
+                {"valid": False, "error_message": error_msg, "error_type": expected_type},
+                custom_ttl=60
             )
+            raise InvalidTokenError(error_msg, token_type=expected_type)
+        except Exception as e:
+            error_msg = f"Token validation failed: {e}"
+            # Don't cache unexpected errors
+            raise InvalidTokenError(error_msg, token_type=expected_type)
 
     async def validate_access_token(self, token: str) -> Dict[str, Any]:
         """Validate an access token and return its payload."""
@@ -229,18 +419,18 @@ class TokenManager:
         """Validate an email verification token and return its payload."""
         return await self.validate_token(token, "email_verification")
 
-    async def refresh_access_token(
+    async def rotate_tokens(
         self, refresh_token: str, user_data: UserData
-    ) -> str:
+    ) -> Tuple[str, str, datetime]:
         """
-        Create a new access token using a refresh token.
+        Rotate both access and refresh tokens for enhanced security.
 
         Args:
-            refresh_token: Valid refresh token
+            refresh_token: Valid refresh token to rotate
             user_data: Current user data
 
         Returns:
-            New access token
+            Tuple of (new_access_token, new_refresh_token, refresh_expires_at)
 
         Raises:
             InvalidTokenError: If refresh token is invalid
@@ -255,8 +445,40 @@ class TokenManager:
                 "Refresh token does not belong to user", token_type="refresh"
             )
 
-        # Create new access token
-        return await self.create_access_token(user_data)
+        # Revoke the old refresh token JTI to prevent reuse
+        old_jti = payload.get("jti")
+        if old_jti:
+            self._revoke_jti(old_jti)
+
+        # Create new tokens
+        new_access_token = await self.create_access_token(user_data)
+        new_refresh_token = await self.create_refresh_token(user_data)
+        
+        # Calculate refresh token expiry
+        refresh_expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+
+        return new_access_token, new_refresh_token, refresh_expires_at
+
+    async def refresh_access_token(
+        self, refresh_token: str, user_data: UserData
+    ) -> str:
+        """
+        Create a new access token using a refresh token (legacy method).
+
+        Args:
+            refresh_token: Valid refresh token
+            user_data: Current user data
+
+        Returns:
+            New access token
+
+        Raises:
+            InvalidTokenError: If refresh token is invalid
+            TokenExpiredError: If refresh token has expired
+        """
+        # Use token rotation for enhanced security
+        new_access_token, _, _ = await self.rotate_tokens(refresh_token, user_data)
+        return new_access_token
 
     def get_token_payload_without_validation(
         self, token: str
@@ -311,10 +533,85 @@ class TokenManager:
             if not payload or "exp" not in payload:
                 return None
 
-            return datetime.fromtimestamp(payload["exp"])
+            return datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
 
         except Exception:
             return None
+
+    async def revoke_token(self, token: str) -> bool:
+        """
+        Revoke a token by adding its JTI to the blacklist.
+
+        Args:
+            token: JWT token to revoke
+
+        Returns:
+            True if token was successfully revoked, False otherwise
+        """
+        try:
+            payload = self.get_token_payload_without_validation(token)
+            if not payload:
+                return False
+
+            jti = payload.get("jti")
+            if jti:
+                self._revoke_jti(jti)
+                # Invalidate cached validation result
+                self._token_cache.invalidate_token(token)
+                return True
+            
+            return False
+
+        except Exception:
+            return False
+
+    async def revoke_all_user_tokens(self, user_id: str) -> int:
+        """
+        Revoke all tokens for a specific user.
+        
+        Note: This is a simplified implementation. In production,
+        you would need to track user tokens in a database.
+
+        Args:
+            user_id: User ID whose tokens should be revoked
+
+        Returns:
+            Number of tokens revoked
+        """
+        # In a real implementation, this would query the database
+        # for all active tokens for the user and revoke their JTIs
+        # For now, this is a placeholder
+        return 0
+
+    def get_jti_from_token(self, token: str) -> Optional[str]:
+        """
+        Extract JTI from a token without full validation.
+
+        Args:
+            token: JWT token
+
+        Returns:
+            JTI string or None if not found
+        """
+        try:
+            payload = self.get_token_payload_without_validation(token)
+            return payload.get("jti") if payload else None
+        except Exception:
+            return None
+
+    def cleanup_expired_jtis(self) -> int:
+        """
+        Clean up expired JTIs from the revocation list.
+        
+        This should be called periodically to prevent memory leaks.
+
+        Returns:
+            Number of JTIs cleaned up
+        """
+        # In a real implementation, this would check token expiry times
+        # and remove expired JTIs from the blacklist
+        # For now, this is a placeholder
+        return 0
 
     async def create_password_reset_token_with_storage(
         self,
@@ -568,6 +865,10 @@ class TokenManager:
             return None
         except Exception:
             return None
+
+
+# Backward compatibility alias
+TokenManager = EnhancedTokenManager
 
 
 class SimpleTokenManager:

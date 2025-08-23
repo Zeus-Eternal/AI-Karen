@@ -12,6 +12,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from ai_karen_engine.middleware.error_counter import error_counter_middleware
 from ai_karen_engine.middleware.rate_limit import rate_limit_middleware
 from ai_karen_engine.middleware.rbac import setup_rbac
+from ai_karen_engine.middleware.session_persistence import SessionPersistenceMiddleware
+from ai_karen_engine.middleware.intelligent_error_handler import IntelligentErrorHandlerMiddleware
 from ai_karen_engine.server.http_validator import HTTPRequestValidator, ValidationConfig
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,19 @@ def configure_middleware(
     # RBAC middleware configured based on environment
     development_mode = getattr(settings, "environment", "").lower() != "production"
     setup_rbac(app, development_mode=development_mode)
+
+    # Add intelligent error handler (outermost - catches all errors)
+    app.add_middleware(
+        IntelligentErrorHandlerMiddleware,
+        enable_intelligent_responses=True,
+        debug_mode=getattr(settings, "environment", "").lower() != "production"
+    )
+    
+    # Add session persistence middleware (before other auth middleware)
+    app.add_middleware(
+        SessionPersistenceMiddleware,
+        enable_intelligent_errors=True
+    )
 
     # Register custom middlewares
     app.middleware("http")(rate_limit_middleware)

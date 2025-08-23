@@ -48,6 +48,7 @@ chardet
 httpx
 pyotp
 tenacity
+slowapi
 pytest-asyncio
 bcrypt
 argon2-cffi
