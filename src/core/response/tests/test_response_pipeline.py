@@ -1,6 +1,6 @@
 import pytest
 
-from src.core.response import PipelineConfig, ResponseOrchestrator, UnifiedLLMClient
+from core.response import PipelineConfig, ResponseOrchestrator, UnifiedLLMClient
 
 
 class StubAnalyzer:
@@ -65,7 +65,7 @@ def test_orchestrator_falls_back_to_secondary_model(base_components):
         memory,
         UnifiedLLMClient(primary, fallback),
     )
-    result = orchestrator.respond("conv", "hi")
+    result = orchestrator.respond("conv", "hi", cloud=True)
     assert result.endswith("fallback via secondary-model")
     assert primary.called_with[-1] == "primary-model"
     assert fallback.called_with[-1] == "secondary-model"

@@ -52,6 +52,8 @@ class ResponseOrchestrator:
         context = self.memory.fetch_context(conversation_id)
         prompt = self.build_prompt(user_input, context, analysis)
         llm_kwargs.setdefault("model", self.config.model)
+        if self.config.fallback_model is not None:
+            llm_kwargs.setdefault("fallback_model", self.config.fallback_model)
         response = self.llm_client.generate(prompt, **llm_kwargs)
         formatted = self.formatter.format(response)
         self.memory.store(conversation_id, user_input, formatted)
