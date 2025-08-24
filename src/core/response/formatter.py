@@ -4,9 +4,9 @@ from __future__ import annotations
 from typing import Any
 
 try:  # pragma: no cover - optional dependency
-    from copilotkit import enhance_text  # type: ignore
+    from copilotkit import enhance_text
 except Exception:  # pragma: no cover
-    enhance_text = None  # type: ignore
+    enhance_text = None
 
 
 class DRYFormatter:
