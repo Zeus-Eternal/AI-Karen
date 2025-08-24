@@ -28,14 +28,16 @@ class DummyMemory:
 class DummyLLM:
     def __init__(self) -> None:
         self.last_prompt: str | None = None
+        self.last_kwargs: dict[str, object] | None = None
 
     def generate(self, prompt: str, **kwargs: object) -> str:
         self.last_prompt = prompt
+        self.last_kwargs = kwargs
         return "response"
 
 
 def test_orchestrator_flow() -> None:
-    config = PipelineConfig(system_prompts=["sys"])
+    config = PipelineConfig(system_prompts=["sys"], model="dummy-model")
     analyzer = DummyAnalyzer()
     memory = DummyMemory()
     llm = DummyLLM()
@@ -47,9 +49,10 @@ def test_orchestrator_flow() -> None:
     )
 
     result = orchestrator.respond("c1", "hello")
-    assert result == "response"
+    assert result == "## Response\n\nresponse"
     assert analyzer.last_input == "hello"
     assert memory.fetch_called_with == "c1"
-    assert memory.store_calls == [("c1", "hello", "response")]
+    assert memory.store_calls == [("c1", "hello", "## Response\n\nresponse")]
     assert llm.last_prompt is not None and "hello" in llm.last_prompt
     assert llm.last_prompt is not None and "hi" in llm.last_prompt
+    assert llm.last_kwargs is not None and llm.last_kwargs.get("model") == "dummy-model"
