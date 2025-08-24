@@ -53,12 +53,8 @@ class ResponseOrchestrator:
         analysis = self.analyzer.analyze(user_input)
         context = self.memory.fetch_context(conversation_id)
         prompt = self.build_prompt(user_input, context, analysis)
-        response = self.llm_client.generate(
-            prompt,
-            model=self.config.model,
-            fallback_model=self.config.fallback_model,
-            **llm_kwargs,
-        )
+        llm_kwargs.setdefault("model", self.config.model)
+        response = self.llm_client.generate(prompt, **llm_kwargs)
         formatted = self.formatter.format(response)
         self.memory.store(conversation_id, user_input, formatted)
         return formatted
