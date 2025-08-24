@@ -132,13 +132,13 @@ export function DegradedModeBanner({
             </p>
             
             {availableHelpers.length > 0 && (
-              <p className="text-sm">
+              <div className="text-sm">
                 Available helpers: {availableHelpers.map(helper => (
                   <Badge key={helper} variant="secondary" className="mx-1 text-xs">
                     {helper}
                   </Badge>
                 ))}
-              </p>
+              </div>
             )}
 
             {showDetails && (

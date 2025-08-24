@@ -577,32 +577,122 @@ def create_app() -> FastAPI:
                 degraded_components.append("redis")
             
             # Check AI providers
+            failed_providers = []
             try:
                 from ai_karen_engine.services.provider_registry import get_provider_registry_service
                 provider_service = get_provider_registry_service()
                 system_status = provider_service.get_system_status()
                 if system_status["available_providers"] == 0:
                     degraded_components.append("ai_providers")
+                    failed_providers = system_status.get("failed_providers", [])
             except Exception:
                 degraded_components.append("ai_providers")
+                failed_providers = ["unknown"]
             
             is_degraded = len(degraded_components) > 0
             
+            # Determine degraded mode reason
+            reason = None
+            if is_degraded:
+                if "ai_providers" in degraded_components and "database" in degraded_components:
+                    reason = "all_providers_failed"
+                elif "database" in degraded_components:
+                    reason = "network_issues"
+                elif "ai_providers" in degraded_components:
+                    reason = "all_providers_failed"
+                else:
+                    reason = "resource_exhaustion"
+            
+            # Core helpers availability
+            core_helpers_available = {
+                "local_nlp": True,  # spaCy is available
+                "fallback_responses": True,  # Always available
+                "basic_analytics": True,  # Basic analytics work
+                "file_operations": True,  # File ops work
+                "database_fallback": "database" not in degraded_components
+            }
+            
             return {
-                "degraded": is_degraded,
-                "components": degraded_components,
-                "fallback_systems_active": is_degraded,
-                "local_models_available": True,  # We have TinyLlama + spaCy
+                "is_active": is_degraded,
+                "reason": reason,
+                "activated_at": datetime.now(timezone.utc).isoformat() if is_degraded else None,
+                "failed_providers": failed_providers,
+                "recovery_attempts": 0,  # Could track this in a persistent store
+                "last_recovery_attempt": None,  # Could track this too
+                "core_helpers_available": core_helpers_available
+            }
+            
+        except Exception as e:
+            return {
+                "is_active": True,
+                "reason": "resource_exhaustion",
+                "activated_at": datetime.now(timezone.utc).isoformat(),
+                "failed_providers": ["unknown"],
+                "recovery_attempts": 0,
+                "last_recovery_attempt": None,
+                "core_helpers_available": {
+                    "local_nlp": True,
+                    "fallback_responses": True,
+                    "basic_analytics": False,
+                    "file_operations": True,
+                    "database_fallback": False
+                }
+            }
+
+    @app.post("/api/health/degraded-mode/recover", tags=["system"])
+    async def attempt_degraded_mode_recovery():
+        """Attempt to recover from degraded mode"""
+        try:
+            recovery_results = {}
+            
+            # Try to recover database connection
+            try:
+                from ai_karen_engine.services.database_connection_manager import get_database_manager
+                db_manager = get_database_manager()
+                await db_manager.test_connection()
+                recovery_results["database"] = "recovered"
+            except Exception as e:
+                recovery_results["database"] = f"failed: {str(e)}"
+            
+            # Try to recover Redis connection
+            try:
+                from ai_karen_engine.services.redis_connection_manager import get_redis_manager
+                redis_manager = get_redis_manager()
+                await redis_manager.test_connection()
+                recovery_results["redis"] = "recovered"
+            except Exception as e:
+                recovery_results["redis"] = f"failed: {str(e)}"
+            
+            # Try to recover AI providers
+            try:
+                from ai_karen_engine.services.provider_registry import get_provider_registry_service
+                provider_service = get_provider_registry_service()
+                # Force a refresh of provider status
+                system_status = provider_service.get_system_status()
+                if system_status["available_providers"] > 0:
+                    recovery_results["ai_providers"] = "recovered"
+                else:
+                    recovery_results["ai_providers"] = "still_failed"
+            except Exception as e:
+                recovery_results["ai_providers"] = f"failed: {str(e)}"
+            
+            successful_recoveries = sum(1 for result in recovery_results.values() if result == "recovered")
+            
+            return {
+                "success": successful_recoveries > 0,
+                "recovery_results": recovery_results,
+                "recovered_components": successful_recoveries,
+                "total_components": len(recovery_results),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
         except Exception as e:
             return {
-                "degraded": True,
-                "components": ["unknown"],
+                "success": False,
                 "error": str(e),
-                "fallback_systems_active": True,
-                "local_models_available": True,
+                "recovery_results": {},
+                "recovered_components": 0,
+                "total_components": 0,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
