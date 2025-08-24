@@ -12,6 +12,7 @@ class PipelineConfig:
     """Settings that control response generation."""
 
     model: str = "default"
+    fallback_model: Optional[str] = None
     max_history: int = 5
     system_prompts: List[str] = field(default_factory=list)
     template_dir: Path = field(
