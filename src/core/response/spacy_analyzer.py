@@ -4,9 +4,9 @@ from __future__ import annotations
 from typing import Any, Dict, List, Tuple
 
 try:
-    import spacy  # type: ignore
+    import spacy
 except Exception:  # pragma: no cover - optional dependency
-    spacy = None  # type: ignore
+    spacy = None
 
 
 class SpaCyAnalyzer:

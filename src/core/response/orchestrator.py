@@ -32,20 +32,18 @@ class ResponseOrchestrator:
     def build_prompt(
         self, user_input: str, context: List[str], analysis: Dict[str, Any]
     ) -> str:
-        """Create a simple prompt from context, input, and analysis."""
+        """Create a prompt from context, input, and analysis."""
 
         persona = analysis.get("persona", "assistant")
-        parts = [self.prompt_builder.render("system_base", persona=persona)]
-        for msg in context[-self.config.max_history :]:
-            parts.append(self.prompt_builder.render("user_frame", user_input=msg))
-        parts.append(self.prompt_builder.render("user_frame", user_input=user_input))
-        if analysis.get("profile_gaps"):
-            parts.append(
-                self.prompt_builder.render(
-                    "onboarding", gaps=analysis["profile_gaps"]
-                )
-            )
-        return "\n".join(self.config.system_prompts + parts)
+        gaps = analysis.get("profile_gaps")
+        return self.prompt_builder.build(
+            persona=persona,
+            user_input=user_input,
+            context=context,
+            profile_gaps=gaps,
+            system_prompts=self.config.system_prompts,
+            max_history=self.config.max_history,
+        )
 
     def respond(self, conversation_id: str, user_input: str, **llm_kwargs: Any) -> str:
         """Generate a model response for *user_input* in *conversation_id*."""
