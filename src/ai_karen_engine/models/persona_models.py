@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ToneEnum(str, Enum):
@@ -84,13 +84,15 @@ class Persona(BaseModel):
     is_active: bool = True
     is_system_persona: bool = False  # Built-in vs user-created
     
-    @validator('system_prompt')
+    @field_validator('system_prompt')
+    @classmethod
     def validate_system_prompt(cls, v):
         if not v.strip():
             raise ValueError('System prompt cannot be empty')
         return v.strip()
     
-    @validator('domain_knowledge')
+    @field_validator('domain_knowledge')
+    @classmethod
     def validate_domain_knowledge(cls, v):
         return [domain.strip().lower() for domain in v if domain.strip()]
 
@@ -141,7 +143,8 @@ class UserPersonaPreferences(BaseModel):
     
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    @validator('custom_personas')
+    @field_validator('custom_personas')
+    @classmethod
     def validate_custom_personas(cls, v):
         # Ensure persona names are unique
         names = [p.name for p in v]

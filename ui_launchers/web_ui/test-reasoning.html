@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Reasoning System</title>
+</head>
+<body>
+    <h1>Test Reasoning System</h1>
+    <div>
+        <input type="text" id="input" placeholder="Enter your question" style="width: 300px;">
+        <button onclick="testReasoning()">Test Reasoning</button>
+    </div>
+    <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+
+    <script>
+        async function testReasoning() {
+            const input = document.getElementById('input').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!input) {
+                resultDiv.innerHTML = 'Please enter a question';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Testing reasoning system...';
+            
+            try {
+                const response = await fetch('/api/karen/api/reasoning/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input: input,
+                        context: {
+                            user_id: 'test',
+                            conversation_id: 'test_' + Date.now()
+                        }
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>Reasoning Response:</h3>
+                    <p><strong>Success:</strong> ${data.success}</p>
+                    <p><strong>Method:</strong> ${data.reasoning_method}</p>
+                    <p><strong>Fallback Used:</strong> ${data.fallback_used}</p>
+                    <p><strong>Content:</strong> ${data.response.content}</p>
+                    ${data.errors ? `<p><strong>Errors:</strong> ${JSON.stringify(data.errors)}</p>` : ''}
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

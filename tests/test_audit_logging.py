@@ -114,7 +114,8 @@ class TestAuditLogger:
                 correlation_id="corr123",
                 session_id="session123",
                 previous_login=datetime.now(timezone.utc) - timedelta(days=1),
-                login_count=5
+                login_count=5,
+                logged_by="test_component"
             )
             
             mock_log.assert_called_once()
@@ -127,6 +128,7 @@ class TestAuditLogger:
             assert event.email == "test@example.com"
             assert event.ip_address == "192.168.1.1"
             assert event.login_count == 5
+            assert event.metadata["logged_by"] == "test_component"
     
     def test_log_login_failure(self, audit_logger):
         """Test failed login audit logging"""
@@ -137,7 +139,8 @@ class TestAuditLogger:
                 failure_reason="invalid_credentials",
                 user_agent="Mozilla/5.0",
                 correlation_id="corr123",
-                attempt_count=3
+                attempt_count=3,
+                logged_by="test_component"
             )
             
             mock_log.assert_called_once()
@@ -149,6 +152,7 @@ class TestAuditLogger:
             assert event.email == "test@example.com"
             assert event.failure_reason == "invalid_credentials"
             assert event.metadata["attempt_count"] == 3
+            assert event.metadata["logged_by"] == "test_component"
     
     def test_log_login_failure_security_event(self, audit_logger):
         """Test that multiple login failures trigger security event"""
@@ -176,7 +180,8 @@ class TestAuditLogger:
                 tenant_id="tenant1",
                 correlation_id="corr123",
                 session_id="session123",
-                session_duration_minutes=45.5
+                session_duration_minutes=45.5,
+                logged_by="test_component"
             )
             
             mock_log.assert_called_once()
@@ -187,6 +192,7 @@ class TestAuditLogger:
             assert event.severity == AuditSeverity.INFO
             assert event.user_id == "user123"
             assert event.metadata["session_duration_minutes"] == 45.5
+            assert event.metadata["logged_by"] == "test_component"
     
     def test_log_token_refresh_success(self, audit_logger):
         """Test successful token refresh audit logging"""
@@ -459,7 +465,8 @@ class TestAuditLogger:
                 tenant_id="tenant1",
                 correlation_id="corr123",
                 cache_hit=False,
-                token_jti="jti123"
+                token_jti="jti123",
+                logged_by="token_manager"
             )
             
             mock_log.assert_called_once()
@@ -473,6 +480,8 @@ class TestAuditLogger:
             assert event.duration_ms == 15.5
             assert event.success is True
             assert event.cache_hit is False
+            assert event.metadata["token_jti"] == "jti123"
+            assert event.metadata["logged_by"] == "token_manager"
             
             # Check performance metrics tracking
             assert "create_access_token" in audit_logger._performance_metrics
@@ -632,6 +641,103 @@ class TestAuditLogger:
         
         assert len(audit_logger._event_counts) == 0
         assert len(audit_logger._performance_metrics) == 0
+    
+    def test_log_login_success_deduplication(self, audit_logger):
+        """Test that duplicate login success events are prevented"""
+        with patch.object(audit_logger, 'log_audit_event') as mock_log:
+            # First login should be logged
+            audit_logger.log_login_success(
+                user_id="user123",
+                email="test@example.com",
+                ip_address="192.168.1.1",
+                logged_by="auth_routes"
+            )
+            
+            # Second identical login should be blocked
+            audit_logger.log_login_success(
+                user_id="user123",
+                email="test@example.com",
+                ip_address="192.168.1.1",
+                logged_by="session_validator"
+            )
+            
+            # Should only be called once (first time)
+            mock_log.assert_called_once()
+    
+    def test_log_session_validation(self, audit_logger):
+        """Test session validation logging"""
+        with patch.object(audit_logger, 'log_audit_event') as mock_log:
+            audit_logger.log_session_validation(
+                user_id="user123",
+                ip_address="192.168.1.1",
+                user_agent="Mozilla/5.0",
+                tenant_id="tenant1",
+                session_id="session123",
+                validation_method="token",
+                logged_by="session_validator"
+            )
+            
+            mock_log.assert_called_once()
+            event = mock_log.call_args[0][0]
+            
+            assert isinstance(event, AuthenticationAuditEvent)
+            assert event.event_type == AuditEventType.SESSION_CREATED
+            assert event.severity == AuditSeverity.INFO
+            assert event.user_id == "user123"
+            assert event.session_id == "session123"
+            assert event.metadata["validation_method"] == "token"
+            assert event.metadata["logged_by"] == "session_validator"
+            assert event.metadata["event_category"] == "session_validation"
+    
+    def test_log_session_validation_deduplication(self, audit_logger):
+        """Test that duplicate session validation events are prevented"""
+        with patch.object(audit_logger, 'log_audit_event') as mock_log:
+            # First session validation should be logged
+            audit_logger.log_session_validation(
+                user_id="user123",
+                ip_address="192.168.1.1",
+                session_id="session123",
+                logged_by="session_validator"
+            )
+            
+            # Second identical session validation should be blocked
+            audit_logger.log_session_validation(
+                user_id="user123",
+                ip_address="192.168.1.1",
+                session_id="session123",
+                logged_by="session_validator"
+            )
+            
+            # Should only be called once (first time)
+            mock_log.assert_called_once()
+    
+    def test_different_event_types_not_deduplicated(self, audit_logger):
+        """Test that different event types are not deduplicated against each other"""
+        with patch.object(audit_logger, 'log_audit_event') as mock_log:
+            # Login success
+            audit_logger.log_login_success(
+                user_id="user123",
+                email="test@example.com",
+                ip_address="192.168.1.1",
+                logged_by="auth_routes"
+            )
+            
+            # Session validation for same user - should not be blocked
+            audit_logger.log_session_validation(
+                user_id="user123",
+                ip_address="192.168.1.1",
+                logged_by="session_validator"
+            )
+            
+            # Logout for same user - should not be blocked
+            audit_logger.log_logout_success(
+                user_id="user123",
+                ip_address="192.168.1.1",
+                logged_by="auth_routes"
+            )
+            
+            # Should be called three times (different event types)
+            assert mock_log.call_count == 3
 
 
 class TestAuditEventModels:

@@ -7,7 +7,7 @@ supporting the enhanced code screen center panel.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 import logging
 import uuid

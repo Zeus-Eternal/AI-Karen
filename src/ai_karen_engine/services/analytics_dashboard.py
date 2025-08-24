@@ -16,7 +16,7 @@ from collections import defaultdict, Counter
 import statistics
 from concurrent.futures import ThreadPoolExecutor
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.services.analytics_service import (
     AnalyticsService,

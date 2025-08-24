@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import ValidationError
+from pydantic import ValidationError, ConfigDict
 
 from ai_karen_engine.models.web_ui_types import (
     ChatProcessRequest,
@@ -1104,7 +1104,7 @@ async def get_usage_analytics_compatibility(http_request: Request):
 
 # Add the analytics route that the frontend expects at /api/analytics/usage
 # This is a workaround since the main analytics router isn't working
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List
 
 class FrontendUsageAnalytics(BaseModel):

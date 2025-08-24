@@ -21,6 +21,11 @@ from ai_karen_engine.services.structured_logging import (
     PIIRedactor
 )
 from ai_karen_engine.core.logging.logger import get_logger
+from ai_karen_engine.services.audit_deduplication import (
+    get_audit_deduplication_service,
+    EventType,
+    EventKey
+)
 
 
 class AuditEventType(str, Enum):
@@ -133,6 +138,7 @@ class AuditLogger:
         self.performance_logger = get_logger("performance")
         self.auth_logger = get_logger("auth_audit")
         self.response_logger = get_logger("response_audit")
+        self.deduplication_service = get_audit_deduplication_service()
         
         # Metrics tracking
         self._event_counts: Dict[str, int] = {}
@@ -193,9 +199,22 @@ class AuditLogger:
         session_id: str = None,
         previous_login: datetime = None,
         login_count: int = None,
+        logged_by: str = "auth_routes",
         **metadata
     ) -> None:
-        """Log successful login event"""
+        """Log successful login event with deduplication"""
+        # Check if this event should be logged (not a duplicate)
+        if not self.deduplication_service.should_log_authentication_event(
+            event_type=EventType.LOGIN_SUCCESS,
+            user_id=user_id,
+            session_id=session_id,
+            ip_address=ip_address,
+            email=email,
+            logged_by=logged_by,
+            ttl_seconds=300  # 5 minutes
+        ):
+            return  # Skip duplicate event
+        
         event = AuthenticationAuditEvent(
             event_type=AuditEventType.LOGIN_SUCCESS,
             severity=AuditSeverity.INFO,
@@ -209,7 +228,7 @@ class AuditLogger:
             email=email,
             previous_login=previous_login,
             login_count=login_count,
-            metadata=metadata
+            metadata={**metadata, "logged_by": logged_by}
         )
         
         self.log_audit_event(event)
@@ -228,9 +247,22 @@ class AuditLogger:
         user_agent: str = None,
         correlation_id: str = None,
         attempt_count: int = None,
+        logged_by: str = "auth_routes",
         **metadata
     ) -> None:
-        """Log failed login attempt"""
+        """Log failed login attempt with deduplication"""
+        # Check if this event should be logged (not a duplicate)
+        if not self.deduplication_service.should_log_authentication_event(
+            event_type=EventType.LOGIN_FAILURE,
+            user_id=None,  # No user_id for failed login
+            session_id=None,
+            ip_address=ip_address,
+            email=email,
+            logged_by=logged_by,
+            ttl_seconds=60  # Shorter TTL for failures to allow legitimate retries
+        ):
+            return  # Skip duplicate event
+        
         event = AuthenticationAuditEvent(
             event_type=AuditEventType.LOGIN_FAILURE,
             severity=AuditSeverity.WARNING,
@@ -240,7 +272,7 @@ class AuditLogger:
             correlation_id=correlation_id,
             email=email,
             failure_reason=failure_reason,
-            metadata={**metadata, "attempt_count": attempt_count}
+            metadata={**metadata, "attempt_count": attempt_count, "logged_by": logged_by}
         )
         
         self.log_audit_event(event)
@@ -267,9 +299,21 @@ class AuditLogger:
         correlation_id: str = None,
         session_id: str = None,
         session_duration_minutes: float = None,
+        logged_by: str = "auth_routes",
         **metadata
     ) -> None:
-        """Log successful logout event"""
+        """Log successful logout event with deduplication"""
+        # Check if this event should be logged (not a duplicate)
+        if not self.deduplication_service.should_log_authentication_event(
+            event_type=EventType.LOGOUT_SUCCESS,
+            user_id=user_id,
+            session_id=session_id,
+            ip_address=ip_address,
+            logged_by=logged_by,
+            ttl_seconds=300  # 5 minutes
+        ):
+            return  # Skip duplicate event
+        
         event = AuthenticationAuditEvent(
             event_type=AuditEventType.LOGOUT_SUCCESS,
             severity=AuditSeverity.INFO,
@@ -280,7 +324,7 @@ class AuditLogger:
             ip_address=ip_address,
             user_agent=user_agent,
             correlation_id=correlation_id,
-            metadata={**metadata, "session_duration_minutes": session_duration_minutes}
+            metadata={**metadata, "session_duration_minutes": session_duration_minutes, "logged_by": logged_by}
         )
         
         self.log_audit_event(event)
@@ -300,9 +344,20 @@ class AuditLogger:
         correlation_id: str = None,
         old_token_jti: str = None,
         new_token_jti: str = None,
+        logged_by: str = "auth_routes",
         **metadata
     ) -> None:
-        """Log successful token refresh"""
+        """Log successful token refresh with deduplication"""
+        # Check if this event should be logged (not a duplicate)
+        if not self.deduplication_service.should_log_authentication_event(
+            event_type=EventType.TOKEN_REFRESH,
+            user_id=user_id,
+            ip_address=ip_address,
+            logged_by=logged_by,
+            ttl_seconds=60  # Short TTL for token refresh events
+        ):
+            return  # Skip duplicate event
+        
         event = AuthenticationAuditEvent(
             event_type=AuditEventType.REFRESH_SUCCESS,
             severity=AuditSeverity.INFO,
@@ -316,7 +371,8 @@ class AuditLogger:
             metadata={
                 **metadata,
                 "old_token_jti_hash": PIIRedactor.hash_sensitive_data(old_token_jti) if old_token_jti else None,
-                "new_token_jti_hash": PIIRedactor.hash_sensitive_data(new_token_jti) if new_token_jti else None
+                "new_token_jti_hash": PIIRedactor.hash_sensitive_data(new_token_jti) if new_token_jti else None,
+                "logged_by": logged_by
             }
         )
         
@@ -589,9 +645,21 @@ class AuditLogger:
         correlation_id: str = None,
         error_message: str = None,
         cache_hit: bool = False,
+        token_jti: str = None,
+        logged_by: str = "token_manager",
         **metadata
     ) -> None:
-        """Log token operation performance"""
+        """Log token operation performance with deduplication"""
+        # Check if this token operation should be logged (not a duplicate)
+        if user_id and not self.deduplication_service.should_log_token_operation(
+            operation_name=operation_name,
+            user_id=user_id,
+            token_jti=token_jti,
+            logged_by=logged_by,
+            ttl_seconds=30  # Short TTL for token operations
+        ):
+            return  # Skip duplicate event
+        
         event = PerformanceAuditEvent(
             event_type=AuditEventType.TOKEN_OPERATION_PERFORMANCE,
             severity=AuditSeverity.INFO if success else AuditSeverity.WARNING,
@@ -605,7 +673,7 @@ class AuditLogger:
             success=success,
             error_message=error_message,
             cache_hit=cache_hit,
-            metadata=metadata
+            metadata={**metadata, "token_jti": token_jti, "logged_by": logged_by}
         )
         
         self.log_audit_event(event)
@@ -674,6 +742,50 @@ class AuditLogger:
             correlation_id=correlation_id
         )
     
+    def log_session_validation(
+        self,
+        user_id: str,
+        ip_address: str,
+        user_agent: str = None,
+        tenant_id: str = None,
+        correlation_id: str = None,
+        session_id: str = None,
+        validation_method: str = "token",
+        logged_by: str = "session_validator",
+        **metadata
+    ) -> None:
+        """Log session validation event (separate from login events)"""
+        # Check if this session validation should be logged (not a duplicate)
+        if not self.deduplication_service.should_log_session_validation(
+            user_id=user_id,
+            session_id=session_id,
+            ip_address=ip_address,
+            logged_by=logged_by,
+            ttl_seconds=60  # Short TTL for session validations
+        ):
+            return  # Skip duplicate event
+        
+        event = AuthenticationAuditEvent(
+            event_type=AuditEventType.SESSION_CREATED,  # Use session event type, not login
+            severity=AuditSeverity.INFO,
+            message=f"Session validated for user {user_id}",
+            user_id=user_id,
+            tenant_id=tenant_id,
+            session_id=session_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            correlation_id=correlation_id,
+            metadata={
+                **metadata, 
+                "validation_method": validation_method,
+                "logged_by": logged_by,
+                "event_category": "session_validation"
+            }
+        )
+        
+        self.log_audit_event(event)
+        # Don't log to auth_logger to avoid confusion with actual logins
+
     # Security Event Logging
     
     def log_suspicious_activity(

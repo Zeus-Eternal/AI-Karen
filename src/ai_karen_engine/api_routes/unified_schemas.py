@@ -21,7 +21,7 @@ except ImportError:
     RequestValidationError = None
     FASTAPI_AVAILABLE = False
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +69,9 @@ class ErrorResponse(BaseModel):
     path: str = Field(..., description="API path where error occurred")
     status_code: int = Field(..., description="HTTP status code")
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    model_config = ConfigDict(
+        json_encoders={datetime: lambda v: v.isoformat()}
+    )
 
 
 # Success response wrapper
@@ -83,8 +84,9 @@ class SuccessResponse(BaseModel):
     correlation_id: str = Field(..., description="Request correlation ID for tracing")
     timestamp: datetime = Field(..., description="Response timestamp")
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    model_config = ConfigDict(
+        json_encoders={datetime: lambda v: v.isoformat()}
+    )
 
 
 # Validation utilities

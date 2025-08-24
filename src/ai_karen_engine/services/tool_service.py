@@ -17,7 +17,7 @@ from enum import Enum
 import uuid
 import inspect
 
-from pydantic import BaseModel, Field, validator, create_model
+from pydantic import BaseModel, ConfigDict, Field, validator, create_model
 
 logger = logging.getLogger(__name__)
 

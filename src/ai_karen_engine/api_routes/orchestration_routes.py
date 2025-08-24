@@ -13,7 +13,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 from ..core.langgraph_orchestrator import (

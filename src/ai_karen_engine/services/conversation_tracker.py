@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from collections import deque
 import json
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, update, and_, or_, desc, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 

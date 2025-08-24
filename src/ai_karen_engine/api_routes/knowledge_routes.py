@@ -7,7 +7,7 @@ supporting the enhanced code screen knowledge panel.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import logging
 
 from ai_karen_engine.services.knowledge.index_hub import IndexHub, Department, Team, KnowledgeQuery

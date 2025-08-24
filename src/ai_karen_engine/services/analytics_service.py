@@ -19,7 +19,7 @@ import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MetricType(str, Enum):
@@ -832,7 +832,7 @@ class AnalyticsService:
             "active_sessions": len(self.user_tracker.user_sessions)
         }
     
-    def shutdown(self):
+    async def shutdown(self):
         """Shutdown the analytics service"""
         self.system_monitor.stop_monitoring()
         self.logger.info("Analytics Service shutdown")

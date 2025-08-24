@@ -5,7 +5,7 @@ This module provides Pydantic models that match the TypeScript interfaces
 used in the web UI, ensuring seamless integration between frontend and backend.
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum

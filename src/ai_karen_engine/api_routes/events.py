@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ai_karen_engine.core.dependencies import (
     get_current_tenant_id,

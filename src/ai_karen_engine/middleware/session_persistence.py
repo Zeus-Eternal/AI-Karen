@@ -64,6 +64,12 @@ class SessionPersistenceMiddleware(BaseHTTPMiddleware):
             "/api/auth/refresh",
             "/api/auth/health",
             "/api/health",
+            "/api/health/degraded-mode",
+            "/api/reasoning/analyze",
+            "/api/analytics",  # All analytics endpoints
+            "/system/status",  # System status endpoint
+            "/copilot",  # All CopilotKit endpoints
+            "/health",
             "/docs",
             "/openapi.json",
             "/redoc",
@@ -173,10 +179,12 @@ class SessionPersistenceMiddleware(BaseHTTPMiddleware):
             return None
         except InvalidTokenError:
             logger.debug("Invalid access token")
-            raise HTTPException(status_code=401, detail="Invalid access token")
+            # Don't raise exception here - let the enhanced validator handle it
+            return None
         except Exception as e:
             logger.error(f"Token validation failed: {e}")
-            raise HTTPException(status_code=401, detail="Token validation failed")
+            # Don't raise exception here - let the enhanced validator handle it
+            return None
     
     async def _attempt_token_refresh(
         self, 
@@ -359,33 +367,37 @@ class SessionPersistenceMiddleware(BaseHTTPMiddleware):
         # Create response object for potential cookie updates
         response = Response()
         
-        # Get Authorization header
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
+        # Use enhanced session validator for better error handling
+        try:
+            from ai_karen_engine.auth.enhanced_session_validator import get_session_validator
+            
+            session_validator = get_session_validator()
+            user_data = await session_validator.validate_request_authentication(
+                request, 
+                allow_session_fallback=True
+            )
+            
+        except HTTPException as e:
+            # Convert HTTPException to intelligent error response
+            error_type_mapping = {
+                "Authentication required": "missing_auth_header",
+                "Access token has expired": "token_expired",
+                "Invalid access token": "invalid_token",
+                "Your session has expired": "session_expired",
+            }
+            
+            error_type = "authentication_error"
+            for key, value in error_type_mapping.items():
+                if key.lower() in e.detail.lower():
+                    error_type = value
+                    break
+            
             return await self._create_intelligent_error_response(
-                error_message="Missing or invalid authorization header",
-                error_type="missing_auth_header",
-                status_code=401,
+                error_message=e.detail,
+                error_type=error_type,
+                status_code=e.status_code,
                 request_meta=request_meta
             )
-        
-        access_token = auth_header.split(" ")[1]
-        
-        # Try to validate access token
-        user_data = await self._validate_access_token(access_token)
-        
-        # If access token is invalid/expired, try to refresh
-        if user_data is None:
-            logger.debug("Access token validation failed, attempting refresh")
-            user_data = await self._attempt_token_refresh(request, response, request_meta)
-            
-            if user_data is None:
-                return await self._create_intelligent_error_response(
-                    error_message="Access token expired and refresh failed",
-                    error_type="session_expired",
-                    status_code=401,
-                    request_meta=request_meta
-                )
         
         # Set user data in request state for downstream handlers
         request.state.user = user_data["user_id"]

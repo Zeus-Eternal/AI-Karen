@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.core.dependencies import (
@@ -739,68 +739,24 @@ async def logout(
         return {"detail": "Logged out successfully"}
 
 
-# Session validation middleware dependency
+# Enhanced session validation using the new validator
 async def get_current_user_from_token(
     request: Request,
     request_meta: Dict[str, str] = Depends(get_request_meta)
 ) -> Dict[str, Any]:
     """
-    Get current user from access token in Authorization header.
+    Get current user using enhanced session validation.
     
-    This dependency validates the access token and returns user data.
-    If the token is expired, it raises an HTTP 401 error that the frontend
-    can catch to trigger a refresh token flow.
+    This dependency uses the enhanced session validator to prevent false
+    "invalid authorization header" errors and provides better error messages.
     """
+    from ai_karen_engine.auth.enhanced_session_validator import get_session_validator
     
-    # Get Authorization header
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    access_token = auth_header.split(" ")[1]
-    
-    try:
-        # Validate access token
-        token_manager = await get_token_manager()
-        payload = await token_manager.validate_access_token(access_token)
-        
-        # Convert payload to user dict format
-        user_dict = {
-            "user_id": payload.get("sub"),
-            "email": payload.get("email"),
-            "full_name": payload.get("full_name"),
-            "roles": payload.get("roles", []),
-            "tenant_id": payload.get("tenant_id", "default"),
-            "preferences": {},  # Not stored in access token
-            "two_factor_enabled": False,
-            "is_verified": payload.get("is_verified", True),
-        }
-        
-        return user_dict
-        
-    except TokenExpiredError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access token expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except Exception as e:
-        logger.error(f"Token validation failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token validation failed",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    session_validator = get_session_validator()
+    return await session_validator.validate_request_authentication(
+        request, 
+        allow_session_fallback=True
+    )
 
 
 @router.get("/me", response_model=UserResponse)
@@ -811,60 +767,40 @@ async def get_current_user_route(
     return UserResponse(**user_data)
 
 
-# Session validation middleware for protected routes
+# Enhanced session validation middleware for protected routes
 async def validate_session_middleware(
     request: Request,
     request_meta: Dict[str, str] = Depends(get_request_meta)
 ) -> Dict[str, Any]:
     """
-    Session validation middleware that checks both access token and session.
+    Enhanced session validation middleware with improved error handling.
     
-    This middleware first tries to validate the access token from the Authorization header.
-    If that fails, it falls back to session validation for backward compatibility.
+    Uses the enhanced session validator to provide better error messages
+    and prevent duplicate validation attempts.
     """
+    from ai_karen_engine.auth.enhanced_session_validator import get_session_validator
     
-    # First try access token validation
-    try:
-        return await get_current_user_from_token(request, request_meta)
-    except HTTPException as token_error:
-        # If access token validation fails, try session validation as fallback
-        try:
-            cookie_manager = get_cookie_manager_instance()
-            session_token = cookie_manager.get_session_token(request)
-            
-            if not session_token:
-                # No session token either, re-raise the original token error
-                raise token_error
-            
-            # Validate session
-            auth_service = await get_auth_service_instance()
-            user_data = await auth_service.validate_session(
-                session_token=session_token,
-                ip_address=request_meta["ip_address"],
-                user_agent=request_meta["user_agent"],
-            )
-            
-            if not user_data:
-                raise token_error
-            
-            # Convert UserData to dict format
-            user_dict = {
-                "user_id": user_data.user_id,
-                "email": user_data.email,
-                "full_name": user_data.full_name,
-                "roles": user_data.roles,
-                "tenant_id": user_data.tenant_id,
-                "preferences": user_data.preferences,
-                "two_factor_enabled": False,
-                "is_verified": user_data.is_verified,
-            }
-            
-            return user_dict
-            
-        except (SessionExpiredError, SessionNotFoundError):
-            raise token_error
-        except Exception:
-            raise token_error
+    session_validator = get_session_validator()
+    return await session_validator.validate_request_authentication(
+        request, 
+        allow_session_fallback=True
+    )
+
+
+# Optional authentication dependency for routes that don't require auth
+async def get_current_user_optional(
+    request: Request,
+    request_meta: Dict[str, str] = Depends(get_request_meta)
+) -> Optional[Dict[str, Any]]:
+    """
+    Get current user optionally (returns None if not authenticated).
+    
+    This dependency is useful for routes that can work with or without authentication.
+    """
+    from ai_karen_engine.auth.enhanced_session_validator import get_session_validator
+    
+    session_validator = get_session_validator()
+    return await session_validator.validate_optional_authentication(request)
 
 
 # CSRF Token endpoint

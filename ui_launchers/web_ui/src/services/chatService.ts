@@ -4,7 +4,8 @@
  */
 
 import { getKarenBackend } from '@/lib/karen-backend';
-import { getApiClient } from '@/lib/api-client';
+import { getEnhancedApiClient } from '@/lib/enhanced-api-client';
+import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
 import type {
   ChatMessage,
   KarenSettings,
@@ -33,7 +34,8 @@ export interface ProcessMessageOptions {
 
 export class ChatService {
   private backend = getKarenBackend();
-  private apiClient = getApiClient();
+  private apiClient = getEnhancedApiClient();
+  private errorHandler = getServiceErrorHandler();
   private cache = new Map<string, ConversationSession>();
 
   async processUserMessage(
@@ -42,57 +44,66 @@ export class ChatService {
     settings: KarenSettings,
     options: ProcessMessageOptions = {}
   ): Promise<HandleUserMessageResult> {
-    try {
-      const response = await this.backend.processUserMessage(
-        message,
-        conversationHistory,
-        settings,
-        options.userId,
-        options.sessionId,
-        {
-          preferredLLMProvider: options.preferredLLMProvider,
-          preferredModel: options.preferredModel,
-        }
-      );
-
-      return response;
-    } catch (error) {
-      console.error('ChatService: Failed to process user message:', error);
-      return {
+    return this.errorHandler.withRetryAndFallback(
+      async () => {
+        const response = await this.backend.processUserMessage(
+          message,
+          conversationHistory,
+          settings,
+          options.userId,
+          options.sessionId,
+          {
+            preferredLLMProvider: options.preferredLLMProvider,
+            preferredModel: options.preferredModel,
+          }
+        );
+        return response;
+      },
+      {
         finalResponse: "I'm experiencing some technical difficulties right now. Please try again in a moment.",
         summaryWasGenerated: false,
-      };
-    }
+      },
+      {
+        service: 'ChatService',
+        method: 'processUserMessage',
+        endpoint: '/api/chat/process',
+        userId: options.userId,
+        sessionId: options.sessionId,
+      }
+    );
   }
 
   async createConversationSession(userId: string): Promise<{ conversationId: string; sessionId: string }> {
-    try {
-      const sessionId = crypto.randomUUID();
+    return this.errorHandler.withRetry(
+      async () => {
+        const sessionId = crypto.randomUUID();
 
-      const response = await this.apiClient.post('/api/conversations/create', {
-        session_id: sessionId,
-        ui_source: 'web',
-        title: 'New Conversation',
-        user_settings: {},
-        ui_context: {
-          user_id: userId,
-          created_from: 'web_ui',
-          browser: navigator.userAgent
-        },
-        tags: [],
-        priority: 'normal'
-      });
+        const response = await this.apiClient.post('/api/conversations/create', {
+          session_id: sessionId,
+          ui_source: 'web',
+          title: 'New Conversation',
+          user_settings: {},
+          ui_context: {
+            user_id: userId,
+            created_from: 'web_ui',
+            browser: navigator.userAgent
+          },
+          tags: [],
+          priority: 'normal'
+        });
 
-      return {
-        conversationId: response.data.conversation.id,
-        sessionId: response.data.conversation.session_id || sessionId
-      };
-    } catch (error) {
-      console.error('ChatService.createConversationSession failed', error);
-      throw new Error(
-        'Cannot reach Kari API. Check that the backend is running on http://127.0.0.1:8000 and that NEXT_PUBLIC_API_BASE_URL is set.'
-      );
-    }
+        return {
+          conversationId: response.data.conversation.id,
+          sessionId: response.data.conversation.session_id || sessionId
+        };
+      },
+      {
+        service: 'ChatService',
+        method: 'createConversationSession',
+        endpoint: '/api/conversations/create',
+        userId,
+      }
+    );
   }
 
   async addMessageToConversation(conversationId: string, message: ChatMessage): Promise<void> {

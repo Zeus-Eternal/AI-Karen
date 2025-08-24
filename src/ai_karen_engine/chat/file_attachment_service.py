@@ -28,7 +28,7 @@ from ai_karen_engine.database.models import File as FileModel
 from ai_karen_engine.services.webhook_service import dispatch_webhook
 
 try:
-    from pydantic import BaseModel, Field
+    from pydantic import BaseModel, ConfigDict, Field
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
 

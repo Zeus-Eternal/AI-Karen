@@ -1791,4 +1791,4 @@ What would you like to work on today?`,
   );
 };
 
-export { ChatInterface };
+// ChatInterface is already exported above as default export

@@ -39,7 +39,8 @@ export function DegradedModeBanner({
 
   const fetchStatus = async () => {
     try {
-      const response = await fetch('/api/health/degraded-mode')
+      // Use the Next.js proxy route instead of direct backend URL
+      const response = await fetch('/api/karen/api/health/degraded-mode')
       if (response.ok) {
         const data = await response.json()
         setStatus(data)
@@ -52,7 +53,8 @@ export function DegradedModeBanner({
   const handleRetry = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch('/api/health/degraded-mode/recover', {
+      // Use the Next.js proxy route instead of direct backend URL
+      const response = await fetch('/api/karen/api/health/degraded-mode/recover', {
         method: 'POST'
       })
       

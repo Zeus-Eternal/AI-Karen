@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Request, HTTPException, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +133,6 @@ def get_chat_orchestrator():
 async def copilot_assist(
     request: dict, 
     http_request: Request,
-    user_context: dict = Depends(get_current_user_context),
     chat_orchestrator = Depends(get_chat_orchestrator)
 ):
     """Production-ready copilot assist endpoint with real AI integration."""
@@ -175,8 +174,8 @@ async def copilot_assist(
     try:
         from ai_karen_engine.chat.chat_orchestrator import ChatRequest
         
-        # Use the user_id from user_context if available, otherwise from request
-        actual_user_id = user_context.get("user_id", user_id)
+        # Use the user_id from request (no user_context dependency)
+        actual_user_id = user_id
         
         # Create proper ChatRequest using the same pattern as chat_runtime.py
         chat_request = ChatRequest(

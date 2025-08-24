@@ -3,7 +3,7 @@ export { CopilotKitProvider, useCopilotKit } from './CopilotKitProvider';
 export { CopilotTextarea } from './CopilotTextarea';
 
 // Copilot-specific chat interface
-export { default as CopilotChat } from '../ChatInterface';
+export { ChatInterface as CopilotChat } from '../ChatInterface';
 
 // Types
 export type { CopilotKitConfig, CopilotContextType } from './CopilotKitProvider';

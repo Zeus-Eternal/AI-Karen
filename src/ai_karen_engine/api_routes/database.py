@@ -21,7 +21,7 @@ from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydan
 APIRouter, Body, Depends, HTTPException, Path, Query = import_fastapi(
     "APIRouter", "Body", "Depends", "HTTPException", "Path", "Query"
 )
-BaseModel, Field, validator = import_pydantic("BaseModel", "Field", "validator")
+BaseModel, Field, field_validator = import_pydantic("BaseModel", "Field", "field_validator")
 
 logger = logging.getLogger(__name__)
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
@@ -41,7 +41,8 @@ class TenantCreateRequest(BaseModel):
     subscription_tier: str = Field("basic", description="Subscription tier")
     settings: Optional[Dict[str, Any]] = Field(None, description="Additional settings")
 
-    @validator("slug")
+    @field_validator("slug")
+    @classmethod
     def validate_slug(cls, v):
         if not v.replace("-", "").replace("_", "").isalnum():
             raise ValueError(
@@ -114,7 +115,8 @@ class MessageAddRequest(BaseModel):
     content: str = Field(..., min_length=1, description="Message content")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Message metadata")
 
-    @validator("role")
+    @field_validator("role")
+    @classmethod
     def validate_role(cls, v):
         valid = ["user", "assistant", "system", "function"]
         if v not in valid:

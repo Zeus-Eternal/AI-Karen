@@ -14,7 +14,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.models.web_api_error_responses import WebAPIErrorCode
 from ai_karen_engine.services.llm_router import ProviderHealth
@@ -169,6 +169,31 @@ class ErrorResponseService:
                 self.logger.warning(f"Failed to initialize AI orchestrator: {e}")
                 self._ai_orchestrator = None
         return self._ai_orchestrator
+    
+    def is_ai_available(self) -> bool:
+        """Check if AI analysis is available for error response generation"""
+        try:
+            # Check if LLM router is available
+            llm_router = self._get_llm_router()
+            if not llm_router:
+                return False
+            
+            # Check if LLM utils is available
+            llm_utils = self._get_llm_utils()
+            if not llm_utils:
+                return False
+            
+            # Check if any providers are healthy
+            health_monitor = get_health_monitor()
+            healthy_providers = health_monitor.get_healthy_providers()
+            if not healthy_providers:
+                return False
+            
+            return True
+            
+        except Exception as e:
+            self.logger.warning(f"Error checking AI availability: {e}")
+            return False
     
     def _get_llm_router(self):
         """Lazily initialize LLM router to avoid circular imports."""
@@ -529,8 +554,8 @@ class ErrorResponseService:
                 self._cache_response_if_cacheable(response, error_message, error_type, provider_name)
                 return response
         
-        # For unclassified errors, try AI analysis first if available
-        if use_ai_analysis:
+        # For unclassified errors, try AI analysis first if available and requested
+        if use_ai_analysis and self.is_ai_available():
             ai_response = self._generate_ai_error_response(context)
             if ai_response:
                 # Audit log AI-generated response
@@ -549,25 +574,218 @@ class ErrorResponseService:
                 self._cache_response_if_cacheable(ai_response, error_message, error_type, provider_name)
                 return ai_response
         
-        # Fallback for unclassified errors
-        logger.warning(f"Unclassified error: {error_message}")
+        # Fallback for unclassified errors using local classification
+        logger.info(f"Using rule-based fallback for error: {error_message}")
         fallback_response = self._create_fallback_response(context)
-        # Don't cache fallback responses as they're generic
+        
+        # Audit log fallback response
+        self._audit_logger.log_error_response_generated(
+            error_category=fallback_response.category.value,
+            error_severity=fallback_response.severity.value,
+            provider_name=provider_name,
+            ai_analysis_used=False,
+            response_cached=False,  # Don't cache generic fallback responses
+            user_id=additional_context.get("user_id") if additional_context else None,
+            tenant_id=additional_context.get("tenant_id") if additional_context else None,
+            correlation_id=additional_context.get("correlation_id") if additional_context else None
+        )
+        
+        # Cache fallback responses only if they're category-specific (not UNKNOWN)
+        if fallback_response.category != ErrorCategory.UNKNOWN:
+            self._cache_response_if_cacheable(fallback_response, error_message, error_type, provider_name)
+        
         return fallback_response
     
-    def _create_fallback_response(self, context: ErrorContext) -> IntelligentErrorResponse:
-        """Create a fallback response for unclassified errors"""
-        response_data = {
+    def get_fallback_response(self, category: ErrorCategory) -> Dict[str, Any]:
+        """Get a rule-based fallback response for a specific error category"""
+        fallback_responses = {
+            ErrorCategory.AUTHENTICATION: {
+                "title": "Authentication Required",
+                "summary": "You need to log in to access this feature.",
+                "next_steps": [
+                    "Click the login button to sign in",
+                    "Check your credentials if login fails",
+                    "Contact admin if you continue having issues"
+                ],
+                "severity": ErrorSeverity.MEDIUM,
+                "contact_admin": False
+            },
+            ErrorCategory.AUTHORIZATION: {
+                "title": "Access Denied",
+                "summary": "You don't have permission to perform this action.",
+                "next_steps": [
+                    "Contact your administrator for access",
+                    "Verify you're using the correct account",
+                    "Check if your permissions have changed"
+                ],
+                "severity": ErrorSeverity.MEDIUM,
+                "contact_admin": True
+            },
+            ErrorCategory.API_KEY_MISSING: {
+                "title": "API Configuration Missing",
+                "summary": "Required API keys are not configured.",
+                "next_steps": [
+                    "Add the required API keys to your .env file",
+                    "Restart the application after adding keys",
+                    "Contact admin for configuration assistance"
+                ],
+                "severity": ErrorSeverity.HIGH,
+                "contact_admin": True
+            },
+            ErrorCategory.API_KEY_INVALID: {
+                "title": "Invalid API Configuration",
+                "summary": "The configured API keys appear to be invalid.",
+                "next_steps": [
+                    "Verify your API keys are correct",
+                    "Check if your API keys have expired",
+                    "Generate new API keys if needed"
+                ],
+                "severity": ErrorSeverity.HIGH,
+                "contact_admin": False
+            },
+            ErrorCategory.RATE_LIMIT: {
+                "title": "Rate Limit Exceeded",
+                "summary": "You've made too many requests. Please wait before trying again.",
+                "next_steps": [
+                    "Wait a few minutes before retrying",
+                    "Reduce the frequency of your requests",
+                    "Contact admin if limits seem too restrictive"
+                ],
+                "severity": ErrorSeverity.MEDIUM,
+                "contact_admin": False,
+                "retry_after": 300
+            },
+            ErrorCategory.PROVIDER_DOWN: {
+                "title": "Service Temporarily Unavailable",
+                "summary": "The requested service is currently unavailable.",
+                "next_steps": [
+                    "Try again in a few minutes",
+                    "Check service status pages for updates",
+                    "Use alternative features if available"
+                ],
+                "severity": ErrorSeverity.HIGH,
+                "contact_admin": False,
+                "retry_after": 180
+            },
+            ErrorCategory.NETWORK_ERROR: {
+                "title": "Connection Problem",
+                "summary": "There was a problem connecting to the service.",
+                "next_steps": [
+                    "Check your internet connection",
+                    "Try refreshing the page",
+                    "Contact admin if problems persist"
+                ],
+                "severity": ErrorSeverity.MEDIUM,
+                "contact_admin": False,
+                "retry_after": 60
+            },
+            ErrorCategory.VALIDATION_ERROR: {
+                "title": "Invalid Input",
+                "summary": "The information provided is not valid.",
+                "next_steps": [
+                    "Check that all required fields are filled",
+                    "Verify the format of your input",
+                    "Try again with corrected information"
+                ],
+                "severity": ErrorSeverity.LOW,
+                "contact_admin": False
+            },
+            ErrorCategory.DATABASE_ERROR: {
+                "title": "Database Error",
+                "summary": "There was a problem with the database.",
+                "next_steps": [
+                    "Contact admin immediately",
+                    "Try again later",
+                    "Check if the system is under maintenance"
+                ],
+                "severity": ErrorSeverity.CRITICAL,
+                "contact_admin": True
+            },
+            ErrorCategory.SYSTEM_ERROR: {
+                "title": "System Error",
+                "summary": "An internal system error occurred.",
+                "next_steps": [
+                    "Try refreshing the page",
+                    "Contact admin if the problem persists",
+                    "Check system status for known issues"
+                ],
+                "severity": ErrorSeverity.HIGH,
+                "contact_admin": True
+            }
+        }
+        
+        return fallback_responses.get(category, {
             "title": "Unexpected Error",
-            "summary": "An unexpected error occurred while processing your request.",
-            "category": ErrorCategory.UNKNOWN,
-            "severity": ErrorSeverity.MEDIUM,
+            "summary": "An unexpected error occurred.",
             "next_steps": [
                 "Try refreshing the page",
-                "Check your internet connection",
                 "Contact admin if the problem persists"
             ],
-            "contact_admin": True,
+            "severity": ErrorSeverity.MEDIUM,
+            "contact_admin": True
+        })
+    
+    def classify_error_locally(self, error_message: str, error_type: Optional[str] = None) -> ErrorCategory:
+        """Classify error using local rules without external dependencies"""
+        # Use existing classification rules to determine category
+        for rule in self.classification_rules:
+            if rule.matches(error_message, error_type):
+                return rule.category
+        
+        # Additional heuristic classification for common patterns
+        error_text = f"{error_message} {error_type or ''}".lower()
+        
+        # Authentication patterns
+        if any(pattern in error_text for pattern in ['auth', 'login', 'token', 'session', 'unauthorized', '401']):
+            return ErrorCategory.AUTHENTICATION
+        
+        # API key patterns
+        if any(pattern in error_text for pattern in ['api key', 'api_key', 'openai_api_key', 'anthropic_api_key']):
+            if 'missing' in error_text or 'not found' in error_text or 'not set' in error_text:
+                return ErrorCategory.API_KEY_MISSING
+            elif 'invalid' in error_text or 'incorrect' in error_text:
+                return ErrorCategory.API_KEY_INVALID
+        
+        # Rate limiting patterns
+        if any(pattern in error_text for pattern in ['rate limit', 'too many requests', 'quota', '429']):
+            return ErrorCategory.RATE_LIMIT
+        
+        # Provider/service patterns
+        if any(pattern in error_text for pattern in ['service unavailable', 'provider', 'connection refused', '503']):
+            return ErrorCategory.PROVIDER_DOWN
+        
+        # Network patterns
+        if any(pattern in error_text for pattern in ['timeout', 'network', 'connection', '504']):
+            return ErrorCategory.NETWORK_ERROR
+        
+        # Database patterns
+        if any(pattern in error_text for pattern in ['database', 'db', 'sql', 'relation', 'table']):
+            return ErrorCategory.DATABASE_ERROR
+        
+        # Validation patterns
+        if any(pattern in error_text for pattern in ['validation', 'invalid', 'required', 'missing field', '400']):
+            return ErrorCategory.VALIDATION_ERROR
+        
+        # Default to unknown
+        return ErrorCategory.UNKNOWN
+    
+    def _create_fallback_response(self, context: ErrorContext) -> IntelligentErrorResponse:
+        """Create a fallback response for unclassified errors using local classification"""
+        # Try to classify the error locally first
+        category = self.classify_error_locally(context.error_message, context.error_type)
+        
+        # Get fallback response for the category
+        fallback_data = self.get_fallback_response(category)
+        
+        response_data = {
+            "title": fallback_data["title"],
+            "summary": fallback_data["summary"],
+            "category": category,
+            "severity": fallback_data["severity"],
+            "next_steps": fallback_data["next_steps"],
+            "contact_admin": fallback_data.get("contact_admin", False),
+            "retry_after": fallback_data.get("retry_after"),
+            "help_url": fallback_data.get("help_url"),
             "technical_details": f"Error: {context.error_message}"
         }
         
@@ -583,6 +801,15 @@ class ErrorResponseService:
                     "error_message": provider_health.error_message,
                     "last_check": provider_health.last_check.isoformat() if provider_health.last_check else None
                 }
+                
+                # Add alternative provider suggestions if current provider is unhealthy
+                if provider_health.status in [HealthStatus.DEGRADED, HealthStatus.UNHEALTHY]:
+                    health_monitor = get_health_monitor()
+                    alternatives = health_monitor.get_alternative_providers(context.provider_name)
+                    if alternatives:
+                        response_data["next_steps"].append(
+                            f"Try using {alternatives[0]} as an alternative provider"
+                        )
         
         return IntelligentErrorResponse(**response_data)
     
@@ -598,7 +825,7 @@ class ErrorResponseService:
         error_type: Optional[str] = None,
         provider_name: Optional[str] = None
     ) -> None:
-        """Cache response if it's a cacheable error type"""
+        """Cache response if it's a cacheable error type to prevent repeated failures"""
         # Cache responses for stable error categories
         cacheable_categories = [
             ErrorCategory.API_KEY_MISSING,
@@ -606,7 +833,9 @@ class ErrorResponseService:
             ErrorCategory.AUTHENTICATION,
             ErrorCategory.AUTHORIZATION,
             ErrorCategory.VALIDATION_ERROR,
-            ErrorCategory.RATE_LIMIT
+            ErrorCategory.RATE_LIMIT,
+            ErrorCategory.DATABASE_ERROR,  # Cache database errors to prevent repeated analysis
+            ErrorCategory.SYSTEM_ERROR     # Cache system errors to prevent repeated analysis
         ]
         
         if response.category in cacheable_categories:
@@ -623,10 +852,13 @@ class ErrorResponseService:
                 "technical_details": response.technical_details
             }
             
+            # Set cache TTL based on error category
+            cache_ttl = self._get_cache_ttl_for_category(response.category)
+            
             self._response_cache.cache_response(
-                error_message, response_dict, error_type, provider_name
+                error_message, response_dict, error_type, provider_name, custom_ttl=cache_ttl
             )
-            logger.debug(f"Cached response for error category: {response.category}")
+            logger.debug(f"Cached response for error category: {response.category} (TTL: {cache_ttl}s)")
             
             # Audit log response caching
             self._audit_logger.log_response_cache_event(
@@ -634,9 +866,32 @@ class ErrorResponseService:
                 error_category=response.category.value
             )
     
+    def _get_cache_ttl_for_category(self, category: ErrorCategory) -> int:
+        """Get appropriate cache TTL based on error category"""
+        # Different categories have different cache durations
+        cache_ttls = {
+            ErrorCategory.API_KEY_MISSING: 3600,      # 1 hour - stable until config changes
+            ErrorCategory.API_KEY_INVALID: 1800,      # 30 minutes - may be fixed quickly
+            ErrorCategory.AUTHENTICATION: 300,        # 5 minutes - session issues change frequently
+            ErrorCategory.AUTHORIZATION: 1800,        # 30 minutes - permissions change less frequently
+            ErrorCategory.VALIDATION_ERROR: 600,      # 10 minutes - input validation is stable
+            ErrorCategory.RATE_LIMIT: 900,           # 15 minutes - rate limits reset periodically
+            ErrorCategory.DATABASE_ERROR: 180,       # 3 minutes - database issues may be transient
+            ErrorCategory.SYSTEM_ERROR: 300,         # 5 minutes - system errors may be transient
+            ErrorCategory.PROVIDER_DOWN: 120,        # 2 minutes - provider status changes quickly
+            ErrorCategory.NETWORK_ERROR: 60          # 1 minute - network issues are often transient
+        }
+        
+        return cache_ttls.get(category, self._cache_ttl)  # Default to 5 minutes
+    
     def _generate_ai_error_response(self, context: ErrorContext) -> Optional[IntelligentErrorResponse]:
-        """Generate an AI-powered error response for unclassified errors"""
+        """Generate an AI-powered error response for unclassified errors with fallback handling"""
         try:
+            # Check if AI is available before attempting analysis
+            if not self.is_ai_available():
+                self.logger.info("AI analysis not available, using rule-based fallback")
+                return None
+            
             llm_router = self._get_llm_router()
             llm_utils = self._get_llm_utils()
             
@@ -661,15 +916,21 @@ class ErrorResponseService:
                 correlation_id=context.additional_data.get("correlation_id") if context.additional_data else None
             )
             
-            # Use LLM router to get analysis
+            # Use LLM router to get analysis with timeout and error handling
             start_time = time.time()
-            ai_response = llm_router.invoke(
-                llm_utils,
-                analysis_prompt,
-                task_intent="analysis",
-                preferred_provider="openai",  # Use reliable provider for error analysis
-                preferred_model="gpt-3.5-turbo"
-            )
+            try:
+                ai_response = llm_router.invoke(
+                    llm_utils,
+                    analysis_prompt,
+                    task_intent="analysis",
+                    preferred_provider="openai",  # Use reliable provider for error analysis
+                    preferred_model="gpt-3.5-turbo",
+                    timeout=30  # 30 second timeout for AI analysis
+                )
+            except Exception as llm_error:
+                self.logger.warning(f"LLM invocation failed: {llm_error}")
+                return None
+                
             generation_time_ms = (time.time() - start_time) * 1000
             
             if ai_response and ai_response.strip():
@@ -1058,7 +1319,7 @@ Respond with only the JSON object, no additional text."""
                 return False
             
             # Ensure next steps are actionable (contain action words)
-            action_words = ["add", "check", "verify", "try", "contact", "update", "restart", "wait", "use", "configure"]
+            action_words = ["add", "check", "verify", "try", "contact", "update", "restart", "wait", "use", "configure", "click"]
             actionable_steps = 0
             for step in response.next_steps:
                 if any(word in step.lower() for word in action_words):
@@ -1085,6 +1346,33 @@ Respond with only the JSON object, no additional text."""
             self.logger.error(f"Error validating response quality: {e}")
             return False
     
+    def handle_ai_analysis_failure(self, context: ErrorContext, error: Exception) -> IntelligentErrorResponse:
+        """Handle AI analysis failure by falling back to rule-based response"""
+        self.logger.warning(f"AI analysis failed: {error}, falling back to rule-based response")
+        
+        # Audit log AI analysis failure
+        self._audit_logger.log_ai_analysis_failed(
+            error_message=context.error_message,
+            provider_name=context.provider_name,
+            failure_reason=str(error),
+            user_id=context.additional_data.get("user_id") if context.additional_data else None,
+            tenant_id=context.additional_data.get("tenant_id") if context.additional_data else None,
+            correlation_id=context.additional_data.get("correlation_id") if context.additional_data else None
+        )
+        
+        # Use local classification and fallback response
+        return self._create_fallback_response(context)
+    
+    def get_provider_fallback_suggestions(self, failed_provider: str) -> List[str]:
+        """Get suggestions for alternative providers when one fails"""
+        try:
+            health_monitor = get_health_monitor()
+            alternatives = health_monitor.get_alternative_providers(failed_provider)
+            return alternatives[:3]  # Return top 3 alternatives
+        except Exception as e:
+            self.logger.warning(f"Failed to get provider alternatives: {e}")
+            return []
+    
     def get_ai_analysis_metrics(self) -> Dict[str, Any]:
         """Get metrics about AI analysis usage and quality"""
         # This would be implemented with actual metrics collection
@@ -1092,7 +1380,9 @@ Respond with only the JSON object, no additional text."""
             "ai_analysis_enabled": self._get_llm_router() is not None,
             "ai_orchestrator_available": self._get_ai_orchestrator() is not None,
             "llm_utils_available": self._get_llm_utils() is not None,
-            "total_classification_rules": len(self.classification_rules)
+            "ai_available": self.is_ai_available(),
+            "total_classification_rules": len(self.classification_rules),
+            "fallback_categories_supported": len(ErrorCategory)
         }
 
 

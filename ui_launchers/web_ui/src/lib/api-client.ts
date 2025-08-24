@@ -117,11 +117,22 @@ export class ApiClient {
           ...request.headers,
         };
 
-        // Add Authorization header with JWT token if available
-        if (typeof window !== 'undefined') {
-          const accessToken = localStorage.getItem('karen_access_token');
-          if (accessToken) {
-            headers['Authorization'] = `Bearer ${accessToken}`;
+        // Add Authorization header with JWT token from session management
+        // Skip auth for refresh endpoint to avoid circular dependency
+        const isRefreshEndpoint = request.endpoint === '/api/auth/refresh';
+        
+        if (typeof window !== 'undefined' && !isRefreshEndpoint) {
+          try {
+            // Import session management dynamically to avoid circular dependency
+            const { getAuthHeader } = await import('./auth/session');
+            const authHeaders = getAuthHeader();
+            Object.assign(headers, authHeaders);
+          } catch (error) {
+            // Fallback to localStorage for backward compatibility
+            const accessToken = localStorage.getItem('karen_access_token');
+            if (accessToken) {
+              headers['Authorization'] = `Bearer ${accessToken}`;
+            }
           }
         }
 

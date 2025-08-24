@@ -3,7 +3,7 @@ Enhanced data models for production-ready conversation management.
 Supports advanced features like branching, templates, folders, and search.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 from enum import Enum

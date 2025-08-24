@@ -20,10 +20,14 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return
     setUsername(user.user_id)
-    getMemoryService()
-      .getMemoryStats(user.user_id)
-      .then(stats => setMemoryCount(stats.totalMemories))
-      .catch(() => setMemoryCount(null))
+    
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      getMemoryService()
+        .getMemoryStats(user.user_id)
+        .then(stats => setMemoryCount(stats.totalMemories))
+        .catch(() => setMemoryCount(null))
+    }
   }, [user])
 
   if (!user) {
@@ -40,7 +44,11 @@ export default function ProfilePage() {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    await authService.uploadAvatar(file)
+    
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      await authService.uploadAvatar(file)
+    }
   }
 
   return (

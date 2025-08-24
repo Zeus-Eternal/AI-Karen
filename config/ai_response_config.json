@@ -1,0 +1,41 @@
+{
+  "production_responses": {
+    "enabled": true,
+    "response_quality": "professional",
+    "context_awareness": true,
+    "technical_depth": "detailed",
+    "fallback_behavior": "intelligent"
+  },
+  "response_templates": {
+    "code_assistance": {
+      "prefix": "Based on your code analysis, here's a comprehensive solution:",
+      "include_explanation": true,
+      "include_best_practices": true,
+      "include_error_handling": true
+    },
+    "debugging": {
+      "prefix": "I've identified the issue and here's how to resolve it:",
+      "include_root_cause": true,
+      "include_prevention": true,
+      "include_testing_steps": true
+    },
+    "general_help": {
+      "prefix": "Here's a detailed solution for your request:",
+      "include_context": true,
+      "include_alternatives": true,
+      "include_next_steps": true
+    }
+  },
+  "quality_controls": {
+    "min_response_length": 50,
+    "max_response_length": 2000,
+    "require_actionable_content": true,
+    "avoid_generic_responses": true,
+    "include_relevant_examples": true
+  },
+  "fallback_settings": {
+    "use_local_models": true,
+    "degraded_mode_message": "I'm currently running in degraded mode but can still provide helpful assistance using local AI models.",
+    "connection_error_message": "I'm experiencing connectivity issues but can still help using offline capabilities."
+  }
+}

@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import KariDevStudio from "@/src/components/developer/KariDevStudio";
+import KariDevStudio from "@/components/developer/KariDevStudio";
 
 export const metadata: Metadata = {
   title: "Kari Dev Studio",

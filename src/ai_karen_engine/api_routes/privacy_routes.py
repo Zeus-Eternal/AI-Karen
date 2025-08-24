@@ -21,7 +21,7 @@ except ImportError:
     JSONResponse = None
     FASTAPI_AVAILABLE = False
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ai_karen_engine.services.privacy_compliance import (
     PrivacyComplianceService,

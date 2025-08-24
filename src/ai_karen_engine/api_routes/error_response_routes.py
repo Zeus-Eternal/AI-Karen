@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -62,8 +62,8 @@ class ErrorAnalysisRequest(BaseModel):
     user_context: Optional[Dict[str, Any]] = Field(None, description="Optional user context data")
     use_ai_analysis: bool = Field(True, description="Whether to use AI-powered analysis")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "error_message": "OpenAI API key not found",
                 "error_type": "AuthenticationError",
@@ -73,6 +73,7 @@ class ErrorAnalysisRequest(BaseModel):
                 "use_ai_analysis": True
             }
         }
+    )
 
 
 class ErrorAnalysisResponse(BaseModel):
@@ -90,8 +91,8 @@ class ErrorAnalysisResponse(BaseModel):
     cached: bool = Field(False, description="Whether response was served from cache")
     response_time_ms: float = Field(..., description="Response generation time in milliseconds")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "title": "OpenAI API Key Missing",
                 "summary": "The OpenAI API key is not configured in your environment.",
@@ -117,6 +118,7 @@ class ErrorAnalysisResponse(BaseModel):
                 "response_time_ms": 150.5
             }
         }
+    )
 
 
 class ProviderHealthResponse(BaseModel):

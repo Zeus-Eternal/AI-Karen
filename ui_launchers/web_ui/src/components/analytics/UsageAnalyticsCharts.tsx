@@ -26,14 +26,21 @@ export default function UsageAnalyticsCharts() {
   const [peakHours, setPeakHours] = useState<{ hour: number; count: number }[]>([]);
 
   useEffect(() => {
-    getKarenAnalyticsData("30d").then((data) => {
-      setFeatures(data.popular_features);
-      const hours = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
-      data.peak_hours.forEach((h) => {
-        if (hours[h]) hours[h].count = 1;
+    getKarenAnalyticsData("30d")
+      .then((data) => {
+        setFeatures(data.popular_features);
+        const hours = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
+        data.peak_hours.forEach((h) => {
+          if (hours[h]) hours[h].count = 1;
+        });
+        setPeakHours(hours);
+      })
+      .catch((error) => {
+        console.warn('Analytics data not available (user may not be logged in):', error);
+        // Set default empty data
+        setFeatures([]);
+        setPeakHours(Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 })));
       });
-      setPeakHours(hours);
-    });
   }, []);
 
   return (

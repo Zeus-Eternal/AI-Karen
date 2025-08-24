@@ -1,8 +1,10 @@
 import { LoginCredentials, LoginResponse, User } from '@/types/auth';
-import { getApiClient } from '@/lib/api-client';
+import { getEnhancedApiClient } from '@/lib/enhanced-api-client';
+import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
 
 export class AuthService {
-  private apiClient = getApiClient();
+  private apiClient = getEnhancedApiClient();
+  private errorHandler = getServiceErrorHandler();
 
   constructor() {
     // API client handles all endpoint configuration automatically
@@ -13,33 +15,14 @@ export class AuthService {
       const response = await this.apiClient.post('/api/auth/login', credentials);
       return response.data;
     } catch (error: any) {
-      // Handle different types of errors appropriately
-      if (error.isNetworkError) {
-        throw new Error('Network error. Please check your connection and try again.');
-      } else if (error.isTimeoutError) {
-        throw new Error('Request timeout. Please try again.');
-      } else if (error.status === 401) {
-        // Invalid credentials
-        throw new Error('Invalid email or password');
-      } else if (error.status === 403) {
-        // Account issues (not verified, locked, etc.)
-        throw new Error('Account access denied. Please check your email for verification or contact support.');
-      } else if (error.status === 429) {
-        // Rate limiting
-        throw new Error('Too many login attempts. Please wait a moment and try again.');
-      } else if (error.status >= 500) {
-        // Server errors
-        throw new Error('Server error. Please try again later or contact support.');
-      } else {
-        // Try to extract specific error message from response
-        let message = 'Login failed';
-        if (error.originalError && typeof error.originalError === 'object') {
-          message = error.originalError.detail || error.message || message;
-        } else if (error.message) {
-          message = error.message;
-        }
-        throw new Error(message);
-      }
+      const serviceError = this.errorHandler.handleError(error, {
+        service: 'AuthService',
+        method: 'login',
+        endpoint: '/api/auth/login',
+      });
+      
+      // Throw user-friendly error message
+      throw new Error(serviceError.userMessage);
     }
   }
 

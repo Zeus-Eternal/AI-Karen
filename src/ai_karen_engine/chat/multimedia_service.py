@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Union, Tuple
 import json
 
 try:
-    from pydantic import BaseModel, Field
+    from pydantic import BaseModel, ConfigDict, Field
 except ImportError:
     from ai_karen_engine.pydantic_stub import BaseModel, Field
 
