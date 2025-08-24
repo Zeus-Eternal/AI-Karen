@@ -47,9 +47,9 @@ def test_orchestrator_flow() -> None:
     )
 
     result = orchestrator.respond("c1", "hello")
-    assert result == "response"
+    assert result == "## Response\n\nresponse"
     assert analyzer.last_input == "hello"
     assert memory.fetch_called_with == "c1"
-    assert memory.store_calls == [("c1", "hello", "response")]
+    assert memory.store_calls == [("c1", "hello", "## Response\n\nresponse")]
     assert llm.last_prompt is not None and "hello" in llm.last_prompt
     assert llm.last_prompt is not None and "hi" in llm.last_prompt
