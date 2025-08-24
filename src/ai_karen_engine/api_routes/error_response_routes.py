@@ -466,12 +466,22 @@ async def get_cache_stats(
         )
 
 
+"""
+Custom exception handler for rate limiting errors.
+
+The original implementation attempted to register the handler using
+``@router.exception_handler`` which is not supported by ``APIRouter`` in
+FastAPI.  This caused an ``AttributeError`` during module import.  We instead
+define the handler normally and register it with
+``router.add_exception_handler`` after its definition.
+"""
+
+
 # Rate limit error handler
-@router.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    """Handle rate limit exceeded errors with intelligent response"""
+    """Handle rate limit exceeded errors with intelligent response."""
     service = get_error_response_service()
-    
+
     # Generate intelligent response for rate limiting
     intelligent_response = service.analyze_error(
         error_message="Rate limit exceeded for error analysis API",
@@ -480,11 +490,11 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         additional_context={
             "endpoint": str(request.url),
             "client_ip": get_remote_address(request),
-            "retry_after": 60
+            "retry_after": 60,
         },
-        use_ai_analysis=False  # Don't use AI for rate limit errors to avoid recursion
+        use_ai_analysis=False,  # Don't use AI for rate limit errors to avoid recursion
     )
-    
+
     return JSONResponse(
         status_code=429,
         content={
@@ -493,11 +503,22 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
                 "title": intelligent_response.title,
                 "summary": intelligent_response.summary,
                 "next_steps": intelligent_response.next_steps,
-                "retry_after": 60
+                "retry_after": 60,
             },
-            "detail": f"Rate limit exceeded: {exc.detail}"
+            "detail": f"Rate limit exceeded: {exc.detail}",
         },
-        headers={"Retry-After": "60"}
+        headers={"Retry-After": "60"},
     )
+
+
+# Register the custom rate limit handler with the router.
+#
+# Older versions of FastAPI's ``APIRouter`` exposed an ``add_exception_handler``
+# method while newer versions provide an ``exception_handler`` decorator.  We
+# support both to maintain compatibility across environments.
+if hasattr(router, "add_exception_handler"):
+    router.add_exception_handler(RateLimitExceeded, rate_limit_handler)  # type: ignore[attr-defined]
+elif hasattr(router, "exception_handler"):
+    router.exception_handler(RateLimitExceeded)(rate_limit_handler)  # type: ignore[attr-defined]
 
 
