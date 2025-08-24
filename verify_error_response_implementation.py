@@ -138,8 +138,8 @@ def main():
             "async def get_cache_stats("
         ],
         "Rate Limiting Error Handler": [
-            "@router.exception_handler(RateLimitExceeded)",
-            "async def rate_limit_handler("
+            "async def rate_limit_handler(",
+            "router.add_exception_handler(RateLimitExceeded, rate_limit_handler)"
         ]
     }
     
