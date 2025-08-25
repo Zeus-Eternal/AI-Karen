@@ -578,18 +578,53 @@ def create_app() -> FastAPI:
             except Exception:
                 degraded_components.append("redis")
             
-            # Check AI providers
+            # Check AI providers - but consider local models as available
             failed_providers = []
             try:
                 from ai_karen_engine.services.provider_registry import get_provider_registry_service
                 provider_service = get_provider_registry_service()
                 system_status = provider_service.get_system_status()
-                if system_status["available_providers"] == 0:
+                
+                # Check if we have local models available
+                from pathlib import Path
+                models_dir = Path("models")
+                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                
+                # Check spaCy availability
+                spacy_available = False
+                try:
+                    import spacy
+                    nlp = spacy.load("en_core_web_sm")
+                    spacy_available = True
+                except:
+                    pass
+                
+                # Only consider degraded if NO providers AND NO local models
+                if system_status["available_providers"] == 0 and not (tinyllama_available or spacy_available):
                     degraded_components.append("ai_providers")
                     failed_providers = system_status.get("failed_providers", [])
+                elif system_status["available_providers"] == 0:
+                    # We have local models, so just note the failed remote providers
+                    failed_providers = system_status.get("failed_providers", [])
+                    
             except Exception:
-                degraded_components.append("ai_providers")
-                failed_providers = ["unknown"]
+                # Check if local models are available as fallback
+                try:
+                    from pathlib import Path
+                    models_dir = Path("models")
+                    tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                    
+                    import spacy
+                    nlp = spacy.load("en_core_web_sm")
+                    spacy_available = True
+                    
+                    # Only degraded if no local models
+                    if not (tinyllama_available or spacy_available):
+                        degraded_components.append("ai_providers")
+                        failed_providers = ["unknown"]
+                except:
+                    degraded_components.append("ai_providers")
+                    failed_providers = ["unknown"]
             
             is_degraded = len(degraded_components) > 0
             
@@ -605,14 +640,37 @@ def create_app() -> FastAPI:
                 else:
                     reason = "resource_exhaustion"
             
-            # Core helpers availability
-            core_helpers_available = {
-                "local_nlp": True,  # spaCy is available
-                "fallback_responses": True,  # Always available
-                "basic_analytics": True,  # Basic analytics work
-                "file_operations": True,  # File ops work
-                "database_fallback": "database" not in degraded_components
-            }
+            # Core helpers availability - check actual availability
+            try:
+                from pathlib import Path
+                models_dir = Path("models")
+                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                
+                spacy_available = False
+                try:
+                    import spacy
+                    nlp = spacy.load("en_core_web_sm")
+                    spacy_available = True
+                except:
+                    pass
+                
+                core_helpers_available = {
+                    "local_nlp": spacy_available,  # spaCy NLP processing
+                    "local_llm": tinyllama_available,  # TinyLlama for text generation
+                    "fallback_responses": True,  # Always available
+                    "basic_analytics": True,  # Basic analytics work
+                    "file_operations": True,  # File ops work
+                    "database_fallback": "database" not in degraded_components
+                }
+            except Exception:
+                core_helpers_available = {
+                    "local_nlp": False,
+                    "local_llm": False,
+                    "fallback_responses": True,
+                    "basic_analytics": True,
+                    "file_operations": True,
+                    "database_fallback": False
+                }
             
             return {
                 "is_active": is_degraded,

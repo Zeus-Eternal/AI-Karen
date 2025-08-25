@@ -827,7 +827,7 @@ class ChatOrchestrator:
                     embeddings=embeddings,
                     context=integrated_context.to_dict() if integrated_context else {},
                     processing_time=time.time() - start_time,
-                    used_fallback=used_fallback,
+                    used_fallback=True,  # Always true when using fallback response
                     correlation_id=context.correlation_id
                 )
                 
@@ -985,7 +985,7 @@ class ChatOrchestrator:
             logger.warning(f"System default LLMs failed: {e}")
         
         # Step 3: Use hardcoded fallback response
-        logger.info("Using hardcoded fallback response")
+        logger.info("All LLM providers failed, using hardcoded fallback response")
         return await self._generate_enhanced_fallback_response(
             message, parsed_message, integrated_context, active_instructions
         )
@@ -1081,6 +1081,7 @@ class ChatOrchestrator:
             default_providers = [
                 "ollama:llama3.2:1b",  # Use available model instead of :latest
                 "ollama:llama3.2:latest",  # Keep as fallback
+                "local:tinyllama-1.1b",  # Local TinyLlama fallback
                 "openai:gpt-3.5-turbo", 
                 "copilotkit:copilot-assist",
                 "huggingface:distilbert-base-uncased"
@@ -1119,6 +1120,65 @@ class ChatOrchestrator:
             
         except Exception as e:
             logger.error(f"All system default LLMs failed: {e}")
+            
+        # Try local model fallback as final attempt
+        logger.info("Attempting local model fallback with TinyLlama")
+        return await self._try_local_model_fallback(enhanced_prompt, message, parsed_message, integrated_context, active_instructions)
+    
+    async def _try_local_model_fallback(
+        self,
+        enhanced_prompt: str,
+        message: str,
+        parsed_message: ParsedMessage,
+        integrated_context: Optional[Any],
+        active_instructions: List[Any]
+    ) -> Optional[str]:
+        """Try to use local models as final fallback when all remote providers fail."""
+        try:
+            from pathlib import Path
+            from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
+            
+            # Check if TinyLlama model is available
+            models_dir = Path("models")
+            tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+            
+            if not tinyllama_path.exists():
+                logger.warning("TinyLlama model not found at expected path")
+                return None
+            
+            if not LlamaCppRuntime.is_available():
+                logger.warning("llama-cpp-python not available for local model fallback")
+                return None
+            
+            logger.info(f"Using local TinyLlama model: {tinyllama_path}")
+            
+            # Initialize LlamaCppRuntime with TinyLlama
+            runtime = LlamaCppRuntime(
+                model_path=str(tinyllama_path),
+                n_ctx=2048,
+                n_batch=512,
+                n_gpu_layers=0,  # CPU only for fallback
+                verbose=False
+            )
+            
+            # Generate response using local model
+            response = runtime.generate(
+                prompt=enhanced_prompt,
+                max_tokens=256,
+                temperature=0.7,
+                top_p=0.9,
+                stream=False
+            )
+            
+            if response and response.strip():
+                logger.info("Successfully generated response using local TinyLlama model")
+                return response.strip()
+            else:
+                logger.warning("Local model generated empty response")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Local model fallback failed: {e}")
             return None
     
     async def _build_enhanced_prompt(

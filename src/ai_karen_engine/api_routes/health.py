@@ -121,6 +121,156 @@ async def overall_health(request: Request) -> Dict[str, Any]:
     }
 
 
+@router.get("/degraded-mode")
+async def degraded_mode_status() -> Dict[str, Any]:
+    """Check if system is running in degraded mode"""
+    try:
+        # Check various system components for degraded mode
+        degraded_components = []
+        
+        # Check database
+        try:
+            from ai_karen_engine.services.database_connection_manager import get_database_manager
+            db_manager = get_database_manager()
+            if db_manager.is_degraded():
+                degraded_components.append("database")
+        except Exception:
+            degraded_components.append("database")
+        
+        # Check Redis
+        try:
+            from ai_karen_engine.services.redis_connection_manager import get_redis_manager
+            redis_manager = get_redis_manager()
+            if redis_manager.is_degraded():
+                degraded_components.append("redis")
+        except Exception:
+            degraded_components.append("redis")
+        
+        # Check AI providers - but consider local models as available
+        failed_providers = []
+        try:
+            from ai_karen_engine.services.provider_registry import get_provider_registry_service
+            provider_service = get_provider_registry_service()
+            system_status = provider_service.get_system_status()
+            
+            # Check if we have local models available
+            from pathlib import Path
+            models_dir = Path("models")
+            tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+            
+            # Check spaCy availability
+            spacy_available = False
+            try:
+                import spacy
+                nlp = spacy.load("en_core_web_sm")
+                spacy_available = True
+            except:
+                pass
+            
+            # Only consider degraded if NO providers AND NO local models
+            if system_status["available_providers"] == 0 and not (tinyllama_available or spacy_available):
+                degraded_components.append("ai_providers")
+                failed_providers = system_status.get("failed_providers", [])
+            elif system_status["available_providers"] == 0:
+                # We have local models, so just note the failed remote providers
+                failed_providers = system_status.get("failed_providers", [])
+                
+        except Exception:
+            # Check if local models are available as fallback
+            try:
+                from pathlib import Path
+                models_dir = Path("models")
+                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                
+                import spacy
+                nlp = spacy.load("en_core_web_sm")
+                spacy_available = True
+                
+                # Only degraded if no local models
+                if not (tinyllama_available or spacy_available):
+                    degraded_components.append("ai_providers")
+                    failed_providers = ["unknown"]
+            except:
+                degraded_components.append("ai_providers")
+                failed_providers = ["unknown"]
+        
+        is_degraded = len(degraded_components) > 0
+        
+        # Determine degraded mode reason
+        reason = None
+        if is_degraded:
+            if "ai_providers" in degraded_components and "database" in degraded_components:
+                reason = "all_providers_failed"
+            elif "database" in degraded_components:
+                reason = "network_issues"
+            elif "ai_providers" in degraded_components:
+                reason = "all_providers_failed"
+            else:
+                reason = "resource_exhaustion"
+        
+        # Core helpers availability - check actual availability
+        try:
+            from pathlib import Path
+            models_dir = Path("models")
+            tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+            
+            spacy_available = False
+            try:
+                import spacy
+                nlp = spacy.load("en_core_web_sm")
+                spacy_available = True
+            except:
+                pass
+            
+            core_helpers_available = {
+                "local_nlp": spacy_available,  # spaCy NLP processing
+                "local_llm": tinyllama_available,  # TinyLlama for text generation
+                "fallback_responses": True,  # Always available
+                "basic_analytics": True,  # Basic analytics work
+                "file_operations": True,  # File ops work
+                "database_fallback": "database" not in degraded_components
+            }
+        except Exception:
+            core_helpers_available = {
+                "local_nlp": False,
+                "local_llm": False,
+                "fallback_responses": True,
+                "basic_analytics": True,
+                "file_operations": True,
+                "database_fallback": False
+            }
+        
+        from datetime import datetime, timezone
+        return {
+            "is_active": is_degraded,
+            "reason": reason,
+            "activated_at": datetime.now(timezone.utc).isoformat() if is_degraded else None,
+            "failed_providers": failed_providers,
+            "recovery_attempts": 0,  # Could track this in a persistent store
+            "last_recovery_attempt": None,  # Could track this too
+            "core_helpers_available": core_helpers_available
+        }
+        
+    except Exception as e:
+        from datetime import datetime, timezone
+        return {
+            "is_active": True,
+            "reason": "resource_exhaustion",
+            "activated_at": datetime.now(timezone.utc).isoformat(),
+            "failed_providers": ["unknown"],
+            "recovery_attempts": 0,
+            "last_recovery_attempt": None,
+            "core_helpers_available": {
+                "local_nlp": False,
+                "local_llm": False,
+                "fallback_responses": True,
+                "basic_analytics": True,
+                "file_operations": True,
+                "database_fallback": False
+            }
+        }
+
+
 @router.get("/{service_name}")
 async def service_health(service_name: str, request: Request) -> Dict[str, Any]:
     """Return health status for a specific service."""

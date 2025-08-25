@@ -447,6 +447,71 @@ class LLMOrchestrator:
                             info.record_latency(latency)
                 except Exception as e:  # pragma: no cover - warmup is best effort
                     logger.warning(f"Provider preload failed for {provider_name}:{m.name}: {e}")
+        
+        # Register local models as fallback
+        self._register_local_models()
+
+    def _register_local_models(self) -> None:
+        """Register local models as fallback options."""
+        try:
+            from pathlib import Path
+            from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
+            
+            # Check if llama-cpp-python is available
+            if not LlamaCppRuntime.is_available():
+                logger.debug("llama-cpp-python not available, skipping local model registration")
+                return
+            
+            # Check for TinyLlama model
+            models_dir = Path("models")
+            tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+            
+            if tinyllama_path.exists():
+                logger.info(f"Registering local TinyLlama model: {tinyllama_path}")
+                
+                # Create a wrapper class for the local model
+                class LocalTinyLlamaProvider:
+                    def __init__(self):
+                        self.runtime = None
+                        self.model_path = str(tinyllama_path)
+                    
+                    def generate_text(self, prompt: str, **kwargs) -> str:
+                        if not self.runtime:
+                            self.runtime = LlamaCppRuntime(
+                                model_path=self.model_path,
+                                n_ctx=2048,
+                                n_batch=512,
+                                n_gpu_layers=0,
+                                verbose=False
+                            )
+                        
+                        response = self.runtime.generate(
+                            prompt=prompt,
+                            max_tokens=kwargs.get("max_tokens", 256),
+                            temperature=kwargs.get("temperature", 0.7),
+                            top_p=kwargs.get("top_p", 0.9),
+                            stream=False
+                        )
+                        return response if isinstance(response, str) else str(response)
+                    
+                    def generate_response(self, prompt: str, **kwargs) -> str:
+                        return self.generate_text(prompt, **kwargs)
+                    
+                    def enhanced_generate_response(self, prompt: str, **kwargs) -> str:
+                        return self.generate_text(prompt, **kwargs)
+                
+                # Register the local model
+                local_provider = LocalTinyLlamaProvider()
+                model_id = "local:tinyllama-1.1b"
+                capabilities = ["generic", "conversation", "text"]
+                
+                self.registry.register(model_id, local_provider, capabilities, weight=10, tags=["local", "fallback"])
+                logger.info(f"Successfully registered local model: {model_id}")
+            else:
+                logger.debug(f"TinyLlama model not found at: {tinyllama_path}")
+                
+        except Exception as e:
+            logger.warning(f"Failed to register local models: {e}")
 
     def _warm_model(self, model_id: str, provider: Any) -> Optional[float]:
         """Warm a model and return latency in seconds if successful."""
