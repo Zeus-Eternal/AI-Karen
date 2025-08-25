@@ -11,6 +11,7 @@ audit trail and to enable basic data-retention policies.
 """
 
 import json
+import logging
 import math
 import time
 import hashlib
@@ -21,38 +22,36 @@ from pathlib import Path
 from typing import Any, Dict, List, DefaultDict
 from collections import defaultdict
 
+try:  # pragma: no cover - optional dependency
+    from ai_karen_engine.services.correlation_service import get_request_id
+except Exception:  # pragma: no cover - fallback when service unavailable
+    import uuid
+
+    def get_request_id() -> str:
+        return str(uuid.uuid4())
 from .protocols import Memory
 
-# ---------------------------------------------------------------------------
-# Optional Prometheus metrics and correlation tracking
-# ---------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
-_CORRELATION_ID: ContextVar[str] = ContextVar("correlation_id", default="unknown")
 
 try:  # pragma: no cover - optional dependency
     from prometheus_client import Counter
 
     _FETCH_COUNTER = Counter(
-        "chat_memory_fetch_total",
-        "Total number of memory fetch operations",
+        "chat_memory_fetch_total", "Total chat memory fetches", ["status"]
     )
     _STORE_COUNTER = Counter(
-        "chat_memory_store_total",
-        "Total number of memory store operations",
+        "chat_memory_store_total", "Total chat memory stores", ["status"]
     )
-except Exception:  # pragma: no cover - prometheus optional
+except Exception:  # pragma: no cover - metrics optional
+    class _DummyMetric:
+        def labels(self, **_kwargs):  # type: ignore[override]
+            return self
 
-    class _DummyCounter:
         def inc(self, *_args, **_kwargs):  # type: ignore[override]
             pass
 
-    _FETCH_COUNTER = _DummyCounter()
-    _STORE_COUNTER = _DummyCounter()
-
-
-def set_correlation_id(correlation_id: str) -> None:
-    """Set the correlation ID for subsequent operations."""
-    _CORRELATION_ID.set(correlation_id)
+    _FETCH_COUNTER = _DummyMetric()
+    _STORE_COUNTER = _DummyMetric()
 
 
 @dataclass
@@ -84,61 +83,75 @@ class ChatMemory(Memory):
     # ------------------------------------------------------------------
     # Public protocol methods
     # ------------------------------------------------------------------
-    def fetch_context(self, conversation_id: str) -> List[str]:
+    def fetch_context(self, conversation_id: str, correlation_id: str | None = None) -> List[str]:
         """Return relevant context strings for *conversation_id*."""
-        logger.debug(
-            "fetch_context called",
-            extra={
-                "correlation_id": _CORRELATION_ID.get(),
-                "conversation_id": conversation_id,
-            },
-        )
-        _FETCH_COUNTER.inc()
-        if conversation_id in self._cache:
-            return self._cache[conversation_id]
+        correlation_id = correlation_id or get_request_id()
+        try:
+            if conversation_id in self._cache:
+                _FETCH_COUNTER.labels(status="cache").inc()
+                return self._cache[conversation_id]
 
-        self._purge_expired(conversation_id)
-        records = self._store.get(conversation_id, [])
-        if not records:
-            self._cache[conversation_id] = []
+            self._purge_expired(conversation_id)
+            records = self._store.get(conversation_id, [])
+            if not records:
+                self._cache[conversation_id] = []
+                _FETCH_COUNTER.labels(status="miss").inc()
+                return []
+
+            now = time.time()
+            scored: List[tuple[float, MemoryRecord]] = []
+            for rec in records:
+                recency = 1 / (1 + (now - rec.timestamp))
+                score = recency + math.log1p(rec.access_count)
+                scored.append((score, rec))
+
+            scored.sort(key=lambda x: x[0], reverse=True)
+            top_records = [f"{r.user_input}\n{r.response}" for _, r in scored[:5]]
+            for _, rec in scored[:5]:
+                rec.access_count += 1
+            self._cache[conversation_id] = top_records
+            self._save_metadata()
+            _FETCH_COUNTER.labels(status="hit").inc()
+            logger.info("Memory fetch", extra={"correlation_id": correlation_id})
+            return top_records
+        except Exception as exc:
+            _FETCH_COUNTER.labels(status="error").inc()
+            logger.exception("Memory fetch failed", extra={"correlation_id": correlation_id})
             return []
 
-        now = time.time()
-        scored: List[tuple[float, MemoryRecord]] = []
-        for rec in records:
-            recency = 1 / (1 + (now - rec.timestamp))
-            score = recency + math.log1p(rec.access_count)
-            scored.append((score, rec))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        top_records = [f"{r.user_input}\n{r.response}" for _, r in scored[:5]]
-        for _, rec in scored[:5]:
-            rec.access_count += 1
-        self._cache[conversation_id] = top_records
-        self._save_metadata()
-        return top_records
-
-    def store(self, conversation_id: str, user_input: str, response: str) -> None:
+    def store(
+        self,
+        conversation_id: str,
+        user_input: str,
+        response: str,
+        correlation_id: str | None = None,
+    ) -> None:
         """Persist the exchange for future retrieval."""
-        logger.debug(
-            "store called",
-            extra={
-                "correlation_id": _CORRELATION_ID.get(),
-                "conversation_id": conversation_id,
-            },
-        )
-        _STORE_COUNTER.inc()
-        embedding = self._embed(user_input)
-        record = MemoryRecord(
-            user_input=user_input,
-            response=response,
-            embedding=embedding,
-            timestamp=time.time(),
-            metadata={"length": len(user_input)},
-        )
-        self._store[conversation_id].append(record)
-        self._cache.pop(conversation_id, None)
-        self._save_metadata()
+        correlation_id = correlation_id or get_request_id()
+        try:
+            embedding = self._embed(user_input)
+            record = MemoryRecord(
+                user_input=user_input,
+                response=response,
+                embedding=embedding,
+                timestamp=time.time(),
+                metadata={"length": len(user_input)},
+            )
+            self._store[conversation_id].append(record)
+            self._cache.pop(conversation_id, None)
+            self._save_metadata()
+            _STORE_COUNTER.labels(status="ok").inc()
+            logger.info("Memory store", extra={"correlation_id": correlation_id})
+        except Exception:
+            _STORE_COUNTER.labels(status="error").inc()
+            logger.exception("Memory store failed", extra={"correlation_id": correlation_id})
+
+    def diagnostics(self) -> Dict[str, int]:
+        """Return basic diagnostic information."""
+        return {
+            "conversations": len(self._store),
+            "cache_entries": len(self._cache),
+        }
 
     # ------------------------------------------------------------------
     # Observability helpers

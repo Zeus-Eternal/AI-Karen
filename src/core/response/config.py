@@ -18,3 +18,5 @@ class PipelineConfig:
     template_dir: Path = field(
         default_factory=lambda: Path(__file__).parent / "templates"
     )
+    # Default message returned when the system is in a degraded state
+    safe_default: str = "I'm having trouble responding right now. Please try again later."

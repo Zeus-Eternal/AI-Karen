@@ -1,6 +1,8 @@
 """Core response pipeline components."""
 
 from .config import PipelineConfig
+from .circuit_breaker import CircuitBreaker
+from .chat_memory import ChatMemory
 from .formatter import DRYFormatter
 from .orchestrator import ResponseOrchestrator
 from .prompt_builder import PromptBuilder
@@ -13,8 +15,10 @@ __all__ = [
     "LLMClient",
     "Memory",
     "PipelineConfig",
+    "ChatMemory",
     "PromptBuilder",
     "DRYFormatter",
+    "CircuitBreaker",
     "SpaCyAnalyzer",
     "UnifiedLLMClient",
     "ResponseOrchestrator",

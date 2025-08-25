@@ -15,10 +15,18 @@ class Analyzer(Protocol):
 class Memory(Protocol):
     """Stores and retrieves conversational context."""
 
-    def fetch_context(self, conversation_id: str) -> List[str]:
+    def fetch_context(
+        self, conversation_id: str, correlation_id: str | None = None
+    ) -> List[str]:
         """Return a list of relevant context strings."""
 
-    def store(self, conversation_id: str, user_input: str, response: str) -> None:
+    def store(
+        self,
+        conversation_id: str,
+        user_input: str,
+        response: str,
+        correlation_id: str | None = None,
+    ) -> None:
         """Persist the exchange for future retrieval."""
 
 
