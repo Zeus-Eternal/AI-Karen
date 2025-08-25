@@ -105,7 +105,8 @@ export class TokenValidationService {
           }
         }
 
-        throw new TokenValidationError('Invalid token');
+        // For invalid tokens, treat as unauthenticated without throwing an error
+        return { valid: false };
       } catch (err: any) {
         if (err instanceof TokenValidationError) {
           throw err;
