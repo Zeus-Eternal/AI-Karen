@@ -535,24 +535,47 @@ class LLMOrchestrator:
             info.warmed = True
 
     def route(self, prompt: str, skill: Optional[str] = None, **kwargs) -> str:
-        """Route request to appropriate model"""
-        model_id, model = self._select_model(skill)
-        if not model:
-            raise RuntimeError("No suitable model available")
-
-        try:
-            start = time.time()
-            future = self.pool.execute(
-                model_id, model.model.generate_text, prompt, **kwargs
-            )
-            result = future.result(timeout=DEFAULT_CONFIG["request_timeout"])
-            self.pool._record_outcome(model_id, True)
-            self._track_latency(model_id, time.time() - start)
-            return result
-        except Exception as e:
-            self.pool._record_outcome(model_id, False)
-            logger.error(f"Request failed: {str(e)}")
-            raise
+        """Route request to appropriate model with automatic fallback"""
+        # Try multiple models in order of preference
+        attempted_models = []
+        
+        while True:
+            model_id, model = self._select_model(skill)
+            if not model or model_id in attempted_models:
+                break
+                
+            attempted_models.append(model_id)
+            
+            try:
+                # Check if model is properly loaded
+                if hasattr(model.model, 'is_loaded') and not model.model.is_loaded():
+                    logger.warning(f"Model {model_id} not loaded, attempting to load...")
+                    if hasattr(model.model, 'load_model'):
+                        model.model.load_model()
+                    elif hasattr(model.model, 'runtime') and model.model.runtime is None:
+                        # For models that need runtime initialization
+                        logger.info(f"Initializing runtime for {model_id}")
+                        continue  # Skip this model and try next
+                
+                start = time.time()
+                future = self.pool.execute(
+                    model_id, model.model.generate_text, prompt, **kwargs
+                )
+                result = future.result(timeout=DEFAULT_CONFIG["request_timeout"])
+                self.pool._record_outcome(model_id, True)
+                self._track_latency(model_id, time.time() - start)
+                return result
+                
+            except Exception as e:
+                self.pool._record_outcome(model_id, False)
+                logger.warning(f"Model {model_id} failed: {str(e)}, trying next model...")
+                
+                # Mark this model as temporarily unavailable
+                model.status = ModelStatus.CIRCUIT_BROKEN
+                continue
+        
+        # All models failed
+        raise RuntimeError(f"All available models failed. Attempted: {attempted_models}")
 
     def route_with_copilotkit(
         self, prompt: str, context: Optional[Dict[str, Any]] = None, **kwargs
@@ -718,30 +741,53 @@ class LLMOrchestrator:
     async def enhanced_route(
         self, prompt: str, skill: Optional[str] = None, **kwargs
     ) -> str:
-        """Enhanced routing with CopilotKit code assistance integration"""
-        model_id, model = self._select_model(skill)
-        if not model:
-            raise RuntimeError("No suitable model available")
+        """Enhanced routing with CopilotKit code assistance integration and automatic fallback"""
+        # Try multiple models in order of preference
+        attempted_models = []
+        
+        while True:
+            model_id, model = self._select_model(skill)
+            if not model or model_id in attempted_models:
+                break
+                
+            attempted_models.append(model_id)
+            
+            try:
+                # Check if model is properly loaded
+                if hasattr(model.model, 'is_loaded') and not model.model.is_loaded():
+                    logger.warning(f"Model {model_id} not loaded, attempting to load...")
+                    if hasattr(model.model, 'load_model'):
+                        model.model.load_model()
+                    elif hasattr(model.model, 'runtime') and model.model.runtime is None:
+                        # For models that need runtime initialization
+                        logger.info(f"Initializing runtime for {model_id}")
+                        continue  # Skip this model and try next
+                
+                # Use enhanced response generation if available
+                if hasattr(model.model, "enhanced_generate_response"):
+                    future = self.pool.execute(
+                        model_id, model.model.enhanced_generate_response, prompt, **kwargs
+                    )
+                else:
+                    # Fallback to regular generation
+                    future = self.pool.execute(
+                        model_id, model.model.generate_response, prompt, **kwargs
+                    )
 
-        try:
-            # Use enhanced response generation if available
-            if hasattr(model.model, "enhanced_generate_response"):
-                future = self.pool.execute(
-                    model_id, model.model.enhanced_generate_response, prompt, **kwargs
-                )
-            else:
-                # Fallback to regular generation
-                future = self.pool.execute(
-                    model_id, model.model.generate_response, prompt, **kwargs
-                )
-
-            result = future.result(timeout=DEFAULT_CONFIG["request_timeout"])
-            self.pool._record_outcome(model_id, True)
-            return result
-        except Exception as e:
-            self.pool._record_outcome(model_id, False)
-            logger.error(f"Enhanced request failed: {str(e)}")
-            raise
+                result = future.result(timeout=DEFAULT_CONFIG["request_timeout"])
+                self.pool._record_outcome(model_id, True)
+                return result
+                
+            except Exception as e:
+                self.pool._record_outcome(model_id, False)
+                logger.warning(f"Enhanced model {model_id} failed: {str(e)}, trying next model...")
+                
+                # Mark this model as temporarily unavailable
+                model.status = ModelStatus.CIRCUIT_BROKEN
+                continue
+        
+        # All models failed
+        raise RuntimeError(f"All available models failed. Attempted: {attempted_models}")
 
     def _select_model(
         self, skill: Optional[str]
@@ -794,6 +840,22 @@ class LLMOrchestrator:
             "memory_ok": self.hardware.check_memory(),
             "timestamp": time.time(),
         }
+    
+    def reset_circuit_breakers(self) -> None:
+        """Reset circuit breakers for all models to allow retry"""
+        with self.registry._lock:
+            for model_id, model in self.registry._models.items():
+                if model.status == ModelStatus.CIRCUIT_BROKEN:
+                    model.status = ModelStatus.ACTIVE
+                    logger.info(f"Reset circuit breaker for model: {model_id}")
+    
+    def get_model_status(self) -> Dict[str, str]:
+        """Get status of all registered models"""
+        with self.registry._lock:
+            return {
+                model_id: model.status.value 
+                for model_id, model in self.registry._models.items()
+            }
 
 
 # === Singleton Access ===

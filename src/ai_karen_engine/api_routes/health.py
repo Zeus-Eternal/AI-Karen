@@ -18,6 +18,9 @@ from ai_karen_engine.services.correlation_service import get_request_id
 from ai_karen_engine.services.structured_logging import (
     get_structured_logging_service,
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 APIRouter, Request = import_fastapi("APIRouter", "Request")
 
@@ -121,6 +124,74 @@ async def overall_health(request: Request) -> Dict[str, Any]:
     }
 
 
+async def _check_local_model_capabilities() -> Dict[str, int]:
+    """Check which local model systems are actually working."""
+    capabilities = {
+        "llamacpp_models": 0,
+        "transformers_models": 0,
+        "spacy_available": 0
+    }
+    
+    # Check llama-cpp models
+    try:
+        from pathlib import Path
+        from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
+        
+        if LlamaCppRuntime.is_available():
+            models_dir = Path("models/llama-cpp")
+            if models_dir.exists():
+                gguf_files = list(models_dir.glob("*.gguf"))
+                for gguf_file in gguf_files:
+                    try:
+                        # Quick test load with minimal resources
+                        runtime = LlamaCppRuntime(
+                            model_path=str(gguf_file),
+                            n_ctx=128,
+                            n_batch=32,
+                            verbose=False
+                        )
+                        if runtime.is_loaded():
+                            capabilities["llamacpp_models"] += 1
+                            runtime.unload_model()
+                            break  # Found at least one working model
+                    except Exception:
+                        continue
+    except Exception:
+        pass
+    
+    # Check transformers models
+    try:
+        from pathlib import Path
+        import transformers
+        from transformers import AutoTokenizer, AutoModelForCausalLM
+        
+        models_dir = Path("models/transformers")
+        if models_dir.exists():
+            model_dirs = [d for d in models_dir.iterdir() if d.is_dir()]
+            for model_dir in model_dirs:
+                try:
+                    # Quick test load
+                    tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+                    if tokenizer:
+                        capabilities["transformers_models"] += 1
+                        break  # Found at least one working model
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    
+    # Check spaCy
+    try:
+        import spacy
+        nlp = spacy.load("en_core_web_sm")
+        if nlp:
+            capabilities["spacy_available"] = 1
+    except Exception:
+        pass
+    
+    return capabilities
+
+
 @router.get("/degraded-mode")
 async def degraded_mode_status() -> Dict[str, Any]:
     """Check if system is running in degraded mode"""
@@ -146,14 +217,25 @@ async def degraded_mode_status() -> Dict[str, Any]:
         except Exception:
             degraded_components.append("redis")
         
-        # Check AI providers - but consider local models as available
+        # Check AI providers - consider both remote providers and local models
         failed_providers = []
         try:
             from ai_karen_engine.services.provider_registry import get_provider_registry_service
             provider_service = get_provider_registry_service()
             system_status = provider_service.get_system_status()
             
-            # Check if we have local models available
+            # Check LLM Orchestrator for available models (including local ones)
+            llm_models_available = 0
+            try:
+                from ai_karen_engine.llm_orchestrator import get_orchestrator
+                orchestrator = get_orchestrator()
+                available_models = orchestrator.registry.list_models()
+                # Count models that are actually available (not circuit broken)
+                llm_models_available = len([m for m in available_models if m.get('status') != 'CIRCUIT_BROKEN'])
+            except Exception as e:
+                logger.debug(f"Could not check LLM orchestrator models: {e}")
+            
+            # Check if we have local models available as files
             from pathlib import Path
             models_dir = Path("models")
             tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
@@ -167,16 +249,31 @@ async def degraded_mode_status() -> Dict[str, Any]:
             except:
                 pass
             
-            # Only consider degraded if NO providers AND NO local models
-            if system_status["available_providers"] == 0 and not (tinyllama_available or spacy_available):
+            # Check comprehensive local model capabilities
+            local_capabilities = await _check_local_model_capabilities()
+            
+            # Consider system healthy if we have ANY working AI capability:
+            # - Remote providers with API keys
+            # - Local models registered in LLM orchestrator  
+            # - Working local model files (llama-cpp, transformers)
+            # - spaCy for intelligent NLP responses
+            total_ai_capabilities = (
+                system_status["available_providers"] +  # Remote providers
+                llm_models_available +                  # LLM orchestrator models
+                local_capabilities["llamacpp_models"] + # Working GGUF models
+                local_capabilities["transformers_models"] + # Working transformers models
+                (1 if spacy_available else 0)           # spaCy NLP
+            )
+            
+            if total_ai_capabilities == 0:
                 degraded_components.append("ai_providers")
                 failed_providers = system_status.get("failed_providers", [])
-            elif system_status["available_providers"] == 0:
-                # We have local models, so just note the failed remote providers
+            else:
+                # We have some AI capability, just note failed remote providers for info
                 failed_providers = system_status.get("failed_providers", [])
                 
         except Exception:
-            # Check if local models are available as fallback
+            # Fallback check for local models only
             try:
                 from pathlib import Path
                 models_dir = Path("models")
@@ -186,7 +283,7 @@ async def degraded_mode_status() -> Dict[str, Any]:
                 nlp = spacy.load("en_core_web_sm")
                 spacy_available = True
                 
-                # Only degraded if no local models
+                # Only degraded if no local capabilities at all
                 if not (tinyllama_available or spacy_available):
                     degraded_components.append("ai_providers")
                     failed_providers = ["unknown"]
@@ -194,26 +291,30 @@ async def degraded_mode_status() -> Dict[str, Any]:
                 degraded_components.append("ai_providers")
                 failed_providers = ["unknown"]
         
-        is_degraded = len(degraded_components) > 0
+        # Determine if system is degraded based on AI capabilities primarily
+        # Database/Redis issues don't make the system "degraded" if AI is working
+        ai_degraded = "ai_providers" in degraded_components
+        infrastructure_issues = [comp for comp in degraded_components if comp != "ai_providers"]
+        
+        # System is only considered degraded if AI capabilities are unavailable
+        # Infrastructure issues are noted but don't trigger degraded mode if AI works
+        is_degraded = ai_degraded
         
         # Determine degraded mode reason
         reason = None
         if is_degraded:
-            if "ai_providers" in degraded_components and "database" in degraded_components:
-                reason = "all_providers_failed"
-            elif "database" in degraded_components:
-                reason = "network_issues"
-            elif "ai_providers" in degraded_components:
-                reason = "all_providers_failed"
-            else:
-                reason = "resource_exhaustion"
+            reason = "all_providers_failed"
+        elif infrastructure_issues:
+            # Note infrastructure issues but don't mark as degraded if AI works
+            reason = None  # System is healthy from AI perspective
         
-        # Core helpers availability - check actual availability
+        # Core helpers availability - check actual availability including LLM orchestrator
         try:
             from pathlib import Path
             models_dir = Path("models")
-            tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+            tinyllama_file_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
             
+            # Check spaCy availability
             spacy_available = False
             try:
                 import spacy
@@ -222,22 +323,60 @@ async def degraded_mode_status() -> Dict[str, Any]:
             except:
                 pass
             
+            # Check LLM orchestrator for working models
+            llm_orchestrator_models = 0
+            try:
+                from ai_karen_engine.llm_orchestrator import get_orchestrator
+                orchestrator = get_orchestrator()
+                available_models = orchestrator.registry.list_models()
+                llm_orchestrator_models = len([m for m in available_models if m.get('status') != 'CIRCUIT_BROKEN'])
+            except Exception:
+                pass
+            
+            # Check remote providers
+            remote_providers_available = 0
+            try:
+                from ai_karen_engine.services.provider_registry import get_provider_registry_service
+                provider_service = get_provider_registry_service()
+                system_status = provider_service.get_system_status()
+                remote_providers_available = system_status["available_providers"]
+            except Exception:
+                pass
+            
+            # Check local model capabilities
+            local_capabilities = await _check_local_model_capabilities()
+            
             core_helpers_available = {
                 "local_nlp": spacy_available,  # spaCy NLP processing
-                "local_llm": tinyllama_available,  # TinyLlama for text generation
+                "local_llm_file": tinyllama_file_available,  # TinyLlama GGUF file exists
+                "llm_orchestrator_models": llm_orchestrator_models,  # Models in LLM orchestrator
+                "remote_providers": remote_providers_available,  # Remote providers with API keys
+                "llamacpp_working_models": local_capabilities["llamacpp_models"],  # Actually working GGUF models
+                "transformers_working_models": local_capabilities["transformers_models"],  # Working transformers models
+                "spacy_intelligent_responses": local_capabilities["spacy_available"],  # spaCy intelligent responses
                 "fallback_responses": True,  # Always available
                 "basic_analytics": True,  # Basic analytics work
                 "file_operations": True,  # File ops work
-                "database_fallback": "database" not in degraded_components
+                "database_fallback": "database" not in degraded_components,
+                "total_ai_capabilities": (
+                    llm_orchestrator_models + 
+                    remote_providers_available + 
+                    local_capabilities["llamacpp_models"] +
+                    local_capabilities["transformers_models"] +
+                    local_capabilities["spacy_available"]
+                )
             }
         except Exception:
             core_helpers_available = {
                 "local_nlp": False,
-                "local_llm": False,
+                "local_llm_file": False,
+                "llm_orchestrator_models": 0,
+                "remote_providers": 0,
                 "fallback_responses": True,
                 "basic_analytics": True,
                 "file_operations": True,
-                "database_fallback": False
+                "database_fallback": False,
+                "total_ai_capabilities": 0
             }
         
         from datetime import datetime, timezone
@@ -248,7 +387,9 @@ async def degraded_mode_status() -> Dict[str, Any]:
             "failed_providers": failed_providers,
             "recovery_attempts": 0,  # Could track this in a persistent store
             "last_recovery_attempt": None,  # Could track this too
-            "core_helpers_available": core_helpers_available
+            "core_helpers_available": core_helpers_available,
+            "infrastructure_issues": infrastructure_issues,  # Note non-AI issues
+            "ai_status": "healthy" if not ai_degraded else "degraded"
         }
         
     except Exception as e:

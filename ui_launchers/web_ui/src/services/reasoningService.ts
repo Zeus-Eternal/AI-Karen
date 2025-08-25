@@ -95,7 +95,18 @@ class ReasoningService {
       // Use the Next.js proxy route instead of direct backend URL
       const response = await fetch('/api/karen/api/health/degraded-mode');
       if (response.ok) {
-        return await response.json();
+        const degradedModeData = await response.json();
+        
+        // Map the degraded mode response to the expected system status format
+        return {
+          degraded: degradedModeData.is_active,
+          components: degradedModeData.infrastructure_issues || [],
+          fallback_systems_active: degradedModeData.core_helpers_available?.fallback_responses || false,
+          local_models_available: (degradedModeData.core_helpers_available?.total_ai_capabilities || 0) > 0,
+          ai_status: degradedModeData.ai_status,
+          failed_providers: degradedModeData.failed_providers || [],
+          reason: degradedModeData.reason,
+        };
       }
     } catch (error) {
       console.error('Failed to get system status:', error);

@@ -1133,52 +1133,244 @@ class ChatOrchestrator:
         integrated_context: Optional[Any],
         active_instructions: List[Any]
     ) -> Optional[str]:
-        """Try to use local models as final fallback when all remote providers fail."""
+        """Try to use local models as final fallback when all remote providers fail.
+        
+        Fallback hierarchy:
+        1. llama-cpp models (GGUF files)
+        2. transformers models (GPT-2, etc.)
+        3. spaCy-based intelligent responses
+        4. None (triggers degraded mode)
+        """
+        logger.info("Starting comprehensive local model fallback")
+        
+        # 1. Try llama-cpp models (GGUF)
+        response = await self._try_llamacpp_models(enhanced_prompt, message)
+        if response:
+            return response
+        
+        # 2. Try transformers models
+        response = await self._try_transformers_models(enhanced_prompt, message)
+        if response:
+            return response
+        
+        # 3. Try spaCy-based intelligent responses
+        response = await self._try_spacy_intelligent_response(enhanced_prompt, message, parsed_message)
+        if response:
+            return response
+        
+        # 4. All local models failed
+        logger.error("All local model fallbacks failed - system should enter degraded mode")
+        return None
+    
+    async def _try_llamacpp_models(self, enhanced_prompt: str, message: str) -> Optional[str]:
+        """Try to use llama-cpp models (GGUF files)."""
         try:
             from pathlib import Path
             from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
             
-            # Check if TinyLlama model is available
-            models_dir = Path("models")
-            tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
-            
-            if not tinyllama_path.exists():
-                logger.warning("TinyLlama model not found at expected path")
-                return None
-            
             if not LlamaCppRuntime.is_available():
-                logger.warning("llama-cpp-python not available for local model fallback")
+                logger.debug("llama-cpp-python not available")
                 return None
             
-            logger.info(f"Using local TinyLlama model: {tinyllama_path}")
-            
-            # Initialize LlamaCppRuntime with TinyLlama
-            runtime = LlamaCppRuntime(
-                model_path=str(tinyllama_path),
-                n_ctx=2048,
-                n_batch=512,
-                n_gpu_layers=0,  # CPU only for fallback
-                verbose=False
-            )
-            
-            # Generate response using local model
-            response = runtime.generate(
-                prompt=enhanced_prompt,
-                max_tokens=256,
-                temperature=0.7,
-                top_p=0.9,
-                stream=False
-            )
-            
-            if response and response.strip():
-                logger.info("Successfully generated response using local TinyLlama model")
-                return response.strip()
-            else:
-                logger.warning("Local model generated empty response")
+            models_dir = Path("models/llama-cpp")
+            if not models_dir.exists():
+                logger.debug("llama-cpp models directory not found")
                 return None
-                
+            
+            # Try all GGUF files in the directory
+            gguf_files = list(models_dir.glob("*.gguf"))
+            logger.info(f"Found {len(gguf_files)} GGUF files to try")
+            
+            for gguf_file in gguf_files:
+                try:
+                    logger.info(f"Trying llama-cpp model: {gguf_file.name}")
+                    
+                    # Try with conservative settings first
+                    runtime = LlamaCppRuntime(
+                        model_path=str(gguf_file),
+                        n_ctx=512,  # Small context to reduce memory usage
+                        n_batch=128,  # Small batch size
+                        n_gpu_layers=0,  # CPU only for compatibility
+                        verbose=False
+                    )
+                    
+                    if not runtime.is_loaded():
+                        logger.warning(f"Failed to load {gguf_file.name}")
+                        continue
+                    
+                    # Generate response
+                    response = runtime.generate(
+                        prompt=enhanced_prompt,
+                        max_tokens=128,  # Shorter response for fallback
+                        temperature=0.7,
+                        stream=False
+                    )
+                    
+                    if response and response.strip():
+                        logger.info(f"✅ Successfully used llama-cpp model: {gguf_file.name}")
+                        return response.strip()
+                        
+                except Exception as e:
+                    logger.debug(f"llama-cpp model {gguf_file.name} failed: {e}")
+                    continue
+            
+            logger.info("No working llama-cpp models found")
+            return None
+            
         except Exception as e:
-            logger.error(f"Local model fallback failed: {e}")
+            logger.debug(f"llama-cpp fallback failed: {e}")
+            return None
+    
+    async def _try_transformers_models(self, enhanced_prompt: str, message: str) -> Optional[str]:
+        """Try to use transformers models (GPT-2, etc.)."""
+        try:
+            from pathlib import Path
+            
+            # Check if transformers is available
+            try:
+                import transformers
+                from transformers import AutoTokenizer, AutoModelForCausalLM
+            except ImportError:
+                logger.debug("transformers library not available")
+                return None
+            
+            models_dir = Path("models/transformers")
+            if not models_dir.exists():
+                logger.debug("transformers models directory not found")
+                return None
+            
+            # Try all model directories
+            model_dirs = [d for d in models_dir.iterdir() if d.is_dir()]
+            logger.info(f"Found {len(model_dirs)} transformers models to try")
+            
+            for model_dir in model_dirs:
+                try:
+                    logger.info(f"Trying transformers model: {model_dir.name}")
+                    
+                    # Load tokenizer and model
+                    tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+                    model = AutoModelForCausalLM.from_pretrained(str(model_dir))
+                    
+                    # Add pad token if not present
+                    if tokenizer.pad_token is None:
+                        tokenizer.pad_token = tokenizer.eos_token
+                    
+                    # Encode input
+                    inputs = tokenizer.encode(enhanced_prompt, return_tensors="pt", max_length=512, truncation=True)
+                    
+                    # Generate response
+                    import torch
+                    with torch.no_grad():
+                        outputs = model.generate(
+                            inputs,
+                            max_length=inputs.shape[1] + 64,  # Short response for fallback
+                            temperature=0.7,
+                            do_sample=True,
+                            pad_token_id=tokenizer.eos_token_id,
+                            num_return_sequences=1
+                        )
+                    
+                    # Decode response
+                    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+                    
+                    # Extract only the generated part
+                    if response.startswith(enhanced_prompt):
+                        response = response[len(enhanced_prompt):].strip()
+                    
+                    if response:
+                        logger.info(f"✅ Successfully used transformers model: {model_dir.name}")
+                        return response
+                        
+                except Exception as e:
+                    logger.debug(f"transformers model {model_dir.name} failed: {e}")
+                    continue
+            
+            logger.info("No working transformers models found")
+            return None
+            
+        except Exception as e:
+            logger.debug(f"transformers fallback failed: {e}")
+            return None
+    
+    async def _try_spacy_intelligent_response(
+        self, 
+        enhanced_prompt: str, 
+        message: str, 
+        parsed_message: ParsedMessage
+    ) -> Optional[str]:
+        """Generate intelligent responses using spaCy NLP analysis."""
+        try:
+            import spacy
+            
+            # Load spaCy model
+            try:
+                nlp = spacy.load("en_core_web_sm")
+            except OSError:
+                logger.debug("spaCy model en_core_web_sm not available")
+                return None
+            
+            logger.info("Using spaCy for intelligent response generation")
+            
+            # Analyze the message
+            doc = nlp(message)
+            
+            # Extract key information
+            entities = [(ent.text, ent.label_) for ent in doc.ents]
+            pos_tags = [(token.text, token.pos_) for token in doc if token.pos_ in ['NOUN', 'VERB', 'ADJ']]
+            
+            # Determine response type based on analysis
+            response_parts = []
+            
+            # Greeting detection
+            greetings = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening']
+            if any(greeting in message.lower() for greeting in greetings):
+                response_parts.append("Hello! I'm here to help you.")
+            
+            # Question detection
+            if message.strip().endswith('?') or any(word in message.lower() for word in ['what', 'how', 'why', 'when', 'where', 'who']):
+                if entities:
+                    entity_text = entities[0][0]
+                    response_parts.append(f"I understand you're asking about {entity_text}.")
+                else:
+                    response_parts.append("That's an interesting question.")
+                
+                response_parts.append("While I'm running in local mode with limited capabilities, I can still help with basic information and tasks.")
+            
+            # Task/request detection
+            elif any(word in message.lower() for word in ['help', 'create', 'make', 'build', 'write', 'generate']):
+                response_parts.append("I'd be happy to help with that task.")
+                if entities:
+                    entity_text = entities[0][0]
+                    response_parts.append(f"I notice you mentioned {entity_text}.")
+                response_parts.append("I'm currently running in local mode, so I can provide basic assistance and guidance.")
+            
+            # Entity-based responses
+            elif entities:
+                entity_text, entity_type = entities[0]
+                if entity_type == "PERSON":
+                    response_parts.append(f"I see you mentioned {entity_text}.")
+                elif entity_type in ["ORG", "GPE"]:
+                    response_parts.append(f"You're referring to {entity_text}.")
+                else:
+                    response_parts.append(f"I notice you mentioned {entity_text}.")
+            
+            # Default response
+            if not response_parts:
+                response_parts.append("I understand your message.")
+                if pos_tags:
+                    key_words = [word for word, pos in pos_tags[:3]]
+                    response_parts.append(f"I can see this relates to {', '.join(key_words)}.")
+                response_parts.append("I'm currently running in local mode with spaCy-based processing.")
+            
+            # Add helpful context
+            response_parts.append("How can I assist you further?")
+            
+            response = " ".join(response_parts)
+            logger.info("✅ Generated spaCy-based intelligent response")
+            return response
+            
+        except Exception as e:
+            logger.debug(f"spaCy intelligent response failed: {e}")
             return None
     
     async def _build_enhanced_prompt(

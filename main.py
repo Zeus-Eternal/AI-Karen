@@ -334,6 +334,51 @@ def create_app() -> FastAPI:
     # Setup developer API with enhanced debugging capabilities
     setup_developer_api(app)
     
+    # Add service registry debug endpoint
+    @app.get("/api/debug/services", tags=["debug"])
+    async def debug_services():
+        """Debug endpoint to check service registry status"""
+        try:
+            from ai_karen_engine.core.service_registry import get_service_registry
+            registry = get_service_registry()
+            services = registry.list_services()
+            
+            return {
+                "services": services,
+                "total_services": len(services),
+                "ready_services": len([s for s in services.values() if s.get("status") == "ready"]),
+                "registry_type": str(type(registry))
+            }
+        except Exception as e:
+            return {"error": str(e), "services": {}}
+    
+    # Add service initialization endpoint
+    @app.post("/api/debug/initialize-services", tags=["debug"])
+    async def initialize_services_endpoint():
+        """Manually initialize services"""
+        try:
+            from ai_karen_engine.core.service_registry import initialize_services, get_service_registry
+            
+            logger.info("Manual service initialization requested")
+            await initialize_services()
+            
+            registry = get_service_registry()
+            services = registry.list_services()
+            report = registry.get_initialization_report()
+            
+            return {
+                "success": True,
+                "message": "Services initialized successfully",
+                "services": services,
+                "report": report
+            }
+        except Exception as e:
+            logger.error(f"Manual service initialization failed: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
     # Add reasoning system endpoint for frontend
     @app.post("/api/reasoning/analyze", tags=["reasoning"])
     async def analyze_with_reasoning(request: dict):
@@ -345,17 +390,47 @@ def create_app() -> FastAPI:
             # Try AI-powered reasoning first
             try:
                 from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import AIOrchestrator
-                from ai_karen_engine.core.service_registry import ServiceRegistry
+                from ai_karen_engine.core.service_registry import ServiceRegistry, get_service_registry
                 
-                registry = ServiceRegistry()
+                # Use the global service registry and ensure it's initialized
+                registry = get_service_registry()
+                
+                # Check if services are initialized, if not initialize them
+                services = registry.list_services()
+                logger.info(f"Available services: {list(services.keys())}")
+                
+                if "ai_orchestrator" not in services or not services:
+                    logger.info("Initializing services for reasoning endpoint...")
+                    from ai_karen_engine.core.service_registry import initialize_services
+                    await initialize_services()
+                    logger.info("Services initialized successfully")
+                    # Refresh services list after initialization
+                    services = registry.list_services()
+                
+                # Verify ai_orchestrator is available and ready
+                if "ai_orchestrator" not in services:
+                    raise Exception("ai_orchestrator service not available after initialization")
+                
+                service_info = services["ai_orchestrator"]
+                if service_info.get("status") != "ready":
+                    raise Exception(f"ai_orchestrator service not ready: {service_info.get('status')}")
+                
                 ai_orchestrator = await registry.get_service("ai_orchestrator")
+                logger.info("AI orchestrator retrieved successfully")
                 
                 # Use AI orchestrator for reasoning
-                response = await ai_orchestrator.process_conversation(
-                    user_input=user_input,
+                from ai_karen_engine.models.shared_types import FlowInput
+                
+                flow_input = FlowInput(
+                    prompt=user_input,
                     context=context,
-                    user_id=context.get("user_id", "anonymous")
+                    user_id=context.get("user_id", "anonymous"),
+                    conversation_history=context.get("conversation_history", []),
+                    user_settings=context.get("user_settings", {})
                 )
+                
+                flow_output = await ai_orchestrator.conversation_processing_flow(flow_input)
+                response = flow_output.response if hasattr(flow_output, 'response') else str(flow_output)
                 
                 return {
                     "success": True,
