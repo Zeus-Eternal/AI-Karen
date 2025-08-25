@@ -11,16 +11,18 @@ export interface WebUIConfig {
   maxRetries: number;
   retryDelay: number;
   cacheTtl: number;
+  circuitBreakerThreshold: number;
+  circuitBreakerResetTime: number;
 
   // Environment and network configuration
   environment: 'local' | 'docker' | 'production';
   networkMode: 'localhost' | 'container' | 'external';
   fallbackBackendUrls: string[];
-  
+
   // Container-specific configuration
   containerBackendHost: string;
   containerBackendPort: string;
-  
+
   // External configuration
   externalHost: string;
   externalBackendPort: string;
@@ -85,8 +87,8 @@ function parseArrayEnv(value: string | undefined, defaultValue: string[]): strin
  * Parse environment variable with validation against allowed values
  */
 function parseEnumEnv<T extends string>(
-  value: string | undefined, 
-  allowedValues: readonly T[], 
+  value: string | undefined,
+  allowedValues: readonly T[],
   defaultValue: T
 ): T {
   if (!value) return defaultValue;
@@ -113,15 +115,15 @@ function parseUrlEnv(value: string | undefined, defaultValue: string): string {
  */
 function parseHostEnv(value: string | undefined, defaultValue: string): string {
   if (!value) return defaultValue;
-  
+
   // Basic validation for hostname/IP format
   const hostPattern = /^[a-zA-Z0-9.-]+$/;
   const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-  
+
   if (hostPattern.test(value) || ipPattern.test(value)) {
     return value;
   }
-  
+
   console.warn(`Invalid host format in environment variable: ${value}, using default: ${defaultValue}`);
   return defaultValue;
 }
@@ -131,13 +133,13 @@ function parseHostEnv(value: string | undefined, defaultValue: string): string {
  */
 function parsePortEnv(value: string | undefined, defaultValue: string): string {
   if (!value) return defaultValue;
-  
+
   const port = parseInt(value, 10);
   if (isNaN(port) || port < 1 || port > 65535) {
     console.warn(`Invalid port number in environment variable: ${value}, using default: ${defaultValue}`);
     return defaultValue;
   }
-  
+
   return value;
 }
 
@@ -146,26 +148,26 @@ function parsePortEnv(value: string | undefined, defaultValue: string): string {
  */
 function generateFallbackUrls(primaryUrl: string, environment: string, networkMode: string): string[] {
   const fallbacks: string[] = [];
-  
+
   try {
     const url = new URL(primaryUrl);
     const port = url.port || '8000';
-    
+
     // Add localhost variations if not already localhost
     if (url.hostname !== 'localhost') {
       fallbacks.push(`http://localhost:${port}`);
     }
-    
+
     // Add 127.0.0.1 variation
     if (url.hostname !== '127.0.0.1') {
       fallbacks.push(`http://127.0.0.1:${port}`);
     }
-    
+
     // Add container networking fallback for Docker environments
     if (environment === 'docker' && !url.hostname.includes('backend')) {
       fallbacks.push(`http://backend:${port}`);
     }
-    
+
     return fallbacks;
   } catch {
     // If URL parsing fails, return sensible defaults
@@ -180,20 +182,20 @@ export function getWebUIConfig(): WebUIConfig {
   // Parse basic configuration first
   const backendUrl = parseUrlEnv(process.env.KAREN_BACKEND_URL, 'http://localhost:8000');
   const environment = parseEnumEnv(
-    process.env.KAREN_ENVIRONMENT, 
-    ['local', 'docker', 'production'] as const, 
+    process.env.KAREN_ENVIRONMENT,
+    ['local', 'docker', 'production'] as const,
     'local'
   );
   const networkMode = parseEnumEnv(
-    process.env.KAREN_NETWORK_MODE, 
-    ['localhost', 'container', 'external'] as const, 
+    process.env.KAREN_NETWORK_MODE,
+    ['localhost', 'container', 'external'] as const,
     'localhost'
   );
 
   // Generate fallback URLs if not explicitly provided
   const explicitFallbacks = parseArrayEnv(process.env.KAREN_FALLBACK_BACKEND_URLS, []);
-  const fallbackBackendUrls = explicitFallbacks.length > 0 
-    ? explicitFallbacks 
+  const fallbackBackendUrls = explicitFallbacks.length > 0
+    ? explicitFallbacks
     : generateFallbackUrls(backendUrl, environment, networkMode);
 
   return {
@@ -204,16 +206,18 @@ export function getWebUIConfig(): WebUIConfig {
     maxRetries: parseNumberEnv(process.env.KAREN_API_MAX_RETRIES, 3),
     retryDelay: parseNumberEnv(process.env.KAREN_API_RETRY_DELAY, 1000),
     cacheTtl: parseNumberEnv(process.env.KAREN_API_CACHE_TTL, 300000),
+    circuitBreakerThreshold: parseNumberEnv(process.env.KAREN_CB_THRESHOLD, 5),
+    circuitBreakerResetTime: parseNumberEnv(process.env.KAREN_CB_RESET_TIME, 30000),
 
     // Environment and network configuration
     environment,
     networkMode,
     fallbackBackendUrls,
-    
+
     // Container-specific configuration
     containerBackendHost: parseHostEnv(process.env.KAREN_CONTAINER_BACKEND_HOST, 'backend'),
     containerBackendPort: parsePortEnv(process.env.KAREN_CONTAINER_BACKEND_PORT, '8000'),
-    
+
     // External configuration
     externalHost: parseHostEnv(process.env.KAREN_EXTERNAL_HOST, ''),
     externalBackendPort: parsePortEnv(process.env.KAREN_EXTERNAL_BACKEND_PORT, '8000'),
@@ -223,8 +227,8 @@ export function getWebUIConfig(): WebUIConfig {
     requestLogging: parseBooleanEnv(process.env.KAREN_ENABLE_REQUEST_LOGGING, false),
     performanceMonitoring: parseBooleanEnv(process.env.KAREN_ENABLE_PERFORMANCE_MONITORING, false),
     logLevel: parseEnumEnv(
-      process.env.KAREN_LOG_LEVEL, 
-      ['error', 'warn', 'info', 'debug'] as const, 
+      process.env.KAREN_LOG_LEVEL,
+      ['error', 'warn', 'info', 'debug'] as const,
       'info'
     ),
 
@@ -372,6 +376,10 @@ export function logConfigInfo(config: WebUIConfig): void {
   console.log('API Timeout:', `${config.apiTimeout}ms`);
   console.log('Max Retries:', config.maxRetries);
   console.log('Cache TTL:', `${config.cacheTtl}ms`);
+  console.log('Circuit Breaker:', {
+    threshold: config.circuitBreakerThreshold,
+    resetTime: `${config.circuitBreakerResetTime}ms`,
+  });
   console.log('Debug Logging:', config.debugLogging);
   console.log('Request Logging:', config.requestLogging);
   console.log('Performance Monitoring:', config.performanceMonitoring);
@@ -428,11 +436,11 @@ export const webUIConfig = getWebUIConfig();
 if (typeof window !== 'undefined') {
   // Only run in browser environment
   const { isValid, warnings } = validateConfig(webUIConfig);
-  
+
   if (!isValid) {
     console.error('❌ Invalid AI Karen Web UI configuration detected!');
     warnings.forEach(warning => console.error(`  - ${warning}`));
   }
-  
+
   logConfigInfo(webUIConfig);
 }

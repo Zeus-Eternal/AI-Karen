@@ -44,6 +44,8 @@ describe('KarenBackendService session handling', () => {
     expect(fetchMock).toHaveBeenCalled();
     const body = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
     expect(body.session_id).toBe('session-xyz');
+    const headers = fetchMock.mock.calls[0][1]!.headers as Record<string, string>;
+    expect(headers['X-Correlation-ID']).toBeTruthy();
   });
 
   it('retries auth on 401 and redirects when unauthorized', async () => {
@@ -94,6 +96,6 @@ describe('KarenBackendService session handling', () => {
     const second = await service.getAvailablePlugins();
     expect(second).toEqual([{ name: 'p1' }]);
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
