@@ -34,3 +34,15 @@ export {
   useSession,
   type UseSessionReturn,
 } from '../../hooks/use-session';
+
+// Token validation and session rehydration services
+export {
+  TokenValidationService,
+  TokenExpiredError,
+  TokenNetworkError,
+} from './token-validation.service';
+
+export {
+  SessionRehydrationService,
+  type RehydrationState,
+} from './session-rehydration.service';

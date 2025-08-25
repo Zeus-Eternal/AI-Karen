@@ -11,6 +11,11 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '../ProtectedRoute';
 import { LoginForm } from '../LoginForm';
 import { authService } from '@/services/authService';
+vi.mock('@/lib/auth/session-rehydration.service', () => ({
+  SessionRehydrationService: vi.fn().mockImplementation(() => ({
+    rehydrate: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
 
 // Mock the authService with controlled behavior
 vi.mock('@/services/authService', () => ({

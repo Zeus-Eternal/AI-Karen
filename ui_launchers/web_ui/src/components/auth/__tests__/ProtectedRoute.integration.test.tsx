@@ -24,6 +24,12 @@ vi.mock('../LoginForm', () => ({
   LoginForm: () => <div data-testid="login-form">Login Form</div>,
 }));
 
+vi.mock('@/lib/auth/session-rehydration.service', () => ({
+  SessionRehydrationService: vi.fn().mockImplementation(() => ({
+    rehydrate: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 const mockAuthService = authService as any;
 
 const renderWithAuthProvider = (component: React.ReactElement) => {
