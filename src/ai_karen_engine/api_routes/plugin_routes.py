@@ -20,6 +20,7 @@ from ai_karen_engine.models.web_api_error_responses import (
 from ai_karen_engine.services.plugin_service import (
     PluginService,
 )
+from ai_karen_engine.security.access_control import rbac
 from ai_karen_engine.services.plugin_execution import (
     ExecutionRequest,
 )
@@ -322,7 +323,9 @@ async def enable_plugin(
 ):
     """Enable a plugin."""
     try:
-        if "admin" not in current_user.get("roles", []):
+        try:
+            rbac.require(current_user, "admin")
+        except PermissionError:
             raise HTTPException(status_code=403, detail="Admin privileges required")
 
         success = await plugin_service.enable_plugin(plugin_name)
@@ -371,7 +374,9 @@ async def disable_plugin(
 ):
     """Disable a plugin."""
     try:
-        if "admin" not in current_user.get("roles", []):
+        try:
+            rbac.require(current_user, "admin")
+        except PermissionError:
             raise HTTPException(status_code=403, detail="Admin privileges required")
 
         success = await plugin_service.disable_plugin(plugin_name)
@@ -497,7 +502,9 @@ async def reload_plugins(
 ):
     """Reload all plugins from disk."""
     try:
-        if "admin" not in current_user.get("roles", []):
+        try:
+            rbac.require(current_user, "admin")
+        except PermissionError:
             raise HTTPException(status_code=403, detail="Admin privileges required")
 
         count = await plugin_service.reload_plugins()

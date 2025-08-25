@@ -39,6 +39,7 @@ from ai_karen_engine.hooks import (
 )
 from ai_karen_engine.services.nlp_service_manager import nlp_service_manager
 from ai_karen_engine.services.spacy_service import ParsedMessage
+from ai_karen_engine.security.access_control import audit_logger
 
 # Note: LLM orchestrator import moved to method level to avoid circular dependency
 
@@ -53,13 +54,6 @@ class ProcessingStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     RETRYING = "retrying"
-
-class OperationMode(str, Enum):
-    """Operation mode of the orchestrator."""
-    PROVIDER = "provider"    # User's explicit LLM choice
-    SYSTEM = "system"        # System default LLMs (local-first)
-    STATIC = "static"        # True degraded mode - no LLM available
-
 
 class OperationMode(str, Enum):
     """Operation mode of the orchestrator."""
@@ -1141,6 +1135,14 @@ class ChatOrchestrator:
                 operation_mode = OperationMode.STATIC
 
         processing_time = time.time() - start_time
+        if (
+            operation_mode == OperationMode.PROVIDER
+            and llm_provider
+            and llm_provider not in {"ollama", "local"}
+        ):
+            audit_logger.log_cloud_usage(
+                processing_context.user_id, llm_provider, llm_model or ""
+            )
         return ProcessingResult(
             success=response is not None,
             response=response,
