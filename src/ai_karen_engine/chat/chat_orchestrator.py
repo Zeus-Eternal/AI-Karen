@@ -46,6 +46,12 @@ class ProcessingStatus(str, Enum):
     FAILED = "failed"
     RETRYING = "retrying"
 
+class OperationMode(str, Enum):
+    """Operation mode of the orchestrator."""
+    PROVIDER = "provider"    # User's explicit LLM choice
+    SYSTEM = "system"        # System default LLMs (local-first)
+    STATIC = "static"        # True degraded mode - no LLM available
+
 
 class ErrorType(str, Enum):
     """Types of processing errors."""
@@ -95,6 +101,9 @@ class ProcessingResult:
     error_type: Optional[ErrorType] = None
     processing_time: float = 0.0
     used_fallback: bool = False
+    operation_mode: OperationMode = OperationMode.SYSTEM  # Track the mode
+    llm_provider: Optional[str] = None
+    llm_model: Optional[str] = None
     correlation_id: str = ""
 
 
@@ -117,6 +126,9 @@ class ChatResponse(BaseModel):
     processing_time: float = Field(..., description="Total processing time in seconds")
     used_fallback: bool = Field(False, description="Whether fallback processing was used")
     context_used: bool = Field(False, description="Whether memory context was used")
+    operation_mode: OperationMode = Field(OperationMode.SYSTEM, description="Operation mode used")
+    llm_provider: Optional[str] = Field(None, description="LLM provider used")
+    llm_model: Optional[str] = Field(None, description="LLM model used")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Response metadata")
 
 
@@ -262,14 +274,32 @@ class ChatOrchestrator:
         try:
             # Process with retry logic
             result = await self._process_with_retry(request, context)
-            
+
             processing_time = time.time() - start_time
             self._processing_times.append(processing_time)
-            
+
             if result.success:
                 self._successful_requests += 1
                 context.status = ProcessingStatus.COMPLETED
                 
+                # Build metadata with mode information (before hooks for observability)
+                metadata = {
+                    "operation_mode": result.operation_mode.value,
+                    "llm_provider": result.llm_provider,
+                    "llm_model": result.llm_model,
+                    "parsed_entities": len(result.parsed_message.entities) if result.parsed_message else 0,
+                    "embedding_dimension": len(result.embeddings) if result.embeddings else 0,
+                    "retry_count": context.retry_count,
+                    **context.metadata
+                }
+
+                # Add context summary if available
+                if result.context:
+                    metadata["context_summary"] = result.context.get("context_summary", "Context retrieved")
+                    metadata["memories_used"] = len(result.context.get("memories", []))
+                    metadata["retrieval_time"] = result.context.get("retrieval_time", 0.0)
+                    metadata["total_memories_considered"] = result.context.get("total_memories_considered", 0)
+
                 # Trigger message processed hooks
                 message_processed_context = HookContext(
                     hook_type=HookTypes.MESSAGE_PROCESSED,
@@ -293,7 +323,7 @@ class ChatOrchestrator:
                         "session_id": request.session_id
                     }
                 )
-                
+
                 try:
                     processed_hook_summary = await hook_manager.trigger_hooks(message_processed_context)
                     logger.debug(f"Message processed hooks executed: {processed_hook_summary.successful_hooks}/{processed_hook_summary.total_hooks}")
@@ -308,24 +338,7 @@ class ChatOrchestrator:
                         total_execution_time_ms=0.0,
                         results=[]
                     )
-                
-                # Build metadata with context information
-                metadata = {
-                    "parsed_entities": len(result.parsed_message.entities) if result.parsed_message else 0,
-                    "embedding_dimension": len(result.embeddings) if result.embeddings else 0,
-                    "retry_count": context.retry_count,
-                    "pre_hooks_executed": pre_hook_summary.successful_hooks,
-                    "processed_hooks_executed": processed_hook_summary.successful_hooks,
-                    **context.metadata
-                }
-                
-                # Add context summary if available
-                if result.context:
-                    metadata["context_summary"] = result.context.get("context_summary", "Context retrieved")
-                    metadata["memories_used"] = len(result.context.get("memories", []))
-                    metadata["retrieval_time"] = result.context.get("retrieval_time", 0.0)
-                    metadata["total_memories_considered"] = result.context.get("total_memories_considered", 0)
-                
+
                 # Trigger post-message hooks
                 post_message_context = HookContext(
                     hook_type=HookTypes.POST_MESSAGE,
@@ -349,7 +362,7 @@ class ChatOrchestrator:
                         "session_id": request.session_id
                     }
                 )
-                
+
                 try:
                     post_hook_summary = await hook_manager.trigger_hooks(post_message_context)
                     logger.debug(f"Post-message hooks executed: {post_hook_summary.successful_hooks}/{post_hook_summary.total_hooks}")
@@ -364,21 +377,28 @@ class ChatOrchestrator:
                         total_execution_time_ms=0.0,
                         results=[]
                     )
-                
-                # Add hook execution summary to metadata
-                metadata["post_hooks_executed"] = post_hook_summary.successful_hooks
-                metadata["total_hooks_executed"] = (
-                    pre_hook_summary.successful_hooks + 
-                    processed_hook_summary.successful_hooks + 
-                    post_hook_summary.successful_hooks
-                )
+
+                # Add hook execution summary to metadata (after post hooks)
+                metadata.update({
+                    "pre_hooks_executed": pre_hook_summary.successful_hooks,
+                    "processed_hooks_executed": processed_hook_summary.successful_hooks,
+                    "post_hooks_executed": post_hook_summary.successful_hooks,
+                    "total_hooks_executed": (
+                        pre_hook_summary.successful_hooks +
+                        processed_hook_summary.successful_hooks +
+                        post_hook_summary.successful_hooks
+                    )
+                })
                 
                 return ChatResponse(
                     response=result.response or "",
                     correlation_id=context.correlation_id,
                     processing_time=processing_time,
-                    used_fallback=result.used_fallback,
+                    used_fallback=(result.operation_mode == OperationMode.STATIC),
                     context_used=bool(result.context),
+                    operation_mode=result.operation_mode,
+                    llm_provider=result.llm_provider,
+                    llm_model=result.llm_model,
                     metadata=metadata
                 )
             else:
@@ -429,6 +449,7 @@ class ChatOrchestrator:
                     processing_time=processing_time,
                     used_fallback=True,
                     context_used=False,
+                    operation_mode=OperationMode.STATIC,
                     metadata={
                         "error": result.error,
                         "error_type": result.error_type.value if result.error_type else "unknown",
@@ -451,6 +472,7 @@ class ChatOrchestrator:
                 processing_time=processing_time,
                 used_fallback=True,
                 context_used=False,
+                operation_mode=OperationMode.STATIC,
                 metadata={
                     "error": str(e),
                     "error_type": ErrorType.UNKNOWN_ERROR.value
@@ -657,7 +679,6 @@ class ChatOrchestrator:
         start_time = time.time()
         parsed_message = None
         embeddings = None
-        retrieved_context = None
         used_fallback = False
         extracted_instructions = []
         
@@ -811,7 +832,7 @@ class ChatOrchestrator:
             
             # Step 6: Generate AI response with enhanced context and instructions
             try:
-                ai_response = await self._generate_ai_response_enhanced(
+                result = await self._generate_ai_response_enhanced(
                     request.message,
                     parsed_message,
                     embeddings,
@@ -819,18 +840,11 @@ class ChatOrchestrator:
                     active_instructions,
                     context
                 )
-                
-                return ProcessingResult(
-                    success=True,
-                    response=ai_response,
-                    parsed_message=parsed_message,
-                    embeddings=embeddings,
-                    context=integrated_context.to_dict() if integrated_context else {},
-                    processing_time=time.time() - start_time,
-                    used_fallback=used_fallback,
-                    correlation_id=context.correlation_id
-                )
-                
+                # Preserve parsing fallback info into result.used_fallback only if STATIC isn't already set
+                if used_fallback and result.operation_mode != OperationMode.STATIC:
+                    result.used_fallback = False  # parsing fallback ≠ degraded mode
+                return result
+
             except Exception as e:
                 logger.error(f"AI response generation failed: {e}")
                 return ProcessingResult(
@@ -838,6 +852,7 @@ class ChatOrchestrator:
                     error=f"AI response generation failed: {str(e)}",
                     error_type=ErrorType.AI_MODEL_ERROR,
                     processing_time=time.time() - start_time,
+                    operation_mode=OperationMode.STATIC,
                     correlation_id=context.correlation_id
                 )
                 
@@ -848,6 +863,7 @@ class ChatOrchestrator:
                 error=f"Unexpected processing error: {str(e)}",
                 error_type=ErrorType.UNKNOWN_ERROR,
                 processing_time=time.time() - start_time,
+                operation_mode=OperationMode.STATIC,
                 correlation_id=context.correlation_id
             )
     
@@ -926,197 +942,155 @@ class ChatOrchestrator:
         message: str,
         parsed_message: ParsedMessage,
         embeddings: List[float],
-        integrated_context: Optional[Any],  # IntegratedContext object
-        active_instructions: List[Any],     # List of ExtractedInstruction objects
+        integrated_context: Optional[Any],
+        active_instructions: List[Any],
         processing_context: ProcessingContext
-    ) -> str:
-        """Generate AI response using enhanced context integration and instruction following with proper LLM fallback hierarchy."""
-        # Check for code execution requests
-        code_execution_result = await self._handle_code_execution_request(
-            message, processing_context
-        )
+    ) -> ProcessingResult:
+        """Generate AI response using the three-mode architecture (PROVIDER > SYSTEM > STATIC)."""
+        start_time = time.time()
+
+        # Early short-circuits: code/tool (still return a ProcessingResult)
+        code_execution_result = await self._handle_code_execution_request(message, processing_context)
         if code_execution_result:
-            return code_execution_result
-        
-        # Check for tool execution requests
-        tool_execution_result = await self._handle_tool_execution_request(
-            message, processing_context
-        )
+            return ProcessingResult(
+                success=True,
+                response=code_execution_result,
+                parsed_message=parsed_message,
+                embeddings=embeddings,
+                context=integrated_context.to_dict() if integrated_context else {},
+                processing_time=time.time() - start_time,
+                used_fallback=False,
+                operation_mode=OperationMode.SYSTEM,  # counts as generated, not static
+                correlation_id=processing_context.correlation_id,
+            )
+
+        tool_execution_result = await self._handle_tool_execution_request(message, processing_context)
         if tool_execution_result:
-            return tool_execution_result
-        
-        # Build enhanced prompt with instructions and context
-        enhanced_prompt = await self._build_enhanced_prompt(
-            message, integrated_context, active_instructions
-        )
-        
-        # Implement proper LLM response hierarchy:
-        # 1. User's chosen LLM (like Llama)
-        # 2. System default LLMs if user choice fails  
-        # 3. Hardcoded responses as final fallback
-        
-        # Get user preferences from processing context
-        user_llm_choice = processing_context.metadata.get('preferred_llm_provider', 'ollama')
-        user_model_choice = processing_context.metadata.get('preferred_model', 'llama3.2:latest')
-        
-        logger.info(f"Attempting LLM response with user choice: {user_llm_choice}:{user_model_choice}")
-        
-        # Step 1: Try user's chosen LLM
-        try:
-            response = await self._try_user_chosen_llm(
-                enhanced_prompt, message, parsed_message, integrated_context, active_instructions, 
-                user_llm_choice, user_model_choice
+            return ProcessingResult(
+                success=True,
+                response=tool_execution_result,
+                parsed_message=parsed_message,
+                embeddings=embeddings,
+                context=integrated_context.to_dict() if integrated_context else {},
+                processing_time=time.time() - start_time,
+                used_fallback=False,
+                operation_mode=OperationMode.SYSTEM,
+                correlation_id=processing_context.correlation_id,
             )
-            if response:
-                logger.info(f"Successfully generated response using user's chosen LLM: {user_llm_choice}")
-                return response
-        except Exception as e:
-            logger.warning(f"User's chosen LLM ({user_llm_choice}) failed: {e}")
-        
-        # Step 2: Try system default LLMs
-        try:
-            response = await self._try_system_default_llms(
-                enhanced_prompt, message, parsed_message, integrated_context, active_instructions
-            )
-            if response:
-                logger.info("Successfully generated response using system default LLM")
-                return response
-        except Exception as e:
-            logger.warning(f"System default LLMs failed: {e}")
-        
-        # Step 3: Use hardcoded fallback response
-        logger.info("Using hardcoded fallback response")
-        return await self._generate_enhanced_fallback_response(
-            message, parsed_message, integrated_context, active_instructions
+
+        user_llm_choice = processing_context.metadata.get("preferred_llm_provider")
+        user_model_choice = processing_context.metadata.get("preferred_model")
+
+        response = None
+        operation_mode = OperationMode.SYSTEM
+        llm_provider = None
+        llm_model = None
+
+        # 1) PROVIDER mode if explicitly selected
+        if user_llm_choice and user_model_choice:
+            logger.info(f"Attempting Provider Mode: {user_llm_choice}:{user_model_choice}")
+            try:
+                response = await self._try_user_chosen_llm(
+                    message, parsed_message, embeddings, integrated_context,
+                    active_instructions, user_llm_choice, user_model_choice
+                )
+                if response:
+                    operation_mode = OperationMode.PROVIDER
+                    llm_provider = user_llm_choice
+                    llm_model = user_model_choice
+                else:
+                    logger.warning("Provider Mode failed, falling back to System Mode")
+            except Exception as e:
+                logger.warning(f"Provider Mode failed: {e}, falling back to System Mode")
+
+        # 2) SYSTEM mode (local-first defaults) if no response yet
+        if not response:
+            logger.info("Attempting System Mode with default LLMs")
+            try:
+                response = await self._try_system_default_llms(
+                    message, parsed_message, embeddings, integrated_context, active_instructions
+                )
+                if response:
+                    operation_mode = OperationMode.SYSTEM
+                    try:
+                        from ai_karen_engine.llm_orchestrator import get_orchestrator
+                        orchestrator = get_orchestrator()
+                        if getattr(orchestrator, "default_provider", None):
+                            llm_provider = orchestrator.default_provider
+                            llm_model = getattr(orchestrator, "default_model", None)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning(f"System Mode failed: {e}")
+
+        # 3) STATIC mode (true degraded) if still no response
+        if not response:
+            logger.warning("All LLM modes failed, entering Static Mode (true degraded)")
+            try:
+                response = await self._generate_enhanced_fallback_response(
+                    message, parsed_message, integrated_context, active_instructions
+                )
+                operation_mode = OperationMode.STATIC
+            except Exception as e:
+                logger.error(f"Static Mode also failed: {e}")
+                response = "I apologize, but I'm experiencing complete system failure. Please try again later."
+                operation_mode = OperationMode.STATIC
+
+        processing_time = time.time() - start_time
+        return ProcessingResult(
+            success=response is not None,
+            response=response,
+            parsed_message=parsed_message,
+            embeddings=embeddings,
+            context=integrated_context.to_dict() if integrated_context else {},
+            processing_time=processing_time,
+            used_fallback=(operation_mode == OperationMode.STATIC),
+            operation_mode=operation_mode,
+            llm_provider=llm_provider,
+            llm_model=llm_model,
+            correlation_id=processing_context.correlation_id
         )
     
     async def _try_user_chosen_llm(
         self,
-        enhanced_prompt: str,
         message: str,
         parsed_message: ParsedMessage,
+        embeddings: List[float],
         integrated_context: Optional[Any],
         active_instructions: List[Any],
         provider: str,
         model: str
     ) -> Optional[str]:
-        """Try to generate response using user's chosen LLM provider and model."""
+        """Try to use user's chosen LLM provider and model."""
         try:
             from ai_karen_engine.llm_orchestrator import get_orchestrator
             orchestrator = get_orchestrator()
-            
-            # Try to get the specific provider/model combination
-            model_id = f"{provider}:{model}"
-            model_info = orchestrator.registry.get(model_id)
-            
-            if not model_info:
-                logger.debug(f"User's chosen model {model_id} not available in registry")
-                return None
-            
-            # Check if this is a code-related request for enhanced assistance
-            if self._is_code_related_message(message):
-                # Get code suggestions if available
-                code_suggestions = await orchestrator.get_code_suggestions(
-                    message, 
-                    language=self._detect_programming_language(message)
-                )
-
-                if code_suggestions:
-                    # Use CopilotKit for code-related responses
-                    copilot_response = orchestrator.route_with_copilotkit(
-                        enhanced_prompt, 
-                        context=integrated_context.to_dict() if integrated_context else {}
-                    )
-                    
-                    # Add code suggestions to the response
-                    suggestions_text = "\n\nCode suggestions:\n"
-                    for i, suggestion in enumerate(code_suggestions[:3], 1):  # Limit to top 3
-                        suggestions_text += f"{i}. {suggestion.get('explanation', 'Code suggestion')}\n"
-                        suggestions_text += f"   ```{suggestion.get('language', 'python')}\n"
-                        suggestions_text += f"   {suggestion.get('content', '')}\n"
-                        suggestions_text += f"   ```\n"
-                    copilot_response += suggestions_text
-                    
-                    return copilot_response
-            # Use the user's chosen LLM for response generation
-            response = orchestrator.route(enhanced_prompt, skill="conversation")
-            
-            # Get contextual suggestions if available
-            try:
-                contextual_suggestions = await orchestrator.get_contextual_suggestions(
-                    message, 
-                    integrated_context.to_dict() if integrated_context else {}
-                )
-                
-                # Add contextual suggestions if available
-                if contextual_suggestions:
-                    suggestions_text = "\n\nSuggestions:\n"
-                    for i, suggestion in enumerate(contextual_suggestions[:2], 1):  # Limit to top 2
-                        if suggestion.get('actionable', True):
-                            suggestions_text += f"• {suggestion.get('content', 'AI suggestion')}\n"
-                    response += suggestions_text
-            except Exception as e:
-                logger.debug(f"Failed to get contextual suggestions: {e}")
-            
-            return response
-            
+            enhanced_prompt = await self._build_enhanced_prompt(message, integrated_context, active_instructions)
+            return orchestrator.route(
+                enhanced_prompt,
+                skill="conversation",
+                provider=provider,
+                model=model
+            )
         except Exception as e:
             logger.error(f"User's chosen LLM ({provider}:{model}) failed: {e}")
             return None
-    
+
     async def _try_system_default_llms(
         self,
-        enhanced_prompt: str,
         message: str,
         parsed_message: ParsedMessage,
+        embeddings: List[float],
         integrated_context: Optional[Any],
         active_instructions: List[Any]
     ) -> Optional[str]:
-        """Try to generate response using system default LLMs in priority order."""
+        """Try to use system default LLMs (local-first)."""
         try:
             from ai_karen_engine.llm_orchestrator import get_orchestrator
             orchestrator = get_orchestrator()
-            
-            # Define system default LLMs in priority order
-            default_providers = [
-                "ollama:llama3.2:1b",  # Use available model instead of :latest
-                "ollama:llama3.2:latest",  # Keep as fallback
-                "openai:gpt-3.5-turbo", 
-                "copilotkit:copilot-assist",
-                "huggingface:distilbert-base-uncased"
-            ]
-            
-            for provider_model in default_providers:
-                try:
-                    provider, model = provider_model.split(":", 1)
-                    model_id = f"{provider}:{model}"
-                    model_info = orchestrator.registry.get(model_id)
-                    
-                    if not model_info:
-                        logger.debug(f"System default model {model_id} not available")
-                        continue
-                    
-                    logger.info(f"Trying system default LLM: {model_id}")
-                    
-                    # Use enhanced routing for response generation
-                    response = await orchestrator.enhanced_route(
-                        enhanced_prompt,
-                        skill="conversation"
-                    )
-                    
-                    if response:
-                        logger.info(f"Successfully used system default LLM: {model_id}")
-                        return response
-                        
-                except Exception as e:
-                    logger.debug(f"System default LLM {provider_model} failed: {e}")
-                    continue
-            
-            # If no specific models work, try generic routing
-            logger.info("Trying generic LLM routing as final system default")
-            response = orchestrator.route(enhanced_prompt, skill="conversation")
-            return response
-            
+            enhanced_prompt = await self._build_enhanced_prompt(message, integrated_context, active_instructions)
+            # Let orchestrator decide the local-first default (e.g., Tiny LLaMA via Ollama)
+            return orchestrator.route(enhanced_prompt, skill="conversation")
         except Exception as e:
             logger.error(f"All system default LLMs failed: {e}")
             return None
