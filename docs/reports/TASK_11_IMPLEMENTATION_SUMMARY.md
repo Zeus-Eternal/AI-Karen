@@ -113,7 +113,7 @@ app.add_middleware(
   "detail": "OpenAI API key is missing from your configuration.",
   "error": {
     "title": "API Key Missing",
-    "category": "api_key_missing", 
+    "category": "api_key_missing",
     "severity": "high",
     "next_steps": [
       "Add OPENAI_API_KEY to your .env file",
@@ -134,7 +134,7 @@ app.add_middleware(
 
 **Unit Tests:**
 - `tests/test_session_persistence_middleware.py`: Session persistence functionality
-- `tests/test_intelligent_error_handler_middleware.py`: Error handler functionality  
+- `tests/test_intelligent_error_handler_middleware.py`: Error handler functionality
 - `tests/test_middleware_integration_simple.py`: Core middleware behavior
 
 **Integration Tests:**
@@ -162,7 +162,7 @@ app.add_middleware(
 - Silent session recovery without user intervention
 - Maintains authentication state across browser refreshes
 
-### ✅ Requirement 1.2: Automatic Session Recovery  
+### ✅ Requirement 1.2: Automatic Session Recovery
 - Silent token refresh before showing login prompts
 - Automatic retry of failed requests after token refresh
 - Graceful fallback when session recovery fails

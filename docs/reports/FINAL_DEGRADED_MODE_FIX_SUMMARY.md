@@ -92,7 +92,7 @@ is_degraded = ai_degraded  # Only AI issues cause degraded mode
 ## 🔄 **System Behavior Now**
 
 1. **AI Available + Infrastructure Issues** → `is_active: false` (Healthy)
-2. **AI Available + All Systems Good** → `is_active: false` (Healthy)  
+2. **AI Available + All Systems Good** → `is_active: false` (Healthy)
 3. **No AI Available + Infrastructure Good** → `is_active: true` (Degraded)
 4. **No AI Available + Infrastructure Issues** → `is_active: true` (Degraded)
 

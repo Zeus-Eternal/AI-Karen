@@ -177,7 +177,7 @@ git checkout -b audit/performance-accessibility audit/architecture-refactor
    # Analyze bundle
    npm run build
    npm run analyze
-   
+
    # Target: <200KB gzipped for chat route
    ```
 
