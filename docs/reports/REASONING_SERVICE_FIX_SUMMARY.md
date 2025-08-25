@@ -66,7 +66,7 @@ The fixes have been applied to the code but require a server restart to take eff
 ```json
 {
   "success": true,
-  "reasoning_method": "ai_orchestrator", 
+  "reasoning_method": "ai_orchestrator",
   "fallback_used": false,
   "response": "Full AI-powered response with conversation processing"
 }
@@ -104,12 +104,12 @@ After restarting the server:
      -H "Content-Type: application/json" \
      -d '{"input": "Hello, test message", "context": {"user_id": "test"}}'
    ```
-   
+
 2. **Check Degraded Mode Status**:
    ```bash
    curl http://localhost:8010/api/karen/api/health/degraded-mode
    ```
-   
+
 3. **Verify Frontend**: The degraded mode banner should disappear
 
 ## Technical Details

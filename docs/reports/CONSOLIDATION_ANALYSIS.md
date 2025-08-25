@@ -12,7 +12,7 @@ This document provides a comprehensive analysis of consolidating the FIX_PACK im
 - **Key Features**: Security components, error handling, performance optimizations, telemetry
 - **Dependencies**: Modern React ecosystem with security-focused libraries
 
-### ui_launchers/web_ui Structure  
+### ui_launchers/web_ui Structure
 - **Framework**: Next.js with TypeScript, Vitest for testing
 - **Architecture**: Next.js app router with comprehensive UI components
 - **Key Features**: Full-featured chat interface, authentication, extensions system
@@ -129,7 +129,7 @@ This document provides a comprehensive analysis of consolidating the FIX_PACK im
 {
   "dependencies": {
     "@tanstack/react-query": "^5.17.0",
-    "@tanstack/react-query-devtools": "^5.17.0", 
+    "@tanstack/react-query-devtools": "^5.17.0",
     "@types/dompurify": "^3.0.5",
     "dompurify": "^3.0.8",
     "immer": "^10.0.3",

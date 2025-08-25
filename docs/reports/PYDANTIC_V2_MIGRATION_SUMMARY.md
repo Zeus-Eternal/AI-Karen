@@ -82,7 +82,7 @@ Running Pydantic V2 compatibility validation...
 ### Key Metrics:
 - **Files Processed**: 52+ Python files
 - **Patterns Migrated**: 97 individual changes
-- **Deprecated Patterns Eliminated**: 
+- **Deprecated Patterns Eliminated**:
   - ❌ `class Config:` with `schema_extra` → ✅ `model_config = ConfigDict(json_schema_extra=...)`
   - ❌ `class Config:` with `json_encoders` → ✅ `model_config = ConfigDict(json_encoders=...)`
   - ❌ `@validator("field")` → ✅ `@field_validator("field")` with `@classmethod`

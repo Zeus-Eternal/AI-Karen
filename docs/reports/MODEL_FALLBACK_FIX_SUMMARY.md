@@ -35,29 +35,29 @@ local_capabilities = await _check_local_model_capabilities()  # Removed 'self.'
 def route(self, prompt: str, skill: Optional[str] = None, **kwargs) -> str:
     """Route request to appropriate model with automatic fallback"""
     attempted_models = []
-    
+
     while True:
         model_id, model = self._select_model(skill)
         if not model or model_id in attempted_models:
             break
-            
+
         attempted_models.append(model_id)
-        
+
         try:
             # Check if model is properly loaded
             if hasattr(model.model, 'is_loaded') and not model.model.is_loaded():
                 logger.warning(f"Model {model_id} not loaded, attempting to load...")
                 # Try to load or skip to next model
-                
+
             # Execute model
             result = # ... model execution
             return result
-            
+
         except Exception as e:
             logger.warning(f"Model {model_id} failed: {str(e)}, trying next model...")
             model.status = ModelStatus.CIRCUIT_BROKEN
             continue
-    
+
     raise RuntimeError(f"All available models failed. Attempted: {attempted_models}")
 ```
 
