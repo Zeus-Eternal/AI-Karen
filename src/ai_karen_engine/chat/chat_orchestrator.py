@@ -54,6 +54,12 @@ class ProcessingStatus(str, Enum):
     FAILED = "failed"
     RETRYING = "retrying"
 
+class OperationMode(str, Enum):
+    """Operation mode of the orchestrator."""
+    PROVIDER = "provider"    # User's explicit LLM choice
+    SYSTEM = "system"        # System default LLMs (local-first)
+    STATIC = "static"        # True degraded mode - no LLM available
+
 
 class OperationMode(str, Enum):
     """Operation mode of the orchestrator."""
@@ -312,11 +318,13 @@ class ChatOrchestrator:
             if result.success:
                 self._successful_requests += 1
                 context.status = ProcessingStatus.COMPLETED
+                
                 # Build metadata with mode information (before hooks for observability)
                 metadata = {
                     "operation_mode": result.operation_mode.value,
                     "llm_provider": result.llm_provider,
                     "llm_model": result.llm_model,
+                  
                     "parsed_entities": len(result.parsed_message.entities)
                     if result.parsed_message
                     else 0,
@@ -326,7 +334,7 @@ class ChatOrchestrator:
                     "retry_count": context.retry_count,
                     **context.metadata,
                 }
-
+                
                 # Trigger message processed hooks
                 message_processed_context = HookContext(
                     hook_type=HookTypes.MESSAGE_PROCESSED,
@@ -372,7 +380,7 @@ class ChatOrchestrator:
                         total_execution_time_ms=0.0,
                         results=[],
                     )
-
+                    
                 # Add context summary if available
                 if result.context:
                     metadata["context_summary"] = result.context.get(
@@ -385,7 +393,7 @@ class ChatOrchestrator:
                     metadata["total_memories_considered"] = result.context.get(
                         "total_memories_considered", 0
                     )
-
+                    
                 # Trigger post-message hooks
                 post_message_context = HookContext(
                     hook_type=HookTypes.POST_MESSAGE,
@@ -445,7 +453,6 @@ class ChatOrchestrator:
                         ),
                     }
                 )
-
                 return ChatResponse(
                     response=result.response or "",
                     correlation_id=context.correlation_id,
@@ -915,7 +922,6 @@ class ChatOrchestrator:
                     active_instructions,
                     context,
                 )
-
                 # Preserve parsing fallback info into result.used_fallback only if STATIC isn't already set
                 if used_fallback and result.operation_mode != OperationMode.STATIC:
                     result.used_fallback = False  # parsing fallback ≠ degraded mode
@@ -1108,7 +1114,7 @@ class ChatOrchestrator:
                     operation_mode = OperationMode.SYSTEM
                     try:
                         from ai_karen_engine.llm_orchestrator import get_orchestrator
-
+                        
                         orchestrator = get_orchestrator()
                         if getattr(orchestrator, "default_provider", None):
                             llm_provider = orchestrator.default_provider
