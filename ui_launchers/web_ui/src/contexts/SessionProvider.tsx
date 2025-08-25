@@ -10,7 +10,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { 
+import {
   bootSession, 
   ensureToken, 
   isAuthenticated, 
@@ -23,6 +23,7 @@ import {
   type SessionData
 } from '@/lib/auth/session';
 import { attemptSessionRecovery, type SessionRecoveryResult } from '@/lib/auth/session-recovery';
+import { authStateManager, type AuthSnapshot } from './AuthStateManager';
 
 export interface SessionUser {
   userId: string;
@@ -102,9 +103,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       user: currentUser,
       sessionData,
     };
-    
+
     setSessionState(newState);
-    
+
+    const snapshot: AuthSnapshot = {
+      isAuthenticated: authenticated,
+      user: currentUser,
+    };
+    authStateManager.updateState(snapshot);
+
     // Notify parent component of session changes
     onSessionChange?.(authenticated, currentUser);
     

@@ -1,5 +1,10 @@
-import { TokenValidationService, TokenExpiredError, TokenValidationError } from './token-validation.service';
-import { setSession, clearSession, SessionData } from './session';
+import {
+  TokenValidationService,
+  TokenExpiredError,
+  TokenValidationError,
+  TokenNetworkError,
+} from './token-validation.service';
+import { setSession, clearSession, type SessionData } from './session';
 
 export type RehydrationState = 'idle' | 'rehydrating' | 'authenticated' | 'unauthenticated' | 'error';
 
@@ -19,7 +24,7 @@ export class SessionRehydrationService {
     }
 
     this.state = 'rehydrating';
-    this.rehydratePromise = this.performRehydration();
+    this.rehydratePromise = this.performWithRetry();
     try {
       await this.rehydratePromise;
     } finally {
@@ -27,19 +32,32 @@ export class SessionRehydrationService {
     }
   }
 
+  private async performWithRetry(retries = 3, baseDelay = 200): Promise<void> {
+    let attempt = 0;
+    while (attempt < retries) {
+      try {
+        await this.performRehydration();
+        return;
+      } catch (err) {
+        if (err instanceof TokenNetworkError) {
+          if (attempt === retries - 1) {
+            throw err;
+          }
+          const delay = baseDelay * Math.pow(2, attempt);
+          await new Promise(res => setTimeout(res, delay));
+          attempt += 1;
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
   private async performRehydration(): Promise<void> {
     try {
       const result = await this.validator.validateToken();
-      if (result.valid && result.user) {
-        const session: SessionData = {
-          accessToken: 'validated',
-          expiresAt: Date.now() + 15 * 60 * 1000,
-          userId: result.user.user_id,
-          email: result.user.email,
-          roles: result.user.roles,
-          tenantId: result.user.tenant_id,
-        };
-        setSession(session);
+      if (result.valid && result.session) {
+        setSession(result.session);
         this.state = 'authenticated';
         return;
       }
@@ -50,6 +68,8 @@ export class SessionRehydrationService {
       if (err instanceof TokenExpiredError) {
         this.state = 'unauthenticated';
       } else if (err instanceof TokenValidationError) {
+        this.state = 'error';
+      } else if (err instanceof TokenNetworkError) {
         this.state = 'error';
       } else {
         this.state = 'error';
