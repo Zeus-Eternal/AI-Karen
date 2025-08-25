@@ -75,6 +75,7 @@ from ai_karen_engine.api_routes.profile_routes import router as profile_router
 from ai_karen_engine.api_routes.settings_routes import router as settings_router
 from ai_karen_engine.api_routes.error_response_routes import router as error_response_router
 from ai_karen_engine.api_routes.analytics_routes import router as analytics_router
+from ai_karen_engine.api_routes.health import router as health_router
 from ai_karen_engine.server.middleware import configure_middleware
 from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS, PLUGIN_MAP
 from ai_karen_engine.server.startup import create_lifespan
@@ -327,6 +328,7 @@ def create_app() -> FastAPI:
     app.include_router(provider_router, prefix="/api/providers", tags=["providers"])
     app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
     app.include_router(error_response_router, prefix="/api", tags=["error-response"])
+    app.include_router(health_router, prefix="/api/health", tags=["health"])
     app.include_router(settings_router)
 
     # Setup developer API with enhanced debugging capabilities
