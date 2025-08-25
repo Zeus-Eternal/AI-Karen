@@ -1,5 +1,5 @@
 """
-Kari UI Chart Utility - Production Version
+Kari UI Chart Utility:
 - Unified chart builder with support for multiple engines (Plotly, Matplotlib, Altair)
 - Features: Auto-sanitization, dynamic engine/field selection, color themes, RBAC, memory safety, testability
 """

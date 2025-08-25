@@ -1,5 +1,5 @@
 """
-Kari Analytics Auto-Parser - Production Version
+Kari Analytics Auto-Parser:
 - Unified CSV/Excel/TSV parser with secure handling and automatic type inference
 - Features:
   * Secure file handling with size/type validation

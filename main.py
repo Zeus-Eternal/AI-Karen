@@ -1,6 +1,6 @@
 # mypy: ignore-errors
 """
-Kari FastAPI Server - Production Version
+Kari FastAPI Server:
 - Complete implementation with all original routes
 - Enhanced security and monitoring
 - Optimized plugin system

@@ -1,5 +1,5 @@
 """
-Kari Analytics Chart Builder - Enterprise Production Version
+Kari Analytics Chart Builder:
 
 - Full dependency injection (chart engine, config, logging)
 - Hard limits, auto field inference, and UX fallbacks

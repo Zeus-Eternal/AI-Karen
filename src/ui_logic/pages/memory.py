@@ -1,5 +1,5 @@
 """
-Kari Memory Page - Production Version
+Kari Memory Page:
 - Central hub for all memory-related components
 - Features:
   * RBAC-aware component rendering
