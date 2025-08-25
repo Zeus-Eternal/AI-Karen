@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import List
 
 # Add the src directory to the Python path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 try:
     from sqlalchemy import create_engine, text
@@ -152,7 +152,7 @@ class AuthMigrationRunner:
         print("🚀 Running authentication database migration...")
         
         # Find migration script
-        migration_path = Path(__file__).parent.parent / "data/migrations/postgres/013_production_auth_schema_alignment.sql"
+        migration_path = Path(__file__).resolve().parents[2] / "data/migrations/postgres/013_production_auth_schema_alignment.sql"
         
         if not migration_path.exists():
             print(f"❌ Migration script not found: {migration_path}")

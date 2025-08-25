@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 # Add the src directory to the Python path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.config import DatabaseConfig
@@ -30,7 +30,7 @@ class NeuroVaultMigrationRunner:
     
     def __init__(self, db_client: MultiTenantPostgresClient):
         self.db_client = db_client
-        self.migration_file = Path(__file__).parent.parent / "data/migrations/postgres/015_neuro_vault_schema_extensions.sql"
+        self.migration_file = Path(__file__).resolve().parents[2] / "data/migrations/postgres/015_neuro_vault_schema_extensions.sql"
     
     async def check_prerequisites(self) -> bool:
         """Check if the database is ready for NeuroVault migration."""

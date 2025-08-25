@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime
 
 # Add the project root to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 try:
     from src.ai_karen_engine.database.client import MultiTenantPostgresClient

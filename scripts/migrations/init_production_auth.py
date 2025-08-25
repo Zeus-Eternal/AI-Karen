@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 # Add the src directory to the Python path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 try:
     import bcrypt
@@ -152,7 +152,7 @@ class ProductionAuthInitializer:
             await db_client.initialize_schema()
             
             # Run the production migration script
-            migration_path = Path(__file__).parent.parent / "data/migrations/postgres/013_production_auth_schema_alignment.sql"
+            migration_path = Path(__file__).resolve().parents[2] / "data/migrations/postgres/013_production_auth_schema_alignment.sql"
             
             if migration_path.exists():
                 print("📄 Running production authentication migration...")

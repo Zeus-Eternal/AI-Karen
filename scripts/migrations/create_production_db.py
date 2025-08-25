@@ -11,7 +11,7 @@ import os
 import sys
 
 # Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 from ai_karen_engine.auth.service import AuthService, get_auth_service  # noqa: E402
 from ai_karen_engine.core.logging import get_logger  # noqa: E402

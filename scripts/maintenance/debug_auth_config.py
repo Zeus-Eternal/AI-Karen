@@ -5,7 +5,7 @@ Debug auth configuration to see what's being loaded
 
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
 # Set minimal environment variables
 os.environ.setdefault('KARI_DUCKDB_PASSWORD', 'dev-duckdb-pass')
