@@ -34,3 +34,13 @@ def test_recall_promotes_frequent_items(tmp_path):
     # after repeated access, second record should have higher access_count
     records = memory._store[conv]
     assert records[0].access_count <= records[1].access_count
+
+
+def test_health_status(tmp_path):
+    meta_file = tmp_path / "meta.json"
+    memory = ChatMemory(metadata_path=meta_file)
+    conv = "c3"
+    memory.store(conv, "hello", "hi")
+    status = memory.health_status()
+    assert status["conversations"] == 1
+    assert status["records"] == 1
