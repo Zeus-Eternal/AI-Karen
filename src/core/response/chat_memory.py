@@ -15,6 +15,8 @@ import logging
 import math
 import time
 import hashlib
+import logging
+from contextvars import ContextVar
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Dict, List, DefaultDict
@@ -149,6 +151,16 @@ class ChatMemory(Memory):
         return {
             "conversations": len(self._store),
             "cache_entries": len(self._cache),
+        }
+
+    # ------------------------------------------------------------------
+    # Observability helpers
+    # ------------------------------------------------------------------
+    def health_status(self) -> Dict[str, int]:
+        """Return basic health information for diagnostics."""
+        return {
+            "conversations": len(self._store),
+            "records": sum(len(v) for v in self._store.values()),
         }
 
     # ------------------------------------------------------------------
