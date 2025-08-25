@@ -18,7 +18,6 @@ describe('TokenValidationService', () => {
     expect(result.valid).toBe(true);
     expect(result.session?.userId).toBe('1');
   });
-
   it('returns invalid result when token is invalid', async () => {
     api.get.mockResolvedValue({ data: { valid: false } });
     const svc = new TokenValidationService();
@@ -26,7 +25,6 @@ describe('TokenValidationService', () => {
     expect(result.valid).toBe(false);
     expect(result.session).toBeUndefined();
   });
-
   it('refreshes when token expired', async () => {
     api.get.mockResolvedValueOnce({ data: { valid: false, expired: true } });
     api.post.mockResolvedValueOnce({ data: { access_token: 'a', expires_in: 1, user_data: { user_id: '1', email: 'e', roles: [], tenant_id: 't' } } });
