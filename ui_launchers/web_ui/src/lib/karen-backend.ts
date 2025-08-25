@@ -177,6 +177,8 @@ class KarenBackendService {
   private performanceMonitoring: boolean;
   private logLevel: string;
   private offlineQueue: OfflineRequest[] = [];
+  private failureCount = 0;
+  private circuitOpenUntil = 0;
 
   constructor(config: Partial<BackendConfig> = {}) {
     this.config = {
@@ -214,10 +216,28 @@ class KarenBackendService {
     useCache: boolean = false,
     cacheTtl: number = webUIConfig.cacheTtl,
     maxRetries: number = webUIConfig.maxRetries,
-    retryDelay: number = webUIConfig.retryDelay
+    retryDelay: number = webUIConfig.retryDelay,
+    safeFallback?: T
   ): Promise<T> {
     const url = `${this.config.baseUrl}${endpoint}`;
     const cacheKey = `${url}:${JSON.stringify(options)}`;
+
+    // Circuit breaker check
+    const now = Date.now();
+    if (this.circuitOpenUntil > now) {
+      if (this.requestLogging) {
+        console.warn(`[CIRCUIT] Skipping request to ${endpoint} - open until ${new Date(this.circuitOpenUntil).toISOString()}`);
+      }
+      if (safeFallback !== undefined) {
+        return safeFallback;
+      }
+      throw new APIError('Service unavailable', 503, {
+        error: 'Circuit breaker open',
+        message: 'Service temporarily unavailable',
+        type: 'CIRCUIT_OPEN',
+        timestamp: new Date().toISOString(),
+      }, false);
+    }
 
     // Check cache first
     if (useCache && this.cache.has(cacheKey)) {
@@ -232,6 +252,9 @@ class KarenBackendService {
       'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {}),
     };
+
+    const correlationId = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+    headers['X-Correlation-ID'] = correlationId;
 
     // Try to get stored session token first
     const sessionToken = this.getStoredSessionToken();
@@ -256,6 +279,7 @@ class KarenBackendService {
       console.log(`[REQUEST] ${options.method || 'GET'} ${url}`, {
         headers: this.debugLogging ? headers : { 'Content-Type': headers['Content-Type'] },
         body: bodyLog,
+        correlationId,
       });
     }
 
@@ -372,6 +396,7 @@ class KarenBackendService {
             responseTime: this.performanceMonitoring ? `${responseTime.toFixed(2)}ms` : undefined,
             dataSize: JSON.stringify(data).length,
             cached: useCache,
+            correlationId,
           });
         }
 
@@ -383,7 +408,8 @@ class KarenBackendService {
             ttl: cacheTtl,
           });
         }
-
+        this.failureCount = 0;
+        this.circuitOpenUntil = 0;
         return data;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -438,7 +464,17 @@ class KarenBackendService {
             lastError.errorInfo = ErrorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
           }
 
+          this.failureCount++;
+          if (this.failureCount >= webUIConfig.circuitBreakerThreshold) {
+            this.circuitOpenUntil = Date.now() + webUIConfig.circuitBreakerResetTime;
+            if (this.requestLogging) {
+              console.error(`[CIRCUIT] Opened for ${webUIConfig.circuitBreakerResetTime}ms after ${this.failureCount} failures`);
+            }
+          }
           console.error(`Backend request failed for ${endpoint} after ${attempt + 1} attempts:`, lastError);
+          if (safeFallback !== undefined) {
+            return safeFallback;
+          }
           throw lastError;
         }
 
@@ -452,6 +488,16 @@ class KarenBackendService {
     // This should never be reached, but just in case
     if (lastError instanceof APIError && !lastError.errorInfo) {
       lastError.errorInfo = ErrorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
+    }
+    this.failureCount++;
+    if (this.failureCount >= webUIConfig.circuitBreakerThreshold) {
+      this.circuitOpenUntil = Date.now() + webUIConfig.circuitBreakerResetTime;
+      if (this.requestLogging) {
+        console.error(`[CIRCUIT] Opened for ${webUIConfig.circuitBreakerResetTime}ms after ${this.failureCount} failures`);
+      }
+    }
+    if (safeFallback !== undefined) {
+      return safeFallback;
     }
     throw lastError || new Error('Unknown error occurred');
   }
@@ -501,7 +547,7 @@ class KarenBackendService {
       if (authToken) {
         return authToken;
       }
-      
+
       // Fallback to the old sessionStorage token
       return sessionStorage.getItem('kari_session_token');
     } catch {
@@ -621,7 +667,7 @@ class KarenBackendService {
         method: 'POST',
         body: JSON.stringify(requestPayload),
       });
-      
+
       console.log('Memory store response:', response);
       return response.memory_id;
     } catch (error) {
@@ -630,7 +676,7 @@ class KarenBackendService {
         if (error.status === 401) {
           console.warn('Authentication failed, clearing session and retrying...');
           this.clearSessionToken();
-          
+
           // Try to re-authenticate and retry once
           const isAuthenticated = await this.ensureAuthenticated();
           if (isAuthenticated) {
@@ -1154,9 +1200,10 @@ class KarenBackendService {
     useCache: boolean = false,
     cacheTtl: number = webUIConfig.cacheTtl,
     maxRetries: number = webUIConfig.maxRetries,
-    retryDelay: number = webUIConfig.retryDelay
+    retryDelay: number = webUIConfig.retryDelay,
+    safeFallback?: T
   ): Promise<T> {
-    return this.makeRequest<T>(endpoint, options, useCache, cacheTtl, maxRetries, retryDelay);
+    return this.makeRequest<T>(endpoint, options, useCache, cacheTtl, maxRetries, retryDelay, safeFallback);
   }
 }
 
