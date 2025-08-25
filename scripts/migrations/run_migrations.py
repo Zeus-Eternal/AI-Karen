@@ -12,7 +12,7 @@ from typing import List, Tuple
 import psycopg2
 
 # Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.core.logging import get_logger
@@ -26,7 +26,7 @@ class MigrationRunner:
     def __init__(self, database_url: str):
         self.database_url = database_url
         self.migrations_dir = (
-            Path(__file__).parent.parent / "data" / "migrations" / "postgres"
+            Path(__file__).resolve().parents[2] / "data" / "migrations" / "postgres"
         )
 
     def get_connection(self):

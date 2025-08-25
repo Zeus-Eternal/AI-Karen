@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -24,7 +24,7 @@ from pathlib import Path
 from dataclasses import dataclass
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 try:
     import asyncpg

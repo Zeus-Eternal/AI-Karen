@@ -94,7 +94,7 @@ def run_python_migration():
 
     try:
         # Add the project root to Python path
-        project_root = Path(__file__).parent.parent
+        project_root = Path(__file__).resolve().parents[2]
         sys.path.insert(0, str(project_root))
 
         import uuid
