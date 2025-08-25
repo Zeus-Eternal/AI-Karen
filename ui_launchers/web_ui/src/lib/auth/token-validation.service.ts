@@ -1,4 +1,5 @@
 import { getApiClient } from '@/lib/api-client';
+import { type SessionData } from '@/lib/auth/session';
 
 /**
  * Error thrown when token validation fails.
@@ -32,12 +33,7 @@ export class TokenNetworkError extends TokenValidationError {
 
 interface ValidationResult {
   valid: boolean;
-  user?: {
-    user_id: string;
-    email: string;
-    roles: string[];
-    tenant_id: string;
-  };
+  session?: SessionData;
 }
 
 /**
@@ -58,17 +54,59 @@ export class TokenValidationService {
     while (attempt <= this.maxRetries) {
       try {
         const response = await api.get('/api/auth/validate-session');
-        const data = response.data as { valid: boolean; expired?: boolean; user?: ValidationResult['user'] };
+        const data = response.data as {
+          valid: boolean;
+          expired?: boolean;
+          user?: {
+            user_id: string;
+            email: string;
+            roles: string[];
+            tenant_id: string;
+          };
+        };
 
-        if (data.valid) {
-          return { valid: true, user: data.user };
+        if (data.valid && data.user) {
+          const session: SessionData = {
+            accessToken: 'validated',
+            expiresAt: Date.now() + 15 * 60 * 1000,
+            userId: data.user.user_id,
+            email: data.user.email,
+            roles: data.user.roles,
+            tenantId: data.user.tenant_id,
+          };
+          return { valid: true, session };
         }
 
         if (data.expired) {
-          throw new TokenExpiredError();
+          try {
+            const refresh = await api.post('/api/auth/refresh');
+            const refreshData = refresh.data as {
+              access_token: string;
+              expires_in: number;
+              user_data: {
+                user_id: string;
+                email: string;
+                roles: string[];
+                tenant_id: string;
+              };
+            };
+
+            const session: SessionData = {
+              accessToken: refreshData.access_token,
+              expiresAt: Date.now() + refreshData.expires_in * 1000,
+              userId: refreshData.user_data.user_id,
+              email: refreshData.user_data.email,
+              roles: refreshData.user_data.roles,
+              tenantId: refreshData.user_data.tenant_id,
+            };
+            return { valid: true, session };
+          } catch {
+            throw new TokenExpiredError();
+          }
         }
 
-        throw new TokenValidationError('Invalid token');
+        // For invalid tokens, treat as unauthenticated without throwing an error
+        return { valid: false };
       } catch (err: any) {
         if (err instanceof TokenValidationError) {
           throw err;

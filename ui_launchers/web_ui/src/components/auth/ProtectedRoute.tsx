@@ -23,7 +23,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const [rehydrating, setRehydrating] = useState(true);
   const [rehydrationError, setRehydrationError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const runRehydration = () => {
+    setRehydrating(true);
+    setRehydrationError(null);
     const service = new SessionRehydrationService();
     service
       .rehydrate()
@@ -31,6 +33,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         setRehydrationError(err instanceof Error ? err.message : 'Rehydration failed');
       })
       .finally(() => setRehydrating(false));
+  };
+
+  useEffect(() => {
+    runRehydration();
   }, []);
 
   useEffect(() => {
@@ -60,8 +66,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (rehydrationError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
+        <div className="text-center space-y-4">
           <p className="text-red-500">{rehydrationError}</p>
+          <button
+            className="px-4 py-2 bg-primary text-primary-foreground rounded"
+            onClick={runRehydration}
+            data-testid="retry-button"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
