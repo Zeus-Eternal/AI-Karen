@@ -17,20 +17,28 @@ os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")
 os.environ.setdefault("KARI_JOB_SIGNING_KEY", "test")
 os.environ.setdefault("DUCKDB_PATH", ":memory:")
 
-# Provide fastapi and pydantic stubs before importing project modules
-sys.modules.setdefault(
-    "fastapi", importlib.import_module("ai_karen_engine.fastapi_stub")
-)
-sys.modules.setdefault(
-    "fastapi_stub", importlib.import_module("ai_karen_engine.fastapi_stub")
-)
-sys.modules.setdefault(
-    "fastapi.testclient",
-    importlib.import_module("ai_karen_engine.fastapi_stub.testclient"),
-)
-sys.modules.setdefault(
-    "pydantic", importlib.import_module("ai_karen_engine.pydantic_stub")
-)
+# Provide fastapi and pydantic stubs only if real packages unavailable
+try:  # pragma: no cover - prefer real packages
+    import fastapi  # noqa: F401
+    import fastapi.testclient  # noqa: F401
+except Exception:  # pragma: no cover
+    sys.modules.setdefault(
+        "fastapi", importlib.import_module("ai_karen_engine.fastapi_stub")
+    )
+    sys.modules.setdefault(
+        "fastapi_stub", importlib.import_module("ai_karen_engine.fastapi_stub")
+    )
+    sys.modules.setdefault(
+        "fastapi.testclient",
+        importlib.import_module("ai_karen_engine.fastapi_stub.testclient"),
+    )
+
+try:  # pragma: no cover - prefer real package
+    import pydantic  # noqa: F401
+except Exception:  # pragma: no cover
+    sys.modules.setdefault(
+        "pydantic", importlib.import_module("ai_karen_engine.pydantic_stub")
+    )
 
 
 # Alias installed-style packages for tests

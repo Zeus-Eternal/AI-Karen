@@ -237,6 +237,15 @@ class APIRouter(FastAPI):
 
         return decorator
 
+    def head(self, path, **_kw):
+        tags = _kw.get("tags") or self.tags
+
+        def decorator(func):
+            self.routes.append(_Route("HEAD", path, func, tags=tags))
+            return func
+
+        return decorator
+
 
 class Response:
     def __init__(self, content=None, status_code=200, media_type=None, headers=None):
