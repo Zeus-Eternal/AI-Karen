@@ -22,6 +22,7 @@ from ..core.langgraph_orchestrator import (
     LangGraphOrchestrator
 )
 from ..core.streaming_integration import get_streaming_manager, StreamingManager
+from ..core.response.factory import get_global_orchestrator, create_response_orchestrator
 from ..services.auth_utils import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -289,6 +290,61 @@ async def health_check():
             "timestamp": datetime.now().isoformat(),
             "error": str(e)
         }
+
+
+@router.post("/chat/response-core", response_model=ChatResponse)
+async def chat_with_response_core(
+    request: ChatRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Process chat using Response Core orchestrator as an alternative to LangGraph
+    
+    This endpoint provides an alternative chat processing pipeline using the
+    Response Core orchestrator with local-first processing and structured prompts.
+    """
+    start_time = datetime.now()
+    
+    try:
+        user_id = current_user.get("id") or current_user.get("user_id", "anonymous")
+        
+        # Get Response Core orchestrator
+        response_orchestrator = get_global_orchestrator(user_id=user_id)
+        
+        # Process through Response Core
+        result = response_orchestrator.respond(
+            conversation_id=request.session_id or f"session_{user_id}",
+            user_input=request.message,
+            correlation_id=None
+        )
+        
+        processing_time = (datetime.now() - start_time).total_seconds()
+        
+        return ChatResponse(
+            response=result,
+            session_id=request.session_id or f"session_{user_id}",
+            metadata={
+                "orchestrator": "response_core",
+                "local_processing": True,
+                "prompt_driven": True
+            },
+            processing_time=processing_time,
+            errors=[],
+            warnings=[]
+        )
+        
+    except Exception as e:
+        logger.error(f"Response Core chat error: {e}")
+        processing_time = (datetime.now() - start_time).total_seconds()
+        
+        return ChatResponse(
+            response="I apologize, but an error occurred while processing your request with Response Core.",
+            session_id=request.session_id or "error",
+            metadata={"error": str(e), "orchestrator": "response_core"},
+            processing_time=processing_time,
+            errors=[f"Response Core error: {str(e)}"],
+            warnings=[]
+        )
 
 
 @router.post("/debug/dry-run")

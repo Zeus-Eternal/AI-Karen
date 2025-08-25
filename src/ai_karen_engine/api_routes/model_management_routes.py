@@ -27,6 +27,7 @@ from ai_karen_engine.inference.model_store import get_model_store
 from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_manager
 from ai_karen_engine.integrations.registry import get_registry
 from ai_karen_engine.services.job_manager import get_job_manager
+from ai_karen_engine.services.system_model_manager import get_system_model_manager
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
 APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks = import_fastapi(
@@ -684,6 +685,336 @@ def _register_job_handlers():
 
 # Initialize job handlers when module is imported
 _register_job_handlers()
+
+# -----------------------------
+# System Model Configuration Endpoints
+# -----------------------------
+
+@router.get("/api/models/system", response_model=List[Dict[str, Any]])
+async def list_system_models():
+    """List all system models with their configuration and status."""
+    try:
+        system_model_manager = get_system_model_manager()
+        models = system_model_manager.get_system_models()
+        return models
+        
+    except Exception as e:
+        logger.error(f"Failed to list system models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/models/system/{model_id}", response_model=Dict[str, Any])
+async def get_system_model(model_id: str):
+    """Get detailed information about a specific system model."""
+    try:
+        system_model_manager = get_system_model_manager()
+        models = system_model_manager.get_system_models()
+        
+        model = next((m for m in models if m["id"] == model_id), None)
+        if not model:
+            raise HTTPException(status_code=404, detail="System model not found")
+        
+        return model
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get system model {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/models/system/{model_id}/configuration", response_model=Dict[str, Any])
+async def get_model_configuration(model_id: str):
+    """Get configuration for a specific system model."""
+    try:
+        system_model_manager = get_system_model_manager()
+        config = system_model_manager.get_model_configuration(model_id)
+        
+        if config is None:
+            raise HTTPException(status_code=404, detail="Model configuration not found")
+        
+        return config
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get configuration for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/api/models/system/{model_id}/configuration")
+async def update_model_configuration(model_id: str, request: Dict[str, Any]):
+    """Update configuration for a specific system model."""
+    try:
+        system_model_manager = get_system_model_manager()
+        configuration = request.get("configuration", {})
+        
+        success = system_model_manager.update_model_configuration(model_id, configuration)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to update configuration")
+        
+        return {"message": "Configuration updated successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update configuration for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/models/system/validate-configuration")
+async def validate_model_configuration(model_id: str, request: Dict[str, Any]):
+    """Validate model configuration against hardware constraints."""
+    try:
+        system_model_manager = get_system_model_manager()
+        configuration = request.get("configuration", {})
+        
+        # Get model info to determine config class
+        if model_id not in system_model_manager.system_models:
+            raise HTTPException(status_code=404, detail="System model not found")
+        
+        model_info = system_model_manager.system_models[model_id]
+        config_class = model_info["config_class"]
+        
+        # Create config object for validation
+        config_obj = config_class(**configuration)
+        
+        # Validate configuration
+        validation_result = system_model_manager._validate_configuration(model_id, config_obj)
+        
+        return validation_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to validate configuration for {model_id}: {e}")
+        return {"valid": False, "error": str(e)}
+
+
+@router.post("/api/models/system/{model_id}/reset-configuration")
+async def reset_model_configuration(model_id: str):
+    """Reset model configuration to defaults."""
+    try:
+        system_model_manager = get_system_model_manager()
+        success = system_model_manager.reset_model_configuration(model_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="System model not found")
+        
+        return {"message": "Configuration reset to defaults"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to reset configuration for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/models/system/{model_id}/hardware-recommendations", response_model=Dict[str, Any])
+async def get_hardware_recommendations(model_id: str):
+    """Get hardware-specific recommendations for model configuration."""
+    try:
+        system_model_manager = get_system_model_manager()
+        recommendations = system_model_manager.get_hardware_recommendations(model_id)
+        
+        return recommendations
+        
+    except Exception as e:
+        logger.error(f"Failed to get hardware recommendations for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/models/system/{model_id}/performance-metrics", response_model=Dict[str, Any])
+async def get_performance_metrics(model_id: str):
+    """Get performance metrics for a system model."""
+    try:
+        system_model_manager = get_system_model_manager()
+        metrics = system_model_manager.get_performance_metrics(model_id)
+        
+        return metrics
+        
+    except Exception as e:
+        logger.error(f"Failed to get performance metrics for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/models/system/{model_id}/health-check")
+async def perform_health_check(model_id: str):
+    """Perform health check on a system model."""
+    try:
+        system_model_manager = get_system_model_manager()
+        status = system_model_manager._check_model_health(model_id)
+        
+        return {
+            "status": status.status,
+            "last_health_check": status.last_health_check,
+            "error_message": status.error_message,
+            "memory_usage": status.memory_usage,
+            "load_time": status.load_time,
+            "inference_time": status.inference_time
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to perform health check for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/models/system/{model_id}/multi-gpu-config", response_model=Dict[str, Any])
+async def get_multi_gpu_configuration(model_id: str):
+    """Get multi-GPU configuration recommendations."""
+    try:
+        system_model_manager = get_system_model_manager()
+        config = system_model_manager.get_multi_gpu_configuration(model_id)
+        
+        return config
+        
+    except Exception as e:
+        logger.error(f"Failed to get multi-GPU configuration for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# -----------------------------
+# Enhanced HuggingFace Integration
+# -----------------------------
+
+@router.get("/api/models/huggingface/search", response_model=Dict[str, Any])
+async def search_huggingface_models(
+    query: str = "",
+    page: int = 1,
+    per_page: int = 20,
+    sort: str = "downloads",
+    filter_trainable: bool = False
+):
+    """Search HuggingFace models with enhanced filtering."""
+    try:
+        from ai_karen_engine.services.enhanced_huggingface_service import get_enhanced_huggingface_service
+        
+        service = get_enhanced_huggingface_service()
+        
+        if filter_trainable:
+            # Use enhanced search for trainable models
+            from ai_karen_engine.services.enhanced_huggingface_service import TrainingFilters
+            filters = TrainingFilters(supports_fine_tuning=True)
+            models = service.search_trainable_models(
+                query=query,
+                filters=filters,
+                limit=per_page
+            )
+            
+            # Convert to response format
+            model_list = []
+            for model in models:
+                model_list.append({
+                    "id": model.id,
+                    "name": model.name,
+                    "author": model.author,
+                    "description": model.description,
+                    "tags": model.tags,
+                    "downloads": model.downloads,
+                    "likes": model.likes,
+                    "family": model.family,
+                    "parameters": model.parameters,
+                    "format": model.format,
+                    "size": model.size,
+                    "huggingface_id": model.id,
+                    "provider": "huggingface",
+                    "supports_training": model.supports_fine_tuning,
+                    "training_complexity": model.training_complexity,
+                    "license": model.license
+                })
+        else:
+            # Use basic search
+            from ai_karen_engine.inference.huggingface_service import ModelFilters
+            filters = ModelFilters(sort_by=sort, sort_order="desc")
+            models = service.search_models(
+                query=query,
+                filters=filters,
+                limit=per_page
+            )
+            
+            # Convert to response format
+            model_list = []
+            for model in models:
+                model_list.append({
+                    "id": model.id,
+                    "name": model.name,
+                    "author": model.author,
+                    "description": model.description,
+                    "tags": model.tags,
+                    "downloads": model.downloads,
+                    "likes": model.likes,
+                    "family": model.family,
+                    "parameters": model.parameters,
+                    "format": model.format,
+                    "size": model.size,
+                    "huggingface_id": model.id,
+                    "provider": "huggingface",
+                    "license": model.license
+                })
+        
+        return {
+            "models": model_list,
+            "total": len(model_list),
+            "page": page,
+            "per_page": per_page,
+            "has_more": len(model_list) == per_page
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to search HuggingFace models: {e}")
+        # Return empty results instead of error to prevent frontend issues
+        return {
+            "models": [],
+            "total": 0,
+            "page": page,
+            "per_page": per_page,
+            "has_more": False,
+            "error": str(e)
+        }
+
+
+@router.post("/api/models/download")
+async def download_model(
+    background_tasks: BackgroundTasks,
+    model_id: str,
+    model_name: Optional[str] = None,
+    provider: str = "huggingface",
+    enhanced: bool = True
+):
+    """Download a model with optional enhanced features."""
+    try:
+        if provider == "huggingface" and enhanced:
+            # Use enhanced download service
+            from ai_karen_engine.services.enhanced_huggingface_service import get_enhanced_huggingface_service
+            
+            service = get_enhanced_huggingface_service()
+            job = service.download_with_training_setup(
+                model_id=model_id,
+                setup_training=True
+            )
+            
+            return {
+                "job_id": job.id,
+                "message": "Enhanced download started",
+                "enhanced": True,
+                "compatibility_check": job.compatibility_report is not None
+            }
+        else:
+            # Use basic download service
+            service = get_huggingface_service()
+            job = service.download_model(model_id=model_id)
+            
+            return {
+                "job_id": job.id,
+                "message": "Download started",
+                "enhanced": False
+            }
+        
+    except Exception as e:
+        logger.error(f"Failed to start model download: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # -----------------------------
 # Provider Management Endpoints
@@ -1384,4 +1715,218 @@ async def get_provider_stats():
             "active_providers": 0,
             "total_models": 0,
             "providers": {}
+        }
+
+# -----------------------------
+# System Model Management Endpoints
+# -----------------------------
+
+class SystemModelInfo(BaseModel):
+    """System model information."""
+    id: str
+    name: str
+    family: str
+    format: str
+    capabilities: List[str]
+    runtime_compatibility: List[str]
+    local_path: str
+    status: str
+    size: Optional[int] = None
+    parameters: Optional[str] = None
+    last_health_check: Optional[float] = None
+    error_message: Optional[str] = None
+    memory_usage: Optional[int] = None
+    load_time: Optional[float] = None
+    inference_time: Optional[float] = None
+    configuration: Dict[str, Any] = {}
+    is_system_model: bool = True
+
+
+class ModelConfigurationRequest(BaseModel):
+    """Model configuration update request."""
+    configuration: Dict[str, Any]
+
+
+class HardwareRecommendations(BaseModel):
+    """Hardware recommendations for model configuration."""
+    system_info: Dict[str, Any]
+    recommendations: Dict[str, Any] = {}
+
+
+@router.get("/api/models/system", response_model=List[SystemModelInfo])
+async def list_system_models():
+    """List all system models with their status and configuration."""
+    try:
+        system_manager = get_system_model_manager()
+        models = system_manager.get_system_models()
+        
+        return [SystemModelInfo(**model) for model in models]
+        
+    except Exception as e:
+        logger.error(f"Failed to list system models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/models/system/{model_id}", response_model=SystemModelInfo)
+async def get_system_model(model_id: str):
+    """Get detailed information about a specific system model."""
+    try:
+        system_manager = get_system_model_manager()
+        models = system_manager.get_system_models()
+        
+        model = next((m for m in models if m["id"] == model_id), None)
+        if not model:
+            raise HTTPException(status_code=404, detail="System model not found")
+        
+        return SystemModelInfo(**model)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get system model {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/models/system/{model_id}/configuration")
+async def get_model_configuration(model_id: str):
+    """Get configuration for a specific system model."""
+    try:
+        system_manager = get_system_model_manager()
+        config = system_manager.get_model_configuration(model_id)
+        
+        if config is None:
+            raise HTTPException(status_code=404, detail="Model configuration not found")
+        
+        return {"model_id": model_id, "configuration": config}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get configuration for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/api/models/system/{model_id}/configuration")
+async def update_model_configuration(model_id: str, request: ModelConfigurationRequest):
+    """Update configuration for a specific system model."""
+    try:
+        system_manager = get_system_model_manager()
+        success = system_manager.update_model_configuration(model_id, request.configuration)
+        
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to update model configuration")
+        
+        return {"message": "Configuration updated successfully", "model_id": model_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update configuration for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/models/system/{model_id}/reset-configuration")
+async def reset_model_configuration(model_id: str):
+    """Reset model configuration to defaults."""
+    try:
+        system_manager = get_system_model_manager()
+        success = system_manager.reset_model_configuration(model_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Model not found")
+        
+        return {"message": "Configuration reset to defaults", "model_id": model_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to reset configuration for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/models/system/{model_id}/hardware-recommendations")
+async def get_hardware_recommendations(model_id: str):
+    """Get hardware-specific recommendations for model configuration."""
+    try:
+        system_manager = get_system_model_manager()
+        recommendations = system_manager.get_hardware_recommendations(model_id)
+        
+        return {"model_id": model_id, **recommendations}
+        
+    except Exception as e:
+        logger.error(f"Failed to get hardware recommendations for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/models/system/{model_id}/performance-metrics")
+async def get_performance_metrics(model_id: str):
+    """Get performance metrics for a system model."""
+    try:
+        system_manager = get_system_model_manager()
+        metrics = system_manager.get_performance_metrics(model_id)
+        
+        return metrics
+        
+    except Exception as e:
+        logger.error(f"Failed to get performance metrics for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/models/system/{model_id}/health-check")
+async def perform_health_check(model_id: str):
+    """Perform a health check on a system model."""
+    try:
+        system_manager = get_system_model_manager()
+        # Force a fresh health check
+        models = system_manager.get_system_models()
+        model = next((m for m in models if m["id"] == model_id), None)
+        
+        if not model:
+            raise HTTPException(status_code=404, detail="System model not found")
+        
+        return {
+            "model_id": model_id,
+            "status": model["status"],
+            "last_health_check": model["last_health_check"],
+            "error_message": model["error_message"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to perform health check for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/models/system/validate-configuration")
+async def validate_model_configuration(model_id: str, request: ModelConfigurationRequest):
+    """Validate model configuration without applying it."""
+    try:
+        system_manager = get_system_model_manager()
+        
+        # Create a temporary configuration to validate
+        model_info = system_manager.system_models.get(model_id)
+        if not model_info:
+            raise HTTPException(status_code=404, detail="System model not found")
+        
+        config_class = model_info["config_class"]
+        temp_config = config_class(**request.configuration)
+        
+        validation_result = system_manager._validate_configuration(model_id, temp_config)
+        
+        return {
+            "model_id": model_id,
+            "valid": validation_result["valid"],
+            "error": validation_result.get("error"),
+            "warnings": validation_result.get("warnings", [])
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to validate configuration for {model_id}: {e}")
+        return {
+            "model_id": model_id,
+            "valid": False,
+            "error": str(e)
         }

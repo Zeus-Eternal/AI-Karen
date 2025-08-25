@@ -63,6 +63,8 @@ class SessionPersistenceMiddleware(BaseHTTPMiddleware):
             "/api/auth/register", 
             "/api/auth/refresh",
             "/api/auth/health",
+            "/api/auth/csrf-token",  # CSRF token endpoint
+            "/api/auth/validate-session",  # Session validation endpoint
             "/api/health",
             "/api/health/degraded-mode",
             "/api/reasoning/analyze",
@@ -74,6 +76,15 @@ class SessionPersistenceMiddleware(BaseHTTPMiddleware):
             "/openapi.json",
             "/redoc",
             "/favicon.ico",
+            # Add static assets and frontend paths
+            "/_next",
+            "/static",
+            "/assets",
+            "/public",
+            # Add basic provider info for settings page
+            "/api/providers/public",
+            "/api/models/public",
+            "/api/system/info",
         }
         
         # Paths that should skip session persistence (use existing auth middleware)
@@ -125,6 +136,16 @@ class SessionPersistenceMiddleware(BaseHTTPMiddleware):
         for public_path in self.public_paths:
             if path.startswith(public_path):
                 return True
+        
+        # Skip static assets and frontend resources
+        static_prefixes = ["/_next/", "/static/", "/assets/", "/public/", "/favicon"]
+        for prefix in static_prefixes:
+            if path.startswith(prefix):
+                return True
+        
+        # Skip OPTIONS requests (CORS preflight)
+        if request.method == "OPTIONS":
+            return True
                 
         return False
     

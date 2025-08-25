@@ -47,12 +47,18 @@ class CookieConfig:
     def _get_secure_flag(self) -> bool:
         """Determine secure flag based on environment and configuration."""
         # Explicit configuration takes precedence
-        if hasattr(self.auth_config.session, 'cookie_secure'):
-            explicit_secure = os.getenv("AUTH_SESSION_COOKIE_SECURE")
-            if explicit_secure is not None:
-                return explicit_secure.lower() in ("true", "1", "yes", "on")
+        explicit_secure = os.getenv("AUTH_SESSION_COOKIE_SECURE")
+        if explicit_secure is not None:
+            return explicit_secure.lower() in ("true", "1", "yes", "on")
         
-        # Default to True in production, False in development
+        # Check if we're running on HTTPS
+        https_enabled = os.getenv("HTTPS_ENABLED", "false").lower() in ("true", "1", "yes", "on")
+        
+        # In development, only use secure cookies if HTTPS is enabled
+        if self.is_development:
+            return https_enabled
+        
+        # In production, default to True (should be using HTTPS)
         return self.is_production
     
     def _get_samesite_flag(self) -> str:
@@ -105,7 +111,7 @@ class SessionCookieManager:
             httponly=self.config.httponly,
             secure=self.config.secure,
             samesite=self.config.samesite,
-            path="/auth"  # Restrict to auth endpoints
+            path="/"  # Make accessible from all routes for session persistence
         )
     
     def set_session_cookie(
@@ -175,7 +181,7 @@ class SessionCookieManager:
             httponly=self.config.httponly,
             secure=self.config.secure,
             samesite=self.config.samesite,
-            path="/auth"
+            path="/"
         )
     
     def clear_session_cookie(self, response: Response) -> None:

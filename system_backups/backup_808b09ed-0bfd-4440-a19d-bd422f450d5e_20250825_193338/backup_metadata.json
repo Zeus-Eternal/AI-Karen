@@ -1,0 +1,10 @@
+{
+  "backup_id": "808b09ed-0bfd-4440-a19d-bd422f450d5e",
+  "created_at": "2025-08-25 19:33:38.727904",
+  "description": "Pre-training system state",
+  "model_configurations": {},
+  "training_settings": {},
+  "system_settings": {},
+  "backup_path": "system_backups/backup_808b09ed-0bfd-4440-a19d-bd422f450d5e_20250825_193338",
+  "size_mb": 5.7220458984375e-06
+}

@@ -848,6 +848,46 @@ async def get_security_stats(
     }
 
 
+# Session validation endpoint
+@router.get("/validate-session")
+async def validate_session(
+    request: Request,
+    request_meta: Dict[str, str] = Depends(get_request_meta),
+) -> Dict[str, Any]:
+    """Validate current session and return user data if valid"""
+    try:
+        # Use enhanced session validator for consistent validation
+        from ai_karen_engine.auth.enhanced_session_validator import get_session_validator
+        
+        session_validator = get_session_validator()
+        user_data = await session_validator.validate_request_authentication(
+            request, 
+            allow_session_fallback=True
+        )
+        
+        return {
+            "valid": True,
+            "user": user_data,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        
+    except HTTPException as e:
+        return {
+            "valid": False,
+            "error": e.detail,
+            "status_code": e.status_code,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Session validation error: {e}")
+        return {
+            "valid": False,
+            "error": "Session validation failed",
+            "status_code": 500,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+
 # Health check
 @router.get("/health")
 async def auth_session_health_check():

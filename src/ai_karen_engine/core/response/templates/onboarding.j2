@@ -1,0 +1,30 @@
+## Quick Setup Needed
+
+{% if primary_gap %}
+To give you the best help, I need one piece of information: **{{ primary_gap }}**
+
+{% if primary_gap == "project_context" %}
+What type of project are you working on? (e.g., web app, API, mobile app, data analysis)
+{% elif primary_gap == "tech_stack" %}
+What technologies are you using? (e.g., Python/Django, React/Node.js, Java/Spring)
+{% elif primary_gap == "experience_level" %}
+How would you describe your experience with this technology? (beginner, intermediate, advanced)
+{% elif primary_gap == "current_goal" %}
+What's your main goal right now? (e.g., fix a bug, add a feature, optimize performance)
+{% else %}
+{{ primary_gap }}
+{% endif %}
+
+{% if persona == "ruthless_optimizer" %}
+This will help me give you precise, targeted optimization advice.
+{% elif persona == "calm_fixit" %}
+Don't worry - once I understand your setup, we'll get this sorted out step by step.
+{% elif persona == "technical_writer" %}
+This context will help me provide documentation that's perfectly tailored to your needs.
+{% endif %}
+
+{% endif %}
+
+{% if gaps|length > 1 %}
+*Later, we might also cover: {{ gaps[1:] | join(', ') }}*
+{% endif %}

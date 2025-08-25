@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
 from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.core.logging import get_logger
+from ai_karen_engine.core.response.factory import get_global_orchestrator
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["chat-runtime"])
@@ -429,6 +430,99 @@ async def chat_runtime_health() -> Dict[str, Any]:
         "service": "chat-runtime",
         "version": "1.0.0",
     }
+
+
+@router.post("/chat/runtime/response-core", response_model=ChatRuntimeResponse)
+async def chat_runtime_response_core(
+    request: ChatRuntimeRequest = Depends(validate_chat_request),
+    user_context: Dict[str, Any] = Depends(get_current_user_context),
+    request_metadata: Dict[str, Any] = Depends(get_request_metadata),
+) -> ChatRuntimeResponse:
+    """
+    Chat runtime endpoint using Response Core orchestrator
+    
+    This endpoint provides an alternative to the standard chat runtime
+    using the Response Core orchestrator with local-first processing.
+    """
+    try:
+        start_time = time.time()
+        correlation_id = request_metadata.get("correlation_id")
+        conversation_id = request.conversation_id or str(uuid.uuid4())
+        user_id = user_context.get("user_id", "anonymous")
+
+        logger.info(
+            "Response Core chat runtime request received",
+            extra={
+                "user_id": user_id,
+                "platform": request.platform,
+                "correlation_id": correlation_id,
+                "message_length": len(request.message),
+            },
+        )
+
+        # Get Response Core orchestrator
+        response_orchestrator = get_global_orchestrator(user_id=user_id)
+        
+        # Process through Response Core
+        result = response_orchestrator.respond(
+            conversation_id=conversation_id,
+            user_input=request.message,
+            correlation_id=correlation_id
+        )
+
+        latency_ms = (time.time() - start_time) * 1000
+
+        response = ChatRuntimeResponse(
+            content=result,
+            conversation_id=conversation_id,
+            metadata={
+                "platform": request.platform,
+                "correlation_id": correlation_id,
+                "user_id": user_id,
+                "processing_time": latency_ms / 1000,
+                "latency_ms": latency_ms,
+                "orchestrator": "response_core",
+                "local_processing": True,
+                "prompt_driven": True,
+            },
+        )
+
+        logger.info(
+            "Response Core chat runtime response sent",
+            extra={
+                "user_id": user_id,
+                "correlation_id": correlation_id,
+                "latency_ms": latency_ms,
+                "response_length": len(result),
+            },
+        )
+
+        return response
+
+    except Exception as e:
+        logger.error(
+            "Response Core chat runtime error",
+            extra={
+                "user_id": user_context.get("user_id"),
+                "correlation_id": request_metadata.get("correlation_id"),
+                "error": str(e),
+            },
+        )
+        
+        # Return error response
+        return ChatRuntimeResponse(
+            content=f"I apologize, but I encountered an error: {str(e)}",
+            conversation_id=request.conversation_id or "error",
+            metadata={
+                "platform": request.platform,
+                "correlation_id": request_metadata.get("correlation_id"),
+                "user_id": user_context.get("user_id"),
+                "processing_time": (time.time() - start_time),
+                "error": str(e),
+                "orchestrator": "response_core",
+                "used_fallback": True,
+            },
+        )
 
 
 @router.get("/chat/runtime/config")

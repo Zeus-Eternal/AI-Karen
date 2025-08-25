@@ -1,0 +1,33 @@
+{% if context and context_count > 0 %}
+## Context
+Based on our previous interactions:
+{% for ctx in context[:3] %}
+- {{ ctx.text if ctx.text else ctx }}
+{% endfor %}
+{% if context_count > 3 %}
+... and {{ context_count - 3 }} more relevant items
+{% endif %}
+
+{% endif %}
+## Current Request
+{{ user_text }}
+
+{% if intent == "optimize_code" %}
+Please analyze the code for:
+- Performance bottlenecks
+- Memory usage optimization
+- Best practice improvements
+- Potential refactoring opportunities
+{% elif intent == "debug_error" %}
+Please help me:
+- Identify the root cause
+- Understand why this is happening
+- Get a working solution
+- Prevent similar issues
+{% elif intent == "documentation" %}
+Please provide:
+- Clear explanations
+- Code examples if relevant
+- Best practices
+- Common pitfalls to avoid
+{% endif %}

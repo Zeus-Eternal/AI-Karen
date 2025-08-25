@@ -91,6 +91,30 @@ export async function bootSession(): Promise<void> {
   try {
     const apiClient = getApiClient();
     
+    // First, try to validate existing session
+    try {
+      const validateResponse = await apiClient.get('/api/auth/validate-session');
+      
+      if (validateResponse.data.valid && validateResponse.data.user) {
+        // We have a valid session, create session data
+        const sessionData: SessionData = {
+          accessToken: 'validated', // Placeholder - actual token is in HttpOnly cookie
+          expiresAt: Date.now() + (15 * 60 * 1000), // 15 minutes default
+          userId: validateResponse.data.user.user_id,
+          email: validateResponse.data.user.email,
+          roles: validateResponse.data.user.roles,
+          tenantId: validateResponse.data.user.tenant_id,
+        };
+        
+        setSession(sessionData);
+        console.log('Session validated successfully');
+        return;
+      }
+    } catch (validateError) {
+      // Validation failed, try refresh
+      console.log('Session validation failed, attempting refresh');
+    }
+    
     // Attempt to refresh token using HttpOnly cookie
     const response = await apiClient.post<TokenRefreshResponse>('/api/auth/refresh');
     

@@ -21,7 +21,7 @@ except ImportError:
     RequestValidationError = None
     FASTAPI_AVAILABLE = False
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +69,12 @@ class ErrorResponse(BaseModel):
     path: str = Field(..., description="API path where error occurred")
     status_code: int = Field(..., description="HTTP status code")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict()
+    
+    @field_serializer('timestamp', when_used='json')
+    def serialize_timestamp(self, value: datetime) -> str:
+        """Serialize timestamp to ISO 8601 format."""
+        return value.isoformat()
 
 
 # Success response wrapper
@@ -84,9 +87,12 @@ class SuccessResponse(BaseModel):
     correlation_id: str = Field(..., description="Request correlation ID for tracing")
     timestamp: datetime = Field(..., description="Response timestamp")
 
-    model_config = ConfigDict(
-        json_encoders={datetime: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict()
+    
+    @field_serializer('timestamp', when_used='json')
+    def serialize_timestamp(self, value: datetime) -> str:
+        """Serialize timestamp to ISO 8601 format."""
+        return value.isoformat()
 
 
 # Validation utilities
