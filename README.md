@@ -54,7 +54,7 @@ and `config/auth_config.json`.
 AI-Karen ships with a production-ready authentication stack featuring
 PostgreSQL storage, bcrypt password hashing, JWT token management,
 Redis-backed sessions, and multi-tenant support. See
-[Production Authentication Setup](docs/PRODUCTION_AUTH_SETUP.md) for
+[Production Authentication Setup](docs/auth/PRODUCTION_AUTH_SETUP.md) for
 full deployment instructions.
 
 **Environment Variables**
@@ -136,7 +136,7 @@ cd AI-Karen
 
 # Configure environment variables
 cp .env.example .env
-# Edit .env and set required values (see [docs/environment-variables.md](docs/environment-variables.md))
+# Edit .env and set required values (see [docs/guides/environment-variables.md](docs/guides/environment-variables.md))
 
 # Install Python dependencies
 ./scripts/install.sh
@@ -655,23 +655,23 @@ See [LICENSE.md](LICENSE.md) and [LICENSE-commercial.txt](LICENSE-commercial.txt
 - [Database Documentation](docker/database/README.md) - Multi-database setup
 - [Plugin Documentation](plugin_marketplace/README.md) - Plugin development guide
 - [Extension Documentation](extensions/README.md) - Extension system overview
-- [Auth Service](docs/auth_service.md) - Core authentication service overview
-- [Auth Service Deployment Guide](docs/auth_service_deployment.md) - Environment setup and configuration loading
-- [Auth Service Migration Guide](docs/auth_service_migration.md) - Removal of legacy security modules
+- [Auth Service](docs/auth/auth_service.md) - Core authentication service overview
+- [Auth Service Deployment Guide](docs/auth/auth_service_deployment.md) - Environment setup and configuration loading
+- [Auth Service Migration Guide](docs/auth/auth_service_migration.md) - Removal of legacy security modules
 
 ### Architecture Guides
-- [API Reference](docs/api_reference.md) - Complete API documentation
+- [API Reference](docs/api/api_reference.md) - Complete API documentation
 - [Architecture Overview](docs/architecture.md) - System architecture details
-- [Development Guide](docs/development_guide.md) - Development best practices
+- [Development Guide](docs/guides/development_guide.md) - Development best practices
 - [Security Framework](docs/security.md) - Security implementation
 - [Memory Architecture](docs/memory_arch.md) - Memory system design
-- [Plugin Specification](docs/plugin_spec.md) - Plugin development specification
+- [Plugin Specification](docs/plugins/plugin_spec.md) - Plugin development specification
 - [Agent Roadmap](docs/agent_roadmap.md) - Production readiness and feature roadmap for the web UI
 
 ### Operational Guides
-- [Deployment Guide](docs/deployment.md) - Production deployment
-- [Monitoring Guide](docs/observability.md) - Monitoring and observability
-- [Troubleshooting Guide](docs/troubleshooting.md) - Common issues and solutions
+- [Deployment Guide](docs/guides/deployment.md) - Production deployment
+- [Monitoring Guide](docs/guides/observability.md) - Monitoring and observability
+- [Troubleshooting Guide](docs/guides/troubleshooting.md) - Common issues and solutions
 
 ---
 
