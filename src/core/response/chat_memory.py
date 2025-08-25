@@ -14,12 +14,45 @@ import json
 import math
 import time
 import hashlib
+import logging
+from contextvars import ContextVar
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Dict, List, DefaultDict
 from collections import defaultdict
 
 from .protocols import Memory
+
+# ---------------------------------------------------------------------------
+# Optional Prometheus metrics and correlation tracking
+# ---------------------------------------------------------------------------
+logger = logging.getLogger(__name__)
+_CORRELATION_ID: ContextVar[str] = ContextVar("correlation_id", default="unknown")
+
+try:  # pragma: no cover - optional dependency
+    from prometheus_client import Counter
+
+    _FETCH_COUNTER = Counter(
+        "chat_memory_fetch_total",
+        "Total number of memory fetch operations",
+    )
+    _STORE_COUNTER = Counter(
+        "chat_memory_store_total",
+        "Total number of memory store operations",
+    )
+except Exception:  # pragma: no cover - prometheus optional
+
+    class _DummyCounter:
+        def inc(self, *_args, **_kwargs):  # type: ignore[override]
+            pass
+
+    _FETCH_COUNTER = _DummyCounter()
+    _STORE_COUNTER = _DummyCounter()
+
+
+def set_correlation_id(correlation_id: str) -> None:
+    """Set the correlation ID for subsequent operations."""
+    _CORRELATION_ID.set(correlation_id)
 
 
 @dataclass
@@ -53,6 +86,14 @@ class ChatMemory(Memory):
     # ------------------------------------------------------------------
     def fetch_context(self, conversation_id: str) -> List[str]:
         """Return relevant context strings for *conversation_id*."""
+        logger.debug(
+            "fetch_context called",
+            extra={
+                "correlation_id": _CORRELATION_ID.get(),
+                "conversation_id": conversation_id,
+            },
+        )
+        _FETCH_COUNTER.inc()
         if conversation_id in self._cache:
             return self._cache[conversation_id]
 
@@ -79,6 +120,14 @@ class ChatMemory(Memory):
 
     def store(self, conversation_id: str, user_input: str, response: str) -> None:
         """Persist the exchange for future retrieval."""
+        logger.debug(
+            "store called",
+            extra={
+                "correlation_id": _CORRELATION_ID.get(),
+                "conversation_id": conversation_id,
+            },
+        )
+        _STORE_COUNTER.inc()
         embedding = self._embed(user_input)
         record = MemoryRecord(
             user_input=user_input,
@@ -90,6 +139,16 @@ class ChatMemory(Memory):
         self._store[conversation_id].append(record)
         self._cache.pop(conversation_id, None)
         self._save_metadata()
+
+    # ------------------------------------------------------------------
+    # Observability helpers
+    # ------------------------------------------------------------------
+    def health_status(self) -> Dict[str, int]:
+        """Return basic health information for diagnostics."""
+        return {
+            "conversations": len(self._store),
+            "records": sum(len(v) for v in self._store.values()),
+        }
 
     # ------------------------------------------------------------------
     # Internal helpers
