@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, AuthState, LoginCredentials, AuthContextType } from '@/types/auth';
+import { authStateManager } from './AuthStateManager';
 import { authService } from '@/services/authService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,38 +30,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Check if we have a stored JWT token
         const accessToken = localStorage.getItem('karen_access_token');
-        
+
         if (accessToken) {
-          // We have a token, try to get current user
           const currentUser = await authService.getCurrentUser();
-          setAuthState({
+          const newState: AuthState = {
             user: currentUser,
             isAuthenticated: true,
             isLoading: false,
-          });
+          };
+          setAuthState(newState);
+          authStateManager.updateState({ isAuthenticated: true, user: currentUser });
         } else {
-          // No token, user is not authenticated
-          setAuthState({
+          const newState: AuthState = {
             user: null,
             isAuthenticated: false,
             isLoading: false,
-          });
+          };
+          setAuthState(newState);
+          authStateManager.updateState({ isAuthenticated: false, user: null });
         }
       } catch (error) {
-        // Token might be expired or invalid, clear it and set unauthenticated
         localStorage.removeItem('karen_access_token');
         localStorage.removeItem('karen_refresh_token');
-        setAuthState({
+        const newState: AuthState = {
           user: null,
           isAuthenticated: false,
           isLoading: false,
-        });
+        };
+        setAuthState(newState);
+        authStateManager.updateState({ isAuthenticated: false, user: null });
       }
     };
 
     initializeAuth();
+
+    const unsubscribe = authStateManager.subscribe(state => {
+      setAuthState(prev => ({ ...prev, isAuthenticated: state.isAuthenticated, user: state.user }));
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
@@ -105,11 +114,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       };
 
-      setAuthState({
+      const newState = {
         user,
         isAuthenticated: true,
         isLoading: false,
-      });
+      };
+      setAuthState(newState);
+      authStateManager.updateState({ isAuthenticated: true, user });
     } catch (error) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
       throw error;
@@ -138,11 +149,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('karen_access_token');
     localStorage.removeItem('karen_refresh_token');
     
-    setAuthState({
+    const newState = {
       user: null,
       isAuthenticated: false,
       isLoading: false,
-    });
+    };
+    setAuthState(newState);
+    authStateManager.updateState({ isAuthenticated: false, user: null });
     
     // Redirect to login page after logout
     if (typeof window !== 'undefined') {
@@ -154,6 +167,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const user = await authService.getCurrentUser();
       setAuthState(prev => ({ ...prev, user }));
+      authStateManager.updateState({ isAuthenticated: true, user });
     } catch (error) {
       console.error('Failed to refresh user:', error);
       logout();
