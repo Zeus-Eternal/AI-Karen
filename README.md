@@ -30,6 +30,80 @@ AI-Karen is a comprehensive, production-ready AI platform designed for enterpris
 
 ---
 
+## Quick Start
+
+### Prerequisites
+
+* Python 3.10+
+* Docker and Docker Compose
+
+### Installation
+
+```bash
+git clone https://github.com/OWNER/AI-Karen.git
+cd AI-Karen
+pip install -r requirements.txt
+```
+
+### Launch Services
+
+```bash
+# start databases and supporting services
+docker compose up -d
+
+# initialize core tables and default admin user
+python create_tables.py
+python create_admin_user.py  # follow prompts
+
+# start the FastAPI backend
+python main.py
+```
+
+The web UI is available at <http://localhost:9002> and the API at <http://localhost:8000>.
+
+### Run Tests
+
+```bash
+pytest
+```
+
+## Database Setup
+
+AI-Karen ships with multiple data stores. The default `docker-compose.yml`
+spins up the full stack with sensible development defaults:
+
+| Service | Purpose | Port |
+|---------|---------|------|
+| PostgreSQL | metadata storage | 5433 |
+| Redis | caching and sessions | 6379 |
+| Milvus | vector similarity search | 19530 |
+| Elasticsearch | full-text search | 9200 |
+| DuckDB | local analytics | n/a |
+
+Custom connection strings can be supplied via environment variables defined in `config/`.
+
+## Example Usage
+
+Query the health endpoint:
+
+```bash
+curl http://localhost:8000/api/health/summary
+```
+
+Create a chat completion using the Python client:
+
+```python
+import requests
+
+resp = requests.post(
+    "http://localhost:8000/api/chat/completions",
+    json={"input": "Hello, AI-Karen"},
+)
+print(resp.json())
+```
+
+---
+
 ## Authentication Configuration
 
 The authentication service relies on the `AuthConfig` class for all
@@ -118,136 +192,6 @@ python scripts/run_auth_migration.py --dry-run
 
 ---
 
-## Quick Start
-
-### Prerequisites
-
-* **Docker & Docker Compose** - For containerized services
-* **Python 3.10+** - For backend development
-* **Node.js 18+** - For frontend development
-* **Rust toolchain** - For Tauri desktop builds (optional)
-
-### 1. Clone and Setup
-
-```bash
-# Clone repository
-git clone <repository-url>
-cd AI-Karen
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env and set required values (see [docs/guides/environment-variables.md](docs/guides/environment-variables.md))
-
-# Install Python dependencies
-./scripts/install.sh
-
-# Download AI models (optional)
-python scripts/install_models.py
-```
-
-### 2. Start Infrastructure Services
-
-```bash
-# Start all database services
-docker compose up -d postgres redis elasticsearch milvus
-
-# Wait for services to be ready
-./scripts/health-check.sh
-```
-
-### 3. Initialize Databases
-
-The authentication service automatically initializes its PostgreSQL schema on
-startup. For other components, run:
-
-```bash
-
-# Create memory_entries table
-docker compose exec postgres psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/004_create_memory_entries_table.sql
-
-# Apply PostgreSQL migrations (creates all tables including `memory_entries`)
-./docker/database/scripts/migrate.sh --service postgres
-
-# Create Elasticsearch index
-curl -X PUT "http://localhost:9200/ai_karen_index"
-```
-
-### 4. Start Backend API
-
-```bash
-# Start FastAPI server (recommended)
-uvicorn main:create_app --factory --reload --host 0.0.0.0 --port 8000
-
-# Or use the helper script
-python start_server.py
-
-# Verify API is running
-curl http://localhost:8000/health
-```
-
-### 5. Start Frontend (Choose One)
-
-#### Web UI (Next.js, default)
-```bash
-cd ui_launchers/web_ui
-npm install
-npm run dev
-# Access at http://localhost:9002
-```
-
-Default demo account is available:
-
-* **Admin:** `admin@kari.ai` / `password123`
-
-#### Desktop UI (Tauri)
-```bash
-cd ui_launchers/desktop_ui
-npm install
-npm run tauri dev
-# Native desktop application launches
-```
-
-#### Streamlit UI
-```bash
-cd ui_launchers/streamlit_ui
-pip install -r requirements.txt
-streamlit run app.py
-# Access at http://localhost:8501
-```
-
-### 6. Verify Installation
-
-```bash
-# Run system health check
-python cli.py --self-test
-
-# Run test suite
-pytest -v
-
-# Check all services
-curl http://localhost:8000/api/health/summary
-```
-
-### Running Demo Scripts
-
-Run the example demos with the project source on your `PYTHONPATH`:
-
-```bash
-PYTHONPATH=src python demo_plugin_system.py
-PYTHONPATH=src python demo_tool_system.py
-PYTHONPATH=src python demo_analytics_dashboard.py
-```
-
-### Default Demo Credentials
-
-Use this account for testing the web or Streamlit UI:
-
-```
-Admin: admin@kari.ai / password123
-```
-Change the demo password after your first login.
-
----
 
 ## Development Setup
 
