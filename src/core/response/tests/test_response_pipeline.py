@@ -1,6 +1,12 @@
 import pytest
 
-from core.response import PipelineConfig, ResponseOrchestrator, UnifiedLLMClient
+from core.response import (
+    PipelineConfig,
+    ResponseOrchestrator,
+    UnifiedLLMClient,
+    CircuitBreaker,
+)
+from core.response.orchestrator import _RESP_COUNTER
 
 
 class StubAnalyzer:
@@ -12,10 +18,16 @@ class StubMemory:
     def __init__(self):
         self.records = []
 
-    def fetch_context(self, conversation_id: str):
+    def fetch_context(self, conversation_id: str, correlation_id: str | None = None):
         return []
 
-    def store(self, conversation_id: str, user_input: str, response: str) -> None:
+    def store(
+        self,
+        conversation_id: str,
+        user_input: str,
+        response: str,
+        correlation_id: str | None = None,
+    ) -> None:
         self.records.append((conversation_id, user_input, response))
 
 
@@ -70,3 +82,38 @@ def test_orchestrator_falls_back_to_secondary_model(base_components):
     assert primary.called_with[-1] == "primary-model"
     assert fallback.called_with[-1] == "secondary-model"
     assert memory.records[0][2] == result
+
+
+def test_orchestrator_circuit_breaker(base_components):
+    analyzer, memory = base_components
+    primary = StubLLMClient("primary", fail=True)
+    breaker = CircuitBreaker(failure_threshold=1, recovery_time=60)
+    orchestrator = ResponseOrchestrator(
+        PipelineConfig(model="primary-model"),
+        analyzer,
+        memory,
+        primary,
+        breaker=breaker,
+    )
+    # First call fails and triggers circuit breaker
+    result1 = orchestrator.respond("conv", "hi")
+    assert result1 == orchestrator.config.safe_default
+    # Circuit breaker open, second call should not invoke LLM
+    result2 = orchestrator.respond("conv", "hi again")
+    assert result2 == orchestrator.config.safe_default
+    assert len(primary.called_with) == 1
+
+
+def test_metrics_recorded(base_components):
+    analyzer, memory = base_components
+    primary = StubLLMClient("primary")
+    orchestrator = ResponseOrchestrator(
+        PipelineConfig(model="primary-model"),
+        analyzer,
+        memory,
+        UnifiedLLMClient(primary),
+    )
+    before = _RESP_COUNTER.labels(status="success")._value.get()
+    orchestrator.respond("conv", "hi")
+    after = _RESP_COUNTER.labels(status="success")._value.get()
+    assert after == before + 1
