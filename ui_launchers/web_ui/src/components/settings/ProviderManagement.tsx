@@ -104,7 +104,7 @@ export default function ProviderManagement({
     try {
       const storedApiKeys = localStorage.getItem(LOCAL_STORAGE_KEYS.providerApiKeys);
       const storedExpanded = localStorage.getItem(LOCAL_STORAGE_KEYS.expandedProviders);
-      
+
       if (storedApiKeys) {
         setProviderApiKeys(JSON.parse(storedApiKeys));
       }
@@ -122,36 +122,36 @@ export default function ProviderManagement({
   const handleApiKeyChange = (providerName: string, apiKey: string) => {
     const updatedKeys = { ...providerApiKeys, [providerName]: apiKey };
     setProviderApiKeys(updatedKeys);
-    
+
     // Save to localStorage immediately
     localStorage.setItem(LOCAL_STORAGE_KEYS.providerApiKeys, JSON.stringify(updatedKeys));
-    
+
     // Clear previous validation result
     setKeyValidationResults(prev => {
       const updated = { ...prev };
       delete updated[providerName];
       return updated;
     });
-    
+
     // Clear existing timeout
     const existingTimeout = validationTimeouts.get(providerName);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
-    
+
     // Validate API key with debouncing
     if (apiKey.trim()) {
       const timeout = setTimeout(() => {
         validateApiKey(providerName, apiKey);
       }, 1000); // 1 second debounce
-      
+
       validationTimeouts.set(providerName, timeout);
     }
   };
 
   const validateApiKey = async (providerName: string, apiKey: string) => {
     setValidatingKeys(prev => ({ ...prev, [providerName]: true }));
-    
+
     try {
       const response = await backend.makeRequestPublic<ApiKeyValidationResult>('/api/providers/validate-api-key', {
         method: 'POST',
@@ -160,30 +160,30 @@ export default function ProviderManagement({
           api_key: apiKey
         })
       });
-      
+
       setKeyValidationResults(prev => ({ ...prev, [providerName]: response }));
-      
+
       if (response.valid) {
         // Update provider health status
-        setProviders(prev => prev.map(p => 
-          p.name === providerName 
-            ? { 
-                ...p, 
-                health_status: 'healthy', 
+        setProviders(prev => prev.map(p =>
+          p.name === providerName
+            ? {
+                ...p,
+                health_status: 'healthy',
                 last_health_check: Date.now(),
                 cached_models_count: response.models_discovered || p.cached_models_count
               }
             : p
         ));
-        
+
         toast({
           title: "API Key Valid",
           description: `${providerName} API key validated successfully. ${response.models_discovered || 0} models discovered.`,
         });
       } else {
         // Update provider health status
-        setProviders(prev => prev.map(p => 
-          p.name === providerName 
+        setProviders(prev => prev.map(p =>
+          p.name === providerName
             ? { ...p, health_status: 'unhealthy', error_message: response.message, last_health_check: Date.now() }
             : p
         ));
@@ -191,18 +191,18 @@ export default function ProviderManagement({
     } catch (error) {
       console.error(`Failed to validate API key for ${providerName}:`, error);
       const errorMessage = (error as any)?.message || 'Validation failed - check network connection';
-      
-      setKeyValidationResults(prev => ({ 
-        ...prev, 
+
+      setKeyValidationResults(prev => ({
+        ...prev,
         [providerName]: {
           valid: false,
           message: errorMessage,
           provider: providerName
         }
       }));
-      
-      setProviders(prev => prev.map(p => 
-        p.name === providerName 
+
+      setProviders(prev => prev.map(p =>
+        p.name === providerName
           ? { ...p, health_status: 'unhealthy', error_message: errorMessage, last_health_check: Date.now() }
           : p
       ));
@@ -219,7 +219,7 @@ export default function ProviderManagement({
       } else {
         newSet.add(providerName);
       }
-      
+
       // Save to localStorage
       localStorage.setItem(LOCAL_STORAGE_KEYS.expandedProviders, JSON.stringify([...newSet]));
       return newSet;
@@ -232,7 +232,7 @@ export default function ProviderManagement({
 
       const response = await backend.makeRequestPublic<Record<string, any>>('/api/providers/health-check-all', {
         method: 'POST'
-      });
+      }) || {};
 
       let healthyCount = 0;
       const updatedProviders = providers.map(provider => {
@@ -240,7 +240,7 @@ export default function ProviderManagement({
         if (healthResult) {
           const isHealthy = healthResult.status === 'healthy';
           if (isHealthy) healthyCount++;
-          
+
           return {
             ...provider,
             health_status: (isHealthy ? 'healthy' : 'unhealthy') as 'healthy' | 'unhealthy' | 'unknown',
@@ -283,19 +283,19 @@ export default function ProviderManagement({
     try {
       const response = await backend.makeRequestPublic<any[]>(`/api/providers/${providerName}/models?force_refresh=${forceRefresh}`);
       const models = response || [];
-      
+
       // Update provider cached model count
-      setProviders(prev => prev.map(p => 
-        p.name === providerName 
+      setProviders(prev => prev.map(p =>
+        p.name === providerName
           ? { ...p, cached_models_count: models.length, last_discovery: Date.now() / 1000 }
           : p
       ));
-      
+
       toast({
         title: "Models Discovered",
         description: `Found ${models.length} models for ${providerName}.`,
       });
-      
+
     } catch (error) {
       console.error(`Failed to discover models for ${providerName}:`, error);
       toast({
@@ -344,17 +344,17 @@ export default function ProviderManagement({
   const getValidationIcon = (providerName: string) => {
     const isValidating = validatingKeys[providerName];
     const result = keyValidationResults[providerName];
-    
+
     if (isValidating) {
       return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
     }
-    
+
     if (result) {
-      return result.valid 
+      return result.valid
         ? <CheckCircle2 className="h-4 w-4 text-green-500" />
         : <AlertCircle className="h-4 w-4 text-red-500" />;
     }
-    
+
     return null;
   };
 
@@ -496,7 +496,7 @@ export default function ProviderManagement({
                         </Button>
                       )}
                     </div>
-                    
+
                     {/* Validation Result */}
                     {keyValidationResults[provider.name] && (
                       <Alert variant={keyValidationResults[provider.name].valid ? "default" : "destructive"}>
@@ -526,7 +526,7 @@ export default function ProviderManagement({
                       ))}
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <h4 className="font-medium text-sm">Status</h4>
                     <div className="space-y-1">
@@ -556,7 +556,7 @@ export default function ProviderManagement({
                       </a>
                     </Button>
                   )}
-                  
+
                   {provider.name === 'openai' && (
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
@@ -565,7 +565,7 @@ export default function ProviderManagement({
                       </a>
                     </Button>
                   )}
-                  
+
                   {provider.name === 'gemini' && (
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
@@ -574,7 +574,7 @@ export default function ProviderManagement({
                       </a>
                     </Button>
                   )}
-                  
+
                   {provider.name === 'deepseek' && (
                     <Button variant="outline" size="sm" asChild>
                       <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer">
