@@ -334,7 +334,7 @@ def create_app() -> FastAPI:
     app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
     app.include_router(error_response_router, prefix="/api", tags=["error-response"])
     app.include_router(health_router, prefix="/api/health", tags=["health"])
-    app.include_router(model_management_router, prefix="/api", tags=["model-management"])
+    app.include_router(model_management_router, tags=["model-management"])
     app.include_router(enhanced_huggingface_router, prefix="/api", tags=["enhanced-huggingface"])
     app.include_router(response_core_router, tags=["response-core"])
     app.include_router(scheduler_router, tags=["scheduler"])

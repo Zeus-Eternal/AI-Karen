@@ -37,7 +37,7 @@ BaseModel, Field = import_pydantic("BaseModel", "Field")
 
 logger = logging.getLogger("kari.model_management")
 
-router = APIRouter(tags=["model-management"])
+router = APIRouter(prefix="/api", tags=["model-management"])
 
 # -----------------------------
 # Request/Response Models
@@ -154,7 +154,7 @@ class HealthStatus(BaseModel):
 # Local Model Management Endpoints
 # -----------------------------
 
-@router.get("/api/models/local", response_model=List[LocalModelInfo])
+@router.get("/models/local", response_model=List[LocalModelInfo])
 async def list_local_models(
     family: Optional[str] = None,
     format: Optional[str] = None,
@@ -204,7 +204,7 @@ async def list_local_models(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/local/upload")
+@router.post("/models/local/upload")
 async def upload_model(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -263,7 +263,7 @@ async def upload_model(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/local/convert-to-gguf")
+@router.post("/models/local/convert-to-gguf")
 async def convert_to_gguf(request: ConversionRequest):
     """Convert a model to GGUF format."""
     try:
@@ -295,7 +295,7 @@ async def convert_to_gguf(request: ConversionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/local/quantize")
+@router.post("/models/local/quantize")
 async def quantize_model(request: QuantizationRequest):
     """Quantize a model to reduce size."""
     try:
@@ -335,7 +335,7 @@ async def quantize_model(request: QuantizationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/api/models/local/{model_id}")
+@router.delete("/models/local/{model_id}")
 async def delete_local_model(model_id: str, delete_files: bool = False):
     """Delete a local model."""
     try:
@@ -354,7 +354,7 @@ async def delete_local_model(model_id: str, delete_files: bool = False):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/local/scan")
+@router.post("/models/local/scan")
 async def scan_local_models(directory: Optional[str] = None):
     """Scan directory for local models and register them."""
     try:
@@ -375,7 +375,7 @@ async def scan_local_models(directory: Optional[str] = None):
 # Job Management Endpoints
 # -----------------------------
 
-@router.get("/api/models/jobs", response_model=List[JobInfo])
+@router.get("/models/jobs", response_model=List[JobInfo])
 async def list_jobs(
     status: Optional[str] = None,
     kind: Optional[str] = None,
@@ -411,7 +411,7 @@ async def list_jobs(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/jobs/{job_id}", response_model=JobInfo)
+@router.get("/models/jobs/{job_id}", response_model=JobInfo)
 async def get_job(job_id: str):
     """Get job details."""
     try:
@@ -444,7 +444,7 @@ async def get_job(job_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/jobs/{job_id}/cancel")
+@router.post("/models/jobs/{job_id}/cancel")
 async def cancel_job(job_id: str):
     """Cancel a job."""
     try:
@@ -463,7 +463,7 @@ async def cancel_job(job_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/jobs/{job_id}/pause")
+@router.post("/models/jobs/{job_id}/pause")
 async def pause_job(job_id: str):
     """Pause a job."""
     try:
@@ -482,7 +482,7 @@ async def pause_job(job_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/jobs/{job_id}/resume")
+@router.post("/models/jobs/{job_id}/resume")
 async def resume_job(job_id: str):
     """Resume a job."""
     try:
@@ -501,7 +501,7 @@ async def resume_job(job_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/api/models/jobs/{job_id}")
+@router.delete("/models/jobs/{job_id}")
 async def delete_job(job_id: str):
     """Delete a job."""
     try:
@@ -690,7 +690,7 @@ _register_job_handlers()
 # System Model Configuration Endpoints
 # -----------------------------
 
-@router.get("/api/models/system", response_model=List[Dict[str, Any]])
+@router.get("/models/system", response_model=List[Dict[str, Any]])
 async def list_system_models():
     """List all system models with their configuration and status."""
     try:
@@ -703,7 +703,7 @@ async def list_system_models():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/system/{model_id}", response_model=Dict[str, Any])
+@router.get("/models/system/{model_id}", response_model=Dict[str, Any])
 async def get_system_model(model_id: str):
     """Get detailed information about a specific system model."""
     try:
@@ -723,7 +723,7 @@ async def get_system_model(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/system/{model_id}/configuration", response_model=Dict[str, Any])
+@router.get("/models/system/{model_id}/configuration", response_model=Dict[str, Any])
 async def get_model_configuration(model_id: str):
     """Get configuration for a specific system model."""
     try:
@@ -742,7 +742,7 @@ async def get_model_configuration(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/api/models/system/{model_id}/configuration")
+@router.put("/models/system/{model_id}/configuration")
 async def update_model_configuration(model_id: str, request: Dict[str, Any]):
     """Update configuration for a specific system model."""
     try:
@@ -763,7 +763,7 @@ async def update_model_configuration(model_id: str, request: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/system/validate-configuration")
+@router.post("/models/system/validate-configuration")
 async def validate_model_configuration(model_id: str, request: Dict[str, Any]):
     """Validate model configuration against hardware constraints."""
     try:
@@ -792,7 +792,7 @@ async def validate_model_configuration(model_id: str, request: Dict[str, Any]):
         return {"valid": False, "error": str(e)}
 
 
-@router.post("/api/models/system/{model_id}/reset-configuration")
+@router.post("/models/system/{model_id}/reset-configuration")
 async def reset_model_configuration(model_id: str):
     """Reset model configuration to defaults."""
     try:
@@ -811,7 +811,7 @@ async def reset_model_configuration(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/system/{model_id}/hardware-recommendations", response_model=Dict[str, Any])
+@router.get("/models/system/{model_id}/hardware-recommendations", response_model=Dict[str, Any])
 async def get_hardware_recommendations(model_id: str):
     """Get hardware-specific recommendations for model configuration."""
     try:
@@ -825,7 +825,7 @@ async def get_hardware_recommendations(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/system/{model_id}/performance-metrics", response_model=Dict[str, Any])
+@router.get("/models/system/{model_id}/performance-metrics", response_model=Dict[str, Any])
 async def get_performance_metrics(model_id: str):
     """Get performance metrics for a system model."""
     try:
@@ -839,7 +839,7 @@ async def get_performance_metrics(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/system/{model_id}/health-check")
+@router.post("/models/system/{model_id}/health-check")
 async def perform_health_check(model_id: str):
     """Perform health check on a system model."""
     try:
@@ -860,7 +860,7 @@ async def perform_health_check(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/system/{model_id}/multi-gpu-config", response_model=Dict[str, Any])
+@router.get("/models/system/{model_id}/multi-gpu-config", response_model=Dict[str, Any])
 async def get_multi_gpu_configuration(model_id: str):
     """Get multi-GPU configuration recommendations."""
     try:
@@ -878,7 +878,7 @@ async def get_multi_gpu_configuration(model_id: str):
 # Enhanced HuggingFace Integration
 # -----------------------------
 
-@router.get("/api/models/huggingface/search", response_model=Dict[str, Any])
+@router.get("/models/huggingface/search", response_model=Dict[str, Any])
 async def search_huggingface_models(
     query: str = "",
     page: int = 1,
@@ -974,7 +974,7 @@ async def search_huggingface_models(
         }
 
 
-@router.post("/api/models/download")
+@router.post("/models/download")
 async def download_model(
     background_tasks: BackgroundTasks,
     model_id: str,
@@ -1020,7 +1020,7 @@ async def download_model(
 # Provider Management Endpoints
 # -----------------------------
 
-@router.get("/api/providers", response_model=List[ProviderInfo])
+@router.get("/providers", response_model=List[ProviderInfo])
 async def list_providers():
     """List all available LLM providers (excluding CopilotKit)."""
     try:
@@ -1088,7 +1088,7 @@ async def list_providers():
         ]
 
 
-@router.post("/api/providers/validate")
+@router.post("/providers/validate")
 async def validate_provider(request: ProviderValidationRequest):
     """Validate provider API key and configuration."""
     try:
@@ -1138,7 +1138,7 @@ async def validate_provider(request: ProviderValidationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/providers/{provider_id}/models")
+@router.get("/providers/{provider_id}/models")
 async def get_provider_models(provider_id: str):
     """Get models from a specific provider with fallback to curated lists."""
     try:
@@ -1191,7 +1191,7 @@ async def get_provider_models(provider_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/health/llms", response_model=HealthStatus)
+@router.get("/health/llms", response_model=HealthStatus)
 async def get_llm_health():
     """Get health status of providers, runtimes, and related services."""
     try:
@@ -1273,7 +1273,7 @@ async def get_llm_health():
 # Hugging Face Integration Endpoints
 # -----------------------------
 
-@router.post("/api/models/huggingface/search")
+@router.post("/models/huggingface/search")
 async def search_huggingface_models(request: HuggingFaceSearchRequest):
     """Search Hugging Face models with filtering and sorting."""
     try:
@@ -1332,7 +1332,7 @@ async def search_huggingface_models(request: HuggingFaceSearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/download")
+@router.post("/models/download")
 async def download_model(request: ModelDownloadRequest):
     """Download a model from Hugging Face with progress tracking."""
     try:
@@ -1413,7 +1413,7 @@ async def download_model(request: ModelDownloadRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/huggingface/{model_id}/info")
+@router.get("/models/huggingface/{model_id}/info")
 async def get_huggingface_model_info(model_id: str):
     """Get detailed information about a Hugging Face model."""
     try:
@@ -1456,7 +1456,7 @@ async def get_huggingface_model_info(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/huggingface/{model_id}/artifacts")
+@router.get("/models/huggingface/{model_id}/artifacts")
 async def get_model_artifacts(model_id: str):
     """Get available artifacts (files) for a Hugging Face model."""
     try:
@@ -1548,10 +1548,7 @@ async def get_model_artifacts(model_id: str):
 # Missing Endpoints for Frontend
 # -----------------------------
 
-@router.get("/api/providers/profiles")
-async def get_provider_profiles():
-    """Get provider profiles - placeholder endpoint."""
-    return {"profiles": []}
+@router.get("/providers/profiles")
 async def get_provider_profiles():
     """Get all provider profiles."""
     try:
@@ -1579,7 +1576,7 @@ async def get_provider_profiles():
         return {"profiles": []}
 
 
-@router.get("/api/providers/profiles/active")
+@router.get("/providers/profiles/active")
 async def get_active_provider_profile():
     """Get the currently active provider profile."""
     try:
@@ -1603,7 +1600,7 @@ async def get_active_provider_profile():
         return None
 
 
-@router.get("/api/models/all")
+@router.get("/models/all")
 async def get_all_models():
     """Get all available models from all providers."""
     try:
@@ -1673,7 +1670,7 @@ async def get_all_models():
         return {"models": []}
 
 
-@router.get("/api/providers/stats")
+@router.get("/providers/stats")
 async def get_provider_stats():
     """Get provider statistics and usage information."""
     try:
@@ -1753,7 +1750,7 @@ class HardwareRecommendations(BaseModel):
     recommendations: Dict[str, Any] = {}
 
 
-@router.get("/api/models/system", response_model=List[SystemModelInfo])
+@router.get("/models/system", response_model=List[SystemModelInfo])
 async def list_system_models():
     """List all system models with their status and configuration."""
     try:
@@ -1767,7 +1764,7 @@ async def list_system_models():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/system/{model_id}", response_model=SystemModelInfo)
+@router.get("/models/system/{model_id}", response_model=SystemModelInfo)
 async def get_system_model(model_id: str):
     """Get detailed information about a specific system model."""
     try:
@@ -1787,7 +1784,7 @@ async def get_system_model(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/system/{model_id}/configuration")
+@router.get("/models/system/{model_id}/configuration")
 async def get_model_configuration(model_id: str):
     """Get configuration for a specific system model."""
     try:
@@ -1806,7 +1803,7 @@ async def get_model_configuration(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/api/models/system/{model_id}/configuration")
+@router.put("/models/system/{model_id}/configuration")
 async def update_model_configuration(model_id: str, request: ModelConfigurationRequest):
     """Update configuration for a specific system model."""
     try:
@@ -1825,7 +1822,7 @@ async def update_model_configuration(model_id: str, request: ModelConfigurationR
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/system/{model_id}/reset-configuration")
+@router.post("/models/system/{model_id}/reset-configuration")
 async def reset_model_configuration(model_id: str):
     """Reset model configuration to defaults."""
     try:
@@ -1844,7 +1841,7 @@ async def reset_model_configuration(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/system/{model_id}/hardware-recommendations")
+@router.get("/models/system/{model_id}/hardware-recommendations")
 async def get_hardware_recommendations(model_id: str):
     """Get hardware-specific recommendations for model configuration."""
     try:
@@ -1858,7 +1855,7 @@ async def get_hardware_recommendations(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/models/system/{model_id}/performance-metrics")
+@router.get("/models/system/{model_id}/performance-metrics")
 async def get_performance_metrics(model_id: str):
     """Get performance metrics for a system model."""
     try:
@@ -1872,7 +1869,7 @@ async def get_performance_metrics(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/system/{model_id}/health-check")
+@router.post("/models/system/{model_id}/health-check")
 async def perform_health_check(model_id: str):
     """Perform a health check on a system model."""
     try:
@@ -1898,7 +1895,7 @@ async def perform_health_check(model_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/models/system/validate-configuration")
+@router.post("/models/system/validate-configuration")
 async def validate_model_configuration(model_id: str, request: ModelConfigurationRequest):
     """Validate model configuration without applying it."""
     try:
