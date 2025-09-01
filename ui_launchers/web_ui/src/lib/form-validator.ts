@@ -176,20 +176,20 @@ export class FormValidator {
     // Validate email
     const emailResult = this.validateField('email', credentials.email);
     if (!emailResult.isValid) {
-      errors.email = emailResult.error;
+      errors.email = emailResult.error || undefined;
     }
 
     // Validate password
     const passwordResult = this.validateField('password', credentials.password);
     if (!passwordResult.isValid) {
-      errors.password = passwordResult.error;
+      errors.password = passwordResult.error || undefined;
     }
 
     // Validate TOTP code if required or provided
     if (requireTwoFactor || credentials.totp_code) {
       const totpResult = this.validateField('totp_code', credentials.totp_code || '');
       if (!totpResult.isValid) {
-        errors.totp_code = totpResult.error;
+        errors.totp_code = totpResult.error || undefined;
       }
     }
 

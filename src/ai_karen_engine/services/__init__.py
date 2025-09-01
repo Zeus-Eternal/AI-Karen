@@ -1,7 +1,7 @@
 """Service utilities for Kari AI (compatibility wrappers, lazy-load, zero circular imports)."""
 
 __all__ = [
-    "get_ollama_engine",
+    "get_llamacpp_engine",
     "get_deepseek_client",
     "get_openai_service",
     "get_gemini_service",
@@ -63,11 +63,18 @@ __all__ = [
     "ParsedMessage",
     "EmbeddingResult",
     "nlp_service_manager",
+    # Model Library service
+    "ModelLibraryService",
+    "ModelInfo",
+    "DownloadTask",
+    "ModelMetadata",
+    "ModelDownloadManager",
+    "ModelMetadataService",
 ]
 
-def get_ollama_engine():
-    from ai_karen_engine.services import ollama_engine
-    return ollama_engine
+def get_llamacpp_engine():
+    from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
+    return LlamaCppRuntime
 
 def get_deepseek_client():
     from ai_karen_engine.services import deepseek_client
@@ -157,9 +164,19 @@ from ai_karen_engine.services.nlp_health_monitor import NLPHealthMonitor
 from ai_karen_engine.services.nlp_config import NLPConfig, SpacyConfig, DistilBertConfig
 from ai_karen_engine.services.nlp_service_manager import NLPServiceManager, nlp_service_manager
 
+# Model Library service
+from ai_karen_engine.services.model_library_service import (
+    ModelLibraryService,
+    ModelInfo,
+    DownloadTask,
+    ModelMetadata,
+    ModelDownloadManager,
+    ModelMetadataService,
+)
+
 # Optional: registry pattern for dynamic dispatch
 SERVICES_REGISTRY = {
-    "ollama": get_ollama_engine,
+    "llama-cpp": get_llamacpp_engine,
     "deepseek": get_deepseek_client,
     "openai": get_openai_service,
     "gemini": get_gemini_service,

@@ -243,7 +243,8 @@ export class EnhancedApiClient {
       });
     }
 
-    const headers = { ...options?.headers, ...authHeaders };
+    // Don't set Content-Type header to let browser set it with boundary
+    const headers = { ...authHeaders };
     delete headers['Content-Type']; // Let browser set it with boundary
 
     return this.requestWithAuth<T>({
@@ -253,6 +254,13 @@ export class EnhancedApiClient {
       headers,
       ...options,
     });
+  }
+
+  /**
+   * Make a request with automatic auth handling (public method)
+   */
+  async request<T = any>(request: ApiRequest): Promise<ApiResponse<T>> {
+    return this.requestWithAuth<T>(request);
   }
 
   /**

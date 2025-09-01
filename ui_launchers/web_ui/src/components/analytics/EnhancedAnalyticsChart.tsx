@@ -20,7 +20,7 @@ import {
   BarChart3,
   LineChart,
   PieChart,
-  Refresh
+  RefreshCw
 } from 'lucide-react';
 import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,7 +59,7 @@ interface EnhancedAnalyticsChartProps {
   className?: string;
 }
 
-type ChartType = 'line' | 'bar' | 'area' | 'scatter' | 'pie' | 'column';
+type ChartType = 'line' | 'bar' | 'area' | 'scatter' | 'pie';
 type MetricType = 'messages' | 'responseTime' | 'satisfaction' | 'insights' | 'tokens' | 'providers';
 type ViewMode = 'overview' | 'detailed' | 'comparison';
 
@@ -127,24 +127,38 @@ export const EnhancedAnalyticsChart: React.FC<EnhancedAnalyticsChartProps> = ({
     // Configure series based on metric and chart type
     switch (selectedMetric) {
       case 'messages':
+        if (chartType === 'pie') {
+          return {
+            ...baseOptions,
+            title: { text: 'Message Volume Distribution' },
+            series: [
+              {
+                // Pie chart configuration
+                type: 'pie',
+                angleKey: 'messageCount',
+                labelKey: 'formattedTime',
+              } as any,
+            ],
+          } as AgChartOptions;
+        }
         return {
           ...baseOptions,
           title: { text: 'Message Volume Over Time' },
-          series: [{
-            type: chartType === 'pie' ? 'pie' : chartType,
-            xKey: chartType === 'pie' ? undefined : 'formattedTime',
-            yKey: 'messageCount',
-            yName: 'Messages',
-            angleKey: chartType === 'pie' ? 'messageCount' : undefined,
-            labelKey: chartType === 'pie' ? 'formattedTime' : undefined,
-            stroke: '#3b82f6',
-            fill: chartType === 'area' ? '#3b82f680' : '#3b82f6'
-          }],
-          axes: chartType === 'pie' ? undefined : [
+          series: [
+            {
+              type: chartType,
+              xKey: 'formattedTime',
+              yKey: 'messageCount',
+              yName: 'Messages',
+              stroke: '#3b82f6',
+              fill: chartType === 'area' ? '#3b82f680' : '#3b82f6',
+            } as any,
+          ],
+          axes: [
             { type: 'category', position: 'bottom', title: { text: 'Time' } },
-            { type: 'number', position: 'left', title: { text: 'Message Count' } }
-          ]
-        };
+            { type: 'number', position: 'left', title: { text: 'Message Count' } },
+          ],
+        } as AgChartOptions;
 
       case 'responseTime':
         return {
@@ -197,19 +211,21 @@ export const EnhancedAnalyticsChart: React.FC<EnhancedAnalyticsChartProps> = ({
         }));
 
         return {
-          ...baseOptions,
+          ...(baseOptions as any),
           data: providerChartData,
           title: { text: 'LLM Provider Usage Distribution' },
-          series: [{
-            type: 'pie',
-            angleKey: 'count',
-            labelKey: 'provider',
-            label: {
-              enabled: true,
-              formatter: ({ datum }: any) => `${datum.provider}: ${datum.percentage}%`
-            }
-          }]
-        };
+          series: [
+            {
+              type: 'pie',
+              angleKey: 'count',
+              labelKey: 'provider',
+              label: {
+                enabled: true,
+                formatter: ({ datum }: any) => `${datum.provider}: ${datum.percentage}%`
+              }
+            } as any,
+          ],
+        } as unknown as AgChartOptions;
 
       case 'tokens':
         return {
@@ -285,6 +301,11 @@ export const EnhancedAnalyticsChart: React.FC<EnhancedAnalyticsChartProps> = ({
     }
   }, [onRefresh, toast]);
 
+  // Trigger a ready hook when the chart context changes significantly
+  useEffect(() => {
+    void handleChartReady();
+  }, [handleChartReady]);
+
   // Calculate trend indicators
   const trendData = useMemo(() => {
     if (processedData.length < 2) return null;
@@ -358,7 +379,7 @@ export const EnhancedAnalyticsChart: React.FC<EnhancedAnalyticsChartProps> = ({
               onClick={handleRefresh}
               disabled={isLoading}
             >
-              <Refresh className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
@@ -438,7 +459,7 @@ export const EnhancedAnalyticsChart: React.FC<EnhancedAnalyticsChartProps> = ({
                   </div>
                 </SelectItem>
                 <SelectItem value="area">Area</SelectItem>
-                <SelectItem value="column">Column</SelectItem>
+                {/* Column maps to bar in Ag Charts; omit separate option */}
                 <SelectItem value="pie">
                   <div className="flex items-center gap-2">
                     <PieChart className="h-4 w-4" />
@@ -467,10 +488,7 @@ export const EnhancedAnalyticsChart: React.FC<EnhancedAnalyticsChartProps> = ({
         <Tabs value={viewMode} className="w-full">
           <TabsContent value="overview" className="mt-0">
             <div className="h-[500px] w-full p-6">
-              <AgCharts
-                options={chartOptions}
-                onChartReady={handleChartReady}
-              />
+              <AgCharts options={chartOptions} />
             </div>
           </TabsContent>
           
@@ -488,15 +506,24 @@ export const EnhancedAnalyticsChart: React.FC<EnhancedAnalyticsChartProps> = ({
                 <div className="h-[400px]">
                   <AgCharts
                     options={{
-                      ...chartOptions,
+                      data: processedData,
+                      theme: 'ag-default',
+                      background: { fill: 'transparent' },
                       title: { text: 'Secondary Analysis' },
-                      series: [{
-                        ...chartOptions.series?.[0],
-                        yKey: 'userSatisfaction',
-                        yName: 'Satisfaction',
-                        stroke: '#10b981'
-                      }]
-                    }}
+                      series: [
+                        {
+                          type: 'line',
+                          xKey: 'formattedTime',
+                          yKey: 'userSatisfaction',
+                          yName: 'Satisfaction',
+                          stroke: '#10b981',
+                        } as any,
+                      ],
+                      axes: [
+                        { type: 'category', position: 'bottom', title: { text: 'Time' } },
+                        { type: 'number', position: 'left', title: { text: 'Satisfaction' } },
+                      ],
+                    } as AgChartOptions}
                   />
                 </div>
               </div>
@@ -507,7 +534,9 @@ export const EnhancedAnalyticsChart: React.FC<EnhancedAnalyticsChartProps> = ({
             <div className="h-[500px] w-full p-6">
               <AgCharts
                 options={{
-                  ...chartOptions,
+                  data: processedData,
+                  theme: 'ag-default',
+                  background: { fill: 'transparent' },
                   title: { text: 'Multi-Metric Comparison' },
                   series: [
                     {
@@ -515,17 +544,21 @@ export const EnhancedAnalyticsChart: React.FC<EnhancedAnalyticsChartProps> = ({
                       xKey: 'formattedTime',
                       yKey: 'messageCount',
                       yName: 'Messages',
-                      stroke: '#3b82f6'
-                    },
+                      stroke: '#3b82f6',
+                    } as any,
                     {
                       type: 'line',
                       xKey: 'formattedTime',
                       yKey: 'aiInsights',
                       yName: 'AI Insights',
-                      stroke: '#8b5cf6'
-                    }
-                  ]
-                }}
+                      stroke: '#8b5cf6',
+                    } as any,
+                  ],
+                  axes: [
+                    { type: 'category', position: 'bottom', title: { text: 'Time' } },
+                    { type: 'number', position: 'left', title: { text: 'Value' } },
+                  ],
+                } as AgChartOptions}
               />
             </div>
           </TabsContent>

@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Model Orchestrator Plugin Configuration",
+  "type": "object",
+  "properties": {
+    "models_root": {
+      "type": "string",
+      "description": "Root directory for model storage",
+      "default": "./models"
+    },
+    "registry_path": {
+      "type": "string",
+      "description": "Path to the model registry JSON file",
+      "default": "./models/llm_registry.json"
+    },
+    "max_concurrent_downloads": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Maximum number of concurrent model downloads",
+      "default": 3
+    },
+    "enable_metrics": {
+      "type": "boolean",
+      "description": "Enable Prometheus metrics collection",
+      "default": true
+    },
+    "enable_rbac": {
+      "type": "boolean",
+      "description": "Enable role-based access control",
+      "default": true
+    },
+    "offline_mode": {
+      "type": "boolean",
+      "description": "Operate in offline mode (no network access)",
+      "default": false
+    },
+    "mirror_url": {
+      "type": ["string", "null"],
+      "description": "Custom mirror URL for model downloads",
+      "format": "uri",
+      "default": null
+    },
+    "max_storage_gb": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Maximum storage limit in GB",
+      "default": null
+    },
+    "enable_license_tracking": {
+      "type": "boolean",
+      "description": "Enable license acceptance tracking",
+      "default": true
+    },
+    "enable_garbage_collection": {
+      "type": "boolean",
+      "description": "Enable automatic garbage collection",
+      "default": true
+    },
+    "enable_compatibility_checks": {
+      "type": "boolean",
+      "description": "Enable system compatibility checking",
+      "default": true
+    },
+    "gc_criteria": {
+      "type": "object",
+      "properties": {
+        "max_age_days": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum age in days for unused models",
+          "default": 30
+        },
+        "min_free_space_gb": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum free space to maintain in GB",
+          "default": 10
+        },
+        "preserve_pinned": {
+          "type": "boolean",
+          "description": "Always preserve pinned models",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "allowed_owners": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowlist of model owners (null = allow all)",
+          "default": null
+        },
+        "blocked_owners": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Blocklist of model owners",
+          "default": []
+        },
+        "max_file_size_gb": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum individual file size in GB",
+          "default": 50
+        },
+        "verify_checksums": {
+          "type": "boolean",
+          "description": "Verify file checksums after download",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "models_root",
+    "registry_path"
+  ],
+  "additionalProperties": false
+}

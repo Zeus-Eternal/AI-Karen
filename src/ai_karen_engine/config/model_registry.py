@@ -67,21 +67,8 @@ def list_transformers_models():
 
 
 def list_ollama_models():
-    """
-    Attempt to list Ollama models locally — no `ollama serve` required.
-    Parses from ~/.ollama/models or equivalent.
-    """
-    ollama_path = Path.home() / ".ollama" / "models"
-    models = []
-
-    try:
-        if ollama_path.exists():
-            for file in ollama_path.rglob("*.bin"):
-                models.append(file.stem)
-    except Exception as e:
-        logger.warning(f"[ollama] Failed to fetch models: {e}")
-
-    return models or ["<no-ollama-models>"]
+    """Deprecated: use list_llama_cpp_models instead."""
+    return list_llama_cpp_models()
 
 
 def list_gemini_models():

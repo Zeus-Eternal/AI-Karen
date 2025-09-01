@@ -69,7 +69,7 @@ class EnhancedTokenManager:
         self._revoked_jtis.add(jti)
 
     async def create_access_token(
-        self, user_data: UserData, expires_delta: Optional[timedelta] = None
+        self, user_data: UserData, expires_delta: Optional[timedelta] = None, long_lived: bool = False
     ) -> str:
         """
         Create a JWT access token for a user with enhanced security.
@@ -77,6 +77,7 @@ class EnhancedTokenManager:
         Args:
             user_data: User data to encode in token
             expires_delta: Custom expiration time (optional, defaults to 15 minutes)
+            long_lived: If True, creates a long-lived token (24 hours) for API stability
 
         Returns:
             JWT access token string
@@ -86,8 +87,11 @@ class EnhancedTokenManager:
         try:
             if expires_delta:
                 expire = datetime.now(timezone.utc) + expires_delta
+            elif long_lived:
+                # Use 24 hours for long-lived tokens to reduce API timeouts
+                expire = datetime.now(timezone.utc) + timedelta(hours=24)
             else:
-                # Use 15 minutes for access tokens as per requirements
+                # Use 15 minutes for regular access tokens as per requirements
                 expire = datetime.now(timezone.utc) + timedelta(minutes=15)
 
             now = datetime.now(timezone.utc)

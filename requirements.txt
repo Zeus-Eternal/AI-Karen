@@ -1,4 +1,4 @@
-fastapi==0.116.1
+fastapi
 uvicorn
 pyautogui
 urwid
@@ -11,8 +11,8 @@ sentence-transformers
 hnswlib
 duckdb
 huggingface_hub
+google-generativeai
 openai
-ollama
 requests
 llama-cpp-python
 scikit-learn==1.5.*
@@ -57,7 +57,6 @@ sse-starlette
 pre-commit
 httptools
 python-json-logger
-python
 langgraph
 langchain-core
 langchain-community

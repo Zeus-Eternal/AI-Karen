@@ -279,7 +279,7 @@ The protocol-based architecture makes it easy to add new components:
 
 This implementation satisfies the following requirements from the spec:
 
-- **1.1**: Local-first operation with Tiny LLaMA/Ollama default
+- **1.1**: Local-first operation with Tiny LLaMA/llamacpp default
 - **1.2**: Continues operating without cloud provider keys
 - **2.1**: Consistent prompt-first orchestration pipeline
 - **2.2**: Structured flow: analyze → recall → prompt → route → generate → format → persist

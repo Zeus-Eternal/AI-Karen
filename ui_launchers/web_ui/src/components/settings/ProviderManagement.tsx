@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -26,10 +26,190 @@ import {
   Globe,
   Lock,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Activity
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { ErrorHandler } from '@/lib/error-handler';
+import { openaiPing } from '@/lib/providers-api';
+import { handleApiError } from '@/lib/error-handler';
+
+// Model Recommendations Component
+interface ModelRecommendationsProps {
+  provider: LLMProvider;
+}
+
+function ModelRecommendations({ provider }: ModelRecommendationsProps) {
+  const [recommendations, setRecommendations] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const { toast } = useToast();
+  const backend = getKarenBackend();
+
+  const fetchRecommendations = async () => {
+    if (!provider.is_llm_provider) return;
+    
+    setLoading(true);
+    try {
+      const response = await backend.makeRequestPublic(`/api/providers/${provider.name}/model-recommendations`);
+      setRecommendations(response);
+    } catch (error) {
+      console.error('Failed to fetch model recommendations:', error);
+      const info = handleApiError(error as any, 'fetchRecommendations');
+      toast({
+        title: info.title,
+        description: info.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (expanded && !recommendations && !loading) {
+      fetchRecommendations();
+    }
+  }, [expanded]);
+
+  if (!provider.is_llm_provider) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-muted-foreground flex items-center gap-2">
+          <Database className="h-3 w-3" />
+          Model Recommendations
+        </Label>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded(!expanded)}
+          className="h-6 px-2 text-xs"
+        >
+          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </Button>
+      </div>
+
+      {expanded && (
+        <div className="space-y-2 p-3 bg-muted/30 rounded-lg">
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading recommendations...
+            </div>
+          ) : recommendations ? (
+            <div className="space-y-3">
+              {/* Validation Status */}
+              {recommendations.validation && (
+                <div className="flex items-center gap-2">
+                  <Badge 
+                    variant={recommendations.validation.status === 'healthy' ? 'default' : 'destructive'}
+                    className="text-xs"
+                  >
+                    {recommendations.validation.status === 'healthy' ? 'Models Available' : 'Needs Models'}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {recommendations.validation.local_models_count} local, {recommendations.validation.available_for_download} available
+                  </span>
+                </div>
+              )}
+
+              {/* Recommendations by Category */}
+              {recommendations.recommendations && (
+                <div className="space-y-2">
+                  {recommendations.recommendations.excellent && recommendations.recommendations.excellent.length > 0 && (
+                    <div>
+                      <Label className="text-xs font-medium text-green-600">Excellent Matches</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {recommendations.recommendations.excellent.slice(0, 3).map((modelId: string) => (
+                          <Badge key={modelId} variant="default" className="text-xs bg-green-100 text-green-800">
+                            {modelId}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {recommendations.recommendations.good && recommendations.recommendations.good.length > 0 && (
+                    <div>
+                      <Label className="text-xs font-medium text-blue-600">Good Matches</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {recommendations.recommendations.good.slice(0, 3).map((modelId: string) => (
+                          <Badge key={modelId} variant="secondary" className="text-xs">
+                            {modelId}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {recommendations.recommendations.acceptable && recommendations.recommendations.acceptable.length > 0 && (
+                    <div>
+                      <Label className="text-xs font-medium text-yellow-600">Acceptable Matches</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {recommendations.recommendations.acceptable.slice(0, 2).map((modelId: string) => (
+                          <Badge key={modelId} variant="outline" className="text-xs">
+                            {modelId}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Actions */}
+              {recommendations.validation && recommendations.validation.suggested_downloads && (
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Navigate to Model Library with provider filter
+                      toast({
+                        title: "Opening Model Library",
+                        description: `Showing models compatible with ${provider.name}`,
+                      });
+                    }}
+                    className="text-xs h-7"
+                  >
+                    <Database className="h-3 w-3 mr-1" />
+                    Browse Models
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchRecommendations}
+                    className="text-xs h-7"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Refresh
+                  </Button>
+                </div>
+              )}
+
+              {/* Error State */}
+              {recommendations.error && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    {recommendations.error}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground">
+              Click to load model recommendations
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface LLMProvider {
   name: string;
@@ -94,13 +274,12 @@ export default function ProviderManagement({
   const [keyValidationResults, setKeyValidationResults] = useState<Record<string, ApiKeyValidationResult>>({});
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
   const [healthChecking, setHealthChecking] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   const { toast } = useToast();
   const backend = getKarenBackend();
 
   // Load API keys from localStorage on mount
-  useState(() => {
+  useEffect(() => {
     try {
       const storedApiKeys = localStorage.getItem(LOCAL_STORAGE_KEYS.providerApiKeys);
       const storedExpanded = localStorage.getItem(LOCAL_STORAGE_KEYS.expandedProviders);
@@ -114,7 +293,7 @@ export default function ProviderManagement({
     } catch (error) {
       console.warn('Failed to load provider settings:', error);
     }
-  });
+  }, []);
 
   // Debounced API key validation
   const validationTimeouts = useMemo(() => new Map<string, NodeJS.Timeout>(), []);
@@ -165,16 +344,17 @@ export default function ProviderManagement({
 
       if (response.valid) {
         // Update provider health status
-        setProviders(prev => prev.map(p =>
+        const updatedProviders = providers.map(p =>
           p.name === providerName
             ? {
                 ...p,
-                health_status: 'healthy',
+                health_status: 'healthy' as const,
                 last_health_check: Date.now(),
                 cached_models_count: response.models_discovered || p.cached_models_count
               }
             : p
-        ));
+        );
+        setProviders(updatedProviders);
 
         toast({
           title: "API Key Valid",
@@ -182,11 +362,12 @@ export default function ProviderManagement({
         });
       } else {
         // Update provider health status
-        setProviders(prev => prev.map(p =>
+        const updatedProviders = providers.map(p =>
           p.name === providerName
-            ? { ...p, health_status: 'unhealthy', error_message: response.message, last_health_check: Date.now() }
+            ? { ...p, health_status: 'unhealthy' as const, error_message: response.message, last_health_check: Date.now() }
             : p
-        ));
+        );
+        setProviders(updatedProviders);
       }
     } catch (error) {
       console.error(`Failed to validate API key for ${providerName}:`, error);
@@ -201,11 +382,12 @@ export default function ProviderManagement({
         }
       }));
 
-      setProviders(prev => prev.map(p =>
+      const updatedProviders = providers.map(p =>
         p.name === providerName
-          ? { ...p, health_status: 'unhealthy', error_message: errorMessage, last_health_check: Date.now() }
+          ? { ...p, health_status: 'unhealthy' as const, error_message: errorMessage, last_health_check: Date.now() }
           : p
-      ));
+      );
+      setProviders(updatedProviders);
     } finally {
       setValidatingKeys(prev => ({ ...prev, [providerName]: false }));
     }
@@ -221,7 +403,7 @@ export default function ProviderManagement({
       }
 
       // Save to localStorage
-      localStorage.setItem(LOCAL_STORAGE_KEYS.expandedProviders, JSON.stringify([...newSet]));
+      localStorage.setItem(LOCAL_STORAGE_KEYS.expandedProviders, JSON.stringify(Array.from(newSet)));
       return newSet;
     });
   };
@@ -243,7 +425,7 @@ export default function ProviderManagement({
 
           return {
             ...provider,
-            health_status: (isHealthy ? 'healthy' : 'unhealthy') as 'healthy' | 'unhealthy' | 'unknown',
+            health_status: (isHealthy ? 'healthy' : 'unhealthy') as 'healthy' | 'unhealthy',
             error_message: healthResult.message,
             last_health_check: Date.now(),
             cached_models_count: healthResult.models_count || provider.cached_models_count
@@ -255,11 +437,13 @@ export default function ProviderManagement({
       setProviders(updatedProviders);
 
       // Update provider stats
-      setProviderStats(prev => prev ? {
-        ...prev,
-        healthy_providers: healthyCount,
-        last_sync: Date.now()
-      } : null);
+      if (providerStats) {
+        setProviderStats({
+          ...providerStats,
+          healthy_providers: healthyCount,
+          last_sync: Date.now()
+        });
+      }
 
       toast({
         title: "Health Check Complete",
@@ -268,7 +452,7 @@ export default function ProviderManagement({
 
     } catch (error) {
       console.error('Health check failed:', error);
-      const info = (error as any)?.errorInfo || ErrorHandler.handleApiError(error as any, 'runHealthCheck');
+      const info = (error as any)?.errorInfo || handleApiError(error as any, 'runHealthCheck');
       toast({
         title: info.title || "Health Check Failed",
         description: info.message || "Could not check provider health status.",
@@ -285,11 +469,12 @@ export default function ProviderManagement({
       const models = response || [];
 
       // Update provider cached model count
-      setProviders(prev => prev.map(p =>
+      const updatedProviders = providers.map(p =>
         p.name === providerName
           ? { ...p, cached_models_count: models.length, last_discovery: Date.now() / 1000 }
           : p
-      ));
+      );
+      setProviders(updatedProviders);
 
       toast({
         title: "Models Discovered",
@@ -306,80 +491,106 @@ export default function ProviderManagement({
     }
   };
 
-  const getHealthStatusIcon = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'unhealthy':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <Info className="h-4 w-4 text-gray-500" />;
+  const testProvider = async (providerName: string) => {
+    try {
+      if (providerName === 'openai') {
+        const res = await openaiPing();
+        if (res?.ok) {
+          toast({ title: 'OpenAI Connected', description: 'API key validated and reachable.' });
+          // mark healthy on success
+          setProviders(providers.map(p => p.name === providerName ? { ...p, health_status: 'healthy', last_health_check: Date.now() } : p));
+          return;
+        }
+      }
+      // Default/fallback path for providers without a specific ping yet
+      await checkProviderHealth(providerName);
+    } catch (error) {
+      toast({ title: 'Test Failed', description: `Could not connect to ${providerName}.`, variant: 'destructive' });
+      setProviders(providers.map(p => p.name === providerName ? { ...p, health_status: 'unhealthy', last_health_check: Date.now() } : p));
     }
   };
 
-  const getHealthStatusBadge = (status: string) => {
+  const checkProviderHealth = async (providerName: string) => {
+    try {
+      const res = await backend.makeRequestPublic<any>(`/api/providers/${providerName}/health`);
+      if (res) {
+        const isHealthy = res.status === 'healthy';
+        const updatedProviders = providers.map(p => p.name === providerName ? {
+          ...p,
+          health_status: (isHealthy ? 'healthy' : 'unhealthy') as 'healthy' | 'unhealthy',
+          error_message: res.message,
+          last_health_check: Date.now()
+        } : p);
+        setProviders(updatedProviders);
+
+        toast({
+          title: isHealthy ? "Provider Healthy" : "Provider Issues",
+          description: res.message || `${providerName} health check completed.`,
+          variant: isHealthy ? "default" : "destructive",
+        });
+      }
+    } catch (error) {
+      console.error(`Health check failed for ${providerName}:`, error);
+    }
+  };
+
+  const toggleProviderEnabled = async (providerName: string, enable: boolean) => {
+    try {
+      const res = await backend.makeRequestPublic<any>(`/api/providers/${providerName}/${enable ? 'enable' : 'disable'}`, {
+        method: 'POST'
+      });
+
+      if (res?.success) {
+        // Update local state; on disable, mark as unknown & disabled in message
+        const updatedProviders = providers.map(p => p.name === providerName ? {
+          ...p,
+          health_status: enable ? p.health_status : 'unknown' as const,
+          error_message: enable ? undefined : 'Provider disabled'
+        } : p);
+        setProviders(updatedProviders);
+
+        toast({
+          title: enable ? "Provider Enabled" : "Provider Disabled",
+          description: `${providerName} has been ${enable ? 'enabled' : 'disabled'}.`,
+        });
+      }
+    } catch (error) {
+      console.error(`Failed to ${enable ? 'enable' : 'disable'} ${providerName}:`, error);
+      toast({
+        title: "Operation Failed",
+        description: `Could not ${enable ? 'enable' : 'disable'} ${providerName}.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getHealthIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">Healthy</Badge>;
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case 'unhealthy':
-        return <Badge variant="destructive">Unhealthy</Badge>;
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
       default:
-        return <Badge variant="secondary">Unknown</Badge>;
+        return <AlertCircle className="h-4 w-4 text-gray-400" />;
     }
   };
 
   const getProviderTypeIcon = (type: string) => {
     switch (type) {
-      case 'remote':
-        return <Cloud className="h-4 w-4" />;
       case 'local':
-        return <HardDrive className="h-4 w-4" />;
+        return <HardDrive className="h-4 w-4 text-blue-600" />;
+      case 'remote':
+        return <Cloud className="h-4 w-4 text-green-600" />;
       case 'hybrid':
-        return <Globe className="h-4 w-4" />;
+        return <Globe className="h-4 w-4 text-purple-600" />;
       default:
-        return <Database className="h-4 w-4" />;
-    }
-  };
-
-  const getValidationIcon = (providerName: string) => {
-    const isValidating = validatingKeys[providerName];
-    const result = keyValidationResults[providerName];
-
-    if (isValidating) {
-      return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-    }
-
-    if (result) {
-      return result.valid
-        ? <CheckCircle2 className="h-4 w-4 text-green-500" />
-        : <AlertCircle className="h-4 w-4 text-red-500" />;
-    }
-
-    return null;
-  };
-
-  const getCapabilityIcon = (capability: string) => {
-    switch (capability) {
-      case 'streaming':
-        return <Zap className="h-3 w-3" />;
-      case 'vision':
-        return <Eye className="h-3 w-3" />;
-      case 'function_calling':
-        return <Database className="h-3 w-3" />;
-      case 'local_execution':
-        return <Shield className="h-3 w-3" />;
-      case 'embeddings':
-        return <Database className="h-3 w-3" />;
-      case 'privacy':
-        return <Lock className="h-3 w-3" />;
-      default:
-        return <Info className="h-3 w-3" />;
+        return <Database className="h-4 w-4 text-gray-600" />;
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Provider Stats and Actions */}
+      {/* Header */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -389,67 +600,82 @@ export default function ProviderManagement({
                 Provider Management
               </CardTitle>
               <CardDescription>
-                Configure API keys and manage LLM provider connections
+                Configure and manage LLM providers, API keys, and health monitoring
               </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              onClick={runHealthCheck}
-              disabled={healthChecking}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${healthChecking ? 'animate-spin' : ''}`} />
+            <Button onClick={runHealthCheck} disabled={healthChecking}>
+              {healthChecking ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
               Health Check
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          {providerStats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      </Card>
+
+      {/* Provider Stats */}
+      {providerStats && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{providerStats.total_providers}</div>
+                <div className="text-2xl font-bold text-green-600">{providerStats.healthy_providers}</div>
+                <div className="text-sm text-muted-foreground">Healthy Providers</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">{providerStats.total_providers}</div>
                 <div className="text-sm text-muted-foreground">Total Providers</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{providerStats.healthy_providers}</div>
-                <div className="text-sm text-muted-foreground">Healthy</div>
+                <div className="text-2xl font-bold">{providerStats.total_models}</div>
+                <div className="text-sm text-muted-foreground">Available Models</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{providerStats.total_models}</div>
-                <div className="text-sm text-muted-foreground">Total Models</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {new Date(providerStats.last_sync).toLocaleDateString()}
+                <div className="text-2xl font-bold">
+                  {providerStats.degraded_mode ? (
+                    <Badge variant="destructive">Degraded</Badge>
+                  ) : (
+                    <Badge variant="default">Operational</Badge>
+                  )}
                 </div>
-                <div className="text-sm text-muted-foreground">Last Sync</div>
+                <div className="text-sm text-muted-foreground">System Status</div>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Provider List */}
       <div className="space-y-4">
         {providers.map((provider) => (
-          <Card key={provider.name} className="transition-all duration-200 hover:shadow-md">
-            <CardHeader className="pb-3">
+          <Card key={provider.name} className="transition-all hover:shadow-md">
+            <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {getProviderTypeIcon(provider.provider_type)}
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold capitalize">{provider.name}</h3>
-                      {getHealthStatusBadge(provider.health_status)}
+                      <h3 className="font-semibold">{provider.name}</h3>
+                      {getHealthIcon(provider.health_status)}
+                      <Badge variant={provider.provider_type === 'local' ? 'secondary' : 'default'}>
+                        {provider.provider_type}
+                      </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">{provider.description}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    {provider.cached_models_count} models
-                  </Badge>
                   <Button
-                    variant="ghost"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => checkProviderHealth(provider.name)}
+                  >
+                    <Activity className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => toggleProviderExpansion(provider.name)}
                   >
@@ -464,138 +690,109 @@ export default function ProviderManagement({
             </CardHeader>
 
             {expandedProviders.has(provider.name) && (
-              <CardContent className="pt-0 space-y-4">
-                {/* API Key Configuration */}
-                {provider.requires_api_key && (
-                  <div className="space-y-2">
-                    <Label htmlFor={`${provider.name}-api-key`} className="flex items-center gap-2">
-                      <Key className="h-4 w-4" />
-                      API Key
-                    </Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
+              <CardContent>
+                <div className="space-y-4">
+                  {/* API Key Configuration */}
+                  {provider.requires_api_key && (
+                    <div className="space-y-2">
+                      <Label htmlFor={`api-key-${provider.name}`} className="flex items-center gap-2">
+                        <Key className="h-4 w-4" />
+                        API Key
+                      </Label>
+                      <div className="flex gap-2">
                         <Input
-                          id={`${provider.name}-api-key`}
+                          id={`api-key-${provider.name}`}
                           type="password"
-                          placeholder={`Enter ${provider.name} API key`}
+                          placeholder="Enter API key..."
                           value={providerApiKeys[provider.name] || ''}
                           onChange={(e) => handleApiKeyChange(provider.name, e.target.value)}
-                          className="pr-10"
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          {getValidationIcon(provider.name)}
-                        </div>
+                        {validatingKeys[provider.name] && (
+                          <Button variant="outline" size="sm" disabled>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </Button>
+                        )}
                       </div>
-                      {provider.cached_models_count > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => discoverProviderModels(provider.name, true)}
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
+                      {keyValidationResults[provider.name] && (
+                        <Alert variant={keyValidationResults[provider.name].valid ? "default" : "destructive"}>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            {keyValidationResults[provider.name].message}
+                          </AlertDescription>
+                        </Alert>
                       )}
                     </div>
+                  )}
 
-                    {/* Validation Result */}
-                    {keyValidationResults[provider.name] && (
-                      <Alert variant={keyValidationResults[provider.name].valid ? "default" : "destructive"}>
-                        {keyValidationResults[provider.name].valid ? (
-                          <CheckCircle2 className="h-4 w-4" />
-                        ) : (
-                          <AlertCircle className="h-4 w-4" />
-                        )}
-                        <AlertDescription>
-                          {keyValidationResults[provider.name].message}
-                        </AlertDescription>
-                      </Alert>
+                  {/* Provider Info */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Capabilities</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {provider.capabilities.map((cap) => (
+                          <Badge key={cap} variant="outline" className="text-xs">
+                            {cap}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Models Cached</Label>
+                      <div className="font-medium">{provider.cached_models_count}</div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Last Check</Label>
+                      <div className="font-medium">
+                        {provider.last_health_check
+                          ? new Date(provider.last_health_check).toLocaleString()
+                          : 'Never'
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Error Message */}
+                  {provider.error_message && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{provider.error_message}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Model Recommendations */}
+                  <ModelRecommendations provider={provider} />
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => discoverProviderModels(provider.name, true)}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Discover Models
+                    </Button>
+                    {provider.requires_api_key && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => testProvider(provider.name)}
+                      >
+                        Test
+                      </Button>
+                    )}
+                    {provider.documentation_url && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(provider.documentation_url, '_blank')}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Documentation
+                      </Button>
                     )}
                   </div>
-                )}
-
-                {/* Provider Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Capabilities</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {provider.capabilities.map((capability) => (
-                        <Badge key={capability} variant="secondary" className="text-xs gap-1">
-                          {getCapabilityIcon(capability)}
-                          {capability.replace('_', ' ')}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Status</h4>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        {getHealthStatusIcon(provider.health_status)}
-                        <span className="capitalize">{provider.health_status}</span>
-                      </div>
-                      {provider.last_health_check && (
-                        <div className="text-xs text-muted-foreground">
-                          Last checked: {new Date(provider.last_health_check).toLocaleString()}
-                        </div>
-                      )}
-                      {provider.error_message && (
-                        <div className="text-xs text-red-600">{provider.error_message}</div>
-                      )}
-                    </div>
-                  </div>
                 </div>
-
-                {/* Provider Links */}
-                <div className="flex flex-wrap gap-2 pt-2 border-t">
-                  {provider.documentation_url && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={provider.documentation_url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        Documentation
-                      </a>
-                    </Button>
-                  )}
-
-                  {provider.name === 'openai' && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
-                        <Key className="h-3 w-3 mr-1" />
-                        Get API Key
-                      </a>
-                    </Button>
-                  )}
-
-                  {provider.name === 'gemini' && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
-                        <Key className="h-3 w-3 mr-1" />
-                        Get API Key
-                      </a>
-                    </Button>
-                  )}
-
-                  {provider.name === 'deepseek' && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer">
-                        <Key className="h-3 w-3 mr-1" />
-                        Get API Key
-                      </a>
-                    </Button>
-                  )}
-                </div>
-
-                {/* Local Provider Info */}
-                {provider.name === 'local' && (
-                  <Alert>
-                    <HardDrive className="h-4 w-4" />
-                    <AlertTitle>Local Provider</AlertTitle>
-                    <AlertDescription className="text-sm">
-                      This provider uses models stored locally on your machine. No API key is required.
-                      Models are automatically discovered from your local model directory.
-                    </AlertDescription>
-                  </Alert>
-                )}
               </CardContent>
             )}
           </Card>
@@ -605,12 +802,12 @@ export default function ProviderManagement({
       {/* Information */}
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Provider Configuration</AlertTitle>
+        <AlertTitle>Provider Management</AlertTitle>
         <AlertDescription className="text-sm space-y-2">
-          <p>• API keys are validated in real-time and stored locally for convenience</p>
-          <p>• CopilotKit is excluded from LLM providers as it's a UI framework (configure it in the CopilotKit settings tab)</p>
-          <p>• Local providers don't require API keys and scan for local model files</p>
-          <p>• Provider health is checked automatically and can be refreshed manually</p>
+          <p>• Configure API keys for remote providers to enable model access</p>
+          <p>• Health checks verify provider connectivity and model availability</p>
+          <p>• Local providers run on your machine and don't require API keys</p>
+          <p>• Model discovery refreshes the available model list for each provider</p>
         </AlertDescription>
       </Alert>
     </div>

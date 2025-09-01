@@ -497,7 +497,7 @@ class NetworkDiagnostics {
           });
         }
       } catch (error) {
-        this.logger.log('error', 'network', 'Network monitoring failed', undefined, undefined, undefined, error);
+        this.logger.log('error', 'network', 'Network monitoring failed', undefined, undefined, undefined, error as Error);
       }
     }, interval);
 
@@ -525,11 +525,6 @@ export function initializeNetworkDiagnostics(): NetworkDiagnostics {
   return networkDiagnostics;
 }
 
-// Export types
-export type {
-  NetworkTest,
-  NetworkTestResult,
-  ComprehensiveNetworkReport,
-};
+// Types are already exported via export interface declarations above
 
 export { NetworkDiagnostics };

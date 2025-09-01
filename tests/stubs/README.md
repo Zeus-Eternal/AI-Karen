@@ -12,8 +12,6 @@ unit tests exercise.
   used by memory management tests.
 - `pyautogui.py` – prevents import errors when GUI automation packages
   are missing. Only defines the attributes referenced in tests.
-- `ollama.py` – lightweight placeholder for the Ollama client used by
-  LLM integration tests.
 
 If additional behaviour is required in tests, prefer using
 `monkeypatch` or fixtures over adding new stub modules.

@@ -30,6 +30,17 @@ async def init_ai_services(settings: Any) -> None:
         memory_manager.init_memory()
         load_plugins(settings.plugin_dir)
 
+        # Initialize model orchestrator plugin if enabled
+        try:
+            from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS
+            if "model_orchestrator" in ENABLED_PLUGINS:
+                from plugin_marketplace.ai.model_orchestrator.service import ModelOrchestratorService
+                orchestrator_service = ModelOrchestratorService()
+                await orchestrator_service.initialize()
+                logger.info("Model orchestrator plugin initialized")
+        except Exception as e:
+            logger.warning("Model orchestrator plugin initialization failed: %s", str(e))
+
         from ai_karen_engine.integrations.model_discovery import sync_registry
 
         sync_registry()

@@ -1,6 +1,6 @@
-
 "use client";
 
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ApiKeyManager from "./ApiKeyManager";
 import BehaviorSettings from "./BehaviorSettings";
@@ -10,8 +10,20 @@ import PrivacySettings from "./PrivacySettings";
 import VoiceSettings from "./VoiceSettings";
 import PersonaSettings from "./PersonaSettings";
 import LLMSettings from "./LLMSettings";
+import ModelLibrary from "./ModelLibrary";
 import CopilotKitSettings from "./CopilotKitSettings";
-import { Cog, KeyRound, BookText, Bell, Shield, Speaker, UserCog, Brain, MessageSquare } from "lucide-react";
+import {
+  Cog,
+  KeyRound,
+  BookText,
+  Bell,
+  Shield,
+  Speaker,
+  UserCog,
+  Brain,
+  MessageSquare,
+  Library,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
@@ -22,19 +34,46 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
  * This component is intended to be rendered as a main view.
  */
 export default function SettingsDialog() {
+  const [activeTab, setActiveTab] = useState("api-key");
+
+  // Listen for cross-navigation events between tabs
+  useEffect(() => {
+    const handleNavigateToModelLibrary = () => {
+      setActiveTab("model-library");
+    };
+
+    const handleNavigateToLLMSettings = () => {
+      setActiveTab("llm");
+    };
+
+    window.addEventListener('navigate-to-model-library', handleNavigateToModelLibrary);
+    window.addEventListener('navigate-to-llm-settings', handleNavigateToLLMSettings);
+    
+    return () => {
+      window.removeEventListener('navigate-to-model-library', handleNavigateToModelLibrary);
+      window.removeEventListener('navigate-to-llm-settings', handleNavigateToLLMSettings);
+    };
+  }, []);
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Application Settings</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Application Settings
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Customize Karen AI's behavior, API connections, personal knowledge, notifications, and more. Your preferences are saved locally in your browser.
+          Customize Karen AI's behavior, API connections, personal knowledge,
+          notifications, and more. Your preferences are saved locally in your
+          browser.
         </p>
       </div>
       <Separator />
-      <Tabs defaultValue="api-key" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex flex-wrap w-full justify-start shrink-0">
           <TabsTrigger value="llm">
             <Brain className="mr-1 sm:mr-2 h-4 w-4" /> LLM
+          </TabsTrigger>
+          <TabsTrigger value="model-library">
+            <Library className="mr-1 sm:mr-2 h-4 w-4" /> Model Library
           </TabsTrigger>
           <TabsTrigger value="copilotkit">
             <MessageSquare className="mr-1 sm:mr-2 h-4 w-4" /> CopilotKit
@@ -63,10 +102,15 @@ export default function SettingsDialog() {
         </TabsList>
 
         {/* This div ensures padding and allows content to grow within the main scrollable area */}
-        <div className="mt-4"> 
+        <div className="mt-4">
           <TabsContent value="llm">
             <ErrorBoundary>
               <LLMSettings />
+            </ErrorBoundary>
+          </TabsContent>
+          <TabsContent value="model-library">
+            <ErrorBoundary>
+              <ModelLibrary />
             </ErrorBoundary>
           </TabsContent>
           <TabsContent value="copilotkit">

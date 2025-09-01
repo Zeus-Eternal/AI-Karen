@@ -29,7 +29,7 @@ import {
   Merge
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { ErrorHandler } from '@/lib/error-handler';
+import { handleApiError } from '@/lib/error-handler';
 
 interface UploadFile {
   file: File;
@@ -267,7 +267,7 @@ export default function ModelUploadManager({
 
     } catch (error) {
       console.error('Conversion failed:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'convertToGGUF');
+      const info = handleApiError(error as any, 'convertToGGUF');
       toast({
         variant: 'destructive',
         title: info.title || "Conversion Failed",
@@ -316,7 +316,7 @@ export default function ModelUploadManager({
 
     } catch (error) {
       console.error('Quantization failed:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'quantizeModel');
+      const info = handleApiError(error as any, 'quantizeModel');
       toast({
         variant: 'destructive',
         title: info.title || "Quantization Failed",
@@ -365,7 +365,7 @@ export default function ModelUploadManager({
 
     } catch (error) {
       console.error('LoRA merge failed:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'mergeLoRA');
+      const info = handleApiError(error as any, 'mergeLoRA');
       toast({
         variant: 'destructive',
         title: info.title || "LoRA Merge Failed",

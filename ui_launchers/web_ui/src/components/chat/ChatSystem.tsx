@@ -151,8 +151,8 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       const result = await chatService.processUserMessage(
         message,
         messages,
-        user.preferences || {},
-        { userId: user.user_id, sessionId }
+        (user.preferences || {}) as any,
+        { userId: user.user_id, sessionId: sessionId || undefined }
       );
 
       const assistantMessage: ChatMessage = {
@@ -163,7 +163,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
         confidence: result.aiDataForFinalResponse?.confidence,
         aiData: {
           keywords: result.aiDataForFinalResponse?.keywords,
-          reasoning: result.aiDataForFinalResponse?.reasoning,
+          reasoning: (result.aiDataForFinalResponse as any)?.reasoning,
           sources: ['AI Karen Engine', 'Knowledge Base']
         }
       };
@@ -245,7 +245,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
 
 return (
     <div className={`flex flex-col h-full ${className}`}>
-      <Tabs value={activeView} onValueChange={setActiveView} className="flex-1 flex flex-col">
+      <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'chat' | 'conversations' | 'analytics')} className="flex-1 flex flex-col">
         <div className="border-b">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="chat" className="flex items-center gap-2">

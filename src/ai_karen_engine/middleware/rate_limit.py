@@ -29,7 +29,7 @@ def _get_memory_rate_limit(identifier: str) -> Dict:
         _memory_rate_limits[identifier] = {
             "current_count": 0,
             "window_reset": now + timedelta(seconds=60),
-            "max_count": 60,
+            "max_count": 300,  # Increased from 60 to 300 requests per minute
             "window_sec": 60
         }
     
@@ -72,7 +72,7 @@ async def rate_limit_middleware(request: Request, call_next):
                     key=identifier,
                     limit_name="default",
                     window_sec=60,
-                    max_count=60,
+                    max_count=300,  # Increased from 60 to 300 requests per minute
                     current_count=1,
                     window_reset=now + timedelta(seconds=60),
                 )

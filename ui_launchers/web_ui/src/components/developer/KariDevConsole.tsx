@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { AgGridReact } from "ag-grid-react";
-import { AgCharts } from "ag-charts-react";
+import dynamic from "next/dynamic";
+// Lazy-load heavy grid/chart libraries only when this component renders
+const AgGridReact = dynamic(() => import("ag-grid-react").then(m => m.AgGridReact), { ssr: false });
+const AgCharts = dynamic(() => import("ag-charts-react").then(m => m.AgCharts), { ssr: false });
 import { ColDef } from "ag-grid-community";
 import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,11 +16,8 @@ import {
   Terminal, 
   Zap, 
   Activity, 
-  Code, 
   Database, 
-  Settings, 
   Play, 
-  Square, 
   RefreshCw,
   MessageSquare,
   Bot,
@@ -246,7 +245,7 @@ export default function KariDevConsole() {
   ];
 
   // Performance chart options
-  const performanceChartOptions = {
+  const performanceChartOptions: any = {
     data: [
       { time: "00:00", plugins: 95, extensions: 87, hooks: 92, chat: 98 },
       { time: "00:05", plugins: 93, extensions: 89, hooks: 94, chat: 96 },
@@ -618,13 +617,14 @@ export default function KariDevConsole() {
                       sortable: true,
                     }}
                     getRowStyle={(params) => {
-                      if (params.data.level === "error") {
+                      const data = params.data as LiveLog;
+                      if (data.level === "error") {
                         return { backgroundColor: "#fef2f2" };
                       }
-                      if (params.data.level === "warn") {
+                      if (data.level === "warn") {
                         return { backgroundColor: "#fffbeb" };
                       }
-                      return {};
+                      return undefined;
                     }}
                   />
                 </div>

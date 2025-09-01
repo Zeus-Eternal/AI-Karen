@@ -479,8 +479,3 @@ export function createUserFriendlyError(
   return `An unexpected error occurred during ${context}. Please try again.`;
 }
 
-export type {
-  ServiceError,
-  ErrorHandlerConfig,
-  RetryOptions,
-};

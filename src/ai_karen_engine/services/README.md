@@ -164,7 +164,7 @@ The services layer integrates with multiple LLM providers:
 - **OpenAI**: GPT models and embeddings
 - **Gemini**: Google's Gemini models
 - **DeepSeek**: DeepSeek model integration
-- **Ollama**: Local model execution
+- **LlamaCpp**: Local GGUF model execution via llama-cpp-python
 
 #### Provider Access
 ```python
@@ -172,7 +172,7 @@ from ai_karen_engine.services import (
     get_openai_service,
     get_gemini_service,
     get_deepseek_client,
-    get_ollama_engine
+    get_llamacpp_engine
 )
 
 # Use specific provider
@@ -202,7 +202,6 @@ Services are configured through environment variables and configuration files:
 - `OPENAI_API_KEY`: OpenAI API key
 - `GEMINI_API_KEY`: Google Gemini API key
 - `DEEPSEEK_API_KEY`: DeepSeek API key
-- `OLLAMA_BASE_URL`: Ollama server URL
 - `PLUGIN_DISCOVERY_PATH`: Plugin discovery directories
 - `MEMORY_BACKEND`: Memory storage backend
 - `ANALYTICS_ENABLED`: Enable analytics collection

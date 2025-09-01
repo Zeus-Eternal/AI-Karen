@@ -39,6 +39,8 @@ export interface LoginCredentials {
 
 export interface LoginResponse {
   token: string;
+  access_token?: string;
+  refresh_token?: string;
   user_id: string;
   email: string;
   roles: string[];
@@ -55,12 +57,18 @@ export interface AuthContextType {
   register: (credentials: LoginCredentials) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  updateUserPreferences: (preferences: Partial<User['preferences']>) => Promise<void>;
+  updateCredentials: (newUsername?: string, newPassword?: string) => Promise<void>;
+  updateUserPreferences: (preferences: DeepPartial<User['preferences']>) => Promise<void>;
 }
 
 // Enhanced Authentication Types and Interfaces
+
+// Utility type to allow nested partial updates
+export type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
 
 /**
  * Authentication step types for the authentication flow

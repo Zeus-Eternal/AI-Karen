@@ -128,7 +128,7 @@ class SystemModelManager:
                 "path": self.models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
                 "config_class": LlamaCppConfig,
                 "capabilities": ["text-generation", "chat", "local-inference"],
-                "runtime_compatibility": ["llama-cpp", "ollama"]
+                "runtime_compatibility": ["llama-cpp"]
             },
             "distilbert-base-uncased": {
                 "name": "DistilBERT Base Uncased",

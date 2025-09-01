@@ -192,7 +192,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       () => apiClient.copilotAssist({
         ...request,
         user_id: user.user_id,
-        org_id: user.org_id
+        org_id: user.tenant_id
       }),
       request
     );
@@ -211,7 +211,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       () => apiClient.memorySearch({
         ...request,
         user_id: user.user_id,
-        org_id: user.org_id
+        org_id: user.tenant_id
       }),
       request
     );
@@ -230,7 +230,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       () => apiClient.memoryCommit({
         ...request,
         user_id: user.user_id,
-        org_id: user.org_id
+        org_id: user.tenant_id
       }),
       request
     );
@@ -250,7 +250,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       () => apiClient.memoryUpdate(memoryId, {
         ...updates,
         user_id: user.user_id,
-        org_id: user.org_id
+        org_id: user.tenant_id
       }),
       { memoryId, updates }
     );
@@ -269,7 +269,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       'memory_delete',
       () => apiClient.memoryDelete(memoryId, {
         user_id: user.user_id,
-        org_id: user.org_id,
+        org_id: user.tenant_id,
         ...options
       }),
       { memoryId, options }
@@ -290,13 +290,13 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       data: {
         ...op.data,
         user_id: user.user_id,
-        org_id: user.org_id
+        org_id: user.tenant_id
       }
     }));
 
     return handleApiRequest(
       'batch_memory_operations',
-      () => apiClient.batchMemoryOperations(operationsWithUser),
+      () => apiClient.batchMemoryOperations(operationsWithUser as Array<{ type: "search" | "delete" | "commit" | "update"; data: any }>),
       operations
     );
   }, [user, apiClient, handleApiRequest]);

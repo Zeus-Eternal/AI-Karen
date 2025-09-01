@@ -69,7 +69,7 @@ When a module achieves true power:
 ## 6. **Example: Agent Imports After Refactor**
 
 ```python
-from ai_karen_engine.integrations.llm.ollama_inprocess import generate as ollama_generate
+from ai_karen_engine.integrations.llm.llamacpp_inprocess import generate as llamacpp_generate
 from ai_karen_engine.plugins.hello_world.handler import HelloWorldHandler
 from ai_karen_engine.self_refactor.engine import SelfRefactorEngine
 from ai_karen_engine.echocore.fine_tuner import FineTuner

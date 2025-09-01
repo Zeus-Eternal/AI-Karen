@@ -1,7 +1,7 @@
 """Local-first LLM client with optional remote/cloud routing.
 
 This module provides a small utility for favouring local LLM providers
-(e.g. TinyLLaMA via llama.cpp or an in-process Ollama model) while still
+(e.g. TinyLLaMA via llama.cpp or local llama-cpp-python models) while still
 allowing callers to explicitly opt in to cloud based models.  When both
 local and remote providers fail, a trivial fallback client is used to
 guarantee a response.
@@ -141,13 +141,13 @@ class TinyLlamaClient:
         return "\n".join(prompt_parts)
 
 
-class OllamaClient:
-    """Local Ollama client."""
+class LlamaCppClient:
+    """Local LLaMA-CPP client using existing runtime."""
     
-    def __init__(self, model_name: str = "tinyllama", base_url: str = "http://localhost:11434", **kwargs):
-        self.model_name = model_name
-        self.base_url = base_url
-        self.client = None
+    def __init__(self, model_path: Optional[str] = None, **kwargs):
+        from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
+        
+        self.runtime = LlamaCppRuntime(model_path=model_path, **kwargs)
         self._warmed = False
         self.generation_kwargs = {
             "temperature": kwargs.get("temperature", 0.7),
@@ -155,71 +155,41 @@ class OllamaClient:
             "max_tokens": kwargs.get("max_tokens", 512),
         }
     
-    def _get_client(self):
-        """Get or create Ollama client."""
-        if self.client is None:
-            try:
-                import ollama
-                self.client = ollama.Client(host=self.base_url)
-                log.info(f"Connected to Ollama at {self.base_url}")
-            except ImportError:
-                raise ImportError("ollama package not installed. Run: pip install ollama")
-            except Exception as e:
-                raise RuntimeError(f"Failed to connect to Ollama: {e}")
-        return self.client
-    
     def warmup(self):
         """Warm up the model with a simple generation."""
-        if not self._warmed:
+        if not self._warmed and self.runtime.is_loaded():
             try:
-                client = self._get_client()
                 # Simple warmup
-                client.generate(
-                    model=self.model_name,
+                self.runtime.generate(
                     prompt="Hello",
-                    options={"num_predict": 1}
+                    max_tokens=1,
+                    temperature=0.1,
                 )
                 self._warmed = True
-                log.info(f"Ollama model {self.model_name} warmed up successfully")
+                log.info("LlamaCpp model warmed up successfully")
             except Exception as e:
-                log.warning(f"Ollama warmup failed: {e}")
+                log.warning(f"LlamaCpp warmup failed: {e}")
     
     def generate(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """Generate response from messages."""
         try:
-            client = self._get_client()
+            # Convert messages to prompt format
+            prompt = self._messages_to_prompt(messages)
             
             # Merge generation parameters
             gen_kwargs = {**self.generation_kwargs, **kwargs}
-            model = gen_kwargs.pop("model", self.model_name)
             
-            # Convert to Ollama options format
-            options = {
-                "temperature": gen_kwargs.get("temperature", 0.7),
-                "top_p": gen_kwargs.get("top_p", 0.9),
-                "num_predict": gen_kwargs.get("max_tokens", 512),
-            }
+            # Generate response
+            response = self.runtime.generate(
+                prompt=prompt,
+                stream=False,
+                **gen_kwargs
+            )
             
-            # Use chat API if available, otherwise convert to prompt
-            try:
-                response = client.chat(
-                    model=model,
-                    messages=messages,
-                    options=options
-                )
-                return response["message"]["content"]
-            except Exception:
-                # Fallback to generate API
-                prompt = self._messages_to_prompt(messages)
-                response = client.generate(
-                    model=model,
-                    prompt=prompt,
-                    options=options
-                )
-                return response["response"]
+            return response
                 
         except Exception as e:
-            log.error(f"Ollama generation failed: {e}")
+            log.error(f"LlamaCpp generation failed: {e}")
             raise
     
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
@@ -231,14 +201,16 @@ class OllamaClient:
             content = message.get("content", "")
             
             if role == "system":
-                prompt_parts.append(f"System: {content}")
+                prompt_parts.append(f"<|im_start|>system\n{content}<|im_end|>")
             elif role == "user":
-                prompt_parts.append(f"User: {content}")
+                prompt_parts.append(f"<|im_start|>user\n{content}<|im_end|>")
             elif role == "assistant":
-                prompt_parts.append(f"Assistant: {content}")
+                prompt_parts.append(f"<|im_start|>assistant\n{content}<|im_end|>")
         
-        prompt_parts.append("Assistant:")
-        return "\n\n".join(prompt_parts)
+        # Add assistant start token for generation
+        prompt_parts.append("<|im_start|>assistant\n")
+        
+        return "\n".join(prompt_parts)
 
 
 class ModelSelector:
@@ -380,7 +352,7 @@ class UnifiedLLMClient:
             self.warmup()
 
     def _create_default_local_clients(self) -> List[LLMClient]:
-        """Create default local clients (TinyLLaMA and Ollama)."""
+        """Create default local clients (TinyLLaMA and LlamaCpp)."""
         clients = []
         
         # Try TinyLLaMA first
@@ -391,13 +363,13 @@ class UnifiedLLMClient:
         except Exception as e:
             log.warning(f"TinyLLaMA client initialization failed: {e}")
         
-        # Try Ollama as backup
+        # Try LlamaCpp as backup
         try:
-            ollama = OllamaClient()
-            clients.append(ollama)
-            log.info("Ollama client initialized")
+            llamacpp = LlamaCppClient()
+            clients.append(llamacpp)
+            log.info("LlamaCpp client initialized")
         except Exception as e:
-            log.warning(f"Ollama client initialization failed: {e}")
+            log.warning(f"LlamaCpp client initialization failed: {e}")
         
         if not clients:
             log.warning("No local clients available, using fallback only")
@@ -521,8 +493,7 @@ def create_local_first_client(
     remote_client: Optional[LLMClient] = None,
     local_only: bool = True,
     tinyllama_path: Optional[str] = None,
-    ollama_model: str = "tinyllama",
-    ollama_url: str = "http://localhost:11434",
+    llamacpp_model_path: Optional[str] = None,
     **kwargs
 ) -> UnifiedLLMClient:
     """Factory function to create a local-first LLM client.
@@ -531,8 +502,7 @@ def create_local_first_client(
         remote_client: Optional cloud/remote client
         local_only: If True, never use cloud clients
         tinyllama_path: Path to TinyLLaMA model file
-        ollama_model: Ollama model name
-        ollama_url: Ollama server URL
+        llamacpp_model_path: Path to LlamaCpp GGUF model
         **kwargs: Additional client configuration
         
     Returns:
@@ -548,17 +518,16 @@ def create_local_first_client(
     except Exception as e:
         log.warning(f"Failed to create TinyLLaMA client: {e}")
     
-    # Try to create Ollama client
+    # Try to create LlamaCpp client
     try:
-        ollama = OllamaClient(
-            model_name=ollama_model,
-            base_url=ollama_url,
+        llamacpp = LlamaCppClient(
+            model_path=kwargs.get("model_path"),
             **kwargs
         )
-        local_clients.append(ollama)
-        log.info("Ollama client created successfully")
+        local_clients.append(llamacpp)
+        log.info("LlamaCpp client created successfully")
     except Exception as e:
-        log.warning(f"Failed to create Ollama client: {e}")
+        log.warning(f"Failed to create LlamaCpp client: {e}")
     
     return UnifiedLLMClient(
         local_clients=local_clients,

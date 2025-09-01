@@ -33,7 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         maxGlobalErrors={10}
       >
         <SessionProvider
-          autoRehydrate={true}
+          autoRehydrate={false}
           onSessionChange={(isAuthenticated, user) => {
             console.log('Session changed:', { isAuthenticated, user });
           }}

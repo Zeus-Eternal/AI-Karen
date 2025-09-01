@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { ThemeProvider } from './ThemeProvider';
 
 /**
  * ThemeBridge injects legacy CSS variable mappings so older components
@@ -28,11 +29,18 @@ export const ThemeBridge: React.FC<{ children: React.ReactNode }> = ({ children 
     style.textContent = `:root { ${mappings} }`;
     document.head.appendChild(style);
     return () => {
-      document.head.removeChild(style);
+      const existingStyle = document.getElementById('theme-bridge');
+      if (existingStyle) {
+        document.head.removeChild(existingStyle);
+      }
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <ThemeProvider>
+      {children}
+    </ThemeProvider>
+  );
 };
 
 export default ThemeBridge;

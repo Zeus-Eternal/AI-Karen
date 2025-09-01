@@ -30,6 +30,13 @@ export type { LoginResult, CurrentUser } from '@/lib/karen-backend';
 
 // Service initialization helper
 export async function initializeAllServices() {
+  const { initializeChatService } = await import('./chatService');
+  const { initializeMemoryService } = await import('./memoryService');
+  const { initializePluginService } = await import('./pluginService');
+  const { initializeExtensionService } = await import('./extensionService');
+  const { getAuthService } = await import('./authService');
+  const { alertManager } = await import('./alertManager');
+  
   const chatService = initializeChatService();
   const memoryService = initializeMemoryService();
   const pluginService = initializePluginService();
@@ -67,6 +74,7 @@ export async function checkServicesHealth(): Promise<{
 
   try {
     // Test chat service
+    const { getChatService } = await import('./chatService');
     const chatService = getChatService();
     results.chat = true;
   } catch (error) {
@@ -75,6 +83,7 @@ export async function checkServicesHealth(): Promise<{
 
   try {
     // Test memory service
+    const { getMemoryService } = await import('./memoryService');
     const memoryService = getMemoryService();
     results.memory = true;
   } catch (error) {
@@ -83,6 +92,7 @@ export async function checkServicesHealth(): Promise<{
 
   try {
     // Test plugin service
+    const { getPluginService } = await import('./pluginService');
     const pluginService = getPluginService();
     results.plugins = true;
   } catch (error) {
@@ -91,6 +101,7 @@ export async function checkServicesHealth(): Promise<{
 
   try {
     // Test extension service
+    const { getExtensionService } = await import('./extensionService');
     const extService = getExtensionService();
     results.extensions = true;
   } catch (error) {
@@ -102,19 +113,23 @@ export async function checkServicesHealth(): Promise<{
 }
 
 // Clear all service caches
-export function clearAllServiceCaches(): void {
+export async function clearAllServiceCaches(): Promise<void> {
   try {
+    const { getChatService } = await import('./chatService');
+    const { getMemoryService } = await import('./memoryService');
+    const { getPluginService } = await import('./pluginService');
+    const { getExtensionService } = await import('./extensionService');
+    
     getChatService().clearCache();
     getMemoryService().clearCache();
     getPluginService().clearCache();
-    getExtensionService().clearCache?.();
   } catch (error) {
     console.error('Failed to clear service caches:', error);
   }
 }
 
 // Get all service cache statistics
-export function getAllServiceCacheStats(): {
+export async function getAllServiceCacheStats(): Promise<{
   chat: { size: number; keys: string[] };
   memory: {
     queryCache: { size: number; keys: string[] };
@@ -126,11 +141,16 @@ export function getAllServiceCacheStats(): {
     metricsCache: { size: number; keys: string[] };
   };
   extensions: { size: number; keys: string[] };
-} {
+}> {
+  const { getChatService } = await import('./chatService');
+  const { getMemoryService } = await import('./memoryService');
+  const { getPluginService } = await import('./pluginService');
+  const { getExtensionService } = await import('./extensionService');
+  
   return {
     chat: getChatService().getCacheStats(),
     memory: getMemoryService().getCacheStats(),
     plugins: getPluginService().getCacheStats(),
-    extensions: getExtensionService().getCacheStats(),
+    extensions: { size: 0, keys: [] }, // ExtensionService doesn't have cache stats
   };
 }

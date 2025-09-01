@@ -285,7 +285,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
   const gridOptions = {
     pagination: true,
     paginationPageSize: 50,
-    rowSelection: 'single',
+    rowSelection: 'single' as const,
     animateRows: true,
     enableRangeSelection: true,
     suppressRowClickSelection: false,

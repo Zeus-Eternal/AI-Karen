@@ -1,5 +1,5 @@
 """
-OllamaEngine: Sandboxed, In-Process, GGUF-native LLM Engine for Kari AI
+LlamaCppEngine: Sandboxed, In-Process, GGUF-native LLM Engine for Kari AI
 - Pure llama-cpp-python (NO REST, NO HTTP)
 - Thread-safe model management, sync & async chat, streaming, embeddings
 - Prometheus metrics, robust logging, model listing/switch, health check
@@ -36,20 +36,20 @@ except ImportError:
 
 # === Config ===
 MODEL_DIR = os.getenv("KARI_MODEL_DIR", "/models")
-DEFAULT_MODEL = os.getenv("OLLAMA_MODEL_NAME", "llama3.gguf")
+DEFAULT_MODEL = os.getenv("LLAMACPP_MODEL_NAME", "llama3.gguf")
 DEFAULT_MODEL_PATH = str(Path(MODEL_DIR) / DEFAULT_MODEL)
-CTX_SIZE = int(os.getenv("OLLAMA_CTX_SIZE", 4096))
-N_THREADS = int(os.getenv("OLLAMA_THREADS", 8))
+CTX_SIZE = int(os.getenv("LLAMACPP_CTX_SIZE", 4096))
+N_THREADS = int(os.getenv("LLAMACPP_THREADS", 8))
 
-log = logging.getLogger("ollama_inprocess")
+log = logging.getLogger("llamacpp_inprocess")
 log.setLevel(logging.INFO if os.getenv("ENV") == "production" else logging.DEBUG)
 
-REQ_COUNT = Counter("ollama_requests_total", "Total Ollama LLM Calls", ["model", "method"]) if METRICS_ENABLED else Counter()
-REQ_LATENCY = Histogram("ollama_latency_seconds", "Ollama LLM Latency", ["model", "method"]) if METRICS_ENABLED else Histogram()
-ERR_COUNT = Counter("ollama_errors_total", "Ollama LLM Errors", ["error_type", "method"]) if METRICS_ENABLED else Counter()
-IN_FLIGHT = Gauge("ollama_inflight_requests", "In-Process LLM Calls In Flight", ["method"]) if METRICS_ENABLED else Gauge()
+REQ_COUNT = Counter("llamacpp_requests_total", "Total LlamaCpp LLM Calls", ["model", "method"]) if METRICS_ENABLED else Counter()
+REQ_LATENCY = Histogram("llamacpp_latency_seconds", "LlamaCpp LLM Latency", ["model", "method"]) if METRICS_ENABLED else Histogram()
+ERR_COUNT = Counter("llamacpp_errors_total", "LlamaCpp LLM Errors", ["error_type", "method"]) if METRICS_ENABLED else Counter()
+IN_FLIGHT = Gauge("llamacpp_inflight_requests", "In-Process LLM Calls In Flight", ["method"]) if METRICS_ENABLED else Gauge()
 
-class OllamaEngine:
+class LlamaCppEngine:
     """
     In-process, thread-safe LLM engine (singleton)
     """
@@ -80,7 +80,7 @@ class OllamaEngine:
         """Load GGUF model from disk (thread-safe)"""
         path = Path(model_path)
         if not path.exists():
-            log.error(f"[ollama_inprocess] Model not found: {path}")
+            log.error(f"[llamacpp_inprocess] Model not found: {path}")
             raise FileNotFoundError(f"Model file not found: {path}")
         with self.model_lock:
             self.model = Llama(
@@ -91,7 +91,7 @@ class OllamaEngine:
             )
             self.model_path = str(path)
             self.model_name = path.name
-            log.info(f"[ollama_inprocess] Model loaded: {self.model_name}")
+            log.info(f"[llamacpp_inprocess] Model loaded: {self.model_name}")
 
     def switch_model(self, model_name: str, ctx_size: Optional[int] = None, n_threads: Optional[int] = None) -> None:
         """Hot-swap to new model from model dir"""
@@ -101,7 +101,7 @@ class OllamaEngine:
             self.ctx_size = ctx_size
         if n_threads:
             self.n_threads = n_threads
-        log.info(f"[ollama_inprocess] Switched to model: {model_name}")
+        log.info(f"[llamacpp_inprocess] Switched to model: {model_name}")
 
     def chat(self, messages: List[Dict[str, str]], stream: bool = False, **kwargs) -> Union[str, Generator[str, None, None]]:
         """Sync chat with streaming support"""
@@ -121,7 +121,7 @@ class OllamaEngine:
                     return result["choices"][0]["text"]
         except Exception:
             ERR_COUNT.labels(error_type="inference", method=method).inc()
-            log.exception("Ollama LLM error")
+            log.exception("LlamaCpp LLM error")
             raise
         finally:
             IN_FLIGHT.labels(method=method).dec()
@@ -168,7 +168,7 @@ class OllamaEngine:
                     return [self.model.embed(t) for t in text]
         except Exception:
             ERR_COUNT.labels(error_type="embedding", method="embedding").inc()
-            log.exception("Ollama embedding error")
+            log.exception("LlamaCpp embedding error")
             raise
         finally:
             IN_FLIGHT.labels(method="embedding").dec()
@@ -178,7 +178,7 @@ class OllamaEngine:
         try:
             return sorted([f.name for f in Path(MODEL_DIR).glob("*.gguf") if f.is_file()])
         except Exception as e:
-            log.error(f"[ollama_inprocess] Model discovery failed: {str(e)}")
+            log.error(f"[llamacpp_inprocess] Model discovery failed: {str(e)}")
             return []
 
     def health_check(self) -> Dict[str, Any]:
@@ -213,22 +213,22 @@ def _download_tinyllama_if_missing():
     model_dir.mkdir(parents=True, exist_ok=True)
     target = model_dir / TINY_LLAMA_FILENAME
     if not target.exists():
-        log.info(f"[ollama_inprocess] Downloading TinyLlama GGUF model from {TINY_LLAMA_URL} ...")
+        log.info(f"[llamacpp_inprocess] Downloading TinyLlama GGUF model from {TINY_LLAMA_URL} ...")
         try:
             with urllib.request.urlopen(TINY_LLAMA_URL) as resp, open(target, "wb") as out_file:
                 out_file.write(resp.read())
-            log.info(f"[ollama_inprocess] Downloaded: {target}")
+            log.info(f"[llamacpp_inprocess] Downloaded: {target}")
         except Exception as e:
-            log.error(f"[ollama_inprocess] Failed to download TinyLlama: {e}")
+            log.error(f"[llamacpp_inprocess] Failed to download TinyLlama: {e}")
             raise
 
-# Inject this call at the start of OllamaEngine.__init__ (before loading any model)
+# Inject this call at the start of LlamaCppEngine.__init__ (before loading any model)
 # Just after defining self.model_path ... before self._load_model(self.model_path):
     _download_tinyllama_if_missing()
 
 # Singleton instance for plugin
-ollama_inprocess_client = OllamaEngine()
+llamacpp_inprocess_client = LlamaCppEngine()
 
 # Simple FastAPI/diagnostics bridge
 def health_check() -> Dict[str, Any]:
-    return ollama_inprocess_client.health_check()
+    return llamacpp_inprocess_client.health_check()

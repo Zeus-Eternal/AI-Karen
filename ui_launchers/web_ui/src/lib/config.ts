@@ -4,7 +4,7 @@
  */
 
 export interface WebUIConfig {
-  // Backend configuration
+  // Backend configuration (use Next.js API routes)
   backendUrl: string;
   apiKey?: string;
   apiTimeout: number;
@@ -180,7 +180,9 @@ function generateFallbackUrls(primaryUrl: string, environment: string, networkMo
  */
 export function getWebUIConfig(): WebUIConfig {
   // Parse basic configuration first
-  const backendUrl = parseUrlEnv(process.env.KAREN_BACKEND_URL, 'http://localhost:8000');
+  // Use relative URLs to go through Next.js API routes instead of direct backend calls
+  // IMPORTANT: Keep this empty to ensure all requests go through Next.js API routes
+  const backendUrl = '';
   const environment = parseEnumEnv(
     process.env.KAREN_ENVIRONMENT,
     ['local', 'docker', 'production'] as const,
@@ -192,11 +194,13 @@ export function getWebUIConfig(): WebUIConfig {
     'localhost'
   );
 
-  // Generate fallback URLs if not explicitly provided
+  // When using Next.js API routes (empty backendUrl), no fallbacks are needed
   const explicitFallbacks = parseArrayEnv(process.env.KAREN_FALLBACK_BACKEND_URLS, []);
-  const fallbackBackendUrls = explicitFallbacks.length > 0
-    ? explicitFallbacks
-    : generateFallbackUrls(backendUrl, environment, networkMode);
+  const fallbackBackendUrls = backendUrl === '' ? [] : (
+    explicitFallbacks.length > 0
+      ? explicitFallbacks
+      : generateFallbackUrls(backendUrl, environment, networkMode)
+  );
 
   return {
     // Backend configuration
@@ -240,7 +244,7 @@ export function getWebUIConfig(): WebUIConfig {
     enableExtensions: parseBooleanEnv(process.env.KAREN_ENABLE_EXTENSIONS, false),
 
     // Health checks
-    healthCheckInterval: parseNumberEnv(process.env.KAREN_HEALTH_CHECK_INTERVAL, 30000),
+    healthCheckInterval: parseNumberEnv(process.env.KAREN_HEALTH_CHECK_INTERVAL, 60000), // Increased to 60 seconds to avoid rate limiting
     healthCheckTimeout: parseNumberEnv(process.env.KAREN_HEALTH_CHECK_TIMEOUT, 5000),
     enableHealthChecks: parseBooleanEnv(process.env.KAREN_ENABLE_HEALTH_CHECKS, true),
     healthCheckRetries: parseNumberEnv(process.env.KAREN_HEALTH_CHECK_RETRIES, 3),
@@ -265,12 +269,14 @@ export function validateConfig(config: WebUIConfig): { isValid: boolean; warning
   const warnings: string[] = [];
   let isValid = true;
 
-  // Validate backend URL
-  try {
-    new URL(config.backendUrl);
-  } catch {
-    warnings.push(`Invalid backend URL: ${config.backendUrl}`);
-    isValid = false;
+  // Validate backend URL (empty string is valid for Next.js API routes)
+  if (config.backendUrl !== '') {
+    try {
+      new URL(config.backendUrl);
+    } catch {
+      warnings.push(`Invalid backend URL: ${config.backendUrl}`);
+      isValid = false;
+    }
   }
 
   // Validate fallback URLs

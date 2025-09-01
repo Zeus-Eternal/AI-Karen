@@ -29,6 +29,48 @@ import {
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 
+interface TransformerConfig {
+  // Precision settings
+  precision: string;
+  torch_dtype: string;
+  load_in_8bit: boolean;
+  load_in_4bit: boolean;
+  
+  // Device and memory settings
+  device: string;
+  device_map: string;
+  low_cpu_mem_usage: boolean;
+  max_memory?: Record<string, string>;
+  
+  // Batch and sequence settings
+  batch_size: number;
+  max_length: number;
+  dynamic_batch_size: boolean;
+  
+  // Performance optimizations
+  use_cache: boolean;
+  attention_implementation: string;
+  use_flash_attention: boolean;
+  gradient_checkpointing: boolean;
+  mixed_precision: boolean;
+  compile_model: boolean;
+  
+  // Multi-GPU settings
+  multi_gpu_strategy: string;
+  gpu_memory_fraction: number;
+  enable_cpu_offload: boolean;
+  
+  // Quantization settings
+  bnb_4bit_compute_dtype: string;
+  bnb_4bit_use_double_quant: boolean;
+  bnb_4bit_quant_type: string;
+  
+  // Advanced optimization flags
+  use_bettertransformer: boolean;
+  optimize_for_inference: boolean;
+  enable_xformers: boolean;
+}
+
 interface SystemModelInfo {
   id: string;
   name: string;
@@ -77,6 +119,33 @@ interface SystemModelConfigProps {
 export default function SystemModelConfig({ selectedModel, onClose }: SystemModelConfigProps) {
   const [model, setModel] = useState<SystemModelInfo | null>(selectedModel);
   const [configuration, setConfiguration] = useState<Record<string, any>>({});
+  const [transformerConfiguration, setTransformerConfiguration] = useState<TransformerConfig>({
+    precision: 'fp16',
+    torch_dtype: 'auto',
+    load_in_8bit: false,
+    load_in_4bit: false,
+    device: 'auto',
+    device_map: 'auto',
+    low_cpu_mem_usage: true,
+    batch_size: 1,
+    max_length: 512,
+    dynamic_batch_size: false,
+    use_cache: true,
+    attention_implementation: 'eager',
+    use_flash_attention: false,
+    gradient_checkpointing: false,
+    mixed_precision: false,
+    compile_model: false,
+    multi_gpu_strategy: 'auto',
+    gpu_memory_fraction: 0.9,
+    enable_cpu_offload: false,
+    bnb_4bit_compute_dtype: 'float16',
+    bnb_4bit_use_double_quant: false,
+    bnb_4bit_quant_type: 'nf4',
+    use_bettertransformer: false,
+    optimize_for_inference: false,
+    enable_xformers: false
+  });
   const [recommendations, setRecommendations] = useState<HardwareRecommendations | null>(null);
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = useState(false);
@@ -90,6 +159,39 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     if (selectedModel) {
       setModel(selectedModel);
       setConfiguration(selectedModel.configuration || {});
+      
+      // Initialize transformer configuration with defaults merged with existing config
+      if (selectedModel.id === 'distilbert-base-uncased') {
+        setTransformerConfiguration({
+          precision: selectedModel.configuration?.precision || 'fp16',
+          torch_dtype: selectedModel.configuration?.torch_dtype || 'auto',
+          load_in_8bit: selectedModel.configuration?.load_in_8bit || false,
+          load_in_4bit: selectedModel.configuration?.load_in_4bit || false,
+          device: selectedModel.configuration?.device || 'auto',
+          device_map: selectedModel.configuration?.device_map || 'auto',
+          low_cpu_mem_usage: selectedModel.configuration?.low_cpu_mem_usage !== false,
+          batch_size: selectedModel.configuration?.batch_size || 1,
+          max_length: selectedModel.configuration?.max_length || 512,
+          dynamic_batch_size: selectedModel.configuration?.dynamic_batch_size || false,
+          use_cache: selectedModel.configuration?.use_cache !== false,
+          attention_implementation: selectedModel.configuration?.attention_implementation || 'eager',
+          use_flash_attention: selectedModel.configuration?.use_flash_attention || false,
+          gradient_checkpointing: selectedModel.configuration?.gradient_checkpointing || false,
+          mixed_precision: selectedModel.configuration?.mixed_precision || false,
+          compile_model: selectedModel.configuration?.compile_model || false,
+          multi_gpu_strategy: selectedModel.configuration?.multi_gpu_strategy || 'auto',
+          gpu_memory_fraction: selectedModel.configuration?.gpu_memory_fraction || 0.9,
+          enable_cpu_offload: selectedModel.configuration?.enable_cpu_offload || false,
+          bnb_4bit_compute_dtype: selectedModel.configuration?.bnb_4bit_compute_dtype || 'float16',
+          bnb_4bit_use_double_quant: selectedModel.configuration?.bnb_4bit_use_double_quant || false,
+          bnb_4bit_quant_type: selectedModel.configuration?.bnb_4bit_quant_type || 'nf4',
+          use_bettertransformer: selectedModel.configuration?.use_bettertransformer || false,
+          optimize_for_inference: selectedModel.configuration?.optimize_for_inference || false,
+          enable_xformers: selectedModel.configuration?.enable_xformers || false,
+          max_memory: selectedModel.configuration?.max_memory
+        });
+      }
+      
       loadRecommendations();
       loadMetrics();
     }
@@ -571,6 +673,12 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
     // Import the enhanced transformer config component
     const TransformerModelConfig = React.lazy(() => import('./TransformerModelConfig'));
     
+    const handleTransformerConfigChange = (newConfig: TransformerConfig) => {
+      setTransformerConfiguration(newConfig);
+      // Also update the generic configuration for consistency
+      setConfiguration(newConfig as Record<string, any>);
+    };
+    
     return (
       <React.Suspense fallback={
         <Card>
@@ -583,8 +691,8 @@ export default function SystemModelConfig({ selectedModel, onClose }: SystemMode
         <TransformerModelConfig
           modelId={model?.id || ''}
           modelName={model?.name || ''}
-          configuration={configuration}
-          onConfigurationChange={setConfiguration}
+          configuration={transformerConfiguration}
+          onConfigurationChange={handleTransformerConfigChange}
           onSave={saveConfiguration}
           onReset={resetConfiguration}
           saving={saving}

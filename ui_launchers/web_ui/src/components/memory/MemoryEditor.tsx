@@ -333,10 +333,8 @@ export const MemoryEditor: React.FC<MemoryEditorProps> = ({
                   textareaPurpose: "Memory content editing with AI enhancement",
                   chatApiConfigs: {
                     suggestionsApiConfig: {
-                      forwardedParams: {
-                        max_tokens: 250,
-                        stop: [".", "\n"],
-                      },
+                      maxTokens: 250,
+                      stop: [".", "\n"],
                     },
                   },
                 }}

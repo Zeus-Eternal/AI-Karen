@@ -160,7 +160,7 @@ class KariDevStudioAPI:
             logger.error("Hook enumeration failed: %s", e)
 
         # --- LLM providers (placeholder until wired to registry) ---
-        for provider in ["ollama", "openai", "anthropic", "gemini"]:
+        for provider in ["llama-cpp", "openai", "anthropic", "gemini"]:
             components.append({
                 "id": f"llm_{provider}",
                 "name": f"{provider.title()} Provider",

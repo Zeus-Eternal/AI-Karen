@@ -1,0 +1,57 @@
+{
+  "prometheus": {
+    "config_path": "monitoring/prometheus.yml",
+    "scrape_endpoints": [
+      "/api/models/metrics",
+      "/api/models/health/metrics"
+    ],
+    "scrape_interval": "30s"
+  },
+  "grafana": {
+    "dashboard_path": "monitoring/model_orchestrator_dashboard.json",
+    "panels": [
+      "Model Operations Overview",
+      "Download Success Rate",
+      "Storage Usage",
+      "Health Status",
+      "Download Operations",
+      "Download Duration",
+      "Models by Library",
+      "Storage by Library",
+      "Active Downloads",
+      "Registry Operations",
+      "Error Rates",
+      "License Compliance",
+      "Garbage Collection"
+    ]
+  },
+  "alerts": {
+    "config_path": "monitoring/model_orchestrator_alerts.yml",
+    "alert_groups": [
+      "model_orchestrator_alerts",
+      "model_orchestrator_sla"
+    ],
+    "notification_channels": [
+      "slack",
+      "email"
+    ]
+  },
+  "logging": {
+    "config_path": "config/model_orchestrator_logging.yml",
+    "log_files": [
+      "/app/logs/model_orchestrator.log",
+      "/app/logs/model_orchestrator_audit.log",
+      "/app/logs/model_orchestrator_errors.log"
+    ],
+    "aggregation": "elasticsearch"
+  },
+  "health_checks": {
+    "endpoint": "/health",
+    "model_orchestrator_section": "model_orchestrator",
+    "checks": [
+      "registry_healthy",
+      "storage_healthy",
+      "plugin_loaded"
+    ]
+  }
+}

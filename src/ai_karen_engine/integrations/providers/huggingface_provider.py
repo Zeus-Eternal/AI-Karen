@@ -305,12 +305,103 @@ class HuggingFaceProvider(LLMProviderBase):
             "supports_embeddings": True
         }
 
+    def health_check(self) -> Dict[str, Any]:
+        """Perform health check on HuggingFace provider with model availability information."""
+        try:
+            if self.use_local:
+                # Check local model availability
+                if self._local_pipeline is None:
+                    return {
+                        "status": "unhealthy",
+                        "error": "Local model not initialized"
+                    }
+                
+                # Test local pipeline
+                start_time = time.time()
+                try:
+                    test_result = self._local_pipeline("Hello", max_length=5)
+                    response_time = time.time() - start_time
+                    
+                    health_result = {
+                        "status": "healthy",
+                        "response_time": response_time,
+                        "model_tested": self.model,
+                        "execution_mode": "local"
+                    }
+                except Exception as e:
+                    return {
+                        "status": "unhealthy",
+                        "error": f"Local model test failed: {str(e)}"
+                    }
+            else:
+                # Check API availability
+                if not self.api_token:
+                    return {
+                        "status": "unhealthy",
+                        "error": "No API token provided"
+                    }
+                
+                # Test API call
+                start_time = time.time()
+                try:
+                    test_result = self.generate_text("Hello", max_tokens=1)
+                    response_time = time.time() - start_time
+                    
+                    health_result = {
+                        "status": "healthy",
+                        "response_time": response_time,
+                        "model_tested": self.model,
+                        "execution_mode": "api"
+                    }
+                except Exception as e:
+                    return {
+                        "status": "unhealthy",
+                        "error": f"API test failed: {str(e)}"
+                    }
+
+            # Add Model Library compatibility check
+            try:
+                from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
+                compatibility_service = ProviderModelCompatibilityService()
+                validation = compatibility_service.validate_provider_model_setup("huggingface")
+                
+                health_result["model_library"] = {
+                    "available": True,
+                    "compatible_models_count": validation.get("total_compatible", 0),
+                    "validation_status": validation.get("status", "unknown")
+                }
+                
+                # Add recommendations if no compatible models
+                if validation.get("total_compatible", 0) == 0:
+                    health_result["warnings"] = health_result.get("warnings", [])
+                    health_result["warnings"].append("No compatible models found in Model Library")
+                
+            except Exception as e:
+                health_result["model_library"] = {
+                    "available": False,
+                    "error": str(e)
+                }
+                health_result["warnings"] = health_result.get("warnings", [])
+                health_result["warnings"].append(f"Model Library unavailable: {e}")
+
+            return health_result
+            
+        except Exception as ex:
+            return {
+                "status": "unhealthy",
+                "error": str(ex),
+                "model_library": {
+                    "available": False,
+                    "error": "Provider health check failed"
+                }
+            }
+
     # Lightweight status helpers -------------------------------------------------
 
     def ping(self) -> bool:
         try:
-            self.health_check()
-            return True
+            result = self.health_check()
+            return result.get("status") == "healthy"
         except Exception:
             return False
 

@@ -241,7 +241,7 @@ The AI assistant can help with:
 - **Actions**: Toggle, Configure
 
 ### LLM Providers
-- **Integration**: OpenAI, Anthropic, Ollama, Gemini
+- **Integration**: OpenAI, Anthropic, LlamaCpp, Gemini
 - **Metrics**: Response time, token usage, success rate
 - **Actions**: Test, Configure, Switch
 

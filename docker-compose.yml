@@ -154,23 +154,10 @@ services:
       - ai-karen-net
 
   # ──────────────────────────────────────────────────────────────────────────────
-  # Ollama LLM Service
+  # Local LLM Models Volume (for llama-cpp-python GGUF models)
   # ──────────────────────────────────────────────────────────────────────────────
-  ollama:
-    container_name: ai-karen-ollama
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:11434 || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-    networks:
-      - ai-karen-net
+  # Note: llama-cpp-python runs in-process with the main application
+  # Models should be placed in ./models/llama-cpp/ directory
 
   # ──────────────────────────────────────────────────────────────────────────────
   # Prometheus Monitoring
@@ -194,13 +181,19 @@ services:
     container_name: ai-karen-grafana
     image: grafana/grafana:9.5.2
     restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_PROVISIONING_PATH=/etc/grafana/provisioning
     ports:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana_dashboard.json:/etc/grafana/provisioning/dashboards/health_dashboard.json
+      - ./monitoring/model_orchestrator_dashboard.json:/etc/grafana/provisioning/dashboards/model_orchestrator_dashboard.json
+      - ./monitoring/grafana_provisioning.yml:/etc/grafana/provisioning/dashboards/provisioning.yml
     depends_on:
       - prometheus
+      - elasticsearch
     networks:
       - ai-karen-net
 
@@ -213,8 +206,28 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      # Model Orchestrator Plugin Configuration
+      PLUGIN_DIR: "/app/plugin_marketplace"
+      MODELS_ROOT: "/app/models"
+      CONFIG_PATH: "/app/config"
+      MODEL_ORCHESTRATOR_ENABLED: "true"
+      MODEL_ORCHESTRATOR_MAX_STORAGE_GB: "100"
+      MODEL_ORCHESTRATOR_ENABLE_METRICS: "true"
+      MODEL_ORCHESTRATOR_ENABLE_RBAC: "true"
+      MODEL_ORCHESTRATOR_HEALTH_CHECK_INTERVAL: "60"
     ports:
       - "8000:8000"
+      - "9091:9091"  # Model orchestrator metrics port
+    volumes:
+      # Model storage volume
+      - models_data:/app/models
+      # Configuration volume
+      - ./config:/app/config:ro
+      # Logs volume
+      - logs_data:/app/logs
+      # Backup volume
+      - backup_data:/app/backups
     depends_on:
       postgres:
         condition: service_healthy
@@ -224,8 +237,14 @@ services:
         condition: service_healthy
       milvus:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
+      prometheus:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health | grep -q '\"model_orchestrator\"' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks:
       - ai-karen-net
 
@@ -239,8 +258,10 @@ volumes:
   etcd_data:
   minio_data:
   milvus_data:
-  ollama_data:
   grafana_data:
+  models_data:
+  logs_data:
+  backup_data:
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Custom Network

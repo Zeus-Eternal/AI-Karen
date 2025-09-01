@@ -143,6 +143,13 @@ class RefreshTokenResponse(BaseModel):
     expires_in: int
 
 
+class LongLivedTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    token_type_description: str = "long_lived"
+
+
 class UserResponse(BaseModel):
     user_id: str
     email: str
@@ -527,6 +534,89 @@ async def login(
         raise HTTPException(status_code=500, detail="Login failed")
 
 
+@router.post("/create-long-lived-token", response_model=LongLivedTokenResponse)
+async def create_long_lived_token(
+    request: Request,
+    response: Response,
+    request_meta: Dict[str, str] = Depends(get_request_meta),
+    user_data: Dict[str, Any] = Depends(get_current_user_context),
+) -> LongLivedTokenResponse:
+    """Create a long-lived access token (24 hours) for API stability after successful authentication"""
+
+    try:
+        # CSRF protection for state-changing operation
+        csrf_protection = get_csrf_protection()
+        await csrf_protection.validate_csrf_protection(request)
+        
+        # Get token manager
+        token_manager = await get_token_manager()
+        
+        # Reconstruct UserData from the current user data
+        from ai_karen_engine.auth.models import UserData
+        user_data_obj = UserData(
+            user_id=user_data["user_id"],
+            email=user_data["email"],
+            full_name=user_data.get("full_name"),
+            tenant_id=user_data["tenant_id"],
+            roles=user_data["roles"],
+            is_verified=user_data["is_verified"],
+            is_active=True,
+            preferences=user_data.get("preferences", {})
+        )
+
+        # Create long-lived access token (24 hours)
+        long_lived_token = await token_manager.create_access_token(
+            user_data_obj, 
+            long_lived=True
+        )
+
+        # Audit log long-lived token creation
+        from ai_karen_engine.services.audit_logging import AuditEvent
+        audit_event = AuditEvent(
+            event_type="token_creation",
+            user_id=user_data["user_id"],
+            tenant_id=user_data["tenant_id"],
+            ip_address=request_meta["ip_address"],
+            user_agent=request_meta.get("user_agent"),
+            resource_type="long_lived_access_token",
+            action="create",
+            outcome="success",
+            details={
+                "token_type": "long_lived_access",
+                "expires_in_seconds": 24 * 60 * 60,
+                "expires_in_hours": 24
+            },
+            timestamp=datetime.now(timezone.utc)
+        )
+        audit_logger.log_audit_event(audit_event)
+
+        logger.info(
+            "Long-lived token created successfully",
+            extra={
+                "user_id": user_data["user_id"],
+                "ip_address": request_meta["ip_address"],
+                "expires_in_hours": 24
+            },
+        )
+
+        return LongLivedTokenResponse(
+            access_token=long_lived_token,
+            expires_in=24 * 60 * 60,  # 24 hours in seconds
+            token_type_description="long_lived"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "Long-lived token creation failed",
+            error=str(e),
+            user_id=user_data.get("user_id"),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+        raise HTTPException(status_code=500, detail="Failed to create long-lived token")
+
+
 @router.post("/refresh", response_model=RefreshTokenResponse)
 async def refresh_token(
     request: Request,
@@ -739,29 +829,12 @@ async def logout(
         return {"detail": "Logged out successfully"}
 
 
-# Enhanced session validation using the new validator
-async def get_current_user_from_token(
-    request: Request,
-    request_meta: Dict[str, str] = Depends(get_request_meta)
-) -> Dict[str, Any]:
-    """
-    Get current user using enhanced session validation.
-    
-    This dependency uses the enhanced session validator to prevent false
-    "invalid authorization header" errors and provides better error messages.
-    """
-    from ai_karen_engine.auth.enhanced_session_validator import get_session_validator
-    
-    session_validator = get_session_validator()
-    return await session_validator.validate_request_authentication(
-        request, 
-        allow_session_fallback=True
-    )
+# Using get_current_user_context from core dependencies instead of custom implementation
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_route(
-    user_data: Dict[str, Any] = Depends(get_current_user_from_token),
+    user_data: Dict[str, Any] = Depends(get_current_user_context),
 ) -> UserResponse:
     """Get current user information from access token"""
     return UserResponse(**user_data)
@@ -808,7 +881,7 @@ async def get_current_user_optional(
 async def get_csrf_token(
     response: Response,
     request: Request,
-    user_data: Dict[str, Any] = Depends(get_current_user_from_token),
+    user_data: Dict[str, Any] = Depends(get_current_user_context),
 ) -> Dict[str, str]:
     """Get CSRF token for authenticated user"""
     
@@ -828,7 +901,7 @@ async def get_csrf_token(
 # Security statistics endpoint
 @router.get("/security-stats")
 async def get_security_stats(
-    user_data: Dict[str, Any] = Depends(get_current_user_from_token),
+    user_data: Dict[str, Any] = Depends(get_current_user_context),
 ) -> Dict[str, Any]:
     """Get security statistics (admin only)"""
     

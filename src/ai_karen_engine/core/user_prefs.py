@@ -4,7 +4,7 @@ from typing import Dict, Any
 
 @dataclass
 class UserPrefs:
-    preferred_model: str = "ollama:llama3.2"
+    preferred_model: str = "llama-cpp:llama3.2:latest"
     show_degraded_banner: bool = False
     ui: Dict[str, Any] | None = None
 

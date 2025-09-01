@@ -12,7 +12,7 @@ import type {
 import { webUIConfig, type WebUIConfig } from './config';
 import { getPerformanceMonitor } from './performance-monitor';
 import { getStoredApiKey } from './secure-api-key';
-import { ErrorHandler, type ErrorInfo } from './error-handler';
+import { ErrorHandler, errorHandler, type ErrorInfo } from './error-handler';
 import type { ApiError } from './api-client';
 
 export const SESSION_ID_KEY = 'auth_session_id';
@@ -181,8 +181,11 @@ class KarenBackendService {
   private circuitOpenUntil = 0;
 
   constructor(config: Partial<BackendConfig> = {}) {
+    // Force empty baseUrl in browser to ensure Next.js API routes are used
+    const baseUrl = typeof window !== 'undefined' ? '' : (config.baseUrl || webUIConfig.backendUrl);
+    
     this.config = {
-      baseUrl: config.baseUrl || webUIConfig.backendUrl,
+      baseUrl,
       apiKey: config.apiKey || getStoredApiKey() || webUIConfig.apiKey,
       timeout: config.timeout || webUIConfig.apiTimeout,
     };
@@ -193,17 +196,19 @@ class KarenBackendService {
     this.performanceMonitoring = webUIConfig.performanceMonitoring;
     this.logLevel = webUIConfig.logLevel;
 
-    if (this.debugLogging) {
-      console.log('KarenBackendService initialized with config:', {
-        baseUrl: this.config.baseUrl,
-        timeout: this.config.timeout,
-        hasApiKey: !!this.config.apiKey,
-        debugLogging: this.debugLogging,
-        requestLogging: this.requestLogging,
-        performanceMonitoring: this.performanceMonitoring,
-        logLevel: this.logLevel,
-      });
-    }
+    // Always log the configuration for debugging backend connectivity issues
+    console.log('KarenBackendService initialized with config:', {
+      baseUrl: this.config.baseUrl,
+      webUIConfigBackendUrl: webUIConfig.backendUrl,
+      timeout: this.config.timeout,
+      hasApiKey: !!this.config.apiKey,
+      debugLogging: this.debugLogging,
+      requestLogging: this.requestLogging,
+      performanceMonitoring: this.performanceMonitoring,
+      logLevel: this.logLevel,
+      fallbackUrls: webUIConfig.fallbackBackendUrls,
+      windowLocation: typeof window !== 'undefined' ? window.location.href : 'server-side',
+    });
 
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.replayOfflineQueue);
@@ -219,8 +224,22 @@ class KarenBackendService {
     retryDelay: number = webUIConfig.retryDelay,
     safeFallback?: T
   ): Promise<T> {
-    const url = `${this.config.baseUrl}${endpoint}`;
-    const cacheKey = `${url}:${JSON.stringify(options)}`;
+    const isAbsoluteEndpoint = /^https?:\/\//i.test(endpoint);
+    // ALWAYS force empty baseUrl in browser to ensure Next.js API routes are used
+    const baseUrl = typeof window !== 'undefined' ? '' : this.config.baseUrl;
+    const primaryUrl = isAbsoluteEndpoint ? endpoint : `${baseUrl}${endpoint}`;
+    
+    // Debug logging for URL construction
+    if (this.requestLogging && typeof window !== 'undefined') {
+      console.log(`🔗 KarenBackendService URL construction:`, {
+        endpoint,
+        isAbsoluteEndpoint,
+        baseUrl,
+        primaryUrl,
+        windowDefined: typeof window !== 'undefined'
+      });
+    }
+    const cacheKey = `${primaryUrl}:${JSON.stringify(options)}`;
 
     // Circuit breaker check
     const now = Date.now();
@@ -260,8 +279,18 @@ class KarenBackendService {
     const sessionToken = this.getStoredSessionToken();
     if (sessionToken) {
       headers['Authorization'] = `Bearer ${sessionToken}`;
+      if (this.debugLogging) {
+        console.log('Added Authorization header with Bearer token');
+      }
     } else if (this.config.apiKey) {
       headers['X-API-KEY'] = this.config.apiKey;
+      if (this.debugLogging) {
+        console.log('Added X-API-KEY header');
+      }
+    } else {
+      if (this.debugLogging) {
+        console.log('No authentication token or API key available');
+      }
     }
 
     let lastError: Error | null = null;
@@ -276,8 +305,11 @@ class KarenBackendService {
           bodyLog = '[non-JSON body]';
         }
       }
-      console.log(`[REQUEST] ${options.method || 'GET'} ${url}`, {
-        headers: this.debugLogging ? headers : { 'Content-Type': headers['Content-Type'] },
+      console.log(`[REQUEST] ${options.method || 'GET'} ${primaryUrl}`, {
+        headers: this.debugLogging ? headers : { 
+          'Content-Type': headers['Content-Type'],
+          'Authorization': headers['Authorization'] ? '[REDACTED]' : 'none'
+        },
         body: bodyLog,
         correlationId,
       });
@@ -285,22 +317,97 @@ class KarenBackendService {
 
     const performanceStart = this.performanceMonitoring ? performance.now() : 0;
 
+    // Candidate base URLs (primary + configured fallbacks)
+    let candidateBases: string[] = [];
+    if (!isAbsoluteEndpoint) {
+      // If baseUrl is empty, we're using Next.js API routes - no fallbacks needed
+      if (this.config.baseUrl === '') {
+        candidateBases = [''];
+      } else {
+        const set = new Set<string>();
+        set.add(this.config.baseUrl);
+        for (const u of webUIConfig.fallbackBackendUrls) {
+          if (u && u !== this.config.baseUrl) set.add(u);
+        }
+        // REMOVED: Direct backend fallbacks in browser to prevent bypassing Next.js API routes
+        // All browser requests should go through Next.js API routes to avoid rate limiting
+        // and ensure proper authentication header forwarding
+        candidateBases = Array.from(set);
+        
+        // Debug logging for fallback URLs in browser
+        if (this.requestLogging && typeof window !== 'undefined') {
+          console.log('🔄 KarenBackendService fallback candidates:', candidateBases);
+        }
+      }
+    }
+
     // Retry logic for transient failures
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+        let response: Response | null = null;
+        let lastFetchError: any = null;
 
-        const response = await fetch(url, {
-          ...options,
-          headers,
-          signal: controller.signal,
-        });
+        if (isAbsoluteEndpoint) {
+          // Single absolute URL request
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+            response = await fetch(primaryUrl, { ...options, headers, signal: controller.signal });
+            clearTimeout(timeoutId);
+          } catch (fetchErr) {
+            lastFetchError = fetchErr;
+          }
+        } else {
+          // Try primary then fallbacks for this attempt
+          console.log(`[DEBUG] Trying candidate bases for ${endpoint}:`, candidateBases);
+          for (const base of candidateBases) {
+            const url = `${base}${endpoint}`;
+            console.log(`[DEBUG] Attempting URL: ${url}`);
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+              response = await fetch(url, {
+                ...options,
+                headers,
+                signal: controller.signal,
+              });
+              clearTimeout(timeoutId);
 
-        clearTimeout(timeoutId);
+              if (response && response.ok) {
+                // If fallback succeeded, promote it to primary for future requests
+                if (base !== this.config.baseUrl) {
+                  if (this.requestLogging) {
+                    console.warn(`[FALLBACK] Switched backend baseUrl to ${base}`);
+                  }
+                  this.config.baseUrl = base;
+                }
+                break;
+              }
+              // Non-OK responses are handled below
+            } catch (fetchErr) {
+              lastFetchError = fetchErr;
+              if (this.requestLogging) {
+                console.warn(`[NETWORK] ${url} failed:`, (fetchErr as Error)?.message || fetchErr);
+              }
+              // Try next candidate
+              continue;
+            }
+          }
+        }
+
+        // If no response obtained from any candidate, throw network error
+        if (!response) {
+          throw lastFetchError || new Error('Network error');
+        }
 
         if (!response.ok) {
-          console.error('KarenBackendService 4xx/5xx', response.status, url);
+          // Use warn instead of error for health checks to reduce noise when backend is unavailable
+          const isHealthCheck = endpoint.includes('/health') || endpoint.includes('/api/plugins') || endpoint.includes('/analytics/system');
+          if (isHealthCheck) {
+            console.warn('KarenBackendService 4xx/5xx', response.status, response.url);
+          } else {
+            console.error('KarenBackendService 4xx/5xx', response.status, response.url);
+          }
           // Try to parse structured error response
           let errorDetails: WebUIErrorResponse | undefined;
           try {
@@ -346,7 +453,7 @@ class KarenBackendService {
 
           // Don't retry non-retryable errors
           if (!apiError.isRetryable || attempt === maxRetries) {
-            apiError.errorInfo = ErrorHandler.handleApiError(this.toApiError(apiError, endpoint), endpoint);
+            apiError.errorInfo = errorHandler.handleApiError(this.toApiError(apiError, endpoint), endpoint);
             throw apiError;
           }
 
@@ -354,7 +461,9 @@ class KarenBackendService {
           console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, apiError.message);
 
           // Wait before retrying with exponential backoff
-          await this.sleep(retryDelay * Math.pow(2, attempt));
+          // Use longer delays for rate limiting (429) errors
+          const baseDelay = response.status === 429 ? retryDelay * 3 : retryDelay;
+          await this.sleep(baseDelay * Math.pow(2, attempt));
           continue;
         }
 
@@ -362,9 +471,16 @@ class KarenBackendService {
         let data: any = null;
         if (contentType.includes('application/json')) {
           try {
-            data = await response.json();
-          } catch {
-            data = null;
+            const text = await response.text();
+            if (text.trim() === '') {
+              // Handle empty JSON responses gracefully
+              data = response.status >= 400 ? { error: 'Empty response from server' } : {};
+            } else {
+              data = JSON.parse(text);
+            }
+          } catch (parseError) {
+            console.warn(`JSON parsing error for ${response.url}:`, parseError);
+            data = response.status >= 400 ? { error: 'Invalid JSON response' } : {};
           }
         } else {
           const text = await response.text();
@@ -391,7 +507,7 @@ class KarenBackendService {
 
         // Log response if enabled
         if (this.requestLogging) {
-          console.log(`[RESPONSE] ${response.status} ${options.method || 'GET'} ${url}`, {
+          console.log(`[RESPONSE] ${response.status} ${options.method || 'GET'} ${response.url}`, {
             status: response.status,
             responseTime: this.performanceMonitoring ? `${responseTime.toFixed(2)}ms` : undefined,
             dataSize: JSON.stringify(data).length,
@@ -461,7 +577,7 @@ class KarenBackendService {
           }
 
           if (lastError instanceof APIError) {
-            lastError.errorInfo = ErrorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
+            lastError.errorInfo = errorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
           }
 
           this.failureCount++;
@@ -481,13 +597,15 @@ class KarenBackendService {
         console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, lastError.message);
 
         // Wait before retrying with exponential backoff
-        await this.sleep(retryDelay * Math.pow(2, attempt));
+        // Use longer delays for rate limiting errors
+        const baseDelay = (lastError instanceof APIError && lastError.status === 429) ? retryDelay * 3 : retryDelay;
+        await this.sleep(baseDelay * Math.pow(2, attempt));
       }
     }
 
     // This should never be reached, but just in case
     if (lastError instanceof APIError && !lastError.errorInfo) {
-      lastError.errorInfo = ErrorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
+      lastError.errorInfo = errorHandler.handleApiError(this.toApiError(lastError, endpoint), endpoint);
     }
     this.failureCount++;
     if (this.failureCount >= webUIConfig.circuitBreakerThreshold) {
@@ -541,16 +659,33 @@ class KarenBackendService {
 
   // Session token management
   private getStoredSessionToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    
     try {
       // First try to get the token from AuthContext (localStorage)
       const authToken = localStorage.getItem('karen_access_token');
-      if (authToken) {
+      if (authToken && authToken !== 'null' && authToken !== 'undefined') {
+        if (this.debugLogging) {
+          console.log('Found auth token in localStorage:', authToken.substring(0, 50) + '...');
+        }
         return authToken;
       }
 
       // Fallback to the old sessionStorage token
-      return sessionStorage.getItem('kari_session_token');
-    } catch {
+      const sessionToken = sessionStorage.getItem('kari_session_token');
+      if (sessionToken && sessionToken !== 'null' && sessionToken !== 'undefined') {
+        if (this.debugLogging) {
+          console.log('Found auth token in sessionStorage:', sessionToken.substring(0, 50) + '...');
+        }
+        return sessionToken;
+      }
+      
+      if (this.debugLogging) {
+        console.log('No auth token found in storage');
+      }
+      return null;
+    } catch (error) {
+      console.warn('Error getting stored session token:', error);
       return null;
     }
   }
@@ -581,54 +716,56 @@ class KarenBackendService {
     return initializeSessionId();
   }
 
-  // Auto-authentication for memory operations
+  // Check authentication status without automatic login attempts
   private async ensureAuthenticated(): Promise<boolean> {
     // Check if we already have a valid session token
     const existingToken = this.getStoredSessionToken();
     if (existingToken) {
       try {
-        // Verify the token is still valid
+        // Verify the token is still valid with a short timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        
         await this.makeRequest('/api/auth/me', {
-          headers: { Authorization: `Bearer ${existingToken}` }
+          headers: { Authorization: `Bearer ${existingToken}` },
+          signal: controller.signal
         });
-        console.log('Existing session token is valid');
+        clearTimeout(timeoutId);
+        
+        if (this.debugLogging) {
+          console.log('Existing session token is valid');
+        }
         return true;
       } catch (error) {
-        console.log('Existing session token is invalid, clearing it');
+        if (this.debugLogging) {
+          console.log('Existing session token is invalid, clearing it');
+        }
         // Token is invalid, clear it
         this.clearSessionToken();
       }
     }
 
-    // Try to authenticate with a default user for memory operations
-    // This is a fallback for when the UI needs to store memories but user isn't logged in
+    // Try to check for HttpOnly cookie session without token
     try {
-      console.log('Attempting to authenticate with anonymous user...');
-      const loginResponse = await this.makeRequest<{
-        access_token: string;
-        user: any;
-      }>('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: 'anonymous@karen.ai',
-          password: 'anonymous'
-        })
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+      
+      await this.makeRequest('/api/auth/validate-session', {
+        signal: controller.signal
       });
-
-      console.log('Authentication successful, storing token');
-      this.storeSessionToken(loginResponse.access_token);
+      clearTimeout(timeoutId);
+      
+      if (this.debugLogging) {
+        console.log('HttpOnly session is valid');
+      }
       return true;
     } catch (error) {
-      console.error('Failed to authenticate for memory operations:', error);
-      if (error instanceof APIError) {
-        console.error('Authentication error details:', {
-          status: error.status,
-          message: error.message,
-          details: error.details
-        });
+      if (this.debugLogging) {
+        console.log('No valid session available, operations will be skipped');
       }
-      return false;
     }
+
+    return false;
   }
 
   // Memory Service Integration
@@ -639,12 +776,12 @@ class KarenBackendService {
     userId?: string,
     sessionId?: string
   ): Promise<string | null> {
+    const sid = sessionId ?? this.getSessionId();
     try {
-      const sid = sessionId ?? this.getSessionId();
-      // Ensure we're authenticated before attempting to store memory
+      // Check authentication status before attempting to store memory
       const isAuthenticated = await this.ensureAuthenticated();
       if (!isAuthenticated) {
-        console.warn('Failed to authenticate for memory storage');
+        console.debug('No authentication available for memory storage, skipping');
         return null;
       }
 
@@ -672,33 +809,10 @@ class KarenBackendService {
       return response.memory_id;
     } catch (error) {
       if (error instanceof APIError) {
-        // Handle authentication errors by trying to re-authenticate
+        // Handle authentication errors gracefully without retry
         if (error.status === 401) {
-          console.warn('Authentication failed, clearing session and retrying...');
+          console.debug('Authentication failed for memory storage, clearing session');
           this.clearSessionToken();
-
-          // Try to re-authenticate and retry once
-          const isAuthenticated = await this.ensureAuthenticated();
-          if (isAuthenticated) {
-            try {
-              const response = await this.makeRequest<{ memory_id: string }>('/api/memory/store', {
-                method: 'POST',
-                body: JSON.stringify({
-                  content: content,
-                  ui_source: 'web',
-                  session_id: sid,
-                  memory_type: 'general',
-                  tags: tags || [],
-                  metadata: metadata || {},
-                  ai_generated: false
-                }),
-              });
-              return response.memory_id;
-            } catch (retryError) {
-              console.error('Failed to store memory after re-authentication:', retryError);
-              return null;
-            }
-          }
           return null;
         } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
           console.warn('Memory service unavailable, memory not stored');
@@ -715,10 +829,10 @@ class KarenBackendService {
 
   async queryMemories(query: MemoryQuery): Promise<MemoryEntry[]> {
     try {
-      // Ensure we're authenticated before querying memories
+      // Check authentication status before querying memories
       const isAuthenticated = await this.ensureAuthenticated();
       if (!isAuthenticated) {
-        console.warn('Failed to authenticate for memory query');
+        console.debug('No authentication available for memory query, returning empty results');
         return [];
       }
 
@@ -912,7 +1026,30 @@ class KarenBackendService {
     timestamp: string;
   }> {
     try {
-      return await this.makeRequest('/health', {}, false);
+      // Try different possible health check endpoints
+      const healthEndpoints = ['/api/health', '/health', '/api/status', '/status', '/api/ping', '/ping'];
+      
+      console.log('🏥 Starting health check, trying endpoints:', healthEndpoints);
+      
+      for (const endpoint of healthEndpoints) {
+        try {
+          console.log(`🏥 Trying health endpoint: ${endpoint}`);
+          const result = await this.makeRequest<{
+            status: 'healthy' | 'degraded' | 'error';
+            services: Record<string, any>;
+            timestamp: string;
+          }>(endpoint, {}, false);
+          console.log(`🏥 Health endpoint ${endpoint} succeeded:`, result);
+          return result;
+        } catch (error) {
+          console.log(`🏥 Health endpoint ${endpoint} failed:`, error instanceof Error ? error.message : error);
+          continue;
+        }
+      }
+      
+      // If all health endpoints fail, return a basic connectivity test
+      console.log('🏥 All health endpoints failed, backend may not have health check endpoint');
+      throw new Error('No health endpoints available');
     } catch (error) {
       console.error('Health check failed:', error);
       return {
@@ -944,10 +1081,8 @@ class KarenBackendService {
       // Ensure we're authenticated before processing the message
       const isAuthenticated = await this.ensureAuthenticated();
       if (!isAuthenticated) {
-        console.warn(`[${requestId}] Failed to authenticate for chat processing`);
-        return {
-          finalResponse: "I'm having trouble connecting to my services right now. Please try again in a moment.",
-        };
+        console.debug(`[${requestId}] No authentication available for chat processing, proceeding without memory features`);
+        // Continue processing without memory features rather than failing completely
       }
 
       // Log request for debugging
@@ -1002,7 +1137,7 @@ class KarenBackendService {
           include_insights: true,
           // Include LLM preferences for proper fallback hierarchy
           llm_preferences: {
-            preferred_llm_provider: llmPreferences?.preferredLLMProvider || 'ollama',
+            preferred_llm_provider: llmPreferences?.preferredLLMProvider || 'llama-cpp',
             preferred_model: llmPreferences?.preferredModel || 'llama3.2:latest',
           },
         }),
@@ -1205,6 +1340,23 @@ class KarenBackendService {
   ): Promise<T> {
     return this.makeRequest<T>(endpoint, options, useCache, cacheTtl, maxRetries, retryDelay, safeFallback);
   }
+
+  getBaseUrl(): string {
+    // Always return empty string in browser to ensure Next.js API routes are used
+    return typeof window !== 'undefined' ? '' : this.config.baseUrl;
+  }
+
+  /**
+   * Force re-initialization of baseUrl for browser environment
+   */
+  ensureBrowserConfig(): void {
+    if (typeof window !== 'undefined') {
+      this.config.baseUrl = '';
+      if (this.requestLogging) {
+        console.log('🔄 KarenBackendService: Forced browser configuration (empty baseUrl)');
+      }
+    }
+  }
 }
 
 // Global instance
@@ -1214,6 +1366,12 @@ export function getKarenBackend(): KarenBackendService {
   if (!karenBackend) {
     karenBackend = new KarenBackendService();
   }
+  
+  // Ensure browser configuration is applied
+  if (typeof window !== 'undefined') {
+    karenBackend.ensureBrowserConfig();
+  }
+  
   return karenBackend;
 }
 
@@ -1222,7 +1380,7 @@ export function initializeKarenBackend(config?: Partial<BackendConfig>): KarenBa
   return karenBackend;
 }
 
-// Export types
+// Export types (interfaces are already exported via export interface declarations)
 export type {
   BackendConfig,
   MemoryEntry,
@@ -1232,8 +1390,6 @@ export type {
   SystemMetrics,
   UsageAnalytics,
   WebUIErrorResponse,
-  LoginResult,
-  CurrentUser,
 };
 
 export { KarenBackendService, APIError };

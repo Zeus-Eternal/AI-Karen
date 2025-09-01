@@ -169,25 +169,82 @@ class LocalModel:
     
     def _extract_gguf_metadata(self) -> Dict[str, Any]:
         """Extract metadata from GGUF file."""
-        # This would require gguf library or manual parsing
-        # For now, return basic info from filename
         filename = Path(self.path).stem
-        metadata = {}
-        
-        # Try to extract quantization from filename
-        quant_patterns = ["Q2_K", "Q3_K", "Q4_K_M", "Q5_K_M", "Q6_K", "Q8_0", "IQ2_M", "IQ3_M", "IQ4_M"]
-        for pattern in quant_patterns:
-            if pattern.lower() in filename.lower():
-                metadata["quantization"] = pattern
-                break
-        
-        # Try to extract parameter count
-        param_patterns = ["7B", "13B", "30B", "65B", "70B"]
-        for pattern in param_patterns:
-            if pattern.lower() in filename.lower():
-                metadata["parameters"] = pattern
-                break
-        
+        metadata: Dict[str, Any] = {}
+
+        # Attempt to use gguf reader if available for accurate header parsing
+        try:
+            try:
+                import gguf  # type: ignore
+            except Exception:  # pragma: no cover
+                gguf = None  # type: ignore
+            if gguf is not None:
+                try:
+                    # Newer gguf versions may accept just (path), older: (path, 'r')
+                    try:
+                        reader = gguf.GGUFReader(self.path)  # type: ignore
+                    except TypeError:
+                        reader = gguf.GGUFReader(self.path, 'r')  # type: ignore
+
+                    # Try a few common metadata keys
+                    possible_maps = []
+                    for attr in ("metadata", "kv_data", "kv", "fields"):
+                        if hasattr(reader, attr):
+                            val = getattr(reader, attr)
+                            if isinstance(val, dict):
+                                possible_maps.append(val)
+                    # Fallback: attempt get_field like accessors
+                    def _get_from_reader(key: str):
+                        for method in ("get_field", "get_kv", "get"):
+                            if hasattr(reader, method):
+                                fn = getattr(reader, method)
+                                try:
+                                    return fn(key)
+                                except Exception:
+                                    pass
+                        for m in possible_maps:
+                            if key in m:
+                                return m[key]
+                        return None
+
+                    ctx = None
+                    for k in ("general.context_length", "llama.context_length", "context_length"):
+                        v = _get_from_reader(k)
+                        if isinstance(v, int):
+                            ctx = v
+                            break
+                    if ctx:
+                        metadata["context_length"] = ctx
+
+                    arch = None
+                    for k in ("general.architecture", "llama.architecture", "architecture"):
+                        v = _get_from_reader(k)
+                        if isinstance(v, str):
+                            arch = v
+                            break
+                    if arch:
+                        metadata["family"] = arch
+                except Exception:
+                    pass  # Fall back to filename inference
+        except Exception:
+            # Any import/runtime issues: continue with filename-based hints
+            pass
+
+        # Filename-based hints for quantization/parameters as fallback or complement
+        try:
+            quant_patterns = ["Q2_K", "Q3_K", "Q4_K_M", "Q5_K_M", "Q6_K", "Q8_0", "IQ2_M", "IQ3_M", "IQ4_M"]
+            for pattern in quant_patterns:
+                if pattern.lower() in filename.lower():
+                    metadata.setdefault("quantization", pattern)
+                    break
+            param_patterns = ["1.1B", "7B", "13B", "30B", "65B", "70B"]
+            for pattern in param_patterns:
+                if pattern.lower() in filename.lower():
+                    metadata.setdefault("parameters", pattern)
+                    break
+        except Exception:
+            pass
+
         return metadata
     
     def _extract_safetensors_metadata(self) -> Dict[str, Any]:

@@ -15,5 +15,26 @@
     "max_concurrent_operations": 3,
     "timeout_seconds": 30,
     "enable_audit_logging": true
+  },
+  "plugins": {
+    "enabled": [
+      "model_orchestrator"
+    ],
+    "model_orchestrator": {
+      "models_root": "./models",
+      "registry_path": "./models/llm_registry.json",
+      "max_concurrent_downloads": 3,
+      "enable_metrics": true,
+      "enable_rbac": true,
+      "offline_mode": false,
+      "mirror_url": null,
+      "max_storage_gb": null,
+      "enable_license_tracking": true,
+      "enable_garbage_collection": true,
+      "enable_compatibility_checks": true,
+      "health_check_interval": 60,
+      "auto_cleanup_enabled": true,
+      "backup_registry": true
+    }
   }
 }

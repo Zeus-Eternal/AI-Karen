@@ -374,11 +374,11 @@ export const FileMetadataGrid: React.FC<FileMetadataGridProps> = ({
     if (file.security_scan_result === 'suspicious') {
       return { backgroundColor: '#fffbeb' }; // Light yellow background
     }
-    return {};
+    return undefined;
   }, []);
 
   const gridOptions = useMemo(() => ({
-    rowSelection: enableSelection ? 'multiple' : undefined,
+    rowSelection: enableSelection ? ('multiple' as const) : undefined,
     suppressRowClickSelection: true,
     rowMultiSelectWithClick: enableSelection,
     getRowStyle,

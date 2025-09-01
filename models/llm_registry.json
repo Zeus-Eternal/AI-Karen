@@ -1,14 +1,14 @@
 [
   {
-    "name": "ollama",
-    "provider_class": "OllamaProvider",
-    "description": "Local Ollama server for running open-source models",
+    "name": "llamacpp",
+    "provider_class": "LlamaCppProvider",
+    "description": "Local llama-cpp-python for running open-source models",
     "supports_streaming": true,
     "supports_embeddings": true,
     "requires_api_key": false,
-    "default_model": "llama3.2:1b",
+    "default_model": "llama3.2:latest",
     "health_status": "healthy",
-    "last_health_check": 1755425229.0320282,
+    "last_health_check": 1756645844.6772523,
     "error_message": null
   },
   {
@@ -56,7 +56,19 @@
     "requires_api_key": true,
     "default_model": "microsoft/DialoGPT-large",
     "health_status": "healthy",
-    "last_health_check": 1755425229.0554082,
+    "last_health_check": 1756645848.9891353,
+    "error_message": null
+  },
+  {
+    "name": "ollama",
+    "provider_class": "OllamaProvider",
+    "description": "Local Ollama server for running open-source models",
+    "supports_streaming": true,
+    "supports_embeddings": true,
+    "requires_api_key": false,
+    "default_model": "llama3.2:1b",
+    "health_status": "healthy",
+    "last_health_check": 1755425229.0320282,
     "error_message": null
   },
   {

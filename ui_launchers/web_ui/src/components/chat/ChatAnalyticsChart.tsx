@@ -67,7 +67,7 @@ export const ChatAnalyticsChart: React.FC<ChatAnalyticsChartProps> = ({
         userSatisfaction: Math.random() * 2 + 3, // 3-5 scale
         aiInsights: Math.floor(Math.random() * 10) + 1,
         tokenUsage: Math.floor(Math.random() * 1000) + 200,
-        llmProvider: ['ollama', 'openai', 'anthropic'][Math.floor(Math.random() * 3)]
+        llmProvider: ['llama-cpp', 'openai', 'anthropic'][Math.floor(Math.random() * 3)]
       });
     }
     
@@ -349,7 +349,6 @@ export const ChatAnalyticsChart: React.FC<ChatAnalyticsChartProps> = ({
         <div className="h-[400px] w-full p-4">
           <AgCharts
             options={chartOptions}
-            onChartReady={handleChartReady}
           />
         </div>
       </CardContent>

@@ -16,8 +16,8 @@ from ai_karen_engine.integrations.providers.gemini_provider import (  # type: ig
 from ai_karen_engine.integrations.providers.huggingface_provider import (  # type: ignore[import-not-found]
     HuggingFaceProvider,
 )
-from ai_karen_engine.integrations.providers.ollama_provider import (  # type: ignore[import-not-found]
-    OllamaProvider,
+from ai_karen_engine.integrations.providers.llamacpp_provider import (  # type: ignore[import-not-found]
+    LlamaCppProvider,
 )
 from ai_karen_engine.integrations.providers.openai_provider import (  # type: ignore[import-not-found]
     OpenAIProvider,
@@ -43,7 +43,7 @@ class HealthChecker:
 
     def __init__(self) -> None:
         self._providers: Dict[str, Callable[[], Awaitable[ProviderStatus]]] = {
-            "ollama": self._check_ollama,
+            "llama-cpp": self._check_llamacpp,
             "openai": self._check_openai,
             "gemini": self._check_gemini,
             "deepseek": self._check_deepseek,
@@ -71,14 +71,14 @@ class HealthChecker:
             results.append(status)
         return results
 
-    async def _check_ollama(self) -> ProviderStatus:
-        provider = OllamaProvider()
+    async def _check_llamacpp(self) -> ProviderStatus:
+        provider = LlamaCppProvider()
         try:
             info = provider.health_check()
             available = info.get("status") == "ok" or info.get("healthy", False)
         except Exception as exc:
             return ProviderStatus(
-                provider="ollama",
+                provider="llama-cpp",
                 model=provider.model,
                 available=False,
                 authenticated=True,
@@ -88,7 +88,7 @@ class HealthChecker:
                 error_message=str(exc),
             )
         return ProviderStatus(
-            provider="ollama",
+            provider="llama-cpp",
             model=provider.model,
             available=available,
             authenticated=True,

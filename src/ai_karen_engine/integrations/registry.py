@@ -133,6 +133,7 @@ class LLMRegistry:
         self._provider_instances: Dict[str, Dict[int, Any]] = {}
         self._runtime_instances: Dict[str, Dict[int, Any]] = {}
         self._health_status: Dict[str, HealthStatus] = {}
+        self._disabled_providers: Set[str] = set()
         self._lock = threading.RLock()
         
         # Auto-register core providers and runtimes
@@ -163,6 +164,24 @@ class LLMRegistry:
             del self._providers[name]
             self._health_status.pop(f"provider:{name}", None)
             logger.info(f"Unregistered provider: {name}")
+            return True
+
+    def disable_provider(self, name: str) -> bool:
+        """Mark a provider as disabled without unregistering it."""
+        with self._lock:
+            if name not in self._providers:
+                return False
+            self._disabled_providers.add(name)
+            logger.info(f"Disabled provider: {name}")
+            return True
+
+    def enable_provider(self, name: str) -> bool:
+        """Re-enable a previously disabled provider."""
+        with self._lock:
+            if name not in self._providers:
+                return False
+            self._disabled_providers.discard(name)
+            logger.info(f"Enabled provider: {name}")
             return True
     
     def get_provider(self, name: str, **init_kwargs: Any) -> Optional[Any]:
@@ -450,6 +469,8 @@ class LLMRegistry:
         with self._lock:
             providers = []
             for name, spec in self._providers.items():
+                if name in self._disabled_providers:
+                    continue
                 if category and spec.category != category:
                     continue
                 
@@ -581,6 +602,19 @@ class LLMRegistry:
             fallback_models=[]  # Will be populated by scanning local files
         )
         self.register_provider(local_spec)
+
+        # SuperKent Provider (alias of local for custom server branding)
+        superkent_spec = ProviderSpec(
+            name="superkent",
+            requires_api_key=False,
+            description="SuperKent Server (local llama.cpp compatible)",
+            category="LLM",
+            capabilities={"local_execution", "privacy"},
+            discover=self._discover_local_models,
+            health_check=self._health_check_local,
+            fallback_models=[]
+        )
+        self.register_provider(superkent_spec)
         
         # CopilotKit Provider (UI Framework - NOT an LLM provider)
         copilotkit_spec = ProviderSpec(

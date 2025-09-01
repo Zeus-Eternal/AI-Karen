@@ -35,7 +35,7 @@ import {
   X
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { ErrorHandler } from '@/lib/error-handler';
+import { handleApiError } from '@/lib/error-handler';
 
 interface Job {
   id: string;
@@ -82,7 +82,7 @@ const STATUS_COLORS = {
 export default function JobCenter({ 
   refreshInterval = 2000, 
   maxLogLines = 100,
-  showCompletedJobs = true 
+  showCompletedJobs: initialShowCompleted = true 
 }: JobCenterProps) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +93,7 @@ export default function JobCenter({
     kind: 'all'
   });
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [showCompletedJobs, setShowCompletedJobs] = useState(initialShowCompleted);
   
   const { toast } = useToast();
   const backend = getKarenBackend();
@@ -109,7 +110,7 @@ export default function JobCenter({
     } catch (error) {
       console.error('Failed to load jobs:', error);
       if (!jobs.length) { // Only show error if we have no jobs cached
-        const info = ErrorHandler.handleApiError(error as any, 'loadJobs');
+        const info = handleApiError(error as any, 'loadJobs');
         toast({
           variant: 'destructive',
           title: info.title,
@@ -155,7 +156,7 @@ export default function JobCenter({
       loadJobs();
     } catch (error) {
       console.error(`Failed to ${action} job:`, error);
-      const info = ErrorHandler.handleApiError(error as any, `${action}Job`);
+      const info = handleApiError(error as any, `${action}Job`);
       toast({
         variant: 'destructive',
         title: info.title,
@@ -182,7 +183,7 @@ export default function JobCenter({
       }
     } catch (error) {
       console.error('Failed to delete job:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'deleteJob');
+      const info = handleApiError(error as any, 'deleteJob');
       toast({
         variant: 'destructive',
         title: info.title,
@@ -211,7 +212,7 @@ export default function JobCenter({
       loadJobs();
     } catch (error) {
       console.error('Failed to clear completed jobs:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'clearJobs');
+      const info = handleApiError(error as any, 'clearJobs');
       toast({
         variant: 'destructive',
         title: info.title,

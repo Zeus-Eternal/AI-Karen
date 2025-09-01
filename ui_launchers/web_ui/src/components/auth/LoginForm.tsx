@@ -1,6 +1,5 @@
 /**
- * LoginForm component with real-time validation feedback
- * Demonstrates integration with the form validation system
+ * LoginForm component - simplified version without complex validation
  */
 
 'use client';
@@ -9,11 +8,12 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginCredentials } from '@/types/auth';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Brain } from 'lucide-react';
-import { useFormValidation } from '@/hooks/use-form-validation';
-import { ValidatedFormField, PasswordStrength } from '@/components/ui/form-field';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -29,27 +29,23 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const [error, setError] = useState<string>('');
   const [showTwoFactor, setShowTwoFactor] = useState(false);
 
-  // Initialize form validation
-  const validation = useFormValidation({
-    validateOnChange: true,
-    validateOnBlur: true,
-    enhanced: true
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Validate form before submission
-    const validationResult = validation.validateForm(credentials, showTwoFactor);
-    if (!validationResult.isValid) {
-      setError('Please fix the validation errors before submitting');
+    // Basic validation
+    if (!credentials.email || !credentials.password) {
+      setError('Please enter both email and password');
+      return;
+    }
+
+    if (showTwoFactor && !credentials.totp_code) {
+      setError('Please enter the two-factor authentication code');
       return;
     }
 
     try {
       await login(credentials);
-      // Call onSuccess callback if provided, otherwise the ProtectedRoute will automatically show the main UI
       onSuccess?.();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
@@ -64,94 +60,86 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     }
   };
 
-  const handleFieldChange = (field: keyof LoginCredentials, value: string) => {
-    setCredentials(prev => ({ ...prev, [field]: value }));
-    validation.handleFieldChange(field as any, value);
-  };
-
-  const handleFieldBlur = (field: keyof LoginCredentials) => {
-    validation.handleFieldBlur(field as any, credentials[field] || '');
-  };
-
-  const handleFieldFocus = (field: keyof LoginCredentials) => {
-    validation.handleFieldFocus(field as any);
+  const handleInputChange = (field: keyof LoginCredentials) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCredentials(prev => ({ ...prev, [field]: e.target.value }));
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Brain className="h-12 w-12 text-primary" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950 p-4">
+      {/* Theme Toggle */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      
+      <Card className="w-full max-w-md shadow-2xl border-0 dark:bg-gray-900/50 backdrop-blur-sm">
+        <CardHeader className="text-center space-y-6">
+          <div className="flex justify-center">
+            <div className="relative">
+              <Brain className="h-16 w-16 text-primary drop-shadow-lg" />
+              <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full blur-xl animate-pulse" />
+            </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome to AI Karen</CardTitle>
-          <CardDescription>
-            Sign in to access your personalized AI assistant
-          </CardDescription>
+          <div className="space-y-2">
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+              Welcome to AI Karen
+            </CardTitle>
+            <CardDescription className="text-base text-muted-foreground">
+              Sign in to access your personalized AI assistant
+            </CardDescription>
+          </div>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
-            <ValidatedFormField
-              name="email"
-              label="Email Address"
-              placeholder="Enter your email"
-              value={credentials.email}
-              onValueChange={(value) => handleFieldChange('email', value)}
-              onValidationChange={validation.handleFieldChange}
-              onBlurValidation={validation.handleFieldBlur}
-              onFocusChange={validation.handleFieldFocus}
-              error={validation.getFieldError('email')}
-              touched={validation.isFieldTouched('email')}
-              isValidating={validation.validationState.fields.email.isValidating}
-              disabled={isLoading}
-              required
-              helperText="We'll never share your email with anyone else"
-            />
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={credentials.email}
+                onChange={handleInputChange('email')}
+                disabled={isLoading}
+                required
+                autoComplete="email"
+              />
+            </div>
 
             {/* Password Field */}
             <div className="space-y-2">
-              <ValidatedFormField
-                name="password"
-                label="Password"
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
                 placeholder="Enter your password"
                 value={credentials.password}
-                onValueChange={(value) => handleFieldChange('password', value)}
-                onValidationChange={validation.handleFieldChange}
-                onBlurValidation={validation.handleFieldBlur}
-                onFocusChange={validation.handleFieldFocus}
-                error={validation.getFieldError('password')}
-                touched={validation.isFieldTouched('password')}
-                isValidating={validation.validationState.fields.password.isValidating}
+                onChange={handleInputChange('password')}
                 disabled={isLoading}
                 required
-              />
-              
-              {/* Password Strength Indicator */}
-              <PasswordStrength 
-                password={credentials.password}
-                show={credentials.password.length > 0}
+                autoComplete="current-password"
               />
             </div>
 
             {/* 2FA Field (conditional) */}
             {showTwoFactor && (
-              <ValidatedFormField
-                name="totp_code"
-                label="Two-Factor Authentication Code"
-                placeholder="Enter 6-digit code"
-                value={credentials.totp_code || ''}
-                onValueChange={(value) => handleFieldChange('totp_code', value)}
-                onValidationChange={validation.handleFieldChange}
-                onBlurValidation={validation.handleFieldBlur}
-                onFocusChange={validation.handleFieldFocus}
-                error={validation.getFieldError('totp_code')}
-                touched={validation.isFieldTouched('totp_code')}
-                isValidating={validation.validationState.fields.totp_code.isValidating}
-                disabled={isLoading}
-                required
-                helperText="Enter the 6-digit code from your authenticator app"
-              />
+              <div className="space-y-2">
+                <Label htmlFor="totp_code">Two-Factor Authentication Code</Label>
+                <Input
+                  id="totp_code"
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={credentials.totp_code || ''}
+                  onChange={handleInputChange('totp_code')}
+                  disabled={isLoading}
+                  required
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  autoComplete="one-time-code"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Enter the 6-digit code from your authenticator app
+                </p>
+              </div>
             )}
 
             {/* Error Display */}
@@ -161,30 +149,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               </Alert>
             )}
 
-            {/* Validation Summary */}
-            {validation.validationState.hasErrors && (
-              <Alert variant="destructive">
-                <AlertDescription>
-                  Please fix the following errors:
-                  <ul className="list-disc list-inside mt-2">
-                    {validation.errors.email && <li>{validation.errors.email}</li>}
-                    {validation.errors.password && <li>{validation.errors.password}</li>}
-                    {validation.errors.totp_code && <li>{validation.errors.totp_code}</li>}
-                  </ul>
-                </AlertDescription>
-              </Alert>
-            )}
-
             {/* Submit Button */}
             <Button
               type="submit"
-              disabled={isLoading || validation.validationState.hasErrors}
-              className="w-full"
+              disabled={isLoading}
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg hover:shadow-xl transition-all duration-200"
               data-testid="submit-button"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Signing in...
                 </>
               ) : (
@@ -194,13 +168,22 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
           </form>
 
           {/* Navigation Links */}
-          <div className="mt-6 space-y-4">
-            <div className="text-center space-y-2">
+          <div className="space-y-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-muted" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Need help?</span>
+              </div>
+            </div>
+            
+            <div className="text-center space-y-3">
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{' '}
                 <a 
                   href="/signup" 
-                  className="text-primary hover:underline font-medium"
+                  className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
                 >
                   Create Account
                 </a>
@@ -209,15 +192,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                 Forgot your password?{' '}
                 <a 
                   href="/reset-password" 
-                  className="text-primary hover:underline font-medium"
+                  className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
                 >
                   Reset Password
                 </a>
               </p>
             </div>
+            
             <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                This enhanced form includes real-time validation and user feedback.
+              <p className="text-xs text-muted-foreground/70">
+                Secure authentication with real-time validation
               </p>
             </div>
           </div>

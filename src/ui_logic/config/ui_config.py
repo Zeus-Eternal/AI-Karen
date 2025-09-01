@@ -39,10 +39,10 @@ RBAC_UI = {
 
 # === Provider/Model Registry ===
 PROVIDERS = {
-    "ollama": {
+    "llama-cpp": {
         "enabled": True,
-        "label": "Ollama (Local)",
-        "default_models": ["llama3:8b", "llama3:70b", "phi3", "mistral"],
+        "label": "LLaMA-CPP (Local)",
+        "default_models": ["tinyllama-1.1b-chat", "llama-2-7b-chat", "llama-2-13b-chat"],
         "api_key_required": False,
     },
     "gemini": {

@@ -144,7 +144,7 @@ class LLMUtils:
     def __init__(
         self,
         providers: Optional[Dict[str, LLMProviderBase]] = None,
-        default: str = "ollama",
+        default: str = "llamacpp",
         use_registry: bool = True,
     ):
         self.use_registry = use_registry
@@ -169,15 +169,15 @@ class LLMUtils:
                 from ai_karen_engine.integrations.providers.huggingface_provider import (
                     HuggingFaceProvider,
                 )
-                from ai_karen_engine.integrations.providers.ollama_provider import (
-                    OllamaProvider,
+                from ai_karen_engine.integrations.providers.llamacpp_provider import (
+                    LlamaCppProvider,
                 )
                 from ai_karen_engine.integrations.providers.openai_provider import (
                     OpenAIProvider,
                 )
 
                 providers = {
-                    "ollama": OllamaProvider(),
+                    "llama-cpp": LlamaCppProvider(),
                     "openai": OpenAIProvider(),
                     "gemini": GeminiProvider(),
                     "deepseek": DeepseekProvider(),
@@ -415,7 +415,7 @@ class LLMUtils:
 # ========== Prompt-First Plugin API ==========
 def get_llm_manager(
     providers: Optional[Dict[str, LLMProviderBase]] = None,
-    default: str = "ollama",
+    default: str = "llamacpp",
     use_registry: bool = True,
 ) -> LLMUtils:
     return LLMUtils(providers, default=default, use_registry=use_registry)

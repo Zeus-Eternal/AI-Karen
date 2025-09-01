@@ -1,0 +1,164 @@
+groups:
+  - name: model_orchestrator_alerts
+    rules:
+      # Model Download Alerts
+      - alert: ModelDownloadFailed
+        expr: increase(model_orchestrator_downloads_failed_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: model_orchestrator
+        annotations:
+          summary: "Model download failed"
+          description: "Model download failed for {{ $labels.model_id }}. Error: {{ $labels.error_code }}"
+
+      - alert: ModelDownloadTimeout
+        expr: model_orchestrator_download_duration_seconds > 1800  # 30 minutes
+        for: 0m
+        labels:
+          severity: warning
+          component: model_orchestrator
+        annotations:
+          summary: "Model download taking too long"
+          description: "Model download for {{ $labels.model_id }} has been running for {{ $value }} seconds"
+
+      # Storage Alerts
+      - alert: ModelStorageSpaceLow
+        expr: model_orchestrator_storage_usage_bytes / model_orchestrator_storage_limit_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: model_orchestrator
+        annotations:
+          summary: "Model storage space running low"
+          description: "Model storage is {{ $value | humanizePercentage }} full"
+
+      - alert: ModelStorageSpaceCritical
+        expr: model_orchestrator_storage_usage_bytes / model_orchestrator_storage_limit_bytes > 0.95
+        for: 1m
+        labels:
+          severity: critical
+          component: model_orchestrator
+        annotations:
+          summary: "Model storage space critically low"
+          description: "Model storage is {{ $value | humanizePercentage }} full. Immediate action required."
+
+      # Registry Health Alerts
+      - alert: ModelRegistryCorrupted
+        expr: model_orchestrator_registry_integrity_check == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: model_orchestrator
+        annotations:
+          summary: "Model registry integrity check failed"
+          description: "Model registry integrity check failed. Registry may be corrupted."
+
+      - alert: ModelRegistryBackupFailed
+        expr: increase(model_orchestrator_registry_backup_failures_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: model_orchestrator
+        annotations:
+          summary: "Model registry backup failed"
+          description: "Model registry backup failed {{ $value }} times in the last hour"
+
+      # Performance Alerts
+      - alert: HighModelDownloadConcurrency
+        expr: model_orchestrator_concurrent_downloads > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: model_orchestrator
+        annotations:
+          summary: "High model download concurrency"
+          description: "{{ $value }} concurrent model downloads detected. This may impact system performance."
+
+      - alert: ModelOperationLatencyHigh
+        expr: histogram_quantile(0.95, rate(model_orchestrator_operation_duration_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: model_orchestrator
+        annotations:
+          summary: "High model operation latency"
+          description: "95th percentile model operation latency is {{ $value }} seconds"
+
+      # License Compliance Alerts
+      - alert: UnacceptedLicenseDownload
+        expr: increase(model_orchestrator_license_violations_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: model_orchestrator
+        annotations:
+          summary: "License violation detected"
+          description: "{{ $value }} license violations detected in the last hour"
+
+      # Health Check Alerts
+      - alert: ModelOrchestratorUnhealthy
+        expr: model_orchestrator_health_status == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: model_orchestrator
+        annotations:
+          summary: "Model orchestrator unhealthy"
+          description: "Model orchestrator health check failing for {{ $labels.check_type }}"
+
+      - alert: ModelValidationFailures
+        expr: increase(model_orchestrator_model_validation_failures_total[10m]) > 3
+        for: 0m
+        labels:
+          severity: warning
+          component: model_orchestrator
+        annotations:
+          summary: "Multiple model validation failures"
+          description: "{{ $value }} model validation failures in the last 10 minutes"
+
+      # Garbage Collection Alerts
+      - alert: GarbageCollectionFailed
+        expr: increase(model_orchestrator_gc_failures_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: model_orchestrator
+        annotations:
+          summary: "Model garbage collection failed"
+          description: "Model garbage collection failed {{ $value }} times in the last hour"
+
+      - alert: ModelsNotAccessedLongTime
+        expr: model_orchestrator_models_not_accessed_days > 90
+        for: 1h
+        labels:
+          severity: info
+          component: model_orchestrator
+        annotations:
+          summary: "Models not accessed for long time"
+          description: "{{ $value }} models have not been accessed for more than 90 days"
+
+  - name: model_orchestrator_sla
+    rules:
+      # SLA Metrics
+      - alert: ModelDownloadSLABreach
+        expr: "sum(rate(model_orchestrator_downloads_successful_total[1h])) / sum(rate(model_orchestrator_downloads_total[1h])) < 0.95"
+        for: 15m
+        labels:
+          severity: warning
+          component: model_orchestrator
+          sla: download_success_rate
+        annotations:
+          summary: "Model download SLA breach"
+          description: "Model download success rate is {{ $value | humanizePercentage }}, below 95% SLA"
+
+      - alert: ModelOperationAvailabilitySLA
+        expr: "sum(rate(model_orchestrator_operations_successful_total[1h])) / sum(rate(model_orchestrator_operations_total[1h])) < 0.99"
+        for: 10m
+        labels:
+          severity: critical
+          component: model_orchestrator
+          sla: operation_availability
+        annotations:
+          summary: "Model orchestrator availability SLA breach"
+          description: "Model orchestrator availability is {{ $value | humanizePercentage }}, below 99% SLA"

@@ -233,7 +233,7 @@ export class MemoryService {
       if (filters.contentType) {
         filteredMemories = memories.filter(mem => 
           mem.metadata?.type === filters.contentType ||
-          mem.tags.includes(filters.contentType)
+          mem.tags.includes(filters.contentType!)
         );
       }
 

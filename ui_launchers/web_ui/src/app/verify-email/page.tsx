@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams ? searchParams.get('token') : null;
   const [message, setMessage] = useState('Verifying...');
 
   useEffect(() => {

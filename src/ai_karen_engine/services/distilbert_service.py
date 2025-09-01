@@ -5,6 +5,7 @@ Production-ready DistilBERT service with fallback mechanisms and monitoring.
 from __future__ import annotations
 
 import asyncio
+import os
 import hashlib
 import logging
 import time
@@ -126,8 +127,16 @@ class DistilBertService:
     def _load_model(self):
         """Load DistilBERT model and tokenizer."""
         try:
-            tokenizer = AutoTokenizer.from_pretrained(self.config.model_name)
-            model = AutoModel.from_pretrained(self.config.model_name)
+            # Respect offline mode to avoid network calls
+            offline = os.getenv("TRANSFORMERS_OFFLINE", "").lower() in ("1", "true", "yes")
+            tokenizer = AutoTokenizer.from_pretrained(
+                self.config.model_name,
+                local_files_only=offline,
+            )
+            model = AutoModel.from_pretrained(
+                self.config.model_name,
+                local_files_only=offline,
+            )
             
             # Move model to device and set to eval mode
             model.to(self.device)

@@ -600,13 +600,6 @@ export function logNetworkDiagnostic(diagnostic: NetworkDiagnostic): void {
   getDiagnosticLogger().logNetworkDiagnostic(diagnostic);
 }
 
-// Export types
-export type {
-  DiagnosticInfo,
-  TroubleshootingInfo,
-  NetworkDiagnostic,
-  CORSInfo,
-  NetworkInfo,
-};
+// Types are already exported via export interface declarations above
 
 export { DiagnosticLogger };

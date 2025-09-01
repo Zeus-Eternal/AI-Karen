@@ -1,0 +1,332 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Model Orchestrator Dashboard",
+    "tags": ["model-orchestrator", "ai", "monitoring"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Model Operations Overview",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(model_orchestrator_models_total)",
+            "legendFormat": "Total Models",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(model_orchestrator_downloads_total[1h]))",
+            "legendFormat": "Downloads/Hour",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(model_orchestrator_storage_usage_bytes) / 1024 / 1024 / 1024",
+            "legendFormat": "Storage Used (GB)",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Download Success Rate",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate(model_orchestrator_downloads_successful_total[1h])) / sum(rate(model_orchestrator_downloads_total[1h])) * 100",
+            "legendFormat": "Success Rate %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 90},
+                {"color": "green", "value": 95}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Storage Usage",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "model_orchestrator_storage_usage_bytes / model_orchestrator_storage_limit_bytes * 100",
+            "legendFormat": "Storage %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 70},
+                {"color": "orange", "value": 85},
+                {"color": "red", "value": 95}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Health Status",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "model_orchestrator_health_status",
+            "legendFormat": "{{check_type}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"options": {"0": {"text": "Unhealthy", "color": "red"}}, "type": "value"},
+              {"options": {"1": {"text": "Healthy", "color": "green"}}, "type": "value"}
+            ]
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Download Operations",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(model_orchestrator_downloads_total[5m]))",
+            "legendFormat": "Total Downloads",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(model_orchestrator_downloads_successful_total[5m]))",
+            "legendFormat": "Successful Downloads",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(model_orchestrator_downloads_failed_total[5m]))",
+            "legendFormat": "Failed Downloads",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Download Duration",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(model_orchestrator_download_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(model_orchestrator_download_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(model_orchestrator_download_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Models by Library",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(model_orchestrator_models_total) by (library)",
+            "legendFormat": "{{library}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Storage by Library",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(model_orchestrator_storage_usage_bytes) by (library)",
+            "legendFormat": "{{library}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Active Downloads",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+        "targets": [
+          {
+            "expr": "model_orchestrator_concurrent_downloads",
+            "legendFormat": "Concurrent Downloads",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Registry Operations",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(rate(model_orchestrator_registry_reads_total[5m]))",
+            "legendFormat": "Registry Reads",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(model_orchestrator_registry_writes_total[5m]))",
+            "legendFormat": "Registry Writes",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(model_orchestrator_registry_backup_total[5m]))",
+            "legendFormat": "Registry Backups",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "Error Rates",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(rate(model_orchestrator_errors_total[5m])) by (error_code)",
+            "legendFormat": "{{error_code}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 12,
+        "title": "License Compliance",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+        "targets": [
+          {
+            "expr": "sum(model_orchestrator_license_acceptances_total) by (license_type)",
+            "legendFormat": "{{license_type}}",
+            "refId": "A",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "table"
+            }
+          }
+        }
+      },
+      {
+        "id": 13,
+        "title": "Garbage Collection",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+        "targets": [
+          {
+            "expr": "sum(rate(model_orchestrator_gc_runs_total[5m]))",
+            "legendFormat": "GC Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(model_orchestrator_gc_models_removed_total[5m]))",
+            "legendFormat": "Models Removed",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(model_orchestrator_gc_space_freed_bytes[5m]))",
+            "legendFormat": "Space Freed",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      }
+    ]
+  }
+}

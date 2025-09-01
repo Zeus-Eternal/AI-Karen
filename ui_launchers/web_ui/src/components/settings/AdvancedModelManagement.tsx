@@ -25,7 +25,7 @@ import {
   Plus
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { ErrorHandler } from '@/lib/error-handler';
+import { handleApiError } from '@/lib/error-handler';
 import ModelUploadInterface from './ModelUploadInterface';
 import JobCenter from './JobCenter';
 import ModelConfiguration from './ModelConfiguration';
@@ -84,7 +84,7 @@ export default function AdvancedModelManagement() {
       setSystemHealth(healthResponse);
     } catch (error) {
       console.error('Failed to load system info:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'loadSystemInfo');
+      const info = handleApiError(error as any, 'loadSystemInfo');
       toast({
         variant: 'destructive',
         title: info.title,
@@ -127,7 +127,7 @@ export default function AdvancedModelManagement() {
       }, 2000);
     } catch (error) {
       console.error('Failed to start cleanup:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'runCleanup');
+      const info = handleApiError(error as any, 'runCleanup');
       toast({
         variant: 'destructive',
         title: info.title,

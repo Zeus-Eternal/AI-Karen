@@ -509,10 +509,4 @@ export function initializeEnhancedApiClient(config?: Partial<EnhancedApiClientCo
   return enhancedApiClient;
 }
 
-export type {
-  RetryConfig,
-  CircuitBreakerConfig,
-  EnhancedApiClientConfig,
-  RequestMetrics,
-  CircuitBreakerState,
-};
+// Types are already exported via export interface declarations above

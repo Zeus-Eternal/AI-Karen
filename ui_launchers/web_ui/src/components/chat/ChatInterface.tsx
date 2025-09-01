@@ -57,13 +57,17 @@ import { useInputPreservation } from "@/hooks/use-input-preservation";
 import { ChatBubble } from "@/components/chat/ChatBubble";
 import EnhancedMessageBubble from "@/components/chat/EnhancedMessageBubble";
 import { ChatErrorBoundary } from "@/components/error/ChatErrorBoundary";
-import { CopilotTextarea } from "@/components/chat/copilot/CopilotTextarea";
-import CopilotActions, {
+import dynamic from "next/dynamic";
+// Lazy-load Copilot features only when enabled
+const CopilotTextarea = dynamic(() => import("@/components/chat/copilot/CopilotTextarea").then(m => m.CopilotTextarea), { ssr: false });
+const CopilotActions = dynamic(() => import("./CopilotActions"), { ssr: false });
+import {
   type CopilotAction,
   type ChatContext,
   parseSlashCommand,
 } from "./CopilotActions";
-import CopilotArtifacts, { type CopilotArtifact } from "./CopilotArtifacts";
+const CopilotArtifacts = dynamic(() => import("./CopilotArtifacts"), { ssr: false });
+import type { CopilotArtifact } from "./CopilotArtifacts";
 import AnalyticsTab from "./AnalyticsTab";
 import { DegradedModeBanner } from "@/components/ui/degraded-mode-banner";
 
@@ -182,7 +186,7 @@ interface ChatInterfaceProps {
 }
 
 const defaultSettings: ChatSettings = {
-  model: "gpt-4",
+  model: "local:tinyllama-1.1b",
   temperature: 0.7,
   maxTokens: 2000,
   enableStreaming: true,
@@ -257,7 +261,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           );
           if (!mounted) return; // Prevent state update if component unmounted
 
-          if (module.useCopilotKit) {
+          if (typeof (module as any).useCopilotKit === 'function') {
+
             try {
               // Note: We can't call the hook here as it violates rules of hooks
               // Instead, we'll set a flag that CopilotKit is available
@@ -318,6 +323,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     errorRate: 0,
   });
   const [sessionStartTime] = useState(Date.now());
+  const [availableModels, setAvailableModels] = useState<Array<{ id: string; name: string; provider: string; local_path?: string; format?: string }>>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetch(configManager.getBackendUrl() + "/api/models/all");
+        if (resp.ok) {
+          const data = await resp.json();
+          const list = Array.isArray(data) ? data : (data.models || []);
+          setAvailableModels(list);
+        }
+      } catch {}
+    })();
+  }, []);
 
   // Copilot state
   const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>(
@@ -348,38 +367,93 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // Chat context for copilot actions
   const chatContext = useMemo((): ChatContext => {
+    const clamp = (s?: string | null, max = 200): string | undefined => {
+      if (!s) return undefined;
+      const t = s.trim();
+      return t.length > max ? `${t.slice(0, max)}…` : t;
+    };
+
+    const containsCodeFence = (text: string) => /```[\s\S]*?```/.test(text);
+    const detectFenceLanguage = (text: string): string | undefined => {
+      const m = text.match(/```\s*([a-zA-Z0-9+#._-]+)/);
+      return m?.[1];
+    };
+
+    const lastNonSystem = [...messages].reverse().find((m) => m.role !== "system" && m.content?.trim());
+    const lastUser = [...messages].reverse().find((m) => m.role === "user" && m.content?.trim());
+    const lastWithIntent = [...messages].reverse().find((m) => m.metadata?.intent);
+
+    // Build recent messages (keep last 5, include system for full context)
     const recentMessages = messages.slice(-5).map((m) => ({
       role: m.role,
       content: m.content,
       timestamp: m.timestamp,
     }));
 
+    // Topic heuristic: prefer explicit intent; else first few words of last content message
+    const derivedTopic = (() => {
+      const source = lastWithIntent?.metadata?.intent || lastNonSystem?.content || "";
+      const words = source.replace(/\s+/g, " ").trim().split(" ").slice(0, 8).join(" ");
+      return clamp(words, 80);
+    })();
+
+    // Intent heuristic: prefer explicit intent; else infer from slash command or keywords
+    const derivedIntent = (() => {
+      const explicit = lastWithIntent?.metadata?.intent;
+      if (explicit) return clamp(explicit, 80);
+      if (lastUser?.content) {
+        const cmd = parseSlashCommand(lastUser.content);
+        if (cmd) return cmd.id;
+        const lc = lastUser.content.toLowerCase();
+        if (/(explain|describe|what|how)/.test(lc)) return "explain";
+        if (/(debug|error|fix|issue|bug)/.test(lc)) return "debug";
+        if (/(refactor|improve|optimi[sz]e)/.test(lc)) return "refactor";
+        if (/(test|unit test|spec)/.test(lc)) return "generate_tests";
+      }
+      return undefined;
+    })();
+
+    // Code context
+    const anyCodeInMessages = messages.some((m) => m.type === "code" || (m.content && containsCodeFence(m.content)));
+    const detectedLang = (() => {
+      if (settings.language) return settings.language;
+      // Try detect from last code fence
+      for (const m of [...messages].reverse()) {
+        if (m.content) {
+          const lang = detectFenceLanguage(m.content);
+          if (lang) return lang;
+        }
+      }
+      return undefined;
+    })();
+
+    // Complexity heuristic: based on length, code presence, and errors
+    const errorCount = messages.filter((m) => m.status === "error").length;
+    const avgLen = messages.length
+      ? Math.round(messages.reduce((sum, m) => sum + (m.content?.length || 0), 0) / messages.length)
+      : 0;
+    const complexity: "simple" | "medium" | "complex" = (() => {
+      const longThread = messages.length > 12 || avgLen > 500;
+      const mediumThread = messages.length > 5 || avgLen > 200;
+      if (longThread || (anyCodeInMessages && errorCount > 0)) return "complex";
+      if (mediumThread || anyCodeInMessages) return "medium";
+      return "simple";
+    })();
+
     return {
       selectedText: selectedText || undefined,
-      currentFile: undefined, // Could be enhanced to track current file
-      language: settings.language,
+      currentFile: undefined,
+      language: detectedLang,
       recentMessages,
       codeContext: {
-        hasCode: !!codeValue || messages.some((m) => m.type === "code"),
-        language: settings.language,
-        errorCount: messages.filter((m) => m.metadata?.status === "error")
-          .length,
+        hasCode: !!codeValue || anyCodeInMessages,
+        language: detectedLang,
+        errorCount,
       },
       conversationContext: {
-        topic:
-          messages.length > 0
-            ? messages[messages.length - 1]?.metadata?.intent
-            : undefined,
-        intent:
-          messages.length > 0
-            ? messages[messages.length - 1]?.metadata?.intent
-            : undefined,
-        complexity:
-          messages.length > 10
-            ? "complex"
-            : messages.length > 3
-            ? "medium"
-            : "simple",
+        topic: derivedTopic,
+        intent: derivedIntent,
+        complexity,
       },
     };
   }, [selectedText, settings.language, codeValue, messages]);
@@ -465,6 +539,13 @@ What would you like to work on today?`,
 
   // Update analytics
   useEffect(() => {
+    const intents = messages
+      .map((m) => m.metadata?.intent)
+      .filter((v): v is string => typeof v === 'string' && v.length > 0);
+    const langs = messages
+      .map((m) => m.language)
+      .filter((v): v is string => typeof v === 'string' && v.length > 0);
+
     const newAnalytics: ChatAnalytics = {
       totalMessages: messages.length,
       userMessages: messages.filter((m) => m.role === "user").length,
@@ -486,15 +567,11 @@ What would you like to work on today?`,
       ),
       totalCost: messages.reduce((acc, m) => acc + (m.metadata?.cost || 0), 0),
       sessionDuration: Math.round((Date.now() - sessionStartTime) / 1000),
-      topTopics: [
-        ...new Set(messages.map((m) => m.metadata?.intent).filter(Boolean)),
-      ].slice(0, 5),
-      codeLanguages: [
-        ...new Set(messages.map((m) => m.language).filter(Boolean)),
-      ],
+      topTopics: [...new Set(intents)].slice(0, 5),
+      codeLanguages: [...new Set(langs)],
       errorRate:
         Math.round(
-          (messages.filter((m) => m.metadata?.status === "error").length /
+          (messages.filter((m) => m.status === "error").length /
             messages.length) *
             100
         ) || 0,
@@ -586,8 +663,8 @@ What would you like to work on today?`,
         content: "",
         timestamp: new Date(),
         type: type === "code" ? "code" : "text",
+        status: "generating",
         metadata: {
-          status: "generating",
           model: settings.model,
         },
       };
@@ -600,6 +677,15 @@ What would you like to work on today?`,
         const startTime = performance.now();
 
         // Prepare request payload based on endpoint
+        // Derive preferred provider/model
+        let selectedProvider: string | undefined;
+        let selectedModelOnly: string | undefined;
+        if (settings.model.includes(":")) {
+          const [prov, ...rest] = settings.model.split(":");
+          selectedProvider = prov;
+          selectedModelOnly = rest.join(":");
+        }
+
         const payload =
           useCopilotKit && copilotKit
             ? {
@@ -631,6 +717,8 @@ What would you like to work on today?`,
                   language: options.language || settings.language,
                   session_id: sessionId,
                   user_id: user?.user_id,
+                  preferred_llm_provider: selectedProvider,
+                  preferred_model: selectedModelOnly,
                   enable_analysis:
                     options.enableAnalysis || enableCodeAssistance,
                   enable_suggestions: settings.enableSuggestions,
@@ -709,14 +797,19 @@ What would you like to work on today?`,
         let fullText = "";
         let metadata: any = {};
 
-        if (
+        const ct = response.headers.get("content-type") || "";
+        const isStream =
           settings.enableStreaming &&
-          response.headers.get("content-type")?.includes("text/stream")
-        ) {
+          (ct.includes("text/event-stream") ||
+            ct.includes("text/stream") ||
+            ct.includes("application/stream+json"));
+
+        if (isStream) {
           // Handle streaming response
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";
+          let streamDone = false;
 
           while (true) {
             const { value, done } = await reader.read();
@@ -726,9 +819,14 @@ What would you like to work on today?`,
             const lines = buffer.split("\n");
             buffer = lines.pop() || "";
 
-            for (const line of lines) {
+            for (const rawLine of lines) {
+              const line = rawLine.replace(/\r$/, "");
               const trimmed = line.trim();
-              if (!trimmed || trimmed === "data: [DONE]") continue;
+              if (!trimmed) continue;
+              if (trimmed === "data: [DONE]" || trimmed === "[DONE]") {
+                streamDone = true;
+                continue;
+              }
 
               let data = trimmed;
               if (trimmed.startsWith("data:")) {
@@ -738,21 +836,56 @@ What would you like to work on today?`,
               try {
                 const json = JSON.parse(data);
 
-                if (json.content || json.text || json.answer) {
-                  const newContent = json.content || json.text || json.answer;
-                  fullText += newContent;
-
-                  // Update message in real-time
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantId ? { ...m, content: fullText } : m
-                    )
-                  );
+                // Merge metadata
+                if (
+                  json.event === "meta" ||
+                  json.type === "meta" ||
+                  json.kind === "metadata" ||
+                  json.metadata ||
+                  json.meta ||
+                  json.usage ||
+                  json.model
+                ) {
+                  const usage = json.usage || json.token_usage || {};
+                  const metaUpdate: any = { ...(json.metadata || json.meta || {}) };
+                  if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
+                  if (typeof json.confidence === "number") metaUpdate.confidence = json.confidence;
+                  if (usage.total_tokens || (usage.prompt_tokens && usage.completion_tokens)) {
+                    metaUpdate.tokens = usage.total_tokens || (usage.prompt_tokens + usage.completion_tokens);
+                  }
+                  if (json.cost !== undefined) metaUpdate.cost = json.cost;
+                  metadata = { ...metadata, ...metaUpdate };
                 }
 
-                // Extract metadata
-                if (json.metadata || json.meta) {
-                  metadata = { ...metadata, ...(json.metadata || json.meta) };
+                // Content deltas
+                if (
+                  typeof json === "string" ||
+                  json.delta ||
+                  json.content ||
+                  json.text ||
+                  json.answer
+                ) {
+                  const newContent =
+                    (typeof json === "string" && json) ||
+                    (typeof json.delta === "string" && json.delta) ||
+                    json.content ||
+                    json.text ||
+                    json.answer ||
+                    "";
+                  if (newContent) {
+                    fullText += newContent;
+
+                    // Update message in real-time
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantId ? { ...m, content: fullText } : m
+                      )
+                    );
+                  }
+                }
+
+                if (json.done === true || json.event === "done") {
+                  streamDone = true;
                 }
               } catch (e) {
                 // Handle non-JSON streaming data
@@ -767,16 +900,78 @@ What would you like to work on today?`,
               }
             }
           }
+          // Flush any remaining buffered data after stream ends
+          const tail = (buffer || "").trim();
+          if (tail && tail !== "data: [DONE]") {
+            let data = tail.startsWith("data:") ? tail.replace(/^data:\s*/, "") : tail;
+            try {
+              const json = JSON.parse(data);
+              if (
+                typeof json === "string" ||
+                json.content ||
+                json.text ||
+                json.answer
+              ) {
+                const newContent =
+                  (typeof json === "string" && json) ||
+                  json.content ||
+                  json.text ||
+                  json.answer ||
+                  "";
+                if (newContent) {
+                  fullText += newContent;
+                  setMessages((prev) =>
+                    prev.map((m) => (m.id === assistantId ? { ...m, content: fullText } : m))
+                  );
+                }
+              }
+              if (json.metadata || json.meta || json.usage || json.model) {
+                const usage = json.usage || json.token_usage || {};
+                const metaUpdate: any = { ...(json.metadata || json.meta || {}) };
+                if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
+                if (usage.total_tokens || (usage.prompt_tokens && usage.completion_tokens)) {
+                  metaUpdate.tokens = usage.total_tokens || (usage.prompt_tokens + usage.completion_tokens);
+                }
+                if (json.cost !== undefined) metaUpdate.cost = json.cost;
+                metadata = { ...metadata, ...metaUpdate };
+              }
+            } catch {
+              fullText += data;
+              setMessages((prev) =>
+                prev.map((m) => (m.id === assistantId ? { ...m, content: fullText } : m))
+              );
+            }
+          }
         } else {
-          // Handle complete JSON response
-          const result = await response.json();
-          fullText =
-            result.answer ||
-            result.content ||
-            result.text ||
-            result.message ||
-            "";
-          metadata = result.metadata || result.meta || {};
+          // Handle non-streaming response (JSON or text)
+          const ct2 = response.headers.get("content-type") || "";
+          if (ct2.includes("application/json")) {
+            const result = await response.json();
+            fullText =
+              result.answer ||
+              result.content ||
+              result.text ||
+              result.message ||
+              result.response ||
+              "";
+            const usage = result.usage || result.token_usage || {};
+            metadata = {
+              ...(result.metadata || result.meta || {}),
+              model: result.model || (result.metadata?.model ?? result.meta?.model),
+              tokens:
+                usage.total_tokens ||
+                (usage.prompt_tokens && usage.completion_tokens
+                  ? usage.prompt_tokens + usage.completion_tokens
+                  : undefined),
+              cost: result.cost,
+              confidence:
+                typeof result.confidence === "number"
+                  ? result.confidence
+                  : (result.metadata?.confidence ?? result.meta?.confidence),
+            } as any;
+          } else {
+            fullText = await response.text();
+          }
         }
 
         // Calculate final metrics
@@ -786,13 +981,15 @@ What would you like to work on today?`,
         const finalMessage: ChatMessage = {
           ...placeholder,
           content: fullText.trim(),
+          status: "completed",
           metadata: {
             ...metadata,
             latencyMs: latency,
-            model: settings.model,
-            tokens: metadata.tokens || Math.ceil(fullText.length / 4),
+            model: (metadata && (metadata as any).model) || settings.model,
+            tokens:
+              (metadata && (metadata as any).tokens) ||
+              Math.ceil(fullText.length / 4),
             cost: metadata.cost || 0,
-            status: "completed",
           },
         };
 
@@ -878,7 +1075,8 @@ What would you like to work on today?`,
           content: errorContent,
           timestamp: new Date(),
           type: "text",
-          metadata: { status: "error" },
+          status: "error",
+          metadata: {},
         };
 
         setMessages((prev) =>
@@ -1362,6 +1560,8 @@ What would you like to work on today?`,
                       confidence: message.metadata?.confidence,
                       latencyMs: message.metadata?.latencyMs,
                       model: message.metadata?.model,
+                      tokens: (message.metadata as any)?.tokens,
+                      cost: (message.metadata as any)?.cost,
                       persona: message.metadata?.persona,
                       mood: message.metadata?.mood,
                       intent: message.metadata?.intent,
@@ -1700,6 +1900,24 @@ What would you like to work on today?`,
                     <Download className="h-4 w-4" />
                   </Button>
                 )}
+
+                {/* Model selector */}
+                <select
+                  value={settings.model}
+                  onChange={(e) => handleSettingsChange({ model: e.target.value })}
+                  className="px-2 py-1 text-xs border rounded"
+                  title="Select model"
+                >
+                  <option value={settings.model}>{settings.model}</option>
+                  {availableModels.map((m) => {
+                    const value = m.provider === 'local' ? `local:${m.name}` : `${m.provider}:${m.name}`;
+                    return (
+                      <option key={`${m.provider}:${m.id || m.name}`} value={value}>
+                        {m.provider}:{m.name}
+                      </option>
+                    );
+                  })}
+                </select>
 
                 {enableSharing && (
                   <Button

@@ -515,7 +515,7 @@ export function EndpointStatusDashboard({ className }: EndpointStatusDashboardPr
                             <div className="mt-2 space-y-2">
                               {log.error && (
                                 <div className="text-xs text-red-600 bg-red-100 p-2 rounded">
-                                  <strong>Error:</strong> {log.error}
+                                  <strong>Error:</strong> {log.error instanceof Error ? log.error.message : log.error}
                                 </div>
                               )}
                               

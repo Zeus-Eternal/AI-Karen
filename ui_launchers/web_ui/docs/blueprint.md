@@ -10,7 +10,7 @@
 - Knowledge Graph: A Neo4j knowledge graph stores and reasons over real-world information, enhancing Karen's contextual awareness and conversational abilities by representing relationships between concepts.
 - Reinforcement Learning: TensorFlow or PyTorch implements reinforcement learning, enabling Karen to continuously adapt and improve her memory over time. This simulates the human brain's ability to learn from experience.
 - Information Display: The UI displays received prompts, AI responses, extracted keywords, and knowledge graph insights in a clear and intuitive way. The system has headless capability and mobile extendability.
-- Local AI Processing: Local first implementation, such as with ollama, enabling the AI assistant to function locally without relying on external cloud services. This enhances privacy and reduces latency.
+- Local AI Processing: Local first implementation, such as with llama-cpp-python, enabling the AI assistant to function locally without relying on external cloud services. This enhances privacy and reduces latency.
 
 ## Style Guidelines:
 

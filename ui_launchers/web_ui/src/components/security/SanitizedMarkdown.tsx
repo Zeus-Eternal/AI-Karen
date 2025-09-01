@@ -55,11 +55,8 @@ const configureMarked = (linkTarget: '_blank' | '_self' = '_blank') => {
   return marked.setOptions({
     renderer,
     gfm: true,
-    breaks: true,
-    sanitize: false, // We handle sanitization with DOMPurify
-    smartLists: true,
-    smartypants: false, // Disable to prevent potential issues
-    xhtml: true
+    breaks: true
+    // Many options like sanitize, smartLists, smartypants, xhtml were removed in newer versions of marked
   });
 };
 
@@ -87,18 +84,16 @@ export const SanitizedMarkdown: React.FC<SanitizedMarkdownProps> = ({
       // Configure marked
       configureMarked(linkTarget);
       
-      // Convert markdown to HTML
-      const rawHtml = marked(truncatedContent);
+      // Convert markdown to HTML synchronously
+      const rawHtml = marked(truncatedContent) as string;
       
       // Configure DOMPurify
       const purifyConfig = {
         ALLOWED_TAGS: allowedTags,
         ALLOWED_ATTR: Object.keys(allowedAttributes).reduce((acc, tag) => {
-          if (tag === '*') {
-            // Global attributes
-            acc.push(...allowedAttributes[tag]);
-          } else {
-            acc.push(...allowedAttributes[tag]);
+          const attributes = allowedAttributes[tag as keyof typeof allowedAttributes];
+          if (attributes) {
+            acc.push(...attributes);
           }
           return acc;
         }, [] as string[]),

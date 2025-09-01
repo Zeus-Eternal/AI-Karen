@@ -139,7 +139,7 @@ export default function EnhancedModelBrowser() {
         })
       });
       
-      setModels(response || []);
+      setModels((response as TrainableModel[]) || []);
     } catch (error) {
       console.error('Failed to search trainable models:', error);
       toast({

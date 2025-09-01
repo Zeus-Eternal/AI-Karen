@@ -1,5 +1,5 @@
-import { LoginCredentials, LoginResponse, User } from '@/types/auth';
-import { getEnhancedApiClient } from '@/lib/enhanced-api-client';
+import { LoginCredentials, LoginResponse, User, DeepPartial } from '@/types/auth';
+import { getEnhancedApiClient } from '@/lib/auth/api-client-enhanced';
 import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
 
 export class AuthService {
@@ -89,7 +89,7 @@ export class AuthService {
     }
   }
 
-  async updateUserPreferences(_token: string, preferences: Partial<User['preferences']>): Promise<void> {
+  async updateUserPreferences(_token: string, preferences: DeepPartial<User['preferences']>): Promise<void> {
     try {
       await this.apiClient.put('/api/users/me/preferences', preferences);
     } catch (error: any) {
@@ -159,5 +159,4 @@ export function initializeAuthService(): AuthService {
   authServiceInstance = new AuthService();
   return authServiceInstance;
 }
-
 

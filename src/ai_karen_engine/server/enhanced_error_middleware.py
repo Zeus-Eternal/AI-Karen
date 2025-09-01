@@ -481,7 +481,7 @@ class EnhancedErrorHandler:
     async def _try_fallback_providers(self, failed_provider: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Try fallback LLM providers."""
         # Get list of available providers excluding the failed one
-        available_providers = ["openai", "anthropic", "ollama", "huggingface"]
+        available_providers = ["openai", "anthropic", "llama-cpp", "huggingface"]
         if failed_provider in available_providers:
             available_providers.remove(failed_provider)
         

@@ -5,6 +5,8 @@ import {
   TokenNetworkError,
 } from './token-validation.service';
 import { setSession, clearSession, type SessionData } from './session';
+import { authStateManager } from '@/contexts/AuthStateManager';
+import type { SessionUser } from '@/contexts/SessionProvider';
 
 export type RehydrationState = 'idle' | 'rehydrating' | 'authenticated' | 'unauthenticated' | 'error';
 
@@ -58,12 +60,22 @@ export class SessionRehydrationService {
       const result = await this.validator.validateToken();
       if (result.valid && result.session) {
         setSession(result.session);
+        // Propagate auth state so AuthContext/ProtectedRoute see the change
+        const s = result.session;
+        const sessionUser: SessionUser = {
+          userId: s.userId,
+          email: s.email,
+          roles: s.roles,
+          tenantId: s.tenantId,
+        };
+        authStateManager.updateState({ isAuthenticated: true, user: sessionUser });
         this.state = 'authenticated';
         return;
       }
 
       this.state = 'unauthenticated';
       clearSession();
+      authStateManager.updateState({ isAuthenticated: false, user: null });
     } catch (err) {
       if (err instanceof TokenExpiredError) {
         this.state = 'unauthenticated';
@@ -75,6 +87,7 @@ export class SessionRehydrationService {
         this.state = 'error';
       }
       clearSession();
+      authStateManager.updateState({ isAuthenticated: false, user: null });
       throw err;
     }
   }

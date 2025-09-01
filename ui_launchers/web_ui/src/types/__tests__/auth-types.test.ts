@@ -226,7 +226,7 @@ const mockUser: User = {
     personalityVerbosity: 'balanced',
     memoryDepth: 'medium',
     customPersonaInstructions: '',
-    preferredLLMProvider: 'ollama',
+    preferredLLMProvider: 'llama-cpp',
     preferredModel: 'llama3.2:latest',
     temperature: 0.7,
     maxTokens: 1000,

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import ExtensionHeader from "./ExtensionHeader";
 import SidebarNavigation from "./SidebarNavigation";
-import { ExtensionProvider } from "@/extensions";
+import { ExtensionProvider } from "@/extensions/ExtensionContext";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 export interface ExtensionSidebarProps {

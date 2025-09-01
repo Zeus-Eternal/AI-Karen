@@ -9,6 +9,8 @@ interface MetaBarProps {
   annotations?: number;
   latencyMs?: number;
   model?: string;
+  tokens?: number;
+  cost?: number;
   persona?: string;
   mood?: string;
   intent?: string;
@@ -21,6 +23,8 @@ export const MetaBar: React.FC<MetaBarProps> = ({
   annotations,
   latencyMs,
   model,
+  tokens,
+  cost,
   persona,
   mood,
   intent,
@@ -41,6 +45,22 @@ export const MetaBar: React.FC<MetaBarProps> = ({
     items.push(
       <Badge key="latency" variant="secondary" className="text-xs">
         Latency: {latencyMs}ms
+      </Badge>,
+    );
+  }
+
+  if (typeof tokens === 'number' && tokens > 0) {
+    items.push(
+      <Badge key="tokens" variant="secondary" className="text-xs">
+        Tokens: {tokens}
+      </Badge>,
+    );
+  }
+
+  if (typeof cost === 'number') {
+    items.push(
+      <Badge key="cost" variant="secondary" className="text-xs">
+        Cost: ${'{'}cost.toFixed ? cost.toFixed(6) : cost{'}'}
       </Badge>,
     );
   }

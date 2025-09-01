@@ -222,7 +222,7 @@ CREATE TABLE hook_exec_stats (
 );
 
 CREATE TABLE llm_providers (
-  provider_id   TEXT PRIMARY KEY,          -- ollama|openai|anthropic|gemini
+  provider_id   TEXT PRIMARY KEY,          -- llamacpp|openai|anthropic|gemini
   tenant_id     TEXT,
   config        JSONB NOT NULL,            -- endpoints, models, api keys (encrypted)
   enabled       BOOLEAN DEFAULT TRUE,

@@ -13,6 +13,8 @@ export interface ChatBubbleProps {
     annotations?: number;
     latencyMs?: number;
     model?: string;
+    tokens?: number;
+    cost?: number;
     persona?: string;
     mood?: string;
     intent?: string;
@@ -29,6 +31,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ role, content, meta }) =
     model: webUIConfig.showModelBadge ? meta.model : undefined,
     latencyMs: webUIConfig.showLatencyBadge ? meta.latencyMs : undefined,
     confidence: webUIConfig.showConfidenceBadge ? meta.confidence : undefined,
+    tokens: meta.tokens,
+    cost: meta.cost,
     annotations: meta.annotations,
     persona: meta.persona,
     mood: meta.mood,

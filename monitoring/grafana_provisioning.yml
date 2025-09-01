@@ -1,0 +1,122 @@
+# Grafana Provisioning Configuration for Model Orchestrator
+apiVersion: 1
+
+# Dashboard providers
+providers:
+  - name: 'model-orchestrator'
+    orgId: 1
+    folder: 'Model Orchestrator'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+
+# Datasources
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: "15s"
+      queryTimeout: "60s"
+      httpMethod: "POST"
+    
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "model-orchestrator-logs"
+    jsonData:
+      interval: "Daily"
+      timeField: "timestamp"
+      esVersion: "8.0.0"
+      logMessageField: "message"
+      logLevelField: "level"
+
+# Notification channels
+notifiers:
+  - name: model-orchestrator-alerts
+    type: slack
+    uid: model_orchestrator_slack
+    settings:
+      url: "${SLACK_WEBHOOK_URL}"
+      channel: "#model-orchestrator-alerts"
+      username: "Grafana"
+      title: "Model Orchestrator Alert"
+      text: |
+        {{ range .Alerts }}
+        **{{ .Annotations.summary }}**
+        {{ .Annotations.description }}
+        {{ end }}
+    
+  - name: model-orchestrator-email
+    type: email
+    uid: model_orchestrator_email
+    settings:
+      addresses: "${ALERT_EMAIL_ADDRESSES}"
+      subject: "Model Orchestrator Alert - {{ .CommonAnnotations.summary }}"
+      body: |
+        {{ range .Alerts }}
+        Alert: {{ .Annotations.summary }}
+        Description: {{ .Annotations.description }}
+        Severity: {{ .Labels.severity }}
+        Component: {{ .Labels.component }}
+        {{ end }}
+
+# Alert rules
+rules:
+  - orgId: 1
+    name: model-orchestrator
+    folder: Model Orchestrator
+    interval: 1m
+    rules:
+      - uid: model_download_failed
+        title: Model Download Failed
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: increase(model_orchestrator_downloads_failed_total[5m]) > 0
+              intervalMs: 1000
+              maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: "Model download failed"
+          description: "Model download failed for {{ $labels.model_id }}"
+        labels:
+          severity: warning
+          component: model_orchestrator
+        
+      - uid: storage_space_low
+        title: Storage Space Low
+        condition: A
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: model_orchestrator_storage_usage_bytes / model_orchestrator_storage_limit_bytes > 0.85
+              intervalMs: 1000
+              maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Model storage space running low"
+          description: "Model storage is {{ $value | humanizePercentage }} full"
+        labels:
+          severity: warning
+          component: model_orchestrator

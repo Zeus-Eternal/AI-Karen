@@ -231,7 +231,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
         lineHeight: '1.4',
         paddingTop: '8px',
         paddingBottom: '8px'
-      },
+      } as any,
       autoHeight: true
     },
     {
@@ -272,7 +272,7 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       width: 140,
       sortable: true,
       filter: 'agTextColumnFilter',
-      cellStyle: { fontSize: '12px' }
+      cellStyle: { fontSize: '12px' } as any
     },
     {
       field: 'tags',

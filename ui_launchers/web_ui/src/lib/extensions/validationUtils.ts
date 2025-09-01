@@ -215,7 +215,7 @@ function isValidNetworkEndpoint(endpoint: string): boolean {
       'api.anthropic.com',
       'api.cohere.ai',
       'api.huggingface.co',
-      'ollama.ai',
+      'llama.cpp',
     ];
     
     return allowedHosts.some(host => 

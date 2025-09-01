@@ -80,8 +80,8 @@ class TestAnalyticsDashboardExtension:
         """Test LLM performance metrics collection."""
         context = {
             'response': {
-                'provider': 'ollama',
-                'model': 'llama2',
+                'provider': 'llama-cpp',
+                'model': 'tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
                 'processing_time': 2000,
                 'token_usage': 200,
                 'tokens_per_second': 50,
@@ -98,8 +98,8 @@ class TestAnalyticsDashboardExtension:
         assert len(extension.llm_performance_data) == 1
         
         performance_data = extension.llm_performance_data[0]
-        assert performance_data['provider'] == 'ollama'
-        assert performance_data['model'] == 'llama2'
+        assert performance_data['provider'] == 'llama-cpp'
+        assert performance_data['model'] == 'tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf'
         assert performance_data['response_time'] == 2000
         assert performance_data['tokens_per_second'] == 50
     

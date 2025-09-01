@@ -10,7 +10,6 @@ import numpy  # noqa: F401 - ensure real package is available
 # Provide lightweight stand-ins for optional dependencies
 sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
 sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
-sys.modules.setdefault("ollama", importlib.import_module("tests.stubs.ollama"))
 
 os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "0123456789abcdef0123456789abcdef")
 os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")

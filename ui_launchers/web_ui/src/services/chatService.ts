@@ -67,8 +67,6 @@ export class ChatService {
         service: 'ChatService',
         method: 'processUserMessage',
         endpoint: '/api/chat/process',
-        userId: options.userId,
-        sessionId: options.sessionId,
       }
     );
   }
@@ -101,7 +99,6 @@ export class ChatService {
         service: 'ChatService',
         method: 'createConversationSession',
         endpoint: '/api/conversations/create',
-        userId,
       }
     );
   }

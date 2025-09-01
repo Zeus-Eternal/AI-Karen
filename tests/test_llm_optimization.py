@@ -180,7 +180,7 @@ class TestOptimizedLLMService:
         return [
             ModelConfig(
                 name="local_model",
-                provider="ollama",
+                provider="llama-cpp",
                 model_type=ModelType.LOCAL,
                 warmup_strategy=WarmupStrategy.EAGER,
                 preload_enabled=True,

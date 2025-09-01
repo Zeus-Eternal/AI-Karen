@@ -8,7 +8,10 @@ Server-Sent Events when WebSocket is not available.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Dict, Optional
@@ -49,6 +52,21 @@ stream_processor: Optional[StreamProcessor] = None
 chat_orchestrator: Optional[ChatOrchestrator] = None
 
 router = APIRouter(tags=["websocket"])
+
+# Model operation event types
+MODEL_OPERATION_EVENTS = {
+    "JOB_STARTED": "job_started",
+    "JOB_PROGRESS": "job_progress", 
+    "JOB_COMPLETED": "job_completed",
+    "JOB_FAILED": "job_failed",
+    "JOB_CANCELLED": "job_cancelled",
+    "MODEL_DOWNLOADED": "model_downloaded",
+    "MODEL_REMOVED": "model_removed",
+    "MIGRATION_STARTED": "migration_started",
+    "MIGRATION_COMPLETED": "migration_completed",
+    "GC_STARTED": "gc_started",
+    "GC_COMPLETED": "gc_completed"
+}
 
 
 # Request/Response Models
@@ -237,6 +255,138 @@ async def websocket_chat_endpoint(
             logger.debug(f"WebSocket connection cleanup: {connection_id}")
 
 
+@router.websocket("/models/events")
+async def websocket_model_events_endpoint(
+    websocket: WebSocket,
+    gateway: WebSocketGateway = Depends(get_websocket_gateway),
+    current_user: Dict[str, Any] = Depends(get_current_user_websocket),
+):
+    """
+    WebSocket endpoint for real-time model operation events.
+    
+    Features:
+    - Real-time job progress updates
+    - Model download/installation notifications
+    - Migration and garbage collection status
+    - Error notifications and recovery suggestions
+    
+    Requirements: 3.8, 9.3, 9.6
+    """
+    connection_id = None
+    
+    try:
+        await websocket.accept()
+        connection_id = str(uuid.uuid4())
+        
+        # Register connection for model events
+        user_id = current_user.get("user_id", "anonymous")
+        
+        # Subscribe to model orchestrator events via event bus
+        from ai_karen_engine.event_bus import get_event_bus
+        event_bus = get_event_bus()
+        
+        # Create event handler for this connection
+        async def handle_model_event(event_data):
+            """Handle model orchestrator events and forward to WebSocket."""
+            try:
+                message = {
+                    "type": "model_event",
+                    "event": event_data.get("event_type"),
+                    "data": event_data.get("payload", {}),
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+                
+                await websocket.send_text(json.dumps(message))
+                logger.debug(f"Sent model event to {connection_id}: {event_data.get('event_type')}")
+                
+            except Exception as e:
+                logger.error(f"Failed to send model event to {connection_id}: {e}")
+        
+        # Subscribe to model orchestrator events
+        event_bus.subscribe("model_orchestrator", handle_model_event)
+        
+        # Send connection confirmation
+        await websocket.send_text(json.dumps({
+            "type": "connection_established",
+            "connection_id": connection_id,
+            "user_id": user_id,
+            "subscribed_events": ["model_orchestrator"],
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }))
+        
+        logger.info(f"Model events WebSocket connected: {connection_id} for user {user_id}")
+        
+        # Keep connection alive and handle incoming messages
+        while True:
+            try:
+                # Wait for messages from client
+                data = await websocket.receive_text()
+                message = json.loads(data)
+                
+                # Handle different message types
+                message_type = message.get("type")
+                
+                if message_type == "ping":
+                    # Respond to ping with pong
+                    await websocket.send_text(json.dumps({
+                        "type": "pong",
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    }))
+                    
+                elif message_type == "subscribe_job":
+                    # Subscribe to specific job updates
+                    job_id = message.get("job_id")
+                    if job_id:
+                        # In a real implementation, this would register for specific job updates
+                        await websocket.send_text(json.dumps({
+                            "type": "job_subscription_confirmed",
+                            "job_id": job_id,
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        }))
+                        logger.debug(f"Subscribed to job {job_id} for connection {connection_id}")
+                
+                elif message_type == "unsubscribe_job":
+                    # Unsubscribe from specific job updates
+                    job_id = message.get("job_id")
+                    if job_id:
+                        await websocket.send_text(json.dumps({
+                            "type": "job_unsubscription_confirmed", 
+                            "job_id": job_id,
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        }))
+                        logger.debug(f"Unsubscribed from job {job_id} for connection {connection_id}")
+                
+                else:
+                    logger.warning(f"Unknown message type from {connection_id}: {message_type}")
+                    
+            except WebSocketDisconnect:
+                break
+            except json.JSONDecodeError as e:
+                logger.warning(f"Invalid JSON from {connection_id}: {e}")
+                await websocket.send_text(json.dumps({
+                    "type": "error",
+                    "message": "Invalid JSON format",
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }))
+            except Exception as e:
+                logger.error(f"Error handling message from {connection_id}: {e}")
+                break
+                
+    except WebSocketDisconnect as e:
+        logger.info(f"Model events WebSocket disconnected: {connection_id} (code: {e.code})")
+    except Exception as e:
+        logger.error(f"Model events WebSocket error: {e}", exc_info=True)
+    finally:
+        if connection_id:
+            # Unsubscribe from events
+            try:
+                event_bus = get_event_bus()
+                # In a real implementation, we'd properly unsubscribe the handler
+                logger.debug(f"Model events WebSocket connection cleanup: {connection_id}")
+            except Exception as e:
+                logger.error(f"Error during WebSocket cleanup: {e}")
+
+
 # Server-Sent Events endpoint
 @router.post("/stream/sse")
 async def stream_chat_sse(
@@ -268,6 +418,122 @@ async def stream_chat_sse(
         logger.error(f"Error creating SSE stream: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to create stream: {str(e)}"
+        )
+
+
+@router.get("/models/events/sse")
+async def model_events_sse(
+    http_request: Request,
+    job_id: Optional[str] = Query(None, description="Specific job ID to track"),
+    current_user: Dict[str, Any] = Depends(get_current_user_websocket),
+) -> EventSourceResponse:
+    """
+    Server-Sent Events endpoint for model operation events.
+    
+    This provides a fallback for clients that cannot use WebSocket connections.
+    
+    Requirements: 3.8, 9.3, 9.6
+    """
+    try:
+        user_id = current_user.get("user_id", "anonymous")
+        
+        async def event_generator():
+            """Generate SSE events for model operations."""
+            try:
+                # Import here to avoid circular imports
+                from ai_karen_engine.event_bus import get_event_bus
+                
+                # Send initial connection event
+                yield {
+                    "event": "connected",
+                    "data": json.dumps({
+                        "type": "connection_established",
+                        "user_id": user_id,
+                        "job_id": job_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    })
+                }
+                
+                # Set up event subscription
+                event_bus = get_event_bus()
+                received_events = []
+                
+                # Create event handler
+                async def handle_event(event_data):
+                    """Handle model orchestrator events."""
+                    try:
+                        # Filter by job_id if specified
+                        if job_id and event_data.get("payload", {}).get("job_id") != job_id:
+                            return
+                            
+                        event_message = {
+                            "type": "model_event",
+                            "event": event_data.get("event_type"),
+                            "data": event_data.get("payload", {}),
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        }
+                        
+                        received_events.append(event_message)
+                        
+                    except Exception as e:
+                        logger.error(f"Error handling SSE event: {e}")
+                
+                # Subscribe to events
+                event_bus.subscribe("model_orchestrator", handle_event)
+                
+                # Keep connection alive and send events
+                last_heartbeat = datetime.now()
+                
+                while True:
+                    try:
+                        # Check for client disconnect
+                        if await http_request.is_disconnected():
+                            break
+                        
+                        # Send any received events
+                        while received_events:
+                            event = received_events.pop(0)
+                            yield {
+                                "event": "model_event",
+                                "data": json.dumps(event)
+                            }
+                        
+                        # Send heartbeat every 30 seconds
+                        now = datetime.now()
+                        if (now - last_heartbeat).total_seconds() > 30:
+                            yield {
+                                "event": "heartbeat",
+                                "data": json.dumps({
+                                    "type": "heartbeat",
+                                    "timestamp": now.isoformat()
+                                })
+                            }
+                            last_heartbeat = now
+                        
+                        # Small delay to prevent busy waiting
+                        await asyncio.sleep(0.1)
+                        
+                    except Exception as e:
+                        logger.error(f"Error in SSE event loop: {e}")
+                        break
+                        
+            except Exception as e:
+                logger.error(f"Error in SSE event generator: {e}")
+                yield {
+                    "event": "error",
+                    "data": json.dumps({
+                        "type": "error",
+                        "message": str(e),
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    })
+                }
+        
+        return EventSourceResponse(event_generator())
+        
+    except Exception as e:
+        logger.error(f"Error creating model events SSE stream: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create event stream: {str(e)}"
         )
 
 

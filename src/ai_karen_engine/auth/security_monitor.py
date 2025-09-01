@@ -98,9 +98,9 @@ class ExponentialBackoffRateLimiter:
         
         # Rate limiting configuration
         self.base_window_seconds = 60  # Base window: 1 minute
-        self.max_attempts_per_window = 5  # Max attempts per window
-        self.backoff_multiplier = 2.0  # Exponential backoff multiplier
-        self.max_backoff_hours = 24  # Maximum backoff: 24 hours
+        self.max_attempts_per_window = 50  # Increased from 5 to 50 attempts per window
+        self.backoff_multiplier = 1.5  # Reduced from 2.0 to 1.5 for gentler backoff
+        self.max_backoff_hours = 1  # Reduced from 24 to 1 hour maximum backoff
         
         # In-memory storage for rate limiting
         self._attempt_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=100))

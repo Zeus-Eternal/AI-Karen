@@ -273,7 +273,22 @@ const ChangePasswordSection: React.FC = () => {
 export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   const { user, logout, updateUserPreferences, isLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [preferences, setPreferences] = useState(user?.preferences || {});
+  const [preferences, setPreferences] = useState(user?.preferences || {
+    personalityTone: '',
+    personalityVerbosity: '',
+    memoryDepth: '',
+    customPersonaInstructions: '',
+    preferredLLMProvider: '',
+    preferredModel: '',
+    temperature: 0.7,
+    maxTokens: 2000,
+    notifications: {},
+    ui: {
+      theme: '',
+      language: '',
+      avatarUrl: ''
+    }
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
@@ -284,7 +299,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
       const url = await authService.uploadAvatar(file);
       setPreferences(prev => ({
         ...prev,
-        ui: { ...prev.ui, avatarUrl: url },
+        ui: { ...(prev.ui || {}), avatarUrl: url },
       }));
     } catch (error) {
       console.error('Failed to upload avatar:', error);
@@ -474,7 +489,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ollama">Ollama (Local)</SelectItem>
+                    <SelectItem value="llama-cpp">LlamaCpp (Local)</SelectItem>
                     <SelectItem value="openai">OpenAI</SelectItem>
                     <SelectItem value="gemini">Google Gemini</SelectItem>
                     <SelectItem value="deepseek">Deepseek</SelectItem>
@@ -525,7 +540,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                   value={preferences.ui.theme}
                   onValueChange={(value) => setPreferences(prev => ({
                     ...prev,
-                    ui: { ...prev.ui, theme: value },
+                    ui: { ...(prev as any).ui, theme: value },
                   }))}
                 >
                   <SelectTrigger>

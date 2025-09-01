@@ -176,6 +176,7 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(({
           maxLength={getMaxLength()}
           required={required}
           disabled={disabled || isValidating}
+          value={props.value || ''}
           onChange={handleChange}
           onBlur={handleBlur}
           onFocus={handleFocus}
@@ -190,7 +191,6 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(({
             showError && errorId,
             showHelper && helperId
           )}
-          {...props}
         />
         
         {/* Validation icon */}

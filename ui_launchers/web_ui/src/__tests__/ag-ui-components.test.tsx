@@ -67,7 +67,7 @@ const mockUser = {
     personalityVerbosity: 'balanced' as const,
     memoryDepth: 'medium' as const,
     customPersonaInstructions: '',
-    preferredLLMProvider: 'ollama',
+    preferredLLMProvider: 'llama-cpp',
     preferredModel: 'llama3.2:latest',
     temperature: 0.7,
     maxTokens: 1000,
@@ -243,7 +243,7 @@ describe('AG-UI Components', () => {
         userSatisfaction: 4.5,
         aiInsights: 3,
         tokenUsage: 500,
-        llmProvider: 'ollama'
+        llmProvider: 'llama-cpp'
       },
       {
         timestamp: new Date('2024-01-01T11:00:00Z'),

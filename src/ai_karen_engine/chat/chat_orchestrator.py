@@ -956,8 +956,8 @@ class ChatOrchestrator:
         # 3. Hardcoded responses as final fallback
         
         # Get user preferences from processing context
-        user_llm_choice = processing_context.metadata.get('preferred_llm_provider', 'ollama')
-        user_model_choice = processing_context.metadata.get('preferred_model', 'llama3.2:latest')
+        user_llm_choice = processing_context.metadata.get('preferred_llm_provider', 'local')
+        user_model_choice = processing_context.metadata.get('preferred_model', 'tinyllama-1.1b')
         
         logger.info(f"Attempting LLM response with user choice: {user_llm_choice}:{user_model_choice}")
         
@@ -1079,12 +1079,11 @@ class ChatOrchestrator:
             
             # Define system default LLMs in priority order
             default_providers = [
-                "ollama:llama3.2:1b",  # Use available model instead of :latest
-                "ollama:llama3.2:latest",  # Keep as fallback
-                "local:tinyllama-1.1b",  # Local TinyLlama fallback
-                "openai:gpt-3.5-turbo", 
-                "copilotkit:copilot-assist",
-                "huggingface:distilbert-base-uncased"
+                "local:tinyllama-1.1b",  # Local TinyLlama fallback first
+                "openai:gpt-3.5-turbo",
+                "gemini:gemini-1.5-flash",
+                "deepseek:deepseek-chat",
+                "huggingface:microsoft/DialoGPT-large"
             ]
             
             for provider_model in default_providers:

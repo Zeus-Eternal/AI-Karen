@@ -205,7 +205,7 @@ INSERT INTO system_config (config_key, config_value, description, is_public) VAL
 ('ai_karen.limits.rate_limit_per_minute', '60', 'API rate limit per minute', false),
 ('ai_karen.ui.default_theme', '"light"', 'Default UI theme', true),
 ('ai_karen.ui.available_themes', '["light", "dark", "enterprise"]', 'Available UI themes', true),
-('ai_karen.llm.default_provider', '"ollama"', 'Default LLM provider', false),
+('ai_karen.llm.default_provider', '"llamacpp"', 'Default LLM provider', false),
 ('ai_karen.llm.default_model', '"llama3.2:latest"', 'Default LLM model', false),
 ('ai_karen.memory.retention_days', '30', 'Memory retention period in days', false),
 ('ai_karen.analytics.retention_days', '90', 'Analytics data retention in days', false)
@@ -240,7 +240,7 @@ EOF
             "initialized_at" "$(date -Iseconds)" \
             "features_enabled" "chat,memory,analytics,plugins" \
             "default_theme" "light" \
-            "default_llm_provider" "ollama" \
+            "default_llm_provider" "llamacpp" \
             "default_llm_model" "llama3.2:latest" > /dev/null
         
         redis-cli -h "${REDIS_HOST:-localhost}" -p "${REDIS_PORT:-6379}" ${REDIS_PASSWORD:+-a "$REDIS_PASSWORD"} \

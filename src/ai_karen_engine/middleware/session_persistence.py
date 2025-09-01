@@ -78,6 +78,11 @@ class SessionPersistenceMiddleware(BaseHTTPMiddleware):
             "/favicon.ico",
             # Add static assets and frontend paths
             "/_next",
+            # TEMPORARY: Allow provider endpoints for development
+            "/api/providers/profiles",
+            "/api/providers/stats",
+            "/api/providers",  # All provider endpoints
+            "/api/plugins",  # All plugin endpoints
             "/static",
             "/assets",
             "/public",

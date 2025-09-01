@@ -73,7 +73,7 @@ class VectorDBConfig:
 class LLMConfig:
     """LLM configuration."""
 
-    provider: str = "openai"  # openai, anthropic, ollama
+    provider: str = "llamacpp"  # llamacpp, openai, anthropic, gemini
     model: str = "gpt-3.5-turbo"
     api_key: Optional[str] = None
     base_url: Optional[str] = None

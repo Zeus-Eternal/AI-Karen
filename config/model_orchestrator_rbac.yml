@@ -1,0 +1,229 @@
+# Model Orchestrator RBAC Configuration
+# Defines roles and permissions for model management operations
+
+roles:
+  # Administrator role - full access to all model operations
+  admin:
+    permissions:
+      - model:list
+      - model:info
+      - model:download
+      - model:remove
+      - model:migrate
+      - model:ensure
+      - model:gc
+      - model:registry:read
+      - model:registry:write
+      - model:health:check
+      - model:compatibility:check
+      - model:license:manage
+      - model:pin
+      - model:unpin
+      - model:quota:manage
+    description: "Full administrative access to all model operations"
+
+  # Model Manager role - operational model management
+  model_manager:
+    permissions:
+      - model:list
+      - model:info
+      - model:download
+      - model:remove
+      - model:ensure
+      - model:gc
+      - model:registry:read
+      - model:health:check
+      - model:compatibility:check
+      - model:license:accept
+      - model:pin
+      - model:unpin
+    description: "Operational model management without system-level changes"
+
+  # Model User role - basic model access
+  model_user:
+    permissions:
+      - model:list
+      - model:info
+      - model:health:check
+      - model:compatibility:check
+      - model:license:view
+    description: "Read-only access to model information and browsing"
+
+  # Developer role - development-focused model access
+  developer:
+    permissions:
+      - model:list
+      - model:info
+      - model:download
+      - model:ensure
+      - model:registry:read
+      - model:health:check
+      - model:compatibility:check
+      - model:license:accept
+    description: "Development-focused model access without administrative operations"
+
+# Permission definitions
+permissions:
+  model:list:
+    description: "List available models"
+    resource: "models"
+    action: "read"
+    
+  model:info:
+    description: "View detailed model information"
+    resource: "models"
+    action: "read"
+    
+  model:download:
+    description: "Download and install models"
+    resource: "models"
+    action: "create"
+    
+  model:remove:
+    description: "Remove installed models"
+    resource: "models"
+    action: "delete"
+    
+  model:migrate:
+    description: "Migrate model filesystem layout"
+    resource: "models"
+    action: "update"
+    requires_admin: true
+    
+  model:ensure:
+    description: "Ensure essential models are installed"
+    resource: "models"
+    action: "create"
+    
+  model:gc:
+    description: "Run garbage collection on models"
+    resource: "models"
+    action: "delete"
+    
+  model:registry:read:
+    description: "Read model registry"
+    resource: "registry"
+    action: "read"
+    
+  model:registry:write:
+    description: "Write to model registry"
+    resource: "registry"
+    action: "write"
+    requires_admin: true
+    
+  model:health:check:
+    description: "Check model and system health"
+    resource: "system"
+    action: "read"
+    
+  model:compatibility:check:
+    description: "Check model compatibility"
+    resource: "models"
+    action: "read"
+    
+  model:license:view:
+    description: "View model license information"
+    resource: "licenses"
+    action: "read"
+    
+  model:license:accept:
+    description: "Accept model licenses"
+    resource: "licenses"
+    action: "create"
+    
+  model:license:manage:
+    description: "Manage license compliance and tracking"
+    resource: "licenses"
+    action: "update"
+    requires_admin: true
+    
+  model:pin:
+    description: "Pin models to protect from garbage collection"
+    resource: "models"
+    action: "update"
+    
+  model:unpin:
+    description: "Unpin models to allow garbage collection"
+    resource: "models"
+    action: "update"
+    
+  model:quota:manage:
+    description: "Manage storage quotas and limits"
+    resource: "quotas"
+    action: "update"
+    requires_admin: true
+
+# Resource definitions
+resources:
+  models:
+    description: "AI/ML models and their metadata"
+    
+  registry:
+    description: "Model registry and configuration"
+    
+  licenses:
+    description: "Model license information and acceptance records"
+    
+  quotas:
+    description: "Storage quotas and resource limits"
+    
+  system:
+    description: "System health and status information"
+
+# Policy rules
+policies:
+  # Default deny policy
+  default_policy: "deny"
+  
+  # Allow read-only operations for authenticated users
+  authenticated_read:
+    effect: "allow"
+    principals: ["authenticated"]
+    actions: ["model:list", "model:info", "model:health:check"]
+    
+  # Require explicit role assignment for write operations
+  write_operations:
+    effect: "deny"
+    actions: ["model:download", "model:remove", "model:migrate", "model:gc"]
+    condition: "not has_role(['admin', 'model_manager', 'developer'])"
+    
+  # Admin-only operations
+  admin_only:
+    effect: "deny"
+    actions: ["model:migrate", "model:registry:write", "model:license:manage", "model:quota:manage"]
+    condition: "not has_role(['admin'])"
+    
+  # License acceptance tracking
+  license_tracking:
+    effect: "allow"
+    actions: ["model:license:accept"]
+    condition: "license_required and authenticated"
+    audit: true
+    
+  # Quota enforcement
+  quota_enforcement:
+    effect: "deny"
+    actions: ["model:download"]
+    condition: "storage_quota_exceeded"
+    
+  # Rate limiting
+  rate_limiting:
+    effect: "deny"
+    actions: ["model:download"]
+    condition: "rate_limit_exceeded"
+    
+# Audit configuration
+audit:
+  enabled: true
+  events:
+    - model:download
+    - model:remove
+    - model:migrate
+    - model:gc
+    - model:registry:write
+    - model:license:accept
+    - model:license:manage
+    - model:quota:manage
+  retention_days: 365
+  include_metadata: true
+  include_user_context: true

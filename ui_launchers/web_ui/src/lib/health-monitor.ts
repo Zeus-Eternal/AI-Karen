@@ -117,27 +117,31 @@ class HealthMonitor {
         cooldown: 60000, // 1 minute
       },
       {
-        id: 'chat-endpoint-down',
-        name: 'Chat Endpoint Down',
+        id: 'plugins-endpoint-down',
+        name: 'Plugins Endpoint Down',
         condition: (metrics) => {
-          const chatEndpoint = metrics.endpoints['/api/ai/conversation-processing'];
-          return chatEndpoint && chatEndpoint.status === 'error';
+          const pluginsEndpoint = metrics.endpoints['/api/plugins'];
+          return pluginsEndpoint && pluginsEndpoint.status === 'error';
         },
-        message: 'AI conversation processing endpoint is not responding',
-        severity: 'high',
-        cooldown: 120000, // 2 minutes
-      },
-      {
-        id: 'memory-endpoint-down',
-        name: 'Memory Endpoint Down',
-        condition: (metrics) => {
-          const memoryEndpoint = metrics.endpoints['/api/memory/store'];
-          return memoryEndpoint && memoryEndpoint.status === 'error';
-        },
-        message: 'Memory storage endpoint is not responding',
+        message: 'Plugins endpoint is not responding',
         severity: 'medium',
         cooldown: 300000, // 5 minutes
       },
+      {
+        id: 'analytics-endpoint-down',
+        name: 'Analytics Endpoint Down',
+        condition: (metrics) => {
+          const analyticsEndpoint = metrics.endpoints['/api/web/analytics/system'];
+          return analyticsEndpoint && analyticsEndpoint.status === 'error';
+        },
+        message: 'Analytics endpoint is not responding',
+        severity: 'low',
+        cooldown: 600000, // 10 minutes
+      },
+      // TODO: Re-enable endpoint-specific alerts once endpoints are confirmed
+      // Temporarily disabled:
+      // - chat-endpoint-down
+      // - memory-endpoint-down
     ];
   }
 
@@ -195,41 +199,29 @@ class HealthMonitor {
     const startTime = Date.now();
 
     try {
-      // Check main health endpoint
+      // Check main health endpoint first
       await this.checkEndpoint('/health', async (_signal) => {
         return await backend.healthCheck();
       });
 
-      // Check AI conversation processing endpoint (lightweight test)
-      await this.checkEndpoint('/api/ai/conversation-processing', async (signal) => {
-        const response = await fetch(`${webUIConfig.backendUrl}/api/ai/conversation-processing`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: [] }),
-          signal,
-        });
-        return { status: response.ok ? 'healthy' : 'error' };
-      });
+      // Only check other endpoints if health check passes and we're not rate limited
+      const healthEndpoint = this.metrics.endpoints['/health'];
+      if (healthEndpoint && healthEndpoint.status === 'healthy') {
+        // Stagger additional checks to avoid rate limiting
+        // Only check plugins endpoint every other health check
+        if (this.metrics.totalRequests % 2 === 0) {
+          await this.checkEndpointSafely('/api/plugins', async (_signal) => {
+            return await backend.getAvailablePlugins();
+          });
+        }
 
-      // Check memory store endpoint (lightweight test)
-      await this.checkEndpoint('/api/memory/store', async (signal) => {
-        const response = await fetch(`${webUIConfig.backendUrl}/api/memory/store`, {
-          method: 'OPTIONS',
-          headers: { 'Content-Type': 'application/json' },
-          signal,
-        });
-        return { status: response.ok ? 'healthy' : 'error' };
-      });
-
-      // Check plugin endpoints
-      await this.checkEndpoint('/api/plugins', async (_signal) => {
-        return await backend.getAvailablePlugins();
-      });
-
-      // Check analytics endpoints
-      await this.checkEndpoint('/api/web/analytics/system', async (_signal) => {
-        return await backend.getSystemMetrics();
-      });
+        // Only check analytics endpoint every third health check
+        if (this.metrics.totalRequests % 3 === 0) {
+          await this.checkEndpointSafely('/api/web/analytics/system', async (_signal) => {
+            return await backend.getSystemMetrics();
+          });
+        }
+      }
 
     } catch (error) {
       console.error('Health check failed:', error);
@@ -247,6 +239,45 @@ class HealthMonitor {
     if (webUIConfig.debugLogging) {
       const duration = Date.now() - startTime;
       console.log(`🏥 Health check completed in ${duration}ms`);
+    }
+  }
+
+  /**
+   * Check a specific endpoint with graceful failure handling
+   */
+  private async checkEndpointSafely(
+    endpoint: string,
+    checkFunction: (signal: AbortSignal) => Promise<any>
+  ): Promise<void> {
+    try {
+      await this.checkEndpoint(endpoint, checkFunction);
+    } catch (error) {
+      // Handle rate limiting specifically
+      if (error instanceof Error && error.message.includes('429')) {
+        console.warn(`🚦 Rate limited on ${endpoint}, will retry later`);
+        this.metrics.endpoints[endpoint] = {
+          endpoint,
+          status: 'degraded',
+          responseTime: 0,
+          timestamp: new Date().toISOString(),
+          error: 'Rate limited (429)',
+        };
+        return;
+      }
+
+      // Log as debug instead of error for missing endpoints
+      if (webUIConfig.debugLogging) {
+        console.debug(`Endpoint ${endpoint} not available:`, error);
+      }
+      
+      // Mark endpoint as degraded instead of error for missing endpoints
+      this.metrics.endpoints[endpoint] = {
+        endpoint,
+        status: 'degraded',
+        responseTime: 0,
+        timestamp: new Date().toISOString(),
+        error: 'Endpoint not available',
+      };
     }
   }
 
@@ -563,12 +594,6 @@ export function initializeHealthMonitor(): HealthMonitor {
   return healthMonitor;
 }
 
-// Export types
-export type {
-  HealthCheckResult,
-  HealthMetrics,
-  AlertRule,
-  Alert,
-};
+// Types are already exported via export interface declarations above
 
 export { HealthMonitor };

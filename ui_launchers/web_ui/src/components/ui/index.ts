@@ -42,9 +42,7 @@ export {
 } from './loading';
 
 export {
-  ErrorBoundary,
-  useErrorHandler,
-  withErrorBoundary
+  ErrorBoundary
 } from './error-boundary';
 
 export {

@@ -6,7 +6,7 @@ The Enhanced Unified LLM Client provides local-first routing with intelligent mo
 
 ### 🏠 Local-First Architecture
 - **TinyLLaMA Support**: Direct integration with llama-cpp-python for local inference
-- **Ollama Integration**: Support for Ollama server with multiple model options
+- **LlamaCpp Integration**: Support for llama-cpp-python with multiple model options
 - **Zero External Dependencies**: Operates fully without cloud API keys
 - **Graceful Degradation**: Intelligent fallback when local models are unavailable
 
@@ -54,7 +54,7 @@ print(response)
 ### Advanced Configuration
 
 ```python
-from core.response.unified_client import UnifiedLLMClient, TinyLlamaClient, OllamaClient
+from core.response.unified_client import UnifiedLLMClient, TinyLlamaClient, LlamaCppClient
 
 # Create custom local clients
 tinyllama = TinyLlamaClient(
@@ -63,15 +63,15 @@ tinyllama = TinyLlamaClient(
     max_tokens=512
 )
 
-ollama = OllamaClient(
+llamacpp = LlamaCppClient(
     model_name="llama2",
-    base_url="http://localhost:11434",
+    model_path="models/llama-cpp/llama2.gguf",
     temperature=0.8
 )
 
 # Create unified client with custom configuration
 client = UnifiedLLMClient(
-    local_clients=[tinyllama, ollama],
+    local_clients=[tinyllama, llamacpp],
     remote_client=None,  # No cloud client
     local_only=True,
     auto_warmup=True
@@ -126,8 +126,8 @@ response = client.generate(
 │  │   monitoring    │    │  │  • Chat format conversion  │ │ │
 │  └─────────────────┘    │  └─────────────────────────────┘ │ │
 │                         │  ┌─────────────────────────────┐ │ │
-│  ┌─────────────────┐    │  │       OllamaClient          │ │ │
-│  │  FallbackLLM    │    │  │  • HTTP API integration    │ │ │
+│  ┌─────────────────┐    │  │       LlamaCppClient        │ │ │
+│  │  FallbackLLM    │    │  │  • Direct model loading    │ │ │
 │  │                 │    │  │  • Multiple model support  │ │ │
 │  │ • Always works  │    │  │  • Chat/generate APIs      │ │ │
 │  │ • Safe response │    │  └─────────────────────────────┘ │ │
@@ -163,10 +163,10 @@ TINYLLAMA_MODEL_PATH="models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
 TINYLLAMA_CONTEXT_SIZE=2048
 TINYLLAMA_THREADS=4
 
-# Ollama Configuration
-OLLAMA_BASE_URL="http://localhost:11434"
-OLLAMA_MODEL="tinyllama"
-OLLAMA_TIMEOUT=30
+# LlamaCpp Configuration
+LLAMACPP_MODEL_PATH="models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+LLAMACPP_CONTEXT_SIZE=2048
+LLAMACPP_THREADS=4
 
 # Client Configuration
 LOCAL_ONLY_MODE=true
@@ -190,21 +190,23 @@ wget https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/
 pip install llama-cpp-python
 ```
 
-#### Ollama Setup
+#### LlamaCpp Setup
 
-1. Install Ollama:
+1. Install llama-cpp-python:
 ```bash
-curl -fsSL https://ollama.ai/install.sh | sh
+pip install llama-cpp-python
 ```
 
-2. Pull TinyLLaMA model:
+2. Download TinyLLaMA model (if not already done):
 ```bash
-ollama pull tinyllama
+mkdir -p models/llama-cpp
+wget https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+  -O models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
 ```
 
-3. Start Ollama server:
+3. Verify model loading:
 ```bash
-ollama serve
+python -c "from llama_cpp import Llama; print('LlamaCpp ready')"
 ```
 
 ## API Reference
@@ -265,13 +267,12 @@ def create_local_first_client(
     remote_client: Optional[LLMClient] = None,
     local_only: bool = True,
     tinyllama_path: Optional[str] = None,
-    ollama_model: str = "tinyllama",
-    ollama_url: str = "http://localhost:11434",
+    llamacpp_model_path: Optional[str] = None,
     **kwargs
 ) -> UnifiedLLMClient
 ```
 
-Creates a local-first client with default TinyLLaMA and Ollama clients.
+Creates a local-first client with default TinyLLaMA and LlamaCpp clients.
 
 #### create_local_only_client()
 
@@ -314,7 +315,7 @@ print(models)
 
 ### Memory Usage
 - TinyLLaMA: ~1-2GB RAM
-- Ollama: ~1-3GB RAM (depending on model)
+- LlamaCpp: ~1-3GB RAM (depending on model)
 - Client overhead: <100MB
 
 ### Latency
@@ -337,17 +338,17 @@ Error: Failed to load TinyLLaMA model: Failed to load model from file
 ```
 **Solution:** Ensure model file exists at `models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf`
 
-#### Ollama Connection Failed
+#### LlamaCpp Model Loading Failed
 ```
-Error: Failed to connect to Ollama: Connection refused
+Error: Failed to load LlamaCpp model: Model file not found
 ```
-**Solution:** Start Ollama server with `ollama serve`
+**Solution:** Ensure model file exists at the specified path and is a valid GGUF file
 
-#### Model Not Found in Ollama
+#### LlamaCpp Memory Error
 ```
-Error: model 'tinyllama' not found (status code: 404)
+Error: Failed to allocate memory for model
 ```
-**Solution:** Pull model with `ollama pull tinyllama`
+**Solution:** Use a smaller model or increase available system memory
 
 ### Debug Mode
 

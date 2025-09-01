@@ -51,12 +51,12 @@ async def test_llm_fallback_hierarchy():
             conversation_id="test_conversation",
             session_id="test_session",
             metadata={
-                'preferred_llm_provider': 'ollama',
-                'preferred_model': 'llama3.2:latest'
+                'preferred_llm_provider': 'llama-cpp',
+                'preferred_model': 'tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf'
             }
         )
         
-        print(f"🎯 Testing with user preferences: ollama:llama3.2:latest")
+        print(f"🎯 Testing with user preferences: llama-cpp:tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
         
         try:
             # This will test the fallback hierarchy in the chat orchestrator
@@ -93,8 +93,8 @@ async def test_llm_fallback_hierarchy():
                 },
                 context={
                     "llm_preferences": {
-                        "preferred_llm_provider": "ollama",
-                        "preferred_model": "llama3.2:latest"
+                        "preferred_llm_provider": "llama-cpp",
+                        "preferred_model": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
                     }
                 },
                 user_id="test_user",
@@ -119,9 +119,9 @@ async def test_llm_fallback_hierarchy():
         
         fallback_scenarios = [
             {
-                "name": "User's Preferred LLM (Ollama + Llama3.2)",
-                "provider": "ollama",
-                "model": "llama3.2:latest",
+                "name": "User's Preferred LLM (LlamaCpp + TinyLlama)",
+                "provider": "llama-cpp",
+                "model": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
                 "description": "This should be tried first"
             },
             {
@@ -154,8 +154,8 @@ async def test_llm_fallback_hierarchy():
         print("✅ Backend API updated to handle LLM preferences")
         
         print("\n🔄 Fallback Order:")
-        print("1️⃣  User's chosen LLM (e.g., Ollama + Llama3.2)")
-        print("2️⃣  System default LLMs (Ollama, OpenAI, HuggingFace)")
+        print("1️⃣  User's chosen LLM (e.g., LlamaCpp + TinyLlama)")
+        print("2️⃣  System default LLMs (LlamaCpp, OpenAI, HuggingFace)")
         print("3️⃣  Hardcoded fallback responses")
         
         return True

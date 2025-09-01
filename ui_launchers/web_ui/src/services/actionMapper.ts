@@ -659,9 +659,4 @@ export function getActionSuggestions(context: string, userIntent?: string): Sugg
   return registry.getSuggestedActions(context, userIntent);
 }
 
-// Export types
-export type {
-  SuggestedAction,
-  ActionResult,
-  ActionHandler
-};
+// Types are already exported via export interface declarations above

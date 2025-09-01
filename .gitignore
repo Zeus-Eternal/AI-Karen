@@ -67,10 +67,7 @@ server.pid
 /ui_launchers/web_ui/node_modules
 /.kiro
 /.github
-/models
 /data/default_classifier
-src/ai_karen_engine/services/ai_orchestrator-bak.py
-src/ai_karen_engine/services/ai_orchestrator-bak.py
 /kari_duckdb.db
 .fuse_hidden0004897500000004
 llm_settings.json
@@ -78,3 +75,13 @@ llm_settings.json
 .env.local
 config/llm_settings.local.json
 /src-bak
+.kren_env/
+.kiro/
+/.karen_env/bin
+/.karen_env
+/tests
+/ui_launchers/web_ui/src.bak
+/ui_launchers/web_ui/src.bak
+/tests
+/tests
+/models

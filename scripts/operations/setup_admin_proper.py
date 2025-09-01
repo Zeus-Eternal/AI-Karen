@@ -122,7 +122,7 @@ async def setup_admin_user():
              json.dumps({
                  'personalityTone': 'professional',
                  'personalityVerbosity': 'balanced',
-                 'preferredLLMProvider': 'ollama',
+                 'preferredLLMProvider': 'llama-cpp',
                  'preferredModel': 'llama3.2:latest',
                  'memoryDepth': 'high',
                  'customPersonaInstructions': 'You are an AI assistant with administrative privileges.'

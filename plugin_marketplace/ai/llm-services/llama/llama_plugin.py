@@ -1,5 +1,5 @@
 """
-Ollama In-Process LLM Plugin for Kari AI
+LlamaCpp In-Process LLM Plugin for Kari AI
 - Pure llama-cpp-python (no REST, no HTTP, no server)
 - Production-safe, hot-swap, async/streaming, health, all via FastAPI
 - Plugin entrypoint: import as 'router' per manifest
@@ -10,15 +10,15 @@ from fastapi import APIRouter, HTTPException, Body, status
 from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List, Dict, Optional, Any
 
-from ai_karen_engine.plugins.llm_services.ollama.ollama_service import ollama_inprocess_client
+from ai_karen_engine.plugins.llm_services.llama.llama_client import llamacpp_inprocess_client
 from plugin_marketplace.memory_manager import MemoryManager
 
 router = APIRouter(
-    prefix="/llm/ollama",
-    tags=["Ollama (In-Process LLM)"],
+    prefix="/llm/llamacpp",
+    tags=["LlamaCpp (In-Process LLM)"],
 )
 
-log = logging.getLogger("ollama_plugin")
+log = logging.getLogger("llamacpp_plugin")
 log.setLevel(logging.INFO)
 
 # Unified memory interface for storing chat interactions
@@ -29,7 +29,7 @@ memory = MemoryManager()
 def list_models():
     """Return all available GGUF models in the model directory."""
     try:
-        models = ollama_inprocess_client.list_models()
+        models = llamacpp_inprocess_client.list_models()
         return models
     except Exception as e:
         log.exception("Model listing failed")
@@ -46,8 +46,8 @@ def switch_model(
     Hot-swap to a different GGUF model. Optionally adjust context size or threads.
     """
     try:
-        ollama_inprocess_client.switch_model(model_name, ctx_size, n_threads)
-        return {"status": "ok", "active_model": ollama_inprocess_client.model_name}
+        llamacpp_inprocess_client.switch_model(model_name, ctx_size, n_threads)
+        return {"status": "ok", "active_model": llamacpp_inprocess_client.model_name}
     except Exception as e:
         log.exception("Switch model failed")
         raise HTTPException(status_code=500, detail=str(e))
@@ -59,7 +59,7 @@ def health():
     Basic health check: can load model and answer to 'ping'.
     """
     try:
-        status = ollama_inprocess_client.health_check()
+        status = llamacpp_inprocess_client.health_check()
         return status
     except Exception as e:
         log.exception("Health check failed")
@@ -74,7 +74,7 @@ def embedding(
     Get an embedding vector for a given string or list of strings.
     """
     try:
-        result = ollama_inprocess_client.embedding(text)
+        result = llamacpp_inprocess_client.embedding(text)
         return {"embedding": result}
     except Exception as e:
         log.exception("Embedding failed")
@@ -94,11 +94,11 @@ def chat(
     try:
         if stream:
             def generator():
-                for chunk in ollama_inprocess_client.chat(messages, stream=True, max_tokens=max_tokens):
+                for chunk in llamacpp_inprocess_client.chat(messages, stream=True, max_tokens=max_tokens):
                     yield chunk
             return StreamingResponse(generator(), media_type="text/plain")
         else:
-            response = ollama_inprocess_client.chat(messages, stream=False, max_tokens=max_tokens)
+            response = llamacpp_inprocess_client.chat(messages, stream=False, max_tokens=max_tokens)
             memory.write({"user_id": user_id}, "llama_chat", {"messages": messages, "response": response})
             return {"response": response}
     except Exception as e:
@@ -123,14 +123,14 @@ async def achat(
     try:
         if stream:
             async def streamer():
-                async for chunk in ollama_inprocess_client.achat(messages, stream=True, max_tokens=max_tokens):
+                async for chunk in llamacpp_inprocess_client.achat(messages, stream=True, max_tokens=max_tokens):
                     yield chunk
             # Some environments may require token streaming to be run in threadpool for thread safety
             return StreamingResponse(iterate_in_threadpool(streamer()), media_type="text/plain")
         else:
             # Non-streaming: run in executor for non-blocking I/O
             import asyncio
-            response = await ollama_inprocess_client.achat(messages, stream=False, max_tokens=max_tokens)
+            response = await llamacpp_inprocess_client.achat(messages, stream=False, max_tokens=max_tokens)
             memory.write({"user_id": user_id}, "llama_chat", {"messages": messages, "response": response})
             return {"response": response}
     except Exception as e:

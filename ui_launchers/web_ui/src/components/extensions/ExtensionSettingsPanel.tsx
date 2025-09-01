@@ -22,7 +22,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormValues) => void }) {
-  const { register, control, handleSubmit, watch, formState: { errors } } = useForm<FormValues>({
+  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { refreshInterval: 5, enableLogs: false, logLevel: "info", endpoint: "http://localhost" },
   });
@@ -44,7 +44,7 @@ export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormVa
         <CardContent className="space-y-4 text-sm">
           <div className="space-y-1">
             <label className="text-sm font-medium">Refresh Interval ({refresh}m)</label>
-            <Slider min={1} max={60} value={[refresh]} onValueChange={(v) => control.setValue("refreshInterval", v[0])} />
+            <Slider min={1} max={60} value={[refresh]} onValueChange={(v) => setValue("refreshInterval", v[0])} />
             {errors.refreshInterval && <p className="text-xs text-destructive">Invalid interval</p>}
           </div>
           <div className="flex items-center justify-between">
@@ -53,7 +53,7 @@ export default function ExtensionSettingsPanel({ onSave }: { onSave?: (v: FormVa
           </div>
           <div className="space-y-1">
             <label className="text-sm font-medium">Log Level</label>
-            <Select value={watch("logLevel")} onValueChange={(val) => control.setValue("logLevel", val as any)}>
+            <Select value={watch("logLevel")} onValueChange={(val) => setValue("logLevel", val as any)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="info">Info</SelectItem>

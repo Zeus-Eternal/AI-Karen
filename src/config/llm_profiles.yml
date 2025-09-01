@@ -1,10 +1,10 @@
 profiles:
     default:
       providers:
-        chat: ollama
-        conversation_processing: ollama
+        chat: llama-cpp
+        conversation_processing: llama-cpp
         code: deepseek
-        generic: ollama
+        generic: llama-cpp
       fallback: openai
     enterprise:
       providers:

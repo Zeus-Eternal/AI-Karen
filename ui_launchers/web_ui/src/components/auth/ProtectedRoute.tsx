@@ -3,6 +3,7 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from '@/contexts/SessionProvider';
 import { LoginForm } from './LoginForm';
 import { Loader2 } from 'lucide-react';
 import { SessionRehydrationService } from '@/lib/auth/session-rehydration.service';
@@ -19,9 +20,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   redirectTo = '/login'
 }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const { isInitialized: sessionInitialized, isLoading: sessionLoading } = useSession();
   const router = useRouter();
   const [rehydrating, setRehydrating] = useState(true);
   const [rehydrationError, setRehydrationError] = useState<string | null>(null);
+  const [grace, setGrace] = useState(true);
 
   const runRehydration = () => {
     setRehydrating(true);
@@ -37,22 +40,26 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   useEffect(() => {
     runRehydration();
+    // Always provide a short grace window after mount to allow session provider
+    // to initialize from HttpOnly cookies, even if no localStorage tokens exist.
+    const t = setTimeout(() => setGrace(false), 1500);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
-    // Only redirect if we're not loading, not rehydrating, and not authenticated
-    if (!isLoading && !rehydrating && !isAuthenticated) {
+    // Only redirect if session provider is initialized and unauthenticated
+    if (!sessionLoading && sessionInitialized && !grace && !isAuthenticated) {
       // Check if we're already on an auth page to avoid redirect loops
       const currentPath = window.location.pathname;
       const authPages = ['/login', '/signup', '/reset-password', '/verify-email'];
       
       if (!authPages.includes(currentPath)) {
-        router.push(redirectTo);
+        router.replace(redirectTo);
       }
     }
-  }, [isAuthenticated, isLoading, rehydrating, router, redirectTo]);
+  }, [isAuthenticated, sessionLoading, sessionInitialized, grace, router, redirectTo]);
 
-  if (isLoading || rehydrating) {
+  if (sessionLoading || rehydrating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

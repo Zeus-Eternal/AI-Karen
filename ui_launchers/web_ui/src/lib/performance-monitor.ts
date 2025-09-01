@@ -424,11 +424,6 @@ export function initializePerformanceMonitor(): PerformanceMonitor {
   return performanceMonitor;
 }
 
-// Export types
-export type {
-  RequestMetrics,
-  PerformanceStats,
-  PerformanceAlert,
-};
+// Types are already exported via export interface declarations above
 
 export { PerformanceMonitor };

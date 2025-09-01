@@ -1,9 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, AuthState, LoginCredentials, AuthContextType } from '@/types/auth';
+import { User, AuthState, LoginCredentials, AuthContextType, DeepPartial } from '@/types/auth';
 import { authStateManager } from './AuthStateManager';
 import { authService } from '@/services/authService';
+import { login as sessionLogin, logout as sessionLogout, getCurrentUser } from '@/lib/auth/session';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -26,47 +27,77 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading: true,
   });
 
-  // Initialize auth state using JWT tokens or session
+  // Derive from authStateManager/session only (no separate initial fetch)
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const accessToken = localStorage.getItem('karen_access_token');
+    // Seed from current snapshot
+    const snapshot = authStateManager.getState();
+    const initialUser = snapshot.user && snapshot.user.userId ? {
+      user_id: snapshot.user.userId,
+      email: snapshot.user.email || '',
+      roles: snapshot.user.roles || [],
+      tenant_id: snapshot.user.tenantId || '',
+      two_factor_enabled: false,
+      preferences: {
+        personalityTone: 'professional',
+        personalityVerbosity: 'balanced',
+        memoryDepth: 'medium',
+        customPersonaInstructions: '',
+        preferredLLMProvider: 'openai',
+        preferredModel: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 2048,
+        notifications: { email: true, push: false },
+        ui: { theme: 'system', language: 'en' },
+      },
+    } as User : null;
+    setAuthState({ user: initialUser, isAuthenticated: snapshot.isAuthenticated, isLoading: false });
 
-        if (accessToken) {
-          const currentUser = await authService.getCurrentUser();
-          const newState: AuthState = {
-            user: currentUser,
-            isAuthenticated: true,
-            isLoading: false,
-          };
-          setAuthState(newState);
-          authStateManager.updateState({ isAuthenticated: true, user: currentUser });
-        } else {
-          const newState: AuthState = {
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          };
-          setAuthState(newState);
-          authStateManager.updateState({ isAuthenticated: false, user: null });
+    // Auto-login in development mode if not authenticated
+    if (process.env.NODE_ENV === 'development' && !snapshot.isAuthenticated) {
+      const autoLogin = async () => {
+        try {
+          console.log('Development mode: attempting auto-login...');
+          await sessionLogin('test@example.com', 'test123');
+          console.log('Development auto-login successful');
+        } catch (error) {
+          console.log('Development auto-login failed:', error);
+          // Don't throw - just continue without auth
         }
-      } catch (error) {
-        localStorage.removeItem('karen_access_token');
-        localStorage.removeItem('karen_refresh_token');
-        const newState: AuthState = {
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-        };
-        setAuthState(newState);
-        authStateManager.updateState({ isAuthenticated: false, user: null });
-      }
-    };
-
-    initializeAuth();
+      };
+      
+      // Delay auto-login slightly to avoid race conditions
+      setTimeout(autoLogin, 100);
+    }
 
     const unsubscribe = authStateManager.subscribe(state => {
-      setAuthState(prev => ({ ...prev, isAuthenticated: state.isAuthenticated, user: state.user }));
+      // Convert SessionUser back to User format if needed
+      const user = state.user && state.user.userId ? {
+        user_id: state.user.userId,
+        email: state.user.email || '',
+        roles: state.user.roles || [],
+        tenant_id: state.user.tenantId || '',
+        two_factor_enabled: false, // Default value
+        preferences: {
+          personalityTone: 'professional',
+          personalityVerbosity: 'balanced',
+          memoryDepth: 'medium',
+          customPersonaInstructions: '',
+          preferredLLMProvider: 'openai',
+          preferredModel: 'gpt-4',
+          temperature: 0.7,
+          maxTokens: 2048,
+          notifications: {
+            email: true,
+            push: false,
+          },
+          ui: {
+            theme: 'system',
+            language: 'en',
+          },
+        },
+      } : null;
+      
+      setAuthState({ isAuthenticated: state.isAuthenticated, user, isLoading: false });
     });
 
     return () => unsubscribe();
@@ -76,29 +107,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true }));
       
-      const loginResponse = await authService.login(credentials);
+      // Use the session login method to ensure proper session management
+      await sessionLogin(credentials.email, credentials.password, credentials.totp_code);
       
-      // Store JWT tokens in localStorage
-      if (loginResponse.access_token) {
-        localStorage.setItem('karen_access_token', loginResponse.access_token);
-      }
-      if (loginResponse.refresh_token) {
-        localStorage.setItem('karen_refresh_token', loginResponse.refresh_token);
+      // Get the current user from session
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        throw new Error('Failed to get user data after login');
       }
       
-      // Create user object from login response
+      // Create user object from session data
       const user: User = {
-        user_id: loginResponse.user_id,
-        email: loginResponse.email,
-        roles: loginResponse.roles,
-        tenant_id: loginResponse.tenant_id,
-        two_factor_enabled: loginResponse.two_factor_enabled,
-        preferences: loginResponse.preferences || {
+        user_id: currentUser.userId,
+        email: currentUser.email,
+        roles: currentUser.roles,
+        tenant_id: currentUser.tenantId,
+        two_factor_enabled: false, // Default value
+        preferences: {
           personalityTone: 'friendly',
           personalityVerbosity: 'balanced',
           memoryDepth: 'medium',
           customPersonaInstructions: '',
-          preferredLLMProvider: 'ollama',
+          preferredLLMProvider: 'llama-cpp',
           preferredModel: 'llama3.2:latest',
           temperature: 0.7,
           maxTokens: 1000,
@@ -120,7 +150,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading: false,
       };
       setAuthState(newState);
-      authStateManager.updateState({ isAuthenticated: true, user });
+      
+      // Convert User to SessionUser format for authStateManager
+      const sessionUser = {
+        userId: user.user_id,
+        email: user.email || '',
+        roles: user.roles,
+        tenantId: user.tenant_id
+      };
+      
+      authStateManager.updateState({ isAuthenticated: true, user: sessionUser });
     } catch (error) {
       setAuthState(prev => ({ ...prev, isLoading: false }));
       throw error;
@@ -142,12 +181,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await authService.resetPassword(token, newPassword);
   };
 
-  const logout = (): void => {
-    authService.logout();
-    
-    // Clear JWT tokens from localStorage
-    localStorage.removeItem('karen_access_token');
-    localStorage.removeItem('karen_refresh_token');
+  const logout = async (): Promise<void> => {
+    try {
+      await sessionLogout();
+    } catch (error) {
+      console.warn('Logout request failed:', error);
+    }
     
     const newState = {
       user: null,
@@ -167,7 +206,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const user = await authService.getCurrentUser();
       setAuthState(prev => ({ ...prev, user }));
-      authStateManager.updateState({ isAuthenticated: true, user });
+      
+      // Convert User to SessionUser format for authStateManager
+      const sessionUser = {
+        userId: user.user_id,
+        email: user.email || '',
+        roles: user.roles,
+        tenantId: user.tenant_id
+      };
+      
+      authStateManager.updateState({ isAuthenticated: true, user: sessionUser });
     } catch (error) {
       console.error('Failed to refresh user:', error);
       logout();
@@ -175,7 +223,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const updateUserPreferences = async (preferences: Partial<User['preferences']>): Promise<void> => {
+  const updateUserPreferences = async (preferences: DeepPartial<User['preferences']>): Promise<void> => {
     if (!authState.user) {
       throw new Error('User not authenticated');
     }
@@ -189,16 +237,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         preferences: {
           ...authState.user.preferences,
           ...preferences,
+          notifications: {
+            ...authState.user.preferences.notifications,
+            ...preferences.notifications,
+          },
           ui: {
             ...authState.user.preferences.ui,
-            ...(preferences as any).ui,
+            ...preferences.ui,
           },
-        },
+        } as User['preferences'],
       };
       
       setAuthState(prev => ({ ...prev, user: updatedUser }));
     } catch (error) {
       console.error('Failed to update user preferences:', error);
+      throw error;
+    }
+  };
+
+  const updateCredentials = async (newUsername?: string, newPassword?: string): Promise<void> => {
+    try {
+      const resp = await authService.updateCredentials(newUsername, newPassword);
+      // If username changed, reflect it in local state. The backend may also return updated fields.
+      setAuthState(prev => {
+        if (!prev.user) return prev;
+        const updatedUser: User = {
+          ...prev.user,
+          user_id: newUsername && newUsername.length > 0 ? newUsername : prev.user.user_id,
+          email: resp?.email || prev.user.email,
+        } as User;
+        return { ...prev, user: updatedUser };
+      });
+    } catch (error) {
+      console.error('Failed to update credentials:', error);
       throw error;
     }
   };
@@ -213,6 +284,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetPassword,
     logout,
     refreshUser,
+    updateCredentials,
     updateUserPreferences,
   };
 

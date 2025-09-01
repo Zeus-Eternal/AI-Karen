@@ -32,7 +32,7 @@ const result = await chatService.processUserMessage(
     storeInMemory: true,
     generateSummary: messages.length > 10,
     // Pass user's LLM preferences for proper fallback hierarchy
-    preferredLLMProvider: user?.preferences?.preferredLLMProvider || 'ollama',
+    preferredLLMProvider: user?.preferences?.preferredLLMProvider || 'llamacpp',
     preferredModel: user?.preferences?.preferredModel || 'llama3.2:latest',
   },
 );
@@ -98,7 +98,7 @@ async def _process_conversation_with_memory(
     
     # Extract LLM preferences from context
     llm_preferences = input_data.context.get("llm_preferences", {}) if input_data.context else {}
-    preferred_provider = llm_preferences.get("preferred_llm_provider", "ollama")
+    preferred_provider = llm_preferences.get("preferred_llm_provider", "llamacpp")
     preferred_model = llm_preferences.get("preferred_model", "llama3.2:latest")
     
     # Step 1: Try user's chosen LLM
@@ -124,7 +124,7 @@ async def _generate_ai_response_enhanced(
     """Generate AI response using enhanced context integration and instruction following with proper LLM fallback hierarchy."""
     
     # Get user preferences from processing context
-    user_llm_choice = processing_context.metadata.get('preferred_llm_provider', 'ollama')
+    user_llm_choice = processing_context.metadata.get('preferred_llm_provider', 'llamacpp')
     user_model_choice = processing_context.metadata.get('preferred_model', 'llama3.2:latest')
     
     # Step 1: Try user's chosen LLM
@@ -155,14 +155,16 @@ def invoke(self, llm_utils, prompt: str, task_intent: str, preferred_provider: O
 
 ### Level 1: User's Chosen LLM
 - Uses the user's `preferredLLMProvider` and `preferredModel` from their profile
-- Default: `ollama:llama3.2:latest`
+- Default: `llamacpp:llama3.2:latest`
 - Logs success/failure for debugging
 
 ### Level 2: System Default LLMs
 - Tries multiple system default providers in priority order:
-  1. `ollama:llama3.2:latest`
+  1. `llamacpp:llama3.2:latest` (primary system default)
   2. `openai:gpt-3.5-turbo`
-  3. `huggingface:distilbert-base-uncased`
+  3. `gemini:gemini-1.5-flash`
+  4. `deepseek:deepseek-chat`
+  5. `huggingface:distilbert-base-uncased`
 - Falls back to generic routing if specific models fail
 
 ### Level 3: Hardcoded Fallback Response

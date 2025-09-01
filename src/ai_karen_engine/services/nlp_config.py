@@ -27,13 +27,16 @@ class SpacyConfig(BaseModel):
             model_name = os.getenv("SPACY_MODEL", "en_core_web_sm")
         
         # Set defaults - enable parser for dependency parsing as required by task 3.2
+        # Allow toggling auto-download behavior via env var
+        download_missing_env = os.getenv("SPACY_DOWNLOAD_MISSING", "true").lower() in ("1", "true", "yes")
+
         defaults = {
             "model_name": model_name,
             "disabled_components": ["textcat"],  # Keep parser enabled for dependency parsing
             "enable_fallback": True,
             "cache_size": 1000,
             "cache_ttl": 3600,
-            "download_missing": True
+            "download_missing": download_missing_env
         }
         defaults.update(data)
         super().__init__(**defaults)

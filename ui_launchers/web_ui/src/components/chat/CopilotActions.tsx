@@ -51,7 +51,7 @@ export interface ChatContext {
   currentFile?: string;
   language?: string;
   recentMessages?: Array<{
-    role: 'user' | 'assistant';
+    role: 'user' | 'assistant' | 'system';
     content: string;
     timestamp: Date;
   }>;

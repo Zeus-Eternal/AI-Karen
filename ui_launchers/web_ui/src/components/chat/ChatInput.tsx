@@ -111,7 +111,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       recognitionRef.current?.stop();
       setIsRecording(false);
     } else {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       
       recognitionRef.current.continuous = false;
@@ -180,12 +180,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               textareaPurpose: "Chat input for AI assistant conversation",
               chatApiConfigs: {
                 suggestionsApiConfig: {
-                  forwardedParams: {
-                    max_tokens: 20,
-                    stop: ["\n", "."]
-                  }
+                  maxTokens: 20,
+                  stop: ["\n", "."]
                 }
-              }
+              } as any
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {

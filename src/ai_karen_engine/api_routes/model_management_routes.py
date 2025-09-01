@@ -20,6 +20,8 @@ import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+import threading
+import requests
 
 from ai_karen_engine.inference.huggingface_service import get_huggingface_service
 from ai_karen_engine.inference.llama_tools import get_llama_tools
@@ -38,6 +40,77 @@ BaseModel, Field = import_pydantic("BaseModel", "Field")
 logger = logging.getLogger("kari.model_management")
 
 router = APIRouter(prefix="/api", tags=["model-management"])
+
+# -----------------------------
+# Simple local download job manager (no HF token required)
+# -----------------------------
+
+class _DownloadJob:
+    def __init__(self, url: str, dest_dir: Path, filename: Optional[str] = None):
+        self.id = str(uuid.uuid4())
+        self.url = url
+        self.dest_dir = dest_dir
+        self.filename = filename or url.split("/")[-1].split("?")[0]
+        self.path = self.dest_dir / self.filename
+        self.status = "pending"  # pending, running, paused, completed, error, cancelled
+        self.progress = 0.0
+        self.error: Optional[str] = None
+        self._pause = threading.Event()
+        self._cancel = threading.Event()
+        self._pause.clear()
+        self._cancel.clear()
+
+    def run(self):
+        self.status = "running"
+        try:
+            self.dest_dir.mkdir(parents=True, exist_ok=True)
+            with requests.get(self.url, stream=True, timeout=30) as r:
+                r.raise_for_status()
+                total = int(r.headers.get("Content-Length", 0))
+                downloaded = 0
+                tmp_path = self.path.with_suffix(self.path.suffix + ".part")
+                with open(tmp_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 1024):
+                        if self._cancel.is_set():
+                            self.status = "cancelled"
+                            try:
+                                tmp_path.unlink(missing_ok=True)  # type: ignore
+                            except Exception:
+                                pass
+                            return
+                        while self._pause.is_set():
+                            # paused
+                            self.status = "paused"
+                            threading.Event().wait(0.2)
+                            if self._cancel.is_set():
+                                break
+                        if not chunk:
+                            continue
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total > 0:
+                            self.progress = min(0.999, downloaded / total)
+                tmp_path.replace(self.path)
+            self.progress = 1.0
+            self.status = "completed"
+        except Exception as e:
+            self.error = str(e)
+            self.status = "error"
+
+    def pause(self):
+        self._pause.set()
+
+    def resume(self):
+        self._pause.clear()
+        if self.status == "paused":
+            self.status = "running"
+
+    def cancel(self):
+        self._cancel.set()
+
+
+_JOBS: Dict[str, _DownloadJob] = {}
+
 
 # -----------------------------
 # Request/Response Models
@@ -122,6 +195,117 @@ class ProviderValidationRequest(BaseModel):
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     config: Dict[str, Any] = {}
+
+
+# -----------------------------
+# Llama.cpp-friendly local model management (no HF key required)
+# -----------------------------
+
+class LocalDownloadRequest(BaseModel):
+    url: str
+    filename: Optional[str] = None
+    directory: Optional[str] = None  # defaults to models/llama-cpp
+
+
+@router.get("/models/local/search")
+async def search_local_models(q: Optional[str] = None):
+    """Search local models (by filename) under the repo models directory."""
+    try:
+        store = get_model_store()
+        base = Path("models")
+        files = store.scan_local_models(str(base))
+        results: List[Dict[str, Any]] = []
+        for lm in files:
+            if q and q.lower() not in lm.name.lower():
+                continue
+            results.append({
+                "name": lm.name,
+                "format": lm.format,
+                "size": lm.size,
+                "path": lm.path,
+            })
+        return {"results": results, "count": len(results)}
+    except Exception as e:
+        logger.error(f"Local search failed: {e}")
+        return {"results": [], "count": 0, "error": str(e)}
+
+
+@router.post("/models/local/download")
+async def download_local_model(req: LocalDownloadRequest):
+    """Download a model file via direct URL to the llama-cpp directory."""
+    try:
+        dest_dir = Path(req.directory or "models/llama-cpp")
+        job = _DownloadJob(url=req.url, dest_dir=dest_dir, filename=req.filename)
+        _JOBS[job.id] = job
+        t = threading.Thread(target=job.run, daemon=True)
+        t.start()
+        return {"job_id": job.id, "status": job.status, "path": str(job.path)}
+    except Exception as e:
+        logger.error(f"Download start failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models/local/jobs/{job_id}")
+async def get_download_job(job_id: str):
+    job = _JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "progress": job.progress,
+        "error": job.error,
+        "path": str(job.path),
+    }
+
+
+@router.post("/models/local/jobs/{job_id}/pause")
+async def pause_download_job(job_id: str):
+    job = _JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job.pause()
+    return {"job_id": job.id, "status": job.status}
+
+
+@router.post("/models/local/jobs/{job_id}/resume")
+async def resume_download_job(job_id: str):
+    job = _JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job.resume()
+    return {"job_id": job.id, "status": job.status}
+
+
+@router.post("/models/local/jobs/{job_id}/cancel")
+async def cancel_download_job(job_id: str):
+    job = _JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job.cancel()
+    return {"job_id": job.id, "status": job.status}
+
+
+@router.delete("/models/local")
+async def delete_local_model(path: str):
+    """Delete a local model file by absolute or relative path (under repo)."""
+    try:
+        p = Path(path)
+        if not p.is_absolute():
+            p = Path.cwd() / p
+        if not p.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        # Safety: restrict to repo "models" directory
+        models_root = (Path.cwd() / "models").resolve()
+        if models_root not in p.resolve().parents and p.resolve() != models_root:
+            raise HTTPException(status_code=400, detail="Deletion allowed only under models directory")
+        p.unlink()
+        return {"deleted": str(p)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete local model failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class HuggingFaceSearchRequest(BaseModel):
@@ -1602,72 +1786,90 @@ async def get_active_provider_profile():
 
 @router.get("/models/all")
 async def get_all_models():
-    """Get all available models from all providers."""
+    """Get all available models including local llama-cpp compatible GGUF files.
+
+    Returns a flat list suitable for UI consumption.
+    """
     try:
         registry = get_registry()
         model_store = get_model_store()
-        
-        all_models = []
-        
-        # Get local models
+
+        models: list[dict[str, Any]] = []
+
+        # 1) Local models from repo models directory (GGUF prioritized)
         try:
-            local_models = model_store.list_models()
-            for model in local_models:
-                all_models.append({
-                    "id": model.get("id", "unknown"),
-                    "name": model.get("name", "Unknown Model"),
+            repo_models_dir = Path("models")
+            local_files = model_store.scan_local_models(str(repo_models_dir))
+            for lm in local_files:
+                is_gguf = (lm.format or "").lower() == "gguf"
+                runtime_compat = ["llama.cpp"] if is_gguf else []
+                capabilities = ["text"] + (["local_execution"] if is_gguf else [])
+
+                models.append({
+                    "id": Path(lm.path).name,
+                    "name": lm.name,
+                    "family": (lm.metadata or {}).get("family") or model_store._infer_model_family(lm.name),
+                    "format": lm.format,
+                    "size": lm.size,
+                    "parameters": (lm.metadata or {}).get("parameters"),
+                    "quantization": (lm.metadata or {}).get("quantization"),
+                    "context_length": None,
+                    "capabilities": capabilities,
+                    "local_path": str(Path(lm.path)),
+                    "download_url": None,
                     "provider": "local",
-                    "type": model.get("type", "unknown"),
-                    "size": model.get("size", 0),
-                    "status": "available"
+                    "runtime_compatibility": runtime_compat,
+                    "tags": ["local" , lm.format] + (["gguf"] if is_gguf else []),
+                    "license": None,
+                    "description": f"Local {lm.format.upper()} model",
+                    "created_at": None,
+                    "updated_at": None,
                 })
         except Exception as e:
-            logger.warning(f"Could not load local models: {e}")
-        
-        # Get models from providers
-        for provider_name, provider_spec in registry.providers.items():
-            if provider_name.lower() == "copilotkit":
-                continue
-                
-            try:
-                # Add some common models for each provider
-                if provider_name.lower() == "openai":
-                    provider_models = [
-                        {"id": "gpt-4", "name": "GPT-4", "type": "chat"},
-                        {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo", "type": "chat"},
-                        {"id": "text-embedding-ada-002", "name": "Ada Embedding", "type": "embedding"}
-                    ]
-                elif provider_name.lower() == "anthropic":
-                    provider_models = [
-                        {"id": "claude-3-opus", "name": "Claude 3 Opus", "type": "chat"},
-                        {"id": "claude-3-sonnet", "name": "Claude 3 Sonnet", "type": "chat"}
-                    ]
-                elif provider_name.lower() == "ollama":
-                    provider_models = [
-                        {"id": "llama2", "name": "Llama 2", "type": "chat"},
-                        {"id": "mistral", "name": "Mistral", "type": "chat"}
-                    ]
-                else:
-                    provider_models = []
-                
-                for model in provider_models:
-                    all_models.append({
-                        "id": f"{provider_name}:{model['id']}",
-                        "name": model["name"],
-                        "provider": provider_name,
-                        "type": model["type"],
-                        "size": 0,
-                        "status": "available"
-                    })
-                    
-            except Exception as e:
-                logger.warning(f"Could not load models from {provider_name}: {e}")
-        
-        return {"models": all_models}
-        
+            logger.warning(f"Local model scan failed: {e}")
+
+        # 2) Registered models in the model store database (if any)
+        try:
+            for md in model_store.list_models():
+                runtime_compat = md.get("compatible_runtimes") or []
+                models.append({
+                    "id": md.get("id") or md.get("name") or "unknown",
+                    "name": md.get("name", "Unknown Model"),
+                    "family": md.get("family") or "",
+                    "format": md.get("format") or "",
+                    "size": md.get("size"),
+                    "parameters": md.get("parameters"),
+                    "quantization": md.get("quantization"),
+                    "context_length": md.get("context_length"),
+                    "capabilities": list(md.get("capabilities", [])) or ["text"],
+                    "local_path": md.get("local_path"),
+                    "download_url": md.get("download_url"),
+                    "provider": md.get("provider") or ("local" if md.get("local_path") else (md.get("source") or "unknown")),
+                    "runtime_compatibility": runtime_compat,
+                    "tags": list(md.get("tags", [])),
+                    "license": md.get("license"),
+                    "description": md.get("description") or "",
+                    "created_at": md.get("created_at"),
+                    "updated_at": md.get("updated_at"),
+                })
+        except Exception as e:
+            logger.debug(f"Model store listing failed: {e}")
+
+        # 3) Basic provider stubs (non-local), best-effort
+        try:
+            for provider_name in registry.providers.keys():
+                if provider_name.lower() in {"copilotkit", "local"}:
+                    continue
+                # Skip adding duplicates if already present
+                # Keep minimal entries as placeholders for remote catalogs
+        except Exception:
+            pass
+
+        return models
+
     except Exception as e:
         logger.error(f"Error getting all models: {e}")
-        return {"models": []}
+        return []
 
 
 @router.get("/providers/stats")
@@ -1679,8 +1881,11 @@ async def get_provider_stats():
         stats = {
             "total_providers": 0,
             "active_providers": 0,
+            "healthy_providers": 0,  # for UI compatibility
             "total_models": 0,
-            "providers": {}
+            "providers": {},
+            "last_sync": time.time(),
+            "degraded_mode": False,
         }
         
         for provider_name, provider_spec in registry.providers.items():
@@ -1701,6 +1906,7 @@ async def get_provider_stats():
             
             stats["providers"][provider_name] = provider_stats
             stats["active_providers"] += 1
+            stats["healthy_providers"] += 1
             stats["total_models"] += provider_stats["models_count"]
         
         return stats

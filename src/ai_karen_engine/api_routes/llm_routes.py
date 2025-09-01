@@ -49,10 +49,10 @@ class LLMProfile(BaseModel):
     providers: Dict[str, str] = Field(
         description="Provider assignments for different tasks",
         example={
-            "chat": "ollama",
-            "conversation_processing": "ollama",
+            "chat": "local",
+            "conversation_processing": "local",
             "code": "deepseek",
-            "generic": "ollama",
+            "generic": "local",
         },
     )
     fallback: str = Field(description="Fallback provider name")
@@ -175,10 +175,10 @@ async def list_profiles():
                 LLMProfile(
                     name="default",
                     providers={
-                        "chat": "ollama",
-                        "conversation_processing": "ollama",
+                        "chat": "local",
+                        "conversation_processing": "local",
                         "code": "deepseek",
-                        "generic": "ollama",
+                        "generic": "local",
                     },
                     fallback="openai",
                 ),

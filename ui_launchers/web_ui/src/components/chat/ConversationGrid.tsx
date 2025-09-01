@@ -94,7 +94,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
       flex: 2,
       sortable: true,
       filter: 'agTextColumnFilter',
-      cellStyle: { fontWeight: '500' }
+      cellStyle: { fontWeight: '500' } as any
     },
     {
       field: 'lastMessage',
@@ -106,7 +106,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis'
-      }
+      } as any
     },
     {
       field: 'timestamp',
@@ -123,7 +123,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
       width: 100,
       sortable: true,
       filter: 'agNumberColumnFilter',
-      cellStyle: { textAlign: 'center' }
+      cellStyle: { textAlign: 'center' } as any
     },
     {
       field: 'participants',
@@ -161,7 +161,7 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
 
   // Grid options
   const gridOptions = useMemo(() => ({
-    rowSelection: 'multiple',
+    rowSelection: 'multiple' as const,
     suppressRowClickSelection: false,
     rowMultiSelectWithClick: true,
     animateRows: true,
@@ -202,7 +202,6 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
     await triggerHooks('grid_conversations_dataLoad', {
       gridId: 'conversations',
       api: params.api,
-      columnApi: params.columnApi,
       rowCount: conversations.length
     }, { userId: user?.user_id });
   }, [triggerHooks, conversations.length, user?.user_id]);

@@ -32,7 +32,7 @@ export default function ExtensionBreadcrumbs() {
             onClick={() => handleClick(idx)}
             type="button"
           >
-            {crumb.label}
+            {crumb.name}
           </button>
           {idx < breadcrumbs.length - 1 && <Separator orientation="vertical" className="h-4" />}
         </React.Fragment>

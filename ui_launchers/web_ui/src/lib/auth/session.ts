@@ -33,12 +33,36 @@ export interface TokenRefreshResponse {
 // In-memory session storage (cleared on page refresh)
 let currentSession: SessionData | null = null;
 let refreshPromise: Promise<void> | null = null;
+let bootPromise: Promise<void> | null = null;
 
 /**
  * Store session data in memory with automatic expiry tracking
  */
 export function setSession(sessionData: SessionData): void {
   currentSession = sessionData;
+  
+  // Also store the access token in localStorage for API calls
+  if (typeof window !== 'undefined' && sessionData.accessToken) {
+    try {
+      localStorage.setItem('karen_access_token', sessionData.accessToken);
+      // Also store session data for debugging
+      localStorage.setItem('karen_session_data', JSON.stringify({
+        userId: sessionData.userId,
+        email: sessionData.email,
+        expiresAt: sessionData.expiresAt,
+        roles: sessionData.roles,
+        tenantId: sessionData.tenantId
+      }));
+      console.log('Session stored successfully:', {
+        userId: sessionData.userId,
+        email: sessionData.email,
+        expiresAt: new Date(sessionData.expiresAt).toISOString(),
+        hasToken: !!sessionData.accessToken
+      });
+    } catch (error) {
+      console.warn('Failed to store access token in localStorage:', error);
+    }
+  }
 }
 
 /**
@@ -54,6 +78,18 @@ export function getSession(): SessionData | null {
 export function clearSession(): void {
   currentSession = null;
   refreshPromise = null;
+  bootPromise = null;
+  
+  // Also clear the access token from localStorage
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('karen_access_token');
+      localStorage.removeItem('karen_session_data');
+      console.log('Session cleared successfully');
+    } catch (error) {
+      console.warn('Failed to clear access token from localStorage:', error);
+    }
+  }
 }
 
 /**
@@ -74,13 +110,33 @@ export function isSessionValid(): boolean {
  * Returns Authorization header with Bearer token if session is valid
  */
 export function getAuthHeader(): Record<string, string> {
-  if (!currentSession || !isSessionValid()) {
-    return {};
+  // First try to get from current session
+  if (currentSession && currentSession.accessToken !== 'validated') {
+    if (isSessionValid()) {
+      console.log('Using current session token for auth header');
+      return {
+        'Authorization': `Bearer ${currentSession.accessToken}`
+      };
+    }
   }
   
-  return {
-    'Authorization': `Bearer ${currentSession.accessToken}`
-  };
+  // Fallback to localStorage if current session is not available or invalid
+  if (typeof window !== 'undefined') {
+    try {
+      const accessToken = localStorage.getItem('karen_access_token');
+      if (accessToken && accessToken !== 'null' && accessToken !== 'undefined') {
+        console.log('Using localStorage token for auth header');
+        return {
+          'Authorization': `Bearer ${accessToken}`
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to get access token from localStorage:', error);
+    }
+  }
+  
+  console.log('No valid auth token available for header');
+  return {};
 }
 
 /**
@@ -88,57 +144,69 @@ export function getAuthHeader(): Record<string, string> {
  * Attempts to restore session using HttpOnly refresh token cookie
  */
 export async function bootSession(): Promise<void> {
-  try {
-    const apiClient = getApiClient();
-    
-    // First, try to validate existing session
-    try {
-      const validateResponse = await apiClient.get('/api/auth/validate-session');
-      
-      if (validateResponse.data.valid && validateResponse.data.user) {
-        // We have a valid session, create session data
-        const sessionData: SessionData = {
-          accessToken: 'validated', // Placeholder - actual token is in HttpOnly cookie
-          expiresAt: Date.now() + (15 * 60 * 1000), // 15 minutes default
-          userId: validateResponse.data.user.user_id,
-          email: validateResponse.data.user.email,
-          roles: validateResponse.data.user.roles,
-          tenantId: validateResponse.data.user.tenant_id,
-        };
-        
-        setSession(sessionData);
-        console.log('Session validated successfully');
-        return;
-      }
-    } catch (validateError) {
-      // Validation failed, try refresh
-      console.log('Session validation failed, attempting refresh');
-    }
-    
-    // Attempt to refresh token using HttpOnly cookie
-    const response = await apiClient.post<TokenRefreshResponse>('/api/auth/refresh');
-    
-    // Calculate expiry time (expires_in is in seconds)
-    const expiresAt = Date.now() + (response.data.expires_in * 1000);
-    
-    // Store session data in memory
-    const sessionData: SessionData = {
-      accessToken: response.data.access_token,
-      expiresAt,
-      userId: response.data.user_data.user_id,
-      email: response.data.user_data.email,
-      roles: response.data.user_data.roles,
-      tenantId: response.data.user_data.tenant_id,
-    };
-    
-    setSession(sessionData);
-    
-    console.log('Session rehydrated successfully');
-  } catch (error: any) {
-    // Silent failure - no session to restore
-    console.log('No session to restore:', error.message);
-    clearSession();
+  // Prevent multiple simultaneous boot attempts
+  if (bootPromise) {
+    console.log('Boot session already in progress, waiting for existing attempt');
+    return bootPromise;
   }
+  
+  bootPromise = (async () => {
+    try {
+      const apiClient = getApiClient();
+      
+      // First, try to validate existing session with a timeout
+      try {
+        const validateResponse = await apiClient.get('/api/auth/validate-session');
+        
+        if (validateResponse.data.valid && validateResponse.data.user) {
+          // We have a valid session, create session data
+          const sessionData: SessionData = {
+            accessToken: 'validated', // Placeholder - actual token is in HttpOnly cookie
+            expiresAt: Date.now() + (15 * 60 * 1000), // 15 minutes default
+            userId: validateResponse.data.user.user_id,
+            email: validateResponse.data.user.email,
+            roles: validateResponse.data.user.roles || [],
+            tenantId: validateResponse.data.user.tenant_id,
+          };
+          
+          setSession(sessionData);
+          console.log('Session validated successfully');
+          return;
+        }
+      } catch (validateError: any) {
+        // Validation failed, try refresh
+        console.log('Session validation failed, attempting refresh:', validateError.message);
+      }
+      
+      // Attempt to refresh token using HttpOnly cookie
+      const response = await apiClient.post<TokenRefreshResponse>('/api/auth/refresh', {});
+      
+      // Calculate expiry time (expires_in is in seconds)
+      const expiresAt = Date.now() + (response.data.expires_in * 1000);
+      
+      // Store session data in memory
+      const sessionData: SessionData = {
+        accessToken: response.data.access_token,
+        expiresAt,
+        userId: response.data.user_data.user_id,
+        email: response.data.user_data.email,
+        roles: response.data.user_data.roles || [],
+        tenantId: response.data.user_data.tenant_id,
+      };
+      
+      setSession(sessionData);
+      
+      console.log('Session rehydrated successfully');
+    } catch (error: any) {
+      // Silent failure - no session to restore
+      console.log('No session to restore:', error.message);
+      clearSession();
+    } finally {
+      bootPromise = null;
+    }
+  })();
+  
+  return bootPromise;
 }
 
 /**
@@ -148,6 +216,7 @@ export async function bootSession(): Promise<void> {
 export async function refreshToken(): Promise<void> {
   // Prevent multiple simultaneous refresh attempts
   if (refreshPromise) {
+    console.log('Refresh already in progress, waiting for existing attempt');
     return refreshPromise;
   }
   
@@ -193,7 +262,12 @@ export async function refreshToken(): Promise<void> {
 export async function ensureToken(): Promise<void> {
   // If no session, try to boot from cookie
   if (!currentSession) {
-    await bootSession();
+    try {
+      await bootSession();
+    } catch (error) {
+      console.log('Boot session failed during ensureToken:', error);
+      // Don't throw - let the API call proceed and handle auth errors
+    }
     return;
   }
   
@@ -203,7 +277,14 @@ export async function ensureToken(): Promise<void> {
   }
   
   // Token is expired or about to expire, refresh it
-  await refreshToken();
+  try {
+    await refreshToken();
+  } catch (error) {
+    console.log('Token refresh failed during ensureToken:', error);
+    // Clear invalid session
+    clearSession();
+    // Don't throw - let the API call proceed and handle auth errors
+  }
 }
 
 /**
@@ -243,38 +324,156 @@ export function isAuthenticated(): boolean {
 }
 
 /**
+ * Check if current token is long-lived (expires in more than 2 hours)
+ */
+export function isLongLivedToken(): boolean {
+  if (!currentSession) {
+    return false;
+  }
+  
+  const timeUntilExpiry = currentSession.expiresAt - Date.now();
+  const twoHours = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+  
+  return timeUntilExpiry > twoHours;
+}
+
+/**
+ * Get time until token expiry in human readable format
+ */
+export function getTokenExpiryInfo(): { expiresIn: string; isLongLived: boolean } | null {
+  if (!currentSession) {
+    return null;
+  }
+  
+  const timeUntilExpiry = currentSession.expiresAt - Date.now();
+  const hours = Math.floor(timeUntilExpiry / (60 * 60 * 1000));
+  const minutes = Math.floor((timeUntilExpiry % (60 * 60 * 1000)) / (60 * 1000));
+  
+  let expiresIn: string;
+  if (hours > 0) {
+    expiresIn = `${hours}h ${minutes}m`;
+  } else if (minutes > 0) {
+    expiresIn = `${minutes}m`;
+  } else {
+    expiresIn = 'less than 1m';
+  }
+  
+  return {
+    expiresIn,
+    isLongLived: isLongLivedToken(),
+  };
+}
+
+/**
  * Login with credentials and establish session
  */
 export async function login(email: string, password: string, totpCode?: string): Promise<void> {
   try {
-    const apiClient = getApiClient();
-    
     const credentials: any = { email, password };
     if (totpCode) {
       credentials.totp_code = totpCode;
     }
     
-    const response = await apiClient.post<TokenRefreshResponse>('/api/auth/login', credentials);
+    // Add a small delay to prevent rapid successive requests and rate limiting
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Use Next.js API route to avoid CORS issues
+    console.log('Attempting login via Next.js API route');
+    
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      
+      // Handle rate limiting
+      if (response.status === 429) {
+        throw new Error('Too many login attempts. Please wait a moment and try again.');
+      }
+      
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
     
     // Calculate expiry time
-    const expiresAt = Date.now() + (response.data.expires_in * 1000);
+    const expiresAt = Date.now() + (data.expires_in * 1000);
     
     // Store session data in memory
     const sessionData: SessionData = {
-      accessToken: response.data.access_token,
+      accessToken: data.access_token,
       expiresAt,
-      userId: response.data.user_data.user_id,
-      email: response.data.user_data.email,
-      roles: response.data.user_data.roles,
-      tenantId: response.data.user_data.tenant_id,
+      userId: data.user.user_id,
+      email: data.user.email,
+      roles: data.user.roles || [],
+      tenantId: data.user.tenant_id,
     };
     
     setSession(sessionData);
     
-    console.log('Login successful');
+    console.log('Login successful, attempting to create long-lived token for API stability');
+    
+    // After successful login, request a long-lived token for better API stability
+    try {
+      await createLongLivedToken();
+    } catch (longLivedError: any) {
+      // Don't fail the login if long-lived token creation fails
+      console.warn('Failed to create long-lived token, continuing with regular token:', longLivedError.message);
+    }
+    
   } catch (error: any) {
     console.error('Login failed:', error.message);
     clearSession();
+    throw error;
+  }
+}
+
+/**
+ * Create a long-lived token after successful authentication for API stability
+ */
+export async function createLongLivedToken(): Promise<void> {
+  try {
+    const response = await fetch('/api/auth/create-long-lived-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Update session with long-lived token
+    if (currentSession) {
+      const longLivedExpiresAt = Date.now() + (data.expires_in * 1000);
+      
+      const updatedSession: SessionData = {
+        ...currentSession,
+        accessToken: data.access_token,
+        expiresAt: longLivedExpiresAt,
+      };
+      
+      setSession(updatedSession);
+      
+      console.log('Long-lived token created successfully, expires in 24 hours');
+    }
+    
+  } catch (error: any) {
+    console.error('Failed to create long-lived token:', error.message);
     throw error;
   }
 }

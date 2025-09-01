@@ -97,22 +97,22 @@ class ProviderRegistryService:
         
         # Text generation fallback chain
         self._fallback_chains["text_generation"] = FallbackChain(
-            primary="openai",
-            fallbacks=["gemini", "deepseek", "ollama", "huggingface"],
+            primary="llamacpp",
+            fallbacks=["openai", "gemini", "deepseek", "huggingface", "local"],
             capability_required=ProviderCapability.TEXT_GENERATION
         )
         
         # Embeddings fallback chain
         self._fallback_chains["embeddings"] = FallbackChain(
-            primary="openai",
-            fallbacks=["huggingface", "ollama"],
+            primary="llamacpp",
+            fallbacks=["openai", "huggingface"],
             capability_required=ProviderCapability.EMBEDDINGS
         )
         
         # Local-first fallback chain
         self._fallback_chains["local_first"] = FallbackChain(
-            primary="ollama",
-            fallbacks=["openai", "gemini", "deepseek"],
+            primary="llamacpp",
+            fallbacks=["openai", "gemini", "deepseek", "huggingface"],
             capability_required=ProviderCapability.TEXT_GENERATION
         )
     

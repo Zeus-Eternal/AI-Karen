@@ -19,7 +19,7 @@ import {
   Info,
   Trash2
 } from 'lucide-react';
-import { backend } from '../../services/backend';
+import { getKarenBackend } from '@/lib/karen-backend';
 
 interface BasicTrainingPreset {
   name: string;
@@ -114,8 +114,8 @@ const BasicTrainingMode: React.FC = () => {
 
   const loadPresets = async () => {
     try {
-      const response = await backend.makeRequestPublic('/api/basic-training/presets');
-      setPresets(response);
+      const response = await getKarenBackend().makeRequestPublic('/api/basic-training/presets');
+      setPresets(response as BasicTrainingPreset[]);
     } catch (err) {
       setError('Failed to load training presets');
       console.error('Error loading presets:', err);
@@ -124,10 +124,11 @@ const BasicTrainingMode: React.FC = () => {
 
   const loadProgress = async (jobId: string) => {
     try {
-      const response = await backend.makeRequestPublic(`/api/basic-training/progress/${jobId}`);
-      setProgress(response);
+      const response = await getKarenBackend().makeRequestPublic(`/api/basic-training/progress/${jobId}`);
+      const progressData = response as any;
+      setProgress(progressData);
       
-      if (response.status === 'Training completed!' || response.status === 'Training encountered an issue') {
+      if (progressData.status === 'Training completed!' || progressData.status === 'Training encountered an issue') {
         loadResult(jobId);
       }
     } catch (err) {
@@ -137,8 +138,8 @@ const BasicTrainingMode: React.FC = () => {
 
   const loadResult = async (jobId: string) => {
     try {
-      const response = await backend.makeRequestPublic(`/api/basic-training/result/${jobId}`);
-      setResult(response);
+      const response = await getKarenBackend().makeRequestPublic(`/api/basic-training/result/${jobId}`);
+      setResult(response as any);
     } catch (err) {
       console.error('Error loading result:', err);
     }
@@ -146,8 +147,8 @@ const BasicTrainingMode: React.FC = () => {
 
   const loadBackups = async () => {
     try {
-      const response = await backend.makeRequestPublic('/api/basic-training/backups');
-      setBackups(response);
+      const response = await getKarenBackend().makeRequestPublic('/api/basic-training/backups');
+      setBackups(response as any[]);
     } catch (err) {
       console.error('Error loading backups:', err);
     }
@@ -163,7 +164,7 @@ const BasicTrainingMode: React.FC = () => {
     setError(null);
     
     try {
-      const response = await backend.makeRequestPublic('/api/basic-training/start', {
+      const response = await getKarenBackend().makeRequestPublic('/api/basic-training/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -174,12 +175,13 @@ const BasicTrainingMode: React.FC = () => {
         })
       });
       
-      setCurrentJob(response.job_id);
+      const jobData = response as any;
+      setCurrentJob(jobData.job_id);
       setProgress(null);
       setResult(null);
       
       // Start monitoring progress
-      setTimeout(() => loadProgress(response.job_id), 1000);
+      setTimeout(() => loadProgress(jobData.job_id), 1000);
       
     } catch (err: any) {
       setError(err.message || 'Failed to start training');
@@ -192,7 +194,7 @@ const BasicTrainingMode: React.FC = () => {
     if (!currentJob) return;
     
     try {
-      await backend.makeRequestPublic(`/api/basic-training/cancel/${currentJob}`, {
+      await getKarenBackend().makeRequestPublic(`/api/basic-training/cancel/${currentJob}`, {
         method: 'POST'
       });
       setCurrentJob(null);
@@ -206,7 +208,7 @@ const BasicTrainingMode: React.FC = () => {
     const description = prompt('Enter backup description:') || 'Manual backup';
     
     try {
-      await backend.makeRequestPublic('/api/basic-training/backup', {
+      await getKarenBackend().makeRequestPublic('/api/basic-training/backup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description })
@@ -223,7 +225,7 @@ const BasicTrainingMode: React.FC = () => {
     }
     
     try {
-      await backend.makeRequestPublic('/api/basic-training/restore', {
+      await getKarenBackend().makeRequestPublic('/api/basic-training/restore', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ backup_id: backupId })
@@ -242,7 +244,7 @@ const BasicTrainingMode: React.FC = () => {
     const preserveUserData = confirm('Do you want to preserve user data?');
     
     try {
-      await backend.makeRequestPublic('/api/basic-training/reset', {
+      await getKarenBackend().makeRequestPublic('/api/basic-training/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ preserve_user_data: preserveUserData })
@@ -259,7 +261,7 @@ const BasicTrainingMode: React.FC = () => {
     }
     
     try {
-      await backend.makeRequestPublic(`/api/basic-training/backup/${backupId}`, {
+      await getKarenBackend().makeRequestPublic(`/api/basic-training/backup/${backupId}`, {
         method: 'DELETE'
       });
       loadBackups();
@@ -561,12 +563,14 @@ const BasicTrainingMode: React.FC = () => {
                 
                 {result.improvement_percentage !== null && (
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="font-medium">Improvement</p>
-                      <p className={result.improvement_percentage > 0 ? 'text-green-600' : 'text-red-600'}>
-                        {result.improvement_percentage > 0 ? '+' : ''}{result.improvement_percentage.toFixed(1)}%
-                      </p>
-                    </div>
+                    {result.improvement_percentage !== undefined && (
+                      <div>
+                        <p className="font-medium">Improvement</p>
+                        <p className={result.improvement_percentage > 0 ? 'text-green-600' : 'text-red-600'}>
+                          {result.improvement_percentage > 0 ? '+' : ''}{result.improvement_percentage.toFixed(1)}%
+                        </p>
+                      </div>
+                    )}
                     {result.final_loss && (
                       <div>
                         <p className="font-medium">Final Loss</p>

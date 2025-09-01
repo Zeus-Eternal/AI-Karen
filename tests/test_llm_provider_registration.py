@@ -29,7 +29,7 @@ def test_provider_registration():
     
     # Check registered providers
     providers = registry.list_providers()
-    expected_providers = ["ollama", "openai", "gemini", "deepseek", "huggingface"]
+    expected_providers = ["llama-cpp", "openai", "gemini", "deepseek", "huggingface"]
     
     print(f"\n📋 Registered providers: {providers}")
     

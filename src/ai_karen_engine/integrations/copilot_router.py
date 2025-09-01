@@ -72,40 +72,40 @@ class CopilotRoutingPolicy:
     def __post_init__(self):
         if self.privacy_level_enforcement is None:
             self.privacy_level_enforcement = {
-                PrivacyLevel.CONFIDENTIAL: ["local", "ollama"],
-                PrivacyLevel.INTERNAL: ["local", "ollama", "huggingface"],
-                PrivacyLevel.PUBLIC: ["local", "ollama", "huggingface", "openai_cloud", "deepseek"]
+                PrivacyLevel.CONFIDENTIAL: ["local", "llamacpp"],
+                PrivacyLevel.INTERNAL: ["local", "llamacpp", "huggingface"],
+                PrivacyLevel.PUBLIC: ["local", "llamacpp", "huggingface", "openai_cloud", "deepseek"]
             }
         
         if self.capability_routing is None:
             self.capability_routing = {
                 CopilotCapability.REVIEW: {
-                    "preferred_providers": ["deepseek", "ollama"],
+                    "preferred_providers": ["deepseek", "llamacpp"],
                     "required_capabilities": ["code_analysis"],
                     "privacy_level": PrivacyLevel.INTERNAL
                 },
                 CopilotCapability.DEBUG: {
-                    "preferred_providers": ["openai_cloud", "ollama"],
+                    "preferred_providers": ["openai_cloud", "llamacpp"],
                     "required_capabilities": ["reasoning"],
                     "privacy_level": PrivacyLevel.INTERNAL
                 },
                 CopilotCapability.REFACTOR: {
-                    "preferred_providers": ["ollama"],  # Always local for refactoring
+                    "preferred_providers": ["llamacpp"],  # Always local for refactoring
                     "privacy_level": PrivacyLevel.CONFIDENTIAL,
                     "force_local": True
                 },
                 CopilotCapability.GENERATE_TESTS: {
-                    "preferred_providers": ["deepseek", "ollama"],
+                    "preferred_providers": ["deepseek", "llamacpp"],
                     "required_capabilities": ["code_generation"],
                     "privacy_level": PrivacyLevel.INTERNAL
                 }
             }
         
         if self.trusted_providers is None:
-            self.trusted_providers = ["local", "ollama", "huggingface"]
+            self.trusted_providers = ["local", "llamacpp", "huggingface"]
         
         if self.local_providers is None:
-            self.local_providers = ["local", "ollama"]
+            self.local_providers = ["local", "llamacpp"]
 
 
 class CopilotLLMRouter(IntelligentLLMRouter):

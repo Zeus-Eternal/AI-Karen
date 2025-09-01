@@ -99,7 +99,7 @@ def test_llm_integration():
                 "gemini": "test-gemini-key"
             },
             "custom_models": {
-                "ollama": "llama3.2:1b",
+                "llama-cpp": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
                 "openai": "gpt-4"
             }
         }

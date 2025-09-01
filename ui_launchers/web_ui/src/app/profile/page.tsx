@@ -18,7 +18,7 @@ export default function ProfilePage() {
   const [password, setPassword] = useState('')
 
   useEffect(() => {
-    if (!user) return
+    if (!user?.user_id) return
     setUsername(user.user_id)
     
     // Only run on client side
@@ -28,7 +28,7 @@ export default function ProfilePage() {
         .then(stats => setMemoryCount(stats.totalMemories))
         .catch(() => setMemoryCount(null))
     }
-  }, [user])
+  }, [user?.user_id])
 
   if (!user) {
     router.push('/login')
@@ -37,6 +37,7 @@ export default function ProfilePage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user?.user_id) return
     await updateCredentials(username !== user.user_id ? username : undefined, password || undefined)
     setPassword('')
   }
@@ -58,14 +59,14 @@ export default function ProfilePage() {
           <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>Logged in as <span className="font-semibold">{user.user_id}</span></div>
+          <div>Logged in as <span className="font-semibold">{user?.user_id}</span></div>
           {memoryCount !== null && <div>Total memories: {memoryCount}</div>}
           <form onSubmit={handleSave} className="space-y-3">
             <Input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" />
             <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" />
             <div className="space-y-2">
               <Label>Theme</Label>
-              <Select defaultValue={user.preferences.ui.theme} onValueChange={val => updateUserPreferences({ ui: { theme: val } })}>
+              <Select defaultValue={user?.preferences?.ui?.theme} onValueChange={val => updateUserPreferences({ ui: { theme: val } })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="light">Light</SelectItem>
@@ -83,7 +84,7 @@ export default function ProfilePage() {
             </div>
           </form>
           <div>
-            {user.two_factor_enabled ? (
+            {user?.two_factor_enabled ? (
               <a href="/setup-2fa" className="underline">Manage 2FA</a>
             ) : (
               <a href="/setup-2fa" className="underline">Enable Two-Factor Authentication</a>

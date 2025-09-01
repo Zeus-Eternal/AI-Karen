@@ -28,7 +28,7 @@ import {
   Database
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { ErrorHandler } from '@/lib/error-handler';
+import { handleApiError } from '@/lib/error-handler';
 
 interface UploadJob {
   id: string;
@@ -226,7 +226,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
               : job
           ));
 
-          onJobCreated?.(response.job_id);
+          onJobCreated?.((response as any).job_id);
           
           toast({
             title: 'Upload Started',
@@ -242,7 +242,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
               : job
           ));
 
-          const info = ErrorHandler.handleApiError(error as any, 'uploadModel');
+          const info = handleApiError(error as any, 'uploadModel');
           toast({
             variant: 'destructive',
             title: info.title,
@@ -285,7 +285,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         })
       });
 
-      onJobCreated?.(response.job_id);
+      onJobCreated?.((response as any).job_id);
       
       toast({
         title: 'Conversion Started',
@@ -300,7 +300,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
 
     } catch (error) {
       console.error('Failed to start conversion:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'convertModel');
+      const info = handleApiError(error as any, 'convertModel');
       toast({
         variant: 'destructive',
         title: info.title,
@@ -334,7 +334,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         })
       });
 
-      onJobCreated?.(response.job_id);
+      onJobCreated?.((response as any).job_id);
       
       toast({
         title: 'Quantization Started',
@@ -349,7 +349,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
 
     } catch (error) {
       console.error('Failed to start quantization:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'quantizeModel');
+      const info = handleApiError(error as any, 'quantizeModel');
       toast({
         variant: 'destructive',
         title: info.title,
@@ -383,7 +383,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
         })
       });
 
-      onJobCreated?.(response.job_id);
+      onJobCreated?.((response as any).job_id);
       
       toast({
         title: 'LoRA Merge Started',
@@ -398,7 +398,7 @@ export default function ModelUploadInterface({ onModelUploaded, onJobCreated }: 
 
     } catch (error) {
       console.error('Failed to start LoRA merge:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'mergeLoRA');
+      const info = handleApiError(error as any, 'mergeLoRA');
       toast({
         variant: 'destructive',
         title: info.title,

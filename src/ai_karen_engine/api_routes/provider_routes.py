@@ -8,6 +8,8 @@ and provider health monitoring.
 import asyncio
 import logging
 import time
+import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.core.error_handler import handle_api_exception
@@ -22,6 +24,8 @@ BaseModel, Field = import_pydantic("BaseModel", "Field")
 logger = logging.getLogger("kari.provider_routes")
 
 router = APIRouter(tags=["providers"])
+# Public router (no auth dependencies). Exposed under /api/public/providers
+public_router = APIRouter(tags=["public-providers"])
 
 
 # Request/Response Models
@@ -96,6 +100,100 @@ class ModelInfo(BaseModel):
     description: str = ""
 
 
+# ------------------------------------------------------------
+# Contract shapes to support unified frontend
+# ------------------------------------------------------------
+
+class ContractProviderItem(BaseModel):
+    id: str
+    title: str
+    group: str  # "local" | "cloud"
+    canListModels: bool
+    canInfer: bool
+    available: bool
+
+
+class ContractModelInfo(BaseModel):
+    id: str
+    provider: str
+    displayName: str
+    family: str
+    installed: bool = True
+    remote: bool = False
+    size: Optional[str] = None
+    quant: Optional[str] = None
+    contextWindow: Optional[int] = None
+    tags: List[str] = []
+
+
+def _split_env_csv(name: str) -> List[str]:
+    val = os.getenv(name, "").strip()
+    if not val:
+        return []
+    return [x.strip() for x in val.split(",") if x.strip()]
+
+
+def _has_gguf(dir_path: Path) -> bool:
+    try:
+        return any(p.suffix.lower() == ".gguf" for p in dir_path.glob("**/*"))
+    except Exception:
+        return False
+
+
+def _list_gguf(dir_path: Path) -> List[ContractModelInfo]:
+    models: List[ContractModelInfo] = []
+    for p in dir_path.glob("**/*.gguf"):
+        name = p.stem
+        display = name
+        quant = None
+        size = None
+        lowered = name.lower()
+        for token in ("3b", "4b", "7b", "8b", "13b", "34b", "70b"):
+            if token in lowered:
+                size = token.upper()
+                break
+        for part in name.split("-"):
+            if part.upper().startswith("Q"):
+                quant = part.upper()
+                break
+        models.append(
+            ContractModelInfo(
+                id=f"llama:/{p.name}",
+                provider="llama-cpp",
+                displayName=display,
+                family="llama",
+                installed=True,
+                remote=False,
+                size=size,
+                quant=quant,
+                contextWindow=8192,
+                tags=["gguf"],
+            )
+        )
+    return models
+
+
+def _list_transformers(dir_path: Path) -> List[ContractModelInfo]:
+    models: List[ContractModelInfo] = []
+    try:
+        for child in dir_path.iterdir():
+            if child.is_dir():
+                models.append(
+                    ContractModelInfo(
+                        id=f"transformers:/{child.name}",
+                        provider="transformers-local",
+                        displayName=child.name,
+                        family="transformers",
+                        installed=True,
+                        remote=False,
+                        tags=["hf", "local"],
+                    )
+                )
+    except Exception:
+        pass
+    return models
+
+
 # Dependency to get registry
 def get_llm_registry():
     """Get the global LLM registry instance."""
@@ -106,6 +204,7 @@ def get_llm_registry():
 async def list_providers(
     category: Optional[str] = None,
     healthy_only: bool = False,
+    llm_only: bool = False,
     registry=Depends(get_llm_registry)
 ):
     """
@@ -119,7 +218,10 @@ async def list_providers(
         List of provider information
     """
     try:
-        provider_names = registry.list_providers(category=category, healthy_only=healthy_only)
+        if llm_only:
+            provider_names = registry.list_llm_providers(healthy_only=healthy_only)
+        else:
+            provider_names = registry.list_providers(category=category, healthy_only=healthy_only)
         providers = []
         
         for name in provider_names:
@@ -144,6 +246,21 @@ async def list_providers(
                 "huggingface": "https://huggingface.co/docs",
             }
             
+            # Get model availability from Model Library
+            model_library_info = {}
+            try:
+                from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
+                compatibility_service = ProviderModelCompatibilityService()
+                validation = compatibility_service.validate_provider_model_setup(name)
+                model_library_info = {
+                    "has_compatible_models": validation.get("has_compatible_models", False),
+                    "local_models_count": validation.get("local_models_count", 0),
+                    "available_for_download": validation.get("available_for_download", 0),
+                    "total_compatible": validation.get("total_compatible", 0)
+                }
+            except Exception as e:
+                logger.warning(f"Failed to get model library info for {name}: {e}")
+            
             provider_info = ProviderInfo(
                 name=spec.name,
                 description=spec.description,
@@ -155,7 +272,7 @@ async def list_providers(
                 health_status=health.status if health else "unknown",
                 error_message=health.error_message if health else None,
                 last_health_check=health.last_check if health else None,
-                cached_models_count=len(spec.fallback_models),
+                cached_models_count=model_library_info.get("local_models_count", len(spec.fallback_models)),
                 documentation_url=doc_urls.get(name)
             )
             
@@ -539,9 +656,485 @@ async def get_provider_stats(registry=Depends(get_llm_registry)):
         )
         
     except Exception as ex:
-        logger.error(f"Failed to get provider stats: {ex}")
-        raise handle_api_exception(ex, "Failed to get provider statistics")
+            logger.error(f"Failed to get provider stats: {ex}")
+            raise handle_api_exception(ex, "Failed to get provider statistics")
+
+
+# ----------------- Contract endpoints under /api/providers -----------------
+
+
+@router.get("/discovery", response_model=List[ContractProviderItem])
+async def provider_discovery() -> List[ContractProviderItem]:
+    items: List[ContractProviderItem] = []
+
+    llama_dir = Path(os.getenv("LLAMA_CPP_MODELS_DIR", "./models/gguf")).resolve()
+    llama_available = llama_dir.exists() and _has_gguf(llama_dir)
+
+    tf_dir = Path(os.getenv("TRANSFORMERS_MODELS_DIR", "./models/transformers")).resolve()
+    transformers_available = tf_dir.exists() and any(tf_dir.iterdir())
+
+    spacy_pipelines = _split_env_csv("SPACY_PIPELINES")
+    spacy_available = len(spacy_pipelines) > 0
+
+    cloud_envs = {
+        "openai": bool(os.getenv("OPENAI_API_KEY")),
+        "gemini": bool(os.getenv("GEMINI_API_KEY")),
+        "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
+        "mistral": bool(os.getenv("MISTRAL_API_KEY")),
+        "groq": bool(os.getenv("GROQ_API_KEY")),
+    }
+
+    items.extend(
+        [
+            ContractProviderItem(
+                id="llama-cpp",
+                title="llama.cpp (Local)",
+                group="local",
+                canListModels=True,
+                canInfer=False,
+                available=llama_available,
+            ),
+            ContractProviderItem(
+                id="transformers-local",
+                title="Transformers (Local)",
+                group="local",
+                canListModels=True,
+                canInfer=False,
+                available=transformers_available,
+            ),
+            ContractProviderItem(
+                id="spacy",
+                title="spaCy (Pipelines)",
+                group="local",
+                canListModels=True,
+                canInfer=False,
+                available=spacy_available,
+            ),
+            ContractProviderItem(
+                id="openai",
+                title="OpenAI",
+                group="cloud",
+                canListModels=True,
+                canInfer=False,
+                available=cloud_envs["openai"],
+            ),
+        ]
+    )
+
+    for pid, ok in cloud_envs.items():
+        if pid == "openai":
+            continue
+        title = pid.title() if pid != "groq" else "Groq"
+        items.append(
+            ContractProviderItem(
+                id=pid,
+                title=title,
+                group="cloud",
+                canListModels=True,
+                canInfer=False,
+                available=ok,
+            )
+        )
+
+    return items
+
+# Public mirrors
+@public_router.get("/discovery", response_model=List[ContractProviderItem])
+async def public_provider_discovery() -> List[ContractProviderItem]:
+    return await provider_discovery()
+
+
+@router.get("/local/llama/models", response_model=List[ContractModelInfo])
+async def contract_llama_models() -> List[ContractModelInfo]:
+    base = Path(os.getenv("LLAMA_CPP_MODELS_DIR", "./models/gguf")).resolve()
+    if not base.exists():
+        return []
+    return _list_gguf(base)
+
+@public_router.get("/local/llama/models", response_model=List[ContractModelInfo])
+async def public_llama_models() -> List[ContractModelInfo]:
+    return await contract_llama_models()
+
+
+@router.get("/local/transformers/models", response_model=List[ContractModelInfo])
+async def contract_transformers_models() -> List[ContractModelInfo]:
+    base = Path(os.getenv("TRANSFORMERS_MODELS_DIR", "./models/transformers")).resolve()
+    if not base.exists():
+        return []
+    return _list_transformers(base)
+
+@public_router.get("/local/transformers/models", response_model=List[ContractModelInfo])
+async def public_transformers_models() -> List[ContractModelInfo]:
+    return await contract_transformers_models()
+
+
+@router.get("/local/spacy/pipelines", response_model=List[str])
+async def contract_spacy_pipelines() -> List[str]:
+    return _split_env_csv("SPACY_PIPELINES")
+
+@public_router.get("/local/spacy/pipelines", response_model=List[str])
+async def public_spacy_pipelines() -> List[str]:
+    return await contract_spacy_pipelines()
+
+
+@router.get("/cloud/openai/ping")
+async def contract_openai_ping():
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=400, detail="OPENAI_API_KEY not configured")
+    return {"ok": True}
+
+
+@router.get("/cloud/openai/models", response_model=List[ContractModelInfo])
+async def contract_openai_models() -> List[ContractModelInfo]:
+    key = os.getenv("OPENAI_API_KEY")
+    allowlist = _split_env_csv("OPENAI_MODELS_ALLOWLIST")
+    models: List[ContractModelInfo] = []
+
+    if allowlist:
+        for mid in allowlist:
+            models.append(
+                ContractModelInfo(
+                    id=mid,
+                    provider="openai",
+                    displayName=mid,
+                    family="gpt" if mid.startswith("gpt") else "openai",
+                    installed=False,
+                    remote=True,
+                    tags=["cloud"],
+                )
+            )
+        return models
+
+    if key:
+        try:
+            import requests  # type: ignore
+
+            base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+            resp = requests.get(
+                f"{base.rstrip('/')}/models",
+                headers={"Authorization": f"Bearer {key}"},
+                timeout=10,
+            )
+            if resp.ok:
+                data = resp.json()
+                for item in data.get("data", []):
+                    mid = item.get("id", "")
+                    if not mid:
+                        continue
+                    if not (mid.startswith("gpt") or mid.startswith("o")):
+                        continue
+                    models.append(
+                        ContractModelInfo(
+                            id=mid,
+                            provider="openai",
+                            displayName=mid,
+                            family="gpt" if mid.startswith("gpt") else "openai",
+                            installed=False,
+                            remote=True,
+                            tags=["cloud"],
+                        )
+                    )
+                return models
+        except Exception:
+            pass
+
+    for mid in ["gpt-4o", "gpt-4.1", "gpt-4.1-mini", "o4-mini"]:
+        models.append(
+            ContractModelInfo(
+                id=mid,
+                provider="openai",
+                displayName=mid,
+                family="gpt" if mid.startswith("gpt") else "openai",
+                installed=False,
+                remote=True,
+                tags=["cloud"],
+            )
+        )
+    return models
+
+
+@router.get("/{provider_name}/suggestions")
+async def get_provider_model_suggestions(
+    provider_name: str,
+    registry=Depends(get_llm_registry)
+):
+    """
+    Get comprehensive model suggestions for a specific provider from Model Library.
+    
+    Args:
+        provider_name: Name of the provider
+        
+    Returns:
+        Provider-specific model suggestions with compatibility information
+    """
+    try:
+        spec = registry.get_provider_spec(provider_name)
+        if not spec:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Provider '{provider_name}' not found"
+            )
+        
+        # Use the compatibility service to get suggestions
+        try:
+            from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
+            compatibility_service = ProviderModelCompatibilityService()
+            suggestions = compatibility_service.get_provider_model_suggestions(provider_name)
+            
+            if "error" in suggestions:
+                raise HTTPException(status_code=500, detail=suggestions["error"])
+            
+            return suggestions
+            
+        except ImportError:
+            # Fallback if compatibility service is not available
+            return {
+                "provider": provider_name,
+                "provider_capabilities": {
+                    "supported_formats": ["unknown"],
+                    "required_capabilities": list(spec.capabilities),
+                    "optional_capabilities": [],
+                    "performance_type": "unknown",
+                    "quantization_support": "unknown"
+                },
+                "recommendations": {
+                    "excellent": [],
+                    "good": [model.get("id", "") for model in spec.fallback_models[:3]],
+                    "acceptable": []
+                },
+                "total_compatible_models": len(spec.fallback_models),
+                "compatibility_details": {}
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as ex:
+        logger.error(f"Failed to get model suggestions for provider {provider_name}: {ex}")
+        raise handle_api_exception(ex, f"Failed to get model suggestions for provider {provider_name}")
+
+
+@router.get("/integration/status")
+async def get_integration_status(registry=Depends(get_llm_registry)):
+    """
+    Get integration status between providers and Model Library.
+    
+    Returns:
+        Integration status information including model availability and compatibility
+    """
+    try:
+        provider_names = registry.list_llm_providers()
+        integration_status = {
+            "providers": {},
+            "overall_status": "healthy",
+            "total_providers": len(provider_names),
+            "healthy_providers": 0,
+            "providers_with_models": 0,
+            "total_compatible_models": 0,
+            "recommendations": []
+        }
+        
+        for provider_name in provider_names:
+            try:
+                # Get provider health
+                health = registry.get_health_status(f"provider:{provider_name}")
+                is_healthy = health and health.status == "healthy"
+                
+                # Get model compatibility info
+                try:
+                    from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
+                    compatibility_service = ProviderModelCompatibilityService()
+                    validation = compatibility_service.validate_provider_model_setup(provider_name)
+                    
+                    provider_status = {
+                        "name": provider_name,
+                        "healthy": is_healthy,
+                        "has_compatible_models": validation.get("has_compatible_models", False),
+                        "has_local_models": validation.get("has_local_models", False),
+                        "local_models_count": validation.get("local_models_count", 0),
+                        "available_for_download": validation.get("available_for_download", 0),
+                        "total_compatible": validation.get("total_compatible", 0),
+                        "status": validation.get("status", "unknown"),
+                        "recommendations": validation.get("recommendations", [])
+                    }
+                    
+                    if is_healthy:
+                        integration_status["healthy_providers"] += 1
+                    
+                    if validation.get("has_compatible_models", False):
+                        integration_status["providers_with_models"] += 1
+                    
+                    integration_status["total_compatible_models"] += validation.get("total_compatible", 0)
+                    
+                except ImportError:
+                    # Fallback without compatibility service
+                    spec = registry.get_provider_spec(provider_name)
+                    provider_status = {
+                        "name": provider_name,
+                        "healthy": is_healthy,
+                        "has_compatible_models": len(spec.fallback_models) > 0 if spec else False,
+                        "has_local_models": False,  # Can't determine without compatibility service
+                        "local_models_count": 0,
+                        "available_for_download": len(spec.fallback_models) if spec else 0,
+                        "total_compatible": len(spec.fallback_models) if spec else 0,
+                        "status": "unknown",
+                        "recommendations": ["Install Model Library compatibility service for full integration"]
+                    }
+                    
+                    if is_healthy:
+                        integration_status["healthy_providers"] += 1
+                
+                integration_status["providers"][provider_name] = provider_status
+                
+            except Exception as e:
+                logger.warning(f"Failed to get integration status for {provider_name}: {e}")
+                integration_status["providers"][provider_name] = {
+                    "name": provider_name,
+                    "healthy": False,
+                    "has_compatible_models": False,
+                    "has_local_models": False,
+                    "local_models_count": 0,
+                    "available_for_download": 0,
+                    "total_compatible": 0,
+                    "status": "error",
+                    "recommendations": [f"Error checking integration: {e}"]
+                }
+        
+        # Determine overall status
+        if integration_status["healthy_providers"] == 0:
+            integration_status["overall_status"] = "unhealthy"
+        elif integration_status["providers_with_models"] == 0:
+            integration_status["overall_status"] = "needs_models"
+        elif integration_status["healthy_providers"] < integration_status["total_providers"] // 2:
+            integration_status["overall_status"] = "degraded"
+        
+        # Add overall recommendations
+        if integration_status["providers_with_models"] == 0:
+            integration_status["recommendations"].append("No providers have compatible models. Visit Model Library to download models.")
+        elif integration_status["providers_with_models"] < integration_status["total_providers"]:
+            integration_status["recommendations"].append("Some providers need compatible models. Check Model Library for recommendations.")
+        
+        return integration_status
+        
+    except Exception as ex:
+        logger.error(f"Failed to get integration status: {ex}")
+        raise handle_api_exception(ex, "Failed to get integration status")
+
+
+@router.get("/{provider_name}/model-recommendations")
+async def get_provider_model_recommendations(
+    provider_name: str,
+    limit: int = 10,
+    registry=Depends(get_llm_registry)
+):
+    """
+    Get model recommendations for a specific provider from Model Library.
+    
+    Args:
+        provider_name: Name of the provider
+        limit: Maximum number of recommendations to return
+        
+    Returns:
+        Provider-specific model recommendations with compatibility information
+    """
+    try:
+        spec = registry.get_provider_spec(provider_name)
+        if not spec:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Provider '{provider_name}' not found"
+            )
+        
+        # Get recommendations from Model Library compatibility service
+        try:
+            from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
+            compatibility_service = ProviderModelCompatibilityService()
+            
+            # Get comprehensive suggestions
+            suggestions = compatibility_service.get_provider_model_suggestions(provider_name)
+            
+            if "error" in suggestions:
+                return {
+                    "provider": provider_name,
+                    "recommendations": [],
+                    "error": suggestions["error"],
+                    "fallback_models": spec.fallback_models
+                }
+            
+            return {
+                "provider": provider_name,
+                "provider_capabilities": suggestions.get("provider_capabilities", {}),
+                "recommendations": suggestions.get("recommendations", {}),
+                "total_compatible_models": suggestions.get("total_compatible_models", 0),
+                "compatibility_details": suggestions.get("compatibility_details", {}),
+                "validation": compatibility_service.validate_provider_model_setup(provider_name)
+            }
+            
+        except Exception as e:
+            logger.warning(f"Failed to get Model Library recommendations for {provider_name}: {e}")
+            
+            # Fallback to provider's own models
+            return {
+                "provider": provider_name,
+                "recommendations": {
+                    "fallback": [model.get("id", model.get("name", "")) for model in spec.fallback_models]
+                },
+                "total_compatible_models": len(spec.fallback_models),
+                "error": f"Model Library unavailable: {str(e)}",
+                "fallback_models": spec.fallback_models
+            }
+        
+    except HTTPException:
+        raise
+    except Exception as ex:
+        logger.error(f"Failed to get model recommendations for {provider_name}: {ex}")
+        raise handle_api_exception(ex, f"Failed to get recommendations for provider {provider_name}")
 
 
 # Export the router
 __all__ = ["router"]
+@router.get("/{provider_name}/health")
+async def check_provider_health(provider_name: str, registry=Depends(get_llm_registry)):
+    """Check health of a single provider."""
+    try:
+        status = registry.health_check(f"provider:{provider_name}")
+        return {
+            "name": provider_name,
+            "status": status.status,
+            "last_check": status.last_check,
+            "error_message": status.error_message,
+            "response_time": status.response_time,
+            "capabilities": status.capabilities,
+        }
+    except Exception as ex:
+        logger.error(f"Health check failed for {provider_name}: {ex}")
+        return handle_api_exception(ex, f"Failed to check health for {provider_name}")
+
+
+@router.post("/{provider_name}/disable")
+async def disable_provider(provider_name: str, registry=Depends(get_llm_registry)):
+    """Disable a provider without unregistering it."""
+    try:
+        ok = registry.disable_provider(provider_name)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Provider not found")
+        return {"success": True, "provider": provider_name, "disabled": True}
+    except HTTPException:
+        raise
+    except Exception as ex:
+        logger.error(f"Disable provider failed for {provider_name}: {ex}")
+        return handle_api_exception(ex, f"Failed to disable provider {provider_name}")
+
+
+@router.post("/{provider_name}/enable")
+async def enable_provider(provider_name: str, registry=Depends(get_llm_registry)):
+    """Enable a previously disabled provider."""
+    try:
+        ok = registry.enable_provider(provider_name)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Provider not found")
+        return {"success": True, "provider": provider_name, "disabled": False}
+    except HTTPException:
+        raise
+    except Exception as ex:
+        logger.error(f"Enable provider failed for {provider_name}: {ex}")
+        return handle_api_exception(ex, f"Failed to enable provider {provider_name}")

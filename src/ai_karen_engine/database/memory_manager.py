@@ -197,6 +197,8 @@ class MemoryManager:
         start_time = time.time()
 
         try:
+            # Ensure we have an embedding manager available
+            await self._ensure_embedding_manager()
             # Generate embedding
             emb_t0 = time.time()
             embedding_raw = await self.embedding_manager.get_embedding(content)
@@ -320,6 +322,8 @@ class MemoryManager:
         cache_key = self._get_cache_key(tenant_id, query)
 
         try:
+            # Ensure we have an embedding manager available
+            await self._ensure_embedding_manager()
             # Cache
             if self.redis_client:
                 cached = await self._get_cached_query(cache_key)
@@ -450,6 +454,36 @@ class MemoryManager:
             "prune_expired_memories called – not applicable for memory_items table"
         )
         return 0
+
+    async def _ensure_embedding_manager(self) -> None:
+        """Lazily ensure an embedding manager instance is available.
+        
+        Attempts to obtain the global default embedding manager; if unavailable,
+        provisions a local EmbeddingManager instance with best-effort init.
+        """
+        if getattr(self, "embedding_manager", None) is not None:
+            return
+        try:
+            from ai_karen_engine.core import default_models
+            try:
+                # Idempotent init of global defaults
+                await default_models.load_default_models()
+            except Exception:
+                pass
+            self.embedding_manager = default_models.get_embedding_manager()
+            return
+        except Exception:
+            try:
+                local_manager = EmbeddingManager()
+                try:
+                    await local_manager.initialize()
+                except Exception:
+                    # Rely on internal fallbacks if initialization fails
+                    pass
+                self.embedding_manager = local_manager
+            except Exception as e:
+                logger.error(f"Failed to provision embedding manager fallback: {e}")
+                self.embedding_manager = None
 
     async def get_memory_stats(
         self, tenant_id: Union[str, uuid.UUID]

@@ -51,7 +51,7 @@ export interface HookContextType {
   
   registerChartHook: (
     chartId: string,
-    event: 'dataLoad' | 'seriesClick' | 'legendClick',
+    event: 'dataLoad' | 'seriesClick' | 'legendClick' | 'metricChange' | 'nodeClick',
     handler: (params: any) => Promise<any>
   ) => string;
   
@@ -173,7 +173,7 @@ export const HookProvider: React.FC<HookProviderProps> = ({ children }) => {
 
   const registerChartHook = useCallback((
     chartId: string,
-    event: 'dataLoad' | 'seriesClick' | 'legendClick',
+    event: 'dataLoad' | 'seriesClick' | 'legendClick' | 'metricChange' | 'nodeClick',
     handler: (params: any) => Promise<any>
   ): string => {
     return registerHook(`chart_${chartId}_${event}`, handler, {

@@ -6,11 +6,9 @@
 import { getConfigManager } from './endpoint-config';
 import { getEndpointFallbackService } from './endpoint-fallback';
 import { getNetworkDetectionService } from './network-detector';
-import { shouldAutoRetry, getRetryDelay, formatErrorForLogging } from './error-handler';
 import { getDiagnosticLogger, logEndpointAttempt, logCORSIssue } from './diagnostics';
 
 const DEFAULT_BASE_URLS = [
-  process.env.NEXT_PUBLIC_API_BASE_URL,
   'http://127.0.0.1:8000',
   'http://localhost:8000',
 ].filter(Boolean) as string[];
@@ -412,15 +410,11 @@ export class ApiClient {
       });
     }
 
-    // Remove Content-Type header to let browser set it with boundary
-    const headers = { ...options?.headers };
-    delete headers['Content-Type'];
-
+    // Don't set Content-Type header to let browser set it with boundary
     return this.request<T>({
       endpoint,
       method: 'POST',
       body: formData,
-      headers,
       ...options,
     });
   }

@@ -57,7 +57,22 @@ function AuthenticatedHomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const initialView = (searchParams.get('view') as ActiveView) || 'dashboard';
+  const parseView = (sp: ReturnType<typeof useSearchParams> | null): ActiveView => {
+    const v = sp?.get('view') ?? '';
+    const allowed: ActiveView[] = [
+      'settings',
+      'dashboard',
+      'commsCenter',
+      'pluginDatabaseConnector',
+      'pluginFacebook',
+      'pluginGmail',
+      'pluginDateTime',
+      'pluginWeather',
+      'pluginOverview',
+    ];
+    return (allowed as readonly string[]).includes(v) ? (v as ActiveView) : 'dashboard';
+  };
+  const initialView = parseView(searchParams as any);
   const [activeMainView, setActiveMainView] = useState<ActiveView>(initialView);
 
   useEffect(() => {
@@ -66,7 +81,7 @@ function AuthenticatedHomePage() {
 
   const navigate = (view: ActiveView) => {
     setActiveMainView(view);
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
     params.set('view', view);
     router.push(`/?${params.toString()}`);
   };

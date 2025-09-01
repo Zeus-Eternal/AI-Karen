@@ -23,7 +23,7 @@ def test_all_endpoints():
         ("POST", "/api/llm/settings", {
             "selected_profile": "default",
             "provider_api_keys": {"openai": "test-key"},
-            "custom_models": {"ollama": "llama3.2:1b"}
+            "custom_models": {"llama-cpp": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"}
         }, "LLM Settings Save"),
         ("POST", "/api/llm/health-check", None, "LLM Health Check"),
         

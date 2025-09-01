@@ -587,7 +587,7 @@ export const FilePermissionManager: React.FC<FilePermissionManagerProps> = ({
                 if (!permission.is_active || isExpired) {
                   return { backgroundColor: '#fef2f2', opacity: 0.7 };
                 }
-                return {};
+                return undefined;
               }}
               noRowsOverlayComponent={() => (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">

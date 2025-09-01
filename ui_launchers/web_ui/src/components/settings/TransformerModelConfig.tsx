@@ -26,7 +26,7 @@ import {
   Lightbulb,
   BarChart3,
   Zap,
-  Memory,
+  Server,
   Gauge
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
@@ -722,7 +722,7 @@ export default function TransformerModelConfig({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Memory className="h-5 w-5" />
+              <Server className="h-5 w-5" />
               Multi-GPU Configuration
             </CardTitle>
             <CardDescription>

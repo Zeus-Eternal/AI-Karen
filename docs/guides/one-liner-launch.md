@@ -1,6 +1,6 @@
 # 🦹‍♂️ **KAREN AI — ONE-LINER LAUNCH**
 
-<sup>(Now Powered by In-Process `llama-cpp-python` LLMs — No Ollama Server Needed)</sup>
+<sup>(Now Powered by In-Process `llama-cpp-python` LLMs — No External Server Needed)</sup>
 
 ---
 
@@ -43,7 +43,7 @@ docker compose up --build
 
 * Wait for all containers to say “healthy” or “ready.”
 * The API/UI is at `http://localhost:8000` or `http://localhost:3000` (per your frontend).
-* **No Ollama server required. All LLM inferencing happens *inside* the main Python app using llama-cpp-python!**
+* **No external LLM server required. All LLM inferencing happens *inside* the main Python app using llama-cpp-python!**
 * Admin UI available on `/admin` (if enabled).
 
 ---
@@ -100,8 +100,8 @@ docker compose -f docker-compose.yml -f docker-compose.evil.yml up --build
 
 **Karen AI uses `llama-cpp-python` by default:**
 All LLM inferencing is local, in-process, ultra-fast, and secure.
-**You do NOT need Ollama. There’s no LLM REST API running on port 11434.**
-If you want to experiment with Ollama, add the service and point Karen to the REST endpoint, but that’s optional.
+**You do NOT need external LLM servers. There’s no LLM REST API running on port 11434.**
+If you want to experiment with external LLM services, add the service and point Karen to the REST endpoint, but that’s optional.
 
 ---
 

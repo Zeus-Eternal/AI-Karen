@@ -5,10 +5,12 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { CopilotKit } from '@copilotkit/react-core';
+import dynamic from 'next/dynamic';
 import MemoryGrid from './MemoryGrid';
-import MemoryNetworkVisualization from './MemoryNetworkVisualization';
+// Lazy-load the network visualization and charts only when needed
+const MemoryNetworkVisualization = dynamic(() => import('./MemoryNetworkVisualization'), { ssr: false });
 import MemoryEditor from './MemoryEditor';
-import { AgCharts } from 'ag-charts-react';
+const AgCharts = dynamic(() => import('ag-charts-react').then(m => m.AgCharts), { ssr: false });
 import { AgChartOptions } from 'ag-charts-community';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -366,7 +368,7 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
   }), []);
 
   return (
-    <CopilotKit apiKey={copilotApiKey}>
+    <CopilotKit>
       <div className="memory-interface" style={{ 
         height: `${height}px`, 
         display: 'flex', 
@@ -634,8 +636,6 @@ export const MemoryInterface: React.FC<MemoryInterfaceProps> = ({
           isOpen={isEditorOpen}
           userId={userId}
           tenantId={tenantId}
-          error={error}
-          setError={setError}
         />
       </div>
     </CopilotKit>

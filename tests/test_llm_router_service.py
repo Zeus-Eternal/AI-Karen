@@ -52,21 +52,21 @@ class DummyRegistry:
 
 
 def test_local_provider_preferred() -> None:
-    registry = DummyRegistry({"ollama": "healthy", "openai": "healthy"})
+    registry = DummyRegistry({"llama-cpp": "healthy", "openai": "healthy"})
     router = LLMRouter(registry=registry)
     provider = router.select_provider()
-    assert provider.provider_name == "ollama"
+    assert provider.provider_name == "llama-cpp"
 
 
 def test_fallback_to_remote_provider() -> None:
-    registry = DummyRegistry({"ollama": "failed_to_create", "openai": "healthy"})
+    registry = DummyRegistry({"llama-cpp": "failed_to_create", "openai": "healthy"})
     router = LLMRouter(registry=registry)
     provider = router.select_provider()
     assert provider.provider_name == "openai"
 
 
 def test_user_preference_respected() -> None:
-    registry = DummyRegistry({"ollama": "healthy", "openai": "healthy"})
+    registry = DummyRegistry({"llama-cpp": "healthy", "openai": "healthy"})
     router = LLMRouter(registry=registry)
     provider = router.select_provider(user_preferences={"provider": "openai"})
     assert provider.provider_name == "openai"
@@ -74,7 +74,7 @@ def test_user_preference_respected() -> None:
 
 @pytest.mark.asyncio  # type: ignore[misc]
 async def test_generate_uses_selected_provider() -> None:
-    registry = DummyRegistry({"ollama": "healthy"})
+    registry = DummyRegistry({"llama-cpp": "healthy"})
     router = LLMRouter(registry=registry)
     result = await router.generate("hi")
-    assert result == "ollama:hi"
+    assert result == "llama-cpp:hi"

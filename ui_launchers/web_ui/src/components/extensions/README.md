@@ -95,7 +95,7 @@ The hierarchical extension management system follows a dual-category approach:
 ### Categories
 
 1. **Plugins** - User-installable marketplace items from `/plugin_marketplace`
-   - LLM Providers (OpenAI, Anthropic, Ollama, etc.)
+   - LLM Providers (OpenAI, Anthropic, LlamaCpp, etc.)
    - Voice Providers (TTS, STT services)
    - Video Providers (Image/video generation)
    - Service Providers (Third-party integrations)

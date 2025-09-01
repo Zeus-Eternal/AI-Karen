@@ -143,14 +143,39 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     };
 
     initializeSession();
-  }, [autoRehydrate, updateSessionState, onSessionError]);
+
+    // Subscribe to authStateManager updates to sync with AuthContext
+    const unsubscribe = authStateManager.subscribe((authSnapshot) => {
+      console.log('SessionProvider received authStateManager update:', authSnapshot);
+      setSessionState(prev => ({
+        ...prev,
+        isAuthenticated: authSnapshot.isAuthenticated,
+        user: authSnapshot.user,
+      }));
+      
+      // Notify parent component of session changes
+      onSessionChange?.(authSnapshot.isAuthenticated, authSnapshot.user);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [autoRehydrate, updateSessionState, onSessionError, onSessionChange]);
 
   // Login function
   const login = useCallback(async (email: string, password: string, totpCode?: string) => {
     setIsLoading(true);
     try {
       await sessionLogin(email, password, totpCode);
-      updateSessionState();
+      const newState = updateSessionState();
+      
+      // Update authStateManager to sync with AuthContext
+      const snapshot: AuthSnapshot = {
+        isAuthenticated: newState.isAuthenticated,
+        user: newState.user,
+      };
+      authStateManager.updateState(snapshot);
+      
       console.log('Login successful');
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -171,7 +196,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       console.warn('Logout request failed:', error);
       onSessionError?.(error);
     } finally {
-      updateSessionState();
+      const newState = updateSessionState();
+      
+      // Update authStateManager to sync with AuthContext
+      const snapshot: AuthSnapshot = {
+        isAuthenticated: newState.isAuthenticated,
+        user: newState.user,
+      };
+      authStateManager.updateState(snapshot);
+      
       setIsLoading(false);
     }
   }, [updateSessionState, onSessionError]);
@@ -193,7 +226,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     if (isRecovering) {
       return lastRecoveryResult || {
         success: false,
-        reason: 'recovery_in_progress',
+        reason: 'invalid_session',
         shouldShowLogin: false,
         message: 'Recovery already in progress',
       };
@@ -218,7 +251,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       console.error('Session recovery error:', error);
       const failureResult: SessionRecoveryResult = {
         success: false,
-        reason: 'recovery_error',
+        reason: 'invalid_session',
         shouldShowLogin: true,
         message: 'Session recovery failed. Please log in again.',
       };

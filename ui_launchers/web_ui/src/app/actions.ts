@@ -279,6 +279,7 @@ export async function getKarenAnalyticsData(
   unique_users: number;
   popular_features: Array<{ name: string; usage_count: number }>;
   user_satisfaction: number;
+  peak_hours?: number[];
 }> {
   try {
     const backend = getKarenBackend();
@@ -290,6 +291,7 @@ export async function getKarenAnalyticsData(
       unique_users: 0,
       popular_features: [],
       user_satisfaction: 0,
+      peak_hours: [],
     };
   }
 }

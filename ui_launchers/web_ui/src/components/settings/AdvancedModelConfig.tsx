@@ -43,7 +43,7 @@ import {
   HardDrive
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { ErrorHandler } from '@/lib/error-handler';
+import { handleApiError } from '@/lib/error-handler';
 
 interface ModelConfig {
   model_id: string;
@@ -365,7 +365,7 @@ export default function AdvancedModelConfig({
       
     } catch (error) {
       console.error('Failed to save config:', error);
-      const info = ErrorHandler.handleApiError(error as any, 'saveConfig');
+      const info = handleApiError(error as any, 'saveConfig');
       toast({
         variant: 'destructive',
         title: info.title || "Save Failed",
@@ -428,7 +428,7 @@ export default function AdvancedModelConfig({
   const renderParameterControl = (param: any) => {
     if (!config) return null;
     
-    const value = config.parameters[param.key];
+    const value = (config.parameters as Record<string, any>)[param.key];
     
     switch (param.type) {
       case 'boolean':

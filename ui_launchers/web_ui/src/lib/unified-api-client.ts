@@ -387,11 +387,7 @@ export class UnifiedApiClient {
   /**
    * Get endpoint statistics
    */
-  getEndpointStats(): {
-    requests: Record<string, number>;
-    errors: Record<string, number>;
-    averageResponseTime: Record<string, number>;
-  } {
+  getEndpointStats() {
     return this.apiClient.getEndpointStats();
   }
 
@@ -506,14 +502,4 @@ export function initializeUnifiedApiClient(config?: Partial<UnifiedApiClientConf
   return unifiedApiClient;
 }
 
-// Export types
-export type {
-  UnifiedApiClientConfig,
-  ConsolidatedEndpoints,
-  CopilotAssistRequest,
-  CopilotAssistResponse,
-  MemorySearchRequest,
-  MemorySearchResponse,
-  MemoryCommitRequest,
-  MemoryCommitResponse
-};
+// Types are already exported via export interface declarations above

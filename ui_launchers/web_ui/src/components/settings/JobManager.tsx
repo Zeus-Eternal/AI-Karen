@@ -36,7 +36,7 @@ import {
   MemoryStick
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { ErrorHandler } from '@/lib/error-handler';
+import { handleApiError } from '@/lib/error-handler';
 
 interface Job {
   id: string;
@@ -194,7 +194,7 @@ export default function JobManager({ onJobUpdate }: JobManagerProps) {
       await loadJobStats();
     } catch (error) {
       console.error(`Failed to ${action} job:`, error);
-      const info = ErrorHandler.handleApiError(error as any, `${action}Job`);
+      const info = handleApiError(error as any, `${action}Job`);
       toast({
         variant: 'destructive',
         title: info.title || `${action.charAt(0).toUpperCase() + action.slice(1)} Failed`,

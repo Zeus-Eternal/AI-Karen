@@ -218,10 +218,10 @@ class SecurityConfig:
 
     # Rate limiting
     enable_rate_limiting: bool = True
-    max_failed_attempts: int = 5
-    lockout_duration_minutes: int = 15
-    rate_limit_window_minutes: int = 15
-    rate_limit_max_requests: int = 10
+    max_failed_attempts: int = 20  # Increased from 5 to 20
+    lockout_duration_minutes: int = 5  # Reduced from 15 to 5 minutes
+    rate_limit_window_minutes: int = 1  # Reduced from 15 to 1 minute
+    rate_limit_max_requests: int = 100  # Increased from 10 to 100
     rate_limit_storage: str = "memory"  # "memory" or "redis"
     rate_limit_redis_url: Optional[str] = None
 

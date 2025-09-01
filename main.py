@@ -14,7 +14,17 @@ import os
 # Load .env file and ensure critical variables are set
 load_dotenv()
 
-# Ensure critical environment variables are set with defaults for development
+# Determine runtime environment early for safe defaults handling
+_RUNTIME_ENV = (
+    os.getenv("ENVIRONMENT")
+    or os.getenv("KARI_ENV")
+    or os.getenv("ENV")
+    or "development"
+).lower()
+
+# Ensure critical environment variables are set
+# - In development/test: provide sensible defaults if missing
+# - In production: do NOT inject insecure defaults; require explicit configuration
 required_env_vars = {
     "KARI_DUCKDB_PASSWORD": "dev-duckdb-pass",
     "KARI_JOB_ENC_KEY": "MaL42789OGRr0--UUf_RV_kanWzb2tSCd6hU6R-sOZo=",
@@ -28,9 +38,24 @@ required_env_vars = {
     "REDIS_URL": "redis://localhost:6379/0"
 }
 
-for var_name, default_value in required_env_vars.items():
-    if not os.getenv(var_name):
-        os.environ[var_name] = default_value
+if _RUNTIME_ENV in {"development", "dev", "local", "test", "testing"}:
+    for var_name, default_value in required_env_vars.items():
+        if not os.getenv(var_name):
+            os.environ[var_name] = default_value
+else:
+    _missing = [k for k in required_env_vars.keys() if not os.getenv(k)]
+    if _missing:
+        # Fail fast in production for missing critical secrets/connections
+        raise RuntimeError(
+            "Missing required environment variables in production: " + ", ".join(_missing)
+        )
+
+# Ensure src/ is on sys.path when running directly from repo root
+import sys
+_repo_root = os.path.dirname(os.path.abspath(__file__))
+_src_path = os.path.join(_repo_root, "src")
+if os.path.isdir(_src_path) and _src_path not in sys.path:
+    sys.path.insert(0, _src_path)
 
 import logging
 import logging.config
@@ -71,6 +96,7 @@ from ai_karen_engine.api_routes.websocket_routes import router as websocket_rout
 from ai_karen_engine.api_routes.chat_runtime import router as chat_runtime_router
 from ai_karen_engine.api_routes.llm_routes import router as llm_router
 from ai_karen_engine.api_routes.provider_routes import router as provider_router
+from ai_karen_engine.api_routes.provider_routes import public_router as provider_public_router
 from ai_karen_engine.api_routes.profile_routes import router as profile_router
 from ai_karen_engine.api_routes.settings_routes import router as settings_router
 from ai_karen_engine.api_routes.error_response_routes import router as error_response_router
@@ -81,6 +107,9 @@ from ai_karen_engine.api_routes.enhanced_huggingface_routes import router as enh
 from ai_karen_engine.api_routes.response_core_routes import router as response_core_router
 from ai_karen_engine.api_routes.scheduler_routes import router as scheduler_router
 from ai_karen_engine.api_routes.public_routes import router as public_router
+from ai_karen_engine.api_routes.model_library_routes import router as model_library_router
+from ai_karen_engine.api_routes.provider_compatibility_routes import router as provider_compatibility_router
+from ai_karen_engine.api_routes.model_orchestrator_routes import router as model_orchestrator_router
 from ai_karen_engine.server.middleware import configure_middleware
 from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS, PLUGIN_MAP
 from ai_karen_engine.server.startup import create_lifespan
@@ -98,6 +127,9 @@ class Settings(BaseSettings):
     secret_key: str = Field(..., env="SECRET_KEY")
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    # Long-lived token settings for API stability
+    long_lived_token_expire_hours: int = 24  # 24 hours for long-lived tokens
+    enable_long_lived_tokens: bool = True
     database_url: str = "postgresql://user:password@localhost:5432/kari_prod"
     kari_cors_origins: str = Field(
         default="http://localhost:8010,http://127.0.0.1:8010,http://localhost:3000",
@@ -105,7 +137,7 @@ class Settings(BaseSettings):
     )
     prometheus_enabled: bool = True
     https_redirect: bool = False
-    rate_limit: str = "100/minute"
+    rate_limit: str = "300/minute"
     debug: bool = True
     plugin_dir: str = "/app/plugins"
     llm_refresh_interval: int = 3600
@@ -330,7 +362,13 @@ def create_app() -> FastAPI:
     app.include_router(code_execution_router, prefix="/api/code", tags=["code"])
     app.include_router(chat_runtime_router, prefix="/api", tags=["chat-runtime"])
     app.include_router(llm_router, prefix="/api/llm", tags=["llm"])
+    
+    # TEMPORARY: Include mock provider router first to handle suggestions endpoints
+    from ai_karen_engine.api_routes.mock_provider_routes import router as mock_provider_router
+    app.include_router(mock_provider_router, tags=["mock-providers"])
+    
     app.include_router(provider_router, prefix="/api/providers", tags=["providers"])
+    app.include_router(provider_public_router, prefix="/api/public/providers", tags=["public-providers"])
     app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
     app.include_router(error_response_router, prefix="/api", tags=["error-response"])
     app.include_router(health_router, prefix="/api/health", tags=["health"])
@@ -339,6 +377,9 @@ def create_app() -> FastAPI:
     app.include_router(response_core_router, tags=["response-core"])
     app.include_router(scheduler_router, tags=["scheduler"])
     app.include_router(public_router, tags=["public"])
+    app.include_router(model_library_router, tags=["model-library"])
+    app.include_router(provider_compatibility_router, tags=["provider-compatibility"])
+    app.include_router(model_orchestrator_router, tags=["model-orchestrator"])
     app.include_router(settings_router)
 
     # Setup developer API with enhanced debugging capabilities
@@ -579,6 +620,26 @@ def create_app() -> FastAPI:
             except Exception:
                 model_status = {"local_models": 0, "fallback_available": False}
             
+            # Check model orchestrator health
+            model_orchestrator_status = {}
+            try:
+                from ai_karen_engine.health.model_orchestrator_health import get_model_orchestrator_health
+                health_checker = get_model_orchestrator_health()
+                orchestrator_health = await health_checker.check_health()
+                model_orchestrator_status = {
+                    "status": orchestrator_health.get("status", "unknown"),
+                    "registry_healthy": orchestrator_health.get("registry_healthy", False),
+                    "storage_healthy": orchestrator_health.get("storage_healthy", False),
+                    "plugin_loaded": "model_orchestrator" in ENABLED_PLUGINS,
+                    "last_check": orchestrator_health.get("timestamp")
+                }
+            except Exception as e:
+                model_orchestrator_status = {
+                    "status": "error",
+                    "error": str(e),
+                    "plugin_loaded": "model_orchestrator" in ENABLED_PLUGINS
+                }
+            
             # Determine overall status
             overall_status = "healthy"
             if connection_status.get("database") == "degraded" or connection_status.get("redis") == "degraded":
@@ -594,6 +655,7 @@ def create_app() -> FastAPI:
                 "services": service_status,
                 "connections": connection_status,
                 "models": model_status,
+                "model_orchestrator": model_orchestrator_status,
                 "plugins": len(ENABLED_PLUGINS),
                 "fallback_systems": {
                     "analytics": "active",
@@ -979,18 +1041,18 @@ if __name__ == "__main__":
     async def startup_check():
         """Perform comprehensive startup checks and system initialization."""
         try:
-            from src.ai_karen_engine.core.startup_check import perform_startup_checks
+            from ai_karen_engine.core.startup_check import perform_startup_checks
             
-            print("🔍 Performing startup checks and system initialization...")
+            logger.info("🔍 Performing startup checks and system initialization...")
             checks_passed, issues = await perform_startup_checks(auto_fix=True)
             
             if not checks_passed:
-                print("⚠️ Startup checks found issues:")
+                logger.warning("⚠️ Startup checks found issues:")
                 for issue in issues:
-                    print(f"   - {issue}")
-                print("\n💡 Some issues were automatically fixed. Others may require manual attention.")
+                    logger.warning(f"   - {issue}")
+                logger.info("💡 Some issues were automatically fixed. Others may require manual attention.")
             else:
-                print("✅ All startup checks passed!")
+                logger.info("✅ All startup checks passed!")
             
             # Initialize fallback systems
             await initialize_fallback_systems()
@@ -998,14 +1060,14 @@ if __name__ == "__main__":
             return True  # Always continue - fallbacks handle issues
             
         except Exception as e:
-            print(f"❌ Startup check failed: {e}")
-            print("   Continuing with server startup using fallback systems...")
+            logger.error(f"❌ Startup check failed: {e}")
+            logger.info("Continuing with server startup using fallback systems...")
             await initialize_fallback_systems()
             return True  # Continue with fallbacks
     
     async def initialize_fallback_systems():
         """Initialize comprehensive fallback systems for production readiness."""
-        print("🔧 Initializing fallback systems...")
+        logger.info("🔧 Initializing fallback systems...")
         
         try:
             # 1. Initialize Analytics Service with fallback
@@ -1019,9 +1081,9 @@ if __name__ == "__main__":
                     "max_performance_metrics": 10000
                 }
                 analytics = AnalyticsService(config)
-                print("✅ Analytics service initialized")
+                logger.info("✅ Analytics service initialized")
             except Exception as e:
-                print(f"⚠️ Analytics service using fallback: {e}")
+                logger.warning(f"⚠️ Analytics service using fallback: {e}")
                 # Fallback analytics service is handled in service registry
             
             # 2. Initialize Provider Registry with fallback chains
@@ -1033,49 +1095,49 @@ if __name__ == "__main__":
                 provider_service.create_fallback_chain(
                     name="production_text",
                     primary="openai",
-                    fallbacks=["gemini", "deepseek", "local", "ollama"]
+                    fallbacks=["gemini", "deepseek", "local", "llama-cpp"]
                 )
                 
                 provider_service.create_fallback_chain(
                     name="local_first",
-                    primary="ollama", 
+                    primary="llama-cpp", 
                     fallbacks=["local", "openai", "gemini"]
                 )
                 
-                print("✅ Provider fallback chains configured")
+                logger.info("✅ Provider fallback chains configured")
             except Exception as e:
-                print(f"⚠️ Provider registry fallback: {e}")
+                logger.warning(f"⚠️ Provider registry fallback: {e}")
             
             # 3. Initialize Connection Health Monitoring
             try:
                 from ai_karen_engine.services.connection_health_manager import get_connection_health_manager
                 health_manager = get_connection_health_manager()
                 await health_manager.start_monitoring(check_interval=30.0)
-                print("✅ Connection health monitoring started")
+                logger.info("✅ Connection health monitoring started")
             except Exception as e:
-                print(f"⚠️ Connection health monitoring fallback: {e}")
+                logger.warning(f"⚠️ Connection health monitoring fallback: {e}")
             
             # 4. Initialize Database with fallback
             try:
                 from ai_karen_engine.services.database_connection_manager import initialize_database_manager
                 db_manager = await initialize_database_manager()
                 if db_manager.is_degraded():
-                    print("⚠️ Database running in degraded mode (using in-memory fallback)")
+                    logger.warning("⚠️ Database running in degraded mode (using in-memory fallback)")
                 else:
-                    print("✅ Database connection healthy")
+                    logger.info("✅ Database connection healthy")
             except Exception as e:
-                print(f"⚠️ Database using fallback mode: {e}")
+                logger.warning(f"⚠️ Database using fallback mode: {e}")
             
             # 5. Initialize Redis with fallback
             try:
                 from ai_karen_engine.services.redis_connection_manager import initialize_redis_manager
                 redis_manager = await initialize_redis_manager()
                 if redis_manager.is_degraded():
-                    print("⚠️ Redis running in degraded mode (using in-memory cache)")
+                    logger.warning("⚠️ Redis running in degraded mode (using in-memory cache)")
                 else:
-                    print("✅ Redis connection healthy")
+                    logger.info("✅ Redis connection healthy")
             except Exception as e:
-                print(f"⚠️ Redis using fallback mode: {e}")
+                logger.warning(f"⚠️ Redis using fallback mode: {e}")
             
             # 6. Initialize Error Response Service with AI fallback
             try:
@@ -1087,9 +1149,9 @@ if __name__ == "__main__":
                     "Test error for system initialization",
                     use_ai_analysis=True  # Will fallback to rules if AI unavailable
                 )
-                print("✅ Intelligent error responses with fallback configured")
+                logger.info("✅ Intelligent error responses with fallback configured")
             except Exception as e:
-                print(f"⚠️ Error response service fallback: {e}")
+                logger.warning(f"⚠️ Error response service fallback: {e}")
             
             # 7. Check Model Availability
             try:
@@ -1113,40 +1175,40 @@ if __name__ == "__main__":
                     has_spacy = False
                 
                 model_count = len(gguf_models) + len(bin_models)
-                print(f"✅ Local models available: {model_count} models, TinyLlama: {has_fallback_model}, spaCy: {has_spacy}")
+                logger.info(f"✅ Local models available: {model_count} models, TinyLlama: {has_fallback_model}, spaCy: {has_spacy}")
                 
                 if not (model_count > 0 or has_spacy):
-                    print("⚠️ Limited local models - external providers recommended")
-                
-            except Exception as e:
-                print(f"⚠️ Model availability check: {e}")
+                    logger.warning("⚠️ Limited local models - external providers recommended")
             
-            print("🎯 Fallback systems initialized - server ready for production!")
+            except Exception as e:
+                logger.warning(f"⚠️ Model availability check: {e}")
+            
+            logger.info("🎯 Fallback systems initialized - server ready for production!")
             
         except Exception as e:
-            print(f"⚠️ Fallback initialization error: {e}")
-            print("   Server will continue with basic functionality")
+            logger.warning(f"⚠️ Fallback initialization error: {e}")
+            logger.info("Server will continue with basic functionality")
     
     # Run startup checks and system initialization
     try:
-        print("🚀 AI Karen Engine - Production Server Starting...")
+        logger.info("🚀 AI Karen Engine - Production Server Starting...")
         startup_success = asyncio.run(startup_check())
         
         if startup_success:
-            print("\n✅ System initialization complete!")
-            print("🎯 Key Features Active:")
-            print("   • Session persistence with automatic refresh")
-            print("   • Multi-provider AI fallback chains")
-            print("   • Local model fallback (TinyLlama + spaCy)")
-            print("   • Connection health monitoring with degraded mode")
-            print("   • Intelligent error responses with rule-based fallback")
-            print("   • Service registry with graceful degradation")
+            logger.info("✅ System initialization complete!")
+            logger.info("🎯 Key Features Active:")
+            logger.info("   • Session persistence with automatic refresh")
+            logger.info("   • Multi-provider AI fallback chains")
+            logger.info("   • Local model fallback (TinyLlama + spaCy)")
+            logger.info("   • Connection health monitoring with degraded mode")
+            logger.info("   • Intelligent error responses with rule-based fallback")
+            logger.info("   • Service registry with graceful degradation")
         else:
-            print("\n⚠️ System running with some limitations...")
-            
+            logger.warning("⚠️ System running with some limitations...")
+        
     except Exception as e:
-        print(f"❌ Startup initialization error: {e}")
-        print("   Server will start with basic functionality and fallbacks...")
+        logger.error(f"❌ Startup initialization error: {e}")
+        logger.info("Server will start with basic functionality and fallbacks...")
 
     # Use the imported SuppressInvalidHTTPFilter from logging_filters module
 

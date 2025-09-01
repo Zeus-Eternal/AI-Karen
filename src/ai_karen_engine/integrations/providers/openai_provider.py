@@ -349,7 +349,7 @@ class OpenAIProvider(LLMProviderBase):
         }
 
     def health_check(self) -> Dict[str, Any]:
-        """Perform health check on OpenAI API."""
+        """Perform health check on OpenAI API with model availability information."""
         if not self.api_key:
             return {"status": "unhealthy", "error": "No API key provided"}
 
@@ -365,13 +365,48 @@ class OpenAIProvider(LLMProviderBase):
 
             response_time = time.time() - start_time
 
-            return {
+            health_result = {
                 "status": "healthy",
                 "response_time": response_time,
                 "model_tested": "gpt-3.5-turbo",
             }
+
+            # Add Model Library compatibility check
+            try:
+                from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
+                compatibility_service = ProviderModelCompatibilityService()
+                validation = compatibility_service.validate_provider_model_setup("openai")
+                
+                health_result["model_library"] = {
+                    "available": True,
+                    "compatible_models_count": validation.get("total_compatible", 0),
+                    "validation_status": validation.get("status", "unknown")
+                }
+                
+                # Add recommendations if no compatible models
+                if validation.get("total_compatible", 0) == 0:
+                    health_result["warnings"] = health_result.get("warnings", [])
+                    health_result["warnings"].append("No compatible models found in Model Library")
+                
+            except Exception as e:
+                health_result["model_library"] = {
+                    "available": False,
+                    "error": str(e)
+                }
+                health_result["warnings"] = health_result.get("warnings", [])
+                health_result["warnings"].append(f"Model Library unavailable: {e}")
+
+            return health_result
+            
         except Exception as ex:
-            return {"status": "unhealthy", "error": str(ex)}
+            return {
+                "status": "unhealthy", 
+                "error": str(ex),
+                "model_library": {
+                    "available": False,
+                    "error": "Provider health check failed"
+                }
+            }
 
     # Lightweight status helpers -------------------------------------------------
 

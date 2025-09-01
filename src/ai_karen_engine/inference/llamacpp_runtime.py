@@ -16,6 +16,23 @@ logger = logging.getLogger(__name__)
 
 try:
     from llama_cpp import Llama, LlamaGrammar
+    # Patch noisy __del__ AttributeError in some llama-cpp-python versions
+    try:  # defensive: best-effort monkey patch to suppress sampler AttributeError
+        from llama_cpp import _internals as _ll_internals  # type: ignore
+        _orig_del = getattr(getattr(_ll_internals, "LlamaModel", object), "__del__", None)
+        if callable(_orig_del):
+            def _safe_del(self):  # type: ignore
+                try:
+                    return _orig_del(self)
+                except AttributeError:
+                    # Older builds may not set attributes on failed init; ignore cleanup errors
+                    return None
+            try:
+                _ll_internals.LlamaModel.__del__ = _safe_del  # type: ignore
+            except Exception:
+                pass
+    except Exception:
+        pass
     LLAMACPP_AVAILABLE = True
 except ImportError:
     logger.warning("llama-cpp-python not available. LlamaCppRuntime will be disabled.")
@@ -145,8 +162,104 @@ class LlamaCppRuntime:
                 
             except Exception as e:
                 logger.error(f"Failed to load model {model_path}: {e}")
-                self._model = None
-                self._loaded = False
+                # Attempt automatic recovery for known TinyLlama fallback model
+                try:
+                    filename = Path(model_path).name
+                    auto_fix = os.getenv("KARI_AUTO_FIX_GGUF", "1").lower() in {"1", "true", "yes"}
+                    if auto_fix and "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf" in filename:
+                        logger.warning("Attempting to re-download TinyLlama GGUF due to load failure...")
+                        # Move corrupt file aside first
+                        try:
+                            p = Path(model_path)
+                            if p.exists():
+                                corrupt_path = p.with_suffix(p.suffix + ".corrupt")
+                                try:
+                                    corrupt_path.unlink(missing_ok=True)  # type: ignore[arg-type]
+                                except Exception:
+                                    pass
+                                p.rename(corrupt_path)
+                                logger.warning(f"Renamed suspected corrupt file to {corrupt_path}")
+                        except Exception as mv_err:
+                            logger.debug(f"Could not move corrupt file aside: {mv_err}")
+
+                        # Try huggingface_hub first (force download)
+                        downloaded = False
+                        try:
+                            from huggingface_hub import hf_hub_download  # type: ignore
+                            target_dir = str(Path(model_path).parent)
+                            token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
+                            hf_hub_download(
+                                repo_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF",
+                                filename="tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                                local_dir=target_dir,
+                                local_dir_use_symlinks=False,
+                                force_download=True,
+                                token=token,
+                            )
+                            downloaded = True
+                            logger.info("Re-download via huggingface_hub complete")
+                        except Exception as dl_err:
+                            logger.warning(f"huggingface_hub download failed: {dl_err}")
+
+                        # Fallback to direct HTTP download if needed
+                        if not downloaded:
+                            try:
+                                import requests  # type: ignore
+                                url = (
+                                    "https://huggingface.co/"
+                                    "TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/"
+                                    "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf?download=1"
+                                )
+                                tmp_path = str(Path(model_path).with_suffix(".tmp"))
+                                with requests.get(url, stream=True, timeout=120) as r:
+                                    r.raise_for_status()
+                                    with open(tmp_path, "wb") as f:
+                                        for chunk in r.iter_content(chunk_size=1024 * 1024):
+                                            if chunk:
+                                                f.write(chunk)
+                                # Basic validation: check magic and size
+                                ok = False
+                                try:
+                                    size = Path(tmp_path).stat().st_size
+                                    if size > 100 * 1024 * 1024:  # >100MB
+                                        with open(tmp_path, "rb") as f:
+                                            magic = f.read(4)
+                                        ok = magic == b"GGUF"
+                                except Exception:
+                                    ok = False
+                                if ok:
+                                    Path(tmp_path).replace(model_path)
+                                    downloaded = True
+                                    logger.info("Re-download via direct URL complete")
+                                else:
+                                    try:
+                                        Path(tmp_path).unlink(missing_ok=True)  # type: ignore[arg-type]
+                                    except Exception:
+                                        pass
+                                    logger.error("Direct download failed validation; keeping no file")
+                            except Exception as http_err:
+                                logger.error(f"Direct download failed: {http_err}")
+
+                        if downloaded:
+                            logger.info("Retrying model load after re-download...")
+                            # Retry once
+                            self._model = Llama(**params)
+                            self.model_path = model_path
+                            self._loaded = True
+                            self._load_time = time.time() - start_time
+                            model_size = Path(model_path).stat().st_size
+                            self._memory_usage = model_size + (self.n_ctx * 4 * 1024)
+                            logger.info(f"Model loaded successfully after re-download in {self._load_time:.2f}s")
+                            return True
+                        else:
+                            logger.error("Auto re-download failed; model remains unavailable")
+                    else:
+                        logger.debug("Auto-fix disabled or not applicable for this model")
+                except Exception as rec_err:
+                    logger.debug(f"Auto-fix logic encountered an error: {rec_err}")
+                finally:
+                    self._model = None
+                    self._loaded = False
                 return False
     
     def unload_model(self) -> None:

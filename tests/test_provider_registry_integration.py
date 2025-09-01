@@ -95,26 +95,26 @@ class TestProviderRegistryIntegration:
         selected = self.service.select_provider_with_fallback(preferred_provider="openai")
         assert selected is None
     
-    def test_ollama_provider_no_api_key_required(self):
-        """Test Ollama provider that doesn't require API key"""
+    def test_llamacpp_provider_no_api_key_required(self):
+        """Test LlamaCpp provider that doesn't require API key"""
         
-        # Register Ollama provider
+        # Register LlamaCpp provider
         self.service.register_provider(
-            name="ollama",
+            name="llama-cpp",
             provider_class=MockLLMProvider,
-            description="Local Ollama server",
+            description="Local LlamaCpp server",
             requires_api_key=False
         )
         
         # Check provider status
-        status = self.service.get_provider_status("ollama")
+        status = self.service.get_provider_status("llama-cpp")
         assert status is not None
         assert status.has_api_key is True  # Should be True since no key required
         assert status.is_available is True
         
         # Should be available for selection
         available_providers = self.service.get_available_providers()
-        assert "ollama" in available_providers
+        assert "llama-cpp" in available_providers
     
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
     def test_fallback_chain_with_mixed_providers(self):
@@ -128,11 +128,11 @@ class TestProviderRegistryIntegration:
             requires_api_key=True
         )
         
-        # Register Ollama provider (no API key required, available)
+        # Register LlamaCpp provider (no API key required, available)
         self.service.register_provider(
-            name="ollama",
+            name="llama-cpp",
             provider_class=MockLLMProvider,
-            description="Local Ollama server",
+            description="Local LlamaCpp server",
             requires_api_key=False
         )
         
@@ -144,11 +144,11 @@ class TestProviderRegistryIntegration:
             requires_api_key=True  # No GOOGLE_API_KEY set
         )
         
-        # Create custom fallback chain: Gemini -> OpenAI -> Ollama
+        # Create custom fallback chain: Gemini -> OpenAI -> LlamaCpp
         self.service.create_fallback_chain(
             name="mixed_chain",
             primary="gemini",
-            fallbacks=["openai", "ollama"]
+            fallbacks=["openai", "llama-cpp"]
         )
         
         # Select provider using fallback chain
@@ -190,7 +190,7 @@ class TestProviderRegistryIntegration:
         
         # Register available provider
         self.service.register_provider(
-            name="ollama",
+            name="llama-cpp",
             provider_class=MockLLMProvider,
             requires_api_key=False
         )
@@ -211,10 +211,10 @@ class TestProviderRegistryIntegration:
         assert status["providers_missing_api_keys"] == 1
         
         # Check provider details
-        assert "ollama" in status["provider_details"]
+        assert "llama-cpp" in status["provider_details"]
         assert "openai" in status["provider_details"]
         
-        assert status["provider_details"]["ollama"]["is_available"] is True
+        assert status["provider_details"]["llama-cpp"]["is_available"] is True
         assert status["provider_details"]["openai"]["is_available"] is False
         assert status["provider_details"]["openai"]["has_api_key"] is False
         

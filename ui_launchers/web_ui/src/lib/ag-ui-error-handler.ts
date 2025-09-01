@@ -5,7 +5,7 @@
  * including graceful degradation to simplified interfaces.
  */
 
-import { GridApi, ColumnApi } from 'ag-grid-community';
+import { GridApi } from 'ag-grid-community';
 
 export enum AGUIErrorType {
   GRID_LOAD_ERROR = 'grid_load_error',
@@ -93,7 +93,6 @@ export class AGUIErrorHandler {
   public async handleGridError(
     error: Error,
     gridApi?: GridApi,
-    columnApi?: ColumnApi,
     data?: any[],
     columns?: any[]
   ): Promise<FallbackResponse> {

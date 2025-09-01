@@ -37,7 +37,8 @@ import {
   Lightbulb,
   Cpu,
   MemoryStick,
-  Clock
+  Clock,
+  Plus
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 

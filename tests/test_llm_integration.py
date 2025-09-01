@@ -43,7 +43,7 @@ def test_complete_llm_integration():
         test_settings = {
             "selected_profile": "default",
             "provider_api_keys": {"openai": "test-key"},
-            "custom_models": {"ollama": "llama3.2:1b"}
+            "custom_models": {"llama-cpp": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"}
         }
         response = requests.post(f"{base_url}/api/llm/settings", json=test_settings)
         if response.status_code == 200:

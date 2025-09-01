@@ -36,7 +36,7 @@ async def test_user_service():
                 roles=["user"],
                 preferences={
                     "personalityTone": "friendly",
-                    "preferredLLMProvider": "ollama"
+                    "preferredLLMProvider": "llama-cpp"
                 }
             )
             print(f"✅ Created user: {user.email} (ID: {user.id})")

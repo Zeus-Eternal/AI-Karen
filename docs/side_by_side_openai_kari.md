@@ -5,7 +5,7 @@ This guide summarises the differences between OpenAI's cloud-centric CS-Agent fr
 | Aspect | OpenAI CS-Agents | Kari Ops Mesh |
 |-------|------------------|--------------|
 | **Deployment** | Runs on OpenAI's cloud infrastructure | Runs entirely on local servers or desktops |
-| **LLM Source** | OpenAI models only | Local LLMs via Ollama with optional cloud fallback |
+| **LLM Source** | OpenAI models only | Local LLMs via llama-cpp-python with optional cloud fallback |
 | **Guardrails** | Generic policies and hosted audit tools | Domain-specific YAML guardrails and RBAC |
 | **Extensibility** | Limited to features exposed by OpenAI | Plugin framework with SelfRefactor auto‑patching |
 | **Offline Use** | Not supported | Fully functional offline |

@@ -33,6 +33,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { User, LogOut, Settings } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export const AuthenticatedHeader: React.FC = () => {
   const { user, logout } = useAuth();
@@ -53,6 +54,7 @@ export const AuthenticatedHeader: React.FC = () => {
   return (
     <>
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">

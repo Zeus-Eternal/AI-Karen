@@ -255,7 +255,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
       width: 150,
       sortable: true,
       filter: 'agTextColumnFilter',
-      cellStyle: { fontSize: '12px', fontFamily: 'monospace' }
+      cellStyle: { fontSize: '12px', fontFamily: 'monospace' } as any
     },
     {
       field: 'interactionType',
@@ -287,7 +287,7 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
       width: 200,
       sortable: false,
       filter: 'agTextColumnFilter',
-      cellStyle: { color: '#ef4444', fontSize: '12px' },
+      cellStyle: { color: '#ef4444', fontSize: '12px' } as any,
       valueFormatter: (params) => params.value || '-'
     },
     {

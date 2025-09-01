@@ -109,7 +109,7 @@ async def run_schema_fix():
                     "personalityTone": "professional",
                     "personalityVerbosity": "detailed",
                     "memoryDepth": "deep",
-                    "preferredLLMProvider": "ollama",
+                    "preferredLLMProvider": "llamacpp",
                     "preferredModel": "llama3.2:latest",
                     "temperature": 0.7,
                     "maxTokens": 2000

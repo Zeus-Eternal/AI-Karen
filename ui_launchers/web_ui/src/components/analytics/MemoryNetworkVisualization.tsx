@@ -205,7 +205,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
               `
             })
           }
-        }
+        } as any
       ],
       axes: [
         {
@@ -226,7 +226,7 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
         }
       ],
       legend: { enabled: false }
-    };
+    } as AgChartOptions;
   }, [chartData, processedData, showLabels]);
 
   // Register network visualization hooks
@@ -247,6 +247,13 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
       // Cleanup hooks
     };
   }, [registerChartHook, processedData.nodes.length]);
+
+  // Handle chart ready event
+  useEffect(() => {
+    if (chartRef.current && processedData.nodes.length > 0) {
+      handleChartReady();
+    }
+  }, [chartRef.current, processedData.nodes.length, processedData.edges.length]);
 
   // Handle chart events
   const handleChartReady = useCallback(async () => {
@@ -494,7 +501,6 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
           <AgCharts
             ref={chartRef}
             options={chartOptions}
-            onChartReady={handleChartReady}
           />
         </div>
 

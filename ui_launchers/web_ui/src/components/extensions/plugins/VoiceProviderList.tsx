@@ -39,7 +39,7 @@ export default function VoiceProviderList() {
           </CardHeader>
           {p.previewText && (
             <CardContent>
-              <Button size="sm" variant="outline" onClick={() => handlePreview(p.previewText)}>
+              <Button size="sm" variant="outline" onClick={() => p.previewText && handlePreview(p.previewText)}>
                 Preview Voice
               </Button>
             </CardContent>

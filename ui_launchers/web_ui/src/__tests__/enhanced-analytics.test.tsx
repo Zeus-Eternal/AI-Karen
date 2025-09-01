@@ -119,7 +119,7 @@ describe('Enhanced Analytics Components', () => {
         userSatisfaction: 4.5,
         aiInsights: 7,
         tokenUsage: 180,
-        llmProvider: 'ollama',
+        llmProvider: 'llama-cpp',
         userId: 'user2',
         messageId: 'msg2',
         confidence: 0.92
@@ -135,7 +135,7 @@ describe('Enhanced Analytics Components', () => {
       activeUsers: 8,
       topLlmProviders: [
         { provider: 'openai', count: 30 },
-        { provider: 'ollama', count: 25 }
+        { provider: 'llama-cpp', count: 25 }
       ]
     };
 
