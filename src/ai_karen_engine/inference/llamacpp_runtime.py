@@ -121,9 +121,26 @@ class LlamaCppRuntime:
             try:
                 start_time = time.time()
                 
-                # Validate model file
-                if not Path(model_path).exists():
+                # Validate model file early for speed & correctness
+                p = Path(model_path)
+                if not p.exists() or not p.is_file():
                     logger.error(f"Model file not found: {model_path}")
+                    return False
+                if p.suffix.lower() != ".gguf":
+                    logger.error(f"Invalid model format (expected .gguf): {model_path}")
+                    return False
+                size = p.stat().st_size
+                if size < 50 * 1024 * 1024:
+                    logger.error(f"Model file too small to be valid GGUF: {model_path}")
+                    return False
+                try:
+                    with open(p, "rb") as f:
+                        magic = f.read(4)
+                    if magic != b"GGUF":
+                        logger.error(f"Model file header invalid (no GGUF magic): {model_path}")
+                        return False
+                except Exception as e:
+                    logger.error(f"Failed to read model header: {e}")
                     return False
                 
                 if not model_path.lower().endswith('.gguf'):
@@ -166,7 +183,7 @@ class LlamaCppRuntime:
                 try:
                     filename = Path(model_path).name
                     auto_fix = os.getenv("KARI_AUTO_FIX_GGUF", "1").lower() in {"1", "true", "yes"}
-                    if auto_fix and "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf" in filename:
+                    if auto_fix and "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf" in filename:
                         logger.warning("Attempting to re-download TinyLlama GGUF due to load failure...")
                         # Move corrupt file aside first
                         try:
@@ -190,7 +207,7 @@ class LlamaCppRuntime:
                             token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
                             hf_hub_download(
                                 repo_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF",
-                                filename="tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                                filename="tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
                                 local_dir=target_dir,
                                 local_dir_use_symlinks=False,
                                 force_download=True,
@@ -208,7 +225,7 @@ class LlamaCppRuntime:
                                 url = (
                                     "https://huggingface.co/"
                                     "TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/"
-                                    "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf?download=1"
+                                    "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf?download=1"
                                 )
                                 tmp_path = str(Path(model_path).with_suffix(".tmp"))
                                 with requests.get(url, stream=True, timeout=120) as r:

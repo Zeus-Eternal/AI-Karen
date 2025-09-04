@@ -7,7 +7,8 @@ Kari CORTEX Dispatch Core
 """
 
 from typing import Any, Dict, Optional, List
-from ai_karen_engine.core.cortex.intent import resolve_intent
+# Prefer routing-aware resolver which defers to base intent if no routing match
+from ai_karen_engine.core.cortex.routing_intents import resolve_routing_intent as resolve_intent
 from ai_karen_engine.core.plugin_registry import plugin_registry
 from ai_karen_engine.core.memory.manager import recall_context, update_memory
 from ai_karen_engine.core.plugin_metrics import (

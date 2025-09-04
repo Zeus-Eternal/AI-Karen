@@ -3,6 +3,8 @@
  * Integrates with Python backend error response format
  */
 
+import { safeError, safeWarn, safeInfo } from './safe-console';
+
 export enum ErrorCode {
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR',
@@ -276,13 +278,13 @@ export class UnifiedErrorHandler {
 
     switch (logLevel) {
       case 'error':
-        console.error(logMessage, logDetails);
+        safeError(logMessage, logDetails);
         break;
       case 'warn':
-        console.warn(logMessage, logDetails);
+        safeWarn(logMessage, logDetails);
         break;
       case 'info':
-        console.info(logMessage, logDetails);
+        safeInfo(logMessage, logDetails);
         break;
       default:
         console.log(logMessage, logDetails);

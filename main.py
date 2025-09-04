@@ -110,6 +110,8 @@ from ai_karen_engine.api_routes.public_routes import router as public_router
 from ai_karen_engine.api_routes.model_library_routes import router as model_library_router
 from ai_karen_engine.api_routes.provider_compatibility_routes import router as provider_compatibility_router
 from ai_karen_engine.api_routes.model_orchestrator_routes import router as model_orchestrator_router
+from ai_karen_engine.api_routes.validation_metrics_routes import router as validation_metrics_router
+from ai_karen_engine.api_routes.performance_routes import router as performance_routes
 from ai_karen_engine.server.middleware import configure_middleware
 from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS, PLUGIN_MAP
 from ai_karen_engine.server.startup import create_lifespan
@@ -141,6 +143,41 @@ class Settings(BaseSettings):
     debug: bool = True
     plugin_dir: str = "/app/plugins"
     llm_refresh_interval: int = 3600
+    
+    # Performance Optimization Settings
+    enable_performance_optimization: bool = Field(default=True, env="ENABLE_PERFORMANCE_OPTIMIZATION")
+    deployment_mode: str = Field(default="development", env="DEPLOYMENT_MODE")
+    cpu_threshold: float = Field(default=80.0, env="CPU_THRESHOLD")
+    memory_threshold: float = Field(default=85.0, env="MEMORY_THRESHOLD")
+    response_time_threshold: float = Field(default=2.0, env="RESPONSE_TIME_THRESHOLD")
+    enable_lazy_loading: bool = Field(default=True, env="ENABLE_LAZY_LOADING")
+    enable_gpu_offloading: bool = Field(default=True, env="ENABLE_GPU_OFFLOADING")
+    enable_service_consolidation: bool = Field(default=True, env="ENABLE_SERVICE_CONSOLIDATION")
+    max_startup_time: float = Field(default=30.0, env="MAX_STARTUP_TIME")
+    log_level: str = Field(default="INFO", env="LOG_LEVEL")
+    
+    # HTTP Request Validation Settings (Requirements 4.1, 4.2, 4.3, 4.4)
+    max_request_size: int = Field(default=10 * 1024 * 1024, env="MAX_REQUEST_SIZE")  # 10MB
+    max_headers_count: int = Field(default=100, env="MAX_HEADERS_COUNT")
+    max_header_size: int = Field(default=8192, env="MAX_HEADER_SIZE")
+    enable_request_validation: bool = Field(default=True, env="ENABLE_REQUEST_VALIDATION")
+    enable_security_analysis: bool = Field(default=True, env="ENABLE_SECURITY_ANALYSIS")
+    log_invalid_requests: bool = Field(default=True, env="LOG_INVALID_REQUESTS")
+    validation_rate_limit_per_minute: int = Field(default=100, env="VALIDATION_RATE_LIMIT_PER_MINUTE")
+    
+    # Security validation patterns (configurable)
+    blocked_user_agents: str = Field(
+        default="sqlmap,nikto,nmap,masscan,zap",
+        env="BLOCKED_USER_AGENTS"
+    )
+    suspicious_headers: str = Field(
+        default="x-forwarded-host,x-cluster-client-ip,x-real-ip",
+        env="SUSPICIOUS_HEADERS"
+    )
+    
+    # Protocol-level error handling settings
+    max_invalid_requests_per_connection: int = Field(default=10, env="MAX_INVALID_REQUESTS_PER_CONNECTION")
+    enable_protocol_error_handling: bool = Field(default=True, env="ENABLE_PROTOCOL_ERROR_HANDLING")
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -194,7 +231,9 @@ def configure_logging():
     logging.config.dictConfig(
         {
             "version": 1,
-            "disable_existing_loggers": False,
+            # Disable any handlers/config that uvicorn or early imports added
+            # to avoid duplicate log lines in console and files.
+            "disable_existing_loggers": True,
             "filters": {
                 "suppress_invalid_http": {
                     "()": "ai_karen_engine.server.logging_filters.SuppressInvalidHTTPFilter",
@@ -253,6 +292,23 @@ def configure_logging():
                     "handlers": ["access"],
                     "level": "INFO",
                     "propagate": False,
+                },
+                # Tune SQLAlchemy verbosity; avoid custom handlers so it
+                # propagates to root and doesn't double-format.
+                "sqlalchemy": {
+                    "level": "INFO" if settings.debug else "WARNING",
+                    "propagate": True,
+                    "handlers": []
+                },
+                "sqlalchemy.engine": {
+                    "level": "INFO" if settings.debug else "WARNING",
+                    "propagate": True,
+                    "handlers": []
+                },
+                "sqlalchemy.pool": {
+                    "level": "WARNING",
+                    "propagate": True,
+                    "handlers": []
                 },
             },
             "root": {
@@ -315,11 +371,204 @@ REQUEST_COUNT = _http_metrics['REQUEST_COUNT']
 REQUEST_LATENCY = _http_metrics['REQUEST_LATENCY']
 ERROR_COUNT = _http_metrics['ERROR_COUNT']
 
+# --- Validation Framework Initialization -----------------------------------
+
+def load_environment_specific_validation_config(settings: Settings) -> Settings:
+    """
+    Load environment-specific validation configuration.
+    
+    Requirement 4.3: Enable/disable specific validation rules based on deployment environment
+    """
+    environment = settings.environment.lower()
+    
+    # Production environment - strict validation
+    if environment == "production":
+        settings.enable_request_validation = True
+        settings.enable_security_analysis = True
+        settings.log_invalid_requests = True
+        settings.max_request_size = min(settings.max_request_size, 5 * 1024 * 1024)  # 5MB max in prod
+        settings.validation_rate_limit_per_minute = 50  # Stricter rate limiting
+        settings.max_invalid_requests_per_connection = 5  # Lower tolerance
+        logger.info("🔒 Production validation config: strict security enabled")
+    
+    # Development environment - relaxed validation for debugging
+    elif environment in ["development", "dev", "local"]:
+        settings.enable_request_validation = True
+        settings.enable_security_analysis = getattr(settings, "enable_security_analysis", True)
+        settings.log_invalid_requests = True
+        settings.validation_rate_limit_per_minute = 200  # More lenient for testing
+        settings.max_invalid_requests_per_connection = 20  # Higher tolerance for debugging
+        logger.info("🔧 Development validation config: relaxed for debugging")
+    
+    # Testing environment - minimal validation to avoid test interference
+    elif environment in ["test", "testing"]:
+        settings.enable_request_validation = True
+        settings.enable_security_analysis = False  # Disable for faster tests
+        settings.log_invalid_requests = False  # Reduce test noise
+        settings.validation_rate_limit_per_minute = 1000  # Very high for load tests
+        settings.max_invalid_requests_per_connection = 100
+        logger.info("🧪 Testing validation config: minimal interference")
+    
+    # Staging environment - production-like but with more logging
+    elif environment == "staging":
+        settings.enable_request_validation = True
+        settings.enable_security_analysis = True
+        settings.log_invalid_requests = True
+        settings.validation_rate_limit_per_minute = 100
+        settings.max_invalid_requests_per_connection = 10
+        logger.info("🎭 Staging validation config: production-like with enhanced logging")
+    
+    return settings
+
+
+def validate_configuration_settings(settings: Settings) -> bool:
+    """
+    Validate configuration settings for consistency and security.
+    
+    Requirements 4.1, 4.2: Ensure configuration values are within safe ranges
+    """
+    issues = []
+    
+    # Validate request size limits
+    if settings.max_request_size <= 0:
+        issues.append("max_request_size must be positive")
+    elif settings.max_request_size > 100 * 1024 * 1024:  # 100MB
+        issues.append("max_request_size too large (>100MB), potential DoS risk")
+    
+    # Validate header limits
+    if settings.max_headers_count <= 0 or settings.max_headers_count > 1000:
+        issues.append("max_headers_count must be between 1 and 1000")
+    
+    if settings.max_header_size <= 0 or settings.max_header_size > 32768:  # 32KB
+        issues.append("max_header_size must be between 1 and 32768 bytes")
+    
+    # Validate rate limiting
+    if settings.validation_rate_limit_per_minute <= 0:
+        issues.append("validation_rate_limit_per_minute must be positive")
+    elif settings.validation_rate_limit_per_minute > 10000:
+        issues.append("validation_rate_limit_per_minute too high (>10000), potential resource exhaustion")
+    
+    # Validate protocol settings
+    if settings.max_invalid_requests_per_connection <= 0:
+        issues.append("max_invalid_requests_per_connection must be positive")
+    elif settings.max_invalid_requests_per_connection > 1000:
+        issues.append("max_invalid_requests_per_connection too high (>1000)")
+    
+    # Log issues
+    if issues:
+        logger.error("❌ Configuration validation failed:")
+        for issue in issues:
+            logger.error(f"   • {issue}")
+        return False
+    
+    logger.info("✅ Configuration validation passed")
+    return True
+
+
+def initialize_validation_framework(settings: Settings) -> None:
+    """
+    Initialize the HTTP request validation framework with configurable settings.
+    
+    This function sets up the validation components according to requirements:
+    - 4.1: Configurable request size limits
+    - 4.2: Configurable rate limiting thresholds  
+    - 4.3: Environment-specific validation rules
+    - 4.4: Updateable validation patterns without code changes
+    """
+    try:
+        # Load environment-specific configuration (Requirement 4.3)
+        settings = load_environment_specific_validation_config(settings)
+        
+        # Validate configuration settings (Requirements 4.1, 4.2)
+        if not validate_configuration_settings(settings):
+            logger.warning("⚠️ Configuration issues detected, using safe defaults")
+        
+        from ai_karen_engine.server.http_validator import ValidationConfig
+        from ai_karen_engine.server.security_analyzer import SecurityAnalyzer
+        from ai_karen_engine.server.rate_limiter import EnhancedRateLimiter, MemoryRateLimitStorage, DEFAULT_RATE_LIMIT_RULES
+        from ai_karen_engine.server.enhanced_logger import EnhancedLogger, LoggingConfig
+        
+        # Parse configurable lists from settings (Requirement 4.4)
+        blocked_agents = set(agent.strip().lower() for agent in settings.blocked_user_agents.split(",") if agent.strip())
+        suspicious_headers = set(header.strip().lower() for header in settings.suspicious_headers.split(",") if header.strip())
+        
+        # Create validation configuration from settings
+        validation_config = ValidationConfig(
+            max_content_length=settings.max_request_size,
+            max_headers_count=settings.max_headers_count,
+            max_header_size=settings.max_header_size,
+            rate_limit_requests_per_minute=settings.validation_rate_limit_per_minute,
+            enable_security_analysis=settings.enable_security_analysis,
+            log_invalid_requests=settings.log_invalid_requests,
+            blocked_user_agents=blocked_agents,
+            suspicious_headers=suspicious_headers
+        )
+        
+        # Initialize enhanced logger for validation events
+        logging_config = LoggingConfig(
+            log_level="INFO",
+            enable_security_logging=settings.enable_security_analysis,
+            sanitize_data=True
+        )
+        enhanced_logger = EnhancedLogger(logging_config)
+        
+        # Store configuration globally for middleware access
+        import ai_karen_engine.server.middleware as middleware_module
+        middleware_module._validation_config = validation_config
+        middleware_module._enhanced_logger = enhanced_logger
+        
+        logger.info("✅ HTTP request validation framework initialized")
+        logger.info(f"   • Environment: {settings.environment}")
+        logger.info(f"   • Max request size: {settings.max_request_size / (1024*1024):.1f}MB")
+        logger.info(f"   • Max headers: {settings.max_headers_count}")
+        logger.info(f"   • Security analysis: {'enabled' if settings.enable_security_analysis else 'disabled'}")
+        logger.info(f"   • Rate limiting: {settings.validation_rate_limit_per_minute} requests/minute")
+        logger.info(f"   • Blocked user agents: {len(blocked_agents)} patterns")
+        logger.info(f"   • Suspicious headers: {len(suspicious_headers)} patterns")
+        logger.info(f"   • Protocol error handling: {'enabled' if settings.enable_protocol_error_handling else 'disabled'}")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize validation framework: {e}")
+        logger.info("Server will continue with basic validation")
+
+
 # --- FastAPI Application Setup ---------------------------------------------
 
 
 def create_app() -> FastAPI:
-    """Application factory for Kari AI"""
+    """Application factory for Kari AI with performance optimization"""
+    # Initialize performance configuration
+    try:
+        from ai_karen_engine.config.performance_config import load_performance_config
+        import asyncio
+        
+        # Load performance configuration synchronously during app creation
+        loop = None
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        if loop.is_running():
+            # If loop is already running, we'll load config during startup
+            logger.info("📋 Performance configuration will be loaded during startup")
+        else:
+            # Load configuration now
+            perf_config = loop.run_until_complete(load_performance_config())
+            logger.info(f"📋 Performance configuration loaded: {perf_config.deployment_mode} mode")
+            
+            # Update settings with performance configuration
+            settings.enable_performance_optimization = perf_config.enable_performance_optimization
+            settings.deployment_mode = perf_config.deployment_mode
+            settings.cpu_threshold = perf_config.cpu_threshold
+            settings.memory_threshold = perf_config.memory_threshold
+            settings.response_time_threshold = perf_config.response_time_threshold
+            
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to load performance configuration: {e}")
+        logger.info("📦 Using default performance settings")
+    
     # The lifespan context manager manages startup and shutdown
     # logic for the application. Previously this variable was
     # referenced without being defined which caused the server
@@ -329,7 +578,7 @@ def create_app() -> FastAPI:
     lifespan = create_lifespan(settings)
     app = FastAPI(
         title=settings.app_name,
-        description="Kari AI Production Server",
+        description="Kari AI Production Server with Performance Optimization",
         version="1.0.0",
         lifespan=lifespan,
         docs_url="/docs" if settings.debug else None,
@@ -341,17 +590,40 @@ def create_app() -> FastAPI:
         ],
     )
 
+    # Initialize validation framework before configuring middleware
+    initialize_validation_framework(settings)
+    
     configure_middleware(app, settings, REQUEST_COUNT, REQUEST_LATENCY, ERROR_COUNT)
 
     app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
     app.include_router(auth_session_router, prefix="/api", tags=["authentication-session"])
+    
+    # Authentication system selection based on environment
+    auth_mode = os.getenv("AUTH_MODE", "hybrid").lower()
+    
+    if auth_mode == "bypass":
+        # Simple auth bypass for debugging concurrency issues
+        from simple_auth_bypass import router as simple_auth_router
+        app.include_router(simple_auth_router, prefix="/api", tags=["simple-auth"])
+        logger.info("🔓 Using simple auth bypass mode (development only)")
+    elif auth_mode == "production":
+        # Full production authentication system with database
+        from ai_karen_engine.auth.production_auth import router as production_auth_router
+        app.include_router(production_auth_router, prefix="/api", tags=["production-auth"])
+        logger.info("🔐 Using full production authentication system")
+    else:
+        # Hybrid authentication system (default) - secure but simple
+        from ai_karen_engine.auth.hybrid_auth import router as hybrid_auth_router
+        app.include_router(hybrid_auth_router, prefix="/api", tags=["hybrid-auth"])
+        logger.info("🔐 Using hybrid authentication system (production-ready)")
     app.include_router(events_router, prefix="/api/events", tags=["events"])
     app.include_router(websocket_router, prefix="/api/ws", tags=["websocket"])
     app.include_router(web_api_router, prefix="/api/web", tags=["web-api"])
     app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
     app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
     app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
-    app.include_router(copilot_router, prefix="/copilot", tags=["copilot"])
+    # Align copilot routes under /api to match frontend expectations
+    app.include_router(copilot_router, prefix="/api/copilot", tags=["copilot"])
     app.include_router(
         conversation_router, prefix="/api/conversations", tags=["conversations"]
     )
@@ -380,7 +652,42 @@ def create_app() -> FastAPI:
     app.include_router(model_library_router, tags=["model-library"])
     app.include_router(provider_compatibility_router, tags=["provider-compatibility"])
     app.include_router(model_orchestrator_router, tags=["model-orchestrator"])
+    app.include_router(validation_metrics_router, tags=["validation-metrics"])
+    app.include_router(performance_routes, prefix="/api/performance", tags=["performance"])
     app.include_router(settings_router)
+
+    # Compatibility alias: some web UI proxies still call /copilot/assist
+    # Provide a thin alias to the /api/copilot/assist endpoint to avoid 404s.
+    try:
+        from ai_karen_engine.api_routes.copilot_routes import (
+            copilot_assist,  # type: ignore
+            copilot_health,  # type: ignore
+        )
+        # Accept POST (primary), plus OPTIONS for simple checks
+        app.add_api_route(
+            "/copilot/assist", copilot_assist, methods=["POST", "OPTIONS"], tags=["copilot-compat"]
+        )
+        # Health alias for convenience
+        app.add_api_route(
+            "/copilot/health", copilot_health, methods=["GET"], tags=["copilot-compat"]
+        )
+        # Log presence of alias for quick diagnosis
+        try:
+            alias_present = any(getattr(r, "path", "") == "/copilot/assist" for r in app.routes)
+            logger.info(f"Copilot legacy alias registered: {alias_present}")
+        except Exception:
+            pass
+    except Exception as e:
+        logger.warning(f"Copilot legacy alias not registered: {e}")
+
+    # Proactively register copilot routing actions so /api/copilot/start works immediately
+    try:
+        from ai_karen_engine.integrations.copilotkit.routing_actions import (
+            ensure_kire_actions_registered,
+        )
+        ensure_kire_actions_registered()
+    except Exception:
+        pass
 
     # Setup developer API with enhanced debugging capabilities
     setup_developer_api(app)
@@ -428,6 +735,246 @@ def create_app() -> FastAPI:
             return {
                 "success": False,
                 "error": str(e)
+            }
+    
+    # Add performance optimization endpoints
+    @app.get("/api/admin/performance/status", tags=["admin"])
+    async def get_performance_status():
+        """Get current performance optimization status"""
+        try:
+            from ai_karen_engine.server.optimized_startup import (
+                get_lifecycle_manager, get_resource_monitor, get_performance_metrics
+            )
+            
+            lifecycle_manager = get_lifecycle_manager()
+            resource_monitor = get_resource_monitor()
+            performance_metrics = get_performance_metrics()
+            
+            status = {
+                "optimization_enabled": settings.enable_performance_optimization,
+                "deployment_mode": settings.deployment_mode,
+                "components": {
+                    "lifecycle_manager": lifecycle_manager is not None,
+                    "resource_monitor": resource_monitor is not None,
+                    "performance_metrics": performance_metrics is not None
+                }
+            }
+            
+            if resource_monitor:
+                status["resource_usage"] = await resource_monitor.get_current_metrics()
+            
+            if performance_metrics:
+                status["performance_summary"] = await performance_metrics.get_summary()
+            
+            return status
+            
+        except Exception as e:
+            return {"error": str(e), "optimization_enabled": False}
+    
+    @app.post("/api/admin/performance/audit", tags=["admin"])
+    async def run_performance_audit():
+        """Run a performance audit"""
+        try:
+            from ai_karen_engine.audit.performance_auditor import PerformanceAuditor
+            
+            auditor = PerformanceAuditor()
+            await auditor.initialize()
+            
+            audit_report = await auditor.audit_runtime_performance()
+            recommendations = await auditor.generate_optimization_recommendations()
+            
+            return {
+                "success": True,
+                "audit_report": audit_report,
+                "recommendations": recommendations
+            }
+            
+        except Exception as e:
+            logger.error(f"Performance audit failed: {e}")
+            return {"success": False, "error": str(e)}
+    
+    @app.post("/api/admin/performance/optimize", tags=["admin"])
+    async def trigger_optimization():
+        """Trigger performance optimization"""
+        try:
+            from ai_karen_engine.server.optimized_startup import get_lifecycle_manager
+            
+            lifecycle_manager = get_lifecycle_manager()
+            if not lifecycle_manager:
+                return {"success": False, "error": "Optimization not enabled"}
+            
+            # Trigger service consolidation and optimization
+            optimization_report = await lifecycle_manager.optimize_services()
+            
+            return {
+                "success": True,
+                "message": "Performance optimization completed",
+                "report": optimization_report
+            }
+            
+        except Exception as e:
+            logger.error(f"Performance optimization failed: {e}")
+            return {"success": False, "error": str(e)}
+    
+    # Add validation configuration management endpoints (Requirement 4.4)
+    @app.get("/api/admin/validation/config", tags=["admin"])
+    async def get_validation_config():
+        """Get current validation configuration"""
+        try:
+            import ai_karen_engine.server.middleware as middleware_module
+            validation_config = getattr(middleware_module, '_validation_config', None)
+            
+            if validation_config is None:
+                return {"error": "Validation configuration not initialized"}
+            
+            return {
+                "max_content_length": validation_config.max_content_length,
+                "max_headers_count": validation_config.max_headers_count,
+                "max_header_size": validation_config.max_header_size,
+                "rate_limit_requests_per_minute": validation_config.rate_limit_requests_per_minute,
+                "enable_security_analysis": validation_config.enable_security_analysis,
+                "log_invalid_requests": validation_config.log_invalid_requests,
+                "blocked_user_agents": list(validation_config.blocked_user_agents),
+                "suspicious_headers": list(validation_config.suspicious_headers),
+                "environment": settings.environment
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
+    @app.post("/api/admin/validation/reload", tags=["admin"])
+    async def reload_validation_config():
+        """Reload validation configuration from environment variables (Requirement 4.4)"""
+        try:
+            # Reload settings from environment
+            new_settings = Settings()
+            
+            # Reinitialize validation framework with new settings
+            initialize_validation_framework(new_settings)
+            
+            return {
+                "success": True,
+                "message": "Validation configuration reloaded successfully",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "environment": new_settings.environment,
+                "max_request_size_mb": new_settings.max_request_size / (1024*1024),
+                "security_analysis_enabled": new_settings.enable_security_analysis
+            }
+        except Exception as e:
+            logger.error(f"Failed to reload validation configuration: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+    
+    @app.post("/api/admin/validation/update-patterns", tags=["admin"])
+    async def update_validation_patterns(request: dict):
+        """Update validation patterns without code changes (Requirement 4.4)"""
+        try:
+            import ai_karen_engine.server.middleware as middleware_module
+            validation_config = getattr(middleware_module, '_validation_config', None)
+            
+            if validation_config is None:
+                return {"error": "Validation configuration not initialized"}
+            
+            # Update blocked user agents if provided
+            if "blocked_user_agents" in request:
+                new_agents = set(agent.strip().lower() for agent in request["blocked_user_agents"] if agent.strip())
+                validation_config.blocked_user_agents = new_agents
+                logger.info(f"Updated blocked user agents: {len(new_agents)} patterns")
+            
+            # Update suspicious headers if provided
+            if "suspicious_headers" in request:
+                new_headers = set(header.strip().lower() for header in request["suspicious_headers"] if header.strip())
+                validation_config.suspicious_headers = new_headers
+                logger.info(f"Updated suspicious headers: {len(new_headers)} patterns")
+            
+            # Update rate limiting if provided
+            if "rate_limit_requests_per_minute" in request:
+                new_rate_limit = int(request["rate_limit_requests_per_minute"])
+                if 1 <= new_rate_limit <= 10000:
+                    validation_config.rate_limit_requests_per_minute = new_rate_limit
+                    logger.info(f"Updated rate limit: {new_rate_limit} requests/minute")
+                else:
+                    return {"error": "Rate limit must be between 1 and 10000"}
+            
+            # Update security analysis toggle if provided
+            if "enable_security_analysis" in request:
+                validation_config.enable_security_analysis = bool(request["enable_security_analysis"])
+                logger.info(f"Security analysis: {'enabled' if validation_config.enable_security_analysis else 'disabled'}")
+            
+            return {
+                "success": True,
+                "message": "Validation patterns updated successfully",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "updated_config": {
+                    "blocked_user_agents": len(validation_config.blocked_user_agents),
+                    "suspicious_headers": len(validation_config.suspicious_headers),
+                    "rate_limit_requests_per_minute": validation_config.rate_limit_requests_per_minute,
+                    "enable_security_analysis": validation_config.enable_security_analysis
+                }
+            }
+        except Exception as e:
+            logger.error(f"Failed to update validation patterns: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+    
+    @app.get("/api/admin/validation/status", tags=["admin"])
+    async def get_validation_status():
+        """Get validation system status and metrics"""
+        try:
+            import ai_karen_engine.server.middleware as middleware_module
+            validation_config = getattr(middleware_module, '_validation_config', None)
+            enhanced_logger = getattr(middleware_module, '_enhanced_logger', None)
+            
+            status = {
+                "validation_framework_initialized": validation_config is not None,
+                "enhanced_logging_initialized": enhanced_logger is not None,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "environment": settings.environment
+            }
+            
+            if validation_config:
+                status["configuration"] = {
+                    "max_content_length_mb": validation_config.max_content_length / (1024*1024),
+                    "max_headers_count": validation_config.max_headers_count,
+                    "max_header_size": validation_config.max_header_size,
+                    "rate_limit_per_minute": validation_config.rate_limit_requests_per_minute,
+                    "security_analysis_enabled": validation_config.enable_security_analysis,
+                    "logging_enabled": validation_config.log_invalid_requests,
+                    "blocked_agents_count": len(validation_config.blocked_user_agents),
+                    "suspicious_headers_count": len(validation_config.suspicious_headers)
+                }
+            
+            # Try to get validation metrics if available
+            try:
+                from ai_karen_engine.core.metrics_manager import get_metrics_manager
+                metrics_manager = get_metrics_manager()
+                
+                # Get validation-related metrics
+                validation_metrics = {}
+                with metrics_manager.safe_metrics_context():
+                    # These metrics would be populated by the middleware
+                    validation_metrics = {
+                        "total_requests_validated": "available",
+                        "invalid_requests_blocked": "available", 
+                        "security_threats_detected": "available",
+                        "rate_limited_requests": "available"
+                    }
+                
+                status["metrics"] = validation_metrics
+            except Exception:
+                status["metrics"] = {"error": "Metrics not available"}
+            
+            return status
+            
+        except Exception as e:
+            return {
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
     
     # Add reasoning system endpoint for frontend
@@ -615,7 +1162,7 @@ def create_app() -> FastAPI:
                 
                 model_status = {
                     "local_models": len(gguf_models) + len(bin_models),
-                    "fallback_available": (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                    "fallback_available": (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
                 }
             except Exception:
                 model_status = {"local_models": 0, "fallback_available": False}
@@ -735,7 +1282,7 @@ def create_app() -> FastAPI:
                 # Check if we have local models available
                 from pathlib import Path
                 models_dir = Path("models")
-                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
                 
                 # Check spaCy availability
                 spacy_available = False
@@ -759,7 +1306,7 @@ def create_app() -> FastAPI:
                 try:
                     from pathlib import Path
                     models_dir = Path("models")
-                    tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                    tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
                     
                     import spacy
                     nlp = spacy.load("en_core_web_sm")
@@ -791,7 +1338,7 @@ def create_app() -> FastAPI:
             try:
                 from pathlib import Path
                 models_dir = Path("models")
-                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
                 
                 spacy_available = False
                 try:
@@ -959,7 +1506,7 @@ def create_app() -> FastAPI:
                 bin_models = list(models_dir.rglob("*.bin"))
                 
                 # Check specific models
-                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
                 transformers_cache = (models_dir / "transformers").exists()
                 
                 # Check spaCy
@@ -1163,7 +1710,7 @@ if __name__ == "__main__":
                 bin_models = list(models_dir.rglob("*.bin"))
                 
                 # Check for TinyLlama fallback model
-                tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+                tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
                 has_fallback_model = tinyllama_path.exists()
                 
                 # Check spaCy
@@ -1306,29 +1853,35 @@ if __name__ == "__main__":
         },
     }
 
-    uvicorn_kwargs = {
-        "app": "main:create_app",
-        "host": "0.0.0.0",
-        "port": 8000,
-        "reload": settings.debug,
-        "workers": 1,  # Use single worker for development to avoid issues
-        "log_config": log_config,
-        "access_log": False,
-        "timeout_keep_alive": 30,
-        "timeout_graceful_shutdown": 30,
-        "factory": True,
-        # Add better handling for invalid HTTP requests
-        "http": "httptools",  # Use httptools HTTP implementation for better error handling
-        "loop": "auto",  # Auto-select the best event loop
-        "server_header": False,  # Disable server header to reduce attack surface
-        "date_header": False,  # Disable date header for performance
+    # Use custom uvicorn server with enhanced protocol-level error handling
+    from ai_karen_engine.server.custom_server import create_custom_server
+
+    # Create custom server with enhanced protocol-level error handling using settings
+    custom_server = create_custom_server(
+        app="main:create_app",
+        host="0.0.0.0",
+        port=8000,
+        debug=settings.debug,
+        ssl_context=ssl_context,
+        workers=1,  # Use single worker for development to avoid issues
+        # Enhanced configuration for protocol-level error handling from settings
+        max_invalid_requests_per_connection=settings.max_invalid_requests_per_connection,
+        enable_protocol_error_handling=settings.enable_protocol_error_handling,
+        log_invalid_requests=settings.log_invalid_requests,
         # Production-ready limits to prevent resource exhaustion
-        "limit_concurrency": 200,  # Increased for production
-        "limit_max_requests": 10000,  # Increased for production (10x more)
-        "backlog": 4096,  # Increased backlog for better handling
-    }
+        limit_concurrency=200,
+        limit_max_requests=10000,
+        backlog=4096,
+        timeout_keep_alive=30,
+        timeout_graceful_shutdown=30,
+        access_log=False,
+        # Use httptools for better error handling
+        http="httptools",
+        loop="auto",
+        server_header=False,
+        date_header=False,
+    )
 
-    if ssl_context:
-        uvicorn_kwargs["ssl"] = ssl_context
-
-    uvicorn.run(**uvicorn_kwargs)
+    # Run the custom server
+    logger.info("🚀 Starting Kari AI server with enhanced protocol-level error handling")
+    custom_server.run()

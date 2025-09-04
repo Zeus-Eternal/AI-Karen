@@ -49,7 +49,7 @@ interface IntegrationStatus {
   healthy_providers: number;
   providers_with_models: number;
   total_compatible_models: number;
-  recommendations: string[];
+  recommendations?: string[]; // Make optional to handle undefined cases
 }
 
 interface ModelLibraryIntegrationTestProps {
@@ -117,7 +117,17 @@ export default function ModelLibraryIntegrationTest({
   const loadIntegrationStatus = async () => {
     try {
       const status = await backend.makeRequestPublic<IntegrationStatus>('/api/providers/integration/status');
-      setIntegrationStatus(status);
+      // Ensure recommendations is always an array
+      const safeStatus = {
+        ...status,
+        recommendations: Array.isArray(status?.recommendations) ? status.recommendations : [],
+        healthy_providers: status?.healthy_providers || 0,
+        total_providers: status?.total_providers || 0,
+        providers_with_models: status?.providers_with_models || 0,
+        total_compatible_models: status?.total_compatible_models || 0,
+        overall_status: status?.overall_status || 'unknown'
+      };
+      setIntegrationStatus(safeStatus);
     } catch (error) {
       console.error('Failed to load integration status:', error);
     }
@@ -239,14 +249,24 @@ export default function ModelLibraryIntegrationTest({
       
       try {
         const integrationStatus = await backend.makeRequestPublic<IntegrationStatus>('/api/providers/integration/status');
-        setIntegrationStatus(integrationStatus);
+        // Ensure recommendations is always an array
+        const safeStatus = {
+          ...integrationStatus,
+          recommendations: Array.isArray(integrationStatus?.recommendations) ? integrationStatus.recommendations : [],
+          healthy_providers: integrationStatus?.healthy_providers || 0,
+          total_providers: integrationStatus?.total_providers || 0,
+          providers_with_models: integrationStatus?.providers_with_models || 0,
+          total_compatible_models: integrationStatus?.total_compatible_models || 0,
+          overall_status: integrationStatus?.overall_status || 'unknown'
+        };
+        setIntegrationStatus(safeStatus);
         
         updateStepStatus('integration_status', 'completed', undefined, {
-          overall_status: integrationStatus.overall_status,
-          healthy_providers: integrationStatus.healthy_providers,
-          providers_with_models: integrationStatus.providers_with_models,
-          total_compatible_models: integrationStatus.total_compatible_models,
-          recommendations: integrationStatus.recommendations
+          overall_status: safeStatus.overall_status,
+          healthy_providers: safeStatus.healthy_providers,
+          providers_with_models: safeStatus.providers_with_models,
+          total_compatible_models: safeStatus.total_compatible_models,
+          recommendations: safeStatus.recommendations
         }, Date.now() - integrationStartTime);
       } catch (error) {
         updateStepStatus('integration_status', 'failed', `Integration status check failed: ${error}`);
@@ -429,13 +449,13 @@ export default function ModelLibraryIntegrationTest({
                 <AlertCircle className="h-4 w-4" />
               )}
               <AlertTitle>
-                Integration Status: {integrationStatus.overall_status.replace('_', ' ').toUpperCase()}
+                Integration Status: {integrationStatus?.overall_status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
               </AlertTitle>
               <AlertDescription>
-                {integrationStatus.healthy_providers}/{integrationStatus.total_providers} providers healthy, {' '}
-                {integrationStatus.providers_with_models} providers have compatible models, {' '}
-                {integrationStatus.total_compatible_models} total compatible models available.
-                {integrationStatus.recommendations.length > 0 && (
+                {integrationStatus.healthy_providers || 0}/{integrationStatus.total_providers || 0} providers healthy, {' '}
+                {integrationStatus.providers_with_models || 0} providers have compatible models, {' '}
+                {integrationStatus.total_compatible_models || 0} total compatible models available.
+                {integrationStatus.recommendations && Array.isArray(integrationStatus.recommendations) && integrationStatus.recommendations.length > 0 && (
                   <div className="mt-2">
                     <strong>Recommendations:</strong>
                     <ul className="list-disc list-inside mt-1">

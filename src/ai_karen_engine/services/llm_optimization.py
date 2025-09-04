@@ -306,13 +306,13 @@ class OptimizedLLMService:
         """Get default model configurations"""
         return [
             ModelConfig(
-                name="ollama:llama3.2",
-                provider="ollama",
+                name="llamacpp:tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                provider="llamacpp",
                 model_type=ModelType.LOCAL,
                 warmup_strategy=WarmupStrategy.EAGER,
                 preload_enabled=True,
-                use_gpu=True,
-                quantization="fp16"
+                use_gpu=False,
+                quantization="q4_k_m"
             ),
             ModelConfig(
                 name="openai:gpt-4o-mini",

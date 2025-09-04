@@ -241,6 +241,16 @@ class KarenBackendService {
     }
     const cacheKey = `${primaryUrl}:${JSON.stringify(options)}`;
 
+    // Determine per-request timeout based on endpoint type
+    const isLongEndpoint = !isAbsoluteEndpoint && (
+      endpoint.startsWith('/api/models/') ||
+      endpoint.startsWith('/api/providers/') ||
+      endpoint.startsWith('/api/health')
+    );
+    const REQUEST_SHORT_TIMEOUT = this.config.timeout;
+    const REQUEST_LONG_TIMEOUT = Number((process as any)?.env?.NEXT_PUBLIC_API_LONG_TIMEOUT_MS || (process as any)?.env?.KAREN_API_LONG_TIMEOUT_MS || Math.max(REQUEST_SHORT_TIMEOUT, 120000));
+    const perRequestTimeout = isLongEndpoint ? REQUEST_LONG_TIMEOUT : REQUEST_SHORT_TIMEOUT;
+
     // Circuit breaker check
     const now = Date.now();
     if (this.circuitOpenUntil > now) {
@@ -312,6 +322,7 @@ class KarenBackendService {
         },
         body: bodyLog,
         correlationId,
+        timeoutMs: perRequestTimeout,
       });
     }
 
@@ -347,12 +358,18 @@ class KarenBackendService {
         let response: Response | null = null;
         let lastFetchError: any = null;
 
+        const useCookies = (typeof window !== 'undefined') && !isAbsoluteEndpoint;
         if (isAbsoluteEndpoint) {
           // Single absolute URL request
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-            response = await fetch(primaryUrl, { ...options, headers, signal: controller.signal });
+            const timeoutId = setTimeout(() => controller.abort(), perRequestTimeout);
+            response = await fetch(primaryUrl, {
+              ...options,
+              headers,
+              signal: controller.signal,
+              ...(useCookies ? { credentials: 'include' as RequestCredentials } : {}),
+            });
             clearTimeout(timeoutId);
           } catch (fetchErr) {
             lastFetchError = fetchErr;
@@ -365,11 +382,12 @@ class KarenBackendService {
             console.log(`[DEBUG] Attempting URL: ${url}`);
             try {
               const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+              const timeoutId = setTimeout(() => controller.abort(), perRequestTimeout);
               response = await fetch(url, {
                 ...options,
                 headers,
                 signal: controller.signal,
+                ...(useCookies ? { credentials: 'include' as RequestCredentials } : {}),
               });
               clearTimeout(timeoutId);
 
@@ -437,6 +455,33 @@ class KarenBackendService {
           }
 
           const apiError = APIError.fromResponse(response, errorDetails);
+
+          // Public fallback for read-only model endpoints when unauthorized/forbidden
+          if ((response.status === 401 || response.status === 403) && endpoint.startsWith('/api/models/')) {
+            try {
+              const publicEndpoint = endpoint.replace('/api/models/', '/api/models/public/');
+              if (publicEndpoint !== endpoint) {
+                if (this.requestLogging) {
+                  console.warn(`[PUBLIC-FALLBACK] Retrying ${endpoint} as ${publicEndpoint}`);
+                }
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), perRequestTimeout);
+                const publicResp = await fetch(`${this.config.baseUrl}${publicEndpoint}`, {
+                  ...options,
+                  headers,
+                  signal: controller.signal,
+                });
+                clearTimeout(timeoutId);
+                if (publicResp.ok) {
+                  const ct = publicResp.headers.get('content-type') || '';
+                  const data = ct.includes('application/json') ? await publicResp.json() : await publicResp.text();
+                  return data as T;
+                }
+              }
+            } catch {
+              // ignore and fall through to normal handling
+            }
+          }
 
           if (response.status === 401) {
             try {
@@ -979,9 +1024,21 @@ class KarenBackendService {
   // Analytics Service Integration
   async getSystemMetrics(): Promise<SystemMetrics> {
     try {
-      return await this.makeRequest<SystemMetrics>('/api/web/analytics/system', {}, true, 60000); // 1 minute cache
+      // Try public endpoint first, then fall back to authenticated endpoint
+      try {
+        return await this.makeRequestPublic<SystemMetrics>('/api/analytics/usage', {}, true, 60000);
+      } catch (publicError) {
+        // If public endpoint fails, try authenticated endpoint
+        return await this.makeRequest<SystemMetrics>('/api/web/analytics/system', {}, true, 60000);
+      }
     } catch (error) {
-      console.error('Failed to get system metrics:', error);
+      // Silently handle authentication errors in health monitoring
+      if (error instanceof Error && error.message.includes('401')) {
+        console.debug('System metrics unavailable (authentication required)');
+      } else {
+        console.error('Failed to get system metrics:', error);
+      }
+      
       // Return mock data as fallback
       return {
         cpu_usage: 45.2,

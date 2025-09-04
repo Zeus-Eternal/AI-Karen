@@ -1,5 +1,7 @@
 'use client';
 
+import { safeWarn, safeInfo } from './safe-console';
+
 interface TelemetryEvent {
   event: string;
   payload: Record<string, any>;
@@ -105,7 +107,7 @@ class TelemetryService {
     this.eventQueue.push(telemetryEvent);
 
     if (this.config.debug) {
-      console.log('📊 Telemetry Event:', telemetryEvent);
+      safeInfo('📊 Telemetry Event:', telemetryEvent);
     }
 
     // Flush if queue is full
@@ -181,7 +183,7 @@ class TelemetryService {
     this.eventQueue = [];
 
     if (this.config.debug) {
-      console.log(`📊 Flushing ${events.length} telemetry events`);
+      safeInfo(`📊 Flushing ${events.length} telemetry events`);
     }
 
     // Store locally as fallback
@@ -193,7 +195,7 @@ class TelemetryService {
         await this.sendToEndpoint(events);
         this.retryCount = 0;
       } catch (error) {
-        console.warn('Failed to send telemetry events:', error);
+        safeWarn('Failed to send telemetry events:', error);
         
         // Retry logic
         if (this.retryCount < this.config.maxRetries) {
@@ -222,7 +224,7 @@ class TelemetryService {
       
       localStorage.setItem('telemetry_events', JSON.stringify(trimmed));
     } catch (error) {
-      console.warn('Failed to store telemetry events locally:', error);
+      safeWarn('Failed to store telemetry events locally:', error);
     }
   }
 

@@ -958,7 +958,7 @@ class LLMRegistry:
             model_dirs = [
                 Path("models"),
                 Path("~/.cache/huggingface/hub").expanduser(),
-                Path("~/.ollama/models").expanduser()
+                Path("~/.cache/llama.cpp").expanduser()
             ]
             
             for model_dir in model_dirs:

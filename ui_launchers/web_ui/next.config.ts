@@ -74,9 +74,40 @@ const nextConfig: NextConfig = {
     const backendUrl = process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
     
     return [
+      // Generic backend passthrough
       {
         source: '/api/backend/:path*',
         destination: `${backendUrl}/api/:path*`,
+      },
+      // Auth
+      {
+        source: '/api/auth/:path*',
+        destination: `${backendUrl}/api/auth/:path*`,
+      },
+      // CopilotKit actions
+      // Frontend uses /api/copilot/*; backend mounts these directly under /api/*
+      // Rewrite by stripping the 'copilot' segment.
+      {
+        source: '/api/copilot/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+      // Models + providers
+      {
+        source: '/api/models/:path*',
+        destination: `${backendUrl}/api/models/:path*`,
+      },
+      {
+        source: '/api/llm/:path*',
+        destination: `${backendUrl}/api/llm/:path*`,
+      },
+      // Health
+      {
+        source: '/api/health',
+        destination: `${backendUrl}/api/health`,
+      },
+      {
+        source: '/health',
+        destination: `${backendUrl}/health`,
       },
     ];
   },

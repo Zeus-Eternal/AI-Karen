@@ -1059,6 +1059,13 @@ async def get_system_metrics_compatibility(http_request: Request):
         )
 
 
+# Alias path expected by the web UI: /api/web/analytics/system
+# Keep this thin wrapper to avoid 404/401 from mismatched paths
+@router.get("/web/analytics/system", response_model=WebUISystemMetrics)
+async def get_system_metrics_alias(http_request: Request):
+    return await get_system_metrics_compatibility(http_request)
+
+
 @router.get("/analytics/usage", response_model=WebUIUsageAnalytics)
 async def get_usage_analytics_compatibility(http_request: Request):
     """

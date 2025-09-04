@@ -159,12 +159,12 @@ response = client.generate(
 
 ```bash
 # TinyLLaMA Configuration
-TINYLLAMA_MODEL_PATH="models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+TINYLLAMA_MODEL_PATH="models/llama-cpp/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
 TINYLLAMA_CONTEXT_SIZE=2048
 TINYLLAMA_THREADS=4
 
 # LlamaCpp Configuration
-LLAMACPP_MODEL_PATH="models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+LLAMACPP_MODEL_PATH="models/llama-cpp/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
 LLAMACPP_CONTEXT_SIZE=2048
 LLAMACPP_THREADS=4
 
@@ -181,8 +181,8 @@ PERFORMANCE_MONITORING=true
 1. Download TinyLLaMA model:
 ```bash
 mkdir -p models/llama-cpp
-wget https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
-  -O models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+wget https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf \
+  -O models/llama-cpp/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf
 ```
 
 2. Install llama-cpp-python:
@@ -200,8 +200,8 @@ pip install llama-cpp-python
 2. Download TinyLLaMA model (if not already done):
 ```bash
 mkdir -p models/llama-cpp
-wget https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
-  -O models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+wget https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf \
+  -O models/llama-cpp/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf
 ```
 
 3. Verify model loading:
@@ -336,7 +336,7 @@ print(models)
 ```
 Error: Failed to load TinyLLaMA model: Failed to load model from file
 ```
-**Solution:** Ensure model file exists at `models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf`
+**Solution:** Ensure model file exists at `models/llama-cpp/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf`
 
 #### LlamaCpp Model Loading Failed
 ```

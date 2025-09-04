@@ -56,7 +56,8 @@ except Exception:  # pragma: no cover - prometheus optional
     _LATENCY_HIST = _DummyMetric()
 
 
-router = APIRouter()
+# Expose health endpoints under /api/health
+router = APIRouter(prefix="/health")
 
 
 def _record_metrics(endpoint: str, duration_ms: float) -> None:
@@ -238,7 +239,7 @@ async def degraded_mode_status() -> Dict[str, Any]:
             # Check if we have local models available as files
             from pathlib import Path
             models_dir = Path("models")
-            tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+            tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
             
             # Check spaCy availability
             spacy_available = False
@@ -277,7 +278,7 @@ async def degraded_mode_status() -> Dict[str, Any]:
             try:
                 from pathlib import Path
                 models_dir = Path("models")
-                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
                 
                 import spacy
                 nlp = spacy.load("en_core_web_sm")
@@ -312,7 +313,7 @@ async def degraded_mode_status() -> Dict[str, Any]:
         try:
             from pathlib import Path
             models_dir = Path("models")
-            tinyllama_file_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").exists()
+            tinyllama_file_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
             
             # Check spaCy availability
             spacy_available = False
@@ -447,4 +448,3 @@ async def service_health(service_name: str, request: Request) -> Dict[str, Any]:
 
 
 __all__ = ["router"]
-

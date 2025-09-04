@@ -5,6 +5,8 @@ export { CopilotChat } from './copilot';
 export { MessageBubble } from './MessageBubble';
 export { MetaBar } from './MetaBar';
 export { ChatBubble } from './ChatBubble';
+export { default as ModelSelector } from './ModelSelector';
+export { default as EnhancedModelSelector } from './EnhancedModelSelector';
 
 // Export copilot components
 export { default as CopilotActions } from './CopilotActions';

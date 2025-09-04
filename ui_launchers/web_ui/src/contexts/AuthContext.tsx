@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { safeError, safeWarn } from '@/lib/safe-console';
 import { User, AuthState, LoginCredentials, AuthContextType, DeepPartial } from '@/types/auth';
 import { authStateManager } from './AuthStateManager';
 import { authService } from '@/services/authService';
@@ -57,16 +58,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const autoLogin = async () => {
         try {
           console.log('Development mode: attempting auto-login...');
+          setAuthState(prev => ({ ...prev, isLoading: true }));
           await sessionLogin('test@example.com', 'test123');
           console.log('Development auto-login successful');
+          
+          // Force a state update after successful login
+          const currentUser = getCurrentUser();
+          if (currentUser) {
+            const user: User = {
+              user_id: currentUser.userId,
+              email: currentUser.email,
+              roles: currentUser.roles,
+              tenant_id: currentUser.tenantId,
+              two_factor_enabled: false,
+              preferences: {
+                personalityTone: 'friendly',
+                personalityVerbosity: 'balanced',
+                memoryDepth: 'medium',
+                customPersonaInstructions: '',
+                preferredLLMProvider: 'llama-cpp',
+                preferredModel: 'llama3.2:latest',
+                temperature: 0.7,
+                maxTokens: 1000,
+                notifications: { email: true, push: false },
+                ui: { theme: 'light', language: 'en', avatarUrl: '' },
+              },
+            };
+            setAuthState({ user, isAuthenticated: true, isLoading: false });
+          }
         } catch (error) {
           console.log('Development auto-login failed:', error);
+          setAuthState(prev => ({ ...prev, isLoading: false }));
           // Don't throw - just continue without auth
         }
       };
       
       // Delay auto-login slightly to avoid race conditions
-      setTimeout(autoLogin, 100);
+      setTimeout(autoLogin, 500);
     }
 
     const unsubscribe = authStateManager.subscribe(state => {
@@ -185,7 +213,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await sessionLogout();
     } catch (error) {
-      console.warn('Logout request failed:', error);
+      safeWarn('Logout request failed:', error);
     }
     
     const newState = {
@@ -217,7 +245,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       authStateManager.updateState({ isAuthenticated: true, user: sessionUser });
     } catch (error) {
-      console.error('Failed to refresh user:', error);
+      safeError('Failed to refresh user:', error);
       logout();
       throw error;
     }
@@ -250,7 +278,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       setAuthState(prev => ({ ...prev, user: updatedUser }));
     } catch (error) {
-      console.error('Failed to update user preferences:', error);
+      safeError('Failed to update user preferences:', error);
       throw error;
     }
   };
@@ -269,7 +297,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { ...prev, user: updatedUser };
       });
     } catch (error) {
-      console.error('Failed to update credentials:', error);
+      safeError('Failed to update credentials:', error);
       throw error;
     }
   };

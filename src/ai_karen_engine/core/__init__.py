@@ -52,6 +52,20 @@ from ai_karen_engine.core.services import (  # type: ignore
     service,
 )
 
+# Service Classification System
+from ai_karen_engine.core.service_classification import (  # type: ignore
+    ServiceClassification,
+    DeploymentMode,
+    ServiceConfig as ClassifiedServiceConfig,
+    ResourceRequirements,
+    ServiceConfigurationLoader,
+    DependencyGraphAnalyzer,
+    ServiceConfigurationValidator,
+)
+
+# Note: ClassifiedServiceRegistry import moved to avoid circular dependencies
+# Import it directly when needed: from ai_karen_engine.core.classified_service_registry import ClassifiedServiceRegistry
+
 __all__ = [
     # Services
     "BaseService",
@@ -63,6 +77,17 @@ __all__ = [
     "get_registry",
     "inject",
     "service",
+    # Service Classification
+    "ServiceClassification",
+    "DeploymentMode",
+    "ClassifiedServiceConfig",
+    "ResourceRequirements",
+    "ServiceConfigurationLoader",
+    "DependencyGraphAnalyzer",
+    "ServiceConfigurationValidator",
+    # "ClassifiedServiceRegistry",  # Import directly to avoid circular dependencies
+    # "ServiceLifecycleState",
+    # "ClassifiedServiceInfo",
     # Errors
     "KarenError",
     "ValidationError",

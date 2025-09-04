@@ -4,6 +4,7 @@
  */
 
 import { getKarenBackend } from '@/lib/karen-backend';
+import { safeError } from '@/lib/safe-console';
 import type { PluginInfo, PluginExecutionResult } from '@/lib/karen-backend';
 
 export interface PluginCategory {
@@ -61,7 +62,7 @@ export class PluginService {
       
       return plugins;
     } catch (error) {
-      console.error('PluginService: Failed to get available plugins:', error);
+      safeError('PluginService: Failed to get available plugins:', error);
       return [];
     }
   }
@@ -91,7 +92,7 @@ export class PluginService {
 
       return categories.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
-      console.error('PluginService: Failed to get plugins by category:', error);
+      safeError('PluginService: Failed to get plugins by category:', error);
       return [];
     }
   }
@@ -116,7 +117,7 @@ export class PluginService {
 
       return await response.json();
     } catch (error) {
-      console.error(`PluginService: Failed to get info for plugin ${pluginName}:`, error);
+      safeError(`PluginService: Failed to get info for plugin ${pluginName}:`, error);
       return null;
     }
   }
@@ -166,7 +167,7 @@ export class PluginService {
 
       return enhancedResult;
     } catch (error) {
-      console.error(`PluginService: Failed to execute plugin ${pluginName}:`, error);
+      safeError(`PluginService: Failed to execute plugin ${pluginName}:`, error);
       
       const errorResult: PluginExecutionResult = {
         success: false,
@@ -212,7 +213,7 @@ export class PluginService {
         suggestions: result.suggestions || [],
       };
     } catch (error) {
-      console.error(`PluginService: Failed to validate input for plugin ${pluginName}:`, error);
+      safeError(`PluginService: Failed to validate input for plugin ${pluginName}:`, error);
       return {
         isValid: false,
         errors: ['Validation service unavailable'],
@@ -259,7 +260,7 @@ export class PluginService {
         plugin.category.toLowerCase().includes(lowerQuery)
       );
     } catch (error) {
-      console.error('PluginService: Failed to search plugins:', error);
+      safeError('PluginService: Failed to search plugins:', error);
       return [];
     }
   }
@@ -272,7 +273,7 @@ export class PluginService {
       const plugins = await this.getAvailablePlugins();
       return plugins.filter(plugin => plugin.enabled);
     } catch (error) {
-      console.error('PluginService: Failed to get enabled plugins:', error);
+      safeError('PluginService: Failed to get enabled plugins:', error);
       return [];
     }
   }
@@ -299,7 +300,7 @@ export class PluginService {
       
       return false;
     } catch (error) {
-      console.error(`PluginService: Failed to toggle plugin ${pluginName}:`, error);
+      safeError(`PluginService: Failed to toggle plugin ${pluginName}:`, error);
       return false;
     }
   }
@@ -324,7 +325,7 @@ export class PluginService {
 
       return await response.json();
     } catch (error) {
-      console.error(`PluginService: Failed to get schema for plugin ${pluginName}:`, error);
+      safeError(`PluginService: Failed to get schema for plugin ${pluginName}:`, error);
       return null;
     }
   }

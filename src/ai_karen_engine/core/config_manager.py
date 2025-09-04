@@ -173,6 +173,23 @@ class AIKarenConfig:
     event_bus: str = "memory"
     ui: Dict[str, Any] = field(default_factory=lambda: {"show_debug_info": False})
 
+    # User profiles (routing/model selections) stored in config.json
+    # Structure example:
+    # {
+    #   "profiles": [
+    #       {
+    #         "id": "default",
+    #         "name": "Default",
+    #         "assignments": {"chat": {"provider": "openai", "model": "gpt-4o-mini"}},
+    #         "fallback_chain": ["openai", "deepseek", "llamacpp"],
+    #         "is_active": true
+    #       }
+    #   ],
+    #   "active_profile": "default"
+    # }
+    user_profiles: Dict[str, Any] = field(default_factory=dict)
+    active_profile: Optional[str] = None
+
 
 class ConfigManager:
     """

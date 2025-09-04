@@ -1,0 +1,172 @@
+/* Sleek Modern Dark/Light Theme for Docs */
+:root {
+  --bg: #0b0e14;
+  --bg-elev: #11151f;
+  --text: #e6edf3;
+  --muted: #9aa4b2;
+  --primary: #6aa6ff;
+  --primary-weak: rgba(106, 166, 255, 0.15);
+  --border: #1b2332;
+  --code-bg: #0f1320;
+  --code-text: #e8f0f8;
+  --accent: #a78bfa;
+  --green: #3ddc97;
+  --red: #ff6b6b;
+  --shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --bg-elev: #f7f9fc;
+    --text: #0b1220;
+    --muted: #4b5563;
+    --primary: #1e66f5;
+    --primary-weak: rgba(30, 102, 245, 0.12);
+    --border: #e5e7eb;
+    --code-bg: #f3f6fb;
+    --code-text: #0b1220;
+    --accent: #7c3aed;
+    --green: #10b981;
+    --red: #ef4444;
+  }
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 16px/1.6 "Inter", system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.doc-container {
+  max-width: 960px;
+  margin: 56px auto;
+  padding: 0 20px 48px;
+}
+
+.doc-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.doc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.doc-title {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.theme-toggle {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-elev) 100%);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.theme-toggle:hover {
+  box-shadow: 0 6px 20px var(--primary-weak);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+}
+
+h1, h2, h3, h4 {
+  color: var(--text);
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code, pre code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+code {
+  background: var(--code-bg);
+  color: var(--code-text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px 6px;
+}
+
+pre {
+  background: var(--code-bg);
+  color: var(--code-text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  overflow: auto;
+}
+
+blockquote {
+  margin: 16px 0;
+  padding: 10px 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--primary-weak);
+  border-radius: 0 10px 10px 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+th, td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+}
+thead th { background: rgba(255,255,255,0.02); text-align: left; }
+tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.callout {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  background: var(--primary-weak);
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+.ok { color: var(--green); }
+.error { color: var(--red); }
+

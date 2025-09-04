@@ -49,7 +49,7 @@ class TinyLlamaClient:
     def _find_tinyllama_model(self) -> str:
         """Find TinyLLaMA model in standard locations."""
         possible_paths = [
-            Path("models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"),
+            Path("models/llama-cpp/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"),
             Path("models/llama-cpp").glob("*.gguf"),
         ]
         

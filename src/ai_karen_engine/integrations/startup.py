@@ -10,6 +10,10 @@ from typing import Dict, Any
 
 from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.integrations.llm_utils import get_llm_manager
+from ai_karen_engine.integrations.llm_registry import get_registry
+from ai_karen_engine.core.logging import get_logger
+
+log = get_logger("kari.kire.warmup").logger
 
 logger = logging.getLogger("kari.llm_startup")
 
@@ -27,6 +31,17 @@ def initialize_llm_providers() -> Dict[str, Any]:
         # Get registry instance (this will auto-register built-in providers)
         registry = get_registry()
         
+        # Ensure KIRE routing predictors are registered
+        try:
+            import ai_karen_engine.routing.actions  # noqa: F401
+        except Exception as _e:
+            logger.debug(f"KIRE actions not loaded: {_e}")
+        # Ensure CopilotKit routing actions shim is loaded
+        try:
+            import ai_karen_engine.integrations.copilotkit.routing_actions  # noqa: F401
+        except Exception as _e:
+            logger.debug(f"CopilotKit routing actions not loaded: {_e}")
+
         # Get list of registered providers
         providers = registry.list_providers()
         logger.info(f"Found {len(providers)} registered providers: {', '.join(providers)}")
@@ -59,6 +74,12 @@ def initialize_llm_providers() -> Dict[str, Any]:
         }
         
         logger.info(f"LLM provider initialization complete. {healthy_count}/{len(providers)} providers healthy.")
+
+        # Proactive routing cache warm-up (best-effort)
+        try:
+            _warm_kire_routing_cache()
+        except Exception as we:
+            logger.debug(f"Routing warm-up skipped: {we}")
         
         return result
         
@@ -71,6 +92,49 @@ def initialize_llm_providers() -> Dict[str, Any]:
             "healthy_providers": 0,
             "available_providers": []
         }
+
+
+def _warm_kire_routing_cache() -> None:
+    """Warm KIRE routing by pre-resolving common task decisions.
+
+    Uses LLMRegistry.get_provider_with_routing to exercise provider/model resolution and
+    populate internal caches. Best-effort; failures are logged at debug.
+    """
+    async def _warm_async() -> None:
+        reg = get_registry()
+        user_ctx = {"user_id": "system_warmup"}
+        samples = [
+            {"query": "Hello!", "task_type": "chat", "step": "output_rendering"},
+            {"query": "Write a Python function to add two numbers", "task_type": "code", "step": "tool_execution"},
+            {"query": "Explain why the sky is blue", "task_type": "reasoning", "step": "reasoning_core"},
+            {"query": "Summarize: Large text", "task_type": "summarization", "step": "output_rendering"},
+        ]
+        for s in samples:
+            try:
+                await reg.get_provider_with_routing(
+                    user_ctx=user_ctx,
+                    query=s["query"],
+                    task_type=s["task_type"],
+                    khrp_step=s["step"],
+                    requirements={"expected_tokens": 512},
+                )
+            except Exception as e:
+                log.debug(f"Warm-up failed for {s['task_type']}: {e}")
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(_warm_async())
+        else:
+            loop.run_until_complete(_warm_async())
+        log.info("KIRE routing warm-up initiated")
+    except Exception:
+        # Last resort: run in a fresh loop
+        try:
+            asyncio.run(_warm_async())
+            log.info("KIRE routing warm-up completed (standalone loop)")
+        except Exception as e:
+            log.debug(f"KIRE routing warm-up could not run: {e}")
 
 
 def get_default_llm_manager():

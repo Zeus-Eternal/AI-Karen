@@ -2,7 +2,7 @@
   "$schema": "",
   "active_user": "default",
   "theme": "dark",
-  "llm_model": "llama3.2:latest",
+  "llm_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
   "default_embedding_model": "sentence-transformers/all-MPNet-base-v2",
   "spacy_model": "en_core_web_sm",
   "memory": {

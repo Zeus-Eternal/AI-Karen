@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { safeWarn } from '@/lib/safe-console';
 
 interface InputPreservationHook {
   preserveInput: (value: string) => void;
@@ -17,7 +18,7 @@ export const useInputPreservation = (key: string): InputPreservationHook => {
         localStorage.removeItem(storageKey);
       }
     } catch (error) {
-      console.warn('Failed to preserve input:', error);
+      safeWarn('Failed to preserve input:', error);
     }
   }, [storageKey]);
 
@@ -25,7 +26,7 @@ export const useInputPreservation = (key: string): InputPreservationHook => {
     try {
       return localStorage.getItem(storageKey);
     } catch (error) {
-      console.warn('Failed to restore input:', error);
+      safeWarn('Failed to restore input:', error);
       return null;
     }
   }, [storageKey]);
@@ -34,7 +35,7 @@ export const useInputPreservation = (key: string): InputPreservationHook => {
     try {
       localStorage.removeItem(storageKey);
     } catch (error) {
-      console.warn('Failed to clear preserved input:', error);
+      safeWarn('Failed to clear preserved input:', error);
     }
   }, [storageKey]);
 

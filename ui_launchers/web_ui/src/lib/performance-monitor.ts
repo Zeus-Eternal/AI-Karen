@@ -4,6 +4,7 @@
  */
 
 import { webUIConfig } from './config';
+import { safeError, safeWarn } from './safe-console';
 
 export interface RequestMetrics {
   endpoint: string;
@@ -185,7 +186,7 @@ class PerformanceMonitor {
         performanceAlertService.handleAlert(alert);
       }).catch(error => {
         // Fallback to console logging if alert service fails
-        console.warn('Performance alert service unavailable, falling back to console:', error);
+        safeWarn('Performance alert service unavailable, falling back to console:', error);
         const logLevel = alert.severity === 'high' ? 'warn' : 'info';
         console[logLevel](`Karen Performance: ${alert.message}`, {
           type: alert.type,
@@ -208,7 +209,7 @@ class PerformanceMonitor {
       try {
         listener(alert);
       } catch (error) {
-        console.error('Error in performance alert listener:', error);
+        safeError('Error in performance alert listener:', error);
       }
     });
   }
@@ -221,7 +222,7 @@ class PerformanceMonitor {
       try {
         listener(metric);
       } catch (error) {
-        console.error('Error in performance metrics listener:', error);
+        safeError('Error in performance metrics listener:', error);
       }
     });
   }

@@ -320,19 +320,120 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         return request.client.host if request.client else "unknown"
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Rate limiting middleware with security logging"""
+    """Enhanced rate limiting middleware with security logging"""
     
     def __init__(self, app, config: SecurityConfig):
         super().__init__(app)
         self.config = config
         self.security_logger = get_security_logger() if SECURITY_LOGGING_AVAILABLE else None
-        self.request_counts = {}  # In production, use Redis or similar
-        self.last_cleanup = time.time()
+        
+        # Import and configure enhanced rate limiter
+        try:
+            from ai_karen_engine.middleware.rate_limit import get_rate_limiter
+            self.enhanced_limiter = get_rate_limiter()
+            self.use_enhanced = True
+        except ImportError:
+            # Fallback to simple rate limiting
+            self.request_counts = {}
+            self.last_cleanup = time.time()
+            self.use_enhanced = False
     
     async def dispatch(self, request: Request, call_next):
         if not self.config.rate_limit_enabled:
             return await call_next(request)
         
+        if self.use_enhanced:
+            return await self._enhanced_rate_limit(request, call_next)
+        else:
+            return await self._simple_rate_limit(request, call_next)
+    
+    async def _enhanced_rate_limit(self, request: Request, call_next):
+        """Use enhanced rate limiter"""
+        # Get correlation ID
+        correlation_id = None
+        if CORRELATION_AVAILABLE:
+            headers = {key: value for key, value in request.headers.items()}
+            correlation_id = CorrelationService.get_or_create_correlation_id(headers)
+        
+        # Get client information
+        client_ip = self._get_client_ip(request)
+        user_id = request.headers.get("x-user-id")
+        user_type = request.headers.get("x-user-type")
+        endpoint = str(request.url.path)
+        
+        try:
+            # Check rate limit using enhanced limiter
+            result = await self.enhanced_limiter.check_rate_limit(
+                ip_address=client_ip,
+                endpoint=endpoint,
+                user_id=user_id,
+                user_type=user_type
+            )
+            
+            if not result.allowed:
+                # Log rate limit violation
+                if self.security_logger:
+                    self.security_logger.log_rate_limit_violation(
+                        user_id=user_id or "anonymous",
+                        endpoint=endpoint,
+                        limit=result.limit,
+                        current_count=result.current_count,
+                        correlation_id=correlation_id,
+                        ip_address=client_ip,
+                        method=request.method
+                    )
+                
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "error": "Rate limit exceeded",
+                        "message": f"Too many requests. Try again in {result.retry_after_seconds} seconds.",
+                        "details": {
+                            "rule": result.rule_name,
+                            "limit": result.limit,
+                            "window_seconds": result.window_seconds,
+                            "current_count": result.current_count,
+                            "reset_time": result.reset_time.isoformat(),
+                        }
+                    },
+                    headers={
+                        "Retry-After": str(result.retry_after_seconds),
+                        "X-RateLimit-Limit": str(result.limit),
+                        "X-RateLimit-Remaining": str(max(0, result.limit - result.current_count)),
+                        "X-RateLimit-Reset": str(int(result.reset_time.timestamp())),
+                        "X-RateLimit-Rule": result.rule_name,
+                    }
+                )
+            
+            # Record the request
+            await self.enhanced_limiter.record_request(
+                ip_address=client_ip,
+                endpoint=endpoint,
+                user_id=user_id,
+                user_type=user_type
+            )
+            
+            # Process request
+            response = await call_next(request)
+            
+            # Add rate limit headers
+            response.headers["X-RateLimit-Limit"] = str(result.limit)
+            response.headers["X-RateLimit-Remaining"] = str(max(0, result.limit - result.current_count - 1))
+            response.headers["X-RateLimit-Reset"] = str(int(result.reset_time.timestamp()))
+            response.headers["X-RateLimit-Rule"] = result.rule_name
+            
+            return response
+            
+        except Exception as e:
+            # Log error but don't block requests
+            if self.security_logger:
+                self.security_logger.log_error(f"Enhanced rate limiting error: {e}")
+            
+            # Fallback to simple rate limiting
+            return await self._simple_rate_limit(request, call_next)
+    
+    async def _simple_rate_limit(self, request: Request, call_next):
+        """Fallback simple rate limiting"""
         # Get correlation ID
         correlation_id = None
         if CORRELATION_AVAILABLE:

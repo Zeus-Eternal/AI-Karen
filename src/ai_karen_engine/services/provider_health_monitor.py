@@ -55,7 +55,7 @@ class ProviderHealthMonitor:
             "openai",
             "anthropic", 
             "google",
-            "ollama",
+            "llamacpp",
             "huggingface",
             "cohere"
         ]
@@ -138,6 +138,9 @@ class ProviderHealthMonitor:
                 success_rate=1.0
             )
         
+        # Capture previous status for change detection
+        prev_status = health_info.status if 'health_info' in locals() else HealthStatus.UNKNOWN
+
         # Update health status
         if is_healthy:
             health_info.status = HealthStatus.HEALTHY
@@ -192,6 +195,15 @@ class ProviderHealthMonitor:
         self._enhanced_cache.cache_provider_health(provider_key, health_dict)
         
         logger.debug(f"Updated health for {provider_name}: {health_info.status.value}")
+
+        # Invalidate routing cache on status change
+        try:
+            if prev_status != health_info.status:
+                from ai_karen_engine.routing.kire_router import invalidate_provider_cache
+                invalidate_provider_cache(provider_name)
+        except Exception:
+            # Avoid tight coupling failures impacting health updates
+            pass
     
     def get_all_provider_health(self) -> Dict[str, ProviderHealthInfo]:
         """Get health status for all known providers"""

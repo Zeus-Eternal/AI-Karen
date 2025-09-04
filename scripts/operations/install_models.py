@@ -76,7 +76,7 @@ except Exception:
     psutil = None  # type: ignore
 
 # ---------- Constants ----------
-MODELS_ROOT = Path("models")
+MODELS_ROOT = Path("../../models")
 REGISTRY_PATH = MODELS_ROOT / "model_registry.json"  # Separate from llm_registry.json
 CONFIGS_DIR = MODELS_ROOT / "configs"
 LLAMACPP_DIR = MODELS_ROOT / "llama-cpp"
@@ -527,6 +527,63 @@ def migrate_layout() -> None:
     console().print("[green]Migration complete.[/green]")
 
 # ---------- Ensure helpers ----------
+def _ensure_file(path: Path, url: str) -> None:
+    """Download a file to path if missing or empty (simple bootstrap fetch).
+
+    Uses urllib to avoid adding heavy deps. Caller ensures parent exists.
+    """
+    if path.exists() and path.stat().st_size > 0:
+        console().print(f"[green]Model present:[/green] {path.name}")
+        return
+    try:
+        import urllib.request
+        path.parent.mkdir(parents=True, exist_ok=True)
+        console().print(f"[cyan]Downloading:[/cyan] {url} -> {path}")
+        urllib.request.urlretrieve(url, path)  # nosec - controlled URL configured by ops
+        console().print(f"[green]Downloaded:[/green] {path}")
+    except Exception as e:
+        bail(f"Failed to download {url}: {e}", error_code="E_NET")
+
+def ensure_tinyllama() -> None:
+    """Ensure TinyLlama GGUF exists locally under models/llama-cpp.
+
+    Downloads TinyLlama first (bootstrap convenience) without changing any runtime default.
+    URL and filename can be overridden via env vars to allow rotation.
+    """
+    # Respect offline mode
+    check_offline_mode()
+
+    # Resolve target path inside llama-cpp models dir
+    llama_dir = MODELS_ROOT / "llama-cpp"
+    llama_dir.mkdir(parents=True, exist_ok=True)
+
+    # Allow ops to override filename/URL
+    filename = os.getenv("TINY_LLAMA_FILENAME", "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf")
+    url = os.getenv(
+        "TINY_LLAMA_URL",
+        "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/"
+        "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+    )
+    target = llama_dir / filename
+
+    # Simple size/magic check post-download
+    _ensure_file(target, url)
+    try:
+        ok = False
+        if target.exists() and target.stat().st_size > 50 * 1024 * 1024:
+            with open(target, "rb") as f:
+                magic = f.read(4)
+            ok = magic == b"GGUF"
+        if not ok:
+            raise RuntimeError("download validation failed (magic/size)")
+    except Exception as e:
+        # Mark corrupt and surface error; leave file for inspection
+        corrupt = target.with_suffix(target.suffix + ".corrupt")
+        try:
+            target.replace(corrupt)
+        except Exception:
+            pass
+        bail(f"TinyLlama validation failed: {e}", error_code="E_VERIFY")
 def ensure_distilbert() -> None:
     require_hf()
     if DISTILBERT_PIN.exists() and any(DISTILBERT_PIN.iterdir()):
@@ -808,6 +865,9 @@ def cmd_migrate(args: argparse.Namespace) -> None:
 def cmd_ensure(args: argparse.Namespace) -> None:
     try:
         operations = []
+        if getattr(args, "tinyllama", False):
+            ensure_tinyllama()
+            operations.append("tinyllama")
         if args.distilbert: 
             ensure_distilbert()
             operations.append("distilbert")
@@ -819,7 +879,7 @@ def cmd_ensure(args: argparse.Namespace) -> None:
             operations.append("basic_classifier")
             
         if not operations:
-            bail("Nothing to ensure. Use --distilbert --spacy --basic-cls", error_code="E_ARGS")
+            bail("Nothing to ensure. Use --tinyllama --distilbert --spacy --basic-cls", error_code="E_ARGS")
             
         result = OperationResult(
             success=True,
@@ -1457,6 +1517,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_browse)
 
     sp = sub.add_parser("ensure", help="Ensure baseline local models")
+    sp.add_argument("--tinyllama", action="store_true", help="Ensure TinyLlama GGUF is present under models/llama-cpp")
     sp.add_argument("--distilbert", action="store_true")
     sp.add_argument("--spacy", action="store_true")
     sp.add_argument("--basic-cls", action="store_true")

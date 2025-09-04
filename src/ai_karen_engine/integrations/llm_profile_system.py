@@ -321,41 +321,87 @@ class LLMProfileManager:
         issues = []
         warnings = []
         
-        # Get available LLM providers
-        available_providers = self.provider_manager.get_llm_providers()
-        
-        # Check provider assignments
-        for use_case, provider_pref in profile.providers.items():
-            if provider_pref.provider not in available_providers:
-                issues.append(f"Provider '{provider_pref.provider}' for {use_case} is not available")
+        try:
+            # Get available LLM providers
+            available_providers = self.provider_manager.get_llm_providers()
+            
+            # Check provider assignments
+            for use_case, provider_pref in profile.providers.items():
+                if provider_pref.provider not in available_providers:
+                    issues.append(f"Provider '{provider_pref.provider}' for {use_case} is not available")
+                else:
+                    # Check provider health
+                    health = self.provider_manager.health_check(provider_pref.provider)
+                    if health.get("status") == "unhealthy":
+                        warnings.append(f"Provider '{provider_pref.provider}' for {use_case} is currently unhealthy")
+                    elif health.get("status") == "unavailable":
+                        issues.append(f"Provider '{provider_pref.provider}' for {use_case} is unavailable: {health.get('message', 'Unknown reason')}")
+                    
+                    # Check provider capabilities
+                    provider_info = self.provider_manager.get_provider_info(provider_pref.provider)
+                    if provider_info:
+                        provider_capabilities = set(provider_info.get("capabilities", []))
+                        
+                        # Check required capabilities
+                        missing_capabilities = provider_pref.required_capabilities - provider_capabilities
+                        if missing_capabilities:
+                            warnings.append(
+                                f"Provider '{provider_pref.provider}' for {use_case} "
+                                f"missing capabilities: {missing_capabilities}"
+                            )
+                        
+                        # Check excluded capabilities
+                        conflicting_capabilities = provider_pref.excluded_capabilities & provider_capabilities
+                        if conflicting_capabilities:
+                            warnings.append(
+                                f"Provider '{provider_pref.provider}' for {use_case} "
+                                f"has excluded capabilities: {conflicting_capabilities}"
+                            )
+                        
+                        # Check if specific model is available
+                        if provider_pref.model:
+                            try:
+                                models = asyncio.run(self.provider_manager.discover_models(provider_pref.provider))
+                                model_ids = [m.get("id") for m in models]
+                                if provider_pref.model not in model_ids:
+                                    warnings.append(f"Model '{provider_pref.model}' not found in {provider_pref.provider}")
+                            except Exception as e:
+                                logger.debug(f"Could not check model availability: {e}")
+            
+            # Check fallback provider
+            if profile.fallback_provider not in available_providers:
+                issues.append(f"Fallback provider '{profile.fallback_provider}' is not available")
             else:
-                # Check provider capabilities
-                provider_info = self.provider_manager.get_provider_info(provider_pref.provider)
-                provider_capabilities = set(provider_info.get("capabilities", []))
-                
-                # Check required capabilities
-                missing_capabilities = provider_pref.required_capabilities - provider_capabilities
-                if missing_capabilities:
-                    warnings.append(
-                        f"Provider '{provider_pref.provider}' for {use_case} "
-                        f"missing capabilities: {missing_capabilities}"
-                    )
-                
-                # Check excluded capabilities
-                conflicting_capabilities = provider_pref.excluded_capabilities & provider_capabilities
-                if conflicting_capabilities:
-                    warnings.append(
-                        f"Provider '{provider_pref.provider}' for {use_case} "
-                        f"has excluded capabilities: {conflicting_capabilities}"
-                    )
-        
-        # Check fallback provider
-        if profile.fallback_provider not in available_providers:
-            issues.append(f"Fallback provider '{profile.fallback_provider}' is not available")
-        
-        # Check memory budget constraints
-        if profile.memory_budget.max_context_length > 128000:
-            warnings.append("Very large context length may cause performance issues")
+                # Check fallback provider health
+                health = self.provider_manager.health_check(profile.fallback_provider)
+                if health.get("status") == "unhealthy":
+                    warnings.append(f"Fallback provider '{profile.fallback_provider}' is currently unhealthy")
+            
+            # Check memory budget constraints
+            if profile.memory_budget.max_context_length > 128000:
+                warnings.append("Very large context length may cause performance issues")
+            
+            if profile.memory_budget.max_conversation_history > 200:
+                warnings.append("Very large conversation history may impact performance")
+            
+            # Check router policy compatibility
+            if profile.router_policy == RouterPolicy.PRIVACY:
+                # Privacy policy should prefer local providers
+                non_local_providers = [
+                    use_case for use_case, pref in profile.providers.items()
+                    if pref.provider not in ["local", "superkent"]
+                ]
+                if non_local_providers:
+                    warnings.append(f"Privacy policy with non-local providers: {non_local_providers}")
+            
+            # Check guardrail configuration
+            if profile.guardrails.level == GuardrailLevel.CUSTOM:
+                if not profile.guardrails.custom_rules:
+                    warnings.append("Custom guardrail level specified but no custom rules defined")
+            
+        except Exception as e:
+            logger.error(f"Profile validation failed: {e}")
+            issues.append(f"Validation error: {str(e)}")
         
         return {
             "compatible": len(issues) == 0,
@@ -608,14 +654,152 @@ class LLMProfileManager:
         
         return f"{base_id}_{counter}"
     
+    def get_routing_decision(self, use_case: str, requirements: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Get routing decision based on active profile."""
+        active_profile = self.get_active_profile()
+        if not active_profile:
+            return {
+                "provider": "local",
+                "model": None,
+                "reason": "No active profile, using local fallback"
+            }
+        
+        requirements = requirements or {}
+        
+        # Check if we have a provider preference for this use case
+        if use_case in active_profile.providers:
+            provider_pref = active_profile.providers[use_case]
+            
+            # Validate provider is available and healthy
+            available_providers = self.provider_manager.get_llm_providers(healthy_only=True)
+            if provider_pref.provider in available_providers:
+                return {
+                    "provider": provider_pref.provider,
+                    "model": provider_pref.model,
+                    "reason": f"Profile '{active_profile.name}' preference for {use_case}",
+                    "priority": provider_pref.priority,
+                    "profile_id": active_profile.id
+                }
+            else:
+                logger.warning(f"Preferred provider {provider_pref.provider} for {use_case} is not available")
+        
+        # Apply router policy for fallback selection
+        if active_profile.router_policy == RouterPolicy.PRIVACY:
+            return {
+                "provider": "local",
+                "model": None,
+                "reason": f"Privacy policy fallback from profile '{active_profile.name}'",
+                "profile_id": active_profile.id
+            }
+        elif active_profile.router_policy == RouterPolicy.PERFORMANCE:
+            # Prefer fast providers
+            fast_providers = ["local", "deepseek"]  # These are typically faster
+            available_providers = self.provider_manager.get_llm_providers(healthy_only=True)
+            for provider in fast_providers:
+                if provider in available_providers:
+                    return {
+                        "provider": provider,
+                        "model": None,
+                        "reason": f"Performance policy fallback from profile '{active_profile.name}'",
+                        "profile_id": active_profile.id
+                    }
+        elif active_profile.router_policy == RouterPolicy.QUALITY:
+            # Prefer high-quality providers
+            quality_providers = ["openai", "gemini", "deepseek"]
+            available_providers = self.provider_manager.get_llm_providers(healthy_only=True)
+            for provider in quality_providers:
+                if provider in available_providers:
+                    return {
+                        "provider": provider,
+                        "model": None,
+                        "reason": f"Quality policy fallback from profile '{active_profile.name}'",
+                        "profile_id": active_profile.id
+                    }
+        elif active_profile.router_policy == RouterPolicy.COST:
+            # Prefer cost-effective providers
+            cost_providers = ["local", "huggingface", "gemini"]
+            available_providers = self.provider_manager.get_llm_providers(healthy_only=True)
+            for provider in cost_providers:
+                if provider in available_providers:
+                    return {
+                        "provider": provider,
+                        "model": None,
+                        "reason": f"Cost policy fallback from profile '{active_profile.name}'",
+                        "profile_id": active_profile.id
+                    }
+        
+        # Final fallback to profile's fallback provider
+        return {
+            "provider": active_profile.fallback_provider,
+            "model": active_profile.fallback_model,
+            "reason": f"Profile '{active_profile.name}' fallback provider",
+            "profile_id": active_profile.id
+        }
+    
+    def get_profile_statistics(self) -> Dict[str, Any]:
+        """Get statistics about profiles and their usage."""
+        stats = {
+            "total_profiles": len(self._profiles),
+            "active_profile": self._active_profile_id,
+            "profiles_by_policy": {},
+            "provider_usage": {},
+            "validation_status": {"valid": 0, "invalid": 0}
+        }
+        
+        for profile in self._profiles.values():
+            # Count by router policy
+            policy = profile.router_policy.value
+            stats["profiles_by_policy"][policy] = stats["profiles_by_policy"].get(policy, 0) + 1
+            
+            # Count provider usage
+            for use_case, pref in profile.providers.items():
+                provider = pref.provider
+                stats["provider_usage"][provider] = stats["provider_usage"].get(provider, 0) + 1
+            
+            # Count validation status
+            if profile.is_valid:
+                stats["validation_status"]["valid"] += 1
+            else:
+                stats["validation_status"]["invalid"] += 1
+        
+        return stats
+    
     def _notify_profile_change(self, profile: LLMProfile) -> None:
         """Notify other systems of profile change."""
-        # This would integrate with the router system
         logger.info(f"Profile change notification: {profile.name} is now active")
         
-        # TODO: Integrate with actual router system
-        # router = get_llm_router()
-        # router.update_profile(profile)
+        try:
+            # Integrate with the router system
+            from ai_karen_engine.integrations.llm_router import get_llm_router
+            router = get_llm_router()
+            if hasattr(router, 'update_active_profile'):
+                router.update_active_profile(profile)
+                logger.info("Router notified of profile change")
+        except Exception as e:
+            logger.warning(f"Failed to notify router of profile change: {e}")
+        
+        try:
+            # Also notify the existing profile manager for compatibility
+            from ai_karen_engine.services.profile_manager import get_profile_manager as get_legacy_profile_manager
+            legacy_manager = get_legacy_profile_manager()
+            if hasattr(legacy_manager, 'set_active_profile'):
+                # Convert to legacy format if needed
+                logger.debug("Legacy profile manager notified")
+        except Exception as e:
+            logger.debug(f"Legacy profile manager not available: {e}")
+        
+        # Notify any event bus subscribers
+        try:
+            from ai_karen_engine.services.event_bus import get_event_bus
+            event_bus = get_event_bus()
+            event_bus.emit('profile_changed', {
+                'profile_id': profile.id,
+                'profile_name': profile.name,
+                'router_policy': profile.router_policy.value,
+                'providers': {k: v.provider for k, v in profile.providers.items()}
+            })
+        except Exception as e:
+            logger.debug(f"Event bus not available: {e}")
 
 
 # -----------------------------

@@ -28,7 +28,10 @@ from ai_karen_engine.integrations.llm_profile_system import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/providers", tags=["Dynamic Providers"])
+# NOTE: Do not include a leading '/api' here because the app mounts
+# routers under '/api' already. Using '/providers' ensures final paths
+# are '/api/providers/...'.
+router = APIRouter(prefix="/providers", tags=["Dynamic Providers"])
 
 # -----------------------------
 # Request/Response Models

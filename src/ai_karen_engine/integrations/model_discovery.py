@@ -1,7 +1,7 @@
 """
 Kari Model Discovery Engine (Enterprise)
 - Discovers, validates, and manages local/remote LLM and embedding models.
-- Pluggable registry: local disk, Ollama, transformers, plugin endpoints, remote registry.
+- Pluggable registry: local disk, llama.cpp (GGUF), transformers, plugin endpoints, remote registry.
 - Observability: logs, RBAC, audit, and hot reloads.
 """
 
@@ -73,45 +73,7 @@ class LocalModelSource(ModelSourceBase):
 
 # ======== Ollama Model Registry (if installed) ========
 
-class OllamaModelSource(ModelSourceBase):
-    """
-    Discovers models managed by local Ollama.
-    """
-    def __init__(self):
-        try:
-            import ollama
-            self.ollama = ollama
-        except ImportError:
-            raise RuntimeError("Ollama Python package not installed.")
-
-    def list_models(self) -> List[Dict[str, Any]]:
-        try:
-            info = self.ollama.list()
-            models = []
-            for m in info.get("models", []):
-                name = m.get("name")
-                if not name:
-                    logger.warning(f"Unexpected model entry: {m}")
-                    continue
-                models.append(
-                    {
-                        "name": name,
-                        "size": m.get("size"),
-                        "digest": m.get("digest"),
-                        "source": "ollama",
-                        "details": m,
-                    }
-                )
-            return models
-        except Exception as ex:
-            logger.error(f"Ollama model listing failed: {ex}")
-            return []
-
-    def get_model_info(self, model_name: str) -> Optional[Dict[str, Any]]:
-        for m in self.list_models():
-            if m["name"] == model_name:
-                return m
-        return None
+# Ollama integration removed; prefer llama.cpp GGUF discovery via LocalModelSource.
 
 # ======== Transformers Hub/Plugin Registry (Stub for now) ========
 

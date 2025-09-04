@@ -5,6 +5,8 @@ global:
 rule_files:
   - alert_rules.yml
   - model_orchestrator_alerts.yml
+  - validation_security_alerts.yml
+  - performance_metrics_alerts.yml
 
 scrape_configs:
   - job_name: 'ai-karen'
@@ -13,6 +15,27 @@ scrape_configs:
       - targets: ['api:8000']
     scrape_interval: 15s
     scrape_timeout: 10s
+
+  - job_name: 'validation-system'
+    metrics_path: /metrics/prometheus
+    static_configs:
+      - targets: ['api:8000']
+    scrape_interval: 10s
+    scrape_timeout: 8s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'http_validation_.*|http_security_.*|http_rate_limit_.*|http_attack_.*|http_client_.*|http_blocked_.*|http_request_.*|http_user_agent_.*|http_threat_.*'
+        target_label: component
+        replacement: 'validation_system'
+      # Limit cardinality for high-cardinality metrics
+      - source_labels: [endpoint]
+        regex: '(.{0,50}).*'
+        target_label: endpoint
+        replacement: '${1}'
+      - source_labels: [client_hash]
+        regex: '(.{0,16}).*'
+        target_label: client_hash
+        replacement: '${1}'
 
   - job_name: 'model-orchestrator'
     metrics_path: /api/models/metrics
@@ -28,6 +51,25 @@ scrape_configs:
 
   - job_name: 'model-orchestrator-health'
     metrics_path: /api/models/health/metrics
+    static_configs:
+      - targets: ['api:8000']
+    scrape_interval: 60s
+    scrape_timeout: 10s
+
+  - job_name: 'performance-metrics'
+    metrics_path: /api/performance/prometheus
+    static_configs:
+      - targets: ['api:8000']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'system_.*|service_.*'
+        target_label: component
+        replacement: 'performance_monitoring'
+
+  - job_name: 'performance-health'
+    metrics_path: /api/performance/health
     static_configs:
       - targets: ['api:8000']
     scrape_interval: 60s

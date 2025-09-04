@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import { safeError, safeWarn } from '@/lib/safe-console';
 import { 
   loadConfigFromEnvironment, 
   loadConfigFromStorage, 
@@ -55,12 +56,12 @@ const resolveFeatureFlags = (): Record<FeatureFlag, boolean> => {
     const validation = validateFeatureFlagConfig(mergedFlags);
     
     if (!validation.isValid) {
-      console.error('Invalid feature flag configuration:', validation.errors);
+      safeError('Invalid feature flag configuration:', validation.errors);
       // Fall back to safe defaults
       resolvedFlags = mergeWithEnvironmentDefaults({});
     } else {
       if (validation.warnings.length > 0) {
-        console.warn('Feature flag configuration warnings:', validation.warnings);
+        safeWarn('Feature flag configuration warnings:', validation.warnings);
       }
       resolvedFlags = mergedFlags;
     }
@@ -69,7 +70,7 @@ const resolveFeatureFlags = (): Record<FeatureFlag, boolean> => {
     return resolvedFlags;
     
   } catch (error) {
-    console.error('Failed to resolve feature flags:', error);
+    safeError('Failed to resolve feature flags:', error);
     // Fall back to safe defaults
     resolvedFlags = mergeWithEnvironmentDefaults({});
     lastResolvedTime = now;

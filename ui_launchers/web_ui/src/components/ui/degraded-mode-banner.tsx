@@ -39,31 +39,42 @@ export function DegradedModeBanner({
 
   const fetchStatus = async () => {
     try {
-      // Use the Next.js proxy route instead of direct backend URL
-      const response = await fetch('/api/karen/api/health/degraded-mode')
+      // Use the Next.js proxy route instead of direct backend URL with a timeout
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 15000)
+      const response = await fetch('/api/karen/api/health/degraded-mode', { signal: controller.signal })
+      clearTimeout(t)
       if (response.ok) {
         const data = await response.json()
         setStatus(data)
       }
-    } catch (error) {
-      console.error('Failed to fetch degraded mode status:', error)
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        console.error('Failed to fetch degraded mode status:', error)
+      }
     }
   }
 
   const handleRetry = async () => {
     setIsLoading(true)
     try {
-      // Use the Next.js proxy route instead of direct backend URL
+      // Use the Next.js proxy route instead of direct backend URL with a timeout
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 15000)
       const response = await fetch('/api/karen/api/health/degraded-mode/recover', {
-        method: 'POST'
+        method: 'POST',
+        signal: controller.signal,
       })
+      clearTimeout(t)
       
       if (response.ok) {
         await fetchStatus()
         onRetry?.()
       }
-    } catch (error) {
-      console.error('Failed to attempt recovery:', error)
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        console.error('Failed to attempt recovery:', error)
+      }
     } finally {
       setIsLoading(false)
     }

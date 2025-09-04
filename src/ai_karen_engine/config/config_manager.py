@@ -21,7 +21,15 @@ LOCK = threading.RLock()
 DEFAULT_CONFIG = {
     "active_user": "default",
     "theme": "dark",
-    "llm_model": "llama3.2:latest",
+    "llm_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+    "llm_provider": "llamacpp",
+    "llm_providers": {
+        "enabled": ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
+        "fallback_hierarchy": ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
+        "default_provider": "llamacpp",
+        "auto_discovery": True,
+        "health_check_interval": 300
+    },
     "memory": {
         "enabled": True,
         "provider": "local",
@@ -197,9 +205,38 @@ class ConfigManager:
     def get_llm_config(self):
         return load_config()
     
+    def get_llm_provider_config(self, provider_name: str = None):
+        """Get LLM provider configuration"""
+        config = load_config()
+        llm_config = config.get("llm_providers", {})
+        
+        if provider_name:
+            # Return specific provider config
+            from ai_karen_engine.config.llm_provider_config import get_provider_config_manager
+            manager = get_provider_config_manager()
+            return manager.get_provider(provider_name)
+        
+        return llm_config
+    
+    def update_llm_provider_config(self, provider_name: str, updates: Dict[str, Any]):
+        """Update LLM provider configuration"""
+        from ai_karen_engine.config.llm_provider_config import get_provider_config_manager
+        manager = get_provider_config_manager()
+        return manager.update_provider(provider_name, updates)
+    
+    def get_enabled_llm_providers(self):
+        """Get list of enabled LLM providers"""
+        from ai_karen_engine.config.llm_provider_config import get_provider_config_manager
+        manager = get_provider_config_manager()
+        return manager.get_provider_names(enabled_only=True)
+    
+    def get_llm_fallback_hierarchy(self):
+        """Get LLM provider fallback hierarchy"""
+        config = load_config()
+        return config.get("llm_providers", {}).get("fallback_hierarchy", ["ollama", "openai", "gemini", "deepseek", "huggingface"])
+    
     def get_plugins_config(self):
         return load_config()
 
 # Create a singleton instance of ConfigManager
 config_manager = ConfigManager()
-

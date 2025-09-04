@@ -65,7 +65,6 @@ class LLMRouter:
         
         # Provider priority mapping
         self.provider_priorities = {
-            "ollama": ProviderPriority.LOCAL,
             "llama_cpp": ProviderPriority.LOCAL,
             "openai": ProviderPriority.REMOTE,
             "anthropic": ProviderPriority.REMOTE,

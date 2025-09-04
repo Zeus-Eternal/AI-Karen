@@ -4,6 +4,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { reasoningService, ReasoningRequest, ReasoningResponse } from '@/services/reasoningService';
+import { safeError } from '@/lib/safe-console';
 
 export interface UseReasoningReturn {
   analyze: (input: string, context?: any) => Promise<ReasoningResponse>;
@@ -34,7 +35,7 @@ export function useReasoning(): UseReasoningReturn {
         }
       } catch (err) {
         setIsConnected(false);
-        console.error('Connection check failed:', err);
+        safeError('Connection check failed:', err);
       }
     };
 

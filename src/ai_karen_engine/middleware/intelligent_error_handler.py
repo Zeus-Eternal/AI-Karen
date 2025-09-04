@@ -98,7 +98,6 @@ class IntelligentErrorHandlerMiddleware(BaseHTTPMiddleware):
             "openai": ["openai", "gpt", "chatgpt"],
             "anthropic": ["anthropic", "claude"],
             "huggingface": ["huggingface", "transformers"],
-            "ollama": ["ollama"],
             "groq": ["groq"],
             "cohere": ["cohere"],
         }

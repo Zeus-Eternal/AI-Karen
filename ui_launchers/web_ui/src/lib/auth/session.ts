@@ -380,7 +380,7 @@ export async function login(email: string, password: string, totpCode?: string):
     // Use Next.js API route to avoid CORS issues
     console.log('Attempting login via Next.js API route');
     
-    const response = await fetch('/api/auth/login', {
+    let response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -392,13 +392,43 @@ export async function login(email: string, password: string, totpCode?: string):
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      
       // Handle rate limiting
       if (response.status === 429) {
         throw new Error('Too many login attempts. Please wait a moment and try again.');
       }
-      
-      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+
+      // Fallback 1: try simplified login endpoint
+      console.warn(`Primary login failed (${response.status}). Trying /api/auth/login-simple ...`);
+      response = await fetch('/api/auth/login-simple', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        // Optional Fallback 2: dev-login if enabled
+        const enableDevLogin = process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true';
+        if (enableDevLogin) {
+          console.warn(`Simplified login failed (${response.status}). Trying /api/auth/dev-login ...`);
+          response = await fetch('/api/auth/dev-login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify(credentials),
+          });
+        }
+      }
+
+      if (!response.ok) {
+        const fallbackErr = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(fallbackErr.error || errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
     }
     
     const data = await response.json();
@@ -418,15 +448,7 @@ export async function login(email: string, password: string, totpCode?: string):
     
     setSession(sessionData);
     
-    console.log('Login successful, attempting to create long-lived token for API stability');
-    
-    // After successful login, request a long-lived token for better API stability
-    try {
-      await createLongLivedToken();
-    } catch (longLivedError: any) {
-      // Don't fail the login if long-lived token creation fails
-      console.warn('Failed to create long-lived token, continuing with regular token:', longLivedError.message);
-    }
+    console.log('Login successful');
     
   } catch (error: any) {
     console.error('Login failed:', error.message);

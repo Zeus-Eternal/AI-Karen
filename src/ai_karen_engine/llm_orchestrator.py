@@ -462,18 +462,34 @@ class LLMOrchestrator:
                 logger.debug("llama-cpp-python not available, skipping local model registration")
                 return
             
-            # Check for TinyLlama model
-            models_dir = Path("models")
-            tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
-            
-            if tinyllama_path.exists():
-                logger.info(f"Registering local TinyLlama model: {tinyllama_path}")
+            # Discover any local GGUF models dynamically
+            models_dir = Path("models/llama-cpp")
+            ggufs = []
+            if models_dir.exists():
+                try:
+                    ggufs = [p for p in models_dir.glob("*.gguf") if p.is_file()]
+                    # Basic validity: header magic
+                    valid = []
+                    for p in ggufs:
+                        try:
+                            with open(p, "rb") as f:
+                                if f.read(4) == b"GGUF":
+                                    valid.append(p)
+                        except Exception:
+                            continue
+                    ggufs = valid
+                except Exception:
+                    ggufs = []
+
+            if ggufs:
+                ggufs.sort(key=lambda p: p.stat().st_size, reverse=True)
+                chosen = ggufs[0]
+                logger.info(f"Registering local GGUF model: {chosen}")
                 
-                # Create a wrapper class for the local model
-                class LocalTinyLlamaProvider:
-                    def __init__(self):
+                class LocalGGUFProvider:
+                    def __init__(self, path: str):
                         self.runtime = None
-                        self.model_path = str(tinyllama_path)
+                        self.model_path = path
                     
                     def generate_text(self, prompt: str, **kwargs) -> str:
                         if not self.runtime:
@@ -499,16 +515,14 @@ class LLMOrchestrator:
                     
                     def enhanced_generate_response(self, prompt: str, **kwargs) -> str:
                         return self.generate_text(prompt, **kwargs)
-                
                 # Register the local model
-                local_provider = LocalTinyLlamaProvider()
-                model_id = "local:tinyllama-1.1b"
+                local_provider = LocalGGUFProvider(str(chosen))
+                model_id = f"local:{chosen.name}"
                 capabilities = ["generic", "conversation", "text"]
-                
                 self.registry.register(model_id, local_provider, capabilities, weight=10, tags=["local", "fallback"])
                 logger.info(f"Successfully registered local model: {model_id}")
             else:
-                logger.debug(f"TinyLlama model not found at: {tinyllama_path}")
+                logger.debug("No local GGUF models found under models/llama-cpp/")
                 
         except Exception as e:
             logger.warning(f"Failed to register local models: {e}")

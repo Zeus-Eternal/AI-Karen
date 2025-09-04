@@ -156,6 +156,21 @@ class LLMUtils:
 
             self.registry = get_registry()
             self.providers = {}  # Cache for instantiated providers
+
+            # Prefer first available provider when the configured default is unavailable
+            try:
+                available = set(self.registry.get_available_providers())
+                if self.default not in available:
+                    # Use registry's auto select (first suitable/available)
+                    picked = self.registry.auto_select_provider({})
+                    if picked:
+                        logger.info(
+                            f"Default provider '{self.default}' unavailable; using first available: '{picked}'"
+                        )
+                        self.default = picked
+            except Exception:
+                # Do not fail init if registry probing has issues
+                logger.debug("Default provider auto-select probe failed", exc_info=True)
         else:
             # Legacy mode - use provided providers or create default ones
             if providers is None:
@@ -295,10 +310,18 @@ class LLMUtils:
         user_ctx: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> str:
-        provider_obj = self.get_provider(provider)
-        trace_id = trace_id or str(uuid.uuid4())
+        # Respect explicit model by requesting a correctly initialized provider from registry
         provider_name = provider or self.default
-        model_name = kwargs.get("model") or getattr(provider_obj, "model", None)
+        model_name = kwargs.get("model")
+        if self.use_registry:
+            provider_obj = self.registry.get_provider(provider_name, model=model_name)  # type: ignore[arg-type]
+            if not provider_obj:
+                raise ProviderNotAvailable(f"Provider '{provider_name}' not available in registry.")
+            # Do not cache by plain provider name to avoid model mix-ups
+        else:
+            provider_obj = self.get_provider(provider)
+        trace_id = trace_id or str(uuid.uuid4())
+        model_name = model_name or getattr(provider_obj, "model", None)
         t0 = time.time()
         status = "success"
         meta = {
@@ -366,10 +389,16 @@ class LLMUtils:
         user_ctx: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> List[float]:
-        provider_obj = self.get_provider(provider)
-        trace_id = trace_id or str(uuid.uuid4())
         provider_name = provider or self.default
-        model_name = kwargs.get("model") or getattr(provider_obj, "model", None)
+        model_name = kwargs.get("model")
+        if self.use_registry:
+            provider_obj = self.registry.get_provider(provider_name, model=model_name)  # type: ignore[arg-type]
+            if not provider_obj:
+                raise ProviderNotAvailable(f"Provider '{provider_name}' not available in registry.")
+        else:
+            provider_obj = self.get_provider(provider)
+        trace_id = trace_id or str(uuid.uuid4())
+        model_name = model_name or getattr(provider_obj, "model", None)
         t0 = time.time()
         status = "success"
         meta = {

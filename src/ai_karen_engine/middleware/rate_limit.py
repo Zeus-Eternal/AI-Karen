@@ -1,10 +1,8 @@
-"""Simple database-backed rate limiting middleware with fallback support."""
-
-# mypy: ignore-errors
+"""Enhanced rate limiting middleware with configurable rules and optimizations."""
 
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Optional
+import time
+from typing import Optional
 
 try:
     from fastapi import Request
@@ -12,92 +10,262 @@ try:
 except Exception:  # pragma: no cover - fallback for tests
     from ai_karen_engine.fastapi_stub import Request, JSONResponse
 
-from ai_karen_engine.database.client import get_db_session_context
-from ai_karen_engine.database.models import RateLimit
+from ai_karen_engine.server.rate_limiter import (
+    EnhancedRateLimiter,
+    create_rate_limiter,
+    RateLimitRule,
+    RateLimitScope,
+    RateLimitAlgorithm,
+    DEFAULT_RATE_LIMIT_RULES
+)
 from ai_karen_engine.services.usage_service import UsageService
 
-# In-memory fallback rate limiting when database is unavailable
-_memory_rate_limits: Dict[str, Dict] = {}
 logger = logging.getLogger(__name__)
 
-
-def _get_memory_rate_limit(identifier: str) -> Dict:
-    """Get or create in-memory rate limit record."""
-    now = datetime.utcnow()
-    
-    if identifier not in _memory_rate_limits:
-        _memory_rate_limits[identifier] = {
-            "current_count": 0,
-            "window_reset": now + timedelta(seconds=60),
-            "max_count": 300,  # Increased from 60 to 300 requests per minute
-            "window_sec": 60
-        }
-    
-    limit = _memory_rate_limits[identifier]
-    
-    # Reset window if expired
-    if limit["window_reset"] < now:
-        limit["current_count"] = 0
-        limit["window_reset"] = now + timedelta(seconds=limit["window_sec"])
-    
-    return limit
+# Global rate limiter instance
+_rate_limiter: Optional[EnhancedRateLimiter] = None
+_rate_limiter_config = {
+    "storage_type": "memory",  # Can be configured to "redis"
+    "redis_url": None,
+}
 
 
-def _check_memory_rate_limit(identifier: str) -> bool:
-    """Check if request should be rate limited using in-memory storage."""
-    limit = _get_memory_rate_limit(identifier)
+def configure_rate_limiter(
+    storage_type: str = "memory",
+    redis_url: Optional[str] = None,
+    custom_rules: Optional[list] = None
+) -> None:
+    """Configure the global rate limiter instance"""
+    global _rate_limiter, _rate_limiter_config
     
-    if limit["current_count"] >= limit["max_count"]:
-        return True  # Rate limited
+    _rate_limiter_config.update({
+        "storage_type": storage_type,
+        "redis_url": redis_url,
+    })
     
-    limit["current_count"] += 1
-    return False  # Allow request
+    try:
+        _rate_limiter = create_rate_limiter(
+            storage_type=storage_type,
+            redis_url=redis_url,
+            custom_rules=custom_rules
+        )
+        logger.info(f"Rate limiter configured with {storage_type} storage")
+    except Exception as e:
+        logger.error(f"Failed to configure rate limiter: {e}")
+        # Fallback to memory storage
+        _rate_limiter = create_rate_limiter(storage_type="memory")
+        logger.info("Rate limiter configured with memory storage (fallback)")
+
+
+def get_rate_limiter() -> EnhancedRateLimiter:
+    """Get the global rate limiter instance"""
+    global _rate_limiter
+    
+    if _rate_limiter is None:
+        configure_rate_limiter()
+    
+    return _rate_limiter
+
+
+def _extract_client_info(request: Request) -> tuple[str, Optional[str], Optional[str]]:
+    """Extract client information from request"""
+    
+    # Get IP address
+    ip_address = "unknown"
+    if request.client:
+        ip_address = request.client.host
+    
+    # Check for forwarded headers
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        ip_address = forwarded_for.split(",")[0].strip()
+    
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        ip_address = real_ip
+    
+    # Get user ID from request state or headers (safely)
+    user_id = None
+    if hasattr(request, 'state'):
+        user_id = getattr(request.state, "user_id", None)
+        if not user_id:
+            user_id = getattr(request.state, "user", None)
+    
+    # Fallback to headers if state is not available
+    if not user_id:
+        user_id = request.headers.get("x-user-id")
+    
+    # Get user type from request state or headers (safely)
+    user_type = None
+    if hasattr(request, 'state'):
+        user_type = getattr(request.state, "user_type", None)
+    
+    # Fallback to headers if state is not available
+    if not user_type:
+        user_type = request.headers.get("x-user-type")
+    
+    return ip_address, user_id, user_type
+
+
+def _calculate_request_size(request: Request) -> int:
+    """Calculate request size/weight for rate limiting"""
+    
+    # Base size
+    size = 1
+    
+    # Add weight based on content length
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            length = int(content_length)
+            # Add 1 point per 1KB of content
+            size += max(0, (length - 1024) // 1024)
+        except ValueError:
+            pass
+    
+    # Add weight for expensive operations
+    path = str(request.url.path).lower()
+    if any(expensive in path for expensive in ["/search", "/export", "/report", "/analyze"]):
+        size += 5
+    
+    return min(size, 10)  # Cap at 10 to prevent abuse
 
 
 async def rate_limit_middleware(request: Request, call_next):
-    """Enforce simple fixed-window rate limits with database fallback to memory."""
-    identifier: Optional[str] = getattr(request.state, "user", None)
-    if not identifier:
-        identifier = request.headers.get("X-API-Key") or request.client.host
-
-    # Try database-backed rate limiting first
+    """Enhanced rate limiting middleware with configurable rules and optimizations."""
+    
+    start_time = time.time()
+    
     try:
-        with get_db_session_context() as session:
-            limit = session.query(RateLimit).filter_by(key=identifier).first()
-            now = datetime.utcnow()
-            
-            if limit is None:
-                # No existing limit record; allow request and create default record
-                limit = RateLimit(
-                    key=identifier,
-                    limit_name="default",
-                    window_sec=60,
-                    max_count=300,  # Increased from 60 to 300 requests per minute
-                    current_count=1,
-                    window_reset=now + timedelta(seconds=60),
-                )
-                session.add(limit)
-                session.commit()
-            else:
-                if limit.window_reset and limit.window_reset < now:
-                    limit.current_count = 0
-                    limit.window_reset = now + timedelta(seconds=limit.window_sec or 60)
-                
-                if limit.current_count >= (limit.max_count or 0):
-                    try:
-                        UsageService.increment("errors", user_id=identifier)
-                    except Exception:
-                        pass  # Don't fail if usage service is unavailable
-                    return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
-                
-                limit.current_count += 1
-                session.commit()
-                
-    except Exception as e:
-        # Database is unavailable, fall back to in-memory rate limiting
-        logger.warning(f"Database unavailable for rate limiting, using memory fallback: {e}")
+        logger.debug("Rate limit middleware: Starting")
         
-        if _check_memory_rate_limit(identifier):
-            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+        # Skip rate limiting for health and system endpoints
+        endpoint = str(request.url.path)
+        if endpoint in ["/health", "/metrics", "/docs", "/openapi.json", "/redoc"]:
+            logger.debug(f"Rate limit middleware: Skipping rate limiting for system endpoint: {endpoint}")
+            return await call_next(request)
+        
+        # Get rate limiter
+        limiter = get_rate_limiter()
+        logger.debug("Rate limit middleware: Got rate limiter")
+        
+        # Extract client information
+        ip_address, user_id, user_type = _extract_client_info(request)
+        logger.debug(f"Rate limit middleware: Extracted client info - IP: {ip_address}, User: {user_id}, Type: {user_type}")
+        
+        request_size = _calculate_request_size(request)
+        logger.debug(f"Rate limit middleware: Endpoint: {endpoint}, Size: {request_size}")
+        
+        # Check rate limit
+        logger.debug("Rate limit middleware: About to check rate limit")
+        result = await limiter.check_rate_limit(
+            ip_address=ip_address,
+            endpoint=endpoint,
+            user_id=user_id,
+            user_type=user_type,
+            request_size=request_size
+        )
+        logger.debug("Rate limit middleware: Rate limit check completed")
+        
+        if not result.allowed:
+            # Rate limit exceeded
+            try:
+                UsageService.increment("rate_limit_exceeded", user_id=user_id or ip_address)
+            except Exception:
+                pass  # Don't fail if usage service is unavailable
+            
+            # Log rate limit violation
+            logger.warning(
+                f"Rate limit exceeded for {ip_address} (user: {user_id}) on {endpoint}",
+                extra={
+                    "ip_address": ip_address,
+                    "user_id": user_id,
+                    "endpoint": endpoint,
+                    "rule_name": result.rule_name,
+                    "current_count": result.current_count,
+                    "limit": result.limit,
+                    "window_seconds": result.window_seconds,
+                    "retry_after": result.retry_after_seconds,
+                }
+            )
+            
+            # Return rate limit response
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": "Rate limit exceeded",
+                    "message": f"Too many requests. Try again in {result.retry_after_seconds} seconds.",
+                    "details": {
+                        "rule": result.rule_name,
+                        "limit": result.limit,
+                        "window_seconds": result.window_seconds,
+                        "current_count": result.current_count,
+                        "reset_time": result.reset_time.isoformat(),
+                    }
+                },
+                headers={
+                    "Retry-After": str(result.retry_after_seconds),
+                    "X-RateLimit-Limit": str(result.limit),
+                    "X-RateLimit-Remaining": str(max(0, result.limit - result.current_count)),
+                    "X-RateLimit-Reset": str(int(result.reset_time.timestamp())),
+                    "X-RateLimit-Rule": result.rule_name,
+                }
+            )
+        
+        # Record the request
+        await limiter.record_request(
+            ip_address=ip_address,
+            endpoint=endpoint,
+            user_id=user_id,
+            user_type=user_type,
+            request_size=request_size
+        )
+        
+        # Process the request
+        response = await call_next(request)
+        
+        # Add rate limit headers to successful responses
+        response.headers["X-RateLimit-Limit"] = str(result.limit)
+        response.headers["X-RateLimit-Remaining"] = str(max(0, result.limit - result.current_count - request_size))
+        response.headers["X-RateLimit-Reset"] = str(int(result.reset_time.timestamp()))
+        response.headers["X-RateLimit-Rule"] = result.rule_name
+        
+        # Log successful request processing time
+        processing_time = time.time() - start_time
+        if processing_time > 1.0:  # Log slow requests
+            logger.info(
+                f"Slow request processed: {endpoint} took {processing_time:.2f}s",
+                extra={
+                    "ip_address": ip_address,
+                    "user_id": user_id,
+                    "endpoint": endpoint,
+                    "processing_time": processing_time,
+                    "request_size": request_size,
+                }
+            )
+        
+        return response
+        
+    except Exception as e:
+        # Check if this is an authentication error that we can safely ignore
+        error_message = str(e).lower()
+        if "authentication required" in error_message or "authentication" in error_message:
+            # This is likely an authentication error from a dependency
+            # Log as debug instead of error since it's not critical to rate limiting
+            logger.debug(f"Rate limiting middleware encountered authentication dependency: {e}")
+            # Continue with request processing without rate limiting
+            return await call_next(request)
+        
+        # Log other errors but don't block requests
+        logger.error(f"Rate limiting middleware error: {e}", exc_info=True)
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error args: {e.args}")
+        
+        # Continue with request processing
+        return await call_next(request)
 
-    return await call_next(request)
+
+# Backward compatibility function
+async def legacy_rate_limit_middleware(request: Request, call_next):
+    """Legacy rate limit middleware for backward compatibility"""
+    return await rate_limit_middleware(request, call_next)

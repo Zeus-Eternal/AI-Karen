@@ -54,63 +54,98 @@ class LlamaCppProvider(LLMProviderBase):
             self._find_default_model()  
   
     def _find_default_model(self):
-        """Find a default GGUF model to load from Model Library registry."""
+        """Resolve and load a reasonable default GGUF model dynamically.
+
+        Preference order:
+          1) Any local llama-cpp model from Model Library registry (validated path)
+          2) Largest valid .gguf under models/llama-cpp
+          3) Auto-download a TinyLlama predefined model (if allowed), then load
+        """
+        # 1) Try Model Library registry for local llama-cpp models
         try:
-            # Try to get models from Model Library service
             from ai_karen_engine.services.model_library_service import ModelLibraryService
-            model_library = ModelLibraryService()
-            available_models = model_library.get_available_models()
-            
-            # Look for local llama-cpp models, prioritizing TinyLlama
-            preferred_models = ["tinyllama-1.1b-chat-q4", "tinyllama-1.1b-instruct-q4"]
-            
-            for preferred_id in preferred_models:
-                for model_info in available_models:
-                    if (model_info.id == preferred_id and 
-                        model_info.provider == "llama-cpp" and 
-                        model_info.status == "local" and 
-                        model_info.local_path and 
-                        Path(model_info.local_path).exists()):
-                        self.model_path = model_info.local_path
-                        self.runtime.load_model(self.model_path)
-                        logger.info(f"Loaded default model from Model Library: {self.model_path}")
-                        return
-            
-            # If no preferred models, use any available local llama-cpp model
-            for model_info in available_models:
-                if (model_info.provider == "llama-cpp" and 
-                    model_info.status == "local" and 
-                    model_info.local_path and 
-                    Path(model_info.local_path).exists()):
-                    self.model_path = model_info.local_path
-                    self.runtime.load_model(self.model_path)
-                    logger.info(f"Loaded default model from Model Library: {self.model_path}")
-                    return
-                    
-        except Exception as e:
-            logger.warning(f"Failed to find default model from Model Library: {e}")
-        
-        # Fallback to directory scan
-        possible_paths = [
-            Path("models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"),
-            Path("models/llama-cpp").glob("*.gguf"),
-        ]
-        
-        for path_or_glob in possible_paths:
-            if isinstance(path_or_glob, Path) and path_or_glob.exists():
-                self.model_path = str(path_or_glob)
+            lib = ModelLibraryService()
+            models = lib.get_available_models()
+            local_candidates = [
+                m for m in models
+                if m.provider == "llama-cpp" and m.status == "local" and m.local_path and Path(m.local_path).exists()
+            ]
+            if local_candidates:
+                # Prefer the largest local model (rough proxy for completeness)
+                local_candidates.sort(key=lambda m: (Path(m.local_path).stat().st_size if m.local_path else 0), reverse=True)
+                self.model_path = local_candidates[0].local_path  # type: ignore[assignment]
                 self.runtime.load_model(self.model_path)
-                logger.info(f"Loaded default model: {self.model_path}")
+                logger.info(f"Loaded default model from Model Library: {self.model_path}")
                 return
-            elif hasattr(path_or_glob, '__iter__'):
-                for path in path_or_glob:
-                    if path.exists():
-                        self.model_path = str(path)
-                        self.runtime.load_model(self.model_path)
-                        logger.info(f"Loaded default model: {self.model_path}")
-                        return
-        
-        logger.warning("No default GGUF model found in models/llama-cpp/")
+        except Exception as e:
+            logger.debug(f"Model Library scan failed: {e}")
+
+        # 2) Scan models/llama-cpp for .gguf and choose the largest valid file
+        try:
+            gguf_dir = Path("models/llama-cpp")
+            if gguf_dir.exists():
+                candidates = [p for p in gguf_dir.glob("*.gguf") if p.is_file()]
+                # Filter by basic validity (header check)
+                valid = []
+                for p in candidates:
+                    try:
+                        if p.stat().st_size < 50 * 1024 * 1024:
+                            continue
+                        with open(p, "rb") as f:
+                            magic = f.read(4)
+                        if magic == b"GGUF":
+                            valid.append(p)
+                    except Exception:
+                        continue
+                if valid:
+                    valid.sort(key=lambda p: p.stat().st_size, reverse=True)
+                    self.model_path = str(valid[0])
+                    self.runtime.load_model(self.model_path)
+                    logger.info(f"Loaded default model from directory: {self.model_path}")
+                    return
+        except Exception as e:
+            logger.debug(f"Directory scan failed: {e}")
+
+        # 3) Auto-download TinyLlama if allowed
+        allow_download = os.getenv("KARI_AUTO_DOWNLOAD_LLM", "true").lower() in ("1", "true", "yes")
+        if allow_download:
+            try:
+                from ai_karen_engine.services.model_library_service import ModelLibraryService
+                lib = ModelLibraryService()
+                preferred = ["tinyllama-1.1b-chat-q4", "tinyllama-1.1b-instruct-q4"]
+                for model_id in preferred:
+                    task = lib.download_model(model_id)
+                    if not task:
+                        continue
+                    # Poll until done (with a max wait)
+                    logger.info(f"Downloading {model_id} ...")
+                    start = time.time()
+                    while True:
+                        st = lib.get_download_status(task.task_id)
+                        if st and st.status in ("completed", "failed", "cancelled"):
+                            break
+                        if time.time() - start > 600:  # 10 minutes
+                            logger.warning("Download timed out")
+                            break
+                        time.sleep(1.0)
+                    if st and st.status == "completed":
+                        # Add to registry and load
+                        lib._add_downloaded_model_to_registry(task)
+                        # Find the actual file under models/llama-cpp
+                        target = Path("models/llama-cpp") / task.filename
+                        if target.exists():
+                            self.model_path = str(target)
+                            self.runtime.load_model(self.model_path)
+                            logger.info(f"Loaded downloaded model: {self.model_path}")
+                            return
+                logger.error("Auto-download failed or no preferred models available")
+            except Exception as e:
+                logger.error(f"Auto-download encountered an error: {e}")
+
+        # If we reach here, fail fast with a clear message
+        raise GenerationFailed(
+            "No valid local GGUF model found. Place a model under models/llama-cpp/ or set model_path explicitly."
+        )
     
     def generate_text(self, prompt: str, **kwargs) -> str:
         """Generate text using LlamaCppRuntime."""
@@ -251,7 +286,7 @@ class LlamaCppProvider(LLMProviderBase):
         # Return predefined models as fallback if none found
         if not models:
             return [
-                "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
                 "llama-2-7b-chat.Q4_K_M.gguf",
                 "llama-2-13b-chat.Q4_K_M.gguf",
                 "mistral-7b-instruct-v0.1.Q4_K_M.gguf"

@@ -79,6 +79,36 @@ class DistilBertConfig(BaseModel):
     pooling_strategy: str = "mean"
 
 
+class TinyLlamaConfig(BaseModel):
+    """Configuration for TinyLlama service."""
+    
+    def __init__(self, **data):
+        # Set defaults
+        defaults = {
+            "model_name": os.getenv("TINYLLAMA_MODEL_NAME", "tinyllama-1.1b-chat"),
+            "max_tokens": 150,
+            "temperature": 0.7,
+            "enable_fallback": True,
+            "cache_size": 1000,
+            "cache_ttl": 1800,
+            "scaffold_max_tokens": 100,
+            "outline_max_tokens": 80,
+            "summary_max_tokens": 120
+        }
+        defaults.update(data)
+        super().__init__(**defaults)
+    
+    model_name: str = "tinyllama-1.1b-chat"
+    max_tokens: int = 150
+    temperature: float = 0.7
+    enable_fallback: bool = True
+    cache_size: int = 1000
+    cache_ttl: int = 1800
+    scaffold_max_tokens: int = 100
+    outline_max_tokens: int = 80
+    summary_max_tokens: int = 120
+
+
 class NLPConfig(BaseModel):
     """Combined NLP configuration."""
     
@@ -87,6 +117,7 @@ class NLPConfig(BaseModel):
         defaults = {
             "spacy": SpacyConfig(),
             "distilbert": DistilBertConfig(),
+            "tinyllama": TinyLlamaConfig(),
             "enable_monitoring": True,
             "health_check_interval": 60,
             "retry_attempts": 3,
@@ -99,6 +130,8 @@ class NLPConfig(BaseModel):
                 defaults[key] = SpacyConfig(**value)
             elif key == "distilbert" and isinstance(value, dict):
                 defaults[key] = DistilBertConfig(**value)
+            elif key == "tinyllama" and isinstance(value, dict):
+                defaults[key] = TinyLlamaConfig(**value)
             else:
                 defaults[key] = value
         
@@ -106,6 +139,7 @@ class NLPConfig(BaseModel):
     
     spacy: SpacyConfig = None
     distilbert: DistilBertConfig = None
+    tinyllama: TinyLlamaConfig = None
     enable_monitoring: bool = True
     health_check_interval: int = 60
     retry_attempts: int = 3

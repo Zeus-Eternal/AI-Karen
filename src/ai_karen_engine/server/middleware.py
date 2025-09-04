@@ -53,7 +53,14 @@ def configure_middleware(
 
     # RBAC middleware configured based on environment
     development_mode = getattr(settings, "environment", "").lower() != "production"
-    setup_rbac(app, development_mode=development_mode)
+    
+    # Check if AUTH_MODE is set to bypass - if so, skip RBAC entirely
+    import os
+    auth_mode = os.getenv("AUTH_MODE", "hybrid").lower()
+    if auth_mode != "bypass":
+        setup_rbac(app, development_mode=development_mode)
+    else:
+        logger.info("🔓 Skipping RBAC middleware - AUTH_MODE=bypass")
 
     # Add intelligent error handler (outermost - catches all errors)
     app.add_middleware(
@@ -68,8 +75,30 @@ def configure_middleware(
         enable_intelligent_errors=True
     )
 
-    # Register custom middlewares
-    app.middleware("http")(rate_limit_middleware)
+    # Configure and register enhanced rate limiting middleware
+    from ai_karen_engine.middleware.rate_limit import configure_rate_limiter
+    
+    # Configure rate limiter based on environment
+    storage_type = "memory"  # Default to memory storage
+    redis_url = None
+    
+    # Try to get Redis configuration from environment
+    import os
+    if os.getenv("REDIS_URL"):
+        storage_type = "redis"
+        redis_url = os.getenv("REDIS_URL")
+    elif os.getenv("RATE_LIMIT_REDIS_URL"):
+        storage_type = "redis"
+        redis_url = os.getenv("RATE_LIMIT_REDIS_URL")
+    
+    configure_rate_limiter(storage_type=storage_type, redis_url=redis_url)
+    
+    # Register enhanced rate limiting middleware - disabled in bypass mode
+    auth_mode = os.getenv("AUTH_MODE", "hybrid").lower()
+    if auth_mode != "bypass":
+        app.middleware("http")(rate_limit_middleware)
+    else:
+        logger.info("🔓 Skipping rate limiting middleware - AUTH_MODE=bypass")
     app.middleware("http")(error_counter_middleware)
 
     @app.middleware("http")
@@ -87,12 +116,21 @@ def configure_middleware(
         )
         return response
 
-    # Initialize HTTP validator with configuration
-    validation_config = ValidationConfig(
-        max_content_length=getattr(settings, "max_request_size", 10 * 1024 * 1024),
-        log_invalid_requests=True,
-        enable_security_analysis=True,
-    )
+    # Use globally configured validation framework or create default
+    import sys
+    current_module = sys.modules[__name__]
+    validation_config = getattr(current_module, '_validation_config', None)
+    enhanced_logger = getattr(current_module, '_enhanced_logger', None)
+    
+    if validation_config is None:
+        # Fallback configuration if initialization failed
+        validation_config = ValidationConfig(
+            max_content_length=getattr(settings, "max_request_size", 10 * 1024 * 1024),
+            log_invalid_requests=True,
+            enable_security_analysis=True,
+        )
+        logger.warning("Using fallback validation configuration")
+    
     http_validator = HTTPRequestValidator(validation_config)
 
     @app.middleware("http")
@@ -108,17 +146,32 @@ def configure_middleware(
             sanitized_data = http_validator.sanitize_request_data(request)
 
             # Log invalid request with sanitized data (INFO level as per requirements)
-            logger.info(
-                "Invalid request blocked",
-                extra={
-                    "request_id": request_id,
-                    "error_type": validation_result.error_type,
-                    "error_message": validation_result.error_message,
-                    "security_threat_level": validation_result.security_threat_level,
-                    "sanitized_request": sanitized_data,
-                    "validation_details": validation_result.validation_details,
-                },
-            )
+            if enhanced_logger:
+                # Use enhanced logger if available
+                enhanced_logger.log_invalid_request(
+                    {
+                        "request_id": request_id,
+                        "error_type": validation_result.error_type,
+                        "error_message": validation_result.error_message,
+                        "security_threat_level": validation_result.security_threat_level,
+                        "sanitized_request": sanitized_data,
+                        "validation_details": validation_result.validation_details,
+                    },
+                    error_type=validation_result.error_type or "validation_error"
+                )
+            else:
+                # Fallback to standard logger
+                logger.info(
+                    "Invalid request blocked",
+                    extra={
+                        "request_id": request_id,
+                        "error_type": validation_result.error_type,
+                        "error_message": validation_result.error_message,
+                        "security_threat_level": validation_result.security_threat_level,
+                        "sanitized_request": sanitized_data,
+                        "validation_details": validation_result.validation_details,
+                    },
+                )
 
             # Update error metrics
             error_count.labels(

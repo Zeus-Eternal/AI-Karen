@@ -260,12 +260,22 @@ export default function LLMSettings() {
         profilesResponse = await backend.makeRequestPublic<LLMProfile[]>('/api/providers/profiles');
       } catch (error) {
         console.warn('Profiles endpoint not available:', error);
+        try {
+          profilesResponse = await backend.makeRequestPublic<LLMProfile[]>('/api/profiles');
+        } catch (fallbackErr) {
+          console.warn('Fallback /api/profiles endpoint not available:', fallbackErr);
+        }
       }
       
       try {
         activeProfileResponse = await backend.makeRequestPublic<LLMProfile | null>('/api/providers/profiles/active');
       } catch (error) {
         console.warn('Active profile endpoint not available:', error);
+        try {
+          activeProfileResponse = await backend.makeRequestPublic<LLMProfile | null>('/api/profiles/active');
+        } catch (fallbackErr) {
+          console.warn('Fallback /api/profiles/active endpoint not available:', fallbackErr);
+        }
       }
       
       const fallbackProfiles = getFallbackProfiles();

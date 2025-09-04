@@ -1,0 +1,373 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Performance Metrics Dashboard",
+    "tags": ["performance", "metrics", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "System CPU Usage",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "system_cpu_percent",
+            "legendFormat": "CPU %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 70},
+                {"color": "red", "value": 90}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "System Memory Usage",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "system_memory_percent",
+            "legendFormat": "Memory %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "red", "value": 95}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "System Load Average",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "system_load_1min",
+            "legendFormat": "1min"
+          },
+          {
+            "expr": "system_load_5min",
+            "legendFormat": "5min"
+          },
+          {
+            "expr": "system_load_15min",
+            "legendFormat": "15min"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "unit": "short"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Service CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "service_api_cpu_percent",
+            "legendFormat": "API"
+          },
+          {
+            "expr": "service_database_cpu_percent",
+            "legendFormat": "Database"
+          },
+          {
+            "expr": "service_auth_cpu_percent",
+            "legendFormat": "Auth"
+          },
+          {
+            "expr": "service_llm_cpu_percent",
+            "legendFormat": "LLM"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "max": 100,
+            "unit": "percent"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Service Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "service_api_memory_usage",
+            "legendFormat": "API"
+          },
+          {
+            "expr": "service_database_memory_usage",
+            "legendFormat": "Database"
+          },
+          {
+            "expr": "service_auth_memory_usage",
+            "legendFormat": "Auth"
+          },
+          {
+            "expr": "service_llm_memory_usage",
+            "legendFormat": "LLM"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "unit": "bytes"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Response Times",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "service_api_response_time",
+            "legendFormat": "API Response Time"
+          },
+          {
+            "expr": "service_database_response_time",
+            "legendFormat": "Database Response Time"
+          },
+          {
+            "expr": "service_auth_response_time",
+            "legendFormat": "Auth Response Time"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "unit": "s"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Request Rates",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(service_api_requests_count[5m])",
+            "legendFormat": "API Requests/sec"
+          },
+          {
+            "expr": "rate(service_database_requests_count[5m])",
+            "legendFormat": "Database Requests/sec"
+          },
+          {
+            "expr": "rate(service_auth_requests_count[5m])",
+            "legendFormat": "Auth Requests/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "unit": "reqps"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Error Rates",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(service_api_errors_count[5m])",
+            "legendFormat": "API Errors/sec"
+          },
+          {
+            "expr": "rate(service_database_errors_count[5m])",
+            "legendFormat": "Database Errors/sec"
+          },
+          {
+            "expr": "rate(service_auth_errors_count[5m])",
+            "legendFormat": "Auth Errors/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "unit": "errps"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 9,
+        "title": "Network I/O",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(system_network_bytes_sent[5m])",
+            "legendFormat": "Bytes Sent/sec"
+          },
+          {
+            "expr": "rate(system_network_bytes_recv[5m])",
+            "legendFormat": "Bytes Received/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "unit": "Bps"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      },
+      {
+        "id": 10,
+        "title": "Disk I/O",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(service_api_io_read_bytes[5m])",
+            "legendFormat": "API Read"
+          },
+          {
+            "expr": "rate(service_api_io_write_bytes[5m])",
+            "legendFormat": "API Write"
+          },
+          {
+            "expr": "rate(service_database_io_read_bytes[5m])",
+            "legendFormat": "Database Read"
+          },
+          {
+            "expr": "rate(service_database_io_write_bytes[5m])",
+            "legendFormat": "Database Write"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "unit": "Bps"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32}
+      },
+      {
+        "id": 11,
+        "title": "Thread Counts",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "service_api_threads_count",
+            "legendFormat": "API Threads"
+          },
+          {
+            "expr": "service_database_threads_count",
+            "legendFormat": "Database Threads"
+          },
+          {
+            "expr": "service_auth_threads_count",
+            "legendFormat": "Auth Threads"
+          },
+          {
+            "expr": "system_threads_count",
+            "legendFormat": "System Total"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "unit": "short"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 40}
+      },
+      {
+        "id": 12,
+        "title": "Open Files",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "service_api_files_open",
+            "legendFormat": "API Open Files"
+          },
+          {
+            "expr": "service_database_files_open",
+            "legendFormat": "Database Open Files"
+          },
+          {
+            "expr": "service_auth_files_open",
+            "legendFormat": "Auth Open Files"
+          }
+        ],
+        "yAxes": [
+          {
+            "min": 0,
+            "unit": "short"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40}
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "service",
+          "type": "query",
+          "query": "label_values(service)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*"
+        },
+        {
+          "name": "interval",
+          "type": "interval",
+          "query": "1m,5m,10m,30m,1h",
+          "current": {
+            "text": "5m",
+            "value": "5m"
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Performance Alerts",
+          "datasource": "Prometheus",
+          "expr": "ALERTS{alertname=~\".*Performance.*\"}",
+          "titleFormat": "{{alertname}}",
+          "textFormat": "{{instance}}: {{summary}}"
+        }
+      ]
+    }
+  }
+}

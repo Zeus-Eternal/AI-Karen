@@ -2133,3 +2133,948 @@ async def validate_model_configuration(model_id: str, request: ModelConfiguratio
             "valid": False,
             "error": str(e)
         }
+
+# -----------------------------
+# Extended Local Model API Endpoints (Task 6.1)
+# -----------------------------
+
+@router.get("/models/local/status")
+async def get_local_models_status():
+    """Get status of local model directory and scanning capabilities."""
+    try:
+        model_store = get_model_store()
+        
+        # Check if models directory exists and is accessible
+        models_dir = Path(model_store.models_dir)
+        status = {
+            "models_directory": str(models_dir),
+            "directory_exists": models_dir.exists(),
+            "directory_writable": models_dir.exists() and os.access(models_dir, os.W_OK),
+            "total_models": len(model_store.list_models(local_only=True)),
+            "supported_formats": [".gguf", ".safetensors", ".bin", ".pt", ".pth"],
+            "scan_capabilities": {
+                "auto_detection": True,
+                "metadata_extraction": True,
+                "compatibility_checking": True
+            }
+        }
+        
+        return status
+        
+    except Exception as e:
+        logger.error(f"Failed to get local models status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/models/local/upload/validate")
+async def validate_model_upload(file: UploadFile = File(...)):
+    """Validate a model file before upload without actually uploading it."""
+    try:
+        # Check file extension
+        allowed_extensions = {".gguf", ".safetensors", ".bin", ".pt", ".pth", ".zip", ".tar", ".tar.gz"}
+        file_ext = Path(file.filename).suffix.lower()
+        
+        validation_result = {
+            "filename": file.filename,
+            "size": file.size,
+            "extension": file_ext,
+            "valid": file_ext in allowed_extensions,
+            "format": file_ext.lstrip('.'),
+            "estimated_upload_time": None,
+            "warnings": [],
+            "errors": []
+        }
+        
+        if not validation_result["valid"]:
+            validation_result["errors"].append(
+                f"Unsupported file type: {file_ext}. Allowed: {', '.join(allowed_extensions)}"
+            )
+        
+        # Check file size
+        if file.size and file.size > 50 * 1024 * 1024 * 1024:  # 50GB limit
+            validation_result["errors"].append("File size exceeds 50GB limit")
+        elif file.size and file.size > 10 * 1024 * 1024 * 1024:  # 10GB warning
+            validation_result["warnings"].append("Large file size may take significant time to upload")
+        
+        # Estimate upload time (assuming 10MB/s average)
+        if file.size:
+            estimated_seconds = file.size / (10 * 1024 * 1024)
+            validation_result["estimated_upload_time"] = estimated_seconds
+        
+        return validation_result
+        
+    except Exception as e:
+        logger.error(f"Failed to validate upload: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models/local/formats")
+async def get_supported_formats():
+    """Get information about supported model formats and their capabilities."""
+    formats = {
+        "gguf": {
+            "description": "GGML Universal Format - optimized for CPU inference",
+            "extensions": [".gguf"],
+            "runtimes": ["llama.cpp"],
+            "quantization_support": True,
+            "streaming_support": True,
+            "memory_efficient": True,
+            "gpu_acceleration": True
+        },
+        "safetensors": {
+            "description": "Safe serialization format for PyTorch models",
+            "extensions": [".safetensors"],
+            "runtimes": ["transformers", "vllm"],
+            "quantization_support": False,
+            "streaming_support": True,
+            "memory_efficient": False,
+            "gpu_acceleration": True
+        },
+        "pytorch": {
+            "description": "PyTorch native format",
+            "extensions": [".bin", ".pt", ".pth"],
+            "runtimes": ["transformers"],
+            "quantization_support": False,
+            "streaming_support": True,
+            "memory_efficient": False,
+            "gpu_acceleration": True
+        },
+        "archive": {
+            "description": "Compressed archives containing model files",
+            "extensions": [".zip", ".tar", ".tar.gz"],
+            "runtimes": [],
+            "quantization_support": False,
+            "streaming_support": False,
+            "memory_efficient": False,
+            "gpu_acceleration": False,
+            "note": "Archives are extracted during upload"
+        }
+    }
+    
+    return {
+        "supported_formats": formats,
+        "recommended_format": "gguf",
+        "conversion_available": True,
+        "quantization_available": True
+    }
+
+
+@router.post("/models/local/convert-to-gguf/validate")
+async def validate_conversion_request(request: ConversionRequest):
+    """Validate a conversion request before starting the actual conversion."""
+    try:
+        # Check if source path exists
+        source_path = Path(request.source_path)
+        if not source_path.exists():
+            raise HTTPException(status_code=404, detail="Source model not found")
+        
+        # Check if it's a directory (HuggingFace format) or file
+        is_directory = source_path.is_dir()
+        
+        validation_result = {
+            "source_path": str(source_path),
+            "output_name": request.output_name,
+            "is_directory": is_directory,
+            "valid": True,
+            "warnings": [],
+            "errors": [],
+            "estimated_time": None,
+            "estimated_size": None
+        }
+        
+        # Check if llama.cpp tools are available
+        llama_tools = get_llama_tools()
+        if not llama_tools:
+            validation_result["valid"] = False
+            validation_result["errors"].append("llama.cpp conversion tools not available")
+        
+        # Check output path doesn't already exist
+        output_path = Path(request.output_name)
+        if output_path.exists():
+            validation_result["warnings"].append("Output file already exists and will be overwritten")
+        
+        # Estimate conversion time and output size
+        if source_path.exists():
+            if is_directory:
+                # Estimate based on directory size
+                total_size = sum(f.stat().st_size for f in source_path.rglob('*') if f.is_file())
+            else:
+                total_size = source_path.stat().st_size
+            
+            # Rough estimates: conversion takes ~1 minute per GB, output is ~70% of input size
+            validation_result["estimated_time"] = total_size / (1024 * 1024 * 1024) * 60  # seconds
+            validation_result["estimated_size"] = int(total_size * 0.7)
+        
+        return validation_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to validate conversion request: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/models/local/quantize/validate")
+async def validate_quantization_request(request: QuantizationRequest):
+    """Validate a quantization request before starting the actual quantization."""
+    try:
+        # Check if source path exists
+        source_path = Path(request.source_path)
+        if not source_path.exists():
+            raise HTTPException(status_code=404, detail="Source model not found")
+        
+        # Validate quantization format
+        valid_formats = ["Q2_K", "Q3_K", "Q4_K_M", "Q5_K_M", "Q6_K", "Q8_0", "IQ2_M", "IQ3_M", "IQ4_M"]
+        
+        validation_result = {
+            "source_path": str(source_path),
+            "output_name": request.output_name,
+            "quantization_format": request.quantization_format,
+            "valid": True,
+            "warnings": [],
+            "errors": [],
+            "estimated_time": None,
+            "estimated_size": None,
+            "size_reduction": None
+        }
+        
+        if request.quantization_format not in valid_formats:
+            validation_result["valid"] = False
+            validation_result["errors"].append(
+                f"Invalid quantization format. Valid formats: {', '.join(valid_formats)}"
+            )
+        
+        # Check if llama.cpp tools are available
+        llama_tools = get_llama_tools()
+        if not llama_tools:
+            validation_result["valid"] = False
+            validation_result["errors"].append("llama.cpp quantization tools not available")
+        
+        # Check if source is GGUF format
+        if not source_path.name.endswith('.gguf'):
+            validation_result["warnings"].append("Source file is not GGUF format - conversion may be needed first")
+        
+        # Check output path doesn't already exist
+        output_path = Path(request.output_name)
+        if output_path.exists() and not request.allow_requantize:
+            validation_result["errors"].append("Output file already exists. Set allow_requantize=true to overwrite")
+        
+        # Estimate quantization results
+        if source_path.exists():
+            source_size = source_path.stat().st_size
+            
+            # Size reduction estimates based on quantization format
+            size_reductions = {
+                "Q2_K": 0.25, "Q3_K": 0.35, "Q4_K_M": 0.45, 
+                "Q5_K_M": 0.55, "Q6_K": 0.65, "Q8_0": 0.8,
+                "IQ2_M": 0.22, "IQ3_M": 0.32, "IQ4_M": 0.42
+            }
+            
+            reduction_factor = size_reductions.get(request.quantization_format, 0.5)
+            validation_result["estimated_size"] = int(source_size * reduction_factor)
+            validation_result["size_reduction"] = f"{(1 - reduction_factor) * 100:.0f}%"
+            
+            # Quantization is typically faster than conversion: ~30 seconds per GB
+            validation_result["estimated_time"] = source_size / (1024 * 1024 * 1024) * 30
+        
+        return validation_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to validate quantization request: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models/local/disk-usage")
+async def get_local_models_disk_usage():
+    """Get disk usage information for local models."""
+    try:
+        model_store = get_model_store()
+        models_dir = Path(model_store.models_dir)
+        
+        if not models_dir.exists():
+            return {
+                "models_directory": str(models_dir),
+                "total_size": 0,
+                "file_count": 0,
+                "models": []
+            }
+        
+        # Calculate total size and collect model info
+        total_size = 0
+        file_count = 0
+        models_info = []
+        
+        for model_file in models_dir.rglob('*'):
+            if model_file.is_file():
+                file_size = model_file.stat().st_size
+                total_size += file_size
+                file_count += 1
+                
+                # Check if it's a recognized model format
+                if model_file.suffix.lower() in ['.gguf', '.safetensors', '.bin', '.pt', '.pth']:
+                    models_info.append({
+                        "name": model_file.name,
+                        "path": str(model_file.relative_to(models_dir)),
+                        "size": file_size,
+                        "format": model_file.suffix.lower().lstrip('.'),
+                        "modified": model_file.stat().st_mtime
+                    })
+        
+        # Sort models by size (largest first)
+        models_info.sort(key=lambda x: x["size"], reverse=True)
+        
+        return {
+            "models_directory": str(models_dir),
+            "total_size": total_size,
+            "total_size_human": _format_bytes(total_size),
+            "file_count": file_count,
+            "model_count": len(models_info),
+            "models": models_info[:20],  # Top 20 largest models
+            "disk_space": {
+                "available": _get_available_disk_space(models_dir),
+                "used_percentage": _get_disk_usage_percentage(models_dir)
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get disk usage: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _format_bytes(bytes_value: int) -> str:
+    """Format bytes into human readable string."""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_value < 1024.0:
+            return f"{bytes_value:.1f} {unit}"
+        bytes_value /= 1024.0
+    return f"{bytes_value:.1f} PB"
+
+
+def _get_available_disk_space(path: Path) -> Optional[int]:
+    """Get available disk space for the given path."""
+    try:
+        import shutil
+        return shutil.disk_usage(path).free
+    except Exception:
+        return None
+
+
+def _get_disk_usage_percentage(path: Path) -> Optional[float]:
+    """Get disk usage percentage for the given path."""
+    try:
+        import shutil
+        usage = shutil.disk_usage(path)
+        return (usage.used / usage.total) * 100
+    except Exception:
+        return None
+
+
+# -----------------------------
+# Extended Hugging Face Integration Endpoints (Task 6.3)
+# -----------------------------
+
+class HuggingFaceSearchRequest(BaseModel):
+    """Enhanced Hugging Face model search request."""
+    query: str = ""
+    tags: List[str] = []
+    sort: str = "downloads"
+    direction: str = "desc"
+    limit: int = 20
+    filter_format: Optional[str] = None
+    min_downloads: Optional[int] = None
+    max_size_gb: Optional[float] = None
+    license_filter: Optional[str] = None
+    include_private: bool = False
+
+
+class HuggingFaceModelInfo(BaseModel):
+    """Enhanced Hugging Face model information."""
+    id: str
+    name: str
+    author: Optional[str] = None
+    description: str = ""
+    tags: List[str] = []
+    downloads: int = 0
+    likes: int = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    library_name: Optional[str] = None
+    pipeline_tag: Optional[str] = None
+    license: Optional[str] = None
+    size: Optional[int] = None
+    
+    # Inferred metadata
+    family: Optional[str] = None
+    parameters: Optional[str] = None
+    quantization: Optional[str] = None
+    format: Optional[str] = None
+    
+    # Available artifacts
+    artifacts: List[Dict[str, Any]] = []
+    recommended_artifact: Optional[Dict[str, Any]] = None
+    
+    # Local availability
+    locally_available: bool = False
+    local_path: Optional[str] = None
+
+
+class ModelDownloadRequest(BaseModel):
+    """Enhanced model download request."""
+    model_id: str
+    artifact: Optional[str] = None
+    preference: str = "auto"  # auto, gguf, safetensors, bin
+    target_directory: Optional[str] = None
+    register_locally: bool = True
+    overwrite_existing: bool = False
+
+
+class DownloadJobResponse(BaseModel):
+    """Download job response."""
+    job_id: str
+    model_id: str
+    artifact: Optional[str] = None
+    status: str
+    message: str
+    estimated_size: Optional[int] = None
+    target_path: Optional[str] = None
+
+
+# Predefined model URLs for local features (no API key required)
+CURATED_MODELS = {
+    "tinyllama": {
+        "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+        "filename": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+        "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF",
+        "description": "Tiny but capable chat model, perfect for testing and low-resource environments",
+        "size": 669000000,  # ~669MB
+        "family": "llama",
+        "parameters": "1.1B",
+        "quantization": "Q4_K_M"
+    },
+    "phi3-mini": {
+        "url": "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf",
+        "filename": "Phi-3-mini-4k-instruct-q4.gguf",
+        "model_id": "microsoft/Phi-3-mini-4k-instruct-gguf",
+        "description": "Microsoft's Phi-3 Mini model optimized for instruction following",
+        "size": 2300000000,  # ~2.3GB
+        "family": "phi",
+        "parameters": "3.8B",
+        "quantization": "Q4"
+    },
+    "gemma-2b": {
+        "url": "https://huggingface.co/google/gemma-2b-it-GGUF/resolve/main/gemma-2b-it.q4_k_m.gguf",
+        "filename": "gemma-2b-it.q4_k_m.gguf",
+        "model_id": "google/gemma-2b-it-GGUF",
+        "description": "Google's Gemma 2B instruction-tuned model",
+        "size": 1600000000,  # ~1.6GB
+        "family": "gemma",
+        "parameters": "2B",
+        "quantization": "Q4_K_M"
+    }
+}
+
+
+@router.get("/models/huggingface/curated")
+async def get_curated_models():
+    """Get curated models that can be downloaded without API keys."""
+    try:
+        models = []
+        
+        for model_key, model_info in CURATED_MODELS.items():
+            # Check if already downloaded locally
+            model_store = get_model_store()
+            local_models = model_store.list_models(local_only=True)
+            locally_available = any(
+                model_info["filename"] in (m.local_path or "") 
+                for m in local_models
+            )
+            
+            models.append({
+                "key": model_key,
+                "model_id": model_info["model_id"],
+                "name": model_info["filename"],
+                "description": model_info["description"],
+                "family": model_info["family"],
+                "parameters": model_info["parameters"],
+                "quantization": model_info["quantization"],
+                "size": model_info["size"],
+                "size_human": _format_bytes(model_info["size"]),
+                "locally_available": locally_available,
+                "download_url": model_info["url"],
+                "recommended": model_key == "tinyllama"  # Recommend smallest for testing
+            })
+        
+        return {
+            "curated_models": models,
+            "total_count": len(models),
+            "note": "These models can be downloaded without HuggingFace API keys"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get curated models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/models/huggingface/download-curated")
+async def download_curated_model(model_key: str):
+    """Download a curated model by key."""
+    try:
+        if model_key not in CURATED_MODELS:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Curated model '{model_key}' not found. Available: {list(CURATED_MODELS.keys())}"
+            )
+        
+        model_info = CURATED_MODELS[model_key]
+        
+        # Create download job using the simple local download system
+        dest_dir = Path("models/llama-cpp")
+        job = _DownloadJob(
+            url=model_info["url"], 
+            dest_dir=dest_dir, 
+            filename=model_info["filename"]
+        )
+        _JOBS[job.id] = job
+        
+        # Start download in background thread
+        import threading
+        t = threading.Thread(target=job.run, daemon=True)
+        t.start()
+        
+        return {
+            "job_id": job.id,
+            "model_key": model_key,
+            "model_id": model_info["model_id"],
+            "filename": model_info["filename"],
+            "status": job.status,
+            "estimated_size": model_info["size"],
+            "target_path": str(job.path),
+            "message": f"Started download of {model_key}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to start curated model download: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/models/huggingface/search", response_model=List[HuggingFaceModelInfo])
+async def search_huggingface_models(request: HuggingFaceSearchRequest):
+    """
+    Search HuggingFace Hub for models with advanced filtering and artifact detection.
+    
+    This endpoint provides comprehensive model search with intelligent artifact selection
+    and local availability checking.
+    """
+    try:
+        hf_service = get_huggingface_service()
+        
+        # Convert request to HF service filters
+        from ai_karen_engine.inference.huggingface_service import ModelFilters
+        
+        filters = ModelFilters(
+            tags=request.tags if request.tags else None,
+            sort_by=request.sort,
+            sort_order=request.direction,
+            task="text-generation",  # Focus on text generation models
+            min_downloads=request.min_downloads
+        )
+        
+        # Add format filter if specified
+        if request.filter_format:
+            if request.filter_format.lower() == "gguf":
+                filters.tags = (filters.tags or []) + ["gguf"]
+            elif request.filter_format.lower() == "safetensors":
+                filters.library = "transformers"
+        
+        # Search models
+        hf_models = hf_service.search_models(
+            query=request.query,
+            filters=filters,
+            limit=request.limit
+        )
+        
+        # Convert to enhanced model info with artifact analysis
+        enhanced_models = []
+        model_store = get_model_store()
+        local_models = model_store.list_models(local_only=True)
+        
+        for hf_model in hf_models:
+            # Check local availability
+            locally_available = any(
+                hf_model.id in (m.id or "") or hf_model.name in (m.name or "")
+                for m in local_models
+            )
+            
+            local_path = None
+            if locally_available:
+                for m in local_models:
+                    if hf_model.id in (m.id or "") or hf_model.name in (m.name or ""):
+                        local_path = m.local_path
+                        break
+            
+            # Analyze available artifacts
+            artifacts = []
+            recommended_artifact = None
+            
+            for file_info in hf_model.files:
+                filename = file_info.get("rfilename", "")
+                file_size = file_info.get("size", 0)
+                
+                # Categorize file types
+                if filename.endswith(".gguf"):
+                    artifact_type = "gguf"
+                elif filename.endswith(".safetensors"):
+                    artifact_type = "safetensors"
+                elif filename.endswith(".bin"):
+                    artifact_type = "pytorch"
+                else:
+                    continue  # Skip non-model files
+                
+                artifact = {
+                    "filename": filename,
+                    "type": artifact_type,
+                    "size": file_size,
+                    "size_human": _format_bytes(file_size),
+                    "recommended": False
+                }
+                
+                artifacts.append(artifact)
+            
+            # Select recommended artifact (prefer GGUF for efficiency)
+            if artifacts:
+                # Prefer GGUF files, then safetensors, then pytorch
+                gguf_files = [a for a in artifacts if a["type"] == "gguf"]
+                safetensors_files = [a for a in artifacts if a["type"] == "safetensors"]
+                pytorch_files = [a for a in artifacts if a["type"] == "pytorch"]
+                
+                if gguf_files:
+                    # Prefer Q4_K_M quantization if available
+                    q4_files = [a for a in gguf_files if "q4" in a["filename"].lower()]
+                    recommended_artifact = q4_files[0] if q4_files else gguf_files[0]
+                elif safetensors_files:
+                    recommended_artifact = safetensors_files[0]
+                elif pytorch_files:
+                    recommended_artifact = pytorch_files[0]
+                
+                if recommended_artifact:
+                    recommended_artifact["recommended"] = True
+            
+            # Apply size filter if specified
+            if request.max_size_gb and hf_model.size:
+                size_gb = hf_model.size / (1024 * 1024 * 1024)
+                if size_gb > request.max_size_gb:
+                    continue
+            
+            enhanced_model = HuggingFaceModelInfo(
+                id=hf_model.id,
+                name=hf_model.name,
+                author=hf_model.author,
+                description=hf_model.description,
+                tags=hf_model.tags,
+                downloads=hf_model.downloads,
+                likes=hf_model.likes,
+                created_at=hf_model.created_at,
+                updated_at=hf_model.updated_at,
+                library_name=hf_model.library_name,
+                pipeline_tag=hf_model.pipeline_tag,
+                license=hf_model.license,
+                size=hf_model.size,
+                family=hf_model.family,
+                parameters=hf_model.parameters,
+                quantization=hf_model.quantization,
+                format=hf_model.format,
+                artifacts=artifacts,
+                recommended_artifact=recommended_artifact,
+                locally_available=locally_available,
+                local_path=local_path
+            )
+            
+            enhanced_models.append(enhanced_model)
+        
+        return enhanced_models
+        
+    except Exception as e:
+        logger.error(f"Failed to search HuggingFace models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/models/download", response_model=DownloadJobResponse)
+async def download_model_enhanced(request: ModelDownloadRequest):
+    """
+    Download a model with intelligent artifact selection and progress tracking.
+    
+    This endpoint supports both HuggingFace Hub models and direct URL downloads
+    with automatic format detection and local registration.
+    """
+    try:
+        hf_service = get_huggingface_service()
+        
+        # Check if model exists on HuggingFace
+        model_info = hf_service.get_model_info(request.model_id)
+        if not model_info:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Model '{request.model_id}' not found on HuggingFace Hub"
+            )
+        
+        # Select optimal artifact if not specified
+        artifact_filename = request.artifact
+        if not artifact_filename:
+            from ai_karen_engine.inference.huggingface_service import DeviceCapabilities
+            
+            # Create device capabilities (could be enhanced with actual system detection)
+            device_caps = DeviceCapabilities(
+                has_gpu=False,  # Conservative default
+                cpu_memory=8192,  # 8GB default
+                supports_fp16=True,
+                supports_int8=True,
+                supports_int4=True
+            )
+            
+            optimal_file = hf_service.select_optimal_artifact(
+                model_info.files,
+                request.preference,
+                device_caps
+            )
+            
+            if not optimal_file:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No suitable artifact found for download"
+                )
+            
+            artifact_filename = optimal_file["rfilename"]
+        
+        # Validate artifact exists
+        available_files = [f["rfilename"] for f in model_info.files]
+        if artifact_filename not in available_files:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Artifact '{artifact_filename}' not found. Available: {available_files}"
+            )
+        
+        # Get file info for size estimation
+        file_info = next((f for f in model_info.files if f["rfilename"] == artifact_filename), None)
+        estimated_size = file_info.get("size", 0) if file_info else None
+        
+        # Determine target directory
+        target_dir = Path(request.target_directory or "models/downloads")
+        target_path = target_dir / artifact_filename
+        
+        # Check if file already exists
+        if target_path.exists() and not request.overwrite_existing:
+            raise HTTPException(
+                status_code=409,
+                detail=f"File already exists: {target_path}. Set overwrite_existing=true to replace."
+            )
+        
+        # Start download using HuggingFace service
+        download_job = hf_service.download_model(
+            model_id=request.model_id,
+            artifact=artifact_filename,
+            preference=request.preference
+        )
+        
+        return DownloadJobResponse(
+            job_id=download_job.id,
+            model_id=request.model_id,
+            artifact=artifact_filename,
+            status=download_job.status,
+            message=f"Started download of {request.model_id}/{artifact_filename}",
+            estimated_size=estimated_size,
+            target_path=str(target_path)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to start model download: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models/download/jobs/{job_id}")
+async def get_download_job_status(job_id: str):
+    """Get status of a download job with detailed progress information."""
+    try:
+        hf_service = get_huggingface_service()
+        
+        # Check both HF service jobs and simple local jobs
+        job = hf_service.get_download_job(job_id)
+        if job:
+            return {
+                "job_id": job.id,
+                "model_id": job.model_id,
+                "artifact": job.artifact,
+                "status": job.status,
+                "progress": job.progress,
+                "downloaded_size": job.downloaded_size,
+                "total_size": job.total_size,
+                "speed": job.speed,
+                "eta": job.eta,
+                "error": job.error,
+                "local_path": job.local_path,
+                "created_at": job.created_at,
+                "started_at": job.started_at,
+                "completed_at": job.completed_at
+            }
+        
+        # Check simple local download jobs
+        local_job = _JOBS.get(job_id)
+        if local_job:
+            return {
+                "job_id": local_job.id,
+                "model_id": "local_download",
+                "status": local_job.status,
+                "progress": local_job.progress,
+                "error": local_job.error,
+                "local_path": str(local_job.path),
+                "url": local_job.url
+            }
+        
+        raise HTTPException(status_code=404, detail="Download job not found")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get download job status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/models/download/jobs/{job_id}/cancel")
+async def cancel_download_job(job_id: str):
+    """Cancel a download job."""
+    try:
+        hf_service = get_huggingface_service()
+        
+        # Try HF service first
+        if hf_service.cancel_download(job_id):
+            return {"job_id": job_id, "status": "cancelled", "message": "Download cancelled successfully"}
+        
+        # Try simple local jobs
+        local_job = _JOBS.get(job_id)
+        if local_job:
+            local_job.cancel()
+            return {"job_id": job_id, "status": "cancelled", "message": "Download cancelled successfully"}
+        
+        raise HTTPException(status_code=404, detail="Download job not found")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to cancel download job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models/huggingface/popular")
+async def get_popular_models(
+    category: str = "general",
+    limit: int = 10,
+    format_preference: Optional[str] = None
+):
+    """Get popular models by category with format filtering."""
+    try:
+        hf_service = get_huggingface_service()
+        
+        # Define category-specific search terms
+        category_queries = {
+            "general": "llama OR mistral OR qwen OR phi",
+            "coding": "code OR programming OR codellama",
+            "chat": "chat OR instruct OR assistant",
+            "small": "tiny OR mini OR small",
+            "quantized": "gguf OR quantized"
+        }
+        
+        query = category_queries.get(category, category)
+        
+        # Set up filters
+        from ai_karen_engine.inference.huggingface_service import ModelFilters
+        filters = ModelFilters(
+            sort_by="downloads",
+            sort_order="desc",
+            task="text-generation",
+            min_downloads=1000  # Only popular models
+        )
+        
+        # Add format filter if specified
+        if format_preference:
+            if format_preference.lower() == "gguf":
+                filters.tags = ["gguf"]
+            elif format_preference.lower() == "safetensors":
+                filters.library = "transformers"
+        
+        # Search for popular models
+        models = hf_service.search_models(query=query, filters=filters, limit=limit)
+        
+        # Convert to simplified format for popular models display
+        popular_models = []
+        for model in models:
+            popular_models.append({
+                "id": model.id,
+                "name": model.name,
+                "author": model.author,
+                "description": model.description[:200] + "..." if len(model.description) > 200 else model.description,
+                "downloads": model.downloads,
+                "likes": model.likes,
+                "family": model.family,
+                "parameters": model.parameters,
+                "format": model.format,
+                "size_human": _format_bytes(model.size) if model.size else "Unknown",
+                "tags": model.tags[:5]  # Limit tags for display
+            })
+        
+        return {
+            "category": category,
+            "models": popular_models,
+            "total_found": len(popular_models),
+            "note": f"Popular {category} models sorted by downloads"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get popular models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/models/huggingface/formats")
+async def get_supported_huggingface_formats():
+    """Get information about supported HuggingFace model formats and selection logic."""
+    return {
+        "supported_formats": {
+            "gguf": {
+                "description": "GGML Universal Format - CPU optimized, quantized",
+                "advantages": ["Memory efficient", "Fast CPU inference", "Quantization support"],
+                "recommended_for": ["CPU-only systems", "Memory-constrained environments", "Production deployment"],
+                "file_extensions": [".gguf"],
+                "typical_quantizations": ["Q2_K", "Q3_K", "Q4_K_M", "Q5_K_M", "Q6_K", "Q8_0"]
+            },
+            "safetensors": {
+                "description": "Safe tensor format for PyTorch models",
+                "advantages": ["GPU acceleration", "Full precision", "Fast loading"],
+                "recommended_for": ["GPU systems", "Fine-tuning", "Research"],
+                "file_extensions": [".safetensors"],
+                "typical_quantizations": ["fp16", "bf16"]
+            },
+            "pytorch": {
+                "description": "PyTorch native format",
+                "advantages": ["Wide compatibility", "Full model access"],
+                "recommended_for": ["Development", "Custom modifications"],
+                "file_extensions": [".bin", ".pt", ".pth"],
+                "typical_quantizations": ["fp32", "fp16"]
+            }
+        },
+        "selection_logic": {
+            "auto": "Automatically selects best format based on system capabilities",
+            "preference_order": ["gguf", "safetensors", "pytorch"],
+            "quantization_preference": ["Q4_K_M", "Q5_K_M", "Q3_K", "Q6_K", "Q8_0", "Q2_K"],
+            "size_considerations": "Smaller quantizations preferred for memory efficiency"
+        },
+        "recommendations": {
+            "cpu_only": "Use GGUF format with Q4_K_M quantization",
+            "gpu_available": "Use safetensors format for best performance",
+            "memory_limited": "Use GGUF with Q2_K or Q3_K quantization",
+            "production": "Use GGUF Q4_K_M for balanced performance and size"
+        }
+    }

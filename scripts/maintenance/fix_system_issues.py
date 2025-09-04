@@ -115,7 +115,7 @@ async def check_model_availability():
         logger.info(f"Found {len(gguf_models)} GGUF models and {len(bin_models)} binary models")
         
         # Check for the specific model mentioned
-        tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+        tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
         if tinyllama_path.exists():
             logger.info("✅ TinyLlama model available for fallback")
         else:
@@ -208,7 +208,7 @@ async def create_production_config():
                 },
                 "fallback": {
                     "use_local_models": True,
-                    "local_model_path": "models/llama-cpp/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                    "local_model_path": "models/llama-cpp/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
                     "enable_spacy_fallback": True,
                     "degraded_mode_enabled": True
                 }

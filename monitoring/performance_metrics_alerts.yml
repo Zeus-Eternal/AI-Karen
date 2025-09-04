@@ -1,0 +1,286 @@
+groups:
+  - name: performance_metrics_alerts
+    rules:
+      # System-level alerts
+      - alert: HighSystemCPU
+        expr: system_cpu_percent > 90
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "High system CPU usage detected"
+          description: "System CPU usage is {{ $value }}% for more than 5 minutes"
+          
+      - alert: HighSystemMemory
+        expr: system_memory_percent > 95
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "High system memory usage detected"
+          description: "System memory usage is {{ $value }}% for more than 5 minutes"
+          
+      - alert: HighSystemLoad
+        expr: system_load_1min > 4
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High system load average detected"
+          description: "System 1-minute load average is {{ $value }} for more than 10 minutes"
+          
+      - alert: LowDiskSpace
+        expr: system_disk_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "Low disk space detected"
+          description: "Disk usage is {{ $value }}% for more than 5 minutes"
+          
+      - alert: CriticalDiskSpace
+        expr: system_disk_percent > 95
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical disk space detected"
+          description: "Disk usage is {{ $value }}% for more than 2 minutes"
+
+  - name: service_performance_alerts
+    rules:
+      # Service-level CPU alerts
+      - alert: HighServiceCPU
+        expr: service_api_cpu_percent > 80 or service_database_cpu_percent > 80 or service_auth_cpu_percent > 80 or service_llm_cpu_percent > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: service
+        annotations:
+          summary: "High service CPU usage detected"
+          description: "Service {{ $labels.service }} CPU usage is {{ $value }}% for more than 10 minutes"
+          
+      - alert: CriticalServiceCPU
+        expr: service_api_cpu_percent > 95 or service_database_cpu_percent > 95 or service_auth_cpu_percent > 95 or service_llm_cpu_percent > 95
+        for: 5m
+        labels:
+          severity: critical
+          component: service
+        annotations:
+          summary: "Critical service CPU usage detected"
+          description: "Service {{ $labels.service }} CPU usage is {{ $value }}% for more than 5 minutes"
+          
+      # Service-level memory alerts
+      - alert: HighServiceMemory
+        expr: service_api_memory_percent > 85 or service_database_memory_percent > 85 or service_auth_memory_percent > 85 or service_llm_memory_percent > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: service
+        annotations:
+          summary: "High service memory usage detected"
+          description: "Service {{ $labels.service }} memory usage is {{ $value }}% for more than 10 minutes"
+          
+      - alert: CriticalServiceMemory
+        expr: service_api_memory_percent > 95 or service_database_memory_percent > 95 or service_auth_memory_percent > 95 or service_llm_memory_percent > 95
+        for: 5m
+        labels:
+          severity: critical
+          component: service
+        annotations:
+          summary: "Critical service memory usage detected"
+          description: "Service {{ $labels.service }} memory usage is {{ $value }}% for more than 5 minutes"
+
+  - name: response_time_alerts
+    rules:
+      # Response time alerts
+      - alert: HighAPIResponseTime
+        expr: service_api_response_time > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API response time detected"
+          description: "API response time is {{ $value }}s for more than 5 minutes"
+          
+      - alert: CriticalAPIResponseTime
+        expr: service_api_response_time > 5.0
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "Critical API response time detected"
+          description: "API response time is {{ $value }}s for more than 2 minutes"
+          
+      - alert: HighDatabaseResponseTime
+        expr: service_database_response_time > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High database response time detected"
+          description: "Database response time is {{ $value }}s for more than 5 minutes"
+          
+      - alert: CriticalDatabaseResponseTime
+        expr: service_database_response_time > 2.0
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Critical database response time detected"
+          description: "Database response time is {{ $value }}s for more than 2 minutes"
+
+  - name: error_rate_alerts
+    rules:
+      # Error rate alerts
+      - alert: HighErrorRate
+        expr: rate(service_api_errors_count[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API error rate detected"
+          description: "API error rate is {{ $value }} errors/sec for more than 5 minutes"
+          
+      - alert: CriticalErrorRate
+        expr: rate(service_api_errors_count[5m]) > 1.0
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "Critical API error rate detected"
+          description: "API error rate is {{ $value }} errors/sec for more than 2 minutes"
+          
+      - alert: DatabaseErrors
+        expr: rate(service_database_errors_count[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database errors detected"
+          description: "Database error rate is {{ $value }} errors/sec for more than 5 minutes"
+
+  - name: performance_regression_alerts
+    rules:
+      # Performance regression alerts (based on percentage change from baseline)
+      - alert: PerformanceRegression
+        expr: |
+          (
+            (service_api_response_time - service_api_response_time offset 1h) / service_api_response_time offset 1h * 100 > 25
+          ) or (
+            (service_api_cpu_percent - service_api_cpu_percent offset 1h) / service_api_cpu_percent offset 1h * 100 > 50
+          ) or (
+            (service_api_memory_usage - service_api_memory_usage offset 1h) / service_api_memory_usage offset 1h * 100 > 30
+          )
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Performance regression detected"
+          description: "Significant performance degradation detected compared to 1 hour ago"
+          
+      - alert: SeverePerformanceRegression
+        expr: |
+          (
+            (service_api_response_time - service_api_response_time offset 1h) / service_api_response_time offset 1h * 100 > 100
+          ) or (
+            (service_api_cpu_percent - service_api_cpu_percent offset 1h) / service_api_cpu_percent offset 1h * 100 > 100
+          ) or (
+            (service_api_memory_usage - service_api_memory_usage offset 1h) / service_api_memory_usage offset 1h * 100 > 75
+          )
+        for: 5m
+        labels:
+          severity: critical
+          component: performance
+        annotations:
+          summary: "Severe performance regression detected"
+          description: "Severe performance degradation detected compared to 1 hour ago"
+
+  - name: resource_exhaustion_alerts
+    rules:
+      # Resource exhaustion alerts
+      - alert: TooManyOpenFiles
+        expr: service_api_files_open > 1000 or service_database_files_open > 2000
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High number of open files detected"
+          description: "Service {{ $labels.service }} has {{ $value }} open files"
+          
+      - alert: TooManyThreads
+        expr: service_api_threads_count > 100 or service_database_threads_count > 200
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High number of threads detected"
+          description: "Service {{ $labels.service }} has {{ $value }} threads"
+          
+      - alert: HighNetworkIO
+        expr: rate(system_network_bytes_sent[5m]) > 100000000 or rate(system_network_bytes_recv[5m]) > 100000000
+        for: 10m
+        labels:
+          severity: warning
+          component: network
+        annotations:
+          summary: "High network I/O detected"
+          description: "Network I/O rate is {{ $value }} bytes/sec for more than 10 minutes"
+          
+      - alert: HighDiskIO
+        expr: rate(service_database_io_read_bytes[5m]) + rate(service_database_io_write_bytes[5m]) > 50000000
+        for: 10m
+        labels:
+          severity: warning
+          component: disk
+        annotations:
+          summary: "High disk I/O detected"
+          description: "Disk I/O rate is {{ $value }} bytes/sec for more than 10 minutes"
+
+  - name: monitoring_health_alerts
+    rules:
+      # Monitoring system health alerts
+      - alert: MetricsCollectionDown
+        expr: up{job="performance_metrics"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "Performance metrics collection is down"
+          description: "Performance metrics collection has been down for more than 2 minutes"
+          
+      - alert: HighMetricsIngestionRate
+        expr: rate(prometheus_tsdb_symbol_table_size_bytes[5m]) > 1000000
+        for: 10m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: "High metrics ingestion rate detected"
+          description: "Prometheus is ingesting metrics at a high rate: {{ $value }} bytes/sec"
+          
+      - alert: MetricsStorageFull
+        expr: prometheus_tsdb_retention_limit_bytes - prometheus_tsdb_size_bytes < 1000000000
+        for: 5m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "Metrics storage nearly full"
+          description: "Less than 1GB of metrics storage space remaining"

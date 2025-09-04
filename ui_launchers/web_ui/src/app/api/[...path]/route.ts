@@ -59,20 +59,54 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     }
     
     // Add a conservative timeout to avoid hanging requests in dev
-    // Increase timeout for provider endpoints that may take longer
-    const isProviderEndpoint = request.url.includes('/providers/') && request.url.includes('/suggestions');
-    const timeoutDuration = isProviderEndpoint ? 30000 : 15000; // 30s for provider endpoints, 15s for others
+    // Increase timeout for provider endpoints, auth endpoints, model endpoints, and health checks that may take longer
+    // Treat any '/providers/' '/models/' or '/health' path as potentially long-running (profiles, stats, suggestions, models, health)
+    const isProviderEndpoint = request.url.includes('/providers/');
+    const isAuthEndpoint = request.url.includes('/auth/');
+    const isModelEndpoint = request.url.includes('/models/');
+    const isHealthEndpoint = request.url.includes('/health');
+    // Allow override via env
+    const SHORT_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS || process.env.KAREN_API_PROXY_TIMEOUT_MS || 15000);
+    const LONG_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || process.env.KAREN_API_PROXY_LONG_TIMEOUT_MS || 120000);
+    const timeoutDuration = (isProviderEndpoint || isAuthEndpoint || isModelEndpoint || isHealthEndpoint) ? LONG_TIMEOUT_MS : SHORT_TIMEOUT_MS;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutDuration);
-    const response = await fetch(backendUrl, {
-      method: request.method,
-      headers,
-      body: body || undefined,
-      // Forward cookies if any (Next.js app routes run server-side)
-      // Note: We intentionally do not set credentials here; cookies are forwarded via headers
-      signal: controller.signal,
-    });
+    // Retry transient fetch errors (e.g., aborted/other side closed)
+    const maxAttempts = (isProviderEndpoint || isAuthEndpoint || isModelEndpoint || isHealthEndpoint) ? 2 : 1;
+    let response: Response | null = null;
+    let lastError: any = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        response = await fetch(backendUrl, {
+          method: request.method,
+          headers: { ...headers, Connection: 'keep-alive' },
+          body: body || undefined,
+          // Forward cookies if any (Next.js app routes run server-side)
+          // Note: We intentionally do not set credentials here; cookies are forwarded via headers
+          signal: controller.signal,
+          // @ts-ignore undici option in Node runtime
+          keepalive: true,
+          cache: 'no-store',
+        });
+        lastError = null;
+        break;
+      } catch (err: any) {
+        lastError = err;
+        // If aborted or UND_ERR_SOCKET and we have attempts left, small backoff
+        const msg = String(err?.message || err);
+        const isAbort = err?.name === 'AbortError';
+        const isSocket = msg.includes('UND_ERR_SOCKET') || msg.includes('other side closed');
+        if (attempt < maxAttempts && (isAbort || isSocket)) {
+          await new Promise(res => setTimeout(res, 300));
+          continue;
+        }
+        break;
+      }
+    }
     clearTimeout(timeout);
+    if (!response) {
+      throw lastError || new Error('Fetch failed without response');
+    }
     
     let data;
     const contentType = response.headers.get('content-type');
@@ -120,9 +154,13 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     console.error(`Backend URL: ${BACKEND_URL}`);
     
     // Provide more specific error information
+    let status = 500;
     let errorMessage = 'Internal server error';
     if (error instanceof Error) {
-      if (error.message.includes('ECONNREFUSED')) {
+      if (error.name === 'AbortError' || error.message.toLowerCase().includes('aborted') || error.message.toLowerCase().includes('timeout')) {
+        status = 504;
+        errorMessage = 'Gateway timeout: backend took too long to respond.';
+      } else if (error.message.includes('ECONNREFUSED')) {
         errorMessage = 'Backend server is not reachable. Please check if the backend is running.';
       } else if (error.message.includes('fetch')) {
         errorMessage = 'Failed to connect to backend server';
@@ -136,7 +174,7 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
         error: errorMessage,
         details: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : String(error) : undefined
       },
-      { status: 500 }
+      { status }
     );
   }
 }

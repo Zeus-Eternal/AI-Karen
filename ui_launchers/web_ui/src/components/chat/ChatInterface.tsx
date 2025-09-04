@@ -45,6 +45,8 @@ import {
   Cpu,
   Activity,
   MessageSquare,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 // Context and Hooks
@@ -57,6 +59,7 @@ import { useInputPreservation } from "@/hooks/use-input-preservation";
 import { ChatBubble } from "@/components/chat/ChatBubble";
 import EnhancedMessageBubble from "@/components/chat/EnhancedMessageBubble";
 import { ChatErrorBoundary } from "@/components/error/ChatErrorBoundary";
+import ModelSelector from "@/components/chat/ModelSelector";
 import dynamic from "next/dynamic";
 // Lazy-load Copilot features only when enabled
 const CopilotTextarea = dynamic(() => import("@/components/chat/copilot/CopilotTextarea").then(m => m.CopilotTextarea), { ssr: false });
@@ -70,10 +73,13 @@ const CopilotArtifacts = dynamic(() => import("./CopilotArtifacts"), { ssr: fals
 import type { CopilotArtifact } from "./CopilotArtifacts";
 import AnalyticsTab from "./AnalyticsTab";
 import { DegradedModeBanner } from "@/components/ui/degraded-mode-banner";
+import ProfileSelector from "@/components/chat/ProfileSelector";
+import RoutingHistory from "@/components/chat/RoutingHistory";
 
 // Utils and Config
 import { getConfigManager } from "@/lib/endpoint-config";
 import { sanitizeInput } from "@/lib/utils";
+import { safeError, safeWarn, safeInfo } from "@/lib/safe-console";
 
 // Types
 export interface ChatMessage {
@@ -271,7 +277,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 config: { endpoints: { assist: "/copilot/assist" } },
               });
             } catch (hookError) {
-              console.warn("CopilotKit hook failed:", hookError);
+              safeWarn("CopilotKit hook failed:", hookError);
               setCopilotKitError("CopilotKit hook not available");
             }
           } else {
@@ -279,7 +285,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           }
         } catch (importError) {
           if (!mounted) return;
-          console.warn("CopilotKit module not available:", importError);
+          safeWarn("CopilotKit module not available:", importError);
           setCopilotKitError("CopilotKit module not found");
         }
       };
@@ -306,6 +312,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     "chat"
   );
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showRoutingHistory, setShowRoutingHistory] = useState(false);
+  const [showCodePreview, setShowCodePreview] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(
     new Set()
   );
@@ -323,20 +331,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     errorRate: 0,
   });
   const [sessionStartTime] = useState(Date.now());
-  const [availableModels, setAvailableModels] = useState<Array<{ id: string; name: string; provider: string; local_path?: string; format?: string }>>([]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const resp = await fetch(configManager.getBackendUrl() + "/api/models/all");
-        if (resp.ok) {
-          const data = await resp.json();
-          const list = Array.isArray(data) ? data : (data.models || []);
-          setAvailableModels(list);
-        }
-      } catch {}
-    })();
-  }, []);
 
   // Copilot state
   const [copilotArtifacts, setCopilotArtifacts] = useState<CopilotArtifact[]>(
@@ -361,7 +355,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     const endpoint =
       useCopilotKit && copilotKit
         ? copilotKit.config?.endpoints?.assist || "/copilot/assist"
-        : "/api/chat/runtime";
+        : "/api/ai-orchestrator/conversation-processing";
     return `${baseUrl.replace(/\/+$/, "")}${endpoint}`;
   }, [configManager, useCopilotKit, copilotKit]);
 
@@ -604,7 +598,14 @@ What would you like to work on today?`,
         enableAnalysis?: boolean;
       } = {}
     ) => {
-      if (!content.trim() || isTyping) return;
+      // Early validation to prevent errors
+      if (!content?.trim() || isTyping) {
+        safeWarn('SendMessage called with invalid parameters:', { content: !!content, isTyping });
+        return;
+      }
+
+      // Wrap the entire function in a try-catch to prevent unhandled errors
+      try {
 
       const sanitizedContent = sanitizeInput(content.trim());
       const userMessage: ChatMessage = {
@@ -682,13 +683,13 @@ What would you like to work on today?`,
         let selectedModelOnly: string | undefined;
         if (settings.model.includes(":")) {
           const [prov, ...rest] = settings.model.split(":");
-          selectedProvider = prov;
+          selectedProvider = prov === 'local' ? 'llamacpp' : (prov === 'llama-cpp' ? 'llamacpp' : prov);
           selectedModelOnly = rest.join(":");
         }
 
         const payload =
           useCopilotKit && copilotKit
-            ? {
+          ? {
                 // CopilotKit payload format
                 message: sanitizedContent,
                 session_id: sessionId,
@@ -708,33 +709,42 @@ What would you like to work on today?`,
                   contextual_help: enableContextualHelp,
                   doc_generation: enableDocGeneration,
                 },
+                // Provide explicit LLM preferences for routers that support them
+                llm_preferences: {
+                  preferred_llm_provider: selectedProvider,
+                  preferred_model: selectedModelOnly || settings.model,
+                },
               }
             : {
-                // Chat Runtime payload format
-                message: sanitizedContent,
-                context: {
-                  type,
-                  language: options.language || settings.language,
-                  session_id: sessionId,
-                  user_id: user?.user_id,
-                  preferred_llm_provider: selectedProvider,
-                  preferred_model: selectedModelOnly,
-                  enable_analysis:
-                    options.enableAnalysis || enableCodeAssistance,
-                  enable_suggestions: settings.enableSuggestions,
-                  model: settings.model,
-                  temperature: settings.temperature,
-                  max_tokens: settings.maxTokens,
-                  ...options.context,
-                },
-                conversation_id: conversationId,
-                stream: settings.enableStreaming,
-                platform: "web",
-                user_preferences: {
+                // AI Orchestrator payload format
+                prompt: sanitizedContent,
+                conversation_history: messages.map((m) => ({
+                  role: m.role,
+                  content: m.content,
+                })),
+                user_settings: {
                   model: settings.model,
                   temperature: settings.temperature,
                   max_tokens: settings.maxTokens,
                   language: settings.language,
+                  enable_suggestions: settings.enableSuggestions,
+                },
+                context: {
+                  type,
+                  language: options.language || settings.language,
+                  session_id: sessionId,
+                  conversation_id: conversationId,
+                  user_id: user?.user_id,
+                  platform: "web",
+                  enable_analysis: options.enableAnalysis || enableCodeAssistance,
+                  ...options.context,
+                },
+                session_id: sessionId,
+                include_memories: true,
+                include_insights: true,
+                llm_preferences: {
+                  preferred_llm_provider: selectedProvider,
+                  preferred_model: selectedModelOnly || settings.model,
                 },
               };
 
@@ -751,9 +761,9 @@ What would you like to work on today?`,
         };
 
         // Debug logging to diagnose connection issues
-        console.log("Sending chat request to:", runtimeUrl);
-        console.log("Request payload:", payload);
-        console.log("Request headers:", headers);
+        safeInfo("Sending chat request to:", runtimeUrl);
+        safeInfo("Request payload:", payload);
+        safeInfo("Request headers:", headers);
 
         const response = await fetch(runtimeUrl, {
           method: "POST",
@@ -764,11 +774,8 @@ What would you like to work on today?`,
 
         // Production logging (only in development)
         if (process.env.NODE_ENV === "development") {
-          console.log("Response status:", response.status);
-          console.log(
-            "Response headers:",
-            Object.fromEntries(response.headers.entries())
-          );
+          safeInfo("Response status:", response.status);
+          safeInfo("Response headers:", Object.fromEntries(response.headers.entries()));
         }
 
         if (!response.ok) {
@@ -777,10 +784,10 @@ What would you like to work on today?`,
             const errorText = await response.text();
             errorDetails = errorText;
             if (process.env.NODE_ENV === "development") {
-              console.error("Error response body:", errorText);
+              safeError("Error response body:", errorText);
             }
           } catch (e) {
-            console.error("Could not read error response:", e);
+            safeError("Could not read error response:", e);
           }
           throw new Error(
             `HTTP ${response.status}: ${response.statusText}${
@@ -843,11 +850,15 @@ What would you like to work on today?`,
                   json.kind === "metadata" ||
                   json.metadata ||
                   json.meta ||
+                  json.data ||
                   json.usage ||
                   json.model
                 ) {
                   const usage = json.usage || json.token_usage || {};
-                  const metaUpdate: any = { ...(json.metadata || json.meta || {}) };
+                  const baseMeta = json.metadata || json.meta || json.data || {};
+                  const metaUpdate: any = { ...(baseMeta as any) };
+                  // If KIRE metadata present under 'kire' or 'kire_metadata', keep it nested
+                  if ((json as any).kire_metadata && !metaUpdate.kire) metaUpdate.kire = (json as any).kire_metadata;
                   if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
                   if (typeof json.confidence === "number") metaUpdate.confidence = json.confidence;
                   if (usage.total_tokens || (usage.prompt_tokens && usage.completion_tokens)) {
@@ -925,9 +936,11 @@ What would you like to work on today?`,
                   );
                 }
               }
-              if (json.metadata || json.meta || json.usage || json.model) {
+              if (json.metadata || json.meta || json.data || json.usage || json.model) {
                 const usage = json.usage || json.token_usage || {};
-                const metaUpdate: any = { ...(json.metadata || json.meta || {}) };
+                const baseMeta = json.metadata || json.meta || json.data || {};
+                const metaUpdate: any = { ...(baseMeta as any) };
+                if ((json as any).kire_metadata && !metaUpdate.kire) metaUpdate.kire = (json as any).kire_metadata;
                 if (json.model && !metaUpdate.model) metaUpdate.model = json.model;
                 if (usage.total_tokens || (usage.prompt_tokens && usage.completion_tokens)) {
                   metaUpdate.tokens = usage.total_tokens || (usage.prompt_tokens + usage.completion_tokens);
@@ -957,6 +970,7 @@ What would you like to work on today?`,
             const usage = result.usage || result.token_usage || {};
             metadata = {
               ...(result.metadata || result.meta || {}),
+              ...(result.kire_metadata ? { kire: result.kire_metadata } : {}),
               model: result.model || (result.metadata?.model ?? result.meta?.model),
               tokens:
                 usage.total_tokens ||
@@ -1032,12 +1046,26 @@ What would you like to work on today?`,
           return;
         }
 
-        console.error("Chat error:", error);
-        console.error("Error details:", {
-          name: (error as any)?.name,
-          message: (error as any)?.message,
+        // Prevent console error interceptor issues by using structured logging
+        const errorDetails = {
+          name: (error as any)?.name || 'UnknownError',
+          message: (error as any)?.message || 'Unknown error occurred',
           stack: (error as any)?.stack,
           cause: (error as any)?.cause,
+          timestamp: new Date().toISOString(),
+          context: {
+            sessionId,
+            conversationId,
+            userId: user?.user_id,
+            runtimeUrl,
+            messageType: type,
+          }
+        };
+
+        // Use safe console to avoid interceptor issues
+        safeError('Chat error occurred', errorDetails, {
+          skipInProduction: false,
+          useStructuredLogging: true,
         });
 
         // Provide more specific error messages
@@ -1054,18 +1082,16 @@ What would you like to work on today?`,
           errorTitle = "Connection Error";
 
           // Test basic connectivity
-          console.log("Testing backend connectivity...");
+          safeInfo("Testing backend connectivity...");
           fetch(configManager.getBackendUrl() + "/health")
             .then((response) => {
-              console.log("Backend health check:", response.status);
+              safeInfo("Backend health check:", response.status);
               if (response.ok) {
-                console.log(
-                  "Backend is accessible, but chat endpoint may have issues"
-                );
+                safeInfo("Backend is accessible, but chat endpoint may have issues");
               }
             })
             .catch((healthError) => {
-              console.error("Backend health check failed:", healthError);
+              safeError("Backend health check failed:", healthError);
             });
         }
 
@@ -1094,6 +1120,26 @@ What would you like to work on today?`,
       } finally {
         setIsTyping(false);
       }
+    } catch (outerError) {
+      // Catch any unhandled errors in the sendMessage function
+      safeError('Critical error in sendMessage', {
+        error: outerError,
+        message: (outerError as any)?.message,
+        stack: (outerError as any)?.stack,
+        timestamp: new Date().toISOString(),
+      }, {
+        skipInProduction: false,
+        useStructuredLogging: true,
+      });
+      
+      setIsTyping(false);
+      
+      toast({
+        variant: "destructive",
+        title: "Critical Error",
+        description: "An unexpected error occurred. Please refresh the page and try again.",
+      });
+    }
     },
     [
       isTyping,
@@ -1520,9 +1566,19 @@ What would you like to work on today?`,
         />
       </div>
 
+      {/* Profile Selector */}
+      <div className="px-4 pt-2">
+        <ProfileSelector />
+      </div>
+
       {/* Messages Area */}
       <ScrollArea className="flex-1 px-4">
-        <div className="space-y-4 pb-4">
+        <div
+          className="space-y-4 pb-4"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+        >
           {messages.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -1549,7 +1605,7 @@ What would you like to work on today?`,
               );
 
               return (
-                <div key={message.id} className="group relative">
+                <div key={message.id} className="group relative" role="listitem">
                   <EnhancedMessageBubble
                     role={message.role}
                     content={message.content}
@@ -1570,7 +1626,7 @@ What would you like to work on today?`,
                     }}
                     onArtifactAction={(artifactId, actionId) => {
                       // Handle artifact actions
-                      console.log("Artifact action:", artifactId, actionId);
+                      safeInfo("Artifact action:", { artifactId, actionId });
                     }}
                     onApprove={handleArtifactApprove}
                     onReject={handleArtifactReject}
@@ -1735,124 +1791,103 @@ What would you like to work on today?`,
   );
 
   const renderCodeTab = () => (
-    <div className="flex-1 flex flex-col p-4">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-          <Code className="h-5 w-5" />
-          Code Assistant
-          {useCopilotKit && (
-            <Badge variant="secondary" className="text-xs">
-              AI Enhanced
-            </Badge>
-          )}
-        </h3>
-        <div className="text-sm text-muted-foreground">
-          Write code with AI assistance, get suggestions, and analyze your code.
+    <div className="flex-1 flex flex-col">
+      {/* Toolbar */}
+      <div className="px-3 py-2 border-b flex items-center justify-between bg-background/50">
+        <div className="flex items-center gap-2">
+          <Code className="h-4 w-4" />
+          <span className="font-medium">Code Assistant</span>
+          {useCopilotKit && <Badge variant="secondary" className="text-[10px]">AI</Badge>}
+          <Badge variant="outline" className="text-[10px]">{settings.model || 'model'}</Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={settings.language}
+            onChange={(e) => handleSettingsChange({ language: e.target.value })}
+            className="px-2 py-1 border rounded-md text-xs"
+          >
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="cpp">C++</option>
+            <option value="csharp">C#</option>
+            <option value="go">Go</option>
+            <option value="rust">Rust</option>
+            <option value="php">PHP</option>
+            <option value="ruby">Ruby</option>
+          </select>
+          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setShowCodePreview(!showCodePreview)} title={showCodePreview ? 'Hide Preview' : 'Show Preview'}>
+            {showCodePreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
 
-      {/* Language Selector */}
-      <div className="mb-4">
-        <select
-          value={settings.language}
-          onChange={(e) => handleSettingsChange({ language: e.target.value })}
-          className="px-3 py-1 border rounded-md text-sm"
-        >
-          <option value="javascript">JavaScript</option>
-          <option value="typescript">TypeScript</option>
-          <option value="python">Python</option>
-          <option value="java">Java</option>
-          <option value="cpp">C++</option>
-          <option value="csharp">C#</option>
-          <option value="go">Go</option>
-          <option value="rust">Rust</option>
-          <option value="php">PHP</option>
-          <option value="ruby">Ruby</option>
-        </select>
+      {/* Editor + Preview */}
+      <div className={`grid gap-3 p-3 ${showCodePreview ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+        <div className="flex flex-col min-h-[300px]">
+          {useCopilotKit ? (
+            <CopilotTextarea
+              value={codeValue}
+              onChange={setCodeValue}
+              placeholder="Write your code here... AI will provide suggestions as you type."
+              language={settings.language}
+              enableSuggestions={settings.enableSuggestions}
+              enableCodeAnalysis={settings.enableCodeAnalysis}
+              enableDocGeneration={enableDocGeneration}
+              className="flex-1"
+              rows={18}
+              disabled={isTyping}
+            />
+          ) : (
+            <Textarea
+              ref={codeTextareaRef}
+              value={codeValue}
+              onChange={(e) => setCodeValue(e.target.value)}
+              placeholder="Write your code here..."
+              className="flex-1 font-mono text-sm resize-none"
+              rows={18}
+              disabled={isTyping}
+            />
+          )}
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Button onClick={() => sendMessage(codeValue, "code", { language: settings.language, enableAnalysis: true })} disabled={!codeValue.trim() || isTyping}>
+              {isTyping ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+              Send Code
+            </Button>
+            <Button variant="outline" onClick={handleCodeAnalysis} disabled={!codeValue.trim() || isTyping || isAnalyzing}>
+              {isAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <AlertCircle className="h-4 w-4 mr-2" />}
+              Analyze
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction("optimize", `Optimize this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, "code")} disabled={!codeValue.trim() || isTyping}>
+              <Zap className="h-4 w-4 mr-2" />
+              Optimize
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction("docs", `Generate documentation for this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``, "documentation")} disabled={!codeValue.trim() || isTyping}>
+              <FileText className="h-4 w-4 mr-2" />
+              Document
+            </Button>
+          </div>
+        </div>
+
+        {showCodePreview && (
+          <div className="min-h-[300px] border rounded-md p-3 bg-muted/30">
+            <div className="text-xs text-muted-foreground mb-2">Preview</div>
+            <pre className="text-xs md:text-sm whitespace-pre-wrap font-mono overflow-auto max-h-[60vh]">{codeValue || '// Start typing code to preview here'}</pre>
+          </div>
+        )}
       </div>
 
-      {useCopilotKit ? (
-        <CopilotTextarea
-          value={codeValue}
-          onChange={setCodeValue}
-          placeholder="Write your code here... AI will provide suggestions as you type."
-          language={settings.language}
-          enableSuggestions={settings.enableSuggestions}
-          enableCodeAnalysis={settings.enableCodeAnalysis}
-          enableDocGeneration={enableDocGeneration}
-          className="flex-1"
-          rows={15}
-          disabled={isTyping}
-        />
-      ) : (
-        <Textarea
-          ref={codeTextareaRef}
-          value={codeValue}
-          onChange={(e) => setCodeValue(e.target.value)}
-          placeholder="Write your code here..."
-          className="flex-1 font-mono text-sm resize-none"
-          rows={15}
-          disabled={isTyping}
-        />
-      )}
-
-      <div className="flex gap-2 mt-4">
-        <Button
-          onClick={() =>
-            sendMessage(codeValue, "code", {
-              language: settings.language,
-              enableAnalysis: true,
-            })
-          }
-          disabled={!codeValue.trim() || isTyping}
-        >
-          {isTyping ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4 mr-2" />
-          )}
-          Send Code
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleCodeAnalysis}
-          disabled={!codeValue.trim() || isTyping || isAnalyzing}
-        >
-          {isAnalyzing ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <AlertCircle className="h-4 w-4 mr-2" />
-          )}
-          Analyze
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() =>
-            handleQuickAction(
-              "optimize",
-              `Optimize this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``,
-              "code"
-            )
-          }
-          disabled={!codeValue.trim() || isTyping}
-        >
-          <Zap className="h-4 w-4 mr-2" />
-          Optimize
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() =>
-            handleQuickAction(
-              "docs",
-              `Generate documentation for this ${settings.language} code:\n\n\`\`\`${settings.language}\n${codeValue}\n\`\`\``,
-              "documentation"
-            )
-          }
-          disabled={!codeValue.trim() || isTyping}
-        >
-          <FileText className="h-4 w-4 mr-2" />
-          Document
-        </Button>
+      {/* Status bar */}
+      <div className="px-3 py-2 text-[11px] md:text-xs text-muted-foreground border-t flex items-center gap-3">
+        <span>Language: {settings.language}</span>
+        <span>Model: {settings.model}</span>
+        {isTyping && (
+          <span className="inline-flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" /> generating…
+          </span>
+        )}
       </div>
     </div>
   );
@@ -1902,22 +1937,13 @@ What would you like to work on today?`,
                 )}
 
                 {/* Model selector */}
-                <select
+                <ModelSelector
                   value={settings.model}
-                  onChange={(e) => handleSettingsChange({ model: e.target.value })}
-                  className="px-2 py-1 text-xs border rounded"
-                  title="Select model"
-                >
-                  <option value={settings.model}>{settings.model}</option>
-                  {availableModels.map((m) => {
-                    const value = m.provider === 'local' ? `local:${m.name}` : `${m.provider}:${m.name}`;
-                    return (
-                      <option key={`${m.provider}:${m.id || m.name}`} value={value}>
-                        {m.provider}:{m.name}
-                      </option>
-                    );
-                  })}
-                </select>
+                  onValueChange={(value) => handleSettingsChange({ model: value })}
+                  className="w-48"
+                  placeholder="Select model..."
+                  showDetails={true}
+                />
 
                 {enableSharing && (
                   <Button
@@ -1930,6 +1956,17 @@ What would you like to work on today?`,
                     <Share className="h-4 w-4" />
                   </Button>
                 )}
+
+                {/* Routing History */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowRoutingHistory(true)}
+                  className="h-8 w-8 p-0"
+                  title="Routing History"
+                >
+                  <Activity className="h-4 w-4" />
+                </Button>
 
                 <Button
                   variant="ghost"
@@ -2005,6 +2042,9 @@ What would you like to work on today?`,
           )}
         </CardContent>
       </Card>
+      {showRoutingHistory && (
+        <RoutingHistory onClose={() => setShowRoutingHistory(false)} />
+      )}
     </ChatErrorBoundary>
   );
 };

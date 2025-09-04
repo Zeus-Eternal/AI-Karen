@@ -743,6 +743,29 @@ async def initialize_services() -> None:
     """Initialize all core services for AI Karen engine integration."""
     registry = get_service_registry()
     
+    # Check if we should use classified service registry
+    try:
+        from ai_karen_engine.core.classified_service_registry import get_classified_registry
+        classified_registry = get_classified_registry()
+        
+        if classified_registry and hasattr(classified_registry, 'is_initialized') and classified_registry.is_initialized():
+            logger.info("🔧 Using classified service registry for optimized initialization")
+            
+            # Use classified registry for service management
+            await classified_registry.initialize_services_by_classification()
+            
+            # Get initialization report from classified registry
+            report = classified_registry.get_initialization_report()
+            logger.info(f"Classified service initialization complete: {report['summary']['ready_services']}/{report['summary']['total_services']} ready")
+            
+            return
+            
+    except ImportError:
+        logger.debug("Classified service registry not available, using standard registry")
+    except Exception as e:
+        logger.warning(f"Failed to use classified service registry: {e}, falling back to standard")
+    
+    # Standard service registration and initialization
     # Register core services with proper dependency management
     registry.register_service("ai_orchestrator", AIOrchestrator)
     registry.register_service("memory_service", WebUIMemoryService)

@@ -4,6 +4,7 @@
  */
 
 import { getKarenBackend } from '@/lib/karen-backend';
+import { safeError } from '@/lib/safe-console';
 import type { MemoryEntry, MemoryQuery } from '@/lib/karen-backend';
 
 export interface MemorySearchOptions {
@@ -66,7 +67,7 @@ export class MemoryService {
       
       return memoryId;
     } catch (error) {
-      console.error('MemoryService: Failed to store memory:', error);
+      safeError('MemoryService: Failed to store memory:', error);
       return null;
     }
   }
@@ -112,7 +113,7 @@ export class MemoryService {
       
       return memories;
     } catch (error) {
-      console.error('MemoryService: Failed to query memories:', error);
+      safeError('MemoryService: Failed to query memories:', error);
       return [];
     }
   }
@@ -161,7 +162,7 @@ export class MemoryService {
       
       return context;
     } catch (error) {
-      console.error('MemoryService: Failed to build context:', error);
+      safeError('MemoryService: Failed to build context:', error);
       return {
         relevantMemories: [],
         contextSummary: '',
@@ -186,7 +187,7 @@ export class MemoryService {
         topTags: stats.top_tags || [],
       };
     } catch (error) {
-      console.error('MemoryService: Failed to get memory stats:', error);
+      safeError('MemoryService: Failed to get memory stats:', error);
       return {
         totalMemories: 0,
         memoriesByTag: {},
@@ -245,7 +246,7 @@ export class MemoryService {
         searchTime,
       };
     } catch (error) {
-      console.error('MemoryService: Failed to search memories:', error);
+      safeError('MemoryService: Failed to search memories:', error);
       return {
         memories: [],
         totalFound: 0,
@@ -274,7 +275,7 @@ export class MemoryService {
         similarityThreshold: 0.1, // Low threshold since we're filtering by tags
       });
     } catch (error) {
-      console.error('MemoryService: Failed to get memories by tags:', error);
+      safeError('MemoryService: Failed to get memories by tags:', error);
       return [];
     }
   }
@@ -301,7 +302,7 @@ export class MemoryService {
       
       return false;
     } catch (error) {
-      console.error('MemoryService: Failed to delete memory:', error);
+      safeError('MemoryService: Failed to delete memory:', error);
       return false;
     }
   }
@@ -335,7 +336,7 @@ export class MemoryService {
       
       return false;
     } catch (error) {
-      console.error('MemoryService: Failed to update memory tags:', error);
+      safeError('MemoryService: Failed to update memory tags:', error);
       return false;
     }
   }

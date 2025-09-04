@@ -24,6 +24,7 @@ from ..core.langgraph_orchestrator import (
 from ..core.streaming_integration import get_streaming_manager, StreamingManager
 from ..core.response.factory import get_global_orchestrator, create_response_orchestrator
 from ..services.auth_utils import get_current_user
+from ai_karen_engine.integrations.llm_registry import get_registry
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,30 @@ async def chat(
         # Convert message to LangChain format
         messages = [HumanMessage(content=request.message)]
         
+        # Precompute KIRE decision via LLMRegistry (observability + metadata)
+        kire_meta = {}
+        try:
+            reg = get_registry()
+            routed = await reg.get_provider_with_routing(
+                user_ctx={"user_id": user_id},
+                query=request.message,
+                task_type="chat",
+                khrp_step="output_rendering",
+                requirements={}
+            )
+            decision = routed.get("decision")
+            if decision:
+                kire_meta = {
+                    "provider": decision.provider,
+                    "model": decision.model,
+                    "reason": decision.reasoning,
+                    "confidence": decision.confidence,
+                    "fallback_chain": decision.fallback_chain,
+                }
+        except Exception:
+            # Non-fatal: proceed without KIRE metadata if routing fails
+            kire_meta = {}
+
         # Process through orchestration
         result = await orchestrator.process(
             messages=messages,
@@ -122,7 +147,10 @@ async def chat(
         return ChatResponse(
             response=response_text,
             session_id=result.get("session_id", request.session_id or "unknown"),
-            metadata=result.get("response_metadata", {}),
+            metadata={
+                **result.get("response_metadata", {}),
+                "kire_metadata": kire_meta,
+            },
             processing_time=processing_time,
             errors=result.get("errors", []),
             warnings=result.get("warnings", [])
@@ -171,6 +199,29 @@ async def chat_stream(
                     session_id=request.session_id,
                     context=request.context
                 ):
+                    # Attach KIRE metadata in the first metadata chunk if possible
+                    if isinstance(chunk, dict) and chunk.get("type") == "metadata":
+                        try:
+                            reg = get_registry()
+                            routed = await reg.get_provider_with_routing(
+                                user_ctx={"user_id": user_id},
+                                query=request.message,
+                                task_type="chat",
+                                khrp_step="output_rendering",
+                                requirements={}
+                            )
+                            decision = routed.get("decision")
+                            if decision:
+                                meta = chunk.get("data") or chunk.get("metadata") or {}
+                                meta = {**meta, "kire": {
+                                    "provider": decision.provider,
+                                    "model": decision.model,
+                                    "reason": decision.reasoning,
+                                    "confidence": decision.confidence,
+                                }}
+                                chunk["data"] = meta
+                        except Exception:
+                            pass
                     yield f"data: {json.dumps(chunk)}\n\n"
                     
                 # End of stream

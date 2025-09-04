@@ -259,6 +259,8 @@ class DynamicProviderManager:
         self.registry.register_provider(local_spec)
         
         # CopilotKit (NOT an LLM provider - UI framework)
+        # Note: CopilotKit is registered separately in the UI_FRAMEWORK category
+        # and is explicitly excluded from LLM provider lists
         copilotkit_spec = DynamicProviderSpec(
             name="copilotkit",
             requires_api_key=False,
@@ -370,11 +372,52 @@ class DynamicProviderManager:
             return spec.fallback_models
         
         try:
-            # This would be implemented with actual HTTP requests
-            # For now, return fallback models as placeholder
-            logger.debug(f"Would discover models from {spec.api_base_url}{spec.model_discovery_endpoint}")
-            return spec.fallback_models
+            import aiohttp
+            import os
             
+            # Get API key from environment
+            api_key = None
+            if spec.api_key_env_var:
+                api_key = os.getenv(spec.api_key_env_var)
+            
+            if spec.requires_api_key and not api_key:
+                logger.debug(f"No API key available for {spec.name}, using fallback models")
+                return spec.fallback_models
+            
+            # Prepare headers
+            headers = {"User-Agent": "Kari-AI/1.0"}
+            if api_key:
+                if spec.name == "openai":
+                    headers["Authorization"] = f"Bearer {api_key}"
+                elif spec.name == "gemini":
+                    # Gemini uses API key as query parameter
+                    pass
+                elif spec.name == "deepseek":
+                    headers["Authorization"] = f"Bearer {api_key}"
+                elif spec.name == "huggingface":
+                    headers["Authorization"] = f"Bearer {api_key}"
+            
+            # Build URL
+            url = f"{spec.api_base_url}{spec.model_discovery_endpoint}"
+            if spec.name == "gemini" and api_key:
+                url += f"?key={api_key}"
+            
+            # Make request with timeout
+            timeout = aiohttp.ClientTimeout(total=spec.validation_timeout)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        models = spec.model_list_parser(data)
+                        logger.info(f"Discovered {len(models)} models from {spec.name}")
+                        return models
+                    else:
+                        logger.warning(f"API request failed for {spec.name}: {response.status}")
+                        return spec.fallback_models
+            
+        except ImportError:
+            logger.warning("aiohttp not available, using fallback models")
+            return spec.fallback_models
         except Exception as e:
             logger.warning(f"Remote model discovery failed for {spec.name}: {e}")
             return spec.fallback_models
@@ -591,15 +634,61 @@ class DynamicProviderManager:
             return {"valid": True, "message": "No validation endpoint configured"}
         
         try:
-            # This would be implemented with actual HTTP requests
-            # For now, return success as placeholder
-            logger.debug(f"Would validate API key at {spec.api_base_url}{spec.api_key_validation_endpoint}")
+            import aiohttp
             
-            # Simulate validation delay
-            await asyncio.sleep(0.1)
+            # Prepare headers
+            headers = {"User-Agent": "Kari-AI/1.0"}
+            if spec.name == "openai":
+                headers["Authorization"] = f"Bearer {api_key}"
+            elif spec.name == "deepseek":
+                headers["Authorization"] = f"Bearer {api_key}"
+            elif spec.name == "huggingface":
+                headers["Authorization"] = f"Bearer {api_key}"
             
-            return {"valid": True, "message": "API key is valid"}
+            # Build URL
+            url = f"{spec.api_base_url}{spec.api_key_validation_endpoint}"
+            if spec.name == "gemini":
+                url += f"?key={api_key}"
             
+            # Make validation request with timeout
+            timeout = aiohttp.ClientTimeout(total=spec.validation_timeout)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        # Additional validation based on response content
+                        if spec.name == "openai":
+                            data = await response.json()
+                            if "data" in data and isinstance(data["data"], list):
+                                return {"valid": True, "message": "API key is valid"}
+                        elif spec.name == "gemini":
+                            data = await response.json()
+                            if "models" in data:
+                                return {"valid": True, "message": "API key is valid"}
+                        elif spec.name == "deepseek":
+                            data = await response.json()
+                            if "data" in data:
+                                return {"valid": True, "message": "API key is valid"}
+                        elif spec.name == "huggingface":
+                            data = await response.json()
+                            if "name" in data:  # /whoami endpoint returns user info
+                                return {"valid": True, "message": "API key is valid"}
+                        
+                        return {"valid": True, "message": "API key is valid"}
+                    
+                    elif response.status == 401:
+                        return {"valid": False, "message": "Invalid API key"}
+                    elif response.status == 403:
+                        return {"valid": False, "message": "API key lacks required permissions"}
+                    elif response.status == 429:
+                        return {"valid": False, "message": "Rate limit exceeded, but API key appears valid"}
+                    else:
+                        return {"valid": False, "message": f"Validation failed with status {response.status}"}
+            
+        except ImportError:
+            logger.warning("aiohttp not available for API key validation")
+            return {"valid": True, "message": "Cannot validate - aiohttp not available"}
+        except asyncio.TimeoutError:
+            return {"valid": False, "message": "Validation request timed out"}
         except Exception as e:
             return {"valid": False, "message": f"Validation request failed: {str(e)}"}
     
@@ -616,25 +705,86 @@ class DynamicProviderManager:
             
             if provider_name == "local":
                 # Local provider is always healthy if we can scan for models
-                return {
-                    "status": "healthy",
-                    "message": "Local provider available",
-                    "response_time": time.time() - start_time
-                }
+                try:
+                    from ai_karen_engine.inference.model_store import ModelStore
+                    model_store = ModelStore()
+                    local_models = model_store.scan_local_models()
+                    return {
+                        "status": "healthy",
+                        "message": f"Local provider available with {len(local_models)} models",
+                        "response_time": time.time() - start_time,
+                        "model_count": len(local_models)
+                    }
+                except Exception as e:
+                    return {
+                        "status": "degraded",
+                        "message": f"Local provider available but model scanning failed: {e}",
+                        "response_time": time.time() - start_time
+                    }
+            
             elif not isinstance(spec, DynamicProviderSpec):
                 return {
                     "status": "unknown",
                     "message": "Not a dynamic provider",
                     "response_time": time.time() - start_time
                 }
+            
             else:
-                # For remote providers, we'd check API availability
-                # For now, return healthy as placeholder
-                return {
-                    "status": "healthy",
-                    "message": f"{provider_name} provider available",
-                    "response_time": time.time() - start_time
-                }
+                # For remote providers, check API availability
+                import os
+                
+                # Check if API key is available
+                api_key = None
+                if spec.api_key_env_var:
+                    api_key = os.getenv(spec.api_key_env_var)
+                
+                if spec.requires_api_key and not api_key:
+                    return {
+                        "status": "unavailable",
+                        "message": f"API key not configured (set {spec.api_key_env_var})",
+                        "response_time": time.time() - start_time
+                    }
+                
+                # Try to make a simple API call to check connectivity
+                try:
+                    import asyncio
+                    
+                    async def check_api():
+                        if api_key:
+                            validation_result = await self._perform_api_key_validation(spec, api_key)
+                            if validation_result["valid"]:
+                                return {
+                                    "status": "healthy",
+                                    "message": f"{provider_name} API is accessible",
+                                    "response_time": time.time() - start_time
+                                }
+                            else:
+                                return {
+                                    "status": "unhealthy",
+                                    "message": f"API key validation failed: {validation_result['message']}",
+                                    "response_time": time.time() - start_time
+                                }
+                        else:
+                            return {
+                                "status": "healthy",
+                                "message": f"{provider_name} provider configured (no API key required)",
+                                "response_time": time.time() - start_time
+                            }
+                    
+                    # Run async check
+                    try:
+                        loop = asyncio.get_event_loop()
+                        return loop.run_until_complete(check_api())
+                    except RuntimeError:
+                        # No event loop running, create one
+                        return asyncio.run(check_api())
+                        
+                except ImportError:
+                    return {
+                        "status": "degraded",
+                        "message": f"{provider_name} configured but cannot validate (aiohttp not available)",
+                        "response_time": time.time() - start_time
+                    }
                 
         except Exception as e:
             return {

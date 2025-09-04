@@ -8,9 +8,17 @@ and security analysis integration.
 
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Any
 from fastapi import Request
+
+from ai_karen_engine.monitoring.validation_metrics import (
+    get_validation_metrics_collector,
+    ValidationEventType,
+    ThreatLevel,
+    ValidationMetricsData
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +62,7 @@ class HTTPRequestValidator:
         """Initialize the validator with configuration."""
         self.config = config or ValidationConfig()
         self._setup_validation_patterns()
+        self.metrics_collector = get_validation_metrics_collector()
     
     def _setup_validation_patterns(self):
         """Setup regex patterns for validation."""
@@ -91,6 +100,7 @@ class HTTPRequestValidator:
             ValidationResult with validation outcome and details
         """
         validation_details = {}
+        start_time = time.time()
         
         try:
             # Basic structure validation
@@ -141,7 +151,22 @@ class HTTPRequestValidator:
             if self.config.enable_security_analysis:
                 security_result = await self.analyze_security_threats(request)
                 validation_details["security_analysis"] = security_result
-                if security_result["threat_level"] in ["high", "critical"]:
+                
+                # Check if this is a trusted API endpoint that should have relaxed security
+                is_trusted_endpoint = self._is_trusted_api_endpoint(request)
+                
+                # Apply different thresholds based on endpoint trust level
+                if is_trusted_endpoint:
+                    # For trusted API endpoints, only block critical threats with very high confidence
+                    should_block = (security_result["threat_level"] == "critical" and 
+                                  security_result.get("confidence_score", 0) > 0.9)
+                else:
+                    # For other endpoints, use the original logic
+                    should_block = (security_result["threat_level"] == "critical" or 
+                                  (security_result["threat_level"] == "high" and 
+                                   security_result.get("confidence_score", 0) > 0.8))
+                
+                if should_block:
                     return ValidationResult(
                         is_valid=False,
                         error_type="security_threat",
@@ -152,20 +177,32 @@ class HTTPRequestValidator:
                     )
             
             # If all validations pass
-            return ValidationResult(
+            processing_time_ms = (time.time() - start_time) * 1000
+            result = ValidationResult(
                 is_valid=True,
                 security_threat_level="none",
                 validation_details=validation_details
             )
             
+            # Record successful validation metrics
+            self._record_validation_metrics(request, result, processing_time_ms)
+            
+            return result
+            
         except Exception as e:
             logger.error(f"Error during request validation: {e}", exc_info=True)
-            return ValidationResult(
+            processing_time_ms = (time.time() - start_time) * 1000
+            result = ValidationResult(
                 is_valid=False,
                 error_type="validation_error",
                 error_message="Internal validation error",
                 validation_details=validation_details
             )
+            
+            # Record error metrics
+            self._record_validation_metrics(request, result, processing_time_ms)
+            
+            return result
     
     def _validate_basic_structure(self, request: Request) -> bool:
         """Validate basic HTTP request structure."""
@@ -177,6 +214,42 @@ class HTTPRequestValidator:
                 request.method is not None and
                 request.url is not None
             )
+        except Exception:
+            return False
+    
+    def _is_trusted_api_endpoint(self, request: Request) -> bool:
+        """Check if the request is to a trusted API endpoint that should have relaxed security."""
+        try:
+            path = str(request.url.path).lower()
+            
+            # List of trusted API endpoint patterns
+            trusted_patterns = [
+                "/api/health",
+                "/api/ping",
+                "/api/providers/",
+                "/api/auth/",
+                "/api/plugins",
+                "/api/analytics/",
+                "/api/system/",
+                "/api/models/",
+                "/api/memory/",
+                "/api/conversations/",
+                "/api/files/",
+                "/api/websocket",
+                "/api/audit/",
+                "/copilot/",
+                "/docs",
+                "/openapi.json",
+                "/favicon.ico"
+            ]
+            
+            # Check if the path starts with any trusted pattern
+            for pattern in trusted_patterns:
+                if path.startswith(pattern):
+                    return True
+            
+            return False
+            
         except Exception:
             return False
     
@@ -309,13 +382,50 @@ class HTTPRequestValidator:
     
     async def analyze_security_threats(self, request: Request) -> Dict[str, Any]:
         """
-        Analyze request for security threats.
+        Analyze request for security threats using the SecurityAnalyzer.
         
         Args:
             request: FastAPI Request object
             
         Returns:
             Dictionary with security analysis results
+        """
+        try:
+            # Import SecurityAnalyzer here to avoid circular imports
+            from .security_analyzer import SecurityAnalyzer
+            
+            # Create or reuse security analyzer instance
+            if not hasattr(self, '_security_analyzer'):
+                self._security_analyzer = SecurityAnalyzer()
+            
+            # Perform comprehensive security analysis
+            assessment = await self._security_analyzer.analyze_request(request)
+            
+            return {
+                "threat_level": assessment.threat_level,
+                "threats_found": assessment.attack_categories,
+                "analysis_complete": True,
+                "detected_patterns": assessment.detected_patterns,
+                "client_reputation": assessment.client_reputation,
+                "recommended_action": assessment.recommended_action,
+                "confidence_score": assessment.confidence_score,
+                "risk_factors": assessment.risk_factors
+            }
+            
+        except Exception as e:
+            logger.error(f"Error during security analysis: {e}")
+            # Fallback to basic analysis if SecurityAnalyzer fails
+            return await self._basic_security_analysis(request)
+    
+    async def _basic_security_analysis(self, request: Request) -> Dict[str, Any]:
+        """
+        Fallback basic security analysis if SecurityAnalyzer fails.
+        
+        Args:
+            request: FastAPI Request object
+            
+        Returns:
+            Dictionary with basic security analysis results
         """
         threats_found = []
         threat_level = "none"
@@ -362,7 +472,7 @@ class HTTPRequestValidator:
             }
             
         except Exception as e:
-            logger.error(f"Error during security analysis: {e}")
+            logger.error(f"Error during basic security analysis: {e}")
             return {
                 "threat_level": "low",
                 "threats_found": ["analysis_error"],
@@ -420,3 +530,119 @@ class HTTPRequestValidator:
         except Exception as e:
             logger.error(f"Error sanitizing request data: {e}")
             return {"error": "Failed to sanitize request data"}
+    
+    def _record_validation_metrics(self, request: Request, result: ValidationResult, processing_time_ms: float):
+        """Record validation metrics for monitoring"""
+        try:
+            # Determine event type and threat level
+            if result.is_valid:
+                event_type = ValidationEventType.REQUEST_VALIDATED
+                threat_level = ThreatLevel.NONE
+            else:
+                event_type = ValidationEventType.REQUEST_REJECTED
+                threat_level = self._map_threat_level(result.security_threat_level)
+            
+            # Extract client information
+            client_ip = getattr(request.client, 'host', 'unknown') if hasattr(request, 'client') and request.client else "unknown"
+            client_ip_hash = self._hash_ip(client_ip) if client_ip != "unknown" else "unknown"
+            
+            # Extract request characteristics
+            endpoint = str(request.url.path) if hasattr(request, 'url') else "unknown"
+            method = getattr(request, 'method', 'unknown')
+            user_agent = request.headers.get('user-agent', '') if hasattr(request, 'headers') else ''
+            user_agent_category = self._categorize_user_agent(user_agent)
+            
+            # Extract attack categories from validation details
+            attack_categories = []
+            if result.validation_details and 'security_analysis' in result.validation_details:
+                security_analysis = result.validation_details['security_analysis']
+                attack_categories = security_analysis.get('threats_found', [])
+            
+            # Prepare additional labels
+            additional_labels = {
+                'confidence_score': str(result.validation_details.get('security_analysis', {}).get('confidence_score', 0.0)),
+                'client_reputation': result.validation_details.get('security_analysis', {}).get('client_reputation', 'unknown'),
+                'validation_rule_details': result.error_type or 'standard_validation'
+            }
+            
+            # Record request characteristics
+            if hasattr(request, 'headers'):
+                headers_count = len(request.headers)
+                content_length = int(request.headers.get('content-length', 0))
+                
+                self.metrics_collector.record_request_characteristics(
+                    endpoint=endpoint,
+                    method=method,
+                    size_bytes=content_length,
+                    headers_count=headers_count,
+                    validation_result="allowed" if result.is_valid else "blocked"
+                )
+            
+            # Create and record metrics data
+            metrics_data = ValidationMetricsData(
+                event_type=event_type,
+                threat_level=threat_level,
+                validation_rule=result.error_type or "standard_validation",
+                client_ip_hash=client_ip_hash,
+                endpoint=endpoint,
+                http_method=method,
+                user_agent_category=user_agent_category,
+                processing_time_ms=processing_time_ms,
+                attack_categories=attack_categories,
+                additional_labels=additional_labels
+            )
+            
+            self.metrics_collector.record_validation_event(metrics_data)
+            
+        except Exception as e:
+            logger.error(f"Error recording validation metrics: {e}")
+    
+    def _hash_ip(self, ip: str) -> str:
+        """Create a hash of the IP address for privacy"""
+        import hashlib
+        return hashlib.sha256(ip.encode()).hexdigest()[:16]
+    
+    def _map_threat_level(self, threat_level_str: str) -> ThreatLevel:
+        """Map string threat level to ThreatLevel enum"""
+        mapping = {
+            "none": ThreatLevel.NONE,
+            "low": ThreatLevel.LOW,
+            "medium": ThreatLevel.MEDIUM,
+            "high": ThreatLevel.HIGH,
+            "critical": ThreatLevel.CRITICAL
+        }
+        return mapping.get(threat_level_str.lower(), ThreatLevel.NONE)
+    
+    def _categorize_user_agent(self, user_agent: str) -> str:
+        """Categorize user agent into broad categories"""
+        if not user_agent:
+            return "unknown"
+        
+        user_agent_lower = user_agent.lower()
+        
+        # Bot detection
+        bot_indicators = ['bot', 'crawler', 'spider', 'scraper', 'indexer']
+        if any(indicator in user_agent_lower for indicator in bot_indicators):
+            return "bot"
+        
+        # Browser detection
+        browsers = ['chrome', 'firefox', 'safari', 'edge', 'opera']
+        if any(browser in user_agent_lower for browser in browsers):
+            return "browser"
+        
+        # Mobile detection
+        mobile_indicators = ['mobile', 'android', 'iphone', 'ipad']
+        if any(indicator in user_agent_lower for indicator in mobile_indicators):
+            return "mobile"
+        
+        # API client detection
+        api_indicators = ['curl', 'wget', 'python', 'java', 'go-http', 'postman']
+        if any(indicator in user_agent_lower for indicator in api_indicators):
+            return "api_client"
+        
+        # Security tool detection
+        security_tools = ['sqlmap', 'nikto', 'nmap', 'masscan', 'zap', 'burp']
+        if any(tool in user_agent_lower for tool in security_tools):
+            return "security_tool"
+        
+        return "other"

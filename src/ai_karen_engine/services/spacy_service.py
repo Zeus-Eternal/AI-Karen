@@ -51,6 +51,50 @@ class ParsedMessage:
 
 
 @dataclass
+class EntityExtractionResult:
+    """Result of enhanced entity extraction."""
+    
+    entities: List[Dict[str, Any]]  # Enhanced entity information
+    processing_time: float
+    used_fallback: bool
+    confidence_scores: Dict[str, float]
+    entity_relationships: List[Dict[str, Any]]
+
+
+@dataclass
+class KeyPhraseResult:
+    """Result of key phrase identification."""
+    
+    key_phrases: List[str]
+    phrase_scores: Dict[str, float]
+    processing_time: float
+    used_fallback: bool
+    phrase_types: Dict[str, str]  # phrase -> type mapping
+
+
+@dataclass
+class TextNormalizationResult:
+    """Result of text normalization."""
+    
+    normalized_text: str
+    original_text: str
+    normalizations_applied: List[str]
+    processing_time: float
+    used_fallback: bool
+
+
+@dataclass
+class StructuredAnalysisResult:
+    """Result of structured text analysis."""
+    
+    structure: Dict[str, Any]
+    key_information: Dict[str, Any]
+    relationships: List[Dict[str, Any]]
+    processing_time: float
+    used_fallback: bool
+
+
+@dataclass
 class SpacyHealthStatus:
     """Health status for spaCy service."""
     
@@ -314,6 +358,259 @@ class SpacyService:
         parsed = await self.parse_message(text)
         return parsed.entities
     
+    async def extract_entities_enhanced(self, text: str) -> EntityExtractionResult:
+        """
+        Enhanced entity extraction with confidence scores and relationships.
+        
+        Args:
+            text: Text to extract entities from
+            
+        Returns:
+            EntityExtractionResult with detailed entity information
+        """
+        if not text or not text.strip():
+            return EntityExtractionResult(
+                entities=[],
+                processing_time=0.0,
+                used_fallback=True,
+                confidence_scores={},
+                entity_relationships=[]
+            )
+        
+        start_time = time.time()
+        
+        try:
+            if self.fallback_mode or not self.nlp:
+                result = await self._fallback_entity_extraction(text)
+                used_fallback = True
+            else:
+                result = await self._spacy_entity_extraction(text)
+                used_fallback = False
+            
+            processing_time = time.time() - start_time
+            
+            return EntityExtractionResult(
+                entities=result["entities"],
+                processing_time=processing_time,
+                used_fallback=used_fallback,
+                confidence_scores=result["confidence_scores"],
+                entity_relationships=result["entity_relationships"]
+            )
+            
+        except Exception as e:
+            logger.error(f"Enhanced entity extraction failed: {e}")
+            self._error_count += 1
+            self._last_error = str(e)
+            
+            # Fallback on error
+            if not self.fallback_mode and self.config.enable_fallback:
+                result = await self._fallback_entity_extraction(text)
+                processing_time = time.time() - start_time
+                return EntityExtractionResult(
+                    entities=result["entities"],
+                    processing_time=processing_time,
+                    used_fallback=True,
+                    confidence_scores=result["confidence_scores"],
+                    entity_relationships=result["entity_relationships"]
+                )
+            else:
+                raise
+    
+    async def identify_key_phrases(
+        self, 
+        text: str, 
+        max_phrases: int = 10,
+        min_phrase_length: int = 2
+    ) -> KeyPhraseResult:
+        """
+        Identify key phrases from text using NLP analysis.
+        
+        Args:
+            text: Text to extract key phrases from
+            max_phrases: Maximum number of phrases to return
+            min_phrase_length: Minimum length of phrases in tokens
+            
+        Returns:
+            KeyPhraseResult with identified key phrases and scores
+        """
+        if not text or not text.strip():
+            return KeyPhraseResult(
+                key_phrases=[],
+                phrase_scores={},
+                processing_time=0.0,
+                used_fallback=True,
+                phrase_types={}
+            )
+        
+        start_time = time.time()
+        
+        try:
+            if self.fallback_mode or not self.nlp:
+                result = await self._fallback_key_phrase_extraction(text, max_phrases, min_phrase_length)
+                used_fallback = True
+            else:
+                result = await self._spacy_key_phrase_extraction(text, max_phrases, min_phrase_length)
+                used_fallback = False
+            
+            processing_time = time.time() - start_time
+            
+            return KeyPhraseResult(
+                key_phrases=result["key_phrases"],
+                phrase_scores=result["phrase_scores"],
+                processing_time=processing_time,
+                used_fallback=used_fallback,
+                phrase_types=result["phrase_types"]
+            )
+            
+        except Exception as e:
+            logger.error(f"Key phrase identification failed: {e}")
+            self._error_count += 1
+            self._last_error = str(e)
+            
+            # Fallback on error
+            if not self.fallback_mode and self.config.enable_fallback:
+                result = await self._fallback_key_phrase_extraction(text, max_phrases, min_phrase_length)
+                processing_time = time.time() - start_time
+                return KeyPhraseResult(
+                    key_phrases=result["key_phrases"],
+                    phrase_scores=result["phrase_scores"],
+                    processing_time=processing_time,
+                    used_fallback=True,
+                    phrase_types=result["phrase_types"]
+                )
+            else:
+                raise
+    
+    async def normalize_text(
+        self, 
+        text: str, 
+        normalization_options: Optional[Dict[str, bool]] = None
+    ) -> TextNormalizationResult:
+        """
+        Normalize text using spaCy processing.
+        
+        Args:
+            text: Text to normalize
+            normalization_options: Options for normalization (lemmatize, lowercase, remove_punct, etc.)
+            
+        Returns:
+            TextNormalizationResult with normalized text
+        """
+        if not text or not text.strip():
+            return TextNormalizationResult(
+                normalized_text="",
+                original_text=text,
+                normalizations_applied=[],
+                processing_time=0.0,
+                used_fallback=True
+            )
+        
+        # Default normalization options
+        options = normalization_options or {
+            "lemmatize": True,
+            "lowercase": True,
+            "remove_punctuation": False,
+            "remove_stopwords": False,
+            "remove_whitespace": True
+        }
+        
+        start_time = time.time()
+        
+        try:
+            if self.fallback_mode or not self.nlp:
+                result = await self._fallback_text_normalization(text, options)
+                used_fallback = True
+            else:
+                result = await self._spacy_text_normalization(text, options)
+                used_fallback = False
+            
+            processing_time = time.time() - start_time
+            
+            return TextNormalizationResult(
+                normalized_text=result["normalized_text"],
+                original_text=text,
+                normalizations_applied=result["normalizations_applied"],
+                processing_time=processing_time,
+                used_fallback=used_fallback
+            )
+            
+        except Exception as e:
+            logger.error(f"Text normalization failed: {e}")
+            self._error_count += 1
+            self._last_error = str(e)
+            
+            # Fallback on error
+            if not self.fallback_mode and self.config.enable_fallback:
+                result = await self._fallback_text_normalization(text, options)
+                processing_time = time.time() - start_time
+                return TextNormalizationResult(
+                    normalized_text=result["normalized_text"],
+                    original_text=text,
+                    normalizations_applied=result["normalizations_applied"],
+                    processing_time=processing_time,
+                    used_fallback=True
+                )
+            else:
+                raise
+    
+    async def analyze_structure(self, text: str) -> StructuredAnalysisResult:
+        """
+        Perform structured text analysis for memory retrieval enhancement.
+        
+        Args:
+            text: Text to analyze structurally
+            
+        Returns:
+            StructuredAnalysisResult with structural information
+        """
+        if not text or not text.strip():
+            return StructuredAnalysisResult(
+                structure={},
+                key_information={},
+                relationships=[],
+                processing_time=0.0,
+                used_fallback=True
+            )
+        
+        start_time = time.time()
+        
+        try:
+            if self.fallback_mode or not self.nlp:
+                result = await self._fallback_structure_analysis(text)
+                used_fallback = True
+            else:
+                result = await self._spacy_structure_analysis(text)
+                used_fallback = False
+            
+            processing_time = time.time() - start_time
+            
+            return StructuredAnalysisResult(
+                structure=result["structure"],
+                key_information=result["key_information"],
+                relationships=result["relationships"],
+                processing_time=processing_time,
+                used_fallback=used_fallback
+            )
+            
+        except Exception as e:
+            logger.error(f"Structured analysis failed: {e}")
+            self._error_count += 1
+            self._last_error = str(e)
+            
+            # Fallback on error
+            if not self.fallback_mode and self.config.enable_fallback:
+                result = await self._fallback_structure_analysis(text)
+                processing_time = time.time() - start_time
+                return StructuredAnalysisResult(
+                    structure=result["structure"],
+                    key_information=result["key_information"],
+                    relationships=result["relationships"],
+                    processing_time=processing_time,
+                    used_fallback=True
+                )
+            else:
+                raise
+    
     async def extract_facts(self, text: str) -> List[Dict[str, Any]]:
         """Extract factual information from text using NER and dependency parsing."""
         parsed = await self.parse_message(text)
@@ -400,3 +697,425 @@ class SpacyService:
             self._error_count += 1
             self._last_error = str(e)
             raise
+    
+    async def _spacy_entity_extraction(self, text: str) -> Dict[str, Any]:
+        """Enhanced entity extraction using spaCy."""
+        # Run spaCy processing in thread pool
+        loop = asyncio.get_event_loop()
+        doc = await loop.run_in_executor(None, self.nlp, text)
+        
+        entities = []
+        confidence_scores = {}
+        entity_relationships = []
+        
+        # Extract entities with enhanced information
+        for ent in doc.ents:
+            entity_info = {
+                "text": ent.text,
+                "label": ent.label_,
+                "start": ent.start_char,
+                "end": ent.end_char,
+                "description": spacy.explain(ent.label_) if hasattr(spacy, 'explain') else ent.label_
+            }
+            entities.append(entity_info)
+            
+            # Simple confidence based on entity length and type
+            confidence = 0.8 if len(ent.text) > 2 else 0.6
+            if ent.label_ in ["PERSON", "ORG", "GPE"]:  # High confidence entity types
+                confidence += 0.1
+            confidence_scores[ent.text] = min(confidence, 1.0)
+        
+        # Find entity relationships based on proximity and dependencies
+        for i, ent1 in enumerate(doc.ents):
+            for j, ent2 in enumerate(doc.ents):
+                if i != j and abs(ent1.start - ent2.end) < 10:  # Nearby entities
+                    relationship = {
+                        "entity1": ent1.text,
+                        "entity2": ent2.text,
+                        "relationship_type": "proximity",
+                        "confidence": 0.6
+                    }
+                    entity_relationships.append(relationship)
+        
+        return {
+            "entities": entities,
+            "confidence_scores": confidence_scores,
+            "entity_relationships": entity_relationships
+        }
+    
+    async def _fallback_entity_extraction(self, text: str) -> Dict[str, Any]:
+        """Fallback entity extraction using simple patterns."""
+        import re
+        
+        entities = []
+        confidence_scores = {}
+        entity_relationships = []
+        
+        # Simple patterns for common entities
+        patterns = {
+            "EMAIL": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+            "URL": r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
+            "PHONE": r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',
+            "NUMBER": r'\b\d+(?:\.\d+)?\b'
+        }
+        
+        for label, pattern in patterns.items():
+            matches = re.finditer(pattern, text)
+            for match in matches:
+                entity_info = {
+                    "text": match.group(),
+                    "label": label,
+                    "start": match.start(),
+                    "end": match.end(),
+                    "description": label.lower()
+                }
+                entities.append(entity_info)
+                confidence_scores[match.group()] = 0.8
+        
+        return {
+            "entities": entities,
+            "confidence_scores": confidence_scores,
+            "entity_relationships": entity_relationships
+        }
+    
+    async def _spacy_key_phrase_extraction(self, text: str, max_phrases: int, min_phrase_length: int) -> Dict[str, Any]:
+        """Extract key phrases using spaCy NLP analysis."""
+        # Run spaCy processing in thread pool
+        loop = asyncio.get_event_loop()
+        doc = await loop.run_in_executor(None, self.nlp, text)
+        
+        key_phrases = []
+        phrase_scores = {}
+        phrase_types = {}
+        
+        # Extract noun phrases
+        for chunk in doc.noun_chunks:
+            if len(chunk.text.split()) >= min_phrase_length:
+                phrase = chunk.text.strip()
+                if phrase and phrase not in key_phrases:
+                    key_phrases.append(phrase)
+                    # Score based on length and POS composition
+                    score = min(len(phrase.split()) * 0.2, 1.0)
+                    phrase_scores[phrase] = score
+                    phrase_types[phrase] = "noun_phrase"
+        
+        # Extract named entities as key phrases
+        for ent in doc.ents:
+            if len(ent.text.split()) >= min_phrase_length:
+                phrase = ent.text.strip()
+                if phrase and phrase not in key_phrases:
+                    key_phrases.append(phrase)
+                    phrase_scores[phrase] = 0.9  # High score for entities
+                    phrase_types[phrase] = f"entity_{ent.label_.lower()}"
+        
+        # Extract important verb phrases
+        for token in doc:
+            if token.pos_ == "VERB" and not token.is_stop:
+                # Look for verb + object patterns
+                phrase_tokens = [token]
+                for child in token.children:
+                    if child.dep_ in ["dobj", "pobj", "acomp"]:
+                        phrase_tokens.append(child)
+                
+                if len(phrase_tokens) >= min_phrase_length:
+                    phrase = " ".join([t.text for t in phrase_tokens])
+                    if phrase and phrase not in key_phrases:
+                        key_phrases.append(phrase)
+                        phrase_scores[phrase] = 0.7
+                        phrase_types[phrase] = "verb_phrase"
+        
+        # Sort by score and return top phrases
+        sorted_phrases = sorted(key_phrases, key=lambda p: phrase_scores.get(p, 0), reverse=True)
+        top_phrases = sorted_phrases[:max_phrases]
+        
+        return {
+            "key_phrases": top_phrases,
+            "phrase_scores": {p: phrase_scores.get(p, 0) for p in top_phrases},
+            "phrase_types": {p: phrase_types.get(p, "unknown") for p in top_phrases}
+        }
+    
+    async def _fallback_key_phrase_extraction(self, text: str, max_phrases: int, min_phrase_length: int) -> Dict[str, Any]:
+        """Fallback key phrase extraction using simple methods."""
+        # Simple approach: extract multi-word sequences
+        words = text.split()
+        key_phrases = []
+        phrase_scores = {}
+        phrase_types = {}
+        
+        # Extract n-grams
+        for n in range(min_phrase_length, min(5, len(words) + 1)):
+            for i in range(len(words) - n + 1):
+                phrase = " ".join(words[i:i+n])
+                if phrase and len(phrase) > 3:  # Skip very short phrases
+                    key_phrases.append(phrase)
+                    # Score based on length
+                    phrase_scores[phrase] = min(n * 0.2, 1.0)
+                    phrase_types[phrase] = f"{n}_gram"
+        
+        # Remove duplicates and sort
+        unique_phrases = list(set(key_phrases))
+        sorted_phrases = sorted(unique_phrases, key=lambda p: phrase_scores.get(p, 0), reverse=True)
+        top_phrases = sorted_phrases[:max_phrases]
+        
+        return {
+            "key_phrases": top_phrases,
+            "phrase_scores": {p: phrase_scores.get(p, 0) for p in top_phrases},
+            "phrase_types": {p: phrase_types.get(p, "unknown") for p in top_phrases}
+        }
+    
+    async def _spacy_text_normalization(self, text: str, options: Dict[str, bool]) -> Dict[str, Any]:
+        """Normalize text using spaCy processing."""
+        # Run spaCy processing in thread pool
+        loop = asyncio.get_event_loop()
+        doc = await loop.run_in_executor(None, self.nlp, text)
+        
+        normalized_tokens = []
+        normalizations_applied = []
+        
+        for token in doc:
+            normalized_token = token.text
+            
+            # Apply normalization options
+            if options.get("lemmatize", False) and not token.is_punct:
+                normalized_token = token.lemma_
+                if "lemmatize" not in normalizations_applied:
+                    normalizations_applied.append("lemmatize")
+            
+            if options.get("lowercase", False):
+                normalized_token = normalized_token.lower()
+                if "lowercase" not in normalizations_applied:
+                    normalizations_applied.append("lowercase")
+            
+            if options.get("remove_punctuation", False) and token.is_punct:
+                continue  # Skip punctuation
+            
+            if options.get("remove_stopwords", False) and token.is_stop:
+                continue  # Skip stop words
+            
+            normalized_tokens.append(normalized_token)
+        
+        # Join tokens and handle whitespace
+        normalized_text = " ".join(normalized_tokens)
+        
+        if options.get("remove_whitespace", False):
+            normalized_text = " ".join(normalized_text.split())
+            if "remove_whitespace" not in normalizations_applied:
+                normalizations_applied.append("remove_whitespace")
+        
+        return {
+            "normalized_text": normalized_text,
+            "normalizations_applied": normalizations_applied
+        }
+    
+    async def _fallback_text_normalization(self, text: str, options: Dict[str, bool]) -> Dict[str, Any]:
+        """Fallback text normalization using simple string operations."""
+        normalized_text = text
+        normalizations_applied = []
+        
+        if options.get("lowercase", False):
+            normalized_text = normalized_text.lower()
+            normalizations_applied.append("lowercase")
+        
+        if options.get("remove_punctuation", False):
+            import string
+            normalized_text = normalized_text.translate(str.maketrans('', '', string.punctuation))
+            normalizations_applied.append("remove_punctuation")
+        
+        if options.get("remove_whitespace", False):
+            normalized_text = " ".join(normalized_text.split())
+            normalizations_applied.append("remove_whitespace")
+        
+        return {
+            "normalized_text": normalized_text,
+            "normalizations_applied": normalizations_applied
+        }
+    
+    async def _spacy_structure_analysis(self, text: str) -> Dict[str, Any]:
+        """Analyze text structure using spaCy."""
+        # Run spaCy processing in thread pool
+        loop = asyncio.get_event_loop()
+        doc = await loop.run_in_executor(None, self.nlp, text)
+        
+        # Analyze sentence structure
+        sentences = [sent.text.strip() for sent in doc.sents]
+        
+        # Extract key structural elements
+        structure = {
+            "sentence_count": len(sentences),
+            "token_count": len(doc),
+            "avg_sentence_length": len(doc) / len(sentences) if sentences else 0,
+            "complexity_score": self._calculate_complexity_score(doc)
+        }
+        
+        # Extract key information
+        key_information = {
+            "main_entities": [ent.text for ent in doc.ents[:5]],  # Top 5 entities
+            "main_verbs": [token.lemma_ for token in doc if token.pos_ == "VERB" and not token.is_stop][:5],
+            "main_nouns": [token.lemma_ for token in doc if token.pos_ == "NOUN" and not token.is_stop][:5]
+        }
+        
+        # Extract relationships
+        relationships = []
+        for token in doc:
+            if token.dep_ in ["nsubj", "dobj", "pobj"] and token.head.pos_ == "VERB":
+                relationship = {
+                    "subject": token.text,
+                    "predicate": token.head.text,
+                    "relationship_type": token.dep_,
+                    "confidence": 0.7
+                }
+                relationships.append(relationship)
+        
+        return {
+            "structure": structure,
+            "key_information": key_information,
+            "relationships": relationships[:10]  # Limit to top 10
+        }
+    
+    async def _fallback_structure_analysis(self, text: str) -> Dict[str, Any]:
+        """Fallback structure analysis using simple methods."""
+        sentences = text.split('.')
+        sentences = [s.strip() for s in sentences if s.strip()]
+        words = text.split()
+        
+        structure = {
+            "sentence_count": len(sentences),
+            "token_count": len(words),
+            "avg_sentence_length": len(words) / len(sentences) if sentences else 0,
+            "complexity_score": min(len(words) / 100, 1.0)  # Simple complexity
+        }
+        
+        # Simple key information extraction
+        key_information = {
+            "main_entities": [],  # No entity extraction in fallback
+            "main_verbs": [],     # No POS tagging in fallback
+            "main_nouns": []      # No POS tagging in fallback
+        }
+        
+        relationships = []  # No relationship extraction in fallback
+        
+        return {
+            "structure": structure,
+            "key_information": key_information,
+            "relationships": relationships
+        }
+    
+    def _calculate_complexity_score(self, doc) -> float:
+        """Calculate text complexity score based on various factors."""
+        if not doc:
+            return 0.0
+        
+        # Factors for complexity
+        avg_word_length = sum(len(token.text) for token in doc if not token.is_punct) / len([t for t in doc if not t.is_punct])
+        unique_words = len(set(token.lemma_.lower() for token in doc if not token.is_stop and not token.is_punct))
+        total_words = len([t for t in doc if not t.is_stop and not t.is_punct])
+        lexical_diversity = unique_words / total_words if total_words > 0 else 0
+        
+        # Dependency depth (complexity of sentence structure)
+        max_depth = 0
+        for token in doc:
+            depth = 0
+            current = token
+            while current.head != current:
+                depth += 1
+                current = current.head
+                if depth > 10:  # Prevent infinite loops
+                    break
+            max_depth = max(max_depth, depth)
+        
+        # Combine factors
+        complexity = (
+            (avg_word_length / 10) * 0.3 +  # Word length factor
+            lexical_diversity * 0.4 +        # Vocabulary diversity
+            (max_depth / 10) * 0.3           # Syntactic complexity
+        )
+        
+        return min(complexity, 1.0)
+    
+    async def enhance_memory_retrieval(
+        self, 
+        query_text: str, 
+        memory_candidates: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Enhance memory retrieval using spaCy analysis for better matching.
+        
+        Args:
+            query_text: The query text to match against
+            memory_candidates: List of memory texts to score
+            
+        Returns:
+            Dictionary with enhanced retrieval scores and analysis
+        """
+        if not query_text or not memory_candidates:
+            return {
+                "enhanced_scores": {},
+                "analysis": {},
+                "processing_time": 0.0,
+                "used_fallback": True
+            }
+        
+        start_time = time.time()
+        
+        try:
+            # Analyze query text
+            query_analysis = await self.analyze_structure(query_text)
+            query_entities = await self.extract_entities_enhanced(query_text)
+            query_phrases = await self.identify_key_phrases(query_text, max_phrases=5)
+            
+            enhanced_scores = {}
+            analysis = {
+                "query_entities": [e["text"] for e in query_entities.entities],
+                "query_phrases": query_phrases.key_phrases,
+                "matching_details": {}
+            }
+            
+            # Score each memory candidate
+            for i, memory_text in enumerate(memory_candidates):
+                memory_id = f"memory_{i}"
+                
+                # Analyze memory text
+                memory_entities = await self.extract_entities_enhanced(memory_text)
+                memory_phrases = await self.identify_key_phrases(memory_text, max_phrases=5)
+                
+                # Calculate various similarity scores
+                entity_overlap = len(set(e["text"] for e in query_entities.entities) & 
+                                   set(e["text"] for e in memory_entities.entities))
+                phrase_overlap = len(set(query_phrases.key_phrases) & 
+                                   set(memory_phrases.key_phrases))
+                
+                # Normalize scores
+                entity_score = entity_overlap / max(len(query_entities.entities), 1)
+                phrase_score = phrase_overlap / max(len(query_phrases.key_phrases), 1)
+                
+                # Combined score with weights
+                combined_score = (entity_score * 0.6 + phrase_score * 0.4)
+                enhanced_scores[memory_id] = combined_score
+                
+                # Store matching details
+                analysis["matching_details"][memory_id] = {
+                    "entity_overlap": entity_overlap,
+                    "phrase_overlap": phrase_overlap,
+                    "entity_score": entity_score,
+                    "phrase_score": phrase_score
+                }
+            
+            processing_time = time.time() - start_time
+            
+            return {
+                "enhanced_scores": enhanced_scores,
+                "analysis": analysis,
+                "processing_time": processing_time,
+                "used_fallback": self.fallback_mode
+            }
+            
+        except Exception as e:
+            logger.error(f"Memory retrieval enhancement failed: {e}")
+            # Return basic scores on error
+            processing_time = time.time() - start_time
+            return {
+                "enhanced_scores": {f"memory_{i}": 0.5 for i in range(len(memory_candidates))},
+                "analysis": {"error": str(e)},
+                "processing_time": processing_time,
+                "used_fallback": True
+            }

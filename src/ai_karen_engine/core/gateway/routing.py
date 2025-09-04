@@ -179,8 +179,21 @@ def discover_and_mount_api_routes(app: FastAPI) -> None:
                 # Look for router in the module
                 router = getattr(module, "router", None)
                 if isinstance(router, APIRouter) and hasattr(router, "routes"):
+                    # Mount primary router under /api
                     app.include_router(router, prefix="/api", tags=[name])
                     logger.info(f"Mounted API router: /api/{name}")
+
+                # Mount optional public_router when present (e.g., provider public endpoints)
+                public_router = getattr(module, "public_router", None)
+                if isinstance(public_router, APIRouter) and hasattr(public_router, "routes"):
+                    # Special-case provider public routes so they live under /api/public/providers/...
+                    if name == "provider_routes":
+                        app.include_router(public_router, prefix="/api/public/providers", tags=["public-providers"]) 
+                        logger.info("Mounted public provider router: /api/public/providers")
+                    else:
+                        # Fallback: mount under /api/public/<module>
+                        app.include_router(public_router, prefix=f"/api/public/{name}")
+                        logger.info(f"Mounted public router: /api/public/{name}")
                     
             except Exception as e:
                 logger.error(f"Failed to mount API router {name}: {e}")

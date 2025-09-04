@@ -47,6 +47,70 @@ class EmbeddingResult:
 
 
 @dataclass
+class ClassificationResult:
+    """Result of text classification."""
+    
+    classification: str
+    confidence: float
+    processing_time: float
+    used_fallback: bool
+    model_name: Optional[str] = None
+    input_length: int = 0
+    details: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class IntentResult:
+    """Result of intent detection."""
+    
+    intent: str
+    confidence: float
+    entities: List[Dict[str, Any]]
+    processing_time: float
+    used_fallback: bool
+    model_name: Optional[str] = None
+    input_length: int = 0
+
+
+@dataclass
+class SentimentResult:
+    """Result of sentiment analysis."""
+    
+    sentiment: str  # positive, negative, neutral
+    score: float  # -1.0 to 1.0
+    confidence: float
+    processing_time: float
+    used_fallback: bool
+    model_name: Optional[str] = None
+    input_length: int = 0
+
+
+@dataclass
+class TopicResult:
+    """Result of topic tagging."""
+    
+    topics: List[str]
+    topic_scores: Dict[str, float]
+    processing_time: float
+    used_fallback: bool
+    model_name: Optional[str] = None
+    input_length: int = 0
+
+
+@dataclass
+class SafetyResult:
+    """Result of safety filtering."""
+    
+    is_safe: bool
+    safety_score: float  # 0.0 to 1.0, higher is safer
+    flagged_categories: List[str]
+    processing_time: float
+    used_fallback: bool
+    model_name: Optional[str] = None
+    input_length: int = 0
+
+
+@dataclass
 class DistilBertHealthStatus:
     """Health status for DistilBERT service."""
     
@@ -396,6 +460,569 @@ class DistilBertService:
             self._last_error = str(e)
             raise
     
+    async def classify_text(
+        self, 
+        text: str, 
+        classification_type: str = "general"
+    ) -> ClassificationResult:
+        """
+        Classify text using DistilBERT embeddings and rule-based classification.
+        
+        Args:
+            text: Text to classify
+            classification_type: Type of classification ("general", "task", "domain", "complexity")
+            
+        Returns:
+            ClassificationResult with classification and confidence
+        """
+        if not text or not text.strip():
+            return ClassificationResult(
+                classification="unknown",
+                confidence=0.0,
+                processing_time=0.0,
+                used_fallback=True,
+                input_length=0
+            )
+        
+        start_time = time.time()
+        
+        try:
+            if self.fallback_mode or not self.model:
+                result = await self._fallback_classification(text, classification_type)
+                used_fallback = True
+            else:
+                result = await self._embedding_based_classification(text, classification_type)
+                used_fallback = False
+            
+            processing_time = time.time() - start_time
+            
+            return ClassificationResult(
+                classification=result["classification"],
+                confidence=result["confidence"],
+                processing_time=processing_time,
+                used_fallback=used_fallback,
+                model_name=self.config.model_name if not used_fallback else "fallback",
+                input_length=len(text),
+                details=result.get("details")
+            )
+            
+        except Exception as e:
+            logger.error(f"Text classification failed: {e}")
+            self._error_count += 1
+            self._last_error = str(e)
+            
+            # Fallback on error
+            if not self.fallback_mode and self.config.enable_fallback:
+                result = await self._fallback_classification(text, classification_type)
+                processing_time = time.time() - start_time
+                return ClassificationResult(
+                    classification=result["classification"],
+                    confidence=result["confidence"],
+                    processing_time=processing_time,
+                    used_fallback=True,
+                    model_name="fallback",
+                    input_length=len(text),
+                    details=result.get("details")
+                )
+            else:
+                raise
+    
+    async def detect_intent(self, text: str) -> IntentResult:
+        """
+        Detect user intent from text.
+        
+        Args:
+            text: Text to analyze for intent
+            
+        Returns:
+            IntentResult with detected intent and entities
+        """
+        if not text or not text.strip():
+            return IntentResult(
+                intent="unknown",
+                confidence=0.0,
+                entities=[],
+                processing_time=0.0,
+                used_fallback=True,
+                input_length=0
+            )
+        
+        start_time = time.time()
+        
+        try:
+            if self.fallback_mode or not self.model:
+                result = await self._fallback_intent_detection(text)
+                used_fallback = True
+            else:
+                result = await self._embedding_based_intent_detection(text)
+                used_fallback = False
+            
+            processing_time = time.time() - start_time
+            
+            return IntentResult(
+                intent=result["intent"],
+                confidence=result["confidence"],
+                entities=result["entities"],
+                processing_time=processing_time,
+                used_fallback=used_fallback,
+                model_name=self.config.model_name if not used_fallback else "fallback",
+                input_length=len(text)
+            )
+            
+        except Exception as e:
+            logger.error(f"Intent detection failed: {e}")
+            self._error_count += 1
+            self._last_error = str(e)
+            
+            # Fallback on error
+            if not self.fallback_mode and self.config.enable_fallback:
+                result = await self._fallback_intent_detection(text)
+                processing_time = time.time() - start_time
+                return IntentResult(
+                    intent=result["intent"],
+                    confidence=result["confidence"],
+                    entities=result["entities"],
+                    processing_time=processing_time,
+                    used_fallback=True,
+                    model_name="fallback",
+                    input_length=len(text)
+                )
+            else:
+                raise
+    
+    async def analyze_sentiment(self, text: str) -> SentimentResult:
+        """
+        Analyze sentiment of text.
+        
+        Args:
+            text: Text to analyze for sentiment
+            
+        Returns:
+            SentimentResult with sentiment classification and score
+        """
+        if not text or not text.strip():
+            return SentimentResult(
+                sentiment="neutral",
+                score=0.0,
+                confidence=0.0,
+                processing_time=0.0,
+                used_fallback=True,
+                input_length=0
+            )
+        
+        start_time = time.time()
+        
+        try:
+            if self.fallback_mode or not self.model:
+                result = await self._fallback_sentiment_analysis(text)
+                used_fallback = True
+            else:
+                result = await self._embedding_based_sentiment_analysis(text)
+                used_fallback = False
+            
+            processing_time = time.time() - start_time
+            
+            return SentimentResult(
+                sentiment=result["sentiment"],
+                score=result["score"],
+                confidence=result["confidence"],
+                processing_time=processing_time,
+                used_fallback=used_fallback,
+                model_name=self.config.model_name if not used_fallback else "fallback",
+                input_length=len(text)
+            )
+            
+        except Exception as e:
+            logger.error(f"Sentiment analysis failed: {e}")
+            self._error_count += 1
+            self._last_error = str(e)
+            
+            # Fallback on error
+            if not self.fallback_mode and self.config.enable_fallback:
+                result = await self._fallback_sentiment_analysis(text)
+                processing_time = time.time() - start_time
+                return SentimentResult(
+                    sentiment=result["sentiment"],
+                    score=result["score"],
+                    confidence=result["confidence"],
+                    processing_time=processing_time,
+                    used_fallback=True,
+                    model_name="fallback",
+                    input_length=len(text)
+                )
+            else:
+                raise
+    
+    async def tag_topics(self, text: str, max_topics: int = 5) -> TopicResult:
+        """
+        Tag topics in text.
+        
+        Args:
+            text: Text to analyze for topics
+            max_topics: Maximum number of topics to return
+            
+        Returns:
+            TopicResult with identified topics and scores
+        """
+        if not text or not text.strip():
+            return TopicResult(
+                topics=[],
+                topic_scores={},
+                processing_time=0.0,
+                used_fallback=True,
+                input_length=0
+            )
+        
+        start_time = time.time()
+        
+        try:
+            if self.fallback_mode or not self.model:
+                result = await self._fallback_topic_tagging(text, max_topics)
+                used_fallback = True
+            else:
+                result = await self._embedding_based_topic_tagging(text, max_topics)
+                used_fallback = False
+            
+            processing_time = time.time() - start_time
+            
+            return TopicResult(
+                topics=result["topics"],
+                topic_scores=result["topic_scores"],
+                processing_time=processing_time,
+                used_fallback=used_fallback,
+                model_name=self.config.model_name if not used_fallback else "fallback",
+                input_length=len(text)
+            )
+            
+        except Exception as e:
+            logger.error(f"Topic tagging failed: {e}")
+            self._error_count += 1
+            self._last_error = str(e)
+            
+            # Fallback on error
+            if not self.fallback_mode and self.config.enable_fallback:
+                result = await self._fallback_topic_tagging(text, max_topics)
+                processing_time = time.time() - start_time
+                return TopicResult(
+                    topics=result["topics"],
+                    topic_scores=result["topic_scores"],
+                    processing_time=processing_time,
+                    used_fallback=True,
+                    model_name="fallback",
+                    input_length=len(text)
+                )
+            else:
+                raise
+    
+    async def filter_safety(self, text: str) -> SafetyResult:
+        """
+        Perform safety filtering on text.
+        
+        Args:
+            text: Text to check for safety
+            
+        Returns:
+            SafetyResult with safety assessment
+        """
+        if not text or not text.strip():
+            return SafetyResult(
+                is_safe=True,
+                safety_score=1.0,
+                flagged_categories=[],
+                processing_time=0.0,
+                used_fallback=True,
+                input_length=0
+            )
+        
+        start_time = time.time()
+        
+        try:
+            if self.fallback_mode or not self.model:
+                result = await self._fallback_safety_filtering(text)
+                used_fallback = True
+            else:
+                result = await self._embedding_based_safety_filtering(text)
+                used_fallback = False
+            
+            processing_time = time.time() - start_time
+            
+            return SafetyResult(
+                is_safe=result["is_safe"],
+                safety_score=result["safety_score"],
+                flagged_categories=result["flagged_categories"],
+                processing_time=processing_time,
+                used_fallback=used_fallback,
+                model_name=self.config.model_name if not used_fallback else "fallback",
+                input_length=len(text)
+            )
+            
+        except Exception as e:
+            logger.error(f"Safety filtering failed: {e}")
+            self._error_count += 1
+            self._last_error = str(e)
+            
+            # Fallback on error
+            if not self.fallback_mode and self.config.enable_fallback:
+                result = await self._fallback_safety_filtering(text)
+                processing_time = time.time() - start_time
+                return SafetyResult(
+                    is_safe=result["is_safe"],
+                    safety_score=result["safety_score"],
+                    flagged_categories=result["flagged_categories"],
+                    processing_time=processing_time,
+                    used_fallback=True,
+                    model_name="fallback",
+                    input_length=len(text)
+                )
+            else:
+                raise
+    
+    async def _embedding_based_classification(self, text: str, classification_type: str) -> Dict[str, Any]:
+        """Classify text using DistilBERT embeddings and similarity matching."""
+        # Get embeddings for the input text
+        embeddings = await self.get_embeddings(text)
+        
+        # Define classification templates based on type
+        if classification_type == "general":
+            templates = {
+                "question": "This is a question asking for information or clarification",
+                "request": "This is a request for action or assistance", 
+                "statement": "This is a statement providing information or opinion",
+                "greeting": "This is a greeting or social interaction",
+                "complaint": "This is a complaint or expression of dissatisfaction"
+            }
+        elif classification_type == "task":
+            templates = {
+                "coding": "This is about programming, software development, or technical implementation",
+                "analysis": "This is about analyzing, evaluating, or understanding something",
+                "creation": "This is about creating, building, or generating something new",
+                "explanation": "This is asking for explanation or clarification of concepts",
+                "troubleshooting": "This is about solving problems or fixing issues"
+            }
+        elif classification_type == "domain":
+            templates = {
+                "technology": "This is about technology, computers, software, or digital topics",
+                "business": "This is about business, finance, management, or commercial topics",
+                "science": "This is about scientific concepts, research, or academic topics",
+                "personal": "This is about personal matters, relationships, or individual concerns",
+                "creative": "This is about creative work, art, writing, or artistic expression"
+            }
+        else:  # complexity
+            templates = {
+                "simple": "This is a simple, straightforward question or request",
+                "moderate": "This is a moderately complex topic requiring some analysis",
+                "complex": "This is a complex topic requiring deep analysis and expertise"
+            }
+        
+        # Calculate similarity with each template
+        best_match = "unknown"
+        best_score = 0.0
+        
+        for category, template in templates.items():
+            template_embeddings = await self.get_embeddings(template)
+            similarity = self._calculate_cosine_similarity(embeddings, template_embeddings)
+            if similarity > best_score:
+                best_score = similarity
+                best_match = category
+        
+        # Adjust confidence based on score
+        confidence = min(best_score * 1.2, 1.0)  # Boost confidence slightly
+        
+        return {
+            "classification": best_match,
+            "confidence": confidence,
+            "details": {"similarity_score": best_score}
+        }
+    
+    async def _embedding_based_intent_detection(self, text: str) -> Dict[str, Any]:
+        """Detect intent using DistilBERT embeddings."""
+        # Get embeddings for the input text
+        embeddings = await self.get_embeddings(text)
+        
+        # Define intent templates
+        intent_templates = {
+            "information_seeking": "I want to learn about or understand something",
+            "task_completion": "I need help completing a specific task or action",
+            "problem_solving": "I have a problem that needs to be solved or fixed",
+            "creative_assistance": "I need help with creative work or generating ideas",
+            "decision_making": "I need help making a choice or decision",
+            "social_interaction": "I want to have a conversation or social interaction"
+        }
+        
+        # Calculate similarity with each intent template
+        best_intent = "unknown"
+        best_score = 0.0
+        
+        for intent, template in intent_templates.items():
+            template_embeddings = await self.get_embeddings(template)
+            similarity = self._calculate_cosine_similarity(embeddings, template_embeddings)
+            if similarity > best_score:
+                best_score = similarity
+                best_intent = intent
+        
+        # Extract simple entities (placeholder - could be enhanced)
+        entities = self._extract_simple_entities(text)
+        
+        return {
+            "intent": best_intent,
+            "confidence": min(best_score * 1.1, 1.0),
+            "entities": entities
+        }
+    
+    async def _embedding_based_sentiment_analysis(self, text: str) -> Dict[str, Any]:
+        """Analyze sentiment using DistilBERT embeddings."""
+        # Get embeddings for the input text
+        embeddings = await self.get_embeddings(text)
+        
+        # Define sentiment templates
+        sentiment_templates = {
+            "positive": "This expresses happiness, satisfaction, joy, or positive emotions",
+            "negative": "This expresses sadness, anger, frustration, or negative emotions", 
+            "neutral": "This is factual, objective, or emotionally neutral"
+        }
+        
+        # Calculate similarity with each sentiment template
+        sentiment_scores = {}
+        for sentiment, template in sentiment_templates.items():
+            template_embeddings = await self.get_embeddings(template)
+            similarity = self._calculate_cosine_similarity(embeddings, template_embeddings)
+            sentiment_scores[sentiment] = similarity
+        
+        # Determine best sentiment
+        best_sentiment = max(sentiment_scores, key=sentiment_scores.get)
+        confidence = sentiment_scores[best_sentiment]
+        
+        # Calculate sentiment score (-1 to 1)
+        pos_score = sentiment_scores.get("positive", 0.0)
+        neg_score = sentiment_scores.get("negative", 0.0)
+        sentiment_score = pos_score - neg_score
+        
+        return {
+            "sentiment": best_sentiment,
+            "score": sentiment_score,
+            "confidence": confidence
+        }
+    
+    async def _embedding_based_topic_tagging(self, text: str, max_topics: int) -> Dict[str, Any]:
+        """Tag topics using DistilBERT embeddings."""
+        # Get embeddings for the input text
+        embeddings = await self.get_embeddings(text)
+        
+        # Define topic templates
+        topic_templates = {
+            "technology": "technology, computers, software, programming, digital, internet",
+            "business": "business, finance, money, management, company, market, sales",
+            "science": "science, research, study, experiment, theory, analysis, data",
+            "education": "learning, teaching, school, university, knowledge, training",
+            "health": "health, medical, wellness, fitness, disease, treatment, care",
+            "entertainment": "entertainment, movies, music, games, fun, leisure, hobby",
+            "travel": "travel, vacation, trip, journey, destination, tourism, adventure",
+            "food": "food, cooking, recipe, restaurant, meal, cuisine, nutrition",
+            "sports": "sports, exercise, fitness, competition, team, game, athletic",
+            "politics": "politics, government, policy, election, law, society, public"
+        }
+        
+        # Calculate similarity with each topic template
+        topic_scores = {}
+        for topic, template in topic_templates.items():
+            template_embeddings = await self.get_embeddings(template)
+            similarity = self._calculate_cosine_similarity(embeddings, template_embeddings)
+            topic_scores[topic] = similarity
+        
+        # Sort topics by score and return top ones
+        sorted_topics = sorted(topic_scores.items(), key=lambda x: x[1], reverse=True)
+        top_topics = sorted_topics[:max_topics]
+        
+        topics = [topic for topic, score in top_topics if score > 0.3]  # Threshold
+        topic_scores_dict = {topic: score for topic, score in top_topics if score > 0.3}
+        
+        return {
+            "topics": topics,
+            "topic_scores": topic_scores_dict
+        }
+    
+    async def _embedding_based_safety_filtering(self, text: str) -> Dict[str, Any]:
+        """Perform safety filtering using DistilBERT embeddings."""
+        # Get embeddings for the input text
+        embeddings = await self.get_embeddings(text)
+        
+        # Define safety concern templates
+        safety_templates = {
+            "harmful_content": "harmful, dangerous, violent, threatening, abusive content",
+            "inappropriate": "inappropriate, offensive, explicit, adult, sexual content",
+            "misinformation": "false information, conspiracy, misleading, unverified claims",
+            "spam": "spam, promotional, advertising, unsolicited, repetitive content",
+            "personal_info": "personal information, private data, confidential, sensitive details"
+        }
+        
+        # Calculate similarity with safety concern templates
+        flagged_categories = []
+        max_concern_score = 0.0
+        
+        for category, template in safety_templates.items():
+            template_embeddings = await self.get_embeddings(template)
+            similarity = self._calculate_cosine_similarity(embeddings, template_embeddings)
+            if similarity > 0.6:  # Threshold for flagging
+                flagged_categories.append(category)
+            max_concern_score = max(max_concern_score, similarity)
+        
+        # Calculate safety score (inverse of concern)
+        safety_score = 1.0 - max_concern_score
+        is_safe = len(flagged_categories) == 0 and safety_score > 0.5
+        
+        return {
+            "is_safe": is_safe,
+            "safety_score": safety_score,
+            "flagged_categories": flagged_categories
+        }
+    
+    def _calculate_cosine_similarity(self, embeddings1: List[float], embeddings2: List[float]) -> float:
+        """Calculate cosine similarity between two embedding vectors."""
+        if not embeddings1 or not embeddings2:
+            return 0.0
+        
+        # Convert to numpy arrays for calculation
+        vec1 = np.array(embeddings1)
+        vec2 = np.array(embeddings2)
+        
+        # Calculate cosine similarity
+        dot_product = np.dot(vec1, vec2)
+        norm1 = np.linalg.norm(vec1)
+        norm2 = np.linalg.norm(vec2)
+        
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        
+        similarity = dot_product / (norm1 * norm2)
+        return float(similarity)
+    
+    def _extract_simple_entities(self, text: str) -> List[Dict[str, Any]]:
+        """Extract simple entities from text using basic patterns."""
+        entities = []
+        
+        # Simple patterns for common entities
+        import re
+        
+        # Email addresses
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        emails = re.findall(email_pattern, text)
+        for email in emails:
+            entities.append({"text": email, "type": "email", "confidence": 0.9})
+        
+        # URLs
+        url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+        urls = re.findall(url_pattern, text)
+        for url in urls:
+            entities.append({"text": url, "type": "url", "confidence": 0.9})
+        
+        # Numbers
+        number_pattern = r'\b\d+(?:\.\d+)?\b'
+        numbers = re.findall(number_pattern, text)
+        for number in numbers:
+            entities.append({"text": number, "type": "number", "confidence": 0.7})
+        
+        return entities
+    
     async def batch_embeddings(
         self, 
         texts: List[str], 
@@ -414,3 +1041,281 @@ class DistilBertService:
             embeddings.extend(batch_embeddings)
         
         return embeddings
+    
+    async def _fallback_classification(self, text: str, classification_type: str) -> Dict[str, Any]:
+        """Fallback classification using simple rule-based approach."""
+        text_lower = text.lower()
+        
+        if classification_type == "general":
+            if "?" in text:
+                return {"classification": "question", "confidence": 0.8}
+            elif any(word in text_lower for word in ["please", "can you", "help", "need"]):
+                return {"classification": "request", "confidence": 0.7}
+            elif any(word in text_lower for word in ["hello", "hi", "hey", "good morning"]):
+                return {"classification": "greeting", "confidence": 0.9}
+            elif any(word in text_lower for word in ["problem", "issue", "wrong", "error", "broken"]):
+                return {"classification": "complaint", "confidence": 0.6}
+            else:
+                return {"classification": "statement", "confidence": 0.5}
+        
+        elif classification_type == "task":
+            if any(word in text_lower for word in ["code", "program", "debug", "function", "script"]):
+                return {"classification": "coding", "confidence": 0.8}
+            elif any(word in text_lower for word in ["analyze", "compare", "evaluate", "assess"]):
+                return {"classification": "analysis", "confidence": 0.7}
+            elif any(word in text_lower for word in ["create", "build", "make", "generate", "design"]):
+                return {"classification": "creation", "confidence": 0.7}
+            elif any(word in text_lower for word in ["explain", "what is", "how does", "why"]):
+                return {"classification": "explanation", "confidence": 0.8}
+            elif any(word in text_lower for word in ["fix", "solve", "troubleshoot", "debug"]):
+                return {"classification": "troubleshooting", "confidence": 0.7}
+            else:
+                return {"classification": "general", "confidence": 0.4}
+        
+        else:
+            return {"classification": "unknown", "confidence": 0.3}
+    
+    async def _fallback_intent_detection(self, text: str) -> Dict[str, Any]:
+        """Fallback intent detection using simple patterns."""
+        text_lower = text.lower()
+        
+        if any(word in text_lower for word in ["what", "how", "why", "when", "where", "explain"]):
+            intent = "information_seeking"
+            confidence = 0.8
+        elif any(word in text_lower for word in ["help me", "can you", "please", "need to"]):
+            intent = "task_completion"
+            confidence = 0.7
+        elif any(word in text_lower for word in ["problem", "issue", "error", "fix", "broken"]):
+            intent = "problem_solving"
+            confidence = 0.8
+        elif any(word in text_lower for word in ["create", "generate", "write", "design", "make"]):
+            intent = "creative_assistance"
+            confidence = 0.7
+        elif any(word in text_lower for word in ["should i", "which", "better", "choose", "decide"]):
+            intent = "decision_making"
+            confidence = 0.6
+        else:
+            intent = "social_interaction"
+            confidence = 0.4
+        
+        # Extract simple entities
+        entities = self._extract_simple_entities(text)
+        
+        return {
+            "intent": intent,
+            "confidence": confidence,
+            "entities": entities
+        }
+    
+    async def _fallback_sentiment_analysis(self, text: str) -> Dict[str, Any]:
+        """Fallback sentiment analysis using simple word matching."""
+        text_lower = text.lower()
+        
+        positive_words = ["good", "great", "excellent", "amazing", "wonderful", "love", "like", "happy", "pleased", "satisfied"]
+        negative_words = ["bad", "terrible", "awful", "hate", "dislike", "angry", "frustrated", "disappointed", "sad", "upset"]
+        
+        positive_count = sum(1 for word in positive_words if word in text_lower)
+        negative_count = sum(1 for word in negative_words if word in text_lower)
+        
+        if positive_count > negative_count:
+            sentiment = "positive"
+            score = min(positive_count * 0.3, 1.0)
+            confidence = 0.6
+        elif negative_count > positive_count:
+            sentiment = "negative"
+            score = -min(negative_count * 0.3, 1.0)
+            confidence = 0.6
+        else:
+            sentiment = "neutral"
+            score = 0.0
+            confidence = 0.5
+        
+        return {
+            "sentiment": sentiment,
+            "score": score,
+            "confidence": confidence
+        }
+    
+    async def _fallback_topic_tagging(self, text: str, max_topics: int) -> Dict[str, Any]:
+        """Fallback topic tagging using keyword matching."""
+        text_lower = text.lower()
+        
+        topic_keywords = {
+            "technology": ["computer", "software", "code", "program", "digital", "internet", "tech", "app", "website"],
+            "business": ["business", "company", "money", "finance", "market", "sales", "profit", "customer"],
+            "science": ["research", "study", "experiment", "data", "analysis", "theory", "scientific", "method"],
+            "education": ["learn", "teach", "school", "university", "student", "knowledge", "training", "course"],
+            "health": ["health", "medical", "doctor", "medicine", "fitness", "wellness", "disease", "treatment"],
+            "entertainment": ["movie", "music", "game", "fun", "entertainment", "show", "video", "play"],
+            "travel": ["travel", "trip", "vacation", "journey", "destination", "tourism", "visit", "explore"],
+            "food": ["food", "cook", "recipe", "restaurant", "meal", "eat", "cuisine", "nutrition"],
+            "sports": ["sport", "game", "team", "player", "competition", "exercise", "fitness", "athletic"],
+            "politics": ["politics", "government", "policy", "election", "law", "society", "public", "political"]
+        }
+        
+        topic_scores = {}
+        for topic, keywords in topic_keywords.items():
+            score = sum(1 for keyword in keywords if keyword in text_lower) / len(keywords)
+            if score > 0:
+                topic_scores[topic] = score
+        
+        # Sort and return top topics
+        sorted_topics = sorted(topic_scores.items(), key=lambda x: x[1], reverse=True)
+        top_topics = sorted_topics[:max_topics]
+        
+        topics = [topic for topic, score in top_topics]
+        topic_scores_dict = dict(top_topics)
+        
+        return {
+            "topics": topics,
+            "topic_scores": topic_scores_dict
+        }
+    
+    async def _fallback_safety_filtering(self, text: str) -> Dict[str, Any]:
+        """Fallback safety filtering using simple keyword matching."""
+        text_lower = text.lower()
+        
+        safety_keywords = {
+            "harmful_content": ["violence", "harm", "hurt", "kill", "weapon", "dangerous", "threat"],
+            "inappropriate": ["explicit", "sexual", "adult", "inappropriate", "offensive", "vulgar"],
+            "misinformation": ["conspiracy", "fake", "false", "lie", "misinformation", "hoax"],
+            "spam": ["buy now", "click here", "free money", "guaranteed", "limited time", "act now"],
+            "personal_info": ["ssn", "social security", "credit card", "password", "private", "confidential"]
+        }
+        
+        flagged_categories = []
+        max_concern_score = 0.0
+        
+        for category, keywords in safety_keywords.items():
+            matches = sum(1 for keyword in keywords if keyword in text_lower)
+            if matches > 0:
+                concern_score = min(matches * 0.3, 1.0)
+                max_concern_score = max(max_concern_score, concern_score)
+                if concern_score > 0.5:
+                    flagged_categories.append(category)
+        
+        safety_score = 1.0 - max_concern_score
+        is_safe = len(flagged_categories) == 0 and safety_score > 0.7
+        
+        return {
+            "is_safe": is_safe,
+            "safety_score": safety_score,
+            "flagged_categories": flagged_categories
+        }
+    
+    async def route_task(self, text: str) -> Dict[str, Any]:
+        """
+        Determine optimal task routing based on DistilBERT classification.
+        
+        Args:
+            text: Input text to analyze for routing
+            
+        Returns:
+            Dictionary with routing recommendation and confidence
+        """
+        # Perform multiple classifications to determine routing
+        task_classification = await self.classify_text(text, "task")
+        intent_result = await self.detect_intent(text)
+        safety_result = await self.filter_safety(text)
+        
+        # Determine routing based on classifications
+        routing_decision = {
+            "recommended_handler": "main_llm",  # Default
+            "confidence": 0.5,
+            "reasoning": "Default routing to main LLM",
+            "safety_check": safety_result.is_safe,
+            "classifications": {
+                "task": task_classification.classification,
+                "intent": intent_result.intent,
+                "safety_score": safety_result.safety_score
+            }
+        }
+        
+        # Safety check first
+        if not safety_result.is_safe:
+            routing_decision.update({
+                "recommended_handler": "safety_filter",
+                "confidence": 0.9,
+                "reasoning": f"Content flagged for safety concerns: {', '.join(safety_result.flagged_categories)}"
+            })
+            return routing_decision
+        
+        # Route based on task classification
+        if task_classification.classification == "coding" and task_classification.confidence > 0.7:
+            routing_decision.update({
+                "recommended_handler": "code_specialist",
+                "confidence": task_classification.confidence,
+                "reasoning": "High confidence coding task detected"
+            })
+        elif intent_result.intent == "information_seeking" and intent_result.confidence > 0.8:
+            routing_decision.update({
+                "recommended_handler": "knowledge_retrieval",
+                "confidence": intent_result.confidence,
+                "reasoning": "Clear information seeking intent detected"
+            })
+        elif task_classification.classification in ["analysis", "explanation"] and task_classification.confidence > 0.6:
+            routing_decision.update({
+                "recommended_handler": "analytical_llm",
+                "confidence": task_classification.confidence,
+                "reasoning": f"Analytical task ({task_classification.classification}) detected"
+            })
+        elif intent_result.intent == "creative_assistance" and intent_result.confidence > 0.7:
+            routing_decision.update({
+                "recommended_handler": "creative_llm",
+                "confidence": intent_result.confidence,
+                "reasoning": "Creative assistance request detected"
+            })
+        
+        return routing_decision
+    
+    async def enhance_context_understanding(
+        self, 
+        text: str, 
+        conversation_history: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Enhance context understanding using DistilBERT analysis.
+        
+        Args:
+            text: Current text to analyze
+            conversation_history: Previous conversation turns for context
+            
+        Returns:
+            Dictionary with enhanced context insights
+        """
+        # Analyze current text
+        sentiment_result = await self.analyze_sentiment(text)
+        topic_result = await self.tag_topics(text, max_topics=3)
+        intent_result = await self.detect_intent(text)
+        
+        context_insights = {
+            "current_sentiment": sentiment_result.sentiment,
+            "sentiment_score": sentiment_result.score,
+            "main_topics": topic_result.topics,
+            "user_intent": intent_result.intent,
+            "entities": intent_result.entities,
+            "context_continuity": 0.5  # Default
+        }
+        
+        # Analyze conversation continuity if history is available
+        if conversation_history and len(conversation_history) > 0:
+            try:
+                # Get embeddings for current text and recent history
+                current_embeddings = await self.get_embeddings(text)
+                recent_text = " ".join(conversation_history[-2:])  # Last 2 turns
+                history_embeddings = await self.get_embeddings(recent_text)
+                
+                # Calculate continuity score
+                continuity_score = self._calculate_cosine_similarity(current_embeddings, history_embeddings)
+                context_insights["context_continuity"] = continuity_score
+                
+                # Analyze topic evolution
+                if len(conversation_history) >= 2:
+                    prev_topics = await self.tag_topics(conversation_history[-1], max_topics=3)
+                    topic_overlap = len(set(topic_result.topics) & set(prev_topics.topics))
+                    context_insights["topic_consistency"] = topic_overlap / max(len(topic_result.topics), 1)
+                
+            except Exception as e:
+                logger.debug(f"Context continuity analysis failed: {e}")
+        
+        return context_insights

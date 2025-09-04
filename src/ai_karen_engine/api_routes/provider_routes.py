@@ -1138,3 +1138,559 @@ async def enable_provider(provider_name: str, registry=Depends(get_llm_registry)
     except Exception as ex:
         logger.error(f"Enable provider failed for {provider_name}: {ex}")
         return handle_api_exception(ex, f"Failed to enable provider {provider_name}")
+
+# -----------------------------
+# Extended Provider Management API Endpoints (Task 6.2)
+# -----------------------------
+
+class ProviderValidationRequest(BaseModel):
+    """Enhanced provider validation request."""
+    provider_id: str
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    config: Dict[str, Any] = Field(default_factory=dict)
+    test_model_discovery: bool = True
+    timeout: int = 10
+
+
+class ProviderValidationResponse(BaseModel):
+    """Enhanced provider validation response."""
+    provider_id: str
+    valid: bool
+    message: str
+    details: Dict[str, Any] = Field(default_factory=dict)
+    models_discovered: Optional[int] = None
+    capabilities_detected: List[str] = Field(default_factory=list)
+    response_time: Optional[float] = None
+    error_code: Optional[str] = None
+    suggestions: List[str] = Field(default_factory=list)
+
+
+class ProviderHealthResponse(BaseModel):
+    """Enhanced provider health response."""
+    provider_id: str
+    status: str  # healthy, degraded, unhealthy, unknown
+    message: str
+    last_check: float
+    response_time: Optional[float] = None
+    error_details: Optional[Dict[str, Any]] = None
+    capabilities: Dict[str, Any] = Field(default_factory=dict)
+    model_availability: Dict[str, Any] = Field(default_factory=dict)
+    rate_limit_status: Optional[Dict[str, Any]] = None
+
+
+class LLMHealthSummary(BaseModel):
+    """LLM system health summary."""
+    overall_status: str  # healthy, degraded, critical
+    healthy_providers: List[str]
+    degraded_providers: List[str]
+    unhealthy_providers: List[str]
+    total_models_available: int
+    local_models_count: int
+    remote_models_count: int
+    degraded_mode_active: bool
+    last_health_check: float
+    recommendations: List[str] = Field(default_factory=list)
+
+
+@router.post("/validate", response_model=ProviderValidationResponse)
+async def validate_provider_enhanced(
+    request: ProviderValidationRequest,
+    registry=Depends(get_llm_registry)
+):
+    """
+    Enhanced API key validation with detailed feedback and model discovery.
+    
+    This endpoint provides real-time validation with comprehensive feedback,
+    model discovery testing, and actionable suggestions for configuration issues.
+    """
+    start_time = time.time()
+    
+    try:
+        provider_id = request.provider_id
+        
+        # Get provider spec
+        spec = registry.get_provider_spec(provider_id)
+        if not spec:
+            return ProviderValidationResponse(
+                provider_id=provider_id,
+                valid=False,
+                message=f"Provider '{provider_id}' not found",
+                error_code="PROVIDER_NOT_FOUND",
+                suggestions=[
+                    "Check the provider ID spelling",
+                    "Ensure the provider is registered in the system",
+                    f"Available providers: {', '.join(registry.list_providers())}"
+                ]
+            )
+        
+        # Check if provider requires API key
+        if not spec.requires_api_key:
+            return ProviderValidationResponse(
+                provider_id=provider_id,
+                valid=True,
+                message=f"Provider '{provider_id}' does not require API key validation",
+                details={"provider_type": "local", "requires_setup": False},
+                models_discovered=len(spec.fallback_models),
+                capabilities_detected=list(spec.capabilities),
+                response_time=time.time() - start_time
+            )
+        
+        # Validate API key is provided
+        api_key = request.api_key
+        if not api_key:
+            return ProviderValidationResponse(
+                provider_id=provider_id,
+                valid=False,
+                message="API key is required for this provider",
+                error_code="API_KEY_MISSING",
+                suggestions=[
+                    f"Obtain an API key from {spec.description}",
+                    "Check environment variables for existing key",
+                    "Ensure the API key is properly formatted"
+                ]
+            )
+        
+        # Perform validation using dynamic provider system
+        try:
+            from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_manager
+            
+            provider_manager = get_dynamic_provider_manager()
+            
+            # Validate API key
+            validation_config = {
+                "api_key": api_key,
+                "base_url": request.base_url,
+                **request.config
+            }
+            
+            validation_result = await provider_manager.validate_api_key(provider_id, validation_config)
+            
+            response = ProviderValidationResponse(
+                provider_id=provider_id,
+                valid=validation_result["valid"],
+                message=validation_result["message"],
+                response_time=time.time() - start_time
+            )
+            
+            if validation_result["valid"]:
+                # Test model discovery if requested
+                if request.test_model_discovery:
+                    try:
+                        models = await provider_manager.discover_models(provider_id, force_refresh=True)
+                        response.models_discovered = len(models)
+                        response.details["model_discovery"] = "successful"
+                        response.details["sample_models"] = [m.get("id", "unknown") for m in models[:3]]
+                    except Exception as e:
+                        logger.warning(f"Model discovery failed during validation for {provider_id}: {e}")
+                        response.models_discovered = len(spec.fallback_models)
+                        response.details["model_discovery"] = "failed"
+                        response.details["model_discovery_error"] = str(e)
+                        response.suggestions.append("Model discovery failed, but API key is valid")
+                
+                # Detect capabilities
+                response.capabilities_detected = list(spec.capabilities)
+                response.details["provider_type"] = "remote"
+                response.details["api_base_url"] = getattr(spec, "api_base_url", None)
+                
+            else:
+                # Provide specific error guidance
+                error_message = validation_result["message"].lower()
+                if "invalid" in error_message or "unauthorized" in error_message:
+                    response.error_code = "INVALID_API_KEY"
+                    response.suggestions = [
+                        "Verify the API key is correct and active",
+                        "Check if the API key has the required permissions",
+                        "Ensure the API key hasn't expired"
+                    ]
+                elif "rate limit" in error_message:
+                    response.error_code = "RATE_LIMITED"
+                    response.suggestions = [
+                        "Wait before retrying the validation",
+                        "Check your API usage limits",
+                        "Consider upgrading your API plan"
+                    ]
+                elif "timeout" in error_message:
+                    response.error_code = "TIMEOUT"
+                    response.suggestions = [
+                        "Check your internet connection",
+                        "Try again in a few moments",
+                        "Verify the provider's service status"
+                    ]
+                else:
+                    response.error_code = "VALIDATION_FAILED"
+                    response.suggestions = [
+                        "Check the provider's documentation",
+                        "Verify your account status",
+                        "Contact the provider's support if the issue persists"
+                    ]
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Enhanced validation failed for {provider_id}: {e}")
+            return ProviderValidationResponse(
+                provider_id=provider_id,
+                valid=False,
+                message=f"Validation error: {str(e)}",
+                error_code="VALIDATION_ERROR",
+                response_time=time.time() - start_time,
+                suggestions=[
+                    "Check your network connection",
+                    "Verify the provider service is available",
+                    "Try again in a few moments"
+                ]
+            )
+        
+    except Exception as ex:
+        logger.error(f"Failed to validate provider {request.provider_id}: {ex}")
+        return ProviderValidationResponse(
+            provider_id=request.provider_id,
+            valid=False,
+            message=f"System error during validation: {str(ex)}",
+            error_code="SYSTEM_ERROR",
+            response_time=time.time() - start_time
+        )
+
+
+@router.get("/{provider_id}/models/dynamic", response_model=List[ModelInfo])
+async def get_provider_models_dynamic(
+    provider_id: str,
+    force_refresh: bool = False,
+    include_fallback: bool = True,
+    registry=Depends(get_llm_registry)
+):
+    """
+    Get models for a provider with dynamic discovery and intelligent fallbacks.
+    
+    This endpoint attempts live model discovery from the provider API and falls back
+    to curated model lists when the API is unavailable, providing a robust model
+    listing experience.
+    """
+    try:
+        spec = registry.get_provider_spec(provider_id)
+        if not spec:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Provider '{provider_id}' not found"
+            )
+        
+        models = []
+        
+        # Try dynamic model discovery first
+        try:
+            from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_manager
+            
+            provider_manager = get_dynamic_provider_manager()
+            discovered_models = await provider_manager.discover_models(provider_id, force_refresh=force_refresh)
+            
+            if discovered_models:
+                for model_data in discovered_models:
+                    model_info = ModelInfo(
+                        id=model_data.get("id", ""),
+                        name=model_data.get("name", model_data.get("id", "")),
+                        provider=provider_id,
+                        family=model_data.get("family", ""),
+                        format=model_data.get("format", ""),
+                        size=model_data.get("size"),
+                        parameters=model_data.get("parameters"),
+                        quantization=model_data.get("quantization"),
+                        context_length=model_data.get("context_length"),
+                        capabilities=model_data.get("capabilities", []),
+                        local_path=model_data.get("local_path"),
+                        download_url=model_data.get("download_url"),
+                        license=model_data.get("license"),
+                        description=model_data.get("description", "")
+                    )
+                    models.append(model_info)
+                
+                logger.info(f"Successfully discovered {len(models)} models for {provider_id}")
+                return models
+            
+        except Exception as e:
+            logger.warning(f"Dynamic model discovery failed for {provider_id}: {e}")
+        
+        # Fall back to curated models if discovery failed or no models found
+        if include_fallback and spec.fallback_models:
+            logger.info(f"Using fallback models for {provider_id}")
+            for model_data in spec.fallback_models:
+                model_info = ModelInfo(
+                    id=model_data.get("id", ""),
+                    name=model_data.get("name", model_data.get("id", "")),
+                    provider=provider_id,
+                    family=model_data.get("family", ""),
+                    format=model_data.get("format", ""),
+                    parameters=model_data.get("parameters"),
+                    context_length=model_data.get("context_length"),
+                    capabilities=model_data.get("capabilities", []),
+                    description=model_data.get("description", "Curated model (API discovery unavailable)")
+                )
+                models.append(model_info)
+        
+        return models
+        
+    except HTTPException:
+        raise
+    except Exception as ex:
+        logger.error(f"Failed to get models for provider {provider_id}: {ex}")
+        raise handle_api_exception(ex, f"Failed to get models for provider {provider_id}")
+
+
+@router.get("/health/llms", response_model=LLMHealthSummary)
+async def get_llm_health_summary(registry=Depends(get_llm_registry)):
+    """
+    Get comprehensive health summary for all LLM providers and runtimes.
+    
+    This endpoint provides a system-wide health overview including provider status,
+    model availability, and recommendations for improving system reliability.
+    """
+    try:
+        start_time = time.time()
+        
+        # Get all LLM providers
+        llm_providers = registry.list_llm_providers()
+        
+        healthy_providers = []
+        degraded_providers = []
+        unhealthy_providers = []
+        
+        total_models = 0
+        local_models = 0
+        remote_models = 0
+        
+        # Check health of each provider
+        for provider_name in llm_providers:
+            try:
+                health = registry.health_check(f"provider:{provider_name}")
+                spec = registry.get_provider_spec(provider_name)
+                
+                if health.status == "healthy":
+                    healthy_providers.append(provider_name)
+                elif health.status == "degraded":
+                    degraded_providers.append(provider_name)
+                else:
+                    unhealthy_providers.append(provider_name)
+                
+                # Count models
+                if spec:
+                    model_count = len(spec.fallback_models)
+                    total_models += model_count
+                    
+                    if spec.requires_api_key:
+                        remote_models += model_count
+                    else:
+                        local_models += model_count
+                        
+            except Exception as e:
+                logger.warning(f"Health check failed for {provider_name}: {e}")
+                unhealthy_providers.append(provider_name)
+        
+        # Determine overall system status
+        total_providers = len(llm_providers)
+        healthy_ratio = len(healthy_providers) / total_providers if total_providers > 0 else 0
+        
+        if healthy_ratio >= 0.8:
+            overall_status = "healthy"
+        elif healthy_ratio >= 0.5:
+            overall_status = "degraded"
+        else:
+            overall_status = "critical"
+        
+        # Check if degraded mode is active
+        degraded_mode_active = overall_status in ["degraded", "critical"]
+        
+        # Generate recommendations
+        recommendations = []
+        
+        if len(unhealthy_providers) > 0:
+            recommendations.append(f"Check configuration for unhealthy providers: {', '.join(unhealthy_providers)}")
+        
+        if len(degraded_providers) > 0:
+            recommendations.append(f"Monitor degraded providers: {', '.join(degraded_providers)}")
+        
+        if local_models == 0:
+            recommendations.append("Consider setting up local models for offline capability")
+        
+        if remote_models == 0 and len(healthy_providers) == 0:
+            recommendations.append("Configure at least one cloud provider for enhanced capabilities")
+        
+        if degraded_mode_active:
+            recommendations.append("System is in degraded mode - check provider configurations and network connectivity")
+        
+        if total_models < 5:
+            recommendations.append("Consider adding more model options for better flexibility")
+        
+        return LLMHealthSummary(
+            overall_status=overall_status,
+            healthy_providers=healthy_providers,
+            degraded_providers=degraded_providers,
+            unhealthy_providers=unhealthy_providers,
+            total_models_available=total_models,
+            local_models_count=local_models,
+            remote_models_count=remote_models,
+            degraded_mode_active=degraded_mode_active,
+            last_health_check=start_time,
+            recommendations=recommendations
+        )
+        
+    except Exception as ex:
+        logger.error(f"Failed to get LLM health summary: {ex}")
+        raise handle_api_exception(ex, "Failed to get LLM health summary")
+
+
+@router.get("/{provider_id}/health/detailed", response_model=ProviderHealthResponse)
+async def get_provider_health_detailed(
+    provider_id: str,
+    include_models: bool = True,
+    registry=Depends(get_llm_registry)
+):
+    """
+    Get detailed health information for a specific provider.
+    
+    This endpoint provides comprehensive health diagnostics including model availability,
+    rate limiting status, and detailed error information for troubleshooting.
+    """
+    try:
+        spec = registry.get_provider_spec(provider_id)
+        if not spec:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Provider '{provider_id}' not found"
+            )
+        
+        start_time = time.time()
+        
+        # Perform health check
+        health = registry.health_check(f"provider:{provider_id}")
+        
+        response = ProviderHealthResponse(
+            provider_id=provider_id,
+            status=health.status,
+            message=health.message or f"Health check for {provider_id}",
+            last_check=health.last_check or start_time,
+            response_time=health.response_time,
+            capabilities={
+                "requires_api_key": spec.requires_api_key,
+                "supports_streaming": "streaming" in spec.capabilities,
+                "supports_embeddings": "embeddings" in spec.capabilities,
+                "supports_function_calling": "function_calling" in spec.capabilities,
+                "local_execution": "local_execution" in spec.capabilities,
+                "provider_type": getattr(spec, "provider_type", "unknown")
+            }
+        )
+        
+        # Add error details if unhealthy
+        if health.status != "healthy" and health.error_message:
+            response.error_details = {
+                "error_message": health.error_message,
+                "error_type": "health_check_failed",
+                "timestamp": health.last_check
+            }
+        
+        # Check model availability if requested
+        if include_models:
+            try:
+                # Try to get model count
+                if spec.discover:
+                    try:
+                        models = spec.discover()
+                        model_count = len(models) if models else 0
+                        response.model_availability = {
+                            "total_models": model_count,
+                            "discovery_successful": True,
+                            "last_discovery": time.time()
+                        }
+                    except Exception as e:
+                        response.model_availability = {
+                            "total_models": len(spec.fallback_models),
+                            "discovery_successful": False,
+                            "discovery_error": str(e),
+                            "fallback_models_available": len(spec.fallback_models)
+                        }
+                else:
+                    response.model_availability = {
+                        "total_models": len(spec.fallback_models),
+                        "discovery_supported": False,
+                        "fallback_models_available": len(spec.fallback_models)
+                    }
+                    
+            except Exception as e:
+                logger.warning(f"Failed to check model availability for {provider_id}: {e}")
+                response.model_availability = {
+                    "error": str(e),
+                    "check_failed": True
+                }
+        
+        # Check rate limiting status for API-based providers
+        if spec.requires_api_key:
+            try:
+                # This would be implemented based on provider-specific rate limiting info
+                response.rate_limit_status = {
+                    "rate_limited": False,
+                    "requests_remaining": "unknown",
+                    "reset_time": None,
+                    "note": "Rate limit status not implemented for this provider"
+                }
+            except Exception:
+                pass
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as ex:
+        logger.error(f"Failed to get detailed health for provider {provider_id}: {ex}")
+        raise handle_api_exception(ex, f"Failed to get detailed health for provider {provider_id}")
+
+
+@router.post("/{provider_id}/refresh-models")
+async def refresh_provider_models(
+    provider_id: str,
+    registry=Depends(get_llm_registry)
+):
+    """
+    Force refresh of model cache for a specific provider.
+    
+    This endpoint triggers a fresh model discovery from the provider API,
+    bypassing any cached results.
+    """
+    try:
+        spec = registry.get_provider_spec(provider_id)
+        if not spec:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Provider '{provider_id}' not found"
+            )
+        
+        start_time = time.time()
+        
+        # Force refresh using dynamic provider system
+        try:
+            from ai_karen_engine.integrations.dynamic_provider_system import get_dynamic_provider_manager
+            
+            provider_manager = get_dynamic_provider_manager()
+            models = await provider_manager.discover_models(provider_id, force_refresh=True)
+            
+            return {
+                "provider_id": provider_id,
+                "success": True,
+                "models_discovered": len(models),
+                "refresh_time": time.time() - start_time,
+                "message": f"Successfully refreshed {len(models)} models for {provider_id}"
+            }
+            
+        except Exception as e:
+            logger.error(f"Model refresh failed for {provider_id}: {e}")
+            return {
+                "provider_id": provider_id,
+                "success": False,
+                "error": str(e),
+                "refresh_time": time.time() - start_time,
+                "message": f"Failed to refresh models for {provider_id}: {str(e)}"
+            }
+        
+    except HTTPException:
+        raise
+    except Exception as ex:
+        logger.error(f"Failed to refresh models for provider {provider_id}: {ex}")
+        raise handle_api_exception(ex, f"Failed to refresh models for provider {provider_id}")

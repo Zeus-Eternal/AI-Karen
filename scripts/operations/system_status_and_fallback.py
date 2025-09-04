@@ -127,7 +127,7 @@ async def check_model_availability():
         logger.info(f"Found {len(gguf_models)} GGUF models and {len(bin_models)} binary models")
         
         # Check specific fallback model
-        tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+        tinyllama_path = models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
         has_fallback_model = tinyllama_path.exists()
         
         # Check transformers cache

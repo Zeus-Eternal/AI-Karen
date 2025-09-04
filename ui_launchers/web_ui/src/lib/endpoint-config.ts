@@ -313,6 +313,10 @@ export class ConfigManager {
    * Get the primary backend URL
    */
   public getBackendUrl(): string {
+    // In the browser, always route through Next.js API to avoid CORS and port issues
+    if (typeof window !== 'undefined') {
+      return '';
+    }
     return this.config.backendUrl;
   }
 

@@ -36,8 +36,8 @@ class SystemInitializer:
         self.default_models = {
             "llama-cpp": [
                 {
-                    "name": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
-                    "url": "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                    "name": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                    "url": "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
                     "size_mb": 669,
                     "description": "Small efficient model for basic tasks"
                 }

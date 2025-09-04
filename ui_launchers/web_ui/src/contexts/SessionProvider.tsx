@@ -10,6 +10,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { safeError, safeWarn } from '@/lib/safe-console';
 import {
   bootSession, 
   ensureToken, 
@@ -178,7 +179,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       
       console.log('Login successful');
     } catch (error: any) {
-      console.error('Login failed:', error);
+      safeError('Login failed:', error);
       onSessionError?.(error);
       throw error;
     } finally {
@@ -193,7 +194,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       await sessionLogout();
       console.log('Logout successful');
     } catch (error: any) {
-      console.warn('Logout request failed:', error);
+      safeWarn('Logout request failed:', error);
       onSessionError?.(error);
     } finally {
       const newState = updateSessionState();
@@ -215,7 +216,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       await ensureToken();
       updateSessionState();
     } catch (error: any) {
-      console.error('Token refresh failed:', error);
+      safeError('Token refresh failed:', error);
       onSessionError?.(error);
       throw error;
     }
@@ -248,7 +249,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       
       return result;
     } catch (error: any) {
-      console.error('Session recovery error:', error);
+      safeError('Session recovery error:', error);
       const failureResult: SessionRecoveryResult = {
         success: false,
         reason: 'invalid_session',

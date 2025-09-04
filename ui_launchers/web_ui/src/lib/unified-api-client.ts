@@ -11,6 +11,7 @@
  */
 
 import { getApiClient, type ApiResponse, type ApiError } from './api-client';
+import { safeError } from './safe-console';
 import { getConfigManager } from './endpoint-config';
 import { useToast } from '@/hooks/use-toast';
 
@@ -476,7 +477,7 @@ export class UnifiedApiClient {
    */
   private logError(operation: string, error: any): void {
     if (this.config.enableLogging) {
-      console.error(`❌ ${operation} failed:`, error);
+      safeError(`❌ ${operation} failed:`, error);
     }
   }
 }

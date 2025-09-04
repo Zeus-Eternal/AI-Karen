@@ -1,0 +1,469 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Security Monitoring Dashboard",
+    "tags": ["security", "threats", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Security Threat Level Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(http_security_threats_total{threat_level=\"critical\"}[5m]))",
+            "legendFormat": "Critical"
+          },
+          {
+            "expr": "sum(rate(http_security_threats_total{threat_level=\"high\"}[5m]))",
+            "legendFormat": "High"
+          },
+          {
+            "expr": "sum(rate(http_security_threats_total{threat_level=\"medium\"}[5m]))",
+            "legendFormat": "Medium"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "orange",
+                  "value": 5
+                },
+                {
+                  "color": "red",
+                  "value": 10
+                }
+              ]
+            },
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Real-time Security Events",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (threat_level) (rate(http_security_threats_total[1m]))",
+            "legendFormat": "{{threat_level}} threats"
+          },
+          {
+            "expr": "sum(rate(http_blocked_requests_total[1m]))",
+            "legendFormat": "Blocked requests"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "Events per second",
+              "drawStyle": "line",
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "pointSize": 5,
+              "showPoints": "auto"
+            },
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 3,
+        "title": "Attack Categories Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (pattern_category) (rate(http_attack_patterns_detected_total[1h]))",
+            "legendFormat": "{{pattern_category}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 4,
+        "title": "Top Attacked Endpoints",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, sum by (endpoint) (rate(http_blocked_requests_total[1h])))",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 5,
+        "title": "Client Reputation Analysis",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "sum by (reputation_category) (rate(http_client_reputation_score_count[1h]))",
+            "legendFormat": "{{reputation_category}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-RdYlGr",
+              "reverse": true
+            },
+            "custom": {
+              "displayMode": "gradient",
+              "orientation": "horizontal"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 10
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 6,
+        "title": "Security Tool Detection",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(http_user_agent_categories_total{category=\"security_tool\"}[5m]))",
+            "legendFormat": "Security tools detected"
+          },
+          {
+            "expr": "sum(rate(http_user_agent_categories_total{category=\"bot\"}[5m]))",
+            "legendFormat": "Bots detected"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "Detections per second",
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "lineWidth": 2
+            },
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        }
+      },
+      {
+        "id": 7,
+        "title": "Threat Confidence Scores",
+        "type": "histogram",
+        "targets": [
+          {
+            "expr": "sum by (le) (rate(http_security_threat_confidence_bucket[1h]))",
+            "legendFormat": "Confidence score distribution"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-BlPu"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        }
+      },
+      {
+        "id": 8,
+        "title": "Rate Limiting Effectiveness",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (rule_name) (rate(http_rate_limit_events_total[5m]))",
+            "legendFormat": "{{rule_name}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "Rate limit events/sec",
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "lineWidth": 1,
+              "stacking": {
+                "mode": "normal"
+              }
+            },
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        }
+      },
+      {
+        "id": 9,
+        "title": "Geographic Threat Heatmap",
+        "type": "geomap",
+        "targets": [
+          {
+            "expr": "sum by (country) (rate(http_security_threats_total[1h]))",
+            "legendFormat": "{{country}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-RdYlBu",
+              "reverse": true
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 40
+        }
+      },
+      {
+        "id": 10,
+        "title": "Attack Pattern Timeline",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (pattern_type) (rate(http_attack_patterns_detected_total{pattern_category=\"injection\"}[5m]))",
+            "legendFormat": "{{pattern_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "Patterns detected/sec",
+              "drawStyle": "line",
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "pointSize": 5
+            },
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 48
+        }
+      },
+      {
+        "id": 11,
+        "title": "Suspicious Activity Indicators",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(http_suspicious_clients_total{activity_type=\"high_frequency\"}[5m]))",
+            "legendFormat": "High frequency requests"
+          },
+          {
+            "expr": "sum(rate(http_suspicious_clients_total{activity_type=\"unusual_patterns\"}[5m]))",
+            "legendFormat": "Unusual patterns"
+          },
+          {
+            "expr": "sum(rate(http_suspicious_clients_total{activity_type=\"anomalous_behavior\"}[5m]))",
+            "legendFormat": "Anomalous behavior"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            },
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 56
+        }
+      },
+      {
+        "id": 12,
+        "title": "Threat Intelligence Growth",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "http_threat_intelligence_entries_total",
+            "legendFormat": "{{entry_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "Total entries",
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "lineWidth": 2
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 64
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "timepicker": {},
+    "timezone": "",
+    "title": "Security Monitoring Dashboard",
+    "uid": "security-monitoring",
+    "version": 1
+  }
+}

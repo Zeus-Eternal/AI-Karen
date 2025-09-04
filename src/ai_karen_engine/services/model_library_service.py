@@ -249,8 +249,8 @@ class ModelMetadataService:
                         "quality_score": "good"
                     }
                 ),
-                "download_url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
-                "filename": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                "download_url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                "filename": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
                 "checksum": "sha256:placeholder_checksum_for_validation"
             },
             "tinyllama-1.1b-instruct-q4": {
@@ -335,6 +335,14 @@ class ModelLibraryService:
         
         # Load existing registry
         self.registry = self._load_registry()
+        
+        # Model cache with invalidation tracking
+        self._model_cache: Dict[str, List[ModelInfo]] = {}
+        self._cache_timestamp: Optional[float] = None
+        self._cache_ttl: int = 300  # 5 minutes default TTL
+        self._registry_mtime: Optional[float] = None
+        self._models_dir_mtime: Optional[float] = None
+        self._cache_lock = threading.Lock()
     
     def _load_registry(self) -> Dict[str, Any]:
         """Load existing model registry and extend with download metadata."""
@@ -381,13 +389,141 @@ class ModelLibraryService:
         except Exception as e:
             logger.error(f"Failed to save model registry: {e}")
     
-    def get_available_models(self) -> List[ModelInfo]:
-        """Get all available models (local + remote)."""
+    def get_available_models(self, force_refresh: bool = False) -> List[ModelInfo]:
+        """Get all available models (local + remote) with caching."""
+        with self._cache_lock:
+            # Check if cache is valid and not forced refresh
+            if not force_refresh and self._is_cache_valid():
+                cached_models = self._model_cache.get("all")
+                if cached_models:
+                    logger.debug(f"Returning {len(cached_models)} models from cache")
+                    return cached_models.copy()
+            
+            # Cache is invalid or refresh forced, rebuild
+            logger.info("Rebuilding model cache...")
+            models = self._build_model_list()
+            
+            # Update cache
+            self._model_cache["all"] = models
+            self._cache_timestamp = time.time()
+            self._update_cache_mtimes()
+            
+            logger.info(f"Model cache updated with {len(models)} models")
+            return models.copy()
+    
+    def _is_cache_valid(self) -> bool:
+        """Check if the current cache is still valid."""
+        if not self._cache_timestamp or "all" not in self._model_cache:
+            return False
+        
+        # Check TTL
+        if time.time() - self._cache_timestamp > self._cache_ttl:
+            logger.debug("Cache expired due to TTL")
+            return False
+        
+        # Check if registry file has been modified
+        try:
+            if self.registry_path.exists():
+                current_registry_mtime = self.registry_path.stat().st_mtime
+                if self._registry_mtime is None or current_registry_mtime > self._registry_mtime:
+                    logger.debug("Cache invalidated due to registry file change")
+                    return False
+        except Exception as e:
+            logger.warning(f"Failed to check registry mtime: {e}")
+            return False
+        
+        # Check if models directory has been modified
+        try:
+            if self.models_dir.exists():
+                current_models_mtime = self._get_directory_mtime(self.models_dir)
+                if self._models_dir_mtime is None or current_models_mtime > self._models_dir_mtime:
+                    logger.debug("Cache invalidated due to models directory change")
+                    return False
+        except Exception as e:
+            logger.warning(f"Failed to check models directory mtime: {e}")
+            return False
+        
+        return True
+    
+    def _get_directory_mtime(self, directory: Path) -> float:
+        """Get the most recent modification time in a directory tree."""
+        max_mtime = 0.0
+        try:
+            for item in directory.rglob("*"):
+                if item.is_file():
+                    try:
+                        mtime = item.stat().st_mtime
+                        max_mtime = max(max_mtime, mtime)
+                    except (OSError, IOError):
+                        continue
+        except Exception:
+            pass
+        return max_mtime
+    
+    def _update_cache_mtimes(self):
+        """Update cached modification times."""
+        try:
+            if self.registry_path.exists():
+                self._registry_mtime = self.registry_path.stat().st_mtime
+        except Exception:
+            self._registry_mtime = None
+        
+        try:
+            if self.models_dir.exists():
+                self._models_dir_mtime = self._get_directory_mtime(self.models_dir)
+        except Exception:
+            self._models_dir_mtime = None
+    
+    def _build_model_list(self) -> List[ModelInfo]:
+        """Build the complete model list from registry and predefined models."""
         models = []
         
         # Add local models from registry
         for model_data in self.registry["models"]:
             model_info = self._create_model_info_from_registry(model_data)
+            if model_info:
+                models.append(model_info)
+        
+        # Add predefined models that aren't already local
+        predefined = self.metadata_service.get_predefined_models()
+        local_model_ids = {model.id for model in models}
+        
+        for model_id, model_data in predefined.items():
+            if model_id not in local_model_ids:
+                model_info = self._create_model_info_from_predefined(model_data)
+                models.append(model_info)
+        
+        return models
+    
+    def get_available_models_fast(self, force_refresh: bool = False) -> List[ModelInfo]:
+        """Get all available models with optimized disk usage calculation and caching."""
+        with self._cache_lock:
+            # Check if cache is valid and not forced refresh
+            if not force_refresh and self._is_cache_valid():
+                cached_models = self._model_cache.get("fast")
+                if cached_models:
+                    logger.debug(f"Returning {len(cached_models)} models from fast cache")
+                    return cached_models.copy()
+            
+            # Cache is invalid or refresh forced, rebuild
+            logger.info("Rebuilding fast model cache...")
+            models = self._build_model_list_fast()
+            
+            # Update cache
+            self._model_cache["fast"] = models
+            self._cache_timestamp = time.time()
+            self._update_cache_mtimes()
+            
+            logger.info(f"Fast model cache updated with {len(models)} models")
+            return models.copy()
+    
+    def _build_model_list_fast(self) -> List[ModelInfo]:
+        """Build the complete model list with fast disk usage calculation."""
+        models = []
+        
+        # Add local models from registry with fast disk usage calculation
+        for model_data in self.registry["models"]:
+            model_info = self._create_model_info_from_registry_fast(model_data)
             if model_info:
                 models.append(model_info)
         
@@ -436,6 +572,64 @@ class ModelLibraryService:
                     pass
             
             # Get metadata
+            metadata_obj = self.metadata_service.get_model_metadata(model_id)
+            metadata = asdict(metadata_obj) if metadata_obj else {}
+            
+            # Get additional usage information
+            download_info = model_data.get("downloadInfo", {})
+            
+            return ModelInfo(
+                id=model_id,
+                name=model_data.get("name", model_id),
+                provider=model_data.get("provider", model_data.get("type", "unknown")),
+                size=size,
+                description=metadata.get("description", f"Local model: {model_id}"),
+                capabilities=model_data.get("capabilities", []),
+                status=status,
+                metadata=metadata,
+                local_path=str(model_path) if model_path.exists() else None,
+                disk_usage=disk_usage,
+                last_used=model_data.get("last_used"),
+                download_date=download_info.get("downloadDate")
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to create model info from registry data: {e}")
+            return None
+    
+    def _create_model_info_from_registry_fast(self, model_data: Dict[str, Any]) -> Optional[ModelInfo]:
+        """Create ModelInfo from registry data with fast disk usage calculation."""
+        try:
+            model_id = model_data.get("id", model_data.get("name", ""))
+            if not model_id or not model_id.strip():
+                return None
+            
+            # Check if model file exists
+            model_path = Path(model_data.get("path", ""))
+            status = "local" if model_path.exists() else "error"
+            
+            # Fast size calculation - only for files, skip directory recursion
+            size = 0
+            disk_usage = None
+            if model_path.exists():
+                try:
+                    if model_path.is_file():
+                        size = model_path.stat().st_size
+                        disk_usage = size
+                    else:
+                        # For directories, use cached size or estimate
+                        cached_size = model_data.get("cached_size")
+                        if cached_size:
+                            size = cached_size
+                            disk_usage = cached_size
+                        else:
+                            # Skip expensive directory scanning, use 0
+                            size = 0
+                            disk_usage = 0
+                except Exception:
+                    pass
+            
+            # Get metadata (cached)
             metadata_obj = self.metadata_service.get_model_metadata(model_id)
             metadata = asdict(metadata_obj) if metadata_obj else {}
             
@@ -564,7 +758,11 @@ class ModelLibraryService:
                 self.registry["models"].append(registry_entry)
             
             self._save_registry()
-            logger.info(f"Added {task.model_id} to model registry")
+            
+            # Invalidate cache since we added a new model
+            self._invalidate_cache()
+            
+            logger.info(f"Added {task.model_id} to model registry and invalidated cache")
             
         except Exception as e:
             logger.error(f"Failed to add downloaded model to registry: {e}")
@@ -610,6 +808,11 @@ class ModelLibraryService:
             del self.registry["models"][model_index]
             self._save_registry()
             
+            # Invalidate cache since we removed a model
+            self._invalidate_cache()
+            
+            logger.info(f"Removed {model_id} from registry and invalidated cache")
+            
             return True
             
         except Exception as e:
@@ -623,6 +826,53 @@ class ModelLibraryService:
             if model.id == model_id:
                 return model
         return None
+    
+    def refresh_model_cache(self) -> Dict[str, Any]:
+        """Force refresh the model cache and return cache statistics."""
+        with self._cache_lock:
+            old_count = len(self._model_cache.get("all", []))
+            
+            # Clear cache
+            self._model_cache.clear()
+            self._cache_timestamp = None
+            
+            # Rebuild cache
+            models = self.get_available_models(force_refresh=True)
+            
+            return {
+                "cache_refreshed": True,
+                "timestamp": self._cache_timestamp,
+                "old_model_count": old_count,
+                "new_model_count": len(models),
+                "cache_keys": list(self._model_cache.keys())
+            }
+    
+    def get_cache_info(self) -> Dict[str, Any]:
+        """Get information about the current cache state."""
+        with self._cache_lock:
+            return {
+                "cache_valid": self._is_cache_valid(),
+                "cache_timestamp": self._cache_timestamp,
+                "cache_age_seconds": time.time() - self._cache_timestamp if self._cache_timestamp else None,
+                "cache_ttl_seconds": self._cache_ttl,
+                "cached_model_count": len(self._model_cache.get("all", [])),
+                "cache_keys": list(self._model_cache.keys()),
+                "registry_mtime": self._registry_mtime,
+                "models_dir_mtime": self._models_dir_mtime
+            }
+    
+    def set_cache_ttl(self, ttl_seconds: int):
+        """Set the cache time-to-live in seconds."""
+        with self._cache_lock:
+            self._cache_ttl = max(30, ttl_seconds)  # Minimum 30 seconds
+            logger.info(f"Cache TTL set to {self._cache_ttl} seconds")
+    
+    def _invalidate_cache(self):
+        """Invalidate the current cache."""
+        with self._cache_lock:
+            self._model_cache.clear()
+            self._cache_timestamp = None
+            logger.debug("Model cache invalidated")
     
     def validate_checksum(self, file_path: Path, expected_checksum: str) -> bool:
         """Validate file checksum with enhanced security."""

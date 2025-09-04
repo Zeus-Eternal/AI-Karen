@@ -1,3 +1,5 @@
+import { safeError } from './safe-console'
+
 const STORAGE_KEY = 'kari_api_key'
 
 export function storeApiKey(key: string) {
@@ -5,7 +7,7 @@ export function storeApiKey(key: string) {
     const encoded = btoa(key)
     sessionStorage.setItem(STORAGE_KEY, encoded)
   } catch (err) {
-    console.error('Failed to store API key', err)
+    safeError('Failed to store API key', err)
   }
 }
 

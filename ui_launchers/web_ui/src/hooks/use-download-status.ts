@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { safeError } from '@/lib/safe-console';
 import { useToast } from "@/hooks/use-toast";
 import { getKarenBackend } from '@/lib/karen-backend';
 import { 
@@ -100,7 +101,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
       }
       return null;
     } catch (error) {
-      console.error(`Failed to get download status for task ${taskId}:`, error);
+      safeError(`Failed to get download status for task ${taskId}:`, error);
       return null;
     }
   }, [backend]);
@@ -120,7 +121,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
 
       setDownloadTasks(updatedTasks);
     } catch (error) {
-      console.error('Failed to refresh downloads:', error);
+      safeError('Failed to refresh downloads:', error);
     }
   }, [downloadTasks, getDownloadStatus]);
 
@@ -164,7 +165,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
 
       showInfo("Download Cancelled", "The download has been cancelled successfully.");
     } catch (error) {
-      console.error(`Failed to cancel download ${taskId}:`, error);
+      safeError(`Failed to cancel download ${taskId}:`, error);
       handleDownloadError(error, "download");
       throw error;
     }
@@ -215,7 +216,7 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
         }
       }
     } catch (error) {
-      console.error(`Failed to retry download ${taskId}:`, error);
+      safeError(`Failed to retry download ${taskId}:`, error);
       handleDownloadError(error, task?.modelId || "unknown model");
       throw error;
     }

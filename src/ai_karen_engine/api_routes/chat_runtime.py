@@ -18,6 +18,7 @@ from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
 from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.core.response.factory import get_global_orchestrator
+from ai_karen_engine.integrations.llm_registry import get_registry
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["chat-runtime"])
@@ -219,6 +220,17 @@ async def chat_runtime(
             },
         )
 
+        # Route via LLMRegistry.get_provider_with_routing to select provider/model
+        reg = get_registry()
+        _routed = await reg.get_provider_with_routing(
+            user_ctx={"user_id": user_context.get("user_id", "anon")},
+            query=request.message,
+            task_type="chat",
+            khrp_step="output_rendering",
+            requirements={}
+        )
+        kire_decision = _routed.get("decision")
+
         chat_request = ChatRequest(
             message=request.message,
             user_id=user_context.get("user_id"),
@@ -230,6 +242,18 @@ async def chat_runtime(
                 **(request.context or {}),
                 "platform": request.platform,
                 "request_metadata": request_metadata,
+                # Hint orchestrator to use the KIRE-selected model first
+                **({
+                    "preferred_llm_provider": kire_decision.provider,
+                    "preferred_model": kire_decision.model,
+                    "kire": {
+                        "provider": kire_decision.provider,
+                        "model": kire_decision.model,
+                        "reason": kire_decision.reasoning,
+                        "confidence": kire_decision.confidence,
+                        "fallback_chain": kire_decision.fallback_chain,
+                    },
+                } if kire_decision else {}),
             },
         )
 
@@ -247,6 +271,15 @@ async def chat_runtime(
                 "processing_time": orchestrator_response.processing_time,
                 "latency_ms": latency_ms,
                 **orchestrator_response.metadata,
+                # Surface KIRE decision in API response metadata
+                **({
+                    "kire_metadata": {
+                        "provider": kire_decision.provider,
+                        "model": kire_decision.model,
+                        "reason": kire_decision.reasoning,
+                        "confidence": kire_decision.confidence,
+                    }
+                } if kire_decision else {}),
             },
         )
 
@@ -307,7 +340,18 @@ async def chat_runtime_stream(
                 },
             )
 
-            yield f"data: {json.dumps({'type': 'metadata', 'data': {'conversation_id': conversation_id, 'correlation_id': correlation_id}})}\n\n"
+            # KIRE routing for streaming via registry; send early metadata with selection
+            reg = get_registry()
+            _routed = await reg.get_provider_with_routing(
+                user_ctx={"user_id": user_context.get("user_id", "anon")},
+                query=request.message,
+                task_type="chat",
+                khrp_step="output_rendering",
+                requirements={}
+            )
+            kire_decision = _routed.get("decision")
+
+            yield f"data: {json.dumps({'type': 'metadata', 'data': {'conversation_id': conversation_id, 'correlation_id': correlation_id, 'kire': {'provider': kire_decision.provider, 'model': kire_decision.model, 'reason': kire_decision.reasoning, 'confidence': kire_decision.confidence}}})}\n\n"
 
             chat_request = ChatRequest(
                 message=request.message,
@@ -320,6 +364,18 @@ async def chat_runtime_stream(
                     **(request.context or {}),
                     "platform": request.platform,
                     "request_metadata": request_metadata,
+                    # Hint orchestrator to use the KIRE-selected model first
+                    **({
+                        "preferred_llm_provider": kire_decision.provider,
+                        "preferred_model": kire_decision.model,
+                        "kire": {
+                            "provider": kire_decision.provider,
+                            "model": kire_decision.model,
+                            "reason": kire_decision.reasoning,
+                            "confidence": kire_decision.confidence,
+                            "fallback_chain": kire_decision.fallback_chain,
+                        },
+                    } if kire_decision else {}),
                 },
             )
 

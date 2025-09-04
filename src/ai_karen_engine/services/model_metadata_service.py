@@ -132,8 +132,8 @@ class ModelMetadataService:
                     memory_usage_mb=1024
                 ),
                 "download_info": {
-                    "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
-                    "filename": "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                    "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                    "filename": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
                     "checksum": "sha256:placeholder_checksum_for_validation",
                     "mirrors": []
                 }

@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { safeError, safeWarn } from '@/lib/safe-console';
 import { getEnhancedApiClient } from '@/lib/auth/api-client-enhanced';
 
 export interface ErrorAnalysisRequest {
@@ -139,7 +140,7 @@ export function useIntelligentError(options: UseIntelligentErrorOptions = {}): U
         return;
       }
 
-      console.error('Error analysis failed:', err);
+      safeError('Error analysis failed:', err);
       const errorMessage = err.message || 'Failed to analyze error';
       setAnalysisError(errorMessage);
       onAnalysisError?.(err);

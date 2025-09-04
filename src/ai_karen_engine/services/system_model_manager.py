@@ -125,7 +125,7 @@ class SystemModelManager:
                 "name": "Tiny LLaMA",
                 "family": "llama",
                 "format": "gguf",
-                "path": self.models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
+                "path": self.models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
                 "config_class": LlamaCppConfig,
                 "capabilities": ["text-generation", "chat", "local-inference"],
                 "runtime_compatibility": ["llama-cpp"]

@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { getTelemetryService } from '@/lib/telemetry';
+import { safeWarn } from '@/lib/safe-console';
 
 export interface StreamOptions {
   url: string;
@@ -318,7 +319,7 @@ export const useStreamingController = (): StreamingController => {
             try {
               options.onToken?.(token);
             } catch (tokenError) {
-              console.warn('Error in onToken callback:', tokenError);
+              safeWarn('Error in onToken callback:', tokenError);
               // Don't break streaming for callback errors
             }
           }
@@ -359,7 +360,7 @@ export const useStreamingController = (): StreamingController => {
           try {
             options.onToken?.(token);
           } catch (tokenError) {
-            console.warn('Error in onToken callback:', tokenError);
+            safeWarn('Error in onToken callback:', tokenError);
           }
         }
       }
@@ -396,7 +397,7 @@ export const useStreamingController = (): StreamingController => {
       try {
         options.onComplete?.(fullText);
       } catch (completeError) {
-        console.warn('Error in onComplete callback:', completeError);
+        safeWarn('Error in onComplete callback:', completeError);
       }
 
     } catch (error) {
@@ -463,7 +464,7 @@ export const useStreamingController = (): StreamingController => {
       try {
         options.onError?.(err);
       } catch (errorCallbackError) {
-        console.warn('Error in onError callback:', errorCallbackError);
+        safeWarn('Error in onError callback:', errorCallbackError);
       }
     }
   }, [state.retryCount, state.metrics.tokenCount, applyBackpressure, updateMetrics, telemetryService]);

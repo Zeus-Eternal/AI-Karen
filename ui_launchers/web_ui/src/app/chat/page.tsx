@@ -151,6 +151,7 @@ function ChatView() {
           <SidebarInset className="flex-1 flex flex-col min-h-0">
             <MetaBar />
             <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6">
+              <div className="mx-auto w-full max-w-screen-lg xl:max-w-screen-xl px-4 sm:px-6">
               <ChatInterface
                 className="flex-1"
                 useCopilotKit={true}
@@ -165,6 +166,7 @@ function ChatView() {
                 enableExport={true}
                 enableSharing={false}
               />
+              </div>
             </main>
           </SidebarInset>
         </div>

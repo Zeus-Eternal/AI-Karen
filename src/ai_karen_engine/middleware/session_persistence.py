@@ -89,6 +89,8 @@ class SessionPersistenceMiddleware(BaseHTTPMiddleware):
             # Add basic provider info for settings page
             "/api/providers/public",
             "/api/models/public",
+            "/api/models/library",  # Allow model library access
+            "/api/models/stats",    # Allow model stats access
             "/api/system/info",
         }
         

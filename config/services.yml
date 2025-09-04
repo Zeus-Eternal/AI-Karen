@@ -1,0 +1,197 @@
+# Service Classification Configuration
+# This file defines service classifications, dependencies, and resource requirements
+# for runtime performance optimization.
+
+services:
+  # Essential Services - Core functionality required for basic operation
+  logging_service:
+    classification: essential
+    startup_priority: 1
+    dependencies: []
+    resource_requirements:
+      memory_mb: 32
+      cpu_cores: 0.1
+    health_check_interval: 60
+    max_restart_attempts: 5
+    graceful_shutdown_timeout: 5
+
+  config_manager:
+    classification: essential
+    startup_priority: 5
+    dependencies: []
+    resource_requirements:
+      memory_mb: 32
+      cpu_cores: 0.1
+    health_check_interval: 60
+    max_restart_attempts: 5
+    graceful_shutdown_timeout: 5
+
+  auth_service:
+    classification: essential
+    startup_priority: 10
+    dependencies: ["config_manager"]
+    resource_requirements:
+      memory_mb: 64
+      cpu_cores: 0.2
+    health_check_interval: 30
+    max_restart_attempts: 3
+    graceful_shutdown_timeout: 10
+
+  database_client:
+    classification: essential
+    startup_priority: 20
+    dependencies: ["config_manager"]
+    resource_requirements:
+      memory_mb: 128
+      cpu_cores: 0.3
+    health_check_interval: 30
+    max_restart_attempts: 3
+    graceful_shutdown_timeout: 15
+
+  # Optional Services - Feature services loaded on-demand
+  memory_service:
+    classification: optional
+    startup_priority: 50
+    dependencies: ["database_client"]
+    resource_requirements:
+      memory_mb: 256
+      cpu_cores: 0.5
+    idle_timeout: 300  # 5 minutes
+    health_check_interval: 60
+    max_restart_attempts: 2
+    graceful_shutdown_timeout: 20
+
+  conversation_service:
+    classification: optional
+    startup_priority: 60
+    dependencies: ["memory_service"]
+    resource_requirements:
+      memory_mb: 128
+      cpu_cores: 0.3
+    idle_timeout: 300  # 5 minutes
+    health_check_interval: 60
+    max_restart_attempts: 2
+    graceful_shutdown_timeout: 15
+
+  ai_orchestrator:
+    classification: optional
+    startup_priority: 70
+    dependencies: ["memory_service"]
+    resource_requirements:
+      memory_mb: 512
+      cpu_cores: 1.0
+      gpu_memory_mb: 1024
+    gpu_compatible: true
+    idle_timeout: 600  # 10 minutes
+    health_check_interval: 120
+    max_restart_attempts: 2
+    graceful_shutdown_timeout: 30
+    consolidation_group: "ai_services"
+
+  plugin_service:
+    classification: optional
+    startup_priority: 80
+    dependencies: ["config_manager"]
+    resource_requirements:
+      memory_mb: 128
+      cpu_cores: 0.3
+    idle_timeout: 600  # 10 minutes
+    health_check_interval: 120
+    max_restart_attempts: 2
+    graceful_shutdown_timeout: 15
+
+  tool_service:
+    classification: optional
+    startup_priority: 85
+    dependencies: ["config_manager"]
+    resource_requirements:
+      memory_mb: 64
+      cpu_cores: 0.2
+    idle_timeout: 600  # 10 minutes
+    health_check_interval: 120
+    max_restart_attempts: 2
+    graceful_shutdown_timeout: 10
+    consolidation_group: "utility_services"
+
+  # Background Services - Non-critical services that can be suspended
+  analytics_service:
+    classification: background
+    startup_priority: 200
+    dependencies: []
+    resource_requirements:
+      memory_mb: 64
+      cpu_cores: 0.1
+    idle_timeout: 1800  # 30 minutes
+    health_check_interval: 300
+    max_restart_attempts: 1
+    graceful_shutdown_timeout: 10
+    consolidation_group: "monitoring_services"
+
+  metrics_collector:
+    classification: background
+    startup_priority: 210
+    dependencies: []
+    resource_requirements:
+      memory_mb: 32
+      cpu_cores: 0.1
+    idle_timeout: 3600  # 1 hour
+    health_check_interval: 300
+    max_restart_attempts: 1
+    graceful_shutdown_timeout: 5
+    consolidation_group: "monitoring_services"
+
+  cleanup_service:
+    classification: background
+    startup_priority: 220
+    dependencies: []
+    resource_requirements:
+      memory_mb: 32
+      cpu_cores: 0.1
+    idle_timeout: 7200  # 2 hours
+    health_check_interval: 600
+    max_restart_attempts: 1
+    graceful_shutdown_timeout: 5
+    consolidation_group: "utility_services"
+
+  performance_monitor:
+    classification: background
+    startup_priority: 230
+    dependencies: []
+    resource_requirements:
+      memory_mb: 48
+      cpu_cores: 0.1
+    idle_timeout: 1800  # 30 minutes
+    health_check_interval: 300
+    max_restart_attempts: 1
+    graceful_shutdown_timeout: 5
+    consolidation_group: "monitoring_services"
+
+# Deployment Profiles
+deployment_profiles:
+  minimal:
+    enabled_classifications: ["essential"]
+    max_memory_mb: 512
+    max_services: 10
+    aggressive_idle_timeout: true
+    description: "Minimal deployment with only essential services"
+
+  development:
+    enabled_classifications: ["essential", "optional"]
+    max_memory_mb: 2048
+    max_services: 50
+    debug_services: true
+    description: "Development mode with debugging capabilities"
+
+  production:
+    enabled_classifications: ["essential", "optional", "background"]
+    max_memory_mb: 4096
+    max_services: 100
+    performance_optimized: true
+    description: "Full production deployment with all optimizations"
+
+  testing:
+    enabled_classifications: ["essential", "optional"]
+    max_memory_mb: 1024
+    max_services: 25
+    fast_startup: true
+    description: "Testing environment with fast startup"

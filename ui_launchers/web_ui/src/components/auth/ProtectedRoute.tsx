@@ -42,7 +42,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     runRehydration();
     // Always provide a short grace window after mount to allow session provider
     // to initialize from HttpOnly cookies, even if no localStorage tokens exist.
-    const t = setTimeout(() => setGrace(false), 1500);
+    // Increase grace period in development to allow auto-login to complete
+    const gracePeriod = process.env.NODE_ENV === 'development' ? 3000 : 1500;
+    const t = setTimeout(() => setGrace(false), gracePeriod);
     return () => clearTimeout(t);
   }, []);
 
@@ -65,6 +67,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">Loading...</p>
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 text-xs text-gray-500">
+              <p>Session Loading: {sessionLoading ? 'Yes' : 'No'}</p>
+              <p>Rehydrating: {rehydrating ? 'Yes' : 'No'}</p>
+              <p>Grace Period: {grace ? 'Active' : 'Expired'}</p>
+              <p>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
+            </div>
+          )}
         </div>
       </div>
     );

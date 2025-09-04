@@ -74,14 +74,9 @@ llm_settings.json
 .env
 .env.local
 config/llm_settings.local.json
-/src-bak
 .kren_env/
 .kiro/
 /.karen_env/bin
 /.karen_env
-/tests
-/ui_launchers/web_ui/src.bak
-/ui_launchers/web_ui/src.bak
-/tests
 /tests
 /models

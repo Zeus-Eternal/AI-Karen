@@ -1,0 +1,280 @@
+groups:
+  - name: validation_security_alerts
+    rules:
+      # Critical Security Threats
+      - alert: CriticalSecurityThreatDetected
+        expr: sum(rate(http_security_threats_total{threat_level="critical"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: validation_system
+          alert_type: security
+        annotations:
+          summary: 'Critical security threat detected in HTTP validation system'
+          description: 'Critical level security threats detected at {{ $value }} threats/sec. Immediate investigation required.'
+          runbook_url: 'https://docs.company.com/runbooks/security-threats'
+          
+      - alert: HighVolumeSecurityThreats
+        expr: sum(rate(http_security_threats_total{threat_level=~"high|critical"}[5m])) > 10
+        for: 2m
+        labels:
+          severity: critical
+          component: validation_system
+          alert_type: security
+        annotations:
+          summary: 'High volume of security threats detected'
+          description: 'High volume of security threats detected: {{ $value }} threats/sec over the last 5 minutes. Possible coordinated attack.'
+          
+      # Attack Pattern Detection
+      - alert: SQLInjectionAttackDetected
+        expr: sum(rate(http_attack_patterns_detected_total{pattern_category="injection"}[5m])) > 5
+        for: 1m
+        labels:
+          severity: high
+          component: validation_system
+          alert_type: security
+          attack_type: sql_injection
+        annotations:
+          summary: 'SQL injection attack patterns detected'
+          description: 'SQL injection attack patterns detected at {{ $value }} patterns/sec. Review blocked requests and consider IP blocking.'
+          
+      - alert: XSSAttackDetected
+        expr: sum(rate(http_attack_patterns_detected_total{pattern_category="script"}[5m])) > 10
+        for: 2m
+        labels:
+          severity: high
+          component: validation_system
+          alert_type: security
+          attack_type: xss
+        annotations:
+          summary: 'XSS attack patterns detected'
+          description: 'Cross-site scripting attack patterns detected at {{ $value }} patterns/sec.'
+          
+      - alert: PathTraversalAttackDetected
+        expr: sum(rate(http_attack_patterns_detected_total{pattern_category="traversal"}[5m])) > 3
+        for: 1m
+        labels:
+          severity: high
+          component: validation_system
+          alert_type: security
+          attack_type: path_traversal
+        annotations:
+          summary: 'Path traversal attack patterns detected'
+          description: 'Path traversal attack patterns detected at {{ $value }} patterns/sec.'
+          
+      # Rate Limiting Alerts
+      - alert: RateLimitingOverwhelmed
+        expr: sum(rate(http_rate_limit_events_total[5m])) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: validation_system
+          alert_type: rate_limiting
+        annotations:
+          summary: 'High volume of rate limiting events'
+          description: 'Rate limiting system processing {{ $value }} events/sec. May indicate DDoS or abuse.'
+          
+      - alert: AuthEndpointAbuse
+        expr: sum(rate(http_rate_limit_events_total{rule_name="auth_strict"}[5m])) > 5
+        for: 2m
+        labels:
+          severity: high
+          component: validation_system
+          alert_type: security
+          attack_type: brute_force
+        annotations:
+          summary: 'Authentication endpoint abuse detected'
+          description: 'High rate of authentication attempts blocked: {{ $value }} attempts/sec. Possible brute force attack.'
+          
+      # System Health Alerts
+      - alert: ValidationSystemUnhealthy
+        expr: http_validation_system_health < 1
+        for: 1m
+        labels:
+          severity: critical
+          component: validation_system
+          alert_type: system_health
+        annotations:
+          summary: 'Validation system component unhealthy'
+          description: 'Validation system component {{ $labels.component }} is unhealthy. System may not be protecting against threats.'
+          
+      - alert: ValidationPerformanceDegraded
+        expr: histogram_quantile(0.95, sum(rate(http_validation_duration_seconds_bucket[5m])) by (le)) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: validation_system
+          alert_type: performance
+        annotations:
+          summary: 'Validation system performance degraded'
+          description: '95th percentile validation latency is {{ $value }}s, above 100ms threshold.'
+          
+      - alert: ValidationErrorsHigh
+        expr: sum(rate(http_validation_errors_total[5m])) > 1
+        for: 3m
+        labels:
+          severity: warning
+          component: validation_system
+          alert_type: system_health
+        annotations:
+          summary: 'High rate of validation system errors'
+          description: 'Validation system errors at {{ $value }} errors/sec. Check system logs.'
+          
+      # Client Behavior Alerts
+      - alert: SuspiciousClientActivity
+        expr: sum(rate(http_suspicious_clients_total[5m])) > 20
+        for: 3m
+        labels:
+          severity: warning
+          component: validation_system
+          alert_type: security
+        annotations:
+          summary: 'High volume of suspicious client activity'
+          description: 'Suspicious client activity detected at {{ $value }} events/sec.'
+          
+      - alert: MaliciousClientDetected
+        expr: sum(rate(http_client_reputation_score_bucket{reputation_category="malicious"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: high
+          component: validation_system
+          alert_type: security
+        annotations:
+          summary: 'Malicious client detected'
+          description: 'Client with malicious reputation detected. Review threat intelligence and consider blocking.'
+          
+      # Request Anomalies
+      - alert: UnusualRequestSizes
+        expr: histogram_quantile(0.95, sum(rate(http_request_size_bytes_bucket[5m])) by (le)) > 1000000
+        for: 5m
+        labels:
+          severity: warning
+          component: validation_system
+          alert_type: anomaly
+        annotations:
+          summary: 'Unusually large requests detected'
+          description: '95th percentile request size is {{ $value }} bytes, above 1MB threshold.'
+          
+      - alert: SecurityToolsDetected
+        expr: sum(rate(http_user_agent_categories_total{category="security_tool"}[5m])) > 1
+        for: 1m
+        labels:
+          severity: high
+          component: validation_system
+          alert_type: security
+        annotations:
+          summary: 'Security scanning tools detected'
+          description: 'Security scanning tools detected at {{ $value }} requests/sec. Possible reconnaissance activity.'
+          
+      # Threat Intelligence Alerts
+      - alert: ThreatIntelligenceGrowthHigh
+        expr: increase(http_threat_intelligence_entries_total{entry_type="blocked_ips"}[1h]) > 50
+        for: 0m
+        labels:
+          severity: warning
+          component: validation_system
+          alert_type: security
+        annotations:
+          summary: 'Rapid growth in blocked IPs'
+          description: 'Threat intelligence database grew by {{ $value }} blocked IPs in the last hour.'
+          
+      # Validation Rule Effectiveness
+      - alert: ValidationRuleIneffective
+        expr: |
+          (
+            sum(rate(http_validation_requests_total{result="blocked"}[1h])) by (validation_rule) /
+            sum(rate(http_validation_requests_total[1h])) by (validation_rule)
+          ) < 0.01
+        for: 30m
+        labels:
+          severity: info
+          component: validation_system
+          alert_type: configuration
+        annotations:
+          summary: 'Validation rule may be ineffective'
+          description: 'Validation rule {{ $labels.validation_rule }} has very low block rate ({{ $value }}%). Consider reviewing rule configuration.'
+          
+      # Coordinated Attack Detection
+      - alert: CoordinatedAttackSuspected
+        expr: |
+          (
+            sum(rate(http_security_threats_total{threat_level=~"high|critical"}[5m])) > 5
+          ) and (
+            count(count by (endpoint)(rate(http_blocked_requests_total[5m]) > 0)) > 3
+          )
+        for: 2m
+        labels:
+          severity: critical
+          component: validation_system
+          alert_type: security
+          attack_type: coordinated
+        annotations:
+          summary: 'Coordinated attack suspected'
+          description: 'Multiple endpoints under attack simultaneously with high-severity threats. Possible coordinated attack campaign.'
+          
+      # Time-based Anomalies
+      - alert: UnusualNightTimeActivity
+        expr: |
+          (
+            sum(rate(http_validation_requests_total[5m])) > 100
+          ) and (
+            hour() >= 22 or hour() <= 6
+          )
+        for: 10m
+        labels:
+          severity: warning
+          component: validation_system
+          alert_type: anomaly
+        annotations:
+          summary: 'Unusual activity during off-hours'
+          description: 'High request volume ({{ $value }} req/sec) detected during night hours. May indicate automated attacks.'
+
+  - name: validation_slo_alerts
+    rules:
+      # Service Level Objective Alerts
+      - alert: ValidationLatencySLOBreach
+        expr: |
+          (
+            histogram_quantile(0.95, sum(rate(http_validation_duration_seconds_bucket[5m])) by (le)) > 0.05
+          ) and (
+            sum(rate(http_validation_requests_total[5m])) > 10
+          )
+        for: 10m
+        labels:
+          severity: warning
+          component: validation_system
+          alert_type: slo
+        annotations:
+          summary: 'Validation latency SLO breach'
+          description: '95th percentile validation latency ({{ $value }}s) exceeds SLO of 50ms for 10+ minutes.'
+          
+      - alert: ValidationAvailabilitySLOBreach
+        expr: |
+          (
+            sum(rate(http_validation_errors_total[5m])) /
+            sum(rate(http_validation_requests_total[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          component: validation_system
+          alert_type: slo
+        annotations:
+          summary: 'Validation availability SLO breach'
+          description: 'Validation error rate ({{ $value }}%) exceeds SLO of 1% for 5+ minutes.'
+          
+      - alert: SecurityDetectionSLOBreach
+        expr: |
+          (
+            sum(rate(http_security_threats_total{threat_level=~"medium|high|critical"}[1h])) == 0
+          ) and (
+            sum(rate(http_validation_requests_total[1h])) > 1000
+          )
+        for: 2h
+        labels:
+          severity: info
+          component: validation_system
+          alert_type: slo
+        annotations:
+          summary: 'No security threats detected for extended period'
+          description: 'No medium+ security threats detected in 2 hours despite {{ $value }} requests. Verify detection systems are working.'

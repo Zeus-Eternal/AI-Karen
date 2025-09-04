@@ -1,0 +1,74 @@
+{
+  "service_analysis": {
+    "services_analyzed": 7,
+    "overlaps_found": 3,
+    "candidates_identified": 5,
+    "top_candidates": [
+      [
+        "analytics_service",
+        "metrics_collector",
+        1.0
+      ],
+      [
+        "plugin_service",
+        "tool_service",
+        1.0
+      ],
+      [
+        "analytics_service",
+        "performance_monitor",
+        0.9545454545454546
+      ]
+    ]
+  },
+  "consolidation_planning": {
+    "plans_created": 3,
+    "total_memory_savings": 343,
+    "total_cpu_savings": 0.6649999999999999,
+    "scenarios": [
+      {
+        "name": "Monitoring Services Merge",
+        "services": [
+          "analytics_service",
+          "metrics_collector",
+          "performance_monitor"
+        ],
+        "type": "merge"
+      },
+      {
+        "name": "Utility Services Federation",
+        "services": [
+          "plugin_service",
+          "tool_service"
+        ],
+        "type": "federation"
+      },
+      {
+        "name": "Memory Services Proxy",
+        "services": [
+          "memory_service",
+          "conversation_service"
+        ],
+        "type": "proxy"
+      }
+    ]
+  },
+  "optimization_analysis": {
+    "batching_opportunities": 6,
+    "caching_opportunities": 4,
+    "total_memory": 944,
+    "total_cpu": 2.05,
+    "consolidation_groups": 3
+  },
+  "full_workflow": {
+    "candidate_selected": "analytics_service + metrics_collector",
+    "consolidation_potential": 1.0,
+    "validation_passed": true,
+    "execution_completed": true,
+    "estimated_savings": {
+      "memory_mb": 44.800000000000004,
+      "cpu_cores": 0.075,
+      "startup_time_seconds": 1.5
+    }
+  }
+}

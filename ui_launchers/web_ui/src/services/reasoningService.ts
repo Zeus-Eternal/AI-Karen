@@ -3,6 +3,7 @@
  */
 
 import { getConfigManager } from '@/lib/endpoint-config';
+import { safeError } from '@/lib/safe-console';
 
 export interface ReasoningRequest {
   input: string;
@@ -57,7 +58,7 @@ class ReasoningService {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Reasoning service error:', error);
+      safeError('Reasoning service error:', error);
       
       // Return a fallback response
       return {
@@ -109,7 +110,7 @@ class ReasoningService {
         };
       }
     } catch (error) {
-      console.error('Failed to get system status:', error);
+      safeError('Failed to get system status:', error);
     }
     
     return {

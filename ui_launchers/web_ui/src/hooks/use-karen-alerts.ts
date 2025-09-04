@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { safeError } from '@/lib/safe-console';
 import { alertManager } from '@/services/alertManager';
 import type {
   KarenAlert,
@@ -85,7 +86,7 @@ export function useKarenAlerts(): UseKarenAlertsReturn {
           refresh();
         }
       } catch (error) {
-        console.error('Failed to initialize AlertManager in hook:', error);
+        safeError('Failed to initialize AlertManager in hook:', error);
       }
     };
 

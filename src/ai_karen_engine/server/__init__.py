@@ -11,4 +11,29 @@ from ai_karen_engine.server.http_validator import (
     ValidationResult,
 )
 
-__all__ = ["HTTPRequestValidator", "ValidationConfig", "ValidationResult"]
+from ai_karen_engine.server.enhanced_logger import (
+    EnhancedLogger,
+    LoggingConfig,
+    SecurityEvent,
+    SecurityEventType,
+    ThreatLevel,
+    DataSanitizer,
+    SecurityAlertManager,
+    get_enhanced_logger,
+    init_enhanced_logging
+)
+
+__all__ = [
+    "HTTPRequestValidator", 
+    "ValidationConfig", 
+    "ValidationResult",
+    "EnhancedLogger",
+    "LoggingConfig",
+    "SecurityEvent",
+    "SecurityEventType", 
+    "ThreatLevel",
+    "DataSanitizer",
+    "SecurityAlertManager",
+    "get_enhanced_logger",
+    "init_enhanced_logging"
+]

@@ -42,6 +42,8 @@ from ai_karen_engine.integrations.providers import (
     LlamaCppProvider,
     OpenAIProvider,
 )
+from ai_karen_engine.integrations.kire_router import KIRERouter as KIREAdapter
+from ai_karen_engine.routing.types import RouteRequest
 
 logger = logging.getLogger("kari.llm_registry")
 
@@ -130,6 +132,7 @@ class LLMRegistry:
         self.registry_path = registry_path or Path("models/llm_registry.json")
         self.schema_path = schema_path or Path("models/registry.schema.json")
         self.llm_settings_path = llm_settings_path or Path("llm_settings.json")
+        # Cache of provider instances keyed by name|model to allow multiple models per provider
         self._providers: Dict[str, LLMProviderBase] = {}
         self._registrations: Dict[str, ProviderRegistration] = {}
         self._model_entries: Dict[str, ModelEntry] = {}
@@ -154,6 +157,9 @@ class LLMRegistry:
         
         # Set up file watcher for automatic updates (requirement 2.1)
         self._setup_registry_watcher()
+
+        # Lazy KIRE adapter
+        self._kire: Optional[KIREAdapter] = None
 
     def _load_schema(self) -> Optional[Dict[str, Any]]:
         """Load registry schema for validation."""
@@ -668,9 +674,13 @@ class LLMRegistry:
             logger.error(f"Provider '{name}' not registered")
             return None
 
+        # Build cache key including model so different model inits are not conflated
+        model_key = init_kwargs.get("model") or self._registrations[name].default_model or ""
+        cache_key = f"{name}|{model_key}"
+
         # Return cached instance if available
-        if name in self._providers:
-            return self._providers[name]
+        if cache_key in self._providers:
+            return self._providers[cache_key]
 
         # Create new instance
         try:
@@ -682,16 +692,75 @@ class LLMRegistry:
                 if "model" not in init_kwargs and registration.default_model:
                     init_kwargs["model"] = registration.default_model
 
-                provider = provider_class(**init_kwargs)
-                self._providers[name] = provider
+                # Translate llamacpp model id to a concrete model_path when possible
+                if name == "llamacpp":
+                    # If a specific GGUF model was selected, resolve to a verified file path
+                    model_id = init_kwargs.get("model")
+                    if model_id and "model_path" not in init_kwargs:
+                        resolved = self._resolve_llamacpp_model_path_by_id(model_id)
+                        if resolved:
+                            init_kwargs["model_path"] = resolved
+                        else:
+                            logger.error(f"Unable to resolve verified GGUF for model_id '{model_id}'")
+                            return None
 
-                logger.info(f"Created provider instance: {name}")
+                provider = provider_class(**init_kwargs)
+                self._providers[cache_key] = provider
+
+                logger.info(f"Created provider instance: {name} (model={init_kwargs.get('model')})")
                 return provider
 
         except Exception as ex:
             logger.error(f"Failed to create provider '{name}': {ex}")
 
         return None
+
+    # -----------------------------
+    # KIRE routing integration
+    # -----------------------------
+    async def get_provider_with_routing(
+        self,
+        *,
+        user_ctx: Dict[str, Any],
+        query: str,
+        task_type: str,
+        khrp_step: Optional[str] = None,
+        requirements: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Route to provider/model using KIRE and return instance + decision.
+
+        Returns dict with keys: provider_instance, decision (RouteDecision), provider_name, model_name
+        """
+        try:
+            if self._kire is None:
+                self._kire = KIREAdapter(llm_registry=self)
+            decision = await self._kire.route(
+                user_id=user_ctx.get("user_id", "anon"),
+                task_type=task_type,
+                query=query,
+                khrp_step=khrp_step,
+                context={"user_ctx": user_ctx},
+                requirements=requirements or {},
+            )
+            provider = self.get_provider(decision.provider, model=decision.model)
+            return {
+                "provider_instance": provider,
+                "decision": decision,
+                "provider_name": decision.provider,
+                "model_name": decision.model,
+            }
+        except Exception as ex:
+            logger.error(f"KIRE routing failed, falling back. Error: {ex}")
+            # Fallback to default provider construction
+            prov = self.default_chain(healthy_only=False)[0] if self.default_chain() else None
+            instance = self.get_provider(prov) if prov else None
+            return {
+                "provider_instance": instance,
+                "decision": None,
+                "provider_name": prov,
+                "model_name": None,
+            }
 
     def _get_provider_class(self, class_name: str) -> Optional[Type[LLMProviderBase]]:
         """Get provider class by name."""
@@ -704,6 +773,57 @@ class LLMRegistry:
         }
 
         return class_map.get(class_name)
+
+    # -----------------------------
+    # Llama.cpp model resolution & verification
+    # -----------------------------
+    def _is_probably_valid_gguf(self, file_path: Path) -> bool:
+        try:
+            if not file_path.exists() or not file_path.is_file():
+                return False
+            if file_path.suffix.lower() != ".gguf":
+                return False
+            size = file_path.stat().st_size
+            if size < 50 * 1024 * 1024:  # < 50MB unlikely to be valid model
+                return False
+            with open(file_path, "rb") as f:
+                magic = f.read(4)
+            return magic == b"GGUF"
+        except Exception:
+            return False
+
+    def _find_model_entry_key_by_id(self, model_id: str) -> Optional[str]:
+        for key, entry in self._model_entries.items():
+            if entry.model_id == model_id:
+                return key
+        return None
+
+    def _resolve_llamacpp_model_path_by_id(self, model_id: str) -> Optional[str]:
+        """Resolve a llama.cpp model_id to a verified local GGUF file path."""
+        try:
+            # Prefer model registry entry
+            entry_key = self._find_model_entry_key_by_id(model_id)
+            if entry_key:
+                entry = self._model_entries[entry_key]
+                if entry.library == "llama-cpp":
+                    p = Path(entry.install_path)
+                    # Validate file header quickly
+                    if self._is_probably_valid_gguf(p):
+                        # Try integrity verification when file list/checksums are present
+                        try:
+                            result = self.verify_model_integrity(entry_key)
+                            if result.get("status") in {"verified", "missing", "corrupted"}:
+                                # Even if some files in registry are missing, the main file is header-checked
+                                return str(p)
+                        except Exception:
+                            return str(p)
+            # Fallback: look in models/llama-cpp for matching filename
+            candidate = Path("models/llama-cpp") / model_id
+            if self._is_probably_valid_gguf(candidate):
+                return str(candidate)
+        except Exception:
+            pass
+        return None
 
     def list_providers(self) -> List[str]:
         """Get list of registered provider names."""

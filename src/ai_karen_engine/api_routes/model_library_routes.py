@@ -48,7 +48,14 @@ def get_model_library_service() -> ModelLibraryService:
     """Get or create the model library service instance."""
     global _model_library_service
     if _model_library_service is None:
-        _model_library_service = ModelLibraryService()
+        try:
+            logger.info("Initializing ModelLibraryService...")
+            _model_library_service = ModelLibraryService()
+            logger.info("ModelLibraryService initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize ModelLibraryService: {e}")
+            # Create a minimal fallback service
+            _model_library_service = ModelLibraryService()
     return _model_library_service
 
 # -----------------------------
@@ -114,11 +121,203 @@ class ModelMetadataResponse(BaseModel):
 # Model Library API Routes (Task 4.1)
 # -----------------------------
 
+@router.get("/stats")
+async def get_model_library_stats():
+    """
+    Get model library statistics and overview information.
+    
+    Returns summary statistics about available models, local models,
+    disk usage, and provider information.
+    """
+    try:
+        service = get_model_library_service()
+        models = service.get_available_models()
+        
+        # Calculate statistics
+        total_models = len(models)
+        local_models = len([m for m in models if m.status == 'local'])
+        available_models = len([m for m in models if m.status == 'available'])
+        downloading_models = len([m for m in models if m.status == 'downloading'])
+        
+        # Provider statistics
+        providers = {}
+        for model in models:
+            if model.provider not in providers:
+                providers[model.provider] = {
+                    'total': 0,
+                    'local': 0,
+                    'available': 0
+                }
+            providers[model.provider]['total'] += 1
+            if model.status == 'local':
+                providers[model.provider]['local'] += 1
+            elif model.status == 'available':
+                providers[model.provider]['available'] += 1
+        
+        # Disk usage
+        total_disk_usage = sum(m.disk_usage or 0 for m in models if m.disk_usage)
+        
+        return {
+            "total_models": total_models,
+            "local_models": local_models,
+            "available_models": available_models,
+            "downloading_models": downloading_models,
+            "providers": providers,
+            "total_providers": len(providers),
+            "total_disk_usage_bytes": total_disk_usage,
+            "total_disk_usage_gb": round(total_disk_usage / (1024**3), 2),
+            "last_updated": time.time()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get model library stats: {e}")
+        # Return basic fallback stats instead of raising an exception
+        return {
+            "total_models": 0,
+            "local_models": 0,
+            "available_models": 0,
+            "downloading_models": 0,
+            "providers": {},
+            "total_providers": 0,
+            "total_disk_usage_bytes": 0,
+            "total_disk_usage_gb": 0,
+            "last_updated": time.time(),
+            "error": "Service temporarily unavailable"
+        }
+
+_MODEL_LIST_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+@router.get("/health")
+async def model_library_health():
+    """Lightweight health check for the Model Library service.
+
+    Returns minimal, fast-to-compute information without scanning the filesystem
+    or contacting remote repositories. Useful for isolating 500s.
+    """
+    try:
+        service = get_model_library_service()
+        registry_path = service.registry_path
+        predefined = service.metadata_service.get_predefined_models()
+
+        # Avoid heavy operations: do not scan models directory or compute sizes
+        # Only report simple counts from already-loaded structures
+        if isinstance(service.registry, dict):
+            registry_models = len(service.registry.get("models", []))
+        elif isinstance(service.registry, list):
+            registry_models = len(service.registry)
+        else:
+            registry_models = 0
+
+        return {
+            "status": "ok",
+            "service_initialized": True,
+            "registry_path": str(registry_path),
+            "registry_exists": registry_path.exists(),
+            "registry_models": registry_models,
+            "predefined_models": len(predefined or {}),
+            "cache_keys": list(_MODEL_LIST_CACHE.keys()),
+            "timestamp": time.time(),
+        }
+    except Exception as e:
+        logger.error(f"Model library health check error: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": time.time(),
+        }
+
+
+@router.post("/refresh")
+async def refresh_model_cache():
+    """
+    Force refresh the model cache.
+    
+    Clears the current cache and rebuilds it by scanning for new models.
+    Use this when you've added new models manually or want to ensure
+    the latest model state is reflected.
+    """
+    try:
+        service = get_model_library_service()
+        cache_info = service.refresh_model_cache()
+        
+        # Also clear the API-level cache
+        global _MODEL_LIST_CACHE
+        _MODEL_LIST_CACHE.clear()
+        
+        return {
+            "message": "Model cache refreshed successfully",
+            "cache_info": cache_info,
+            "api_cache_cleared": True
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to refresh model cache: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to refresh cache: {str(e)}")
+
+
+@router.get("/cache-info")
+async def get_cache_info():
+    """
+    Get information about the current cache state.
+    
+    Returns cache validity, age, and statistics for debugging and monitoring.
+    """
+    try:
+        service = get_model_library_service()
+        service_cache_info = service.get_cache_info()
+        
+        # Add API-level cache info
+        api_cache_info = {
+            "api_cache_keys": list(_MODEL_LIST_CACHE.keys()),
+            "api_cache_entries": len(_MODEL_LIST_CACHE)
+        }
+        
+        return {
+            "service_cache": service_cache_info,
+            "api_cache": api_cache_info
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get cache info: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get cache info: {str(e)}")
+
+
+class CacheConfigRequest(BaseModel):
+    """Cache configuration request."""
+    ttl_seconds: int = Field(ge=30, le=3600, description="Cache TTL in seconds (30-3600)")
+
+
+@router.post("/cache-config")
+async def configure_cache(request: CacheConfigRequest):
+    """
+    Configure cache settings.
+    
+    Allows setting the cache time-to-live (TTL) in seconds.
+    Minimum TTL is 30 seconds, maximum is 3600 seconds (1 hour).
+    """
+    try:
+        service = get_model_library_service()
+        service.set_cache_ttl(request.ttl_seconds)
+        
+        return {
+            "message": f"Cache TTL set to {request.ttl_seconds} seconds",
+            "ttl_seconds": request.ttl_seconds
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to configure cache: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to configure cache: {str(e)}")
+
+
 @router.get("/library", response_model=ModelLibraryResponse)
 async def get_available_models(
     provider: Optional[str] = None,
     status: Optional[str] = None,
-    capability: Optional[str] = None
+    capability: Optional[str] = None,
+    quick: bool = False,
+    ttl: int = 30,
+    force_refresh: bool = False,
 ):
     """
     Get all available models from the model library.
@@ -130,12 +329,218 @@ async def get_available_models(
     
     Requirements: 1.1, 1.2, 4.1, 4.2
     """
+    import asyncio
+    
     try:
         service = get_model_library_service()
-        models = service.get_available_models()
+
+        # Cache key includes filters and quick mode
+        cache_key = f"quick={quick}|provider={provider}|status={status}|capability={capability}"
+        now = time.time()
+        cached = _MODEL_LIST_CACHE.get(cache_key)
+        if not force_refresh and cached and (now - cached.get("ts", 0) <= max(5, ttl)):
+            return cached["payload"]
+
+        # Set timeout for the operation (30 seconds max)
+        timeout_seconds = 30
+        
+        async def get_models_with_timeout():
+            if quick:
+                # Lightweight listing: avoid recursive disk scans and size calculations
+                raw = service.registry.get("models", []) if isinstance(service.registry, dict) else []
+                predefined = service.metadata_service.get_predefined_models()
+                seen_ids = set()
+                model_responses: List[ModelInfoResponse] = []
+
+                # Map registry entries (local) - only include models with valid IDs
+                for entry in raw:
+                    try:
+                        mid = str(entry.get("id") or entry.get("name") or "").strip()
+                        if not mid or mid in seen_ids:
+                            continue
+                        seen_ids.add(mid)
+                        prov = str(entry.get("provider") or entry.get("type") or "local")
+                        model_responses.append(ModelInfoResponse(
+                            id=mid,
+                            name=str(entry.get("name") or mid),
+                            provider=prov,
+                            size=0,
+                            description=(entry.get("metadata") or {}).get("description", f"Local model: {mid}"),
+                            capabilities=list(entry.get("capabilities") or []),
+                            status="local",
+                            download_progress=None,
+                            metadata=entry.get("metadata") or {},
+                            local_path=str(entry.get("path") or ""),
+                            download_url=None,
+                            checksum=None,
+                            disk_usage=None,
+                            last_used=entry.get("last_used"),
+                            download_date=(entry.get("downloadInfo") or {}).get("downloadDate"),
+                        ))
+                    except Exception as map_err:
+                        logger.debug(f"Quick map registry entry failed: {map_err}")
+                        continue
+
+                # Add predefined available models not already local
+                for mid, pdata in predefined.items():
+                    if mid in seen_ids:
+                        continue
+                    try:
+                        # Safely convert metadata dataclass to dict when present
+                        _meta = None
+                        try:
+                            from dataclasses import asdict as _asdict
+                            if pdata.get("metadata") is not None:
+                                _meta = _asdict(pdata.get("metadata"))
+                        except Exception:
+                            _meta = None
+                        model_responses.append(ModelInfoResponse(
+                            id=mid,
+                            name=pdata.get("name", mid),
+                            provider=pdata.get("provider", "llama-cpp"),
+                            size=int(pdata.get("size") or 0),
+                            description=pdata.get("description"),
+                            capabilities=list(pdata.get("capabilities") or []),
+                            status="available",
+                            download_progress=None,
+                            metadata=_meta,
+                            local_path=None,
+                            download_url=pdata.get("download_url"),
+                            checksum=pdata.get("checksum"),
+                            disk_usage=None,
+                            last_used=None,
+                            download_date=None,
+                        ))
+                    except Exception as map_err:
+                        logger.debug(f"Quick map predefined entry failed: {map_err}")
+                        continue
+                
+                return model_responses
+            else:
+                # Full listing with timeout protection
+                try:
+                    models = await asyncio.wait_for(
+                        asyncio.to_thread(service.get_available_models_fast, force_refresh), 
+                        timeout=25  # 25 second timeout for the service call
+                    )
+                    logger.info(f"Retrieved {len(models)} models from service")
+                    return models
+                except asyncio.TimeoutError:
+                    logger.warning("Model library service timed out, falling back to quick mode")
+                    # Fall back to quick mode
+                    return await get_models_with_timeout()
+                except Exception as e:
+                    logger.error(f"Failed to get models from service: {e}")
+                    return []
+
+        try:
+            # Execute with overall timeout
+            models_data = await asyncio.wait_for(get_models_with_timeout(), timeout=timeout_seconds)
+            
+            if isinstance(models_data, list) and len(models_data) > 0 and hasattr(models_data[0], 'id'):
+                # Full model objects from service
+                filtered_models = models_data
+            else:
+                # Model response objects from quick mode
+                filtered_models = models_data
+                
+        except asyncio.TimeoutError:
+            logger.warning("Model library service timed out, returning empty response")
+            return ModelLibraryResponse(
+                models=[],
+                total_count=0,
+                local_count=0,
+                available_count=0
+            )
         
         # Apply filters
-        filtered_models = models
+        if isinstance(filtered_models, list) and len(filtered_models) > 0:
+            if hasattr(filtered_models[0], 'id'):
+                # Full model objects from service
+                if provider:
+                    filtered_models = [m for m in filtered_models if m.provider == provider]
+                if status:
+                    filtered_models = [m for m in filtered_models if m.status == status]
+                if capability:
+                    filtered_models = [m for m in filtered_models if capability in m.capabilities]
+                
+                # Convert to response format
+                model_responses = []
+                for model in filtered_models:
+                    try:
+                        # Coerce/guard against bad entries from registry
+                        provider_name = (model.provider or "unknown").strip()
+                        capabilities = list(model.capabilities or [])
+                        model_responses.append(ModelInfoResponse(
+                            id=str(model.id or model.name or provider_name),
+                            name=str(model.name or provider_name),
+                            provider=provider_name,
+                            size=int(model.size or 0),
+                            description=model.description,
+                            capabilities=capabilities,
+                            status=model.status,
+                            download_progress=model.download_progress,
+                            metadata=model.metadata,
+                            local_path=model.local_path,
+                            download_url=model.download_url,
+                            checksum=model.checksum,
+                            disk_usage=model.disk_usage,
+                            last_used=model.last_used,
+                            download_date=model.download_date
+                        ))
+                    except Exception as map_err:
+                        logger.warning(f"Skipping malformed model entry: {getattr(model,'name',None)} ({map_err})")
+                        continue
+            else:
+                # Already in response format from quick mode
+                model_responses = filtered_models
+                if provider:
+                    model_responses = [m for m in model_responses if m.provider == provider]
+                if status:
+                    model_responses = [m for m in model_responses if m.status == status]
+                if capability:
+                    model_responses = [m for m in model_responses if capability in (m.capabilities or [])]
+        else:
+            model_responses = []
+        
+        # Calculate counts
+        local_count = len([m for m in model_responses if m.status == 'local'])
+        available_count = len([m for m in model_responses if m.status == 'available'])
+        
+        payload = ModelLibraryResponse(
+            models=model_responses,
+            total_count=len(model_responses),
+            local_count=local_count,
+            available_count=available_count
+        )
+        
+        # Cache the result
+        _MODEL_LIST_CACHE[cache_key] = {"ts": now, "payload": payload}
+        return payload
+        
+        # Apply filters
+        filtered_models = []
+        if quick:
+            # Convert ModelInfoResponse list to filtering domain as dicts
+            tmp = model_responses
+            # Apply filters
+            if provider:
+                tmp = [m for m in tmp if m.provider == provider]
+            if status:
+                tmp = [m for m in tmp if m.status == status]
+            if capability:
+                tmp = [m for m in tmp if capability in (m.capabilities or [])]
+            # Already in response format
+            result_payload = ModelLibraryResponse(
+                models=tmp,
+                total_count=len(tmp),
+                local_count=len([m for m in tmp if m.status == 'local']),
+                available_count=len([m for m in tmp if m.status == 'available'])
+            )
+            _MODEL_LIST_CACHE[cache_key] = {"ts": now, "payload": result_payload}
+            return result_payload
+        else:
+            filtered_models = models
         
         if provider:
             filtered_models = [m for m in filtered_models if m.provider == provider]
@@ -149,34 +554,43 @@ async def get_available_models(
         # Convert to response format
         model_responses = []
         for model in filtered_models:
-            model_responses.append(ModelInfoResponse(
-                id=model.id,
-                name=model.name,
-                provider=model.provider,
-                size=model.size,
-                description=model.description,
-                capabilities=model.capabilities,
-                status=model.status,
-                download_progress=model.download_progress,
-                metadata=model.metadata,
-                local_path=model.local_path,
-                download_url=model.download_url,
-                checksum=model.checksum,
-                disk_usage=model.disk_usage,
-                last_used=model.last_used,
-                download_date=model.download_date
-            ))
+            try:
+                # Coerce/guard against bad entries from registry
+                provider = (model.provider or "unknown").strip()
+                capabilities = list(model.capabilities or [])
+                model_responses.append(ModelInfoResponse(
+                    id=str(model.id or model.name or provider),
+                    name=str(model.name or provider),
+                    provider=provider,
+                    size=int(model.size or 0),
+                    description=model.description,
+                    capabilities=capabilities,
+                    status=model.status,
+                    download_progress=model.download_progress,
+                    metadata=model.metadata,
+                    local_path=model.local_path,
+                    download_url=model.download_url,
+                    checksum=model.checksum,
+                    disk_usage=model.disk_usage,
+                    last_used=model.last_used,
+                    download_date=model.download_date
+                ))
+            except Exception as map_err:
+                logger.warning(f"Skipping malformed model entry: {getattr(model,'name',None)} ({map_err})")
+                continue
         
         # Calculate counts
         local_count = len([m for m in models if m.status == 'local'])
         available_count = len([m for m in models if m.status == 'available'])
         
-        return ModelLibraryResponse(
+        payload = ModelLibraryResponse(
             models=model_responses,
             total_count=len(model_responses),
             local_count=local_count,
             available_count=available_count
         )
+        _MODEL_LIST_CACHE[cache_key] = {"ts": now, "payload": payload}
+        return payload
         
     except ModelLibraryError as e:
         logger.error(f"Model library error getting available models: {e.error_info.message}")
@@ -251,6 +665,10 @@ async def initiate_model_download(request: DownloadRequest):
             error_handler = ErrorHandler()
             error_response = error_handler.create_error_response(error_info)
             raise HTTPException(status_code=500, detail=error_response)
+        
+        # Clear API cache since a download was initiated
+        global _MODEL_LIST_CACHE
+        _MODEL_LIST_CACHE.clear()
         
         return DownloadTaskResponse(
             task_id=download_task.task_id,
@@ -375,6 +793,10 @@ async def delete_local_model(model_id: str):
         success = service.delete_model(model_id)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete model")
+        
+        # Clear API cache since a model was deleted
+        global _MODEL_LIST_CACHE
+        _MODEL_LIST_CACHE.clear()
         
         return {
             "message": f"Model {model_id} deleted successfully",

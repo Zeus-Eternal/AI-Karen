@@ -493,7 +493,6 @@ class CopilotLLMRouter(IntelligentLLMRouter):
         # This would integrate with the existing runtime selection logic
         # For now, return a default based on provider type
         runtime_mapping = {
-            "ollama": "ollama",
             "local": "llama.cpp",
             "openai_cloud": "api",
             "deepseek": "api",
@@ -577,8 +576,8 @@ class CopilotLLMRouter(IntelligentLLMRouter):
                 suggestions.append("Configure API key: Set COPILOT_API_KEY in secret storage")
         
         if "local" in error.lower() and "not available" in error.lower():
-            suggestions.append("Check local providers: Ensure Ollama or local LLM services are running")
-            suggestions.append("Install local models: Run 'ollama pull llama3.2:latest'")
+            suggestions.append("Check local providers: Ensure llama.cpp runtime is configured")
+            suggestions.append("Install local GGUF models under models/llama-cpp; see docs for TinyLlama v2")
         
         if context.privacy_level == PrivacyLevel.CONFIDENTIAL:
             suggestions.append("Confidential data requires local providers only")

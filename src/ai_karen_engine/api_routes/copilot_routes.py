@@ -11,6 +11,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["copilot"])
 
+# Ensure routing predictors are registered so /start can dispatch actions
+try:
+    from ai_karen_engine.integrations.copilotkit.routing_actions import (
+        ensure_kire_actions_registered,
+    )
+    ensure_kire_actions_registered()
+except Exception:
+    # Best-effort; if not present, action registry may be empty until lazily imported elsewhere
+    pass
+
 # Graceful imports with fallbacks
 try:
     from ai_karen_engine.services.enhanced_memory_service import get_memory_service
@@ -81,6 +91,9 @@ def get_correlation_id(request: Request) -> str:
 
 from functools import lru_cache
 from ai_karen_engine.core.dependencies import get_current_user_context
+from ai_karen_engine.core.rbac import check_scopes
+from ai_karen_engine.services.audit_logger import get_audit_logger
+from ai_karen_engine.core.predictors import predictor_registry
 
 # Add the same orchestrator dependency as chat_runtime.py
 @lru_cache
@@ -128,6 +141,164 @@ def get_chat_orchestrator():
         memory_manager=memory_manager,
     )
     return ChatOrchestrator(memory_processor=memory_processor)
+
+
+class StartActionRequest(BaseModel):
+    action: str = Field(..., description="Registered action/predictor name, e.g. routing.select")
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    context: Dict[str, Any] = Field(default_factory=dict)
+
+
+class StartActionResponse(BaseModel):
+    status: str
+    output: Dict[str, Any] = Field(default_factory=dict)
+    correlation_id: str
+
+
+@router.get("/health")
+async def copilot_health():
+    """Lightweight health check for copilot routes to verify wiring.
+
+    Returns minimal info without invoking heavy dependencies.
+    """
+    try:
+        registered = list(getattr(predictor_registry, 'keys', lambda: [])())
+    except Exception:
+        try:
+            registered = list(predictor_registry.keys())  # type: ignore[attr-defined]
+        except Exception:
+            registered = []
+
+    return {
+        "status": "ok",
+        "registered_actions": registered,
+        "timestamp": int(time.time()),
+    }
+
+
+@router.post("/start", response_model=StartActionResponse)
+async def copilot_start_action(
+    req: StartActionRequest,
+    http_request: Request,
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+):
+    """Generic CopilotKit action starter. Routes to predictor-registered actions."""
+    correlation_id = http_request.headers.get("X-Correlation-Id") or f"copilot_{int(time.time())}"
+
+    # RBAC: basic scope check; allow admin or chat:write by default
+    try:
+        if not (set(user_ctx.get("roles", [])).intersection({"admin"})):
+            ok = await check_scopes(http_request, {"chat:write"})
+            if not ok:
+                raise HTTPException(status_code=403, detail="RBAC_DENIED: scope chat:write required")
+    except Exception:
+        # If RBAC service not configured, proceed in permissive mode
+        pass
+
+    # Audit: action started
+    try:
+        await get_audit_logger().log_event(
+            event_type="copilot.action.started",
+            user_id=user_ctx.get("user_id"),
+            session_id=user_ctx.get("session_id"),
+            correlation_id=correlation_id,
+            details={"action": req.action, "payload_keys": list(req.payload.keys())},
+            surface="copilot",
+        )
+    except Exception:
+        pass
+
+    # Dispatch to predictor registry
+    handler = predictor_registry.get(req.action)
+    if handler is None:
+        # Try late registration of routing actions, then re-check
+        try:
+            from ai_karen_engine.integrations.copilotkit.routing_actions import (
+                ensure_kire_actions_registered,
+            )
+            ensure_kire_actions_registered()
+            # Also import actions directly for side-effects if available
+            try:
+                import ai_karen_engine.routing.actions  # noqa: F401
+            except Exception:
+                pass
+        except Exception:
+            pass
+        handler = predictor_registry.get(req.action)
+        if handler is None:
+            # Minimal safe fallbacks for profile-related actions to keep the UI usable
+            if req.action == "routing.profile.list":
+                try:
+                    from ai_karen_engine.config.user_profiles import get_user_profiles_manager
+                    upm = get_user_profiles_manager()
+                    profiles = upm.list_profiles()
+                    active = upm.get_active_profile()
+                    out = {
+                        "active_profile": active.id if active else None,
+                        "profiles": [
+                            {
+                                "id": p.id,
+                                "name": p.name,
+                                "is_active": bool(active and p.id == active.id),
+                                "assignments_count": len(p.assignments or {}),
+                                "fallback_chain": p.fallback_chain,
+                            }
+                            for p in profiles
+                        ],
+                    }
+                    return StartActionResponse(status="ok", output=out, correlation_id=correlation_id)
+                except Exception:
+                    # Graceful empty response so the UI can render
+                    out = {"active_profile": None, "profiles": []}
+                    return StartActionResponse(status="ok", output=out, correlation_id=correlation_id)
+
+            available = []
+            try:
+                available = list(predictor_registry.keys())
+            except Exception:
+                available = []
+            raise HTTPException(status_code=404, detail=f"Unknown action: {req.action}. Available: {available}")
+
+    try:
+        import inspect
+
+        # Normalize user context and pass payload/context
+        args = (user_ctx, req.payload, req.context)
+        if inspect.iscoroutinefunction(handler):
+            output = await handler(*args)
+        else:
+            output = handler(*args)
+
+        # Audit: action completed
+        try:
+            await get_audit_logger().log_event(
+                event_type="copilot.action.completed",
+                user_id=user_ctx.get("user_id"),
+                session_id=user_ctx.get("session_id"),
+                correlation_id=correlation_id,
+                details={"action": req.action, "success": True},
+                surface="copilot",
+            )
+        except Exception:
+            pass
+
+        return StartActionResponse(status="ok", output=output or {}, correlation_id=correlation_id)
+    except Exception as e:
+        # Audit: action failed
+        try:
+            await get_audit_logger().log_event(
+                event_type="copilot.action.failed",
+                user_id=user_ctx.get("user_id"),
+                session_id=user_ctx.get("session_id"),
+                correlation_id=correlation_id,
+                details={"action": req.action, "error": str(e)},
+                surface="copilot",
+                success=False,
+                error_message=str(e),
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=f"Action failed: {e}")
 
 @router.post("/assist")
 async def copilot_assist(

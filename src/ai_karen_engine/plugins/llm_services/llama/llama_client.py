@@ -205,8 +205,8 @@ class LlamaCppEngine:
         prompt += "<|assistant|>"
         return prompt
 
-TINY_LLAMA_URL = "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
-TINY_LLAMA_FILENAME = "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+TINY_LLAMA_URL = "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v0.2-GGUF/resolve/main/ggml-model-q4_0.gguf"
+TINY_LLAMA_FILENAME = "ggml-model-q4_0.gguf"
 
 def _download_tinyllama_if_missing():
     model_dir = Path(MODEL_DIR)

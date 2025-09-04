@@ -182,18 +182,18 @@ class ProviderRegistry:
                 DeepseekProvider,
                 GeminiProvider,
                 HuggingFaceProvider,
-                OllamaProvider,
+                LlamaCppProvider,
                 OpenAIProvider,
             )
 
             providers: List[Dict[str, Any]] = [
                 {
-                    "name": "ollama",
-                    "cls": OllamaProvider,
-                    "description": "Local Ollama server for running open-source models",
-                    "default_model": "llama3.2:latest",
+                    "name": "llamacpp",
+                    "cls": LlamaCppProvider,
+                    "description": "Local llama.cpp runtime for GGUF models",
+                    "default_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
                     "requires_api_key": False,
-                    "capabilities": ["text", "embeddings"],
+                    "capabilities": ["text"],
                 },
                 {
                     "name": "openai",

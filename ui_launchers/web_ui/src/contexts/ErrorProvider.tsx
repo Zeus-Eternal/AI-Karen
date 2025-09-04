@@ -10,6 +10,7 @@
 'use client';
 
 import React, { createContext, useContext, useCallback, useState, ReactNode } from 'react';
+import { safeError } from '@/lib/safe-console';
 import { 
   useIntelligentError, 
   useIntelligentErrorBoundary,
@@ -156,7 +157,10 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({
 
   // Handle boundary errors
   const handleBoundaryError = useCallback((error: Error, errorInfo?: any) => {
-    console.error('Error boundary caught error:', error, errorInfo);
+    safeError('Error boundary caught error:', error, { useStructuredLogging: true });
+    if (errorInfo) {
+      safeError('Error info:', errorInfo, { useStructuredLogging: true });
+    }
     
     const context: Partial<ErrorAnalysisRequest> = {
       error_type: error.name,
@@ -182,7 +186,10 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({
     method?: string;
     provider?: string;
   }) => {
-    console.error('API error occurred:', error, requestContext);
+    safeError('API error occurred:', error, { useStructuredLogging: true });
+    if (requestContext) {
+      safeError('Request context:', requestContext, { useStructuredLogging: true });
+    }
     
     const context: Partial<ErrorAnalysisRequest> = {
       status_code: error.status,
