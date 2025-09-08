@@ -27,6 +27,16 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 # In-memory user store for demo (in production, this would be database)
 # This allows us to avoid database concurrency issues while maintaining security
 USERS_DB = {
+    "admin@kari.ai": {
+        "user_id": "admin-kari-ai",
+        "email": "admin@kari.ai",
+        "password_hash": "$2b$12$TpTWisikQS3X91ubUBNOUuNKqV/JCXptvTF3B1iQzzmoZPGfRzRWa",  # password123
+        "full_name": "Kari Admin",
+        "roles": ["admin", "user", "super_admin"],
+        "tenant_id": "default",
+        "is_verified": True,
+        "is_active": True
+    },
     "admin@example.com": {
         "user_id": "admin-user-id",
         "email": "admin@example.com",
@@ -405,6 +415,11 @@ async def get_demo_users() -> Dict[str, Any]:
     """Get demo user credentials for testing"""
     return {
         "demo_users": [
+            {
+                "email": "admin@kari.ai",
+                "password": "password123",
+                "role": "super_admin"
+            },
             {
                 "email": "admin@example.com",
                 "password": "password123",

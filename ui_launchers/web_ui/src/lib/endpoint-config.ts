@@ -79,7 +79,7 @@ export class ConfigManager {
       : this.getDefaultFallbackUrls(backendUrl);
 
     // Parse CORS origins
-    const corsOriginsStr = this.getEnvVar('KAREN_CORS_ORIGINS', 'http://localhost:9002');
+    const corsOriginsStr = this.getEnvVar('KAREN_CORS_ORIGINS', 'http://localhost:8010,http://localhost:8020');
     const corsOrigins = corsOriginsStr.split(',').map(origin => origin.trim()).filter(Boolean);
 
     return {
@@ -151,12 +151,12 @@ export class ConfigManager {
       
       // Add localhost variations if not already localhost
       if (url.hostname !== 'localhost') {
-        fallbacks.push(`http://localhost:${url.port || '8000'}`);
+        fallbacks.push(`http://localhost:${url.port || '8001'}`);
       }
       
       // Add 127.0.0.1 variation
       if (url.hostname !== '127.0.0.1') {
-        fallbacks.push(`http://127.0.0.1:${url.port || '8000'}`);
+        fallbacks.push(`http://127.0.0.1:${url.port || '8001'}`);
       }
       
       return fallbacks;
@@ -313,9 +313,13 @@ export class ConfigManager {
    * Get the primary backend URL
    */
   public getBackendUrl(): string {
-    // In the browser, always route through Next.js API to avoid CORS and port issues
+    // In the browser, optionally route through Next.js API based on env flag
+    // Production default: direct to configured backend
     if (typeof window !== 'undefined') {
-      return '';
+      const useProxy = this.getBooleanEnv('USE_PROXY', false) ||
+                       this.getBooleanEnv('KAREN_USE_PROXY', false) ||
+                       this.getBooleanEnv('NEXT_PUBLIC_USE_PROXY', false);
+      if (useProxy) return '';
     }
     return this.config.backendUrl;
   }

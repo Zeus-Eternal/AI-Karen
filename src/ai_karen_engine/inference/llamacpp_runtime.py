@@ -90,9 +90,16 @@ class LlamaCppRuntime:
         self.n_ctx = n_ctx
         self.n_batch = n_batch
         self.n_gpu_layers = n_gpu_layers
-        self.n_threads = n_threads or os.cpu_count()
+        # Allow env overrides for performance tuning
+        try:
+            env_threads = int(os.getenv("LLAMA_THREADS", "0"))
+        except ValueError:
+            env_threads = 0
+        self.n_threads = n_threads or (env_threads if env_threads > 0 else (os.cpu_count() or 1))
         self.use_mmap = use_mmap
-        self.use_mlock = use_mlock
+        # Enable mlock via env if requested
+        env_mlock = os.getenv("LLAMA_MLOCK", "false").lower() in ("1", "true", "yes")
+        self.use_mlock = use_mlock or env_mlock
         self.verbose = verbose
         self.kwargs = kwargs
         

@@ -340,3 +340,35 @@ class DeepseekProvider(LLMProviderBase):
             return self.get_models()
         except Exception:
             return [self.model]
+    
+    def count_tokens(self, text: str) -> int:
+        """
+        Count the number of tokens in a text string.
+        
+        Args:
+            text: The text to count tokens for
+            
+        Returns:
+            int: Estimated number of tokens
+        """
+        try:
+            # Use tiktoken for accurate token counting
+            import tiktoken
+            
+            # Get encoding for the current model
+            model = self.model.lower()
+            if "coder" in model:
+                encoding = tiktoken.encoding_for_model("gpt-4")  # Close approximation for coder model
+            else:
+                encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")  # Close approximation for chat model
+                
+            return len(encoding.encode(text))
+            
+        except ImportError:
+            # Fallback to rough estimation if tiktoken not available
+            logger.warning("tiktoken not installed. Using rough token estimation.")
+            return len(text.split()) * 1.3  # Rough estimation
+        
+        except Exception as ex:
+            logger.warning(f"Token counting failed: {ex}. Using rough estimation.")
+            return len(text.split()) * 1.3  # Rough estimation

@@ -6,6 +6,33 @@
 
 AI-Karen is a comprehensive, production-ready AI platform designed for enterprise deployments. The system features a modular architecture with FastAPI backend, multiple UI interfaces, extensive plugin ecosystem, and robust multi-database infrastructure optimized for AI workloads.
 
+### LLM Runtime: In‑Process by Default
+
+This project defaults to the in‑process llama‑cpp‑python runtime for local GGUF models. The legacy external Llama.cpp server manager (`serverKent/`) has been removed to simplify operations and reduce latency.
+
+- Place GGUF models under `models/llama-cpp/` (e.g., `Phi-3-mini-4k-instruct-q4.gguf`).
+- Default settings point to this model; adjust `llm_settings.json` if needed.
+- No HTTP llama server is required — the API performs inference directly.
+
+Optional: If you must run an external `llama-server`, do it outside this repo and point a custom provider to it; in-repo support is intentionally not maintained.
+
+### Startup Warmup
+
+On boot, the backend preloads the default llama‑cpp model (best‑effort) to avoid first‑request latency. Control via `WARMUP_LLM` env (`true` by default).
+
+### Performance Profile (OpenBLAS)
+
+For CPU speedups, a “perf” image variant enables OpenBLAS for llama‑cpp:
+
+- Build: `PROFILE=runtime-perf docker compose build api` (or set `PROFILE=runtime-perf` in your environment).
+- Default remains `runtime` (portable, no BLAS). Both variants support in‑process inference.
+
+Tuning env:
+
+- `LLAMA_THREADS`: override CPU threads (default: `os.cpu_count()`).
+- `LLAMA_MLOCK`: set `true` to lock model in RAM (requires sufficient memory).
+- `n_gpu_layers` in `llm_settings.json`: offload layers to GPU when configured.
+
 ---
 
 ## Overview

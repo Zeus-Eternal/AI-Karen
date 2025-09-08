@@ -185,8 +185,25 @@ def get_stream_processor() -> StreamProcessor:
 
 
 async def get_current_user_websocket(websocket: WebSocket) -> Dict[str, Any]:
-    """Authenticate WebSocket connections using session cookie or JWT."""
-    session_token = websocket.cookies.get("kari_session")
+    """Authenticate WebSocket connections using configured session cookie or JWT.
+
+    Prefers the configured auth session cookie name; falls back to legacy
+    'kari_session' for backward compatibility. Also accepts Bearer access tokens
+    via the Authorization header.
+    """
+    # Resolve configured session cookie name
+    try:
+        from ai_karen_engine.auth.cookie_manager import get_cookie_manager
+        cm = get_cookie_manager()
+        configured_cookie = getattr(cm.config, 'session_cookie', 'auth_session')
+    except Exception:
+        configured_cookie = 'auth_session'
+
+    # Check configured session cookie first, then legacy name
+    session_token = (
+        websocket.cookies.get(configured_cookie)
+        or websocket.cookies.get("kari_session")
+    )
     if session_token:
         service = await get_auth_service()
         user_data = await service.validate_session(

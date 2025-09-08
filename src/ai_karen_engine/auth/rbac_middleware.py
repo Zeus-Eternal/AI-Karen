@@ -67,6 +67,7 @@ class Permission(str, Enum):
 
 class Role(str, Enum):
     """System roles with associated permissions."""
+    SUPER_ADMIN = "super_admin"
     ADMIN = "admin"
     TRAINER = "trainer"
     ANALYST = "analyst"
@@ -85,6 +86,20 @@ class RolePermissions:
 
 # Define role hierarchy and permissions
 ROLE_PERMISSIONS = {
+    Role.SUPER_ADMIN: RolePermissions(
+        role=Role.SUPER_ADMIN,
+        permissions={
+            # All permissions including future ones
+            Permission.TRAINING_READ, Permission.TRAINING_WRITE, Permission.TRAINING_DELETE, Permission.TRAINING_EXECUTE,
+            Permission.MODEL_READ, Permission.MODEL_WRITE, Permission.MODEL_DELETE, Permission.MODEL_DEPLOY,
+            Permission.DATA_READ, Permission.DATA_WRITE, Permission.DATA_DELETE, Permission.DATA_EXPORT,
+            Permission.SCHEDULER_READ, Permission.SCHEDULER_WRITE, Permission.SCHEDULER_EXECUTE,
+            Permission.ADMIN_READ, Permission.ADMIN_WRITE, Permission.ADMIN_SYSTEM,
+            Permission.AUDIT_READ, Permission.SECURITY_READ, Permission.SECURITY_WRITE,
+        },
+        description="Highest privilege role with all system permissions"
+    ),
+    
     Role.ADMIN: RolePermissions(
         role=Role.ADMIN,
         permissions={
@@ -191,9 +206,14 @@ class RBACManager:
         """Check if user has a specific role."""
         return role.value in user_data.roles
     
+    def has_super_admin_role(self, user_data: UserData) -> bool:
+        """Check if user has super admin role."""
+        return self.has_role(user_data, Role.SUPER_ADMIN)
+    
     def has_admin_role(self, user_data: UserData) -> bool:
-        """Check if user has admin role."""
-        return self.has_role(user_data, Role.ADMIN)
+        """Check if user has admin role (including super admin)."""
+        return (self.has_role(user_data, Role.ADMIN) or
+                self.has_super_admin_role(user_data))
     
     async def get_current_user(self, credentials: HTTPAuthorizationCredentials) -> UserData:
         """Extract and validate user from JWT token."""

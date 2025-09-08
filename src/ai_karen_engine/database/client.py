@@ -14,6 +14,7 @@ import time
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
+import os
 from ai_karen_engine.core.chat_memory_config import settings
 from ai_karen_engine.database.models import Base
 from ai_karen_engine.core.logging import get_logger
@@ -59,6 +60,15 @@ class DatabaseClient:
         """Initialize SQLAlchemy engine with production settings"""
         
         try:
+            # SQL echo controllable via env to avoid noisy logs in dev
+            sql_echo_env = os.getenv("SQL_ECHO") or os.getenv("KAREN_SQL_ECHO")
+            try:
+                sql_echo = (
+                    str(sql_echo_env).lower() in ("1", "true", "yes")
+                ) if sql_echo_env is not None else False
+            except Exception:
+                sql_echo = False
+
             # Create synchronous engine with connection pooling
             self.engine = create_engine(
                 settings.database_url,
@@ -67,7 +77,7 @@ class DatabaseClient:
                 max_overflow=20,
                 pool_pre_ping=True,
                 pool_recycle=3600,  # Recycle connections every hour
-                echo=settings.debug,  # Log SQL queries in debug mode
+                echo=sql_echo,  # Controlled by env to avoid noise
             )
             
             # Create async engine
@@ -78,7 +88,7 @@ class DatabaseClient:
                 max_overflow=20,
                 pool_pre_ping=True,
                 pool_recycle=3600,
-                echo=settings.debug,
+                echo=sql_echo,
             )
             
             # Create session factories

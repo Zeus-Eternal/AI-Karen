@@ -52,8 +52,8 @@ describe('Network Scenarios End-to-End Tests', () => {
       global.window = {
         location: {
           hostname: 'localhost',
-          href: 'http://localhost:9002',
-          origin: 'http://localhost:9002',
+          href: 'http://localhost:8010',
+          origin: 'http://localhost:8010',
         },
       } as any;
     });
@@ -82,7 +82,7 @@ describe('Network Scenarios End-to-End Tests', () => {
         statusText: 'OK',
         headers: new Map([
           ['content-type', 'application/json'],
-          ['access-control-allow-origin', 'http://localhost:9002'],
+          ['access-control-allow-origin', 'http://localhost:8010'],
         ]),
       });
 
@@ -165,8 +165,8 @@ describe('Network Scenarios End-to-End Tests', () => {
       global.window = {
         location: {
           hostname: 'web-ui-container',
-          href: 'http://web-ui-container:9002',
-          origin: 'http://web-ui-container:9002',
+          href: 'http://web-ui-container:8020',
+          origin: 'http://web-ui-container:8020',
         },
       } as any;
     });
@@ -278,8 +278,8 @@ describe('Network Scenarios End-to-End Tests', () => {
       global.window = {
         location: {
           hostname: '10.105.235.209',
-          href: 'http://10.105.235.209:9002',
-          origin: 'http://10.105.235.209:9002',
+          href: 'http://10.105.235.209:8020',
+          origin: 'http://10.105.235.209:8020',
         },
       } as any;
     });
@@ -307,7 +307,7 @@ describe('Network Scenarios End-to-End Tests', () => {
         statusText: 'OK',
         headers: new Map([
           ['content-type', 'application/json'],
-          ['access-control-allow-origin', 'http://10.105.235.209:9002'],
+          ['access-control-allow-origin', 'http://10.105.235.209:8020'],
         ]),
       });
 
@@ -339,7 +339,7 @@ describe('Network Scenarios End-to-End Tests', () => {
         .mockResolvedValueOnce({
           status: 200,
           headers: new Map([
-            ['access-control-allow-origin', 'http://localhost:9002'], // Wrong origin
+            ['access-control-allow-origin', 'http://localhost:8010'], // Wrong origin
             ['access-control-allow-methods', 'GET, POST'],
           ]),
         });
@@ -397,8 +397,8 @@ describe('Network Scenarios End-to-End Tests', () => {
       global.window = {
         location: {
           hostname: 'localhost',
-          href: 'http://localhost:9002',
-          origin: 'http://localhost:9002',
+          href: 'http://localhost:8010',
+          origin: 'http://localhost:8010',
         },
       } as any;
 
@@ -426,8 +426,8 @@ describe('Network Scenarios End-to-End Tests', () => {
       global.window = {
         location: {
           hostname: 'localhost',
-          href: 'http://localhost:9002',
-          origin: 'http://localhost:9002',
+          href: 'http://localhost:8010',
+          origin: 'http://localhost:8010',
         },
       } as any;
 
@@ -483,7 +483,7 @@ describe('Network Scenarios End-to-End Tests', () => {
       testCases.forEach(({ hostname, expected, description }) => {
         global.process = { env: {} } as any;
         global.window = {
-          location: { hostname, href: `http://${hostname}:9002`, origin: `http://${hostname}:9002` },
+          location: { hostname, href: `http://${hostname}:8010`, origin: `http://${hostname}:8010` },
         } as any;
 
         const configManager = new ConfigManager();

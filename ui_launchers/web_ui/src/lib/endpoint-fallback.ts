@@ -100,7 +100,11 @@ export class EndpointFallbackService {
    */
   private getAllEndpoints(): string[] {
     const config = this.configManager.getConfiguration();
-    return [config.backendUrl, ...config.fallbackUrls];
+    // Sanitize: trim, drop empties, dedupe
+    const list = [config.backendUrl, ...config.fallbackUrls]
+      .map(e => (e || '').trim())
+      .filter(Boolean);
+    return Array.from(new Set(list));
   }
 
   /**
@@ -218,9 +222,10 @@ export class EndpointFallbackService {
     }
 
     // All endpoints failed
+    const attemptedMsg = attemptedEndpoints.length ? attemptedEndpoints.join(', ') : '(none)';
+    const failedMsg = failedEndpoints.length ? failedEndpoints.join(', ') : '(none)';
     throw new Error(
-      `All endpoints failed. Attempted: ${attemptedEndpoints.join(', ')}. ` +
-      `Failed: ${failedEndpoints.join(', ')}`
+      `All endpoints failed. Attempted: ${attemptedMsg}. Failed: ${failedMsg}`
     );
   }
 

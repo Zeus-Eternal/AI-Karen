@@ -85,14 +85,14 @@ async function testLoginRequest() {
 // Test 3: Check CORS configuration
 console.log('\nTest 3: CORS Configuration Check');
 function testCorsConfiguration() {
-  const frontendUrl = 'http://localhost:9002';
+  const frontendUrl = 'http://localhost:8010';
   const backendUrl = 'http://localhost:8000';
   
   console.log(`Frontend URL: ${frontendUrl}`);
   console.log(`Backend URL: ${backendUrl}`);
   
   // Check if URLs match CORS configuration
-  const corsOrigins = ['http://localhost:9002', 'http://127.0.0.1:9002'];
+  const corsOrigins = ['http://localhost:8010', 'http://127.0.0.1:8010', 'http://localhost:8020'];
   const isConfigured = corsOrigins.includes(frontendUrl);
   
   console.log(`CORS Origins: ${corsOrigins.join(', ')}`);
@@ -145,7 +145,7 @@ function checkEnvironmentConfig() {
   
   // Check for potential mismatches
   const backendUrl = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
-  const port = process.env.PORT || '9002';
+  const port = process.env.PORT || '8010';
   
   console.log('\nConfiguration Analysis:');
   console.log(`Backend URL: ${backendUrl}`);
@@ -155,8 +155,8 @@ function checkEnvironmentConfig() {
     console.log('  ⚠️ Backend URL might not be pointing to port 8000');
   }
   
-  if (port !== '9002') {
-    console.log('  ⚠️ Frontend port might not be 9002');
+  if (port !== '8010') {
+    console.log('  ⚠️ Frontend port might not be 8010');
   }
 }
 
@@ -209,7 +209,7 @@ runAllTests().then(() => {
   console.log('\n📋 Next Steps:');
   console.log('1. Check if FastAPI backend is running on http://localhost:8000');
   console.log('2. Test backend health endpoint: curl http://localhost:8000/health');
-  console.log('3. Start frontend: npm run dev (should run on http://localhost:9002)');
+  console.log('3. Start frontend: npm run dev (should run on http://localhost:8010)');
   console.log('4. Open browser dev tools and try to login');
   console.log('5. Check Network tab for failed requests');
   console.log('6. Check Console tab for JavaScript errors');

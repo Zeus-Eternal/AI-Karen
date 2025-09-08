@@ -293,7 +293,17 @@ export class ApiClient {
       }
     };
 
-    // Use fallback service if enabled and not explicitly skipped
+    // In the browser, route via Next proxy only if enabled by env
+    if (typeof window !== 'undefined') {
+      const useProxy = (process as any)?.env?.NEXT_PUBLIC_USE_PROXY === 'true' ||
+                       (process as any)?.env?.USE_PROXY === 'true' ||
+                       (process as any)?.env?.KAREN_USE_PROXY === 'true';
+      if (useProxy) {
+        return makeRequest('');
+      }
+    }
+
+    // Use fallback service on the server (or when explicitly desired)
     if (this.config.enableFallback && !request.skipFallback) {
       try {
         const result = await this.fallbackService.requestWithFallback(

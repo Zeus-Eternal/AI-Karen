@@ -350,10 +350,11 @@ async def export_metrics(request: Request):
 
     try:
         if not METRICS_AVAILABLE:
-            # Return fallback metrics
+            # Return simple fallback content in Prometheus exposition format
+            content = "# Metrics service not available\n"
             return MetricsExportResponse(
-                content="# Metrics service not available\n",
-                content_type="text/plain; charset=utf-8",
+                content=content,
+                content_type="text/plain; version=0.0.4; charset=utf-8",
                 timestamp=datetime.utcnow().isoformat(),
             )
 

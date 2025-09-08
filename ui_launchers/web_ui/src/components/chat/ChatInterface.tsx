@@ -1081,9 +1081,9 @@ What would you like to work on today?`,
             "Unable to connect to the AI service. Please check if the backend is running and try again.";
           errorTitle = "Connection Error";
 
-          // Test basic connectivity
+          // Test basic connectivity (use Next proxy to avoid CORS in browser)
           safeInfo("Testing backend connectivity...");
-          fetch(configManager.getBackendUrl() + "/health")
+          fetch("/api/health")
             .then((response) => {
               safeInfo("Backend health check:", response.status);
               if (response.ok) {

@@ -6,6 +6,7 @@ across services with structured logging and audit trail support.
 """
 
 import logging
+import sys
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -55,6 +56,20 @@ class CorrelationService:
         self.active_operations: Dict[str, CorrelationContext] = {}
         self.operation_history: List[CorrelationContext] = []
         self.max_history_size = 1000
+
+    @staticmethod
+    def get_or_create_correlation_id(headers: Optional[Dict[str, str]] = None) -> str:
+        """Return existing correlation ID from headers or generate a new one.
+
+        Accepts common header casings. Falls back to a new UUID if missing.
+        """
+        try:
+            headers = headers or {}
+            # Normalize keys to lower-case for case-insensitive lookup
+            lower = {str(k).lower(): str(v) for k, v in headers.items()}
+            return lower.get("x-correlation-id") or str(uuid.uuid4())
+        except Exception:
+            return str(uuid.uuid4())
     
     def start_operation(
         self,
@@ -317,6 +332,15 @@ class CorrelationService:
             logger.warning(f"Cleaned up {len(stale_operations)} stale operations")
         
         return len(stale_operations)
+
+
+def create_correlation_logger(name: str) -> logging.Logger:
+    """Create or return a logger. Placeholder for correlation-aware logging.
+
+    In full deployments, this could attach filters/formatters that inject
+    correlation IDs into log records. For now, return a standard logger.
+    """
+    return logging.getLogger(name)
 
 
 # Global correlation service instance

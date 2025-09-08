@@ -40,6 +40,8 @@ BaseModel, Field = import_pydantic("BaseModel", "Field")
 logger = logging.getLogger("kari.model_library_routes")
 
 router = APIRouter(prefix="/api/models", tags=["model-library"])
+# Public, read-only router for unauthenticated UI access to library listing
+public_router = APIRouter(prefix="/api/models/public", tags=["model-library-public"])
 
 # Global service instance
 _model_library_service: Optional[ModelLibraryService] = None
@@ -517,6 +519,9 @@ async def get_available_models(
         # Cache the result
         _MODEL_LIST_CACHE[cache_key] = {"ts": now, "payload": payload}
         return payload
+
+
+ 
         
         # Apply filters
         filtered_models = []
@@ -593,21 +598,25 @@ async def get_available_models(
         return payload
         
     except ModelLibraryError as e:
+        # Graceful fallback: don't break the UI on library errors
         logger.error(f"Model library error getting available models: {e.error_info.message}")
-        error_handler = ErrorHandler()
-        error_response = error_handler.create_error_response(e.error_info)
-        raise HTTPException(status_code=500, detail=error_response)
+        # Return an empty, well-formed payload so the UI can render with zero models
+        return ModelLibraryResponse(
+            models=[],
+            total_count=0,
+            local_count=0,
+            available_count=0,
+        )
         
     except Exception as e:
+        # Graceful fallback on unexpected errors
         logger.error(f"Unexpected error getting available models: {e}")
-        error_info = handle_validation_error(
-            "service_error", 
-            f"Failed to retrieve model library: {str(e)}",
-            {"operation": "get_available_models"}
+        return ModelLibraryResponse(
+            models=[],
+            total_count=0,
+            local_count=0,
+            available_count=0,
         )
-        error_handler = ErrorHandler()
-        error_response = error_handler.create_error_response(error_info)
-        raise HTTPException(status_code=500, detail=error_response)
 
 @router.post("/download", response_model=DownloadTaskResponse)
 async def initiate_model_download(request: DownloadRequest):
@@ -1383,3 +1392,26 @@ async def cleanup_downloads():
     except Exception as e:
         logger.error(f"Failed to cleanup downloads: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Public, read-only endpoint mirrors the library listing without requiring auth
+# Uses quick mode by default to ensure fast responses for the UI without heavy scanning
+@public_router.get("/library", response_model=ModelLibraryResponse)
+async def get_available_models_public(
+    provider: Optional[str] = None,
+    status: Optional[str] = None,
+    capability: Optional[str] = None,
+    quick: bool = True,  # default to quick on public path
+    ttl: int = 60,
+):
+    try:
+        return await get_available_models(
+            provider=provider,
+            status=status,
+            capability=capability,
+            quick=quick,
+            ttl=ttl,
+            force_refresh=False,
+        )
+    except Exception:
+        # Never error on public endpoint; provide empty result
+        return ModelLibraryResponse(models=[], total_count=0, local_count=0, available_count=0)

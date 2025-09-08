@@ -4,6 +4,11 @@ const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.API_BASE_URL ||
 const AUTH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AUTH_PROXY_TIMEOUT_MS || process.env.KAREN_AUTH_PROXY_TIMEOUT_MS || 30000);
 
 export async function POST(request: NextRequest) {
+  // Gate dev login behind explicit flag
+  const devEnabled = (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN || '').toLowerCase() === 'true';
+  if (!devEnabled) {
+    return NextResponse.json({ error: 'Dev login is disabled' }, { status: 410 });
+  }
   try {
     const body = await request.json();
 
@@ -84,4 +89,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

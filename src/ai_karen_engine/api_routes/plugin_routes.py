@@ -26,6 +26,8 @@ from ai_karen_engine.services.plugin_execution import (
 )
 
 router = APIRouter(tags=["plugins"])
+# Public mirror (read-only) for unauthenticated UI health checks
+public_router = APIRouter(tags=["plugins-public"], prefix="/api/public/plugins")
 
 
 # Alias core dependency for convenience
@@ -175,6 +177,28 @@ async def list_plugins(
             status_code=get_http_status_for_error_code(WebAPIErrorCode.PLUGIN_ERROR),
             detail=error_response.model_dump(mode="json"),
         )
+
+
+@public_router.get("/", response_model=PluginListResponse)
+async def list_plugins_public(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    enabled_only: bool = Query(False, description="Only return enabled plugins"),
+    plugin_service: PluginService = Depends(get_plugin_service),
+):
+    """Public, read-only plugin list for UI health checks.
+
+    Mirrors list_plugins but does not require authentication.
+    """
+    try:
+        return await list_plugins(category, enabled_only, plugin_service)  # type: ignore[arg-type]
+    except Exception:
+        # Never fail hard on public endpoint; return empty response
+        return PluginListResponse(plugins=[], total_count=0, enabled_count=0, disabled_count=0)
+
+__all__ = [
+    "router",
+    "public_router",
+]
 
 
 @router.get("/{plugin_name}", response_model=PluginInfoResponse)

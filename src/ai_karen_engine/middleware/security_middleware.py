@@ -35,14 +35,28 @@ class SecurityConfig:
     """Security configuration"""
     
     def __init__(self):
-        # HTTPS enforcement
-        self.enforce_https = True
-        self.https_redirect = True
+        # HTTPS enforcement - Disable for development
+        import os
+        environment = os.getenv("ENVIRONMENT", "development").lower()
+        self.enforce_https = environment == "production"
+        self.https_redirect = environment == "production"
         
-        # CORS configuration
+        # CORS configuration - Allow both HTTP and HTTPS for development
         self.cors_allowed_origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8020",
+            "http://127.0.0.1:8020",
+            "http://localhost:8010",
+            "http://127.0.0.1:8010",
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
             "https://localhost:3000",
             "https://127.0.0.1:3000",
+            "https://localhost:8020",
+            "https://127.0.0.1:8020",
+            "https://localhost:8010",
+            "https://127.0.0.1:8010",
             "https://localhost:8080",
             "https://127.0.0.1:8080"
         ]

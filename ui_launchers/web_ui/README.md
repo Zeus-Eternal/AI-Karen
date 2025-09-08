@@ -101,7 +101,8 @@ npm install
 npm run dev
 ```
 
-The application will be available at `http://localhost:9002`
+Development: `http://localhost:8010`
+Production (next start): `http://localhost:8020`
 
 Default demo users are provided for testing:
 
@@ -308,7 +309,7 @@ const result = await karenBackend.executePlugin(
 ```bash
 npm run dev
 ```
-- Runs on port 9002
+- Development runs on 8010; production on 8020
 - Hot module replacement enabled
 - Turbopack for faster builds
 - Source maps for debugging
@@ -375,7 +376,7 @@ npm run typecheck
 #### Development Server Issues
 ```bash
 # Check port availability
-lsof -i :9002
+lsof -i :8010
 
 # Start with different port
 npm run dev -- -p 3001

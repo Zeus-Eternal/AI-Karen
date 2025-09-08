@@ -6,7 +6,7 @@
     "supports_streaming": true,
     "supports_embeddings": true,
     "requires_api_key": false,
-    "default_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+    "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "healthy",
     "last_health_check": 1756645844.6772523,
     "error_message": null

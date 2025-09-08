@@ -157,14 +157,17 @@ class HTTPRequestValidator:
                 
                 # Apply different thresholds based on endpoint trust level
                 if is_trusted_endpoint:
-                    # For trusted API endpoints, only block critical threats with very high confidence
-                    should_block = (security_result["threat_level"] == "critical" and 
-                                  security_result.get("confidence_score", 0) > 0.9)
+                    # For trusted API endpoints, do NOT hard-block; downgrade to monitoring-only.
+                    should_block = False
                 else:
-                    # For other endpoints, use the original logic
-                    should_block = (security_result["threat_level"] == "critical" or 
-                                  (security_result["threat_level"] == "high" and 
-                                   security_result.get("confidence_score", 0) > 0.8))
+                    # For other endpoints, original strict logic
+                    should_block = (
+                        security_result["threat_level"] == "critical"
+                        or (
+                            security_result["threat_level"] == "high"
+                            and security_result.get("confidence_score", 0) > 0.8
+                        )
+                    )
                 
                 if should_block:
                     return ValidationResult(
@@ -225,7 +228,11 @@ class HTTPRequestValidator:
             # List of trusted API endpoint patterns
             trusted_patterns = [
                 "/api/health",
+                "/health",
                 "/api/ping",
+                "/ping",
+                "/api/status",
+                "/status",
                 "/api/providers/",
                 "/api/auth/",
                 "/api/plugins",
@@ -237,6 +244,7 @@ class HTTPRequestValidator:
                 "/api/files/",
                 "/api/websocket",
                 "/api/audit/",
+                "/api/copilot/",
                 "/copilot/",
                 "/docs",
                 "/openapi.json",

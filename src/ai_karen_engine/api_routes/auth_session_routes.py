@@ -66,10 +66,17 @@ async def get_auth_service_instance() -> AuthService:
         
         # Create minimal config to avoid complex operations
         config = AuthConfig.from_env()
-        config.features.enable_security_features = False  # Disable security monitoring
-        config.features.enable_rate_limiting = False     # Disable rate limiting
-        config.features.enable_audit_logging = False     # Disable audit logging
-        config.features.enable_intelligence = False      # Disable intelligence analysis
+        
+        # Only disable features if environment variables are not explicitly set
+        import os
+        if os.getenv("AUTH_ENABLE_SECURITY_FEATURES") is None:
+            config.features.enable_security_features = False  # Disable security monitoring
+        if os.getenv("AUTH_ENABLE_RATE_LIMITING") is None:
+            config.features.enable_rate_limiting = False     # Disable rate limiting
+        if os.getenv("AUTH_ENABLE_AUDIT_LOGGING") is None:
+            config.features.enable_audit_logging = False     # Disable audit logging
+        if os.getenv("AUTH_ENABLE_INTELLIGENCE") is None:
+            config.features.enable_intelligence = False      # Disable intelligence analysis
         
         auth_service_instance = await get_auth_service(config)
     return auth_service_instance
@@ -397,7 +404,7 @@ async def login(
 
         logger.info(f"User authenticated: {user_data.user_id}")
 
-        # Simple session creation only - no complex token management
+        # Simple session creation with access + refresh tokens
         session_data = await auth_service.create_session(
             user_data=user_data,
             ip_address=request_meta["ip_address"],
@@ -405,6 +412,28 @@ async def login(
         )
 
         logger.info(f"Session created successfully")
+
+        # Set secure HttpOnly cookies for refresh + session tokens
+        try:
+            cookie_manager = get_cookie_manager_instance()
+            # Refresh token cookie (HttpOnly)
+            cookie_manager.set_refresh_token_cookie(
+                response,
+                session_data.refresh_token,
+                expires_at=datetime.now(timezone.utc) + auth_service.core_auth.token_manager.config.refresh_token_expiry
+            )
+            # Backward-compatible session cookie for websocket/session flows
+            cookie_manager.set_session_cookie(response, session_data.session_token)
+            
+            # Optionally seed CSRF token for state-changing requests
+            csrf_protection = get_csrf_protection()
+            csrf_protection.generate_csrf_response(
+                response,
+                user_id=user_data.user_id,
+                secure=request.url.scheme == "https"
+            )
+        except Exception as e:
+            logger.warning(f"Failed setting auth cookies: {e}")
 
         # Convert UserData to dict format
         user_dict = {
@@ -544,7 +573,7 @@ async def login_simple(
 
         logger.info(f"User authenticated: {user_data.user_id}")
 
-        # Simple session creation
+        # Simple session creation (access + refresh)
         session_data = await auth_service.create_session(
             user_data=user_data,
             ip_address=request_meta["ip_address"],
@@ -552,6 +581,25 @@ async def login_simple(
         )
 
         logger.info(f"Session created: {session_data.session_token[:16]}...")
+
+        # Set cookies to enable session persistence/refresh across tabs and WS
+        try:
+            cookie_manager = get_cookie_manager_instance()
+            cookie_manager.set_refresh_token_cookie(
+                response,
+                session_data.refresh_token,
+                expires_at=datetime.now(timezone.utc) + auth_service.core_auth.token_manager.config.refresh_token_expiry
+            )
+            cookie_manager.set_session_cookie(response, session_data.session_token)
+            
+            csrf_protection = get_csrf_protection()
+            csrf_protection.generate_csrf_response(
+                response,
+                user_id=user_data.user_id,
+                secure=request.url.scheme == "https"
+            )
+        except Exception as e:
+            logger.warning(f"Failed setting auth cookies (simple): {e}")
 
         # Convert UserData to dict format
         user_dict = {

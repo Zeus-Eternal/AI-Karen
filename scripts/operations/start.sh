@@ -1,57 +1,85 @@
 #!/bin/bash
 
 # AI Karen Backend Startup Script
-# This script starts the FastAPI backend server properly
+# Robust dev launcher: sets up venv, installs deps, and runs uvicorn
 
-set -e  # Exit on any error
+set -euo pipefail
 
 echo "🚀 AI Karen Backend Startup"
 echo "=========================="
 
-# Check if we're in the right directory
-if [ ! -f "main.py" ]; then
-    echo "❌ main.py not found! Please run this script from the project root."
-    exit 1
+ROOT_DIR="$(pwd)"
+APP_ENTRY="main.py"
+VENV_DIR=".env_ai"
+PORT="${PORT:-${KAREN_PORT:-8000}}"
+
+if [ ! -f "$APP_ENTRY" ]; then
+  echo "❌ $APP_ENTRY not found! Please run this script from the project root." >&2
+  exit 1
 fi
 
-# Check if virtual environment exists
-if [ ! -d ".env_ai" ]; then
-    echo "❌ Virtual environment .env_ai not found!"
-    echo "Create it with: python -m venv .env_ai"
-    echo "Then activate and install dependencies:"
-    echo "source .env_ai/bin/activate && pip install -r requirements.txt"
-    exit 1
+# Choose python
+PYTHON_BIN="python3"
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  PYTHON_BIN="python"
 fi
 
-# Activate virtual environment
+# Create venv if missing
+if [ ! -d "$VENV_DIR" ]; then
+  echo "🧪 Creating virtual environment ($VENV_DIR)..."
+  "$PYTHON_BIN" -m venv "$VENV_DIR"
+fi
+
+# Activate venv
 echo "🔧 Activating virtual environment..."
-source .env_ai/bin/activate
+source "$VENV_DIR/bin/activate"
 
-# Check if uvicorn is installed
-if ! command -v uvicorn &> /dev/null; then
-    echo "❌ Uvicorn not found! Installing..."
-    pip install uvicorn
+PIP_BIN="pip"
+
+# Ensure pip tooling is recent
+python -m pip install --upgrade pip wheel >/dev/null 2>&1 || true
+
+# Install requirements if critical packages are missing
+need_install=0
+python - <<'PY' || need_install=1
+try:
+    import fastapi  # type: ignore
+    import pydantic_settings  # type: ignore
+except Exception:
+    raise SystemExit(1)
+PY
+
+if [ "$need_install" -eq 1 ]; then
+  echo "📦 Installing Python dependencies from requirements.txt..."
+  $PIP_BIN install -r requirements.txt
 fi
 
-# Start the server
+# Ensure uvicorn is available
+if ! command -v uvicorn >/dev/null 2>&1; then
+  echo "📦 Installing uvicorn..."
+  $PIP_BIN install uvicorn
+fi
+
+# Quick port check helper (non-fatal)
+if command -v lsof >/dev/null 2>&1; then
+  if lsof -i ":$PORT" >/dev/null 2>&1; then
+    echo "⚠️  Port $PORT already in use. The server may fail to bind."
+  fi
+fi
+
 echo "🚀 Starting FastAPI server..."
 echo "📍 Backend will be available at:"
-echo "   - http://localhost:8000"
-echo "   - http://127.0.0.1:8000"
-echo "   - http://0.0.0.0:8000"
-echo ""
-echo "🌐 CORS configured for:"
-echo "   - http://localhost:9002 (Web UI)"
-echo "   - http://127.0.0.1:9002 (Web UI)"
+echo "   - http://localhost:$PORT"
+echo "   - http://127.0.0.1:$PORT"
+echo "   - http://0.0.0.0:$PORT"
 echo ""
 echo "⏹️  Press Ctrl+C to stop the server"
 echo "=================================="
 
-# Start uvicorn with proper configuration
 exec uvicorn main:create_app \
-    --factory \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --reload \
-    --log-level info \
-    --access-log
+  --factory \
+  --host 0.0.0.0 \
+  --port "$PORT" \
+  --reload \
+  --log-level info \
+  --access-log

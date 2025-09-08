@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.responses import StreamingResponse
 
 from ai_karen_engine.middleware.error_counter import error_counter_middleware
 from ai_karen_engine.middleware.rate_limit import rate_limit_middleware
@@ -38,10 +39,31 @@ def configure_middleware(
         https_only=settings.https_redirect,
     )
 
-    origins = [origin.strip() for origin in settings.kari_cors_origins.split(",")]
+    # Resolve CORS origins from multiple sources for compatibility
+    # Priority: explicit env CORS_ORIGINS -> env KARI_CORS_ORIGINS -> settings
+    import os as _os
+    _origins_source = (
+        _os.getenv("CORS_ORIGINS")
+        or _os.getenv("KARI_CORS_ORIGINS")
+        or getattr(settings, "kari_cors_origins", "")
+        or ""
+    )
+    origins = [o.strip() for o in _origins_source.split(",") if o.strip()]
+    # Safety: de-duplicate while preserving order
+    _seen = set()
+    origins = [o for o in origins if not (o in _seen or _seen.add(o))]
+    # Optional regex-based allowance, useful for dev ports/hosts
+    cors_regex = _os.getenv("CORS_ALLOW_ORIGIN_REGEX")
+    allow_dev_origins = _os.getenv("ALLOW_DEV_ORIGINS", "false").lower() in ("1", "true", "yes")
+    # Default to permissive localhost regex in non-production or when explicitly enabled
+    env_name = (getattr(settings, "environment", "") or "").lower()
+    if not cors_regex and (allow_dev_origins or env_name in ("development", "dev", "local")):
+        cors_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
+        allow_origin_regex=cors_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -50,6 +72,29 @@ def configure_middleware(
     )
 
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+    # Ensure streaming responses are not served with a stale Content-Length.
+    # Some upstream handlers and error paths may set Content-Length on a body
+    # that is later streamed/altered (e.g., by compression), which can trigger
+    # "Response content longer than Content-Length" in Uvicorn.
+    @app.middleware("http")
+    async def strip_content_length_for_streams(request: Request, call_next):
+        response = await call_next(request)
+        try:
+            # Remove Content-Length for true streaming responses
+            if isinstance(response, StreamingResponse):
+                response.headers.pop("content-length", None)
+                return response
+
+            # Also remove when content is encoded (size may change after gzip/br)
+            enc = response.headers.get("content-encoding", "").lower()
+            if enc in ("gzip", "br", "deflate"):
+                response.headers.pop("content-length", None)
+
+        except Exception:
+            # Do not interfere with the response in case of header mutations failing
+            pass
+        return response
 
     # RBAC middleware configured based on environment
     development_mode = getattr(settings, "environment", "").lower() != "production"
@@ -78,27 +123,32 @@ def configure_middleware(
     # Configure and register enhanced rate limiting middleware
     from ai_karen_engine.middleware.rate_limit import configure_rate_limiter
     
-    # Configure rate limiter based on environment
-    storage_type = "memory"  # Default to memory storage
-    redis_url = None
+    # Check if rate limiting is enabled globally
+    enable_rate_limiting = os.getenv("ENABLE_RATE_LIMITING", "false").lower() in ("1", "true", "yes")
     
-    # Try to get Redis configuration from environment
-    import os
-    if os.getenv("REDIS_URL"):
-        storage_type = "redis"
-        redis_url = os.getenv("REDIS_URL")
-    elif os.getenv("RATE_LIMIT_REDIS_URL"):
-        storage_type = "redis"
-        redis_url = os.getenv("RATE_LIMIT_REDIS_URL")
-    
-    configure_rate_limiter(storage_type=storage_type, redis_url=redis_url)
-    
-    # Register enhanced rate limiting middleware - disabled in bypass mode
-    auth_mode = os.getenv("AUTH_MODE", "hybrid").lower()
-    if auth_mode != "bypass":
-        app.middleware("http")(rate_limit_middleware)
+    if enable_rate_limiting:
+        # Configure rate limiter based on environment
+        storage_type = "memory"  # Default to memory storage
+        redis_url = None
+        
+        # Try to get Redis configuration from environment
+        if os.getenv("REDIS_URL"):
+            storage_type = "redis"
+            redis_url = os.getenv("REDIS_URL")
+        elif os.getenv("RATE_LIMIT_REDIS_URL"):
+            storage_type = "redis"
+            redis_url = os.getenv("RATE_LIMIT_REDIS_URL")
+        
+        configure_rate_limiter(storage_type=storage_type, redis_url=redis_url)
+        
+        # Register enhanced rate limiting middleware - disabled in bypass mode
+        auth_mode = os.getenv("AUTH_MODE", "hybrid").lower()
+        if auth_mode != "bypass":
+            app.middleware("http")(rate_limit_middleware)
+        else:
+            logger.info("🔓 Skipping rate limiting middleware - AUTH_MODE=bypass")
     else:
-        logger.info("🔓 Skipping rate limiting middleware - AUTH_MODE=bypass")
+        logger.info("🔓 Rate limiting disabled via ENABLE_RATE_LIMITING environment variable")
     app.middleware("http")(error_counter_middleware)
 
     @app.middleware("http")
@@ -131,6 +181,28 @@ def configure_middleware(
         )
         logger.warning("Using fallback validation configuration")
     
+    # Ensure an enhanced logger is available even if initialization path was skipped
+    if enhanced_logger is None:
+        try:
+            from ai_karen_engine.server.enhanced_logger import (
+                EnhancedLogger,
+                LoggingConfig,
+            )
+            default_logging_cfg = LoggingConfig(
+                log_level="INFO",
+                enable_security_logging=True,
+                sanitize_data=True,
+            )
+            # Store on this module so other imports can find it
+            import sys as _sys
+            _mod = _sys.modules[__name__]
+            setattr(_mod, "_enhanced_logger", EnhancedLogger(default_logging_cfg))
+            enhanced_logger = getattr(_mod, "_enhanced_logger")
+            logger.info("Enhanced logger initialized by middleware")
+        except Exception:
+            # Proceed without enhanced logger; fallback logging will be used
+            pass
+
     http_validator = HTTPRequestValidator(validation_config)
 
     @app.middleware("http")

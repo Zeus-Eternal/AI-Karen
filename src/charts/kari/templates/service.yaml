@@ -4,7 +4,7 @@ metadata:
   name: kari
   annotations:
     prometheus.io/scrape: "true"
-    prometheus.io/path: "/metrics/prometheus"
+    prometheus.io/path: "/metrics"
     prometheus.io/port: "{{ .Values.service.port }}"
 spec:
   selector:

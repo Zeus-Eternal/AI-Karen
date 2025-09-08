@@ -8,11 +8,12 @@ import { ConfigManager, getConfigManager, initializeConfigManager } from '../end
 
 // Mock environment variables
 const mockEnv = {
+  NODE_ENV: 'test',
   KAREN_BACKEND_URL: 'http://localhost:8000',
   KAREN_ENVIRONMENT: 'local',
   KAREN_NETWORK_MODE: 'localhost',
   KAREN_FALLBACK_BACKEND_URLS: 'http://127.0.0.1:8000,http://localhost:8001',
-  KAREN_CORS_ORIGINS: 'http://localhost:9002,http://127.0.0.1:9002',
+  KAREN_CORS_ORIGINS: 'http://localhost:8010,http://127.0.0.1:8010,http://localhost:8020',
   KAREN_HEALTH_CHECK_ENABLED: 'true',
   KAREN_HEALTH_CHECK_INTERVAL: '30000',
   KAREN_HEALTH_CHECK_TIMEOUT: '5000',
@@ -35,8 +36,8 @@ global.performance = {
 const mockWindow = {
   location: {
     hostname: 'localhost',
-    href: 'http://localhost:9002',
-    origin: 'http://localhost:9002',
+    href: 'http://localhost:8010',
+    origin: 'http://localhost:8010',
   },
 };
 
@@ -71,7 +72,7 @@ describe('ConfigManager', () => {
 
   describe('Configuration Loading', () => {
     it('should load default configuration when no environment variables are set', () => {
-      global.process.env = {};
+      global.process.env = { NODE_ENV: 'test' } as any;
       
       const config = new ConfigManager();
       const configuration = config.getConfiguration();
@@ -92,7 +93,7 @@ describe('ConfigManager', () => {
       expect(configuration.environment).toBe('local');
       expect(configuration.networkMode).toBe('localhost');
       expect(configuration.fallbackUrls).toEqual(['http://127.0.0.1:8000', 'http://localhost:8001']);
-      expect(configuration.corsOrigins).toEqual(['http://localhost:9002', 'http://127.0.0.1:9002']);
+      expect(configuration.corsOrigins).toEqual(['http://localhost:8010', 'http://127.0.0.1:8010', 'http://localhost:8020']);
       expect(configuration.healthCheckEnabled).toBe(true);
       expect(configuration.healthCheckInterval).toBe(30000);
       expect(configuration.healthCheckTimeout).toBe(5000);

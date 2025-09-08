@@ -2112,10 +2112,14 @@ async def get_auth_service(config: Optional[AuthConfig] = None) -> AuthService:
 async def get_production_auth_service() -> AuthService:
     """Get AuthService configured for production use."""
     config = AuthConfig.load()
-    # Ensure production-appropriate settings
-    config.features.enable_security_features = True
-    config.features.enable_rate_limiting = True
-    config.features.enable_audit_logging = True
+    # Respect environment configuration for production settings
+    # Only override if environment variables are not explicitly set
+    if os.getenv("AUTH_ENABLE_SECURITY_FEATURES") is None:
+        config.features.enable_security_features = True
+    if os.getenv("AUTH_ENABLE_RATE_LIMITING") is None:
+        config.features.enable_rate_limiting = True
+    if os.getenv("AUTH_ENABLE_AUDIT_LOGGING") is None:
+        config.features.enable_audit_logging = True
     return await create_auth_service(config)
 
 

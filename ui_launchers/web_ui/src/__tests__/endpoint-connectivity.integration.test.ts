@@ -40,8 +40,8 @@ describe('Endpoint Connectivity Integration Tests', () => {
     global.window = {
       location: {
         hostname: 'localhost',
-        href: 'http://localhost:9002',
-        origin: 'http://localhost:9002',
+        href: 'http://localhost:8010',
+        origin: 'http://localhost:8010',
       },
     } as any;
 
@@ -124,7 +124,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
         statusText: 'OK',
         headers: new Map([
           ['content-type', 'application/json'],
-          ['access-control-allow-origin', 'http://localhost:9002'],
+          ['access-control-allow-origin', 'http://localhost:8010'],
         ]),
       });
 
@@ -134,7 +134,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
       expect(result.status).toBe('success');
       expect(result.statusCode).toBe(200);
       expect(result.endpoint).toBe('http://localhost:8000/api/auth/status');
-      expect(result.headers?.['access-control-allow-origin']).toBe('http://localhost:9002');
+      expect(result.headers?.['access-control-allow-origin']).toBe('http://localhost:8010');
     });
 
     it('should handle authentication endpoint CORS issues', async () => {
@@ -160,7 +160,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
 
       expect(result.status).toBe('cors');
       expect(result.corsInfo).toBeDefined();
-      expect(result.corsInfo?.origin).toBe('http://localhost:9002');
+      expect(result.corsInfo?.origin).toBe('http://localhost:8010');
     });
 
     it('should handle authentication endpoint requiring credentials', async () => {

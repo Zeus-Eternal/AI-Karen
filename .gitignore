@@ -41,9 +41,6 @@ next-env.d.ts
 
 # Generated files
 .genkit/*
-.env*
-!.env.example
-!ui_launchers/web_ui/.env.example
 
 # firebase
 firebase-debug.log
@@ -57,7 +54,6 @@ server.pid
 .pytest_cache
 .vscode
 # Ignore local environment files
-.env.local
 .envrc
 .venv/
 *.duckdb
@@ -72,7 +68,6 @@ server.pid
 .fuse_hidden0004897500000004
 llm_settings.json
 .env
-.env.local
 config/llm_settings.local.json
 .kren_env/
 .kiro/
@@ -80,3 +75,5 @@ config/llm_settings.local.json
 /.karen_env
 /tests
 /models
+/.env_karen/bin
+/.env_karen

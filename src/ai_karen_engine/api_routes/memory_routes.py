@@ -37,12 +37,23 @@ except ImportError:
     MEMORY_SERVICE_AVAILABLE = False
 
 try:
-    from ai_karen_engine.auth.rbac_middleware import get_rbac_manager, get_current_user
-
+    from ai_karen_engine.auth.rbac_middleware import get_rbac_manager, get_current_user  # type: ignore
     RBAC_AVAILABLE = True
 except ImportError:
-    logger.warning("RBAC not available, using fallback")
-    RBAC_AVAILABLE = False
+    # Fallback to the current RBAC middleware module if available
+    try:
+        from ai_karen_engine.middleware import rbac as _rbac  # type: ignore
+        RBAC_AVAILABLE = True
+    except Exception:
+        # In development we don't want noisy warnings when RBAC is attached at runtime
+        import os as _os
+        _env = (_os.getenv("ENVIRONMENT") or _os.getenv("KARI_ENV") or "development").lower()
+        if _env in ("production", "staging"):
+            logger.warning("RBAC not available, using fallback")
+        else:
+            logger.info("RBAC module import unavailable; will use runtime RBAC if configured")
+        # Runtime check_rbac_scope consults request.app.state.rbac; mark available for dev
+        RBAC_AVAILABLE = _env not in ("production", "staging")
 
 try:
     from ai_karen_engine.services.metrics_service import get_metrics_service
@@ -173,18 +184,28 @@ def get_correlation_id(request: Request) -> str:
 
 
 async def check_rbac_scope(request: Request, scope: str) -> bool:
-    """Check RBAC scope and fail closed on errors."""
-    if not RBAC_AVAILABLE:
-        logger.warning("RBAC not available")
-        return True  # Allow access when RBAC is not available for backward compatibility
+    """Check RBAC scope using the configured middleware when available.
 
+    Falls back to permissive mode in development if RBAC is unavailable.
+    """
+    # Prefer the RBAC middleware instance attached during app setup
     try:
-        # For now, return True as the memory routes don't have specific RBAC requirements
-        # This can be enhanced later with proper permission checking
-        return True
+        rbac = getattr(getattr(request, "app", None), "state", None)
+        rbac = getattr(rbac, "rbac", None)
+        if rbac is not None:
+            ok = await rbac.validate_scopes(request, {scope})
+            return ok
     except Exception as e:
-        logger.warning(f"RBAC check failed for {scope}: {e}")
-        raise HTTPException(status_code=403, detail="RBAC error")
+        logger.warning(f"RBAC middleware validation error for scope '{scope}': {e}")
+
+    # Fallback: allow in non-production to avoid blocking development
+    import os
+    env = (os.getenv("ENVIRONMENT") or os.getenv("KARI_ENV") or "development").lower()
+    if env in ("development", "dev", "local", "test", "testing"):
+        return True
+
+    # In production with no RBAC available, deny by default
+    raise HTTPException(status_code=403, detail="RBAC unavailable")
 
 
 async def get_memory_service() -> Optional[WebUIMemoryService]:

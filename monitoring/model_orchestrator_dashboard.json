@@ -1,15 +1,14 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "Model Orchestrator Dashboard",
-    "tags": ["model-orchestrator", "ai", "monitoring"],
-    "timezone": "browser",
-    "refresh": "30s",
-    "time": {
-      "from": "now-1h",
-      "to": "now"
-    },
-    "panels": [
+  "id": null,
+  "title": "Model Orchestrator Dashboard",
+  "tags": ["model-orchestrator", "ai", "monitoring"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
       {
         "id": 1,
         "title": "Model Operations Overview",
@@ -328,5 +327,4 @@
         }
       }
     ]
-  }
 }

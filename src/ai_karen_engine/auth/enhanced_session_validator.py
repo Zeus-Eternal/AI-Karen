@@ -528,13 +528,15 @@ class EnhancedSessionValidator:
         if result.success:
             # Log successful session validation (separate from login events)
             try:
+                # Guard optional fields to avoid attribute errors in logging
+                validation_method = getattr(result, "validation_method", None) or getattr(result, "validation_source", None) or "token"
                 self._audit_logger.log_session_validation(
                     user_id=result.user_data["user_id"],
                     ip_address=request_meta["ip_address"],
                     user_agent=request_meta["user_agent"],
                     tenant_id=result.user_data.get("tenant_id", "default"),
                     session_id=result.user_data.get("session_id"),
-                    validation_method=result.validation_method or "token",
+                    validation_method=validation_method,
                     logged_by="session_validator"
                 )
             except Exception as e:

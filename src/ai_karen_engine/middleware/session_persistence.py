@@ -67,6 +67,8 @@ class SessionPersistenceMiddleware(BaseHTTPMiddleware):
             "/api/auth/validate-session",  # Session validation endpoint
             "/api/health",
             "/api/health/degraded-mode",
+            "/api/ping",  # Lightweight ping should be public
+            "/api/status",  # Status endpoint should be public
             "/api/reasoning/analyze",
             "/api/analytics",  # All analytics endpoints
             "/system/status",  # System status endpoint

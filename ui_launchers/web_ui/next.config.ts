@@ -85,11 +85,10 @@ const nextConfig: NextConfig = {
         destination: `${backendUrl}/api/auth/:path*`,
       },
       // CopilotKit actions
-      // Frontend uses /api/copilot/*; backend mounts these directly under /api/*
-      // Rewrite by stripping the 'copilot' segment.
+      // Frontend and backend both use /api/copilot/*; do not strip the segment.
       {
         source: '/api/copilot/:path*',
-        destination: `${backendUrl}/api/:path*`,
+        destination: `${backendUrl}/api/copilot/:path*`,
       },
       // Models + providers
       {

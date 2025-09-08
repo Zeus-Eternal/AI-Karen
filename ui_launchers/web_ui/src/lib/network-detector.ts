@@ -90,7 +90,7 @@ export class NetworkDetectionService {
   private getCurrentEnvironmentInfo(): NetworkEnvironmentInfo {
     const defaultInfo: NetworkEnvironmentInfo = {
       hostname: 'localhost',
-      port: '9002',
+      port: '8010',
       protocol: 'http:',
       isLocalhost: true,
       isPrivateNetwork: false,
@@ -100,14 +100,16 @@ export class NetworkDetectionService {
       referrer: '',
     };
 
-    if (typeof window === 'undefined') {
-      return defaultInfo;
-    }
+    if (typeof window === 'undefined') return defaultInfo;
 
-    const location = window.location;
-    const hostname = location.hostname;
-    const port = location.port || (location.protocol === 'https:' ? '443' : '80');
-    const protocol = location.protocol;
+    const win = (typeof window !== 'undefined') ? window as any : undefined;
+    const doc = (typeof document !== 'undefined') ? document as any : undefined;
+    const nav = (typeof navigator !== 'undefined') ? navigator as any : undefined;
+
+    const location = win?.location;
+    const hostname = location?.hostname ?? 'localhost';
+    const port = location?.port || (location?.protocol === 'https:' ? '443' : '80');
+    const protocol = location?.protocol ?? 'http:';
 
     return {
       hostname,
@@ -117,71 +119,41 @@ export class NetworkDetectionService {
       isPrivateNetwork: this.isPrivateNetworkIP(hostname),
       isExternalIP: this.isExternalIP(hostname),
       isDockerContainer: this.isDockerHostname(hostname),
-      userAgent: navigator.userAgent,
-      referrer: document.referrer,
+      userAgent: nav?.userAgent ?? 'server',
+      referrer: doc?.referrer ?? '',
     };
   }
-
   /**
    * Detect Docker container environment
    */
-  private detectDockerEnvironment(): {
-    isDocker: boolean;
-    confidence: number;
-    indicators: string[];
-  } {
-    const indicators: string[] = [];
-    let confidence = 0;
+private detectDockerEnvironment(): { isDocker: boolean; confidence: number; indicators: string[] } {
+  const indicators: string[] = [];
+  let confidence = 0;
 
-    // Check environment variables (if available)
-    if (typeof process !== 'undefined' && process.env) {
-      if (process.env.DOCKER_CONTAINER) {
-        indicators.push('DOCKER_CONTAINER env var');
-        confidence += 30;
-      }
-      
-      if (process.env.HOSTNAME?.startsWith('docker-')) {
-        indicators.push('Docker hostname pattern');
-        confidence += 20;
-      }
-      
-      if (process.env.KAREN_CONTAINER_MODE === 'true') {
-        indicators.push('KAREN_CONTAINER_MODE flag');
-        confidence += 25;
-      }
-    }
-
-    // Check hostname patterns
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      
-      if (hostname.includes('docker') || hostname.includes('container')) {
-        indicators.push('Container hostname pattern');
-        confidence += 20;
-      }
-      
-      // Check for container-specific network patterns
-      if (hostname.match(/^[a-f0-9]{12}$/)) { // Docker container ID pattern
-        indicators.push('Container ID hostname');
-        confidence += 25;
-      }
-    }
-
-    // Check user agent for container indicators
-    if (typeof navigator !== 'undefined') {
-      const userAgent = navigator.userAgent.toLowerCase();
-      if (userAgent.includes('docker') || userAgent.includes('container')) {
-        indicators.push('Container user agent');
-        confidence += 15;
-      }
-    }
-
-    return {
-      isDocker: confidence > 30,
-      confidence: Math.min(100, confidence),
-      indicators,
-    };
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.DOCKER_CONTAINER) { indicators.push('DOCKER_CONTAINER env var'); confidence += 30; }
+    if (process.env.HOSTNAME?.startsWith('docker-')) { indicators.push('Docker hostname pattern'); confidence += 20; }
+    if (process.env.KAREN_CONTAINER_MODE === 'true') { indicators.push('KAREN_CONTAINER_MODE flag'); confidence += 25; }
   }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const win = window as any;
+      const hostname = win?.location?.hostname ?? '';
+      if (hostname && (hostname.includes('docker') || hostname.includes('container'))) { indicators.push('Container hostname pattern'); confidence += 20; }
+      if (hostname && /^[a-f0-9]{12}$/.test(hostname)) { indicators.push('Container ID hostname'); confidence += 25; }
+    } catch { /* ignore */ }
+  }
+
+  if (typeof navigator !== 'undefined') {
+    try {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes('docker') || ua.includes('container')) { indicators.push('Container user agent'); confidence += 15; }
+    } catch { /* ignore */ }
+  }
+
+  return { isDocker: confidence > 30, confidence: Math.min(100, confidence), indicators };
+}
 
   /**
    * Detect external IP access

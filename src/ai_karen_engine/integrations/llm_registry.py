@@ -1177,8 +1177,8 @@ class LLMRegistry:
             if "llamacpp" not in provider_configs:
                 provider_configs["llamacpp"] = {}
             
+            # In-process llama-cpp is the default; don't imply an external server
             provider_configs["llamacpp"].update({
-                "base_url": "http://localhost:8080",
                 "models": llamacpp_models,
                 "model_path": llamacpp_model_path,
                 "context_length": 4096

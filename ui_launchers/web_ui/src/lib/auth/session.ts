@@ -111,12 +111,18 @@ export function isSessionValid(): boolean {
  */
 export function getAuthHeader(): Record<string, string> {
   // First try to get from current session
-  if (currentSession && currentSession.accessToken !== 'validated') {
-    if (isSessionValid()) {
+  if (currentSession) {
+    if (currentSession.accessToken !== 'validated' && isSessionValid()) {
       console.log('Using current session token for auth header');
       return {
         'Authorization': `Bearer ${currentSession.accessToken}`
       };
+    }
+    // Even if accessToken is 'validated', session might be valid via HttpOnly cookie
+    // In this case, we should let the backend handle session validation
+    if (isSessionValid()) {
+      console.log('Session validated via cookie, proceeding without Authorization header');
+      return {};
     }
   }
   

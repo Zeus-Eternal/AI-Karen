@@ -250,7 +250,7 @@ export function getWebUIConfig(): WebUIConfig {
     healthCheckRetries: parseNumberEnv(process.env.KAREN_HEALTH_CHECK_RETRIES, 3),
 
     // CORS configuration
-    corsOrigins: parseArrayEnv(process.env.KARI_CORS_ORIGINS, ['http://localhost:9002']),
+    corsOrigins: parseArrayEnv(process.env.KARI_CORS_ORIGINS, ['http://localhost:8010','http://localhost:8020']),
 
     // Performance
     enableServiceWorker: parseBooleanEnv(process.env.KAREN_ENABLE_SERVICE_WORKER, false),
@@ -428,7 +428,7 @@ export function getRuntimeInfo() {
     nodeEnv: process.env.NODE_ENV || 'development',
     isDevelopment: process.env.NODE_ENV === 'development',
     isProduction: process.env.NODE_ENV === 'production',
-    port: process.env.PORT || '9002',
+    port: process.env.PORT || '8010',
     timestamp: new Date().toISOString(),
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
     url: typeof window !== 'undefined' ? window.location.href : 'server',
