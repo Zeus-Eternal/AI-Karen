@@ -383,10 +383,10 @@ export async function login(email: string, password: string, totpCode?: string):
     // Add a small delay to prevent rapid successive requests and rate limiting
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Use Next.js API route to avoid CORS issues
-    console.log('Attempting login via Next.js API route');
+    // Try direct backend API first (most reliable)
+    console.log('Attempting login via backend API');
     
-    let response = await fetch('/api/auth/login', {
+    let response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -403,9 +403,9 @@ export async function login(email: string, password: string, totpCode?: string):
         throw new Error('Too many login attempts. Please wait a moment and try again.');
       }
 
-      // Fallback 1: try simplified login endpoint
-      console.warn(`Primary login failed (${response.status}). Trying /api/auth/login-simple ...`);
-      response = await fetch('/api/auth/login-simple', {
+      // Fallback 1: try Next.js API route
+      console.warn(`Backend login failed (${response.status}). Trying Next.js API route...`);
+      response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -416,18 +416,32 @@ export async function login(email: string, password: string, totpCode?: string):
       });
 
       if (!response.ok) {
-        // Optional Fallback 2: dev-login if enabled
-        const enableDevLogin = process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true';
-        if (enableDevLogin) {
-          console.warn(`Simplified login failed (${response.status}). Trying /api/auth/dev-login ...`);
-          response = await fetch('/api/auth/dev-login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify(credentials),
-          });
+        // Fallback 2: try simplified login endpoint
+        console.warn(`Next.js login failed (${response.status}). Trying /api/auth/login-simple ...`);
+        response = await fetch('/api/auth/login-simple', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(credentials),
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          // Optional Fallback 3: dev-login if enabled
+          const enableDevLogin = process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true';
+          if (enableDevLogin) {
+            console.warn(`Simplified login failed (${response.status}). Trying /api/auth/dev-login ...`);
+            response = await fetch('/api/auth/dev-login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify(credentials),
+            });
+          }
         }
       }
 
@@ -439,12 +453,13 @@ export async function login(email: string, password: string, totpCode?: string):
     
     const data = await response.json();
     
-    // Calculate expiry time
-    const expiresAt = Date.now() + (data.expires_in * 1000);
+    // Calculate expiry time (ensure we have a valid expires_in)
+    const expiresIn = data.expires_in || 86400; // Default to 24 hours if not provided
+    const expiresAt = Date.now() + (expiresIn * 1000);
     
     // Store session data in memory
     const sessionData: SessionData = {
-      accessToken: data.access_token,
+      accessToken: data.access_token || 'validated',
       expiresAt,
       userId: data.user.user_id,
       email: data.user.email,
@@ -454,7 +469,7 @@ export async function login(email: string, password: string, totpCode?: string):
     
     setSession(sessionData);
     
-    console.log('Login successful');
+    console.log('Login successful, session established');
     
   } catch (error: any) {
     console.error('Login failed:', error.message);

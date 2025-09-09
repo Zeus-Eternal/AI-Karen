@@ -30,9 +30,9 @@ USERS_DB = {
     "admin@kari.ai": {
         "user_id": "admin-kari-ai",
         "email": "admin@kari.ai",
-        "password_hash": "$2b$12$TpTWisikQS3X91ubUBNOUuNKqV/JCXptvTF3B1iQzzmoZPGfRzRWa",  # password123
+        "password_hash": "$2b$12$LxDjupoewsxS/tThFmke3.eBtEjDxVYa6X.9Y.nhwMPrHT2Egl6py",  # Password123!
         "full_name": "Kari Admin",
-        "roles": ["admin", "user", "super_admin"],
+        "roles": ["admin", "user", "super_admin", "developer", "production"],
         "tenant_id": "default",
         "is_verified": True,
         "is_active": True
@@ -417,7 +417,7 @@ async def get_demo_users() -> Dict[str, Any]:
         "demo_users": [
             {
                 "email": "admin@kari.ai",
-                "password": "password123",
+                "password": "Password123!",
                 "role": "super_admin"
             },
             {

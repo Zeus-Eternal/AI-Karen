@@ -48,7 +48,7 @@ try:
     plugin_path = Path(__file__).parent.parent.parent.parent / "plugin_marketplace" / "ai" / "model-orchestrator"
     sys.path.append(str(plugin_path))
     
-    from service import (
+    from ai_karen_engine.services.model_orchestrator_service import (
         ModelOrchestratorService, 
         ModelOrchestratorError,
         ModelSummary,

@@ -99,7 +99,8 @@ class ModernSecurityConfig:
             "X-Correlation-ID",
             "Accept",
             "Origin",
-            "User-Agent"
+            "User-Agent",
+            "Cache-Control"
         ]
         self.cors_expose_headers = ["X-Request-ID", "X-Rate-Limit-Remaining"]
         self.cors_allow_credentials = True

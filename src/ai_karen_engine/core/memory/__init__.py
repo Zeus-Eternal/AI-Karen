@@ -19,6 +19,12 @@ from ai_karen_engine.core.memory.manager import (
     update_memory,
 )
 from ai_karen_engine.core.memory.session_buffer import SessionBuffer
+from ai_karen_engine.core.memory.np_memory import (
+    load_jsonl,
+    extract_pairs,
+    embed_texts,
+    retrieve
+)
 
 __all__ = [
     # Original memory system
@@ -35,4 +41,9 @@ __all__ = [
     "MemoryNetworkNode",
     "MemoryNetworkEdge",
     "MemoryAnalytics",
+    # Neuro-recall memory utilities
+    "load_jsonl",
+    "extract_pairs", 
+    "embed_texts",
+    "retrieve"
 ]

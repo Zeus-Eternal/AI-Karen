@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 8010",
-    "dev:turbo": "next dev --turbopack -p 8010",
-    "dev:webpack": "next dev -p 8010",
+    "dev": "next dev -p 8020",
+    "dev:turbo": "next dev --turbopack -p 8020",
+    "dev:webpack": "next dev -p 8020",
     "analyze": "ANALYZE=true next build",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",

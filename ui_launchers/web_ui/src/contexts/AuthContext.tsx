@@ -1,11 +1,55 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { safeError, safeWarn } from '@/lib/safe-console';
-import { User, AuthState, LoginCredentials, AuthContextType, DeepPartial } from '@/types/auth';
-import { authStateManager } from './AuthStateManager';
-import { authService } from '@/services/authService';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { login as sessionLogin, logout as sessionLogout, getCurrentUser } from '@/lib/auth/session';
+import { authStateManager, type AuthSnapshot } from './AuthStateManager';
+
+export interface User {
+  user_id: string;
+  email: string;
+  full_name?: string | null;
+  roles: string[];
+  tenant_id: string;
+  preferences: {
+    memoryDepth: string;
+    personalityTone: string;
+    personalityVerbosity: string;
+    customPersonaInstructions: string;
+    preferredLLMProvider: string;
+    preferredModel: string;
+    temperature: number;
+    maxTokens: number;
+    notifications: { email: boolean; push: boolean };
+    ui: { theme: string; language: string; avatarUrl?: string };
+  };
+  two_factor_enabled: boolean;
+  is_verified?: boolean;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+  totp_code?: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+export interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+}
+
+export interface AuthProviderProps {
+  children: ReactNode;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -17,10 +61,6 @@ export const useAuth = () => {
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
@@ -28,20 +68,105 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading: true,
   });
 
-  // Derive from authStateManager/session only (no separate initial fetch)
+  const login = async (credentials: LoginCredentials): Promise<void> => {
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true }));
+      await sessionLogin(credentials.email, credentials.password, credentials.totp_code);
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        throw new Error('Failed to get user data after login');
+      }
+      const user: User = {
+        user_id: currentUser.userId,
+        email: currentUser.email,
+        roles: currentUser.roles,
+        tenant_id: currentUser.tenantId,
+        full_name: null,
+        two_factor_enabled: false,
+        is_verified: true,
+        preferences: {
+          memoryDepth: 'high',
+          personalityTone: 'professional',
+          personalityVerbosity: 'balanced',
+          customPersonaInstructions: '',
+          preferredLLMProvider: 'openai',
+          preferredModel: 'gpt-4',
+          temperature: 0.7,
+          maxTokens: 2048,
+          notifications: { email: true, push: false },
+          ui: { theme: 'system', language: 'en' },
+        },
+      };
+      setAuthState({ user, isAuthenticated: true, isLoading: false });
+      
+      // Update auth state manager
+      authStateManager.updateState({ isAuthenticated: true, user: currentUser });
+    } catch (error) {
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      await sessionLogout();
+    } catch (error) {
+      console.warn('Logout request failed:', error);
+    } finally {
+      setAuthState({ user: null, isAuthenticated: false, isLoading: false });
+      authStateManager.updateState({ isAuthenticated: false, user: null });
+    }
+  };
+
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        const user: User = {
+          user_id: currentUser.userId,
+          email: currentUser.email,
+          roles: currentUser.roles,
+          tenant_id: currentUser.tenantId,
+          full_name: null,
+          two_factor_enabled: false,
+          is_verified: true,
+          preferences: {
+            memoryDepth: 'high',
+            personalityTone: 'professional',
+            personalityVerbosity: 'balanced',
+            customPersonaInstructions: '',
+            preferredLLMProvider: 'openai',
+            preferredModel: 'gpt-4',
+            temperature: 0.7,
+            maxTokens: 2048,
+            notifications: { email: true, push: false },
+            ui: { theme: 'system', language: 'en' },
+          },
+        };
+        setAuthState({ user, isAuthenticated: true, isLoading: false });
+      } else {
+        setAuthState({ user: null, isAuthenticated: false, isLoading: false });
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      setAuthState({ user: null, isAuthenticated: false, isLoading: false });
+    }
+  };
+
   useEffect(() => {
-    // Seed from current snapshot
     const snapshot = authStateManager.getState();
+    
+    // Convert SessionUser to User format if needed
     const initialUser = snapshot.user && snapshot.user.userId ? {
       user_id: snapshot.user.userId,
       email: snapshot.user.email || '',
+      full_name: null,
       roles: snapshot.user.roles || [],
       tenant_id: snapshot.user.tenantId || '',
-      two_factor_enabled: false,
       preferences: {
+        memoryDepth: 'high',
         personalityTone: 'professional',
         personalityVerbosity: 'balanced',
-        memoryDepth: 'medium',
         customPersonaInstructions: '',
         preferredLLMProvider: 'openai',
         preferredModel: 'gpt-4',
@@ -50,270 +175,70 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         notifications: { email: true, push: false },
         ui: { theme: 'system', language: 'en' },
       },
+      two_factor_enabled: false,
+      is_verified: true,
     } as User : null;
     setAuthState({ user: initialUser, isAuthenticated: snapshot.isAuthenticated, isLoading: false });
 
-    // Auto-login in development mode if not authenticated
-    if (process.env.NODE_ENV === 'development' && !snapshot.isAuthenticated) {
-      const autoLogin = async () => {
+    // Auto-login in development mode
+    const autoLogin = async () => {
+      if (process.env.NODE_ENV === 'development' && !snapshot.isAuthenticated && !authState.isLoading) {
         try {
-          console.log('Development mode: attempting auto-login...');
-          setAuthState(prev => ({ ...prev, isLoading: true }));
-          await sessionLogin('test@example.com', 'test123');
-          console.log('Development auto-login successful');
-          
-          // Force a state update after successful login
-          const currentUser = getCurrentUser();
-          if (currentUser) {
-            const user: User = {
-              user_id: currentUser.userId,
-              email: currentUser.email,
-              roles: currentUser.roles,
-              tenant_id: currentUser.tenantId,
-              two_factor_enabled: false,
-              preferences: {
-                personalityTone: 'friendly',
-                personalityVerbosity: 'balanced',
-                memoryDepth: 'medium',
-                customPersonaInstructions: '',
-                preferredLLMProvider: 'llama-cpp',
-                preferredModel: 'llama3.2:latest',
-                temperature: 0.7,
-                maxTokens: 1000,
-                notifications: { email: true, push: false },
-                ui: { theme: 'light', language: 'en', avatarUrl: '' },
-              },
-            };
-            setAuthState({ user, isAuthenticated: true, isLoading: false });
-          }
+          console.log('Development mode: attempting auto-login');
+          await login({
+            email: 'admin@kari.ai',
+            password: 'Password123!',
+          });
+          console.log('Auto-login successful');
         } catch (error) {
-          console.log('Development auto-login failed:', error);
-          setAuthState(prev => ({ ...prev, isLoading: false }));
-          // Don't throw - just continue without auth
+          console.log('Auto-login failed:', error);
+          // Don't throw error for auto-login failures
         }
-      };
-      
-      // Delay auto-login slightly to avoid race conditions
-      setTimeout(autoLogin, 500);
-    }
+      }
+    };
 
-    const unsubscribe = authStateManager.subscribe(state => {
-      // Convert SessionUser back to User format if needed
+    // Subscribe to auth state manager updates
+    const unsubscribe = authStateManager.subscribe((state) => {
       const user = state.user && state.user.userId ? {
         user_id: state.user.userId,
         email: state.user.email || '',
+        full_name: null,
         roles: state.user.roles || [],
         tenant_id: state.user.tenantId || '',
-        two_factor_enabled: false, // Default value
         preferences: {
+          memoryDepth: 'high',
           personalityTone: 'professional',
           personalityVerbosity: 'balanced',
-          memoryDepth: 'medium',
           customPersonaInstructions: '',
           preferredLLMProvider: 'openai',
           preferredModel: 'gpt-4',
           temperature: 0.7,
           maxTokens: 2048,
-          notifications: {
-            email: true,
-            push: false,
-          },
-          ui: {
-            theme: 'system',
-            language: 'en',
-          },
+          notifications: { email: true, push: false },
+          ui: { theme: 'system', language: 'en' },
         },
-      } : null;
-      
-      setAuthState({ isAuthenticated: state.isAuthenticated, user, isLoading: false });
+        two_factor_enabled: false,
+        is_verified: true,
+      } as User : null;
+      setAuthState({ user, isAuthenticated: state.isAuthenticated, isLoading: false });
     });
 
-    return () => unsubscribe();
-  }, []);
-
-  const login = async (credentials: LoginCredentials): Promise<void> => {
-    try {
-      setAuthState(prev => ({ ...prev, isLoading: true }));
-      
-      // Use the session login method to ensure proper session management
-      await sessionLogin(credentials.email, credentials.password, credentials.totp_code);
-      
-      // Get the current user from session
-      const currentUser = getCurrentUser();
-      if (!currentUser) {
-        throw new Error('Failed to get user data after login');
-      }
-      
-      // Create user object from session data
-      const user: User = {
-        user_id: currentUser.userId,
-        email: currentUser.email,
-        roles: currentUser.roles,
-        tenant_id: currentUser.tenantId,
-        two_factor_enabled: false, // Default value
-        preferences: {
-          personalityTone: 'friendly',
-          personalityVerbosity: 'balanced',
-          memoryDepth: 'medium',
-          customPersonaInstructions: '',
-          preferredLLMProvider: 'llama-cpp',
-          preferredModel: 'llama3.2:latest',
-          temperature: 0.7,
-          maxTokens: 1000,
-          notifications: {
-            email: true,
-            push: false,
-          },
-          ui: {
-            theme: 'light',
-            language: 'en',
-            avatarUrl: '',
-          },
-        },
-      };
-
-      const newState = {
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-      };
-      setAuthState(newState);
-      
-      // Convert User to SessionUser format for authStateManager
-      const sessionUser = {
-        userId: user.user_id,
-        email: user.email || '',
-        roles: user.roles,
-        tenantId: user.tenant_id
-      };
-      
-      authStateManager.updateState({ isAuthenticated: true, user: sessionUser });
-    } catch (error) {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
-      throw error;
-    }
-  };
-
-  const register = async (credentials: LoginCredentials): Promise<void> => {
-    await authService.register(credentials);
-  };
-
-  const requestPasswordReset = async (email: string): Promise<void> => {
-    await authService.requestPasswordReset(email);
-  };
-
-  const resetPassword = async (
-    token: string,
-    newPassword: string,
-  ): Promise<void> => {
-    await authService.resetPassword(token, newPassword);
-  };
-
-  const logout = async (): Promise<void> => {
-    try {
-      await sessionLogout();
-    } catch (error) {
-      safeWarn('Logout request failed:', error);
-    }
+    // Only attempt auto-login after a short delay to allow session provider to initialize
+    const timer = setTimeout(autoLogin, 2000);
     
-    const newState = {
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
     };
-    setAuthState(newState);
-    authStateManager.updateState({ isAuthenticated: false, user: null });
-    
-    // Redirect to login page after logout
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
-    }
-  };
-
-  const refreshUser = async (): Promise<void> => {
-    try {
-      const user = await authService.getCurrentUser();
-      setAuthState(prev => ({ ...prev, user }));
-      
-      // Convert User to SessionUser format for authStateManager
-      const sessionUser = {
-        userId: user.user_id,
-        email: user.email || '',
-        roles: user.roles,
-        tenantId: user.tenant_id
-      };
-      
-      authStateManager.updateState({ isAuthenticated: true, user: sessionUser });
-    } catch (error) {
-      safeError('Failed to refresh user:', error);
-      logout();
-      throw error;
-    }
-  };
-
-  const updateUserPreferences = async (preferences: DeepPartial<User['preferences']>): Promise<void> => {
-    if (!authState.user) {
-      throw new Error('User not authenticated');
-    }
-
-    try {
-      await authService.updateUserPreferences('', preferences);
-      
-      // Update local user state
-      const updatedUser: User = {
-        ...authState.user,
-        preferences: {
-          ...authState.user.preferences,
-          ...preferences,
-          notifications: {
-            ...authState.user.preferences.notifications,
-            ...preferences.notifications,
-          },
-          ui: {
-            ...authState.user.preferences.ui,
-            ...preferences.ui,
-          },
-        } as User['preferences'],
-      };
-      
-      setAuthState(prev => ({ ...prev, user: updatedUser }));
-    } catch (error) {
-      safeError('Failed to update user preferences:', error);
-      throw error;
-    }
-  };
-
-  const updateCredentials = async (newUsername?: string, newPassword?: string): Promise<void> => {
-    try {
-      const resp = await authService.updateCredentials(newUsername, newPassword);
-      // If username changed, reflect it in local state. The backend may also return updated fields.
-      setAuthState(prev => {
-        if (!prev.user) return prev;
-        const updatedUser: User = {
-          ...prev.user,
-          user_id: newUsername && newUsername.length > 0 ? newUsername : prev.user.user_id,
-          email: resp?.email || prev.user.email,
-        } as User;
-        return { ...prev, user: updatedUser };
-      });
-    } catch (error) {
-      safeError('Failed to update credentials:', error);
-      throw error;
-    }
-  };
+  }, [authState.isLoading]);
 
   const contextValue: AuthContextType = {
     user: authState.user,
     isAuthenticated: authState.isAuthenticated,
     isLoading: authState.isLoading,
     login,
-    register,
-    requestPasswordReset,
-    resetPassword,
     logout,
     refreshUser,
-    updateCredentials,
-    updateUserPreferences,
   };
 
   return (

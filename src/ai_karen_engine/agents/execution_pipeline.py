@@ -1001,3 +1001,131 @@ class ExecutionPipeline:
                 for user_id, cb in self.circuit_breakers.items()
             }
         }
+
+
+# --- Case-Memory (Memento-style) integration: append-only monkey patch ---
+try:
+    from ai_karen_engine.learning.case_memory.case_types import StepTrace, ToolIO, Reward  # noqa: F401
+    from ai_karen_engine.learning.case_memory.planner_hooks import PlannerHooks
+except Exception:  # pragma: no cover
+    StepTrace = ToolIO = Reward = None
+    PlannerHooks = None
+
+def _redact_args(d):
+    try:
+        from ai_karen_engine.utils.model_security_utils import redact_secrets  # if present
+        return redact_secrets(d)
+    except Exception:
+        return d
+
+def _cm_integrate_executor(_globals):
+    """
+    Monkey-patch ExecutionPipeline.execute_plan to persist an experience Case post-run.
+    Compatible with variations of execute_plan(self, plan, context, ...).
+    """
+    ExecPipe = _globals.get("ExecutionPipeline")
+    if ExecPipe is None or not hasattr(ExecPipe, "execute_plan") or StepTrace is None:
+        return
+
+    original_execute_plan = ExecPipe.execute_plan
+
+    async def execute_plan_with_cm(self, plan, context, *args, **kwargs):
+        # Execute original pipeline and capture step I/O if available
+        step_traces = []
+        # Strategy: If the pipeline already collects traces, prefer them (context.step_traces)
+        try:
+            result = await original_execute_plan(self, plan, context, *args, **kwargs)
+        finally:
+            # Build step traces best-effort from context or internal logs
+            try:
+                traces = getattr(context, "step_traces", None) or []
+                if traces:
+                    step_traces = traces  # assume already in StepTrace form
+                elif hasattr(context, "execution_log"):
+                    # Convert generic events → StepTrace
+                    for log_entry in getattr(context, "execution_log", []):
+                        if hasattr(log_entry, "step") and hasattr(log_entry.step, "tool_name"):
+                            step = log_entry.step
+                            ti = ToolIO(
+                                tool_name=step.tool_name,
+                                args=_redact_args(step.parameters or {}),
+                                output=getattr(step.result, "output", None) if step.result else None,
+                                started_at=step.started_at or datetime.utcnow(),
+                                ended_at=step.completed_at or datetime.utcnow(),
+                                status=("ok" if step.status == "completed" else "error"),
+                            )
+                            step_traces.append(StepTrace(
+                                thought=step.description,
+                                action=step.name,
+                                tool_io=ti
+                            ))
+            except Exception:
+                step_traces = []
+
+        # Admit case (non-blocking best-effort)
+        try:
+            if getattr(context, "enable_case_memory", True) and getattr(self, "case_hooks", None):
+                # outcome_text: prefer existing summary if present
+                outcome_text = getattr(context, "outcome_text", None)
+                if outcome_text is None:
+                    try:
+                        # Generate outcome summary from execution context
+                        if context.status == ExecutionStatus.COMPLETED:
+                            outcome_text = f"Plan '{plan.name}' completed successfully with {len(plan.steps)} steps"
+                        elif context.status == ExecutionStatus.FAILED:
+                            outcome_text = f"Plan '{plan.name}' failed during execution"
+                        else:
+                            outcome_text = f"Plan '{plan.name}' execution status: {context.status.value}"
+                    except Exception:
+                        outcome_text = "Plan execution completed."
+
+                tags = list(getattr(context, "tags", []) or [])
+                if plan.overall_risk:
+                    tags.append(f"risk_{plan.overall_risk.level.name.lower()}")
+                
+                pointers = {"execution_id": context.execution_id}
+
+                self.case_hooks.on_run_complete(
+                    tenant_id=getattr(context, "tenant_id", "default"),
+                    user_id=plan.user_id,
+                    task_text=plan.description,
+                    goal_text=plan.name,
+                    plan_text=plan.generate_summary(),
+                    steps=step_traces,
+                    outcome_text=outcome_text,
+                    tags=tags,
+                    pointers=pointers,
+                )
+                try:
+                    from ai_karen_engine.services.metrics_manager import MetricsManager  # type: ignore
+                    MetricsManager.inc("cm_cases_admitted_total")
+                except Exception:
+                    pass
+        except Exception:
+            # Never disrupt user flow due to learning layer
+            pass
+
+        return result
+
+    # Attach hooks if not present on pipeline instances
+    if hasattr(ExecPipe, "__init__"):
+        _orig_init = ExecPipe.__init__
+        def __init__with_cm(self, *args, **kwargs):
+            _orig_init(self, *args, **kwargs)
+            if getattr(self, "case_hooks", None) is None and PlannerHooks is not None:
+                try:
+                    # Reuse planner-side hook wiring if available
+                    planner = getattr(self, "planner", None)
+                    if planner and getattr(planner, "case_hooks", None):
+                        self.case_hooks = planner.case_hooks
+                except Exception:
+                    self.case_hooks = getattr(self, "case_hooks", None)
+        ExecPipe.__init__ = __init__with_cm
+
+    ExecPipe.execute_plan = execute_plan_with_cm
+
+try:
+    _cm_integrate_executor(globals())
+except Exception:
+    pass
+# --- end Case-Memory integration ---

@@ -1,2 +1,0 @@
-Given the current goal and context: {{ goal }}  
-Suggest the immediate next action and required plugin.

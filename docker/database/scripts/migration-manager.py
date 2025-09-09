@@ -147,19 +147,34 @@ class MigrationManager:
             return False
     
     def _apply_milvus_migration(self, migration_path: Path) -> bool:
-        """Apply Milvus migration"""
+        """Apply Milvus migration using registered migration system"""
         if not migration_path.suffix == '.py':
             print(f"❌ Milvus migration must be a Python file: {migration_path}")
             return False
         
-        cmd = ["python3", str(migration_path)]
-        
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode == 0:
-            print(f"✅ Milvus migration applied successfully")
-            return True
-        else:
-            print(f"❌ Milvus migration failed: {result.stderr}")
+        # Use the registered migration system for better error handling
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("migration", migration_path)
+            if spec is None or spec.loader is None:
+                print(f"❌ Could not load migration module from {migration_path}")
+                return False
+            
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Execute the up() function if it exists
+            up_fn = getattr(module, 'up', None)
+            if callable(up_fn):
+                up_fn()
+                print(f"✅ Milvus migration applied successfully")
+                return True
+            else:
+                print(f"❌ Milvus migration has no 'up' function: {migration_path}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Milvus migration failed: {e}")
             return False
     
     def record_migration(self, service: str, migration_name: str, migration_path: Path):

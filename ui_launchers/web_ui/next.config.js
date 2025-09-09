@@ -12,17 +12,9 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
+    // Disable turbo to avoid JIT timing conflicts
     turbo: {
-      resolveAlias: {
-        '@mui/utils/composeClasses': '@mui/utils/composeClasses/index.js',
-      },
-      // Ignore problematic tsconfig files
-      rules: {
-        '*.json': {
-          loaders: ['ignore-loader'],
-          as: '*.js',
-        },
-      },
+      enabled: false,
     },
   },
   
@@ -79,7 +71,13 @@ const nextConfig = {
       // Models/providers
       { source: '/api/models/:path*', destination: `${backendUrl}/api/models/:path*` },
       { source: '/api/llm/:path*', destination: `${backendUrl}/api/llm/:path*` },
+      // Plugins
+      { source: '/api/plugins', destination: `${backendUrl}/api/plugins` },
+      // Analytics
+      { source: '/api/analytics/:path*', destination: `${backendUrl}/api/analytics/:path*` },
+      { source: '/api/web/analytics/:path*', destination: `${backendUrl}/api/web/analytics/:path*` },
       // Health
+      { source: '/api/health/:path*', destination: `${backendUrl}/api/health/:path*` },
       { source: '/api/health', destination: `${backendUrl}/api/health` },
       { source: '/health', destination: `${backendUrl}/health` },
     ];

@@ -6,7 +6,17 @@ enabling developers to build substantial, feature-rich modules that can compose 
 plugins, provide rich UIs, manage their own data, and be distributed through a marketplace.
 """
 
-from ai_karen_engine.extensions.manager import ExtensionManager, get_extension_manager, initialize_extension_manager
+# Avoid circular import - import manager functions lazily
+def get_extension_manager():
+    from ai_karen_engine.extensions.manager import get_extension_manager as _get_manager
+    return _get_manager()
+
+def initialize_extension_manager():
+    from ai_karen_engine.extensions.manager import initialize_extension_manager as _init_manager
+    return _init_manager()
+
+# Import ExtensionManager class directly
+from ai_karen_engine.extensions.manager import ExtensionManager
 from ai_karen_engine.extensions.base import BaseExtension
 from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionRecord, ExtensionStatus
 from ai_karen_engine.extensions.registry import ExtensionRegistry

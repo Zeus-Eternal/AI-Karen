@@ -51,6 +51,8 @@ class SecurityConfig:
             "http://127.0.0.1:8010",
             "http://localhost:8080",
             "http://127.0.0.1:8080",
+            "http://127.0.0.1:39397",  # Browser preview port
+            "http://127.0.0.1:44985",  # Current browser preview port
             "https://localhost:3000",
             "https://127.0.0.1:3000",
             "https://localhost:8020",
@@ -58,7 +60,9 @@ class SecurityConfig:
             "https://localhost:8010",
             "https://127.0.0.1:8010",
             "https://localhost:8080",
-            "https://127.0.0.1:8080"
+            "https://127.0.0.1:8080",
+            "https://127.0.0.1:39397",  # Browser preview port HTTPS
+            "https://127.0.0.1:44985"   # Current browser preview port HTTPS
         ]
         self.cors_allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
         self.cors_allowed_headers = [
@@ -66,7 +70,12 @@ class SecurityConfig:
             "Content-Type",
             "X-Correlation-Id",
             "X-Request-Id",
-            "X-Trace-Id"
+            "X-Trace-Id",
+            "Cache-Control",
+            "Accept",
+            "Origin",
+            "User-Agent",
+            "X-CSRF-Token"
         ]
         self.cors_allow_credentials = True
         

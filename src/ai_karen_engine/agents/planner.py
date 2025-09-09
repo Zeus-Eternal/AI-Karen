@@ -1425,3 +1425,93 @@ class AgentPlanner:
             
         except Exception as e:
             self.logger.error(f"Failed to learn from plan outcome: {e}")
+
+
+# --- Case-Memory (Memento-style) integration: append-only monkey patch ---
+try:
+    # Local, clean-room case-memory hooks
+    from ai_karen_engine.learning.case_memory.planner_hooks import PlannerHooks
+except Exception:  # pragma: no cover
+    PlannerHooks = None  # gracefully degrade if module not present
+
+def _cm_integrate_planner(_globals):
+    """
+    Monkey-patch AgentPlanner.build_plan to inject a Prior Episodes (Hints) block
+    if PlannerHooks is available and context enables case memory.
+    """
+    Planner = _globals.get("AgentPlanner")
+    if Planner is None or not hasattr(Planner, "build_plan"):
+        return  # nothing to do
+
+    original_build_plan = Planner.build_plan
+
+    async def build_plan_with_cm(self, query, user_id, session_id, context=None, *args, **kwargs):
+        # Existing prompt path (defer to original if no hooks)
+        hint_block = ""
+        try:
+            if getattr(context, "enable_case_memory", True) and getattr(self, "case_hooks", None):
+                # Extract context information for case memory
+                tenant_id = getattr(context, "tenant_id", "default")
+                task_text = query
+                tags = list(getattr(context, "tags", []) or [])
+                hint_block = self.case_hooks.pre_plan_context(tenant_id, task_text, tags)
+                
+                # Optionally record a metric if your MetricsManager is wired:
+                try:
+                    from ai_karen_engine.services.metrics_manager import MetricsManager  # type: ignore
+                    MetricsManager.inc("cm_planner_hinted_total")
+                except Exception:
+                    pass
+        except Exception:
+            # Never break planning flow because of hints
+            hint_block = ""
+
+        # Inject hints into context if available
+        if hint_block and context:
+            try:
+                setattr(context, "case_memory_hints", hint_block)
+            except Exception:
+                pass
+
+        return await original_build_plan(self, query, user_id, session_id, context, *args, **kwargs)
+
+    # Attach hook container if not present
+    def _ensure_case_hooks(self):
+        if getattr(self, "case_hooks", None) is None and PlannerHooks is not None:
+            # Lazy wiring: expect DI container on self or globals
+            try:
+                embedder = getattr(self, "embedding_manager", None)
+                store = _globals.get("CaseStore")
+                reranker = _globals.get("CrossEncoderReranker")() if _globals.get("CrossEncoderReranker") else None
+                retriever = _globals.get("CaseRetriever")
+                if store and embedder and retriever:
+                    rewarders = []
+                    self.case_hooks = PlannerHooks(
+                        retriever=retriever(store, embedder, reranker), 
+                        embedder=embedder, 
+                        store=store, 
+                        reward_adapters=rewarders
+                    )
+            except Exception:
+                # If DI assembly fails, leave hooks unset; build_plan wrapper tolerates None
+                self.case_hooks = None
+
+    # Patch constructor(s) to ensure hooks when planner instances are created
+    if hasattr(Planner, "__init__"):
+        _orig_init = Planner.__init__
+        def __init__with_cm(self, *args, **kwargs):
+            _orig_init(self, *args, **kwargs)
+            try:
+                _ensure_case_hooks(self)
+            except Exception:
+                pass
+        Planner.__init__ = __init__with_cm
+
+    Planner.build_plan = build_plan_with_cm
+
+try:
+    _cm_integrate_planner(globals())
+except Exception:
+    # Never crash import due to the integration layer
+    pass
+# --- end Case-Memory integration ---

@@ -439,12 +439,9 @@ class AuthService:
                 for flag in security_result["security_flags"]:
                     session_data.add_security_flag(flag)
 
-                # Log session creation
-                await self.security_layer.log_session_event(
-                    AuthEventType.SESSION_CREATED, session_data, success=True
-                )
+                # Security validation is done, but logging will be handled by _record_auth_event
 
-            # Record authentication event
+            # Record authentication event for session creation
             await self._record_auth_event(
                 event_type=AuthEventType.SESSION_CREATED,
                 success=True,

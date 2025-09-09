@@ -10,7 +10,26 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+# Use dataclasses instead of pydantic for compatibility
+try:
+    from pydantic import BaseModel, ConfigDict, Field, field_validator
+except ImportError:
+    # Fallback using dataclasses
+    from dataclasses import dataclass
+    
+    class BaseModel:
+        pass
+    
+    def Field(**kwargs):
+        return None
+    
+    def field_validator(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+    
+    class ConfigDict:
+        pass
 
 SEMVER_PATTERN = (
     r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
