@@ -4,8 +4,8 @@ echo "🔄 Restarting AI Karen server with updated rate limiting configuration..
 
 # Kill any existing server processes
 echo "Stopping existing server processes..."
-pkill -f "python.*main.py" || true
-pkill -f "uvicorn.*main:app" || true
+pkill -f "python.*start.py" || true
+pkill -f "uvicorn.*app:app" || true
 
 # Wait a moment for processes to stop
 sleep 2
@@ -13,7 +13,7 @@ sleep 2
 echo "Starting server with new configuration..."
 
 # Start the server
-python main.py &
+python start.py &
 
 echo "✅ Server restarted with updated rate limiting configuration"
 echo "📊 New rate limits:"

@@ -179,7 +179,7 @@ BEGIN
             TRUE,
             '["admin", "user"]',
             (SELECT id FROM tenants WHERE name = 'default' LIMIT 1),
-            '{"personalityTone": "professional", "personalityVerbosity": "detailed", "memoryDepth": "deep", "customPersonaInstructions": "You are an AI assistant for system administration.", "preferredLLMProvider": "ollama", "preferredModel": "llama3.2:latest", "temperature": 0.7, "maxTokens": 2000, "notifications": {"email": true, "push": true}, "ui": {"theme": "dark", "language": "en", "avatarUrl": ""}, "chatMemory": {"shortTermDays": 7, "longTermDays": 90, "tailTurns": 5, "summarizeThresholdTokens": 4000}}'::json
+            '{"personalityTone": "professional", "personalityVerbosity": "detailed", "memoryDepth": "deep", "customPersonaInstructions": "You are an AI assistant for system administration.", "preferredLLMProvider": "llamacpp", "preferredModel": "llama3.2:latest", "temperature": 0.7, "maxTokens": 2000, "notifications": {"email": true, "push": true}, "ui": {"theme": "dark", "language": "en", "avatarUrl": ""}, "chatMemory": {"shortTermDays": 7, "longTermDays": 90, "tailTurns": 5, "summarizeThresholdTokens": 4000}}'::json
         );
     END IF;
 END $$;
@@ -205,7 +205,7 @@ BEGIN
             TRUE,
             '["user"]',
             (SELECT id FROM tenants WHERE name = 'default' LIMIT 1),
-            '{"personalityTone": "friendly", "personalityVerbosity": "balanced", "memoryDepth": "medium", "customPersonaInstructions": "", "preferredLLMProvider": "ollama", "preferredModel": "llama3.2:latest", "temperature": 0.7, "maxTokens": 1000, "notifications": {"email": false, "push": false}, "ui": {"theme": "light", "language": "en", "avatarUrl": ""}, "chatMemory": {"shortTermDays": 1, "longTermDays": 30, "tailTurns": 3, "summarizeThresholdTokens": 3000}}'::json
+            '{"personalityTone": "friendly", "personalityVerbosity": "balanced", "memoryDepth": "medium", "customPersonaInstructions": "", "preferredLLMProvider": "llamacpp", "preferredModel": "llama3.2:latest", "temperature": 0.7, "maxTokens": 1000, "notifications": {"email": false, "push": false}, "ui": {"theme": "light", "language": "en", "avatarUrl": ""}, "chatMemory": {"shortTermDays": 1, "longTermDays": 30, "tailTurns": 3, "summarizeThresholdTokens": 3000}}'::json
         );
     END IF;
 END $$;

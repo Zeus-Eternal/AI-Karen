@@ -99,14 +99,17 @@ export class NetworkDetectionService {
       userAgent: 'server',
       referrer: '',
     };
+    // If we're running on the server (SSR / build), return a safe default
+    if (typeof window === 'undefined' || typeof document === 'undefined' || typeof navigator === 'undefined') {
+      return defaultInfo;
+    }
 
-    if (typeof window === 'undefined') return defaultInfo;
+    // Now safe to access browser globals
+    const win = window as any;
+    const doc = document as any;
+    const nav = navigator as any;
 
-    const win = (typeof window !== 'undefined') ? window as any : undefined;
-    const doc = (typeof document !== 'undefined') ? document as any : undefined;
-    const nav = (typeof navigator !== 'undefined') ? navigator as any : undefined;
-
-    const location = win?.location;
+    const location = win.location;
     const hostname = location?.hostname ?? 'localhost';
     const port = location?.port || (location?.protocol === 'https:' ? '443' : '80');
     const protocol = location?.protocol ?? 'http:';
@@ -119,41 +122,39 @@ export class NetworkDetectionService {
       isPrivateNetwork: this.isPrivateNetworkIP(hostname),
       isExternalIP: this.isExternalIP(hostname),
       isDockerContainer: this.isDockerHostname(hostname),
-      userAgent: nav?.userAgent ?? 'server',
+      userAgent: nav?.userAgent ?? 'browser',
       referrer: doc?.referrer ?? '',
     };
   }
   /**
    * Detect Docker container environment
    */
-private detectDockerEnvironment(): { isDocker: boolean; confidence: number; indicators: string[] } {
-  const indicators: string[] = [];
-  let confidence = 0;
+  private detectDockerEnvironment(): { isDocker: boolean; confidence: number; indicators: string[] } {
+    const indicators: string[] = [];
+    let confidence = 0;
 
-  if (typeof process !== 'undefined' && process.env) {
-    if (process.env.DOCKER_CONTAINER) { indicators.push('DOCKER_CONTAINER env var'); confidence += 30; }
-    if (process.env.HOSTNAME?.startsWith('docker-')) { indicators.push('Docker hostname pattern'); confidence += 20; }
-    if (process.env.KAREN_CONTAINER_MODE === 'true') { indicators.push('KAREN_CONTAINER_MODE flag'); confidence += 25; }
+    // Check environment variables (safe on server)
+    if (typeof process !== 'undefined' && process.env) {
+      if (process.env.DOCKER_CONTAINER) { indicators.push('DOCKER_CONTAINER env var'); confidence += 30; }
+      if (process.env.HOSTNAME?.startsWith('docker-')) { indicators.push('Docker hostname pattern'); confidence += 20; }
+      if (process.env.KAREN_CONTAINER_MODE === 'true') { indicators.push('KAREN_CONTAINER_MODE flag'); confidence += 25; }
+    }
+
+    // Browser-side heuristics only when running in browser
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+      try {
+        const win = window as any;
+        const hostname = win?.location?.hostname ?? '';
+        if (hostname && (hostname.includes('docker') || hostname.includes('container'))) { indicators.push('Container hostname pattern'); confidence += 20; }
+        if (hostname && /^[a-f0-9]{12}$/.test(hostname)) { indicators.push('Container ID hostname'); confidence += 25; }
+
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.includes('docker') || ua.includes('container')) { indicators.push('Container user agent'); confidence += 15; }
+      } catch { /* ignore */ }
+    }
+
+    return { isDocker: confidence > 30, confidence: Math.min(100, confidence), indicators };
   }
-
-  if (typeof window !== 'undefined') {
-    try {
-      const win = window as any;
-      const hostname = win?.location?.hostname ?? '';
-      if (hostname && (hostname.includes('docker') || hostname.includes('container'))) { indicators.push('Container hostname pattern'); confidence += 20; }
-      if (hostname && /^[a-f0-9]{12}$/.test(hostname)) { indicators.push('Container ID hostname'); confidence += 25; }
-    } catch { /* ignore */ }
-  }
-
-  if (typeof navigator !== 'undefined') {
-    try {
-      const ua = navigator.userAgent.toLowerCase();
-      if (ua.includes('docker') || ua.includes('container')) { indicators.push('Container user agent'); confidence += 15; }
-    } catch { /* ignore */ }
-  }
-
-  return { isDocker: confidence > 30, confidence: Math.min(100, confidence), indicators };
-}
 
   /**
    * Detect external IP access

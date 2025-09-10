@@ -193,7 +193,7 @@ INSERT INTO users (
     TRUE,
     '["admin", "user"]',
     'default',
-    '{"personalityTone": "professional", "personalityVerbosity": "detailed", "memoryDepth": "deep", "customPersonaInstructions": "You are an AI assistant for system administration.", "preferredLLMProvider": "ollama", "preferredModel": "llama3.2:latest", "temperature": 0.7, "maxTokens": 2000, "notifications": {"email": true, "push": true}, "ui": {"theme": "dark", "language": "en", "avatarUrl": ""}, "chatMemory": {"shortTermDays": 7, "longTermDays": 90, "tailTurns": 5, "summarizeThresholdTokens": 4000}}'
+    '{"personalityTone": "professional", "personalityVerbosity": "detailed", "memoryDepth": "deep", "customPersonaInstructions": "You are an AI assistant for system administration.", "preferredLLMProvider": "llamacpp", "preferredModel": "llama3.2:latest", "temperature": 0.7, "maxTokens": 2000, "notifications": {"email": true, "push": true}, "ui": {"theme": "dark", "language": "en", "avatarUrl": ""}, "chatMemory": {"shortTermDays": 7, "longTermDays": 90, "tailTurns": 5, "summarizeThresholdTokens": 4000}}'
 ) ON CONFLICT (email) DO NOTHING;
 
 -- Insert demo user if not exists
@@ -213,7 +213,7 @@ INSERT INTO users (
     TRUE,
     '["user"]',
     'default',
-    '{"personalityTone": "friendly", "personalityVerbosity": "balanced", "memoryDepth": "medium", "customPersonaInstructions": "", "preferredLLMProvider": "ollama", "preferredModel": "llama3.2:latest", "temperature": 0.7, "maxTokens": 1000, "notifications": {"email": false, "push": false}, "ui": {"theme": "light", "language": "en", "avatarUrl": ""}, "chatMemory": {"shortTermDays": 1, "longTermDays": 30, "tailTurns": 3, "summarizeThresholdTokens": 3000}}'
+    '{"personalityTone": "friendly", "personalityVerbosity": "balanced", "memoryDepth": "medium", "customPersonaInstructions": "", "preferredLLMProvider": "llamacpp", "preferredModel": "llama3.2:latest", "temperature": 0.7, "maxTokens": 1000, "notifications": {"email": false, "push": false}, "ui": {"theme": "light", "language": "en", "avatarUrl": ""}, "chatMemory": {"shortTermDays": 1, "longTermDays": 30, "tailTurns": 3, "summarizeThresholdTokens": 3000}}'
 ) ON CONFLICT (email) DO NOTHING;
 
 -- Create a function to clean up expired sessions and tokens

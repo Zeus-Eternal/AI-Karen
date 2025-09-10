@@ -9,7 +9,7 @@ echo "🚀 AI Karen Backend Startup"
 echo "=========================="
 
 ROOT_DIR="$(pwd)"
-APP_ENTRY="main.py"
+APP_ENTRY="start.py"
 VENV_DIR=".env_ai"
 PORT="${PORT:-${KAREN_PORT:-8000}}"
 

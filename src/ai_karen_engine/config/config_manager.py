@@ -233,7 +233,11 @@ class ConfigManager:
     def get_llm_fallback_hierarchy(self):
         """Get LLM provider fallback hierarchy"""
         config = load_config()
-        return config.get("llm_providers", {}).get("fallback_hierarchy", ["ollama", "openai", "gemini", "deepseek", "huggingface"])
+        # Ensure default fallback uses the canonical provider id 'llamacpp'
+        return config.get("llm_providers", {}).get(
+            "fallback_hierarchy",
+            ["llamacpp", "openai", "gemini", "deepseek", "huggingface"],
+        )
     
     def get_plugins_config(self):
         return load_config()

@@ -83,7 +83,7 @@ python create_tables.py
 python create_admin_user.py  # follow prompts
 
 # start the FastAPI backend
-python main.py
+python start.py
 ```
 
 The web UI is available at <http://localhost:9002> and the API at <http://localhost:8000>.

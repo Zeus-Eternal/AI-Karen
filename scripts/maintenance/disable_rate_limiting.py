@@ -100,7 +100,7 @@ async def disable_rate_limiting():
             
             print("   ✅ Created .env.temp with rate limiting disabled")
             print("   ℹ️  Load this file before starting the server:")
-            print("      export $(cat .env.temp | xargs) && python main.py")
+            print("      export $(cat .env.temp | xargs) && python start.py")
         except Exception as e:
             print(f"   ⚠️  Could not create temp config file: {e}")
         
@@ -127,7 +127,7 @@ async def main():
         print("✅ Rate limiting temporarily disabled!")
         print("\n🔄 RESTART THE SERVER with temporary config:")
         print("   export $(cat .env.temp | xargs)")
-        print("   python main.py")
+        print("   python start.py")
         print("\n👤 Then try logging in with:")
         print("   • Email: admin@kari.ai")
         print("   • Password: Password123!")

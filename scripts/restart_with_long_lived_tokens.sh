@@ -14,7 +14,7 @@ echo "   ENABLE_LONG_LIVED_TOKENS=$ENABLE_LONG_LIVED_TOKENS"
 # Kill existing server if running
 echo ""
 echo "🛑 Stopping existing server..."
-pkill -f "python.*main.py" || echo "   No existing server found"
+pkill -f "python.*start.py" || echo "   No existing server found"
 
 # Wait a moment for cleanup
 sleep 2
@@ -22,7 +22,7 @@ sleep 2
 # Start the server
 echo ""
 echo "🚀 Starting server with long-lived token support..."
-python main.py &
+python start.py &
 
 # Get the PID
 SERVER_PID=$!

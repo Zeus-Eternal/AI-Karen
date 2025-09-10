@@ -40,7 +40,7 @@ def configure_middleware(
     )
 
     # Resolve CORS origins from multiple sources for compatibility
-    # Priority: explicit env CORS_ORIGINS -> env KARI_CORS_ORIGINS -> settings
+    # Priority: explicit env CORS_ORIGINS -> env KARI_CORS_ORIGINS -> settings -> defaults
     import os as _os
     _origins_source = (
         _os.getenv("CORS_ORIGINS")
@@ -49,6 +49,29 @@ def configure_middleware(
         or ""
     )
     origins = [o.strip() for o in _origins_source.split(",") if o.strip()]
+    
+    # Add default development origins if none specified
+    env_name = (getattr(settings, "environment", "") or "").lower()
+    if not origins and env_name in ("development", "dev", "local", ""):
+        origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000", 
+            "http://localhost:8020",
+            "http://127.0.0.1:8020",
+            "http://localhost:8010",
+            "http://127.0.0.1:8010",
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
+            "https://localhost:3000",
+            "https://127.0.0.1:3000",
+            "https://localhost:8020", 
+            "https://127.0.0.1:8020",
+            "https://localhost:8010",
+            "https://127.0.0.1:8010",
+            "https://localhost:8080",
+            "https://127.0.0.1:8080"
+        ]
+    
     # Safety: de-duplicate while preserving order
     _seen = set()
     origins = [o for o in origins if not (o in _seen or _seen.add(o))]
@@ -56,8 +79,7 @@ def configure_middleware(
     cors_regex = _os.getenv("CORS_ALLOW_ORIGIN_REGEX")
     allow_dev_origins = _os.getenv("ALLOW_DEV_ORIGINS", "false").lower() in ("1", "true", "yes")
     # Default to permissive localhost regex in non-production or when explicitly enabled
-    env_name = (getattr(settings, "environment", "") or "").lower()
-    if not cors_regex and (allow_dev_origins or env_name in ("development", "dev", "local")):
+    if not cors_regex and (allow_dev_origins or env_name in ("development", "dev", "local", "")):
         cors_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
     app.add_middleware(

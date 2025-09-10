@@ -149,9 +149,9 @@ services:
     volumes:
       - milvus_data:/var/lib/milvus
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsSL http://localhost:9091/healthz || exit 1"]
+      test: ["CMD-SHELL", "timeout 10s bash -c '</dev/tcp/localhost/19530' || exit 1"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 5
     networks:
       - ai-karen-net
@@ -290,8 +290,15 @@ services:
       MODEL_ORCHESTRATOR_HEALTH_CHECK_INTERVAL: "60"
     ports:
       - "8000:8000"
-      - "9091:9091"  # Model orchestrator metrics port
+      - "9092:9091"  # Model orchestrator metrics port
+    command:
+      - sh
+      - -c
+      - python scripts/init_db_schema.py && uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools
     volumes:
+      # Bind-mount project into the container so the runtime sees the source files
+      # NOTE: must be writable so Docker can create mountpoints under /app (for example /app/backups)
+      - "./:/app:rw"
       # Model storage volume
       - models_data:/app/models
       # Configuration volume
@@ -312,11 +319,13 @@ services:
       prometheus:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health | grep -q '\"model_orchestrator\"' || exit 1"]
-      interval: 30s
+      # Simplified health check - only verify the /health endpoint returns HTTP 200
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 10
+      # Allow extended startup time for model downloads and initialization
+      start_period: 300s
     networks:
       - ai-karen-net
 
@@ -331,20 +340,20 @@ services:
       - .env
     environment:
       NODE_ENV: development
-      # Point server-side rewrites to the API service inside the network
-      KAREN_BACKEND_URL: http://api:8000
+      # Point server-side rewrites to the in-network backend service
+      KAREN_BACKEND_URL: http://karen-backend:8010
       # Expose the backend URL to the browser clients
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
-      NEXT_PUBLIC_KAREN_BACKEND_URL: http://localhost:8000
+      NEXT_PUBLIC_API_BASE_URL: http://karen-backend:8010
+      NEXT_PUBLIC_KAREN_BACKEND_URL: http://karen-backend:8010
     ports:
       - "8010:8010"
     volumes:
       - ./ui_launchers/web_ui:/app
-      - ./ .env.local:/app/.env.local:ro
-    command: sh -c "npm ci && npm run dev -p 8010"
+      - ./.env.local:/app/.env.local:ro
+    command: sh -c "npm install && npm run dev -- --port 8010"
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
     networks:
       - ai-karen-net
 

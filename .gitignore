@@ -73,7 +73,27 @@ config/llm_settings.local.json
 .kiro/
 /.karen_env/bin
 /.karen_env
-/tests
 /models
 /.env_karen/bin
 /.env_karen
+
+# Temporary and development files
+temp_files/
+*.tmp
+*.temp
+.env.temp
+.env.dev
+cookies.txt
+token.txt
+auth.db
+auth_sessions.db
+
+# Archive and backup files
+archives/
+*.BAK
+*.backup
+
+# Coverage and test reports
+.coverage
+coverage.xml
+htmlcov/

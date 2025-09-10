@@ -30,8 +30,8 @@ def check_frontend_health():
 def kill_existing_servers():
     """Kill any existing server processes"""
     try:
-        # Kill Python processes running main.py
-        subprocess.run(["pkill", "-f", "main.py"], check=False)
+        # Kill Python processes running start.py
+        subprocess.run(["pkill", "-f", "start.py"], check=False)
         time.sleep(2)
     except:
         pass
@@ -49,7 +49,7 @@ def start_backend_server():
     
     # Start server in background
     process = subprocess.Popen(
-        ["/media/zeus/Development7/KIRO/AI-Karen/.karen_env/bin/python", "main.py"],
+        ["/media/zeus/Development7/KIRO/AI-Karen/.karen_env/bin/python", "start.py"],
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

@@ -133,10 +133,7 @@ class ModelDiscoveryEngine:
     @staticmethod
     def default_sources() -> List[ModelSourceBase]:
         out = []
-        try:
-            out.append(OllamaModelSource())
-        except Exception:
-            pass
+    # Ollama provider removed; prefer local llama.cpp (GGUF) discovery.
         out.append(LocalModelSource())
         out.append(TransformersHubSource())
         # Add more as needed (plugins, cloud, enterprise registry...)
@@ -192,7 +189,6 @@ def sync_registry(path: str | Path = REGISTRY_PATH) -> List[Dict[str, Any]]:
 __all__ = [
     "ModelSourceBase",
     "LocalModelSource",
-    "OllamaModelSource",
     "TransformersHubSource",
     "PluginModelSource",
     "ModelDiscoveryEngine",

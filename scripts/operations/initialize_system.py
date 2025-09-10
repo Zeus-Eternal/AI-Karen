@@ -108,7 +108,7 @@ Examples:
     if success_count == total_count:
         print("\n🎉 System initialization completed successfully!")
         print("\n💡 Next steps:")
-        print("   1. Start the AI Karen Engine: python main.py")
+        print("   1. Start the AI Karen Engine: python start.py")
         print("   2. Check the web interface at http://localhost:8000")
         print("   3. Review logs in the logs/ directory")
         return 0

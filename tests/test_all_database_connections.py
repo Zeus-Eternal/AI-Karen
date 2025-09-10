@@ -316,7 +316,7 @@ def main():
     print(f"📈 Results: {successful} successful, {failed} failed, {skipped} skipped")
     
     # Save detailed results to file
-    with open('database_connectivity_results.json', 'w') as f:
+    with open('reports/database_connectivity_results.json', 'w') as f:
         json.dump({
             "timestamp": time.time(),
             "summary": {
@@ -328,7 +328,7 @@ def main():
             "results": results
         }, f, indent=2)
     
-    print(f"📄 Detailed results saved to: database_connectivity_results.json")
+    print(f"📄 Detailed results saved to: reports/database_connectivity_results.json")
     
     if failed > 0:
         print(f"\n⚠️  {failed} database(s) failed to connect. Please check the configuration and ensure services are running.")

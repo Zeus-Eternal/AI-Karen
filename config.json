@@ -1,16 +1,32 @@
 {
-  "$schema": "",
   "active_user": "default",
   "theme": "dark",
   "llm_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
-  "default_embedding_model": "sentence-transformers/all-MPNet-base-v2",
-  "spacy_model": "en_core_web_sm",
+  "llm_provider": "llamacpp",
+  "llm_providers": {
+    "enabled": [
+      "llamacpp",
+      "openai",
+      "gemini",
+      "deepseek",
+      "huggingface"
+    ],
+    "fallback_hierarchy": [
+      "llamacpp",
+      "openai",
+      "gemini",
+      "deepseek",
+      "huggingface"
+    ],
+    "default_provider": "llamacpp",
+    "auto_discovery": true,
+    "health_check_interval": 300
+  },
   "memory": {
     "enabled": true,
     "provider": "local",
     "embedding_dim": 768,
-    "decay_lambda": 0.1,
-    "query_limit": 50
+    "decay_lambda": 0.1
   },
   "event_bus": "memory",
   "ui": {

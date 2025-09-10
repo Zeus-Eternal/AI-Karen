@@ -38,8 +38,8 @@ def create_auth_bypass_env():
     
     print("\n🚀 To apply these settings:")
     print("1. Stop the current server (Ctrl+C)")
-    print("2. Run: source .env.dev && python main.py")
-    print("3. Or restart with: DEV_DISABLE_AUTH=true python main.py")
+    print("2. Run: source .env.dev && python start.py")
+    print("3. Or restart with: DEV_DISABLE_AUTH=true python start.py")
     
     return env_vars
 

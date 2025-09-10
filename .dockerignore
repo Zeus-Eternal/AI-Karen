@@ -1,0 +1,37 @@
+# Ignore development and temporary files
+.git
+.gitignore
+.env*
+*.log
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+*.tmp
+*.temp
+
+# Ignore node modules and build artifacts
+node_modules/
+.next/
+build/
+dist/
+
+# Ignore model files (too large for container)
+models/
+*.gguf
+*.bin
+
+# Ignore archives and backups
+archives/
+*.BAK
+*.backup
+
+# Ignore IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
