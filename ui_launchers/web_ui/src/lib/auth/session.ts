@@ -383,28 +383,26 @@ export async function login(email: string, password: string, totpCode?: string):
     // Add a small delay to prevent rapid successive requests and rate limiting
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Try direct backend API first (most reliable)
-    console.log('Attempting login via backend API');
+    // Toggle whether to attempt direct backend first or go via Next proxy
+    const DIRECT_FIRST = (process.env.NEXT_PUBLIC_AUTH_DIRECT_FIRST || 'false').toLowerCase() === 'true';
+    // Prefer explicit backend URL, fall back to localhost
+    const DIRECT_BACKEND = (process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000').replace(/\/+$/, '');
+    let response: Response;
     
-    let response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-      credentials: 'include',
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      // Handle rate limiting
-      if (response.status === 429) {
-        throw new Error('Too many login attempts. Please wait a moment and try again.');
-      }
-
-      // Fallback 1: try Next.js API route
-      console.warn(`Backend login failed (${response.status}). Trying Next.js API route...`);
+    if (DIRECT_FIRST) {
+      console.log('Attempting login via backend API', { DIRECT_BACKEND });
+      response = await fetch(`${DIRECT_BACKEND}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+        credentials: 'include',
+      });
+    } else {
+      // Prefer server-side proxy to avoid CORS during local dev
+      console.log('Attempting login via Next proxy');
       response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -414,6 +412,60 @@ export async function login(email: string, password: string, totpCode?: string):
         body: JSON.stringify(credentials),
         credentials: 'include',
       });
+    }
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      // Handle rate limiting
+      if (response.status === 429) {
+        throw new Error('Too many login attempts. Please wait a moment and try again.');
+      }
+
+      if (DIRECT_FIRST) {
+        // Fallback 1a: try simple-auth path on backend (/auth/login)
+        // Useful when running the simple auth server which mounts at /auth, not /api/auth
+        if (response.status === 404 || response.status === 405) {
+          console.warn(`Backend login at /api/auth/login returned ${response.status}. Trying /auth/login on backend...`);
+          response = await fetch(`${DIRECT_BACKEND}/auth/login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify(credentials),
+            credentials: 'include',
+          });
+        }
+
+        // Fallback 1b: try Next.js API route
+        if (!response.ok) {
+          console.warn(`Backend login failed (${response.status}). Trying Next.js API route...`);
+          response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify(credentials),
+            credentials: 'include',
+          });
+        }
+      } else {
+        // When proxy-first, try backend simple-auth path only if proxy path fails with 404/405
+        if (response.status === 404 || response.status === 405) {
+          console.warn(`Proxy login returned ${response.status}. Trying proxy fallback to /auth/login ...`);
+          response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-Karen-Auth-Fallback': 'true',
+            },
+            body: JSON.stringify(credentials),
+            credentials: 'include',
+          });
+        }
+      }
 
       if (!response.ok) {
         // Fallback 2: try simplified login endpoint
@@ -430,10 +482,10 @@ export async function login(email: string, password: string, totpCode?: string):
 
         if (!response.ok) {
           // Optional Fallback 3: dev-login if enabled
-          const enableDevLogin = process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true';
+          const enableDevLogin = (process.env.NODE_ENV !== 'production') && (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true');
           if (enableDevLogin) {
-            console.warn(`Simplified login failed (${response.status}). Trying /api/auth/dev-login ...`);
-            response = await fetch('/api/auth/dev-login', {
+            console.warn(`Simplified login failed (${response.status}). Trying /api/dev-login ...`);
+            response = await fetch('/api/dev-login', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

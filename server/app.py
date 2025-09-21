@@ -79,8 +79,13 @@ def create_app() -> FastAPI:
     # Configure middleware
     configure_middleware(app, settings, REQUEST_COUNT, REQUEST_LATENCY, ERROR_COUNT)
     
-    # Wire all routers
-    wire_routers(app, settings)
+    # Optionally defer router wiring to speed up initial readiness in dev
+    _defer_wiring = os.getenv("KARI_DEFER_ROUTER_WIRING", "true").lower() in ("1", "true", "yes")
+    if _defer_wiring and settings.environment != "production":
+        logger.info("⚡ Deferring router wiring to background for faster readiness")
+    else:
+        # Wire all routers immediately (production/default)
+        wire_routers(app, settings)
     
     # Register startup tasks
     register_startup_tasks(app)
@@ -245,7 +250,7 @@ def create_app() -> FastAPI:
                     "connection_health": "active"
                 }
             }
-            
+    
         except Exception as e:
             from datetime import datetime, timezone
             return {
@@ -256,6 +261,19 @@ def create_app() -> FastAPI:
                 "error": str(e),
                 "fallback_mode": True
             }
+
+    # Background task to wire routers after startup, if deferred
+    if _defer_wiring and settings.environment != "production":
+        @app.on_event("startup")
+        async def _wire_routers_bg() -> None:
+            try:
+                import asyncio as _asyncio
+                # Small delay to allow server to bind
+                await _asyncio.sleep(0.1)
+                wire_routers(app, settings)
+                logger.info("✅ Routers wired in background")
+            except Exception as _e:
+                logger.warning(f"Deferred router wiring failed: {_e}")
     
     # Add metrics endpoint
     @app.get("/metrics", tags=["monitoring"])

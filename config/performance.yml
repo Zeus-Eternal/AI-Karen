@@ -9,31 +9,31 @@ enable_gpu_offloading: true
 enable_service_consolidation: true
 
 # Resource thresholds for automatic optimization
-cpu_threshold: 80.0  # Percentage
-memory_threshold: 85.0  # Percentage
+cpu_threshold: 70.0  # Percentage (reduced from 80%)
+memory_threshold: 75.0  # Percentage (reduced from 85%)
 response_time_threshold: 2.0  # Seconds
 
 # Startup optimization
-max_startup_time: 30.0  # Seconds
-essential_services_only: false
+max_startup_time: 5.0  # Seconds (reduced from 30%)
+essential_services_only: true  # Changed to true for development
 
 # Service lifecycle settings
-idle_timeout_seconds: 300  # 5 minutes
-health_check_interval: 60  # Seconds
+idle_timeout_seconds: 180  # 3 minutes (reduced from 5 minutes)
+health_check_interval: 30  # Seconds (reduced from 60)
 max_restart_attempts: 3
 
 # Async processing settings
-max_worker_threads: 4
-task_queue_size: 1000
+max_worker_threads: 2  # Reduced from 4
+task_queue_size: 500  # Reduced from 1000
 enable_parallel_processing: true
 
 # GPU settings
-gpu_memory_limit_mb: null  # null for auto-detection
+gpu_memory_limit_mb: 1024  # Limit GPU memory usage
 enable_gpu_memory_optimization: true
 
 # Monitoring settings
 enable_performance_monitoring: true
-metrics_collection_interval: 30  # Seconds
+metrics_collection_interval: 60  # Seconds (increased from 30)
 enable_performance_alerts: true
 
 # Logging settings
@@ -44,7 +44,19 @@ performance_log_file: "logs/performance.log"
 # Advanced settings
 enable_service_mesh: false
 enable_distributed_processing: false
-cache_size_mb: 256
+cache_size_mb: 128  # Reduced from 256
+
+# Resource management
+enable_automatic_cleanup: true
+cleanup_check_interval: 60  # Seconds
+memory_pressure_threshold: 1024  # MB
+cpu_pressure_threshold: 75.0  # Percentage
+
+# Lazy loading settings
+lazy_loading_enabled: true
+defer_heavy_services: true
+service_timeout_minutes: 5
+aggressive_cleanup: true
 
 # Deployment-specific overrides
 deployment_profiles:
@@ -52,20 +64,26 @@ deployment_profiles:
     essential_services_only: true
     enable_lazy_loading: true
     enable_service_consolidation: true
-    max_worker_threads: 2
-    cache_size_mb: 128
+    max_worker_threads: 1
+    cache_size_mb: 64
     enable_performance_monitoring: false
     enable_performance_alerts: false
+    idle_timeout_seconds: 120
+    memory_threshold: 70.0
+    cpu_threshold: 60.0
     
   development:
-    essential_services_only: false
+    essential_services_only: true  # Changed to true
     enable_lazy_loading: true
-    enable_service_consolidation: false
-    max_worker_threads: 4
-    cache_size_mb: 256
+    enable_service_consolidation: true  # Changed to true
+    max_worker_threads: 2  # Reduced from 4
+    cache_size_mb: 128  # Reduced from 256
     enable_performance_monitoring: true
     enable_performance_alerts: true
-    log_level: "DEBUG"
+    log_level: "INFO"  # Changed from DEBUG
+    idle_timeout_seconds: 180  # Reduced
+    memory_threshold: 75.0  # Reduced
+    cpu_threshold: 70.0  # Reduced
     
   production:
     essential_services_only: false
@@ -81,10 +99,10 @@ deployment_profiles:
     
   testing:
     essential_services_only: true
-    enable_lazy_loading: false
-    enable_service_consolidation: false
-    max_worker_threads: 2
-    cache_size_mb: 64
+    enable_lazy_loading: true  # Changed to true
+    enable_service_consolidation: true  # Changed to true
+    max_worker_threads: 1  # Reduced from 2
+    cache_size_mb: 32  # Reduced from 64
     enable_performance_monitoring: false
     enable_performance_alerts: false
     log_level: "WARNING"

@@ -20,6 +20,7 @@ from ai_karen_engine.server.optimized_startup import (
 logger = logging.getLogger(__name__)
 
 _registry_refresh_task: Optional[asyncio.Task] = None
+_startup_init_task: Optional[asyncio.Task] = None
 _optimization_enabled: bool = True
 
 
@@ -41,8 +42,23 @@ async def init_ai_services(settings: Any) -> None:
     _optimization_enabled = getattr(settings, 'enable_performance_optimization', 
                                   os.getenv('ENABLE_PERFORMANCE_OPTIMIZATION', 'true').lower() == 'true')
     
+    # Check for lazy loading mode
+    lazy_loading_enabled = os.getenv('KARI_LAZY_LOADING', 'true').lower() == 'true'
+    
     try:
-        if _optimization_enabled:
+        if lazy_loading_enabled:
+            logger.info("⚡ Using ultra-optimized lazy loading startup")
+            
+            # Use the new optimized startup system
+            from ai_karen_engine.core.optimized_startup import optimized_startup_sequence
+            startup_report = await optimized_startup_sequence(settings)
+            
+            logger.info("✅ Lazy loading startup completed")
+            logger.info(f"   • Startup time: {startup_report.get('startup_time', 0):.2f}s")
+            logger.info(f"   • Mode: {startup_report.get('mode', 'optimized')}")
+            logger.info(f"   • Initialized services: {len(startup_report.get('initialized_services', []))}")
+            
+        elif _optimization_enabled:
             logger.info("🚀 Using optimized service initialization")
             
             # Initialize optimization components first
@@ -97,40 +113,26 @@ async def init_ai_services(settings: Any) -> None:
             
     except Exception as e:  # pragma: no cover - defensive
         logger.error("AI services initialization failed: %s", str(e))
-        if _optimization_enabled:
-            logger.info("🔄 Falling back to standard initialization")
-            _optimization_enabled = False
-            # Retry with standard initialization (non-recursive)
+        if lazy_loading_enabled or _optimization_enabled:
+            logger.info("🔄 Falling back to minimal startup")
+            
+            # Fallback to ultra-minimal mode
             try:
-                logger.info("📦 Using standard service initialization (fallback)")
+                logger.info("⚡ Using minimal fallback initialization")
                 
-                # Standard initialization path
+                from ai_karen_engine.core.optimized_startup import MinimalStartupMode
+                startup_report = await MinimalStartupMode.initialize(settings)
+                
+                logger.info("✅ Minimal fallback initialization completed")
+                logger.info(f"   • Startup time: {startup_report.get('startup_time', 0):.2f}s")
+                
+            except Exception as fallback_error:
+                logger.error("Minimal fallback also failed: %s", str(fallback_error))
+                # Last resort: basic initialization
+                logger.info("🔄 Last resort: basic initialization")
                 from ai_karen_engine.core.memory import manager as memory_manager
                 memory_manager.init_memory()
-                load_plugins(settings.plugin_dir)
-
-                # Initialize model orchestrator plugin if enabled
-                try:
-                    from ai_karen_engine.server.plugin_loader import ENABLED_PLUGINS
-                    if "model_orchestrator" in ENABLED_PLUGINS:
-                        from plugin_marketplace.ai.model_orchestrator.service import ModelOrchestratorService
-                        orchestrator_service = ModelOrchestratorService()
-                        await orchestrator_service.initialize()
-                        logger.info("Model orchestrator plugin initialized")
-                except Exception as e:
-                    logger.warning("Model orchestrator plugin initialization failed: %s", str(e))
-
-                from ai_karen_engine.integrations.model_discovery import sync_registry
-                sync_registry()
-                
-                # Initialize the service registry and all services
-                from ai_karen_engine.core.service_registry import initialize_services
-                await initialize_services()
-                
-                logger.info("AI services initialized (fallback)")
-            except Exception as fallback_error:
-                logger.error("Fallback initialization also failed: %s", str(fallback_error))
-                raise
+                logger.info("Basic initialization completed")
         else:
             raise
 
@@ -143,10 +145,26 @@ async def cleanup_ai_services() -> None:
             # Cleanup optimization components first
             await cleanup_optimization_components()
         
+        # Check if lazy services are enabled
+        lazy_loading_enabled = os.getenv('KARI_LAZY_LOADING', 'true').lower() == 'true'
+        
+        if lazy_loading_enabled:
+            logger.info("🧹 Cleaning up lazy services")
+            from ai_karen_engine.core.lazy_loading import cleanup_lazy_services
+            await cleanup_lazy_services()
+        
         # Standard cleanup
-        from ai_karen_engine.core.service_registry import get_service_registry
-        registry = get_service_registry()
-        await registry.shutdown()
+        try:
+            from ai_karen_engine.core.service_registry import get_service_registry
+            registry = get_service_registry()
+            await registry.shutdown()
+        except Exception as e:
+            logger.warning(f"Service registry cleanup failed: {e}")
+        
+        logger.info("✅ AI services cleanup completed")
+        
+    except Exception as e:
+        logger.error(f"Error during AI services cleanup: {e}")
         
         from ai_karen_engine.core.memory import manager as memory_manager
         await memory_manager.close()
@@ -194,16 +212,37 @@ async def stop_background_tasks() -> None:
 
 
 async def on_startup(settings: Any) -> None:
+    global _startup_init_task
     logger.info("Starting Kari AI Server in %s mode", settings.environment)
     await init_database()
-    await init_ai_services(settings)
+    
+    # Fast-startup mode: don't block server readiness on heavy init
+    fast_start = os.getenv("KARI_FAST_STARTUP", os.getenv("FAST_STARTUP", "true")).lower() in ("1", "true", "yes")
+    if fast_start and (settings.environment or "").lower() in ("development", "dev", "local"):
+        logger.info("⚡ Fast startup enabled: initializing AI services in background")
+        _startup_init_task = asyncio.create_task(init_ai_services(settings))
+    else:
+        await init_ai_services(settings)
+
     init_security(settings)
     start_background_tasks(settings)
     logger.info("Server startup completed")
 
 
 async def on_shutdown() -> None:
+    global _startup_init_task
     logger.info("Shutting down Kari AI Server")
+    # If background startup is still running, cancel it gracefully
+    if _startup_init_task and not _startup_init_task.done():
+        _startup_init_task.cancel()
+        try:
+            await _startup_init_task
+        except asyncio.CancelledError:
+            logger.info("Background startup task cancelled")
+        except Exception as e:
+            logger.warning("Background startup task error during shutdown: %s", e)
+        finally:
+            _startup_init_task = None
     await stop_background_tasks()
     await cleanup_ai_services()
     logger.info("Server shutdown completed")

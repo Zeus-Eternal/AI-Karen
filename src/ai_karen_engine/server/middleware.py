@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -12,9 +13,8 @@ from fastapi.responses import StreamingResponse
 
 from ai_karen_engine.middleware.error_counter import error_counter_middleware
 from ai_karen_engine.middleware.rate_limit import rate_limit_middleware
-from ai_karen_engine.middleware.rbac import setup_rbac
-from ai_karen_engine.middleware.session_persistence import SessionPersistenceMiddleware
 from ai_karen_engine.middleware.intelligent_error_handler import IntelligentErrorHandlerMiddleware
+# REMOVED: RBAC and session persistence middleware - replaced with simple auth
 from ai_karen_engine.server.http_validator import HTTPRequestValidator, ValidationConfig
 
 logger = logging.getLogger(__name__)
@@ -118,16 +118,8 @@ def configure_middleware(
             pass
         return response
 
-    # RBAC middleware configured based on environment
-    development_mode = getattr(settings, "environment", "").lower() != "production"
-    
-    # Check if AUTH_MODE is set to bypass - if so, skip RBAC entirely
-    import os
-    auth_mode = os.getenv("AUTH_MODE", "hybrid").lower()
-    if auth_mode != "bypass":
-        setup_rbac(app, development_mode=development_mode)
-    else:
-        logger.info("🔓 Skipping RBAC middleware - AUTH_MODE=bypass")
+    # REMOVED: RBAC middleware - replaced with simple auth role checking
+    logger.info("🔐 Using simple auth system - RBAC middleware removed")
 
     # Add intelligent error handler (outermost - catches all errors)
     app.add_middleware(
@@ -136,11 +128,8 @@ def configure_middleware(
         debug_mode=getattr(settings, "environment", "").lower() != "production"
     )
     
-    # Add session persistence middleware (before other auth middleware)
-    app.add_middleware(
-        SessionPersistenceMiddleware,
-        enable_intelligent_errors=True
-    )
+    # REMOVED: Session persistence middleware - replaced with simple JWT auth
+    logger.info("🔐 Using simple JWT auth - session persistence middleware removed")
 
     # Configure and register enhanced rate limiting middleware
     from ai_karen_engine.middleware.rate_limit import configure_rate_limiter

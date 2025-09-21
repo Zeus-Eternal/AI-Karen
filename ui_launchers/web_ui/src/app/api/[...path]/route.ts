@@ -33,10 +33,13 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
       'Content-Type': 'application/json',
     };
     
-    // Copy authorization header if present
+    // Copy authorization header if present, else use auth_token cookie (set by our login route)
     const authHeader = request.headers.get('authorization');
+    const authCookie = request.cookies.get('auth_token')?.value;
     if (authHeader) {
       headers['Authorization'] = authHeader;
+    } else if (authCookie) {
+      headers['Authorization'] = `Bearer ${authCookie}`;
     }
 
     // Forward cookies for HttpOnly session/refresh flows
@@ -106,6 +109,26 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     clearTimeout(timeout);
     if (!response) {
       throw lastError || new Error('Fetch failed without response');
+    }
+    // If upstream returned 404 for /api/auth/*, try simple-auth fallback /auth/*
+    if (response.status === 404 && Array.isArray(resolvedParams.path) && resolvedParams.path[0] === 'auth') {
+      const fallbackUrl = `${BACKEND_URL}/auth/${resolvedParams.path.slice(1).join('/')}${searchParams ? `?${searchParams}` : ''}`;
+      try {
+        const fallbackResp = await fetch(fallbackUrl, {
+          method: request.method,
+          headers: { ...headers, Connection: 'keep-alive' },
+          body: body || undefined,
+          signal: controller.signal,
+          // @ts-ignore undici option in Node runtime
+          keepalive: true,
+          cache: 'no-store',
+        });
+        if (fallbackResp) {
+          response = fallbackResp;
+        }
+      } catch (e) {
+        // ignore, will continue with original response
+      }
     }
     
     let data;

@@ -6,6 +6,8 @@
 export interface WebUIConfig {
   // Backend configuration (use Next.js API routes)
   backendUrl: string;
+  apiBaseUrl: string;
+  karenBackendUrl: string;
   apiKey?: string;
   apiTimeout: number;
   maxRetries: number;

@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Forward the request to the backend with timeout + transient retry
-    const url = `${BACKEND_URL.replace(/\/+$/, '')}/api/auth/login`;
+    const base = BACKEND_URL.replace(/\/+$/, '');
+    let url = `${base}/api/auth/login`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -33,6 +34,22 @@ export async function POST(request: NextRequest) {
         });
         clearTimeout(timeout);
         lastErr = null;
+        // Fallback to simple-auth mount if API path not found
+        if (!response.ok && (response.status === 404 || response.status === 405)) {
+          url = `${base}/auth/login`;
+          const controller2 = new AbortController();
+          const timeout2 = setTimeout(() => controller2.abort(), AUTH_TIMEOUT_MS);
+          response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+            signal: controller2.signal,
+            // @ts-ignore Node/undici hints
+            keepalive: true,
+            cache: 'no-store',
+          });
+          clearTimeout(timeout2);
+        }
         break;
       } catch (err: any) {
         clearTimeout(timeout);
@@ -79,6 +96,22 @@ export async function POST(request: NextRequest) {
     if (setCookieHeader) {
       // Forward cookie(s) from backend to client
       nextResponse.headers.set('Set-Cookie', setCookieHeader);
+    }
+
+    // Also set our own auth_token cookie for downstream proxying
+    const token = data?.access_token;
+    if (typeof token === 'string' && token.length > 0) {
+      try {
+        nextResponse.cookies.set('auth_token', token, {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: false, // dev
+          path: '/',
+          maxAge: data?.expires_in ? Number(data.expires_in) : 24 * 60 * 60,
+        });
+      } catch {
+        // ignore cookie errors in dev
+      }
     }
     
     return nextResponse;

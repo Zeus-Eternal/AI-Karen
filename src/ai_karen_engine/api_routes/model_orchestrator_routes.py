@@ -24,13 +24,14 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, R
 from fastapi.responses import JSONResponse
 
 from ai_karen_engine.utils.dependency_checks import import_pydantic
-from ai_karen_engine.security.model_security import (
-    ModelSecurityManager,
-    LicenseManager,
-    ModelAuditEvent,
-    RBACError
-)
-from ai_karen_engine.middleware.rbac import require_scopes
+# Simple auth - removed complex security imports
+# from ai_karen_engine.security.model_security import (
+#     ModelSecurityManager,
+#     LicenseManager,
+#     ModelAuditEvent,
+#     RBACError
+# )
+# from ai_karen_engine.middleware.rbac import require_scopes
 from ai_karen_engine.health import get_model_orchestrator_health_checker
 from ai_karen_engine.monitoring import get_model_orchestrator_metrics
 from ai_karen_engine.error_tracking import get_model_orchestrator_error_tracker
@@ -189,14 +190,15 @@ class DownloadResultResponse(BaseModel):
     error_message: Optional[str] = None
 
 # Security and authentication dependencies
-_security_manager: Optional[ModelSecurityManager] = None
-
-def get_security_manager() -> ModelSecurityManager:
-    """Get or create the model security manager instance."""
-    global _security_manager
-    if _security_manager is None:
-        _security_manager = ModelSecurityManager()
-    return _security_manager
+# Simple auth - removed security manager
+# _security_manager: Optional[ModelSecurityManager] = None
+# 
+# def get_security_manager() -> ModelSecurityManager:
+#     """Get or create the model security manager instance."""
+#     global _security_manager
+#     if _security_manager is None:
+#         _security_manager = ModelSecurityManager()
+#     return _security_manager
 
 async def get_current_user(request: Request):
     """Get current authenticated user from request state."""
@@ -261,20 +263,15 @@ async def list_models(
     Requirements: 9.1, 9.2, 9.5, 4.1, 4.7
     """
     try:
-        # Check browse permission
-        security_manager = get_security_manager()
-        has_permission = await security_manager.check_browse_permission(current_user, request)
+        # Simple auth - check user role
+        user_roles = current_user.get("roles", [])
+        has_permission = any(role in user_roles for role in ["admin", "user"])
         
         if not has_permission:
             raise HTTPException(status_code=403, detail="Insufficient permissions to browse models")
         
-        # Audit the browse operation
-        await security_manager.audit_model_operation(
-            user_id=current_user["user_id"],
-            operation="browse",
-            metadata={"owner": owner, "search": search},
-            request=request
-        )
+        # Simple audit logging (removed complex audit)
+        logger.info(f"User {current_user.get('user_id')} browsing models")
         
         service = get_orchestrator_service()
         models = await service.list_models(
@@ -322,21 +319,15 @@ async def get_model_info(
     Requirements: 9.1, 9.2, 9.5, 4.1, 4.7
     """
     try:
-        # Check browse permission
-        security_manager = get_security_manager()
-        has_permission = await security_manager.check_browse_permission(current_user, request)
+        # Simple auth - check user role
+        user_roles = current_user.get("roles", [])
+        has_permission = any(role in user_roles for role in ["admin", "user"])
         
         if not has_permission:
             raise HTTPException(status_code=403, detail="Insufficient permissions to view model information")
         
-        # Audit the info operation
-        await security_manager.audit_model_operation(
-            user_id=current_user["user_id"],
-            operation="info",
-            model_id=model_id,
-            metadata={"revision": revision},
-            request=request
-        )
+        # Simple audit logging (removed complex audit)
+        logger.info(f"User {current_user.get('user_id')} viewing model info")
         
         service = get_orchestrator_service()
         model_info = await service.get_model_info(model_id, revision)
@@ -378,29 +369,15 @@ async def download_model(
     Requirements: 9.1, 9.2, 9.5, 4.1, 4.7, 12.1, 12.2
     """
     try:
-        # Check download permission
-        security_manager = get_security_manager()
-        has_permission = await security_manager.check_download_permission(
-            current_user, 
-            download_request.model_id, 
-            http_request
-        )
+        # Simple auth - check user role for download
+        user_roles = current_user.get("roles", [])
+        has_permission = any(role in user_roles for role in ["admin", "user"])
         
         if not has_permission:
             raise HTTPException(status_code=403, detail="Insufficient permissions to download models")
         
-        # Audit the download request
-        await security_manager.audit_model_operation(
-            user_id=current_user["user_id"],
-            operation="download_request",
-            model_id=download_request.model_id,
-            metadata={
-                "revision": download_request.revision,
-                "pin": download_request.pin,
-                "force_redownload": download_request.force_redownload
-            },
-            request=http_request
-        )
+        # Simple audit logging (removed complex audit)
+        logger.info(f"User {current_user.get('user_id')} downloading model {download_request.model_id}")
         
         # Create job for tracking
         job_id = str(uuid.uuid4())
@@ -761,8 +738,7 @@ async def validate_model_files(
             user_id=current_user["user_id"],
             model_id=model_id,
             files_info=files_info,
-            model_dir=models_dir,
-            request=http_request
+            model_dir=models_dir
         )
         
         return {
@@ -978,16 +954,7 @@ async def get_license_compliance_report(
         )
         
         # Audit the report access
-        await security_manager.audit_model_operation(
-            user_id=current_user["user_id"],
-            operation="compliance_report",
-            metadata={
-                "start_date": start_date,
-                "end_date": end_date,
-                "total_acceptances": report.get("total_acceptances", 0)
-            },
-            request=http_request
-        )
+        # Audit operation removed - compliance report generated
         
         return report
         
@@ -1139,7 +1106,6 @@ async def ensure_models(
             "updated_at": datetime.now(timezone.utc)
         }
         _active_jobs[job_id] = job
-        
         # Start ensure operation in background
         background_tasks.add_task(
             _handle_ensure_models,
@@ -1182,8 +1148,7 @@ async def garbage_collect(
                 "max_age_days": gc_request.max_age_days,
                 "min_free_space_gb": gc_request.min_free_space_gb,
                 "preserve_pinned": gc_request.preserve_pinned
-            },
-            request=http_request
+            }
         )
         
         # Create job for tracking
@@ -1199,7 +1164,6 @@ async def garbage_collect(
             "updated_at": datetime.now(timezone.utc)
         }
         _active_jobs[job_id] = job
-        
         # Start GC in background
         background_tasks.add_task(
             _handle_garbage_collection,

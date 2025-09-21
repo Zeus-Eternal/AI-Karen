@@ -1,3 +1,4 @@
+from src.auth.simple_auth_middleware import require_auth
 """
 Dependency Injection for AI Karen Engine Integration.
 
@@ -29,7 +30,7 @@ from ai_karen_engine.core.service_registry import (
     WebUIMemoryService,
     get_service_registry,
 )
-from ai_karen_engine.auth.service import get_auth_service
+# REMOVED: Complex auth service
 
 logger = logging.getLogger(__name__)
 
@@ -46,138 +47,26 @@ async def get_current_config() -> AIKarenConfig:
 
 # Authentication dependencies
 async def get_current_user_context(request: Request) -> Dict[str, Any]:
-    """Get authenticated user context from session token or JWT access token."""
-    from ai_karen_engine.services.correlation_service import auth_event, Phase, get_request_id
-    
-    # Get correlation ID for this request
-    correlation_id = getattr(request.state, "correlation_id", get_request_id())
-    
-    # Log authentication start
-    auth_event(
-        "session_validated",
-        Phase.START,
-        ip_address=request.client.host if request.client else "unknown",
-        user_agent=request.headers.get("user-agent", ""),
-        request_id=correlation_id,
-        details={"stage": "start"},
-        risk_score=0.0,
-        security_flags=[],
-        blocked_by_security=False,
-        service_version="consolidated-auth-v1",
-    )
-    
-    user_data = None
-    auth_method = None
-    processing_start = time.time()
-    
+    """Get authenticated user context using simple JWT auth."""
     try:
-        # First try to get session token from cookie
-        session_token = request.cookies.get("kari_session")
-        if session_token:
-            auth_method = "session_cookie"
-            # Use session-based authentication
-            service = await get_auth_service()
-            user_data = await service.validate_session(
-                session_token=session_token,
-                ip_address=request.client.host if request.client else "unknown",
-                user_agent=request.headers.get("user-agent", ""),
-            )
-            if user_data:
-                # Log successful authentication
-                processing_time_ms = (time.time() - processing_start) * 1000
-                auth_event(
-                    "session_validated",
-                    Phase.FINISH,
-                    success=True,
-                    user_id=user_data.get("user_id"),
-                    email=user_data.get("email"),
-                    auth_method=auth_method,
-                    request_id=correlation_id,
-                    processing_time_ms=processing_time_ms,
-                    details={"stage": "finish", "method": auth_method},
-                )
-                return user_data
+        # Use simple auth middleware to get user
+        from src.auth.simple_auth_middleware import get_auth_middleware
+        auth_middleware = get_auth_middleware()
         
-        # Try JWT access token from Authorization header
-        auth_header = request.headers.get("authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            auth_method = "jwt_bearer"
-            access_token = auth_header.split(" ")[1]
-            try:
-                service = await get_auth_service()
-                # Use the token manager to validate JWT access token
-                token_payload = await service.core_auth.token_manager.validate_access_token(access_token)
-                
-                # Convert JWT payload to user data format
-                user_data = {
-                    "user_id": token_payload.get("sub"),
-                    "email": token_payload.get("email"),
-                    "full_name": token_payload.get("full_name"),
-                    "roles": token_payload.get("roles", []),
-                    "tenant_id": token_payload.get("tenant_id"),
-                    "preferences": token_payload.get("preferences", {}),
-                    "two_factor_enabled": token_payload.get("two_factor_enabled", False),
-                    "is_verified": token_payload.get("is_verified", False),
-                    "is_active": token_payload.get("is_active", True),
-                }
-                
-                # Log successful authentication
-                processing_time_ms = (time.time() - processing_start) * 1000
-                auth_event(
-                    "session_validated",
-                    Phase.FINISH,
-                    success=True,
-                    user_id=user_data.get("user_id"),
-                    email=user_data.get("email"),
-                    auth_method=auth_method,
-                    request_id=correlation_id,
-                    processing_time_ms=processing_time_ms,
-                    details={"stage": "finish", "method": auth_method},
-                )
-                return user_data
-            except Exception as e:
-                # JWT validation failed, log and continue to raise auth error
-                processing_time_ms = (time.time() - processing_start) * 1000
-                auth_event(
-                    "session_validated",
-                    Phase.FINISH,
-                    success=False,
-                    auth_method=auth_method,
-                    request_id=correlation_id,
-                    processing_time_ms=processing_time_ms,
-                    details={"stage": "finish", "method": auth_method, "error": str(e)},
-                    error=str(e),
-                )
+        user_data = await auth_middleware.authenticate_request(request)
+        if user_data:
+            # Ensure tenant_id exists for compatibility
+            if "tenant_id" not in user_data:
+                user_data["tenant_id"] = "default"
+            return user_data
         
-        # No valid authentication found
-        processing_time_ms = (time.time() - processing_start) * 1000
-        auth_event(
-            "session_validated",
-            Phase.FINISH,
-            success=False,
-            auth_method=auth_method or "none",
-            request_id=correlation_id,
-            processing_time_ms=processing_time_ms,
-            details={"stage": "finish", "method": auth_method or "none", "error": "No valid authentication"},
-            error="No valid authentication found",
-        )
-        
-    except Exception as e:
-        # Log authentication failure
-        processing_time_ms = (time.time() - processing_start) * 1000
-        auth_event(
-            "session_validated",
-            Phase.FINISH,
-            success=False,
-            auth_method=auth_method or "unknown",
-            request_id=correlation_id,
-            processing_time_ms=processing_time_ms,
-            details={"stage": "finish", "method": auth_method or "unknown", "error": str(e)},
-            error=str(e),
-        )
         raise HTTPException(status_code=401, detail="Authentication required")
-    
-    raise HTTPException(status_code=401, detail="Authentication required")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Authentication failed: {e}")
+        raise HTTPException(status_code=401, detail="Authentication required")
 
 
 async def get_current_user_id(

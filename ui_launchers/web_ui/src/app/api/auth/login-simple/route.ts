@@ -12,7 +12,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const url = `${BACKEND_URL.replace(/\/+$/, '')}/api/auth/login-simple`;
+    // Backend exposes this as /api/login-simple (no /auth prefix)
+    const url = `${BACKEND_URL.replace(/\/+$/, '')}/api/login-simple`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',

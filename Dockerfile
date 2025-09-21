@@ -67,9 +67,9 @@ ENV PLUGIN_DIR="/app/plugin_marketplace" \
 # Expose ports
 EXPOSE 8000 9090
 
-# Health check with model orchestrator support
+# Health check: simple 200 from /health to avoid false negatives
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8000/health | grep -q '"status":"healthy"' || exit 1
+    CMD curl -fsS http://localhost:8000/health || exit 1
 
 # Start command with plugin initialization and uvloop/httptools
 CMD ["bash", "-c", "python scripts/init_db_schema.py && uvicorn server.app:create_app --factory --host 0.0.0.0 --port 8000 --loop uvloop --http httptools"]

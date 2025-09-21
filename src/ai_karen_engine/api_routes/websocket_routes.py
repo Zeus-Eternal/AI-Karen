@@ -30,7 +30,7 @@ from fastapi.responses import StreamingResponse
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
 from ai_karen_engine.chat.stream_processor import StreamProcessor
 from ai_karen_engine.chat.websocket_gateway import WebSocketGateway
-from ai_karen_engine.auth.service import get_auth_service
+# REMOVED: Complex auth service - replaced with simple auth
 from ai_karen_engine.utils.dependency_checks import import_pydantic
 
 try:
@@ -204,34 +204,28 @@ async def get_current_user_websocket(websocket: WebSocket) -> Dict[str, Any]:
         websocket.cookies.get(configured_cookie)
         or websocket.cookies.get("kari_session")
     )
-    if session_token:
-        service = await get_auth_service()
-        user_data = await service.validate_session(
-            session_token=session_token,
-            ip_address=websocket.client.host if websocket.client else "unknown",
-            user_agent=websocket.headers.get("user-agent", ""),
-        )
-        if user_data:
-            return user_data.to_dict() if hasattr(user_data, "to_dict") else user_data
-
+    # Use simple auth service for JWT validation
     auth_header = websocket.headers.get("authorization")
     if auth_header and auth_header.startswith("Bearer "):
         access_token = auth_header.split(" ", 1)[1]
-        service = await get_auth_service()
-        token_payload = await service.core_auth.token_manager.validate_access_token(
-            access_token
-        )
-        return {
-            "user_id": token_payload.get("sub"),
-            "email": token_payload.get("email"),
-            "full_name": token_payload.get("full_name"),
-            "roles": token_payload.get("roles", []),
-            "tenant_id": token_payload.get("tenant_id"),
-            "preferences": token_payload.get("preferences", {}),
-            "two_factor_enabled": token_payload.get("two_factor_enabled", False),
-            "is_verified": token_payload.get("is_verified", False),
-            "is_active": token_payload.get("is_active", True),
-        }
+        try:
+            from src.auth.simple_auth_service import get_auth_service
+            service = get_auth_service()
+            token_payload = service.validate_token(access_token)
+            if token_payload:
+                return {
+                    "user_id": token_payload.get("sub"),
+                    "email": token_payload.get("email"),
+                    "full_name": token_payload.get("full_name"),
+                    "roles": token_payload.get("roles", []),
+                    "tenant_id": token_payload.get("tenant_id", "default"),
+                    "preferences": token_payload.get("preferences", {}),
+                    "two_factor_enabled": token_payload.get("two_factor_enabled", False),
+                    "is_verified": token_payload.get("is_verified", False),
+                    "is_active": token_payload.get("is_active", True),
+                }
+        except Exception:
+            pass
 
     raise HTTPException(status_code=401, detail="Authentication required")
 

@@ -239,6 +239,11 @@ services:
       ENVIRONMENT: "development"
       DEBUG: "true"
       AUTH_MODE: "hybrid"
+      # Speed up dev boot: don't block readiness on heavy init
+      KARI_FAST_STARTUP: "true"
+      WARMUP_LLM: "false"
+      # Enable dev login endpoint for local development
+      AUTH_ALLOW_DEV_LOGIN: "true"
 
       # Redis connection with password; matches the `redis` service
       # Uses the same REDIS_PASSWORD provided via env_file (.env)
@@ -279,6 +284,12 @@ services:
       AUTH_ENABLE_TWO_FACTOR_AUTH: "true"
       # Keep sessions stable in dev (avoid over-strict validation)
       AUTH_ENABLE_SESSION_VALIDATION: "false"
+      # NLP startup tuning: avoid spaCy download on boot in dev
+      SPACY_DOWNLOAD_MISSING: "false"
+      # Transformers offline to avoid model downloads on startup
+      TRANSFORMERS_OFFLINE: "true"
+      HF_HUB_OFFLINE: "1"
+      TOKENIZERS_PARALLELISM: "false"
       # Model Orchestrator Plugin Configuration
       PLUGIN_DIR: "/app/plugin_marketplace"
       MODELS_ROOT: "/app/models"
@@ -319,13 +330,13 @@ services:
       prometheus:
         condition: service_started
     healthcheck:
-      # Simplified health check - only verify the /health endpoint returns HTTP 200
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      # Check simple /health 200 (binds quickly with fast startup)
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
       interval: 15s
       timeout: 10s
-      retries: 10
-      # Allow extended startup time for model downloads and initialization
-      start_period: 300s
+      retries: 20
+      # Allow extended startup time on first boot
+      start_period: 480s
     networks:
       - ai-karen-net
 
@@ -340,11 +351,11 @@ services:
       - .env
     environment:
       NODE_ENV: development
-      # Point server-side rewrites to the in-network backend service
-      KAREN_BACKEND_URL: http://karen-backend:8010
-      # Expose the backend URL to the browser clients
-      NEXT_PUBLIC_API_BASE_URL: http://karen-backend:8010
-      NEXT_PUBLIC_KAREN_BACKEND_URL: http://karen-backend:8010
+      # Server-side (inside container) should call the API service directly
+      KAREN_BACKEND_URL: http://api:8000
+      # Client-side (browser) should call the Next.js dev server (self)
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8010
+      NEXT_PUBLIC_KAREN_BACKEND_URL: http://localhost:8010
     ports:
       - "8010:8010"
     volumes:

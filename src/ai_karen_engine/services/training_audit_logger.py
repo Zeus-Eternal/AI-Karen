@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field, asdict
 
 from ai_karen_engine.services.audit_logging import get_audit_logger, AuditEventType, AuditSeverity
-from ai_karen_engine.auth.models import UserData
+# Simple auth - using dict instead of UserData model
 from ai_karen_engine.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -217,7 +217,7 @@ class TrainingAuditLogger:
     
     def log_training_started(
         self,
-        user: UserData,
+        user: dict,
         training_job_id: str,
         model_id: Optional[str] = None,
         dataset_id: Optional[str] = None,
@@ -231,9 +231,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.TRAINING_STARTED,
             severity=AuditSeverity.INFO,
             message=f"Training job {training_job_id} started",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             ip_address=ip_address,
             correlation_id=correlation_id,
@@ -252,7 +252,7 @@ class TrainingAuditLogger:
     
     def log_training_completed(
         self,
-        user: UserData,
+        user: dict,
         training_job_id: str,
         model_id: Optional[str] = None,
         duration_ms: Optional[float] = None,
@@ -265,9 +265,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.TRAINING_COMPLETED,
             severity=AuditSeverity.INFO,
             message=f"Training job {training_job_id} completed successfully",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             correlation_id=correlation_id,
             training_job_id=training_job_id,
@@ -287,7 +287,7 @@ class TrainingAuditLogger:
     
     def log_training_failed(
         self,
-        user: UserData,
+        user: dict,
         training_job_id: str,
         error_message: str,
         model_id: Optional[str] = None,
@@ -300,9 +300,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.TRAINING_FAILED,
             severity=AuditSeverity.ERROR,
             message=f"Training job {training_job_id} failed: {error_message}",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             correlation_id=correlation_id,
             training_job_id=training_job_id,
@@ -321,7 +321,7 @@ class TrainingAuditLogger:
     
     def log_model_created(
         self,
-        user: UserData,
+        user: dict,
         model_id: str,
         model_name: str,
         model_type: str,
@@ -336,9 +336,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.MODEL_CREATED,
             severity=AuditSeverity.INFO,
             message=f"Model {model_name} created",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             ip_address=ip_address,
             correlation_id=correlation_id,
@@ -358,7 +358,7 @@ class TrainingAuditLogger:
     
     def log_model_accessed(
         self,
-        user: UserData,
+        user: dict,
         model_id: str,
         model_name: str,
         access_type: str = "read",
@@ -371,9 +371,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.MODEL_ACCESSED,
             severity=AuditSeverity.INFO,
             message=f"Model {model_name} accessed ({access_type})",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             ip_address=ip_address,
             correlation_id=correlation_id,
@@ -391,7 +391,7 @@ class TrainingAuditLogger:
     
     def log_model_deleted(
         self,
-        user: UserData,
+        user: dict,
         model_id: str,
         model_name: str,
         ip_address: str = "unknown",
@@ -403,9 +403,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.MODEL_DELETED,
             severity=AuditSeverity.WARNING,
             message=f"Model {model_name} deleted",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             ip_address=ip_address,
             correlation_id=correlation_id,
@@ -424,7 +424,7 @@ class TrainingAuditLogger:
     
     def log_training_data_uploaded(
         self,
-        user: UserData,
+        user: dict,
         dataset_id: str,
         dataset_name: str,
         record_count: int,
@@ -439,9 +439,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.TRAINING_DATA_UPLOADED,
             severity=AuditSeverity.INFO,
             message=f"Training data uploaded to dataset {dataset_name}",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             ip_address=ip_address,
             correlation_id=correlation_id,
@@ -463,7 +463,7 @@ class TrainingAuditLogger:
     
     def log_unauthorized_access_attempt(
         self,
-        user: Optional[UserData],
+        user: Optional[dict],
         resource_type: str,
         resource_id: str,
         permission_required: str,
@@ -477,9 +477,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.UNAUTHORIZED_ACCESS_ATTEMPT,
             severity=AuditSeverity.ERROR,
             message=f"Unauthorized access attempt to {resource_type} {resource_id}",
-            user_id=user.user_id if user else None,
-            user_email=user.email if user else None,
-            user_roles=user.roles if user else [],
+            user_id=user.get("user_id") if user else None,
+            user_email=user.get("email") if user else None,
+            user_roles=user.get("roles", []) if user else [],
             tenant_id=user.tenant_id if user else "unknown",
             ip_address=ip_address,
             user_agent=user_agent,
@@ -497,7 +497,7 @@ class TrainingAuditLogger:
     
     def log_permission_denied(
         self,
-        user: UserData,
+        user: dict,
         resource_type: str,
         resource_id: str,
         permission_required: str,
@@ -510,9 +510,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.PERMISSION_DENIED,
             severity=AuditSeverity.WARNING,
             message=f"Permission denied for {permission_required} on {resource_type} {resource_id}",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             ip_address=ip_address,
             correlation_id=correlation_id,
@@ -529,7 +529,7 @@ class TrainingAuditLogger:
     
     def log_model_integrity_check_failed(
         self,
-        user: UserData,
+        user: dict,
         model_id: str,
         model_name: str,
         expected_checksum: str,
@@ -542,9 +542,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.MODEL_INTEGRITY_CHECK_FAILED,
             severity=AuditSeverity.CRITICAL,
             message=f"Model integrity check failed for {model_name}",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             correlation_id=correlation_id,
             model_id=model_id,
@@ -567,7 +567,7 @@ class TrainingAuditLogger:
     
     def log_config_updated(
         self,
-        user: UserData,
+        user: dict,
         config_type: str,
         config_changes: Dict[str, Any],
         ip_address: str = "unknown",
@@ -579,9 +579,9 @@ class TrainingAuditLogger:
             event_type=TrainingEventType.CONFIG_UPDATED,
             severity=AuditSeverity.INFO,
             message=f"Configuration updated: {config_type}",
-            user_id=user.user_id,
-            user_email=user.email,
-            user_roles=user.roles,
+            user_id=user.get("user_id"),
+            user_email=user.get("email"),
+            user_roles=user.get("roles", []),
             tenant_id=user.tenant_id,
             ip_address=ip_address,
             correlation_id=correlation_id,

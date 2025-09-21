@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Prefer KAREN_BACKEND_URL used elsewhere in the app, fall back to KAREN_API_BASE, then localhost
-const UPSTREAM = process.env.KAREN_BACKEND_URL || process.env.KAREN_API_BASE || 'http://127.0.0.1:8000';
+const UPSTREAM = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ proxy: string[] }> }) {
   return forward(req, await params);

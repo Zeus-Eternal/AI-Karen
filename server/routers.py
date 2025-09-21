@@ -14,8 +14,17 @@ logger = logging.getLogger("kari")
 # Original route imports
 from ai_karen_engine.api_routes.ai_orchestrator_routes import router as ai_router
 from ai_karen_engine.api_routes.audit import router as audit_router
-from ai_karen_engine.api_routes.auth import router as auth_router
-from ai_karen_engine.api_routes.auth_session_routes import router as auth_session_router
+# DEPRECATED: Complex auth system - replaced with simple auth
+# from ai_karen_engine.api_routes.auth import router as auth_router
+# from ai_karen_engine.api_routes.auth_session_routes import router as auth_session_router
+
+# NEW: Simple auth system
+try:
+    from src.auth.simple_auth_routes import router as auth_router
+except ImportError:
+    # Fallback - disable auth routes if simple auth not available
+    auth_router = None
+    logger.warning("Simple auth system not available - auth routes disabled")
 from ai_karen_engine.api_routes.code_execution_routes import router as code_execution_router
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
 from ai_karen_engine.api_routes.copilot_routes import router as copilot_router
@@ -50,45 +59,48 @@ from ai_karen_engine.api_routes.performance_routes import router as performance_
 
 
 def wire_routers(app: FastAPI, settings: Settings) -> None:
-    """Wire all routers to the FastAPI app in the exact same order as original"""
+    """Wire all routers to the FastAPI app with simplified auth system"""
     
-    # Core authentication routers
-    app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
-    app.include_router(auth_session_router, prefix="/api", tags=["authentication-session"])
-    
-    # Modern Authentication system selection with 2024 best practices
-    effective_env = (os.getenv("ENVIRONMENT") or os.getenv("KARI_ENV") or settings.environment).lower()
-    auth_mode = os.getenv("AUTH_MODE", "modern").lower()
-
-    if auth_mode == "modern":
-        # Use the new modern authentication system (recommended)
-        from ai_karen_engine.auth.modern_auth_routes import router as modern_auth_router
-        from ai_karen_engine.auth.modern_auth_middleware import ModernAuthMiddleware, ModernSecurityConfig
-        
-        # Add modern auth middleware
-        modern_config = ModernSecurityConfig()
-        app.add_middleware(ModernAuthMiddleware, config=modern_config)
-        
-        app.include_router(modern_auth_router, prefix="/api", tags=["modern-auth"])
-        logger.info("🚀 Using modern authentication system (2024 best practices)")
-        
-    elif auth_mode == "hybrid":
-        # Fallback to hybrid auth for compatibility
-        from ai_karen_engine.auth.hybrid_auth import router as hybrid_auth_router
-        app.include_router(hybrid_auth_router, prefix="/api", tags=["hybrid-auth"])
-        logger.info("🔐 Using hybrid authentication system (legacy compatibility)")
-        
-    elif effective_env == "production":
-        # Production fallback
-        from ai_karen_engine.auth.production_auth import router as production_auth_router
-        app.include_router(production_auth_router, prefix="/api", tags=["production-auth"])
-        logger.info("🔐 Environment=production: using production authentication system")
-        
+    # NEW: Simple authentication system
+    if auth_router:
+        app.include_router(auth_router, prefix="/api", tags=["authentication"])
+        logger.info("🔐 Simple auth router loaded successfully")
     else:
-        # Development fallback
-        from ai_karen_engine.auth.hybrid_auth import router as hybrid_auth_router
-        app.include_router(hybrid_auth_router, prefix="/api", tags=["hybrid-auth"])
-        logger.info("🔧 Using hybrid authentication system (development fallback)")
+        logger.warning("🚫 Simple auth router not available")
+    
+    # Environment check for auth mode
+    effective_env = (os.getenv("ENVIRONMENT") or os.getenv("KARI_ENV") or settings.environment).lower()
+    auth_mode = os.getenv("AUTH_MODE", "production").lower()
+    
+    logger.info(f"🔐 Using simple auth system - AUTH_MODE={auth_mode}")
+    
+    # Add simple auth middleware globally (if available)
+    try:
+        from src.auth.simple_auth_middleware import get_auth_middleware
+        auth_middleware = get_auth_middleware()
+        
+        # Use FastAPI middleware for global auth
+        @app.middleware("http")
+        async def auth_middleware_handler(request, call_next):
+            # Skip auth for public endpoints
+            if auth_middleware.is_public_endpoint(request.url.path):
+                response = await call_next(request)
+                return response
+            
+            # For protected endpoints, authenticate and add user to request state
+            try:
+                user_data = await auth_middleware.authenticate_request(request)
+                request.state.user = user_data
+            except Exception as e:
+                # Let the dependency handle auth errors for specific endpoints
+                request.state.user = None
+            
+            response = await call_next(request)
+            return response
+        
+        logger.info("🔐 Simple auth middleware loaded successfully")
+    except ImportError:
+        logger.warning("🚫 Simple auth middleware not available")
     
     # Core API routers
     app.include_router(events_router, prefix="/api/events", tags=["events"])

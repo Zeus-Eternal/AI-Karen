@@ -93,7 +93,7 @@ def get_correlation_id(request: Request) -> str:
 
 from functools import lru_cache
 from ai_karen_engine.core.dependencies import get_current_user_context
-from ai_karen_engine.core.rbac import check_scopes
+# REMOVED: RBAC check_scopes - replaced with simple role checking
 from ai_karen_engine.services.audit_logger import get_audit_logger
 from ai_karen_engine.core.predictors import predictor_registry
 from ai_karen_engine.services.connection_health_manager import (
@@ -212,10 +212,10 @@ async def copilot_start_action(
     try:
         allow_public = os.getenv("ALLOW_PUBLIC_COPILOT", "false").lower() in ("1", "true", "yes")
         if not allow_public:
-            if not (set(user_ctx.get("roles", [])).intersection({"admin"})):
-                ok = await check_scopes(http_request, {"chat:write"})
-                if not ok:
-                    raise HTTPException(status_code=403, detail="RBAC_DENIED: scope chat:write required")
+            # Simple role checking - admin or user role required
+            user_roles = user_ctx.get("roles", [])
+            if not any(role in user_roles for role in ["admin", "user"]):
+                raise HTTPException(status_code=403, detail="Insufficient permissions - user or admin role required")
     except Exception:
         # If RBAC service not configured, proceed in permissive mode
         pass

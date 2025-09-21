@@ -569,3 +569,14 @@ async def async_comprehensive_database_health_check() -> DatabaseHealthStatus:
 def get_database_connection_pool_metrics() -> ConnectionPoolMetrics:
     """Get current database connection pool metrics"""
     return db_client._get_connection_pool_metrics()
+
+
+# Backwards-compatible accessor expected by optimized startup
+def get_database_client() -> DatabaseClient:
+    """Return the global DatabaseClient instance.
+
+    Some parts of the startup system import `get_database_client` from
+    ai_karen_engine.database.client. Provide this thin accessor to
+    maintain compatibility with those callers.
+    """
+    return db_client

@@ -2,9 +2,9 @@ import asyncio
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.clients.database.duckdb_client import DuckDBClient
-from ai_karen_engine.core.dependencies import get_current_user_context
+from src.auth.simple_auth_middleware import require_auth as get_current_user_context
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
-from ai_karen_engine.auth.service import AuthService, get_auth_service
+# REMOVED: Complex auth service import AuthService, get_auth_service
 from ai_karen_engine.auth.exceptions import (
     AuthError,
     UserNotFoundError,
