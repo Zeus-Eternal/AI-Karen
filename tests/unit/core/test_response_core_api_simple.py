@@ -5,8 +5,87 @@ This module provides basic tests for the Response Core API integration
 without complex authentication mocking.
 """
 
+import contextlib
+import importlib.machinery
+import os
+import sys
+import types
+
 import pytest
+from types import SimpleNamespace
 from unittest.mock import Mock, patch, AsyncMock
+
+fake_torch = types.ModuleType("torch")
+fake_torch.cuda = SimpleNamespace(
+    is_available=lambda: False,
+    get_device_name=lambda *_args, **_kwargs: "cpu",
+)
+fake_torch.device = lambda *_args, **_kwargs: "cpu"
+fake_torch.no_grad = contextlib.nullcontext
+fake_torch.__spec__ = importlib.machinery.ModuleSpec("torch", loader=None)
+fake_torch.__path__ = []
+fake_torch.Tensor = type("_TorchTensor", (), {})
+fake_torch.nn = SimpleNamespace(Module=type("_TorchModule", (), {}))
+for _dtype in [
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "uint8",
+    "float16",
+    "float32",
+    "float64",
+    "bfloat16",
+    "bool",
+]:
+    setattr(fake_torch, _dtype, object())
+fake_torch.__version__ = "0.0.0"
+sys.modules.setdefault("torch", fake_torch)
+
+fake_torch_nn = types.ModuleType("torch.nn")
+fake_torch_nn.Module = fake_torch.nn.Module
+fake_torch_nn.__spec__ = importlib.machinery.ModuleSpec("torch.nn", loader=None)
+fake_torch_nn.__path__ = []
+fake_torch_nn.functional = types.ModuleType("torch.nn.functional")
+fake_torch_nn.functional.__spec__ = importlib.machinery.ModuleSpec(
+    "torch.nn.functional", loader=None
+)
+fake_torch_nn.functional.__package__ = "torch.nn"
+sys.modules.setdefault("torch.nn", fake_torch_nn)
+sys.modules.setdefault("torch.nn.functional", fake_torch_nn.functional)
+
+fake_sentence_transformers = types.ModuleType("sentence_transformers")
+fake_sentence_transformers.SentenceTransformer = object
+fake_sentence_transformers.__spec__ = importlib.machinery.ModuleSpec(
+    "sentence_transformers", loader=None
+)
+backend_module = types.ModuleType("sentence_transformers.backend")
+backend_module.__spec__ = importlib.machinery.ModuleSpec(
+    "sentence_transformers.backend", loader=None
+)
+backend_module.load_onnx_model = lambda *args, **kwargs: None
+backend_module.load_openvino_model = lambda *args, **kwargs: None
+sys.modules.setdefault("sentence_transformers", fake_sentence_transformers)
+sys.modules.setdefault("sentence_transformers.backend", backend_module)
+
+fake_transformers = types.ModuleType("transformers")
+fake_transformers.__spec__ = importlib.machinery.ModuleSpec(
+    "transformers", loader=None
+)
+sys.modules.setdefault("transformers", fake_transformers)
+
+os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test-password")
+os.environ.setdefault("KARI_JOB_SIGNING_KEY", "test-signing-key-0123456789abcdef")
+
+fake_np_memory = types.ModuleType("ai_karen_engine.core.memory.np_memory")
+fake_np_memory.__spec__ = importlib.machinery.ModuleSpec(
+    "ai_karen_engine.core.memory.np_memory", loader=None
+)
+fake_np_memory.load_jsonl = lambda *args, **kwargs: []
+fake_np_memory.extract_pairs = lambda *args, **kwargs: []
+fake_np_memory.embed_texts = lambda *args, **kwargs: []
+fake_np_memory.retrieve = lambda *args, **kwargs: []
+sys.modules.setdefault("ai_karen_engine.core.memory.np_memory", fake_np_memory)
 
 from ai_karen_engine.middleware.response_core_integration import (
     ResponseCoreCompatibilityLayer,
@@ -52,8 +131,8 @@ class TestResponseCoreCompatibilityLayer:
         assert result["response"] == "Test response from Response Core"
     
     @pytest.mark.asyncio
-    @patch('ai_karen_engine.chat.memory_processor.MemoryProcessor')
-    @patch('ai_karen_engine.chat.chat_orchestrator.ChatOrchestrator')
+    @patch('ai_karen_engine.middleware.response_core_integration.MemoryProcessor')
+    @patch('ai_karen_engine.middleware.response_core_integration.ChatOrchestrator')
     async def test_process_chat_request_chat_orchestrator(self, mock_chat_class, mock_memory_class):
         """Test chat processing with ChatOrchestrator"""
         # Mock the ChatOrchestrator response
@@ -84,13 +163,15 @@ class TestResponseCoreCompatibilityLayer:
         assert result["response"] == "Test response from Chat Orchestrator"
     
     @pytest.mark.asyncio
-    @patch('ai_karen_engine.chat.chat_orchestrator.ChatOrchestrator')
-    @patch('ai_karen_engine.chat.memory_processor.MemoryProcessor')
+    @patch('ai_karen_engine.middleware.response_core_integration.ChatOrchestrator')
+    @patch('ai_karen_engine.middleware.response_core_integration.MemoryProcessor')
     @patch('ai_karen_engine.middleware.response_core_integration.get_global_orchestrator')
     async def test_process_chat_request_fallback(self, mock_get_orchestrator, mock_memory_class, mock_chat_class):
         """Test fallback from Response Core to ChatOrchestrator"""
         # Mock Response Core failure
-        mock_get_orchestrator.side_effect = Exception("Response Core failed")
+        mock_response_core = Mock()
+        mock_response_core.respond.side_effect = Exception("Response Core failed")
+        mock_get_orchestrator.return_value = mock_response_core
         
         # Mock successful ChatOrchestrator
         mock_response = Mock()
@@ -116,12 +197,65 @@ class TestResponseCoreCompatibilityLayer:
             conversation_id="test_conv",
             use_response_core=True
         )
-        
+
         assert result["success"] is True
         assert result["orchestrator"] == "chat_orchestrator"
         assert result["used_fallback"] is True
         assert "fallback_reason" in result
         assert result["response"] == "Fallback response"
+
+    @pytest.mark.asyncio
+    async def test_process_chat_request_initializes_chat_orchestrator(self):
+        """Ensure chat orchestrator path wires required dependencies."""
+
+        layer = ResponseCoreCompatibilityLayer(enable_response_core=False)
+
+        fake_response = Mock()
+        fake_response.response = "Hello from orchestrator"
+        fake_response.correlation_id = "corr-id"
+        fake_response.context_used = True
+        fake_response.used_fallback = False
+        fake_response.metadata = {"source": "chat"}
+
+        fake_nlp_manager = SimpleNamespace(
+            spacy_service=object(),
+            distilbert_service=object(),
+        )
+
+        with patch('ai_karen_engine.middleware.response_core_integration.nlp_service_manager', fake_nlp_manager), \
+            patch('ai_karen_engine.middleware.response_core_integration.MemoryProcessor', autospec=True) as mock_memory_processor, \
+            patch('ai_karen_engine.middleware.response_core_integration.ChatOrchestrator', autospec=True) as mock_chat_orchestrator, \
+            patch('ai_karen_engine.middleware.response_core_integration.MemoryManager', autospec=True) as mock_memory_manager, \
+            patch('ai_karen_engine.middleware.response_core_integration.MultiTenantPostgresClient', autospec=True), \
+            patch('ai_karen_engine.middleware.response_core_integration.MilvusClient', autospec=True):
+
+            mock_memory_processor.return_value = Mock()
+
+            chat_orchestrator_instance = mock_chat_orchestrator.return_value
+            chat_orchestrator_instance.process_message = AsyncMock(return_value=fake_response)
+
+            result = await layer.process_chat_request(
+                message="hello",
+                user_id="user-123",
+                conversation_id="conv-456",
+                use_response_core=False,
+            )
+
+            mock_memory_manager.assert_called_once()
+            mock_memory_processor.assert_called_once()
+            kwargs = mock_memory_processor.call_args.kwargs
+            assert kwargs["spacy_service"] is fake_nlp_manager.spacy_service
+            assert kwargs["distilbert_service"] is fake_nlp_manager.distilbert_service
+            assert "memory_manager" in kwargs
+
+            mock_chat_orchestrator.assert_called_once_with(
+                memory_processor=mock_memory_processor.return_value
+            )
+            chat_orchestrator_instance.process_message.assert_awaited_once()
+
+            assert result["response"] == "Hello from orchestrator"
+            assert result["success"] is True
+            assert result["orchestrator"] == "chat_orchestrator"
     
     def test_should_prefer_response_core(self):
         """Test Response Core preference logic"""

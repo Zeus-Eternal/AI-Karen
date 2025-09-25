@@ -5,15 +5,22 @@ This middleware provides seamless integration between the existing ChatOrchestra
 and the new ResponseOrchestrator, allowing for gradual migration and fallback.
 """
 
+import asyncio
 import logging
 import time
 from typing import Any, Dict, Optional, Union
 
-from fastapi import Request, Response
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from ..core import default_models
 from ..core.response.factory import get_global_orchestrator, create_local_only_orchestrator
-from ..chat.chat_orchestrator import ChatOrchestrator
+from ..chat.chat_orchestrator import ChatOrchestrator, ChatRequest
+from ..chat.memory_processor import MemoryProcessor
+from ..database.client import MultiTenantPostgresClient
+from ..database.memory_manager import MemoryManager
+from ..core.milvus_client import MilvusClient
+from ..services.nlp_service_manager import nlp_service_manager
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +88,7 @@ class ResponseCoreCompatibilityLayer:
         self.enable_response_core = enable_response_core
         self.fallback_enabled = fallback_enabled
         self._orchestrator_cache: Dict[str, Any] = {}
+        self._chat_orchestrator: Optional[ChatOrchestrator] = None
     
     async def process_chat_request(
         self,
@@ -223,13 +231,7 @@ class ResponseCoreCompatibilityLayer:
     ) -> Dict[str, Any]:
         """Process with existing ChatOrchestrator"""
         try:
-            # Import here to avoid circular dependencies
-            from ..chat.chat_orchestrator import ChatOrchestrator, ChatRequest
-            from ..chat.memory_processor import MemoryProcessor
-            
-            # Create ChatOrchestrator (simplified for compatibility)
-            memory_processor = MemoryProcessor()
-            chat_orchestrator = ChatOrchestrator(memory_processor=memory_processor)
+            chat_orchestrator = self._get_chat_orchestrator()
             
             # Create request
             chat_request = ChatRequest(
@@ -266,8 +268,49 @@ class ResponseCoreCompatibilityLayer:
             except Exception as e:
                 logger.warning(f"Failed to create global orchestrator, using local-only: {e}")
                 self._orchestrator_cache[user_id] = create_local_only_orchestrator(user_id=user_id)
-        
+
         return self._orchestrator_cache[user_id]
+
+    def _get_chat_orchestrator(self) -> ChatOrchestrator:
+        """Create (or reuse) a ChatOrchestrator with proper dependencies."""
+
+        if self._chat_orchestrator is not None:
+            return self._chat_orchestrator
+
+        memory_manager: Optional[MemoryManager] = None
+
+        try:
+            db_client = MultiTenantPostgresClient()
+            milvus_client = MilvusClient()
+
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    embedding_manager = None
+                else:
+                    loop.run_until_complete(default_models.load_default_models())
+                    embedding_manager = default_models.get_embedding_manager()
+            except Exception as embed_err:  # pragma: no cover - best effort initialisation
+                logger.warning(f"Failed to load embedding manager: {embed_err}")
+                embedding_manager = None
+
+            memory_manager = MemoryManager(
+                db_client=db_client,
+                milvus_client=milvus_client,
+                embedding_manager=embedding_manager,
+            )
+        except Exception as db_err:
+            logger.warning(f"Failed to initialise memory manager for ChatOrchestrator: {db_err}")
+            memory_manager = None
+
+        memory_processor = MemoryProcessor(
+            spacy_service=nlp_service_manager.spacy_service,
+            distilbert_service=nlp_service_manager.distilbert_service,
+            memory_manager=memory_manager,
+        )
+
+        self._chat_orchestrator = ChatOrchestrator(memory_processor=memory_processor)
+        return self._chat_orchestrator
     
     def _should_prefer_response_core(self, message: str, **kwargs) -> bool:
         """
