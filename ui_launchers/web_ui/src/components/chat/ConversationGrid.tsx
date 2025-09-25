@@ -240,10 +240,10 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
     
     const searchLower = searchText.toLowerCase();
     return conversations.filter(conv => 
-      conv.title.toLowerCase().includes(searchLower) ||
-      conv.lastMessage.toLowerCase().includes(searchLower) ||
-      conv.participants.some(p => p.toLowerCase().includes(searchLower)) ||
-      conv.tags.some(t => t.toLowerCase().includes(searchLower))
+      conv.title?.toLowerCase().includes(searchLower) ||
+      conv.lastMessage?.toLowerCase().includes(searchLower) ||
+      conv.participants?.some(p => p?.toLowerCase().includes(searchLower)) ||
+      conv.tags?.some(t => t?.toLowerCase().includes(searchLower))
     );
   }, [conversations, searchText]);
 

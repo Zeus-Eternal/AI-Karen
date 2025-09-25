@@ -270,7 +270,7 @@ describe('Network Scenarios End-to-End Tests', () => {
           KAREN_NETWORK_MODE: 'external',
           KAREN_EXTERNAL_HOST: '10.105.235.209',
           KAREN_EXTERNAL_BACKEND_PORT: '8000',
-          KAREN_FALLBACK_BACKEND_URLS: 'http://10.105.235.209:8001',
+          KAREN_FALLBACK_BACKEND_URLS: 'http://10.105.235.209:8000',
           KAREN_HEALTH_CHECK_ENABLED: 'true',
         },
       } as any;
@@ -380,7 +380,7 @@ describe('Network Scenarios End-to-End Tests', () => {
       expect(results[0].isValid).toBe(false); // Primary failed
       expect(results[0].error).toBe('Connection timeout');
       expect(results[1].isValid).toBe(true);  // Fallback succeeded
-      expect(results[1].endpoint).toBe('http://10.105.235.209:8001');
+      expect(results[1].endpoint).toBe('http://10.105.235.209:8000');
     });
   });
 

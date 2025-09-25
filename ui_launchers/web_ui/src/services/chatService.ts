@@ -6,6 +6,7 @@
 import { getKarenBackend } from '@/lib/karen-backend';
 import { getEnhancedApiClient } from '@/lib/enhanced-api-client';
 import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
+import { generateUUID } from '@/lib/uuid';
 import type {
   ChatMessage,
   KarenSettings,
@@ -74,7 +75,7 @@ export class ChatService {
   async createConversationSession(userId: string): Promise<{ conversationId: string; sessionId: string }> {
     return this.errorHandler.withRetry(
       async () => {
-        const sessionId = crypto.randomUUID();
+        const sessionId = generateUUID();
 
         const response = await this.apiClient.post('/api/conversations/create', {
           session_id: sessionId,

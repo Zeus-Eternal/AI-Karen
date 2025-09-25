@@ -406,8 +406,8 @@ export default function KariDevStudio() {
 
   const filteredComponents = components.filter(
     (component) =>
-      component.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      component.type.toLowerCase().includes(searchQuery.toLowerCase())
+      component.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      component.type?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getComponentIcon = (type: string) => {

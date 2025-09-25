@@ -119,7 +119,7 @@ def main():
     
     print("\n🚀 Ready to Start:")
     print("1. Start server: poetry run python start.py")
-    print("2. Test auth: python test_simple_auth.py")
+    print("2. Test auth: python tests/manual/test_simple_auth.py")
     print("3. Login with: admin@example.com / admin")
     print("4. Or: admin@kari.ai / admin")
 

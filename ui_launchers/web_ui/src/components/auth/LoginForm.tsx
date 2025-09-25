@@ -96,7 +96,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder={process.env.NODE_ENV === 'development' ? "admin@example.com" : "Enter your email"}
                 value={credentials.email}
                 onChange={handleInputChange('email')}
                 disabled={isLoading}
@@ -111,7 +111,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder={process.env.NODE_ENV === 'development' ? "admin" : "Enter your password"}
                 value={credentials.password}
                 onChange={handleInputChange('password')}
                 disabled={isLoading}
@@ -140,6 +140,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                   Enter the 6-digit code from your authenticator app
                 </p>
               </div>
+            )}
+
+            {/* Development Hint */}
+            {process.env.NODE_ENV === 'development' && !credentials.email && !credentials.password && (
+              <Alert>
+                <AlertDescription className="flex items-center justify-between">
+                  <span><strong>Development Mode:</strong> Use admin@example.com / admin or wait for auto-login</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCredentials({ email: 'admin@example.com', password: 'admin', totp_code: '' })}
+                    className="ml-2"
+                  >
+                    Fill
+                  </Button>
+                </AlertDescription>
+              </Alert>
             )}
 
             {/* Error Display */}

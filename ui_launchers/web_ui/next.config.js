@@ -12,25 +12,55 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    // Disable turbo to avoid JIT timing conflicts
-    turbo: {
-      enabled: false,
-    },
+    // Other experimental features can go here
   },
   
   // TypeScript configuration
   typescript: {
-    // Skip type checking during build to avoid stalls from TS/dep issues
-    ignoreBuildErrors: true,
+    // Enable type checking during build for better code quality
+    ignoreBuildErrors: false,
   },
 
   // ESLint configuration
   eslint: {
-    // Skip ESLint during production builds
-    ignoreDuringBuilds: true,
+    // Enable ESLint during production builds for code quality
+    ignoreDuringBuilds: false,
+    // Only ignore specific rules if needed
+    dirs: ['src'],
+  },
+
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' http://localhost:* http://127.0.0.1:* https: wss: ws://localhost:* ws://127.0.0.1:*;",
+          },
+        ],
+      },
+    ];
   },
   
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     // Handle ES modules properly
     if (!isServer) {
       config.resolve.fallback = {
@@ -38,50 +68,39 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
+        path: false,
+        crypto: false,
       };
     }
     
-    // Ignore problematic tsconfig files
-    config.resolve.alias = {
-      ...config.resolve.alias,
+    // Fix module resolution for CommonJS/ESM hybrid packages
+    config.module.rules.push({
+      test: /\.m?js$/,
+      resolve: {
+        fullySpecified: false,
+      },
+    });
+    
+    // Improve module resolution for better client manifest generation
+    config.resolve.extensions = ['.ts', '.tsx', '.js', '.jsx', '.json'];
+    
+    // Ensure proper module format handling
+    config.experiments = {
+      ...config.experiments,
+      topLevelAwait: true,
     };
     
     return config;
   },
   
   // Add transpilation for problematic packages
-  transpilePackages: ['@mui/material', '@mui/system', '@mui/utils', '@copilotkit/react-textarea'],
+  transpilePackages: ['@mui/material', '@mui/system', '@mui/utils', '@copilotkit/react-textarea', 'lucide-react'],
 
   // Fail fast if any static generation step hangs
   staticPageGenerationTimeout: 60,
 
-  // Proxy rewrites so frontend /api calls reach the backend API
-  async rewrites() {
-    const backendUrl = process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
-    return [
-      // Generic passthrough
-      { source: '/api/backend/:path*', destination: `${backendUrl}/api/:path*` },
-      // Auth
-      { source: '/api/auth/:path*', destination: `${backendUrl}/api/auth/:path*` },
-      // Copilot actions: strip 'copilot' and map to /api/:path*
-      { source: '/api/copilot/:path*', destination: `${backendUrl}/api/:path*` },
-      // Legacy copilot assist endpoint at root (client may call directly)
-      { source: '/copilot/assist', destination: `${backendUrl}/copilot/assist` },
-      { source: '/copilot/:path*', destination: `${backendUrl}/copilot/:path*` },
-      // Models/providers
-      { source: '/api/models/:path*', destination: `${backendUrl}/api/models/:path*` },
-      { source: '/api/llm/:path*', destination: `${backendUrl}/api/llm/:path*` },
-      // Plugins
-      { source: '/api/plugins', destination: `${backendUrl}/api/plugins` },
-      // Analytics
-      { source: '/api/analytics/:path*', destination: `${backendUrl}/api/analytics/:path*` },
-      { source: '/api/web/analytics/:path*', destination: `${backendUrl}/api/web/analytics/:path*` },
-      // Health
-      { source: '/api/health/:path*', destination: `${backendUrl}/api/health/:path*` },
-      { source: '/api/health', destination: `${backendUrl}/api/health` },
-      { source: '/health', destination: `${backendUrl}/health` },
-    ];
-  },
+  // API proxying is handled by the catch-all route in src/app/api/[...path]/route.ts
+  // Remove rewrite rules to avoid conflicts with custom API route implementations
 };
 
 module.exports = withBundleAnalyzer(nextConfig);

@@ -257,10 +257,32 @@ export default function ModelLibrary() {
 
   const loadAvailableModels = async () => {
     try {
-      const response = await backend.makeRequestPublic<ModelInfo[]>('/api/models/library');
-      setModels(response || getFallbackModels());
+      console.log('📚 ModelLibrary: Loading models from /api/models/library');
+      const response = await backend.makeRequestPublic<{
+        models: ModelInfo[];
+        total?: number;
+        status?: string;
+      }>('/api/models/library');
+      
+      console.log('📚 ModelLibrary: API response received:', {
+        responseType: typeof response,
+        isObject: response && typeof response === 'object',
+        hasModelsProperty: response && 'models' in response,
+        modelsType: response?.models ? typeof response.models : 'undefined',
+        modelsIsArray: Array.isArray(response?.models),
+        modelsLength: response?.models?.length || 0,
+        fullResponse: response
+      });
+      
+      if (response && 'models' in response && Array.isArray(response.models)) {
+        setModels(response.models);
+        console.log('📚 ModelLibrary: Successfully set models array with', response.models.length, 'items');
+      } else {
+        console.warn('📚 ModelLibrary: API response does not contain valid models array, using fallback models. Response structure:', response);
+        setModels(getFallbackModels());
+      }
     } catch (error) {
-      console.error('Failed to load available models:', error);
+      console.error('📚 ModelLibrary: Failed to load available models:', error);
       setModels(getFallbackModels());
     }
   };
@@ -493,19 +515,27 @@ export default function ModelLibrary() {
   };
 
   // Update model status based on download tasks
-  const modelsWithDownloadStatus = models.map(model => {
+  const modelsWithDownloadStatus = Array.isArray(models) ? models.map(model => {
     const downloadTask = downloadTasks.find(task => task.modelId === model.id);
     if (downloadTask) {
       return {
         ...model,
-        status: downloadTask.status === 'downloading' ? 'downloading' : 
+        status: downloadTask.status === 'downloading' ? 'downloading' :
                 downloadTask.status === 'completed' ? 'local' :
                 downloadTask.status === 'error' ? 'error' : model.status,
         downloadProgress: downloadTask.progress
       };
     }
     return model;
-  });
+  }) : [];
+  
+  // Log if models is not an array
+  if (!Array.isArray(models)) {
+    console.error('📚 ModelLibrary: models is not an array, using empty array for rendering', {
+      modelsType: typeof models,
+      modelsValue: models
+    });
+  }
 
   // Helper functions for filtering and sorting
   const getSizeCategory = (size: number): string => {
@@ -534,10 +564,10 @@ export default function ModelLibrary() {
     let filtered = modelsWithDownloadStatus.filter(model => {
       // Search filter (using debounced query)
       const matchesSearch = debouncedSearchQuery === '' || 
-        model.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        model.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        model.metadata.tags.some(tag => tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase())) ||
-        model.capabilities.some(cap => cap.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
+        model.name?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        model.description?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        model.metadata?.tags?.some(tag => tag?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())) ||
+        model.capabilities?.some(cap => cap?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
       
       // Provider filter
       const matchesProvider = filterProvider === 'all' || model.provider === filterProvider;

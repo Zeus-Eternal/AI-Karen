@@ -111,7 +111,9 @@ def main():
     # 5. Create startup test script
     print("\n5. 🧪 Creating startup test script...")
     
-    test_script = project_root / "test_simple_auth.py"
+    manual_dir = project_root / "tests" / "manual"
+    manual_dir.mkdir(parents=True, exist_ok=True)
+    test_script = manual_dir / "test_simple_auth.py"
     test_content = '''#!/usr/bin/env python3
 """
 Simple Authentication Test Script
@@ -214,7 +216,7 @@ if __name__ == "__main__":
     print("=" * 50)
     print("📋 Next Steps:")
     print("1. Start the server: poetry run python start.py")
-    print("2. Test auth system: python test_simple_auth.py")
+    print("2. Test auth system: python tests/manual/test_simple_auth.py")
     print("3. Login credentials: admin@example.com / admin")
     print("4. Update frontend to use /api/auth/* endpoints")
     print("\n⚠️  IMPORTANT: Change the JWT_SECRET in production!")

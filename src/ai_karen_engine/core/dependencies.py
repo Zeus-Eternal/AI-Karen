@@ -1,4 +1,4 @@
-from src.auth.simple_auth_middleware import require_auth
+from src.auth.auth_middleware import require_auth
 """
 Dependency Injection for AI Karen Engine Integration.
 
@@ -50,7 +50,7 @@ async def get_current_user_context(request: Request) -> Dict[str, Any]:
     """Get authenticated user context using simple JWT auth."""
     try:
         # Use simple auth middleware to get user
-        from src.auth.simple_auth_middleware import get_auth_middleware
+        from src.auth.auth_middleware import get_auth_middleware
         auth_middleware = get_auth_middleware()
         
         user_data = await auth_middleware.authenticate_request(request)

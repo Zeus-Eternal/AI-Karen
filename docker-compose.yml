@@ -123,7 +123,7 @@ services:
   # ──────────────────────────────────────────────────────────────────────────────
   milvus:
     container_name: ai-karen-milvus
-    image: milvusdb/milvus:v2.3.2
+    image: milvusdb/milvus:v2.4.8
     restart: unless-stopped
     # Explicitly run Milvus in standalone mode (prevents tini from running without a child)
     command: ["milvus", "run", "standalone"]
@@ -152,7 +152,8 @@ services:
       test: ["CMD-SHELL", "timeout 10s bash -c '</dev/tcp/localhost/19530' || exit 1"]
       interval: 30s
       timeout: 15s
-      retries: 5
+      retries: 10
+      start_period: 300s
     networks:
       - ai-karen-net
 
@@ -211,7 +212,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_PROVISIONING_PATH=/etc/grafana/provisioning
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana_dashboard.json:/etc/grafana/provisioning/dashboards/health_dashboard.json
@@ -242,6 +243,8 @@ services:
       # Speed up dev boot: don't block readiness on heavy init
       KARI_FAST_STARTUP: "true"
       WARMUP_LLM: "false"
+      # Disable deferred router wiring to ensure auth routes are loaded
+      KARI_DEFER_ROUTER_WIRING: "false"
       # Enable dev login endpoint for local development
       AUTH_ALLOW_DEV_LOGIN: "true"
 
@@ -266,6 +269,11 @@ services:
       ELASTICSEARCH_PORT: "9200"
       MILVUS_HOST: "milvus"
       MILVUS_PORT: "19530"
+      # Wait for Milvus to report healthy before enabling vector features (seconds)
+      MILVUS_HEALTH_WAIT_SECONDS: "180"
+      MILVUS_HEALTH_HOST: "milvus"
+      MILVUS_HEALTH_PORT: "9091"
+      MILVUS_HEALTH_PATH: "/healthz"
       
       # --- Authentication hardening & monitoring ---
       AUTH_RATE_LIMIT_STORAGE: "redis"
@@ -341,7 +349,7 @@ services:
       - ai-karen-net
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Web UI (Next.js dev server on :8010)
+  # Web UI (Next.js dev server on :8020, exposed on :8010)
   # ────────────────────────────────────────────────────────────────────────────
   web:
     container_name: ai-karen-web
@@ -351,17 +359,20 @@ services:
       - .env
     environment:
       NODE_ENV: development
+      # Avoid Tailwind JIT timing logs (console.time/console.timeEnd label warnings)
+      DEBUG: -tailwindcss
       # Server-side (inside container) should call the API service directly
       KAREN_BACKEND_URL: http://api:8000
-      # Client-side (browser) should call the Next.js dev server (self)
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8010
-      NEXT_PUBLIC_KAREN_BACKEND_URL: http://localhost:8010
+      # Client-side (browser) should call the backend directly
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_KAREN_BACKEND_URL: http://localhost:8000
     ports:
-      - "8010:8010"
+      - "8010:8011"
     volumes:
       - ./ui_launchers/web_ui:/app
       - ./.env.local:/app/.env.local:ro
-    command: sh -c "npm install && npm run dev -- --port 8010"
+      - node_modules_cache:/app/node_modules
+    command: sh -c "rm -rf /app/node_modules/.cache && npm install && npm run dev"
     depends_on:
       api:
         condition: service_healthy
@@ -382,6 +393,7 @@ volumes:
   models_data:
   logs_data:
   backup_data:
+  node_modules_cache:
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Custom Network

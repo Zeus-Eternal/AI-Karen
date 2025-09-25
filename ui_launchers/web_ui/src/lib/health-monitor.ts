@@ -319,7 +319,10 @@ class HealthMonitor {
         return data;
       };
 
-      const status = result?.status === 'error' ? 'error' : 'healthy';
+      // Recognize degraded mode explicitly
+      let status: 'healthy' | 'degraded' | 'error' = 'healthy';
+      if (result?.status === 'error') status = 'error';
+      else if (result?.status === 'degraded') status = 'degraded';
 
       this.metrics.endpoints[endpoint] = {
         endpoint,

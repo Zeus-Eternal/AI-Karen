@@ -8,14 +8,31 @@ const BACKEND_URL =
 
 async function handleRequest(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
-    const resolvedParams = await params;
-    const path = resolvedParams.path.join('/');
+    // Safely resolve params with error handling
+    let resolvedParams;
+    try {
+      resolvedParams = await params;
+    } catch (error) {
+      console.error('Failed to resolve params:', error);
+      return NextResponse.json(
+        {
+          error: 'Invalid request parameters',
+          details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        },
+        { status: 400 }
+      );
+    }
+    
+    const path = resolvedParams.path?.join('/') || '';
     const url = new URL(request.url);
     const searchParams = url.searchParams.toString();
     const backendUrl = `${BACKEND_URL}/api/${path}${searchParams ? `?${searchParams}` : ''}`;
     
     // Log the request for debugging
-    console.log(`[API Proxy] ${request.method} ${backendUrl}`);
+    console.log(`[API Proxy] ${request.method} ${backendUrl}`, {
+      path: resolvedParams.path,
+      resolvedParams
+    });
     
     // Get request body if it exists
     let body = undefined;
@@ -64,10 +81,10 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     // Add a conservative timeout to avoid hanging requests in dev
     // Increase timeout for provider endpoints, auth endpoints, model endpoints, and health checks that may take longer
     // Treat any '/providers/' '/models/' or '/health' path as potentially long-running (profiles, stats, suggestions, models, health)
-    const isProviderEndpoint = request.url.includes('/providers/');
-    const isAuthEndpoint = request.url.includes('/auth/');
-    const isModelEndpoint = request.url.includes('/models/');
-    const isHealthEndpoint = request.url.includes('/health');
+    const isProviderEndpoint = /\/providers(\/|\b)/.test(request.url);
+    const isAuthEndpoint = /\/auth(\/|\b)/.test(request.url);
+    const isModelEndpoint = /\/models(\/|\b)/.test(request.url);
+    const isHealthEndpoint = /\/health(\/|\b)/.test(request.url);
     // Allow override via env
     const SHORT_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_PROXY_TIMEOUT_MS || process.env.KAREN_API_PROXY_TIMEOUT_MS || 15000);
     const LONG_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || process.env.KAREN_API_PROXY_LONG_TIMEOUT_MS || 120000);

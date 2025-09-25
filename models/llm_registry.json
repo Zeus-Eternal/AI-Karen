@@ -8,7 +8,7 @@
     "requires_api_key": false,
     "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
     "health_status": "healthy",
-    "last_health_check": 1756645844.6772523,
+    "last_health_check": 1758459743.1450956,
     "error_message": null
   },
   {
@@ -31,9 +31,9 @@
     "supports_embeddings": true,
     "requires_api_key": true,
     "default_model": "gemini-1.5-flash",
-    "health_status": "unknown",
-    "last_health_check": null,
-    "error_message": null
+    "health_status": "unhealthy",
+    "last_health_check": 1758459745.7787442,
+    "error_message": "No API key provided"
   },
   {
     "name": "deepseek",
@@ -53,13 +53,12 @@
     "description": "HuggingFace models via Inference API or local execution",
     "supports_streaming": false,
     "supports_embeddings": true,
-    "requires_api_key": false,
+    "requires_api_key": true,
     "default_model": "gpt2",
-    "health_status": "healthy",
-    "last_health_check": 1756645848.9891353,
-    "error_message": null
+    "health_status": "unhealthy",
+    "last_health_check": 1758459745.7795298,
+    "error_message": "No API token provided"
   },
-
   {
     "name": "copilotkit",
     "provider_class": "CopilotKitProvider",

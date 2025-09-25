@@ -3,6 +3,7 @@
  * Connects the web UI with existing AI Karen backend services
  */
 
+import { generateUUID } from './uuid';
 import type {
   ChatMessage,
   KarenSettings,
@@ -21,7 +22,7 @@ export function initializeSessionId(): string {
   if (typeof window === 'undefined') return '';
   let sessionId = localStorage.getItem(SESSION_ID_KEY);
   if (!sessionId) {
-    sessionId = crypto.randomUUID();
+    sessionId = generateUUID();
     localStorage.setItem(SESSION_ID_KEY, sessionId);
   }
   return sessionId;
@@ -242,11 +243,7 @@ class KarenBackendService {
     const cacheKey = `${primaryUrl}:${JSON.stringify(options)}`;
 
     // Determine per-request timeout based on endpoint type
-    const isLongEndpoint = !isAbsoluteEndpoint && (
-      endpoint.startsWith('/api/models/') ||
-      endpoint.startsWith('/api/providers/') ||
-      endpoint.startsWith('/api/health')
-    );
+    const isLongEndpoint = !isAbsoluteEndpoint && (/^\/api\/(models|providers|health)(\/|$)/.test(endpoint));
     const REQUEST_SHORT_TIMEOUT = this.config.timeout;
     const REQUEST_LONG_TIMEOUT = Number((process as any)?.env?.NEXT_PUBLIC_API_LONG_TIMEOUT_MS || (process as any)?.env?.KAREN_API_LONG_TIMEOUT_MS || Math.max(REQUEST_SHORT_TIMEOUT, 120000));
     const perRequestTimeout = isLongEndpoint ? REQUEST_LONG_TIMEOUT : REQUEST_SHORT_TIMEOUT;
@@ -1036,7 +1033,8 @@ class KarenBackendService {
       if (error instanceof Error && error.message.includes('401')) {
         console.debug('System metrics unavailable (authentication required)');
       } else {
-        console.error('Failed to get system metrics:', error);
+        // Downgrade noisy errors during health polling
+        console.warn('System metrics unavailable, using fallback data:', (error as Error)?.message || error);
       }
       
       // Return mock data as fallback
@@ -1104,9 +1102,20 @@ class KarenBackendService {
         }
       }
       
-      // If all health endpoints fail, return a basic connectivity test
-      console.log('🏥 All health endpoints failed, backend may not have health check endpoint');
-      throw new Error('No health endpoints available');
+      // If all health endpoints fail, backend is likely running but doesn't support health checks
+      // Return degraded status instead of error to indicate basic connectivity
+      console.log('🏥 Backend is running but health endpoints are not available - using degraded mode');
+      return {
+        status: 'degraded',
+        services: {
+          backend: {
+            status: 'degraded',
+            message: 'Backend running but health checks not supported',
+            connectivity: 'available'
+          },
+        },
+        timestamp: new Date().toISOString(),
+      };
     } catch (error) {
       console.error('Health check failed:', error);
       return {

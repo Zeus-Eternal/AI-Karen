@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Bot, User, Copy, RefreshCw, Link as LinkIcon, Info } from 'lucide-react';
 import { CopilotArtifacts, type CopilotArtifact } from './CopilotArtifacts';
 import { MessageBubble as BasicMessageBubble } from './MessageBubble';
+import { copyToClipboard } from '@/lib/clipboard';
 
 type Role = 'user' | 'assistant' | 'system';
 
@@ -66,13 +67,24 @@ const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = (props) => {
   const isUser = role === 'user';
   const isSystem = role === 'system';
 
-  const handleCopy = () => {
-    if (onCopy) onCopy(content);
+  const handleCopy = async () => {
     try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        navigator.clipboard.writeText(content);
+      // First try the callback if provided
+      if (onCopy) {
+        await onCopy(content);
+        return;
       }
-    } catch {}
+
+      // Fallback to direct clipboard handling using utility
+      await copyToClipboard(content, {
+        onError: (error) => {
+          console.warn('Failed to copy message to clipboard:', error);
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to copy to clipboard:', error);
+      // Silent fail - the user will see no feedback, which is acceptable for a copy operation
+    }
   };
 
   return (

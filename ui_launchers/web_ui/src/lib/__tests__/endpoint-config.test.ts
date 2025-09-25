@@ -12,7 +12,7 @@ const mockEnv = {
   KAREN_BACKEND_URL: 'http://localhost:8000',
   KAREN_ENVIRONMENT: 'local',
   KAREN_NETWORK_MODE: 'localhost',
-  KAREN_FALLBACK_BACKEND_URLS: 'http://127.0.0.1:8000,http://localhost:8001',
+  KAREN_FALLBACK_BACKEND_URLS: 'http://127.0.0.1:8000,http://localhost:8000',
   KAREN_CORS_ORIGINS: 'http://localhost:8010,http://127.0.0.1:8010,http://localhost:8020',
   KAREN_HEALTH_CHECK_ENABLED: 'true',
   KAREN_HEALTH_CHECK_INTERVAL: '30000',
@@ -92,7 +92,7 @@ describe('ConfigManager', () => {
       expect(configuration.backendUrl).toBe('http://localhost:8000');
       expect(configuration.environment).toBe('local');
       expect(configuration.networkMode).toBe('localhost');
-      expect(configuration.fallbackUrls).toEqual(['http://127.0.0.1:8000', 'http://localhost:8001']);
+      expect(configuration.fallbackUrls).toEqual(['http://127.0.0.1:8000']);
       expect(configuration.corsOrigins).toEqual(['http://localhost:8010', 'http://127.0.0.1:8010', 'http://localhost:8020']);
       expect(configuration.healthCheckEnabled).toBe(true);
       expect(configuration.healthCheckInterval).toBe(30000);
@@ -253,7 +253,7 @@ describe('ConfigManager', () => {
       const config = new ConfigManager();
       const fallbackUrls = config.getFallbackUrls();
 
-      expect(fallbackUrls).toEqual(['http://127.0.0.1:8000', 'http://localhost:8001']);
+      expect(fallbackUrls).toEqual(['http://127.0.0.1:8000', 'http://localhost:8000']);
     });
   });
 

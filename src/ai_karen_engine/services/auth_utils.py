@@ -97,7 +97,7 @@ def validate_cookie_security() -> Dict[str, Any]:
 async def get_current_user(request: Request) -> Dict[str, Any]:
     """FastAPI dependency to retrieve the current authenticated user using simple auth."""
     try:
-        from src.auth.simple_auth_middleware import get_auth_middleware
+        from src.auth.auth_middleware import get_auth_middleware
         auth_middleware = get_auth_middleware()
         
         user_data = await auth_middleware.authenticate_request(request)

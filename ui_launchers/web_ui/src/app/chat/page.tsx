@@ -15,7 +15,7 @@ import {
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { MetaBar } from "@/components/chat";
-import InputBox from "@/components/chat/InputBox";
+
 import { ChatInterface } from "@/components/chat";
 import { webUIConfig } from "@/lib/config";
 import { Button } from "@/components/ui/button";
@@ -58,28 +58,32 @@ function ChatView() {
 
   return (
     <SidebarProvider>
-      <div className="flex flex-col h-screen bg-background text-foreground">
-        <header className="p-3 md:p-4 border-b border-border flex items-center justify-between sticky top-0 z-30 bg-background/90 backdrop-blur-md shadow-sm">
-          <div className="flex items-center space-x-3">
-            <AppSidebarTrigger className="mr-1 md:mr-2" />
-            <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0" />
-            <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Karen AI</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Settings">
-                  <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col">
-                <SheetHeader className="p-4 border-b">
-                  <SheetTitle>Settings</SheetTitle>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto" />
-              </SheetContent>
-            </Sheet>
-            <AuthenticatedHeader />
+      <div className="chat-grid">
+        <header className="chat-header header-enhanced">
+          <div className="container-fluid flex-between">
+            <div className="flex-start space-x-3">
+              <AppSidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive" />
+              <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0 smooth-transform" />
+              <h1 className="text-xl md:text-2xl font-semibold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                Karen AI
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Settings" className="focus-ring smooth-transition">
+                    <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground smooth-transition" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col modern-card-glass">
+                  <SheetHeader className="p-4 border-b">
+                    <SheetTitle>Settings</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto p-4 scroll-smooth" />
+                </SheetContent>
+              </Sheet>
+              <AuthenticatedHeader />
+            </div>
           </div>
         </header>
 
@@ -87,12 +91,12 @@ function ChatView() {
           {webUIConfig.enableExtensions ? (
             <ExtensionSidebar />
           ) : (
-            <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20">
-              <AppSidebarHeader>
-                <h2 className="text-lg font-semibold tracking-tight px-2 py-1">Navigation</h2>
+            <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20 sidebar-enhanced">
+              <AppSidebarHeader className="p-4">
+                <h2 className="text-lg font-semibold tracking-tight">Navigation</h2>
               </AppSidebarHeader>
               <Separator className="my-1" />
-              <AppSidebarContent className="p-2">
+              <AppSidebarContent className="p-2 scroll-smooth">
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={pathname === "/chat"} className="w-full">
@@ -148,26 +152,26 @@ function ChatView() {
             </Sidebar>
           )}
 
-          <SidebarInset className="flex-1 flex flex-col min-h-0">
+          <SidebarInset className="flex flex-col min-h-0">
             <MetaBar />
-            <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6">
-              <div className="mx-auto w-full max-w-screen-lg xl:max-w-screen-xl px-4 sm:px-6">
-              <ChatInterface
-                className="flex-1"
-                useCopilotKit={true}
-                enableCodeAssistance={true}
-                enableContextualHelp={true}
-                enableDocGeneration={true}
-                showTabs={true}
-                showSettings={true}
-                enableVoiceInput={false}
-                enableFileUpload={true}
-                enableAnalytics={true}
-                enableExport={true}
-                enableSharing={false}
-              />
+            <div className="chat-messages">
+              <div className="container max-w-screen-xl">
+                <ChatInterface
+                  className="h-full smooth-transition"
+                  useCopilotKit={true}
+                  enableCodeAssistance={true}
+                  enableContextualHelp={true}
+                  enableDocGeneration={true}
+                  showTabs={true}
+                  showSettings={true}
+                  enableVoiceInput={false}
+                  enableFileUpload={true}
+                  enableAnalytics={true}
+                  enableExport={true}
+                  enableSharing={false}
+                />
               </div>
-            </main>
+            </div>
           </SidebarInset>
         </div>
       </div>

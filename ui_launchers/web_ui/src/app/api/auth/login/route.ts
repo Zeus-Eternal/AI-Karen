@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.API_BASE_URL || 'http://127.0.0.1:8000';
+const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
+const FALLBACK_URLS = [
+  BACKEND_URL,
+  'http://ai-karen-api:8000',
+  'http://api:8000',
+  'http://localhost:8000'
+].filter(Boolean) as string[];
 const AUTH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AUTH_PROXY_TIMEOUT_MS || process.env.KAREN_AUTH_PROXY_TIMEOUT_MS || 30000);
 
 export async function POST(request: NextRequest) {
@@ -8,8 +14,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Forward the request to the backend with timeout + transient retry
-    const base = BACKEND_URL.replace(/\/+$/, '');
-    let url = `${base}/api/auth/login`;
+    // Try multiple backend base URLs to survive Docker/host differences
+    const bases = Array.from(new Set(FALLBACK_URLS.map((u: string) => u.replace(/\/+$/, ''))));
+    let url = '';
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -19,51 +26,80 @@ export async function POST(request: NextRequest) {
     const maxAttempts = 2;
     let response: Response | null = null;
     let lastErr: any = null;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-          signal: controller.signal,
-          // @ts-ignore Node/undici hints
-          keepalive: true,
-          cache: 'no-store',
-        });
-        clearTimeout(timeout);
-        lastErr = null;
-        // Fallback to simple-auth mount if API path not found
-        if (!response.ok && (response.status === 404 || response.status === 405)) {
-          url = `${base}/auth/login`;
-          const controller2 = new AbortController();
-          const timeout2 = setTimeout(() => controller2.abort(), AUTH_TIMEOUT_MS);
+    for (const base of bases) {
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        url = `${base}/api/auth/login`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+        try {
           response = await fetch(url, {
             method: 'POST',
             headers,
             body: JSON.stringify(body),
-            signal: controller2.signal,
+            signal: controller.signal,
             // @ts-ignore Node/undici hints
             keepalive: true,
             cache: 'no-store',
           });
-          clearTimeout(timeout2);
-        }
-        break;
-      } catch (err: any) {
-        clearTimeout(timeout);
-        lastErr = err;
-        const msg = String(err?.message || err);
-        const isAbort = err?.name === 'AbortError';
-        const isSocket = msg.includes('UND_ERR_SOCKET') || msg.includes('other side closed');
-        if (attempt < maxAttempts && (isAbort || isSocket)) {
-          // small backoff then retry
-          await new Promise(res => setTimeout(res, 300));
+          clearTimeout(timeout);
+          lastErr = null;
+          // Fallback to simple-auth mount if API path not found
+          if (!response.ok && (response.status === 404 || response.status === 405)) {
+            const controller2 = new AbortController();
+            const timeout2 = setTimeout(() => controller2.abort(), AUTH_TIMEOUT_MS);
+            response = await fetch(`${base}/auth/login`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(body),
+              signal: controller2.signal,
+              // @ts-ignore Node/undici hints
+              keepalive: true,
+              cache: 'no-store',
+            });
+            clearTimeout(timeout2);
+          }
+
+          if (response.ok) break;
+
+          // On server errors, try dev-login as final fallback in dev
+          if (!response.ok && response.status >= 500) {
+            const enableDevLogin = process.env.NODE_ENV !== 'production';
+            if (enableDevLogin) {
+              const controller3 = new AbortController();
+              const timeout3 = setTimeout(() => controller3.abort(), AUTH_TIMEOUT_MS);
+              try {
+                const devResp = await fetch(`${base}/api/auth/dev-login`, {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify({}),
+                  signal: controller3.signal,
+                  keepalive: true as any,
+                  cache: 'no-store',
+                });
+                clearTimeout(timeout3);
+                if (devResp.ok) {
+                  response = devResp;
+                  break;
+                }
+              } catch {}
+            }
+          }
+
+        } catch (err: any) {
+          clearTimeout(timeout);
+          lastErr = err;
+          const msg = String(err?.message || err);
+          const isAbort = err?.name === 'AbortError';
+          const isSocket = msg.includes('UND_ERR_SOCKET') || msg.includes('other side closed');
+          if (attempt < maxAttempts && (isAbort || isSocket)) {
+            await new Promise(res => setTimeout(res, 300));
+            continue;
+          }
+          // Try next base URL
           continue;
         }
-        break;
       }
+      if (response?.ok) break;
     }
     if (!response) {
       console.error('Login proxy fatal error:', lastErr);

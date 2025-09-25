@@ -88,32 +88,36 @@ function AuthenticatedHomePage() {
 
   return (
     <SidebarProvider>
-      <div className="flex flex-col h-screen bg-background text-foreground">
-        <header className="p-3 md:p-4 border-b border-border flex items-center justify-between sticky top-0 z-30 bg-background/90 backdrop-blur-md shadow-sm">
-          <div className="flex items-center space-x-3">
-            <AppSidebarTrigger className="mr-1 md:mr-2">
-              {/* Default PanelLeft icon will be rendered by AppSidebarTrigger itself */}
-            </AppSidebarTrigger>
-            <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0" />
-            <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Karen AI</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Settings">
-                  <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col">
-                <SheetHeader className="p-4 border-b">
-                  <SheetTitle>Settings</SheetTitle>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto">
-                  <SettingsDialogComponent />
-                </div>
-              </SheetContent>
-            </Sheet>
-            <AuthenticatedHeader />
+      <div className="app-grid">
+        <header className="app-header header-enhanced">
+          <div className="container-fluid flex-between py-3 md:py-4">
+            <div className="flex-start space-x-3">
+              <AppSidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive">
+                {/* Default PanelLeft icon will be rendered by AppSidebarTrigger itself */}
+              </AppSidebarTrigger>
+              <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0 smooth-transform" />
+              <h1 className="text-xl md:text-2xl font-semibold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                Karen AI
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Settings" className="focus-ring smooth-transition">
+                    <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground smooth-transition" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col modern-card-glass">
+                  <SheetHeader className="p-4 border-b">
+                    <SheetTitle>Settings</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto p-4 scroll-smooth">
+                    <SettingsDialogComponent />
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <AuthenticatedHeader />
+            </div>
           </div>
         </header>
 
@@ -121,12 +125,12 @@ function AuthenticatedHomePage() {
           {webUIConfig.enableExtensions ? (
             <ExtensionSidebar />
           ) : (
-            <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20">
-              <AppSidebarHeader>
-                <h2 className="text-lg font-semibold tracking-tight px-2 py-1">Navigation</h2>
+            <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20 sidebar-enhanced">
+              <AppSidebarHeader className="p-4">
+                <h2 className="text-lg font-semibold tracking-tight">Navigation</h2>
               </AppSidebarHeader>
               <Separator className="my-1" />
-              <AppSidebarContent className="p-2">
+              <AppSidebarContent className="p-2 scroll-smooth">
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild className="w-full" isActive={pathname === '/chat'}>
@@ -205,8 +209,8 @@ function AuthenticatedHomePage() {
             </Sidebar>
           )}
 
-          <SidebarInset className="flex-1 flex flex-col min-h-0">
-            <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6 overflow-y-auto">
+          <SidebarInset className="app-main">
+            <div className="space-y-fluid">
               {activeMainView === 'dashboard' && <Dashboard />}
               {activeMainView === 'settings' && <SettingsDialogComponent />}
               {activeMainView === 'pluginDatabaseConnector' && <DatabaseConnectorPluginPage />}
@@ -216,25 +220,30 @@ function AuthenticatedHomePage() {
               {activeMainView === 'pluginWeather' && <WeatherPluginPage />}
               {activeMainView === 'pluginOverview' && <PluginOverviewPage />}
               {activeMainView === 'commsCenter' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-semibold tracking-tight">Communications Center</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Updates, alerts, and notes from Karen.
-                    </p>
+                <div className="space-y-fluid">
+                  <div className="modern-card">
+                    <div className="modern-card-header">
+                      <h2 className="text-2xl font-semibold tracking-tight">Communications Center</h2>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Updates, alerts, and notes from Karen.
+                      </p>
+                    </div>
+                    <div className="modern-card-content">
+                      <NotificationsSection />
+                    </div>
                   </div>
-                  <Separator />
-                  <NotificationsSection />
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 pt-4">My Notes (Conceptual)</h3>
-                    <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm min-h-[150px]">
+                  <div className="modern-card">
+                    <div className="modern-card-header">
+                      <h3 className="text-lg font-semibold">My Notes (Conceptual)</h3>
+                    </div>
+                    <div className="modern-card-content min-h-[150px]">
                       <p className="text-sm text-muted-foreground">This space is reserved for future features.</p>
-                      <p className="mt-1 text-sm text-muted-foreground">For example, Karen might save summaries of long conversations or important points she's learned here for your easy review.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">For example, Karen might save summaries of long conversations or important points she's learned here for your easy review.</p>
                     </div>
                   </div>
                 </div>
               )}
-            </main>
+            </div>
           </SidebarInset>
         </div>
       </div>

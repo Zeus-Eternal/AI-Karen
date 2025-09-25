@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
 import { ThemeBridge } from "@/components/theme/ThemeBridge";
 import Script from 'next/script';
+import { HealthStatusBadge } from '@/components/ui/health-status-badge';
 
 const inter = Inter({
   variable: '--font-sans',
@@ -20,8 +21,26 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Karen AI',
-  description: 'Intelligent Assistant Application by Agustealo Studio',
+  title: 'Karen AI - Intelligent Assistant',
+  description: 'Advanced AI-powered intelligent assistant platform by Agustealo Studio. Experience seamless AI interactions, data analysis, and automation.',
+  keywords: ['AI', 'assistant', 'artificial intelligence', 'automation', 'chat'],
+  authors: [{ name: 'Agustealo Studio' }],
+  creator: 'Agustealo Studio',
+  openGraph: {
+    title: 'Karen AI - Intelligent Assistant',
+    description: 'Advanced AI-powered intelligent assistant platform',
+    type: 'website',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Karen AI - Intelligent Assistant',
+    description: 'Advanced AI-powered intelligent assistant platform',
+  },
+  robots: {
+    index: false, // Prevent indexing in development/staging
+    follow: false,
+  },
 };
 
 export const viewport: Viewport = {
@@ -41,7 +60,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${robotoMono.variable} font-sans antialiased`}>
+      <head>
+        <meta name="color-scheme" content="light dark" />
+      </head>
+      <body className={`${inter.variable} ${robotoMono.variable} font-sans antialiased scroll-smooth`}>
+        {/* Skip to main content link for accessibility */}
+        <a 
+          href="#main-content" 
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50 interactive"
+          aria-label="Skip to main content"
+        >
+          Skip to main content
+        </a>
         {/* Console error fix script - load early to prevent interceptor issues */}
         <Script
           id="console-error-fix"
@@ -98,8 +128,11 @@ export default function RootLayout({
         <a href="#content" className="skip-link">Skip to content</a>
         <ThemeBridge>
           <Providers>
-            <main id="content" role="main" className="min-h-dvh focus:outline-none">
-              {children}
+            <HealthStatusBadge />
+            <main id="content" role="main" className="min-h-dvh focus:outline-none smooth-transition content-area">
+              <div className="container-fluid modern-layout-root">
+                {children}
+              </div>
             </main>
           </Providers>
         </ThemeBridge>

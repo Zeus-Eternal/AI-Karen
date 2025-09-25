@@ -11,7 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field
 logger = logging.getLogger(__name__)
 
 # Mount under /api/copilot when included with the global /api prefix
-router = APIRouter(prefix="/copilot", tags=["copilot"])
+# No prefix here since it's already mounted at /api/copilot in routers.py
+router = APIRouter(tags=["copilot"])
 
 # Ensure routing predictors are registered so /start can dispatch actions
 try:
@@ -184,13 +185,19 @@ async def copilot_health():
 
 @router.post("/start", response_model=StartActionResponse)
 async def copilot_start_action(
-    req: StartActionRequest,
     http_request: Request,
     # In dev/bypass we allow anonymous; compute context inside to avoid hard 401
     user_ctx: Optional[Dict[str, Any]] = None,
 ):
     """Generic CopilotKit action starter. Routes to predictor-registered actions."""
     correlation_id = http_request.headers.get("X-Correlation-Id") or f"copilot_{int(time.time())}"
+    
+    # Parse request body manually
+    try:
+        body = await http_request.json()
+        req = StartActionRequest(**body)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request body: {e}")
 
     # Resolve user context: prefer provided; otherwise permissive in dev/bypass
     if user_ctx is None:
@@ -626,13 +633,7 @@ async def copilot_assist(
     }
 
 
-@router.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "service": "copilot",
-        "timestamp": datetime.utcnow().isoformat(),
-    }
+# Health endpoint already defined above as copilot_health()
 
 
 __all__ = ["router"]

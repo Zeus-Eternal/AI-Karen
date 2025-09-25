@@ -282,10 +282,13 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
     preferredModel: '',
     temperature: 0.7,
     maxTokens: 2000,
-    notifications: {},
+    notifications: {
+      email: true,
+      push: false
+    },
     ui: {
-      theme: '',
-      language: '',
+      theme: 'system',
+      language: 'en',
       avatarUrl: ''
     }
   });

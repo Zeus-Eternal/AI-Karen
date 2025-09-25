@@ -375,86 +375,107 @@ export function getTokenExpiryInfo(): { expiresIn: string; isLongLived: boolean 
  */
 export async function login(email: string, password: string, totpCode?: string): Promise<void> {
   try {
+    console.log('🔐 Auth Session: Starting login process', { email, hasTotp: !!totpCode });
+    
     const credentials: any = { email, password };
     if (totpCode) {
       credentials.totp_code = totpCode;
     }
-    
-    // Add a small delay to prevent rapid successive requests and rate limiting
+
+    // Debounce rapid attempts to avoid rate limiting
     await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Toggle whether to attempt direct backend first or go via Next proxy
+
     const DIRECT_FIRST = (process.env.NEXT_PUBLIC_AUTH_DIRECT_FIRST || 'false').toLowerCase() === 'true';
-    // Prefer explicit backend URL, fall back to localhost
-    const DIRECT_BACKEND = (process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000').replace(/\/+$/, '');
-    let response: Response;
-    
+    const DIRECT_BACKEND = (process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000').replace(/\/+$/, '');
+    const SHORT_TIMEOUT = Number(process.env.NEXT_PUBLIC_AUTH_PROXY_TIMEOUT_MS || 15000);
+
+    console.log('🔐 Auth Session: Configuration', {
+      DIRECT_FIRST,
+      DIRECT_BACKEND,
+      SHORT_TIMEOUT,
+      NODE_ENV: process.env.NODE_ENV,
+      NEXT_PUBLIC_AUTH_DIRECT_FIRST: process.env.NEXT_PUBLIC_AUTH_DIRECT_FIRST,
+      NEXT_PUBLIC_KAREN_BACKEND_URL: process.env.NEXT_PUBLIC_KAREN_BACKEND_URL,
+      NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL
+    });
+
+    const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs: number): Promise<Response> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        console.log('🔐 Auth Session: Attempting fetch to', url);
+        const result = await fetch(url, { ...init, signal: controller.signal });
+        console.log('🔐 Auth Session: Fetch result', { url, status: result.status, statusText: result.statusText, ok: result.ok });
+        return result;
+      } catch (err) {
+        console.error('🔐 Auth Session: Fetch error', { url, error: (err as Error)?.message || err });
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
+    let response: Response | null = null;
+
+    const attemptLogin = async (url: string): Promise<Response | null> => {
+      try {
+        console.log('🔐 Auth Session: Attempting login to', url);
+        const result = await fetchWithTimeout(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(credentials),
+          credentials: 'include',
+        }, SHORT_TIMEOUT);
+        console.log('🔐 Auth Session: Login attempt result', { url, status: result?.status, ok: result?.ok });
+        return result;
+      } catch (err) {
+        console.error('🔐 Auth Session: Login attempt failed', { url, error: (err as Error)?.message || err });
+        return null;
+      }
+    };
+
     if (DIRECT_FIRST) {
       console.log('Attempting login via backend API', { DIRECT_BACKEND });
-      response = await fetch(`${DIRECT_BACKEND}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-        credentials: 'include',
-      });
+      response = await attemptLogin(`${DIRECT_BACKEND}/api/auth/login`);
     } else {
-      // Prefer server-side proxy to avoid CORS during local dev
       console.log('Attempting login via Next proxy');
-      response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-        credentials: 'include',
-      });
+      response = await attemptLogin('/api/auth/login');
     }
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      // Handle rate limiting
-      if (response.status === 429) {
+
+    // Fallbacks if missing/failed or non-OK
+    if (!response || !response.ok) {
+      const status = response?.status;
+      let errorText = '';
+      if (response) {
+        try { const j = await response.json(); errorText = j?.error || ''; } catch {}
+      }
+      
+      console.log('🔐 Auth Session: Primary login attempt failed', {
+        status,
+        errorText,
+        DIRECT_FIRST,
+        responseUrl: response?.url
+      });
+      
+      if (status === 429) {
         throw new Error('Too many login attempts. Please wait a moment and try again.');
       }
 
       if (DIRECT_FIRST) {
-        // Fallback 1a: try simple-auth path on backend (/auth/login)
-        // Useful when running the simple auth server which mounts at /auth, not /api/auth
-        if (response.status === 404 || response.status === 405) {
-          console.warn(`Backend login at /api/auth/login returned ${response.status}. Trying /auth/login on backend...`);
-          response = await fetch(`${DIRECT_BACKEND}/auth/login`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify(credentials),
-            credentials: 'include',
-          });
+        // Try backend simple-auth mount (/auth/login) for 404/405, otherwise try proxy
+        if (response && (status === 404 || status === 405)) {
+          console.warn(`🔐 Auth Session: Backend /api/auth/login returned ${status}. Trying /auth/login on backend...`);
+          response = await attemptLogin(`${DIRECT_BACKEND}/auth/login`);
         }
-
-        // Fallback 1b: try Next.js API route
-        if (!response.ok) {
-          console.warn(`Backend login failed (${response.status}). Trying Next.js API route...`);
-          response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify(credentials),
-            credentials: 'include',
-          });
+        if (!response || !response.ok) {
+          console.warn(`🔐 Auth Session: Backend login failed (${status ?? 'no-response'}). Trying Next.js API route...`);
+          response = await attemptLogin('/api/auth/login');
         }
       } else {
-        // When proxy-first, try backend simple-auth path only if proxy path fails with 404/405
-        if (response.status === 404 || response.status === 405) {
-          console.warn(`Proxy login returned ${response.status}. Trying proxy fallback to /auth/login ...`);
-          response = await fetch('/api/auth/login', {
+        // Proxy-first: if 404/405, retry with proxy fallback header (same path)
+        if (response && (status === 404 || status === 405)) {
+          console.warn(`🔐 Auth Session: Proxy login returned ${status}. Retrying proxy with fallback header...`);
+          response = await fetchWithTimeout('/api/auth/login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -463,53 +484,45 @@ export async function login(email: string, password: string, totpCode?: string):
             },
             body: JSON.stringify(credentials),
             credentials: 'include',
-          });
+          }, SHORT_TIMEOUT);
         }
       }
 
-      if (!response.ok) {
-        // Fallback 2: try simplified login endpoint
-        console.warn(`Next.js login failed (${response.status}). Trying /api/auth/login-simple ...`);
-        response = await fetch('/api/auth/login-simple', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(credentials),
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          // Optional Fallback 3: dev-login if enabled
-          const enableDevLogin = (process.env.NODE_ENV !== 'production') && (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true');
-          if (enableDevLogin) {
-            console.warn(`Simplified login failed (${response.status}). Trying /api/dev-login ...`);
-            response = await fetch('/api/dev-login', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              },
-              body: JSON.stringify(credentials),
-            });
-          }
-        }
+      // Try simplified login route in all cases if not OK yet
+      if (!response || !response.ok) {
+        console.warn(`🔐 Auth Session: Primary login failed (${status ?? 'no-response'} ${errorText || ''}). Trying /api/auth/login-simple ...`);
+        response = await attemptLogin('/api/auth/login-simple');
       }
 
-      if (!response.ok) {
-        const fallbackErr = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(fallbackErr.error || errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      // Dev-only final fallback
+      if ((!response || !response.ok) && (process.env.NODE_ENV !== 'production') && (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true')) {
+        console.warn(`🔐 Auth Session: Simplified login failed (${response ? response.status : 'no-response'}). Trying /api/dev-login ...`);
+        response = await attemptLogin('/api/dev-login');
+      }
+
+      if (!response || !response.ok) {
+        const statusText = response ? `${response.status}: ${response.statusText}` : 'network error';
+        console.error('🔐 Auth Session: All login attempts failed', { statusText });
+        throw new Error(`Login failed (${statusText})`);
       }
     }
+
+    console.log('🔐 Auth Session: Login request successful, parsing response', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.url
+    });
     
     const data = await response.json();
+    console.log('🔐 Auth Session: Response data received', {
+      hasAccessToken: !!data.access_token,
+      hasUserData: !!data.user,
+      expiresIn: data.expires_in,
+      userData: data.user ? { user_id: data.user.user_id, email: data.user.email } : null
+    });
     
-    // Calculate expiry time (ensure we have a valid expires_in)
-    const expiresIn = data.expires_in || 86400; // Default to 24 hours if not provided
+    const expiresIn = data.expires_in || 86400; // Default 24h
     const expiresAt = Date.now() + (expiresIn * 1000);
-    
-    // Store session data in memory
     const sessionData: SessionData = {
       accessToken: data.access_token || 'validated',
       expiresAt,
@@ -518,13 +531,27 @@ export async function login(email: string, password: string, totpCode?: string):
       roles: data.user.roles || [],
       tenantId: data.user.tenant_id,
     };
-    
     setSession(sessionData);
-    
-    console.log('Login successful, session established');
-    
+    console.log('🔐 Auth Session: Login successful, session established', {
+      userId: data.user.user_id,
+      email: data.user.email,
+      expiresAt: new Date(expiresAt).toISOString(),
+      responseUrl: response.url,
+      sessionData: {
+        hasToken: !!sessionData.accessToken,
+        expiresIn: expiresIn,
+        rolesCount: sessionData.roles.length
+      }
+    });
+
   } catch (error: any) {
-    console.error('Login failed:', error.message);
+    console.error('🔐 Auth Session: Login failed with error:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      isNetworkError: error.message?.includes('network') || error.message?.includes('fetch'),
+      isTimeout: error.name === 'AbortError'
+    });
     clearSession();
     throw error;
   }

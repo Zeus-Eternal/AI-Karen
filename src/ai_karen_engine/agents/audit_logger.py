@@ -187,10 +187,12 @@ class AuditLogger:
             )
             file_handler.setFormatter(formatter)
             
-            # Add to logger
+            # Add to logger (prevent duplicates)
             audit_file_logger = logging.getLogger("audit_file")
-            audit_file_logger.addHandler(file_handler)
-            audit_file_logger.setLevel(logging.INFO)
+            if not audit_file_logger.handlers:
+                audit_file_logger.addHandler(file_handler)
+                audit_file_logger.setLevel(logging.INFO)
+                audit_file_logger.propagate = False
             
         except Exception as e:
             self.logger.error(f"Failed to initialize file handlers: {e}")

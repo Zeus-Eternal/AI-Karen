@@ -368,7 +368,7 @@ export default function ModelBrowser({
                        [...systemModels, ...localModels, ...huggingFaceModels];
 
   const filteredModels = displayModels.filter(model => 
-    !searchQuery || model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    !searchQuery || model.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     model.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -459,7 +459,7 @@ export default function ModelBrowser({
                   ) : systemModels.length > 0 ? (
                     <div className="space-y-4">
                       {systemModels.filter(model => 
-                        !searchQuery || model.name.toLowerCase().includes(searchQuery.toLowerCase())
+                        !searchQuery || model.name?.toLowerCase().includes(searchQuery.toLowerCase())
                       ).map(renderModelCard)}
                     </div>
                   ) : (
@@ -518,7 +518,7 @@ export default function ModelBrowser({
                   ) : localModels.length > 0 ? (
                     <div className="space-y-4">
                       {localModels.filter(model => 
-                        !searchQuery || model.name.toLowerCase().includes(searchQuery.toLowerCase())
+                        !searchQuery || model.name?.toLowerCase().includes(searchQuery.toLowerCase())
                       ).map(renderModelCard)}
                     </div>
                   ) : (
@@ -556,7 +556,7 @@ export default function ModelBrowser({
                   {huggingFaceModels.length > 0 ? (
                     <div className="space-y-4">
                       {huggingFaceModels.filter(model => 
-                        !searchQuery || model.name.toLowerCase().includes(searchQuery.toLowerCase())
+                        !searchQuery || model.name?.toLowerCase().includes(searchQuery.toLowerCase())
                       ).map(renderModelCard)}
                     </div>
                   ) : (

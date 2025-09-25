@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 
 export default function ProfilePage() {
+  const [isClient, setIsClient] = useState(false)
   const { user, updateCredentials, updateUserPreferences, logout } = useAuth()
   const router = useRouter()
   const [memoryCount, setMemoryCount] = useState<number | null>(null)
@@ -18,17 +19,22 @@ export default function ProfilePage() {
   const [password, setPassword] = useState('')
 
   useEffect(() => {
-    if (!user?.user_id) return
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient || !user?.user_id) return
     setUsername(user.user_id)
     
-    // Only run on client side
-    if (typeof window !== 'undefined') {
-      getMemoryService()
-        .getMemoryStats(user.user_id)
-        .then(stats => setMemoryCount(stats.totalMemories))
-        .catch(() => setMemoryCount(null))
-    }
-  }, [user?.user_id])
+    getMemoryService()
+      .getMemoryStats(user.user_id)
+      .then(stats => setMemoryCount(stats.totalMemories))
+      .catch(() => setMemoryCount(null))
+  }, [isClient, user?.user_id])
+
+  if (!isClient) {
+    return <div>Loading...</div>
+  }
 
   if (!user) {
     router.push('/login')
@@ -46,10 +52,7 @@ export default function ProfilePage() {
     const file = e.target.files?.[0]
     if (!file) return
     
-    // Only run on client side
-    if (typeof window !== 'undefined') {
-      await authService.uploadAvatar(file)
-    }
+    await authService.uploadAvatar(file)
   }
 
   return (
@@ -66,11 +69,12 @@ export default function ProfilePage() {
             <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" />
             <div className="space-y-2">
               <Label>Theme</Label>
-              <Select defaultValue={user?.preferences?.ui?.theme} onValueChange={val => updateUserPreferences({ ui: { theme: val } })}>
+              <Select defaultValue={user?.preferences?.ui?.theme} onValueChange={val => updateUserPreferences({ ui: { ...user?.preferences?.ui, theme: val } })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="light">Light</SelectItem>
                   <SelectItem value="dark">Dark</SelectItem>
+                  <SelectItem value="system">System</SelectItem>
                 </SelectContent>
               </Select>
             </div>

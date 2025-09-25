@@ -1,272 +1,149 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useCallback } from 'react';
-import { CopilotTextarea } from '@copilotkit/react-textarea';
-import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Send, 
-  Mic, 
-  MicOff, 
-  Sparkles, 
-  Code, 
-  FileText, 
-  Lightbulb,
-  Loader2
-} from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import React, { useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Mic, MicOff, Paperclip, Send, Loader2 } from "lucide-react";
+import CopilotActions from "./CopilotActions";
+import type { ChatContext, CopilotAction } from "./CopilotActions";
 
 interface ChatInputProps {
-  onSubmit: (message: string) => Promise<void>;
-  isLoading?: boolean;
-  placeholder?: string;
-  className?: string;
+  inputValue: string;
+  placeholder: string;
+  isTyping: boolean;
+  isRecording: boolean;
+  enableVoiceInput: boolean;
+  enableFileUpload: boolean;
+  chatContext: ChatContext;
+  onInputChange: (value: string) => void;
+  onCopilotAction: (action: CopilotAction) => void;
+  onVoiceStart: () => void;
+  onVoiceStop: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onQuickAction: (action: string, prompt: string, type?: string) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
+  inputValue,
+  placeholder,
+  isTyping,
+  isRecording,
+  enableVoiceInput,
+  enableFileUpload,
+  chatContext,
+  onInputChange,
+  onCopilotAction,
+  onVoiceStart,
+  onVoiceStop,
   onSubmit,
-  isLoading = false,
-  placeholder = "Ask me anything...",
-  className = ''
+  onQuickAction,
 }) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  
-  const [input, setInput] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
-
-  // CopilotKit integration - make user context available
-  useCopilotReadable({
-    description: "Current user information and preferences",
-    value: {
-      userId: user?.user_id,
-      preferences: user?.preferences,
-      isAuthenticated: !!user
-    }
-  });
-
-  // CopilotKit action for enhanced suggestions
-  useCopilotAction({
-    name: "generateChatSuggestions",
-    description: "Generate contextual chat suggestions based on user input",
-    parameters: [
-      {
-        name: "context",
-        type: "string",
-        description: "The current input context"
-      }
-    ],
-    handler: async ({ context }) => {
-      const contextualSuggestions = [
-        "Help me debug this code",
-        "Explain this concept in detail",
-        "Generate documentation for this",
-        "What are the best practices for this?",
-        "Can you optimize this approach?"
-      ];
-      setSuggestions(contextualSuggestions);
-      return { suggestions: contextualSuggestions };
-    }
-  });
-
-  // Handle form submission
-  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    
-    if (!input.trim() || isLoading) return;
-
-    try {
-      await onSubmit(input.trim());
-      setInput('');
-      setSuggestions([]);
-    } catch (error) {
-      console.error('Failed to submit message:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Message Failed',
-        description: 'Unable to send your message. Please try again.'
-      });
-    }
-  }, [input, isLoading, onSubmit, toast]);
-
-  // Handle voice recording
-  const toggleRecording = useCallback(() => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast({
-        variant: 'destructive',
-        title: 'Speech Recognition Not Supported',
-        description: 'Your browser does not support speech recognition.'
-      });
-      return;
-    }
-
-    if (isRecording) {
-      recognitionRef.current?.stop();
-      setIsRecording(false);
-    } else {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onstart = () => {
-        setIsRecording(true);
-      };
-
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(prev => prev + (prev ? ' ' : '') + transcript);
-        setIsRecording(false);
-      };
-
-      recognitionRef.current.onerror = () => {
-        setIsRecording(false);
-        toast({
-          variant: 'destructive',
-          title: 'Speech Recognition Error',
-          description: 'Failed to recognize speech. Please try again.'
-        });
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current.start();
-    }
-  }, [isRecording, toast]);
-
-  // Quick action buttons
-  const quickActions = [
-    {
-      label: 'Debug Code',
-      icon: Code,
-      action: () => setInput('Help me debug this code: ')
-    },
-    {
-      label: 'Explain',
-      icon: Lightbulb,
-      action: () => setInput('Please explain: ')
-    },
-    {
-      label: 'Document',
-      icon: FileText,
-      action: () => setInput('Generate documentation for: ')
-    }
-  ];
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Card className={`p-4 ${className}`}>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Main Input */}
-        <div className="relative">
-          <CopilotTextarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+    <div className="border-t p-4" id="chat-input">
+      <form onSubmit={onSubmit} className="flex gap-2">
+        <div className="flex-1 relative">
+          <Input
+            ref={inputRef}
+            value={inputValue}
+            onChange={(e) => onInputChange(e.target.value)}
             placeholder={placeholder}
-            disabled={isLoading}
-            className="min-h-[60px] max-h-[200px] resize-none pr-24"
-            autosuggestionsConfig={{
-              textareaPurpose: "Chat input for AI assistant conversation",
-              chatApiConfigs: {
-                suggestionsApiConfig: {
-                  maxTokens: 20,
-                  stop: ["\n", "."]
-                }
-              } as any
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
+            disabled={isTyping}
+            className="pr-20"
+            aria-label="Type your message"
+            aria-describedby={isTyping ? "typing-indicator" : undefined}
           />
-          
-          {/* Voice and Send buttons */}
-          <div className="absolute right-2 bottom-2 flex items-center gap-1">
+
+          {/* Voice Input Button */}
+          {enableVoiceInput && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={toggleRecording}
-              disabled={isLoading}
-              className={`h-8 w-8 p-0 ${isRecording ? 'text-red-500' : ''}`}
+              className="absolute right-12 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+              onClick={isRecording ? onVoiceStop : onVoiceStart}
+              disabled={isTyping}
             >
               {isRecording ? (
-                <MicOff className="h-4 w-4" />
+                <MicOff className="h-4 w-4 text-red-500" />
               ) : (
                 <Mic className="h-4 w-4" />
               )}
             </Button>
-            
+          )}
+
+          {/* File Upload Button */}
+          {enableFileUpload && (
             <Button
-              type="submit"
+              type="button"
+              variant="ghost"
               size="sm"
-              disabled={!input.trim() || isLoading}
-              className="h-8 w-8 p-0"
+              className="absolute right-6 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+              disabled={isTyping}
             >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
+              <Paperclip className="h-4 w-4" />
             </Button>
-          </div>
+          )}
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Sparkles className="h-3 w-3" />
-            Quick actions:
-          </div>
-          {quickActions.map((action, index) => (
-            <Button
-              key={index}
-              variant="outline"
-              size="sm"
-              onClick={action.action}
-              disabled={isLoading}
-              className="h-7 text-xs"
-            >
-              <action.icon className="h-3 w-3 mr-1" />
-              {action.label}
-            </Button>
-          ))}
-        </div>
-
-        {/* Suggestions */}
-        {suggestions.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs text-muted-foreground">Suggestions:</div>
-            <div className="flex flex-wrap gap-1">
-              {suggestions.map((suggestion, index) => (
-                <Badge
-                  key={index}
-                  variant="secondary"
-                  className="cursor-pointer hover:bg-secondary/80 text-xs"
-                  onClick={() => setInput(suggestion)}
-                >
-                  {suggestion}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
+        <Button
+          type="submit"
+          disabled={!inputValue.trim() || isTyping}
+          size="sm"
+        >
+          {isTyping ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+        </Button>
       </form>
-    </Card>
+
+      {/* Copilot Actions and Quick Actions */}
+      <div className="flex items-center justify-between mt-2">
+        <CopilotActions
+          onActionTriggered={onCopilotAction}
+          context={chatContext}
+          disabled={isTyping}
+          showShortcuts={true}
+        />
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onQuickAction("debug", "Help me debug this code", "code")}
+            disabled={isTyping}
+          >
+            Debug Code
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onQuickAction("explain", "Explain this concept", "text")}
+            disabled={isTyping}
+          >
+            Explain
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onQuickAction("docs", "Generate documentation", "documentation")}
+            disabled={isTyping}
+          >
+            Document
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onQuickAction("optimize", "Optimize this code", "code")}
+            disabled={isTyping}
+          >
+            Optimize
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 };
-
-export default ChatInput;

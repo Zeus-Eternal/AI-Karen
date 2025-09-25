@@ -47,8 +47,8 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
   const filtered = useMemo(() => {
     const lower = filter.toLowerCase();
     return models.filter(m =>
-      m.name.toLowerCase().includes(lower) ||
-      m.provider.toLowerCase().includes(lower)
+      m.name?.toLowerCase().includes(lower) ||
+      m.provider?.toLowerCase().includes(lower)
     );
   }, [models, filter]);
 

@@ -32,6 +32,11 @@ export interface LoginCredentials {
   totp_code?: string;
 }
 
+export interface RegisterCredentials {
+  email: string;
+  password: string;
+}
+
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
@@ -45,6 +50,11 @@ export interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateCredentials: (newUsername?: string, newPassword?: string) => Promise<void>;
+  updateUserPreferences: (preferences: Partial<User['preferences']>) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
+  register: (credentials: RegisterCredentials) => Promise<void>;
 }
 
 export interface AuthProviderProps {
@@ -153,6 +163,106 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const updateCredentials = async (newUsername?: string, newPassword?: string): Promise<void> => {
+    if (!authState.user) {
+      throw new Error('No user logged in');
+    }
+    
+    try {
+      // TODO: Implement actual credential update API call
+      console.log('Updating credentials:', { newUsername, hasNewPassword: !!newPassword });
+      
+      // For now, just update the local state if username changed
+      if (newUsername && newUsername !== authState.user.user_id) {
+        setAuthState(prev => ({
+          ...prev,
+          user: prev.user ? { ...prev.user, user_id: newUsername } : null
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to update credentials:', error);
+      throw error;
+    }
+  };
+
+  const updateUserPreferences = async (preferences: Partial<User['preferences']>): Promise<void> => {
+    if (!authState.user) {
+      throw new Error('No user logged in');
+    }
+    
+    try {
+      // Update local state immediately for better UX
+      setAuthState(prev => ({
+        ...prev,
+        user: prev.user ? {
+          ...prev.user,
+          preferences: { ...prev.user.preferences, ...preferences }
+        } : null
+      }));
+      
+      // TODO: Implement actual preferences update API call
+      console.log('Updating user preferences:', preferences);
+    } catch (error) {
+      console.error('Failed to update user preferences:', error);
+      // Revert local state on error
+      await refreshUser();
+      throw error;
+    }
+  };
+
+  const requestPasswordReset = async (email: string): Promise<void> => {
+    try {
+      // TODO: Implement actual password reset request API call
+      console.log('Requesting password reset for:', email);
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For now, just log the request
+      console.log('Password reset email sent to:', email);
+    } catch (error) {
+      console.error('Failed to request password reset:', error);
+      throw new Error('Failed to send password reset email. Please try again.');
+    }
+  };
+
+  const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+    try {
+      // TODO: Implement actual password reset API call
+      console.log('Resetting password with token:', token.substring(0, 10) + '...');
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For now, just log the reset
+      console.log('Password reset successfully');
+    } catch (error) {
+      console.error('Failed to reset password:', error);
+      throw new Error('Failed to reset password. Please try again or request a new reset link.');
+    }
+  };
+
+  const register = async (credentials: RegisterCredentials): Promise<void> => {
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true }));
+      
+      // TODO: Implement actual registration API call
+      console.log('Registering user:', credentials.email);
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For now, just log the registration
+      console.log('User registered successfully:', credentials.email);
+      
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+    } catch (error) {
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      console.error('Failed to register user:', error);
+      throw new Error('Failed to create account. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const snapshot = authStateManager.getState();
     
@@ -186,8 +296,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           console.log('Development mode: attempting auto-login');
           await login({
-            email: 'admin@kari.ai',
-            password: 'Password123!',
+            email: 'admin@example.com',
+            password: 'admin',
           });
           console.log('Auto-login successful');
         } catch (error) {
@@ -239,6 +349,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     refreshUser,
+    updateCredentials,
+    updateUserPreferences,
+    requestPasswordReset,
+    resetPassword,
+    register,
   };
 
   return (

@@ -1,27 +1,101 @@
 {
+  "environment": "local",
+  "debug": false,
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "ai_karen",
+    "username": "postgres",
+    "password": "",
+    "pool_size": 10,
+    "max_overflow": 20,
+    "pool_timeout": 30,
+    "pool_recycle": 3600,
+    "ssl_mode": "prefer"
+  },
+  "redis": {
+    "host": "localhost",
+    "port": 6380,
+    "database": 0,
+    "password": "JEmvDv4I17iRY2lJbmWuJOkL",
+    "max_connections": 10,
+    "socket_timeout": 5,
+    "socket_connect_timeout": 5,
+    "retry_on_timeout": true
+  },
+  "vector_db": {
+    "provider": "milvus",
+    "host": "localhost",
+    "port": 19530,
+    "collection_name": "ai_karen_memories",
+    "dimension": 1536,
+    "metric_type": "COSINE",
+    "index_type": "IVF_FLAT",
+    "nlist": 1024
+  },
+  "llm": {
+    "provider": "llamacpp",
+    "model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+    "api_key": null,
+    "base_url": null,
+    "temperature": 0.7,
+    "max_tokens": 2048,
+    "timeout": 30,
+    "max_retries": 3
+  },
+  "services": {
+    "ai_orchestrator": {},
+    "memory_service": {},
+    "conversation_service": {},
+    "plugin_service": {},
+    "tool_service": {},
+    "analytics_service": {}
+  },
+  "security": {
+    "jwt_secret": "dev-jwt-secret-change-in-production",
+    "jwt_algorithm": "HS256",
+    "jwt_expiration": 3600,
+    "cors_origins": [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:8000",
+      "http://127.0.0.1:8000",
+      "http://localhost:8010",
+      "http://127.0.0.1:8010",
+      "http://localhost:8020",
+      "http://127.0.0.1:8020"
+    ],
+    "rate_limit_requests": 100,
+    "rate_limit_window": 60,
+    "enable_auth": true,
+    "enable_rate_limiting": true
+  },
+  "monitoring": {
+    "enable_metrics": true,
+    "enable_tracing": false,
+    "enable_logging": true,
+    "log_level": "INFO",
+    "metrics_port": 8080,
+    "health_check_interval": 30,
+    "prometheus_enabled": true
+  },
+  "web_ui": {
+    "enable_web_ui_features": true,
+    "session_timeout": 3600,
+    "max_conversation_history": 1000,
+    "enable_proactive_suggestions": true,
+    "enable_memory_integration": true,
+    "ui_sources": [
+      "web",
+      "streamlit",
+      "desktop"
+    ]
+  },
+  "default_embedding_model": "sentence-transformers/distilbert-base-nli-stsb-mean-tokens",
+  "spacy_model": "en_core_web_sm",
   "active_user": "default",
   "theme": "dark",
   "llm_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
-  "llm_provider": "llamacpp",
-  "llm_providers": {
-    "enabled": [
-      "llamacpp",
-      "openai",
-      "gemini",
-      "deepseek",
-      "huggingface"
-    ],
-    "fallback_hierarchy": [
-      "llamacpp",
-      "openai",
-      "gemini",
-      "deepseek",
-      "huggingface"
-    ],
-    "default_provider": "llamacpp",
-    "auto_discovery": true,
-    "health_check_interval": 300
-  },
   "memory": {
     "enabled": true,
     "provider": "local",
@@ -31,5 +105,46 @@
   "event_bus": "memory",
   "ui": {
     "show_debug_info": false
-  }
+  },
+  "user_profiles": {
+    "profiles": [
+      {
+        "id": "default",
+        "name": "Default",
+        "assignments": {
+          "chat": {
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "parameters": {}
+          },
+          "code": {
+            "provider": "deepseek",
+            "model": "deepseek-coder",
+            "parameters": {}
+          },
+          "reasoning": {
+            "provider": "openai",
+            "model": "gpt-4o",
+            "parameters": {}
+          },
+          "summarization": {
+            "provider": "llamacpp",
+            "model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+            "parameters": {}
+          }
+        },
+        "fallback_chain": [
+          "openai",
+          "deepseek",
+          "llamacpp",
+          "huggingface",
+          "gemini"
+        ],
+        "is_active": true,
+        "updated_at": "2025-09-23T14:06:23.445351"
+      }
+    ],
+    "active_profile": "default"
+  },
+  "active_profile": "default"
 }

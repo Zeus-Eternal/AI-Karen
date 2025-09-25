@@ -295,9 +295,9 @@ export const CopilotActions: React.FC<CopilotActionsProps> = ({
     
     const query = searchQuery.toLowerCase();
     const filtered = contextualActions.filter(action => 
-      action.label.toLowerCase().includes(query) ||
-      action.description.toLowerCase().includes(query) ||
-      action.category.toLowerCase().includes(query)
+      action.label?.toLowerCase().includes(query) ||
+      action.description?.toLowerCase().includes(query) ||
+      action.category?.toLowerCase().includes(query)
     );
     
     setFilteredActions(filtered);

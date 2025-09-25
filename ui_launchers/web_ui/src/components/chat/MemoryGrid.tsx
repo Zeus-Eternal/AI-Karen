@@ -421,10 +421,10 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
     
     const searchLower = searchText.toLowerCase();
     return memoryData.filter(memory =>
-      memory.content.toLowerCase().includes(searchLower) ||
-      memory.type.toLowerCase().includes(searchLower) ||
-      memory.semanticCluster.toLowerCase().includes(searchLower) ||
-      memory.tags.some(tag => tag.toLowerCase().includes(searchLower))
+      memory.content?.toLowerCase().includes(searchLower) ||
+      memory.type?.toLowerCase().includes(searchLower) ||
+      memory.semanticCluster?.toLowerCase().includes(searchLower) ||
+      memory.tags?.some(tag => tag?.toLowerCase().includes(searchLower))
     );
   }, [memoryData, searchText]);
 

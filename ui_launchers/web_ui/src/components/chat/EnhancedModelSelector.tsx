@@ -155,10 +155,33 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedModelDetails, setSelectedModelDetails] = useState<ModelInfo | null>(null);
-  const backend = getKarenBackend();
+  const [backend, setBackend] = useState<ReturnType<typeof getKarenBackend> | null>(null);
   const { toast } = useToast();
 
+  // Initialize backend safely
+  useEffect(() => {
+    try {
+      const backendInstance = getKarenBackend();
+      if (backendInstance && typeof backendInstance.makeRequestPublic === 'function') {
+        setBackend(backendInstance);
+      } else {
+        console.error('Backend instance is invalid:', backendInstance);
+        setError('Backend service unavailable');
+      }
+    } catch (err) {
+      console.error('Failed to initialize backend:', err);
+      setError('Failed to initialize backend service');
+    }
+  }, []);
+
   const loadModels = async () => {
+    if (!backend) {
+      console.warn('Backend not initialized, skipping model loading');
+      setError('Backend service not available');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -180,10 +203,21 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
   };
 
   useEffect(() => {
-    loadModels();
-  }, []);
+    if (backend) {
+      loadModels();
+    }
+  }, [backend]);
 
   const handleModelAction = async (action: string, model: ModelInfo) => {
+    if (!backend) {
+      toast({
+        title: "Action Failed",
+        description: "Backend service not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       switch (action) {
         case 'download':

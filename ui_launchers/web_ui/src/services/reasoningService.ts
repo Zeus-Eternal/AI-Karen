@@ -1,7 +1,6 @@
 /**
  * Reasoning Service - Connects to the backend reasoning system with fallbacks
  */
-
 import { getConfigManager } from '@/lib/endpoint-config';
 import { safeError } from '@/lib/safe-console';
 
@@ -84,7 +83,7 @@ class ReasoningService {
   async testConnection(): Promise<boolean> {
     try {
       // Use the Next.js proxy route instead of direct backend URL
-      const response = await fetch('/api/karen/api/health/degraded-mode');
+      const response = await fetch('/api/health/degraded-mode');
       return response.ok;
     } catch {
       return false;
@@ -93,8 +92,8 @@ class ReasoningService {
 
   async getSystemStatus(): Promise<any> {
     try {
-      // Use the Next.js proxy route instead of direct backend URL
-      const response = await fetch('/api/karen/api/health/degraded-mode');
+      // Use the Next.js proxy route for degraded-mode health check
+      const response = await fetch('/api/health/degraded-mode');
       if (response.ok) {
         const degradedModeData = await response.json();
         
@@ -103,7 +102,7 @@ class ReasoningService {
           degraded: degradedModeData.is_active,
           components: degradedModeData.infrastructure_issues || [],
           fallback_systems_active: degradedModeData.core_helpers_available?.fallback_responses || false,
-          local_models_available: (degradedModeData.core_helpers_available?.total_ai_capabilities || 0) > 0,
+          local_models_available: degradedModeData.core_helpers_available?.total_ai_capabilities || false,
           ai_status: degradedModeData.ai_status,
           failed_providers: degradedModeData.failed_providers || [],
           reason: degradedModeData.reason,

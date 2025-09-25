@@ -209,7 +209,7 @@ async def get_current_user_websocket(websocket: WebSocket) -> Dict[str, Any]:
     if auth_header and auth_header.startswith("Bearer "):
         access_token = auth_header.split(" ", 1)[1]
         try:
-            from src.auth.simple_auth_service import get_auth_service
+            from src.auth.auth_service import get_auth_service
             service = get_auth_service()
             token_payload = service.validate_token(access_token)
             if token_payload:
@@ -399,7 +399,7 @@ async def websocket_model_events_endpoint(
 
 
 # Server-Sent Events endpoint
-@router.post("/stream/sse")
+@router.post("/stream/sse", response_model=None)
 async def stream_chat_sse(
     request: StreamChatRequest,
     http_request: Request,

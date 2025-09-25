@@ -344,7 +344,11 @@ export default function ModelCard({ model, onAction, searchQuery = '' }: ModelCa
             </div>
             <div>
               <span className="text-muted-foreground">Context:</span>
-              <span className="ml-2 font-medium">{model.metadata.contextLength.toLocaleString()}</span>
+              <span className="ml-2 font-medium">
+                {typeof model.metadata?.contextLength === 'number'
+                  ? model.metadata.contextLength.toLocaleString()
+                  : '—'}
+              </span>
             </div>
           </div>
 

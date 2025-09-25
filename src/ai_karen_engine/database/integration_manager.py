@@ -128,22 +128,82 @@ class DatabaseIntegrationManager:
         """Initialize Milvus vector database."""
         logger.info("Initializing Milvus client...")
         
+        # Optional readiness loop: wait for external Milvus health endpoint before enabling vectors
+        # Configure via MILVUS_HEALTH_WAIT_SECONDS (>0 to enable). Defaults to 0 (no wait).
+        try:
+            max_wait = int(os.getenv("MILVUS_HEALTH_WAIT_SECONDS", "0"))
+        except Exception:
+            max_wait = 0
+
+        if max_wait > 0:
+            health_host = os.getenv("MILVUS_HEALTH_HOST", str(self.config.milvus_host))
+            health_port = int(os.getenv("MILVUS_HEALTH_PORT", "9091"))
+            health_path = os.getenv("MILVUS_HEALTH_PATH", "/healthz")
+            health_url = os.getenv(
+                "MILVUS_HEALTH_URL",
+                f"http://{health_host}:{health_port}{health_path}"
+            )
+            interval = max(2, min(10, int(os.getenv("MILVUS_HEALTH_POLL_INTERVAL", "3"))))
+
+            logger.info(
+                "Waiting for Milvus health (up to %ss): %s",
+                max_wait,
+                health_url,
+            )
+
+            async def _probe_health(url: str) -> bool:
+                # Use stdlib to avoid extra deps
+                import urllib.request  # type: ignore
+                import json as _json
+                try:
+                    def _fetch() -> bool:
+                        with urllib.request.urlopen(url, timeout=3) as resp:
+                            ct = resp.headers.get("Content-Type", "")
+                            body = resp.read().decode("utf-8", errors="ignore")
+                            if "application/json" in ct:
+                                try:
+                                    data = _json.loads(body)
+                                    # Accept common fields: status/ready/healthy
+                                    status = str(data.get("status", "")).lower()
+                                    ready = data.get("ready") or data.get("healthy")
+                                    return ready is True or status in {"healthy", "ready", "ok"}
+                                except Exception:
+                                    return False
+                            return "healthy" in body.lower() or "ok" == body.strip().lower()
+                    return await asyncio.to_thread(_fetch)
+                except Exception:
+                    return False
+
+            deadline = asyncio.get_event_loop().time() + max_wait
+            while asyncio.get_event_loop().time() < deadline:
+                ok = await _probe_health(health_url)
+                if ok:
+                    logger.info("Milvus reported healthy at %s", health_url)
+                    break
+                await asyncio.sleep(interval)
+            else:
+                logger.warning(
+                    "Milvus health check did not become healthy within %ss; vector features will initialize regardless",
+                    max_wait,
+                )
+
+        # Initialize the (current) Milvus client implementation
         try:
             self.milvus_client = MilvusClient(
                 host=self.config.milvus_host,
                 port=self.config.milvus_port
             )
-            
-            # Test connection
+
+            # Test connection through the client API
             await self.milvus_client.connect()
             health = await self.milvus_client.health_check()
-            
+
             if health.get("status") != "healthy":
                 logger.warning(f"Milvus health check failed: {health}")
                 self.milvus_client = None
             else:
                 logger.info("Milvus client initialized successfully")
-                
+
         except Exception as e:
             logger.warning(f"Failed to initialize Milvus: {e}")
             self.milvus_client = None

@@ -20,11 +20,12 @@ from ai_karen_engine.api_routes.audit import router as audit_router
 
 # NEW: Simple auth system
 try:
-    from src.auth.simple_auth_routes import router as auth_router
-except ImportError:
-    # Fallback - disable auth routes if simple auth not available
+    from src.auth.auth_routes import router as auth_router
+    logger.info("✅ Auth router imported successfully")
+except ImportError as e:
+    # Fallback - disable auth routes if auth not available
     auth_router = None
-    logger.warning("Simple auth system not available - auth routes disabled")
+    logger.warning(f"🚫 Auth system not available - auth routes disabled: {e}")
 from ai_karen_engine.api_routes.code_execution_routes import router as code_execution_router
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
 from ai_karen_engine.api_routes.copilot_routes import router as copilot_router
@@ -61,22 +62,25 @@ from ai_karen_engine.api_routes.performance_routes import router as performance_
 def wire_routers(app: FastAPI, settings: Settings) -> None:
     """Wire all routers to the FastAPI app with simplified auth system"""
     
+    logger.info("🔧 Starting router wiring...")
+    
     # NEW: Simple authentication system
+    logger.info(f"🔍 Auth router status: {auth_router is not None}")
     if auth_router:
         app.include_router(auth_router, prefix="/api", tags=["authentication"])
-        logger.info("🔐 Simple auth router loaded successfully")
+        logger.info("🔐 Auth router loaded successfully")
     else:
-        logger.warning("🚫 Simple auth router not available")
+        logger.warning("🚫 Auth router not available")
     
     # Environment check for auth mode
     effective_env = (os.getenv("ENVIRONMENT") or os.getenv("KARI_ENV") or settings.environment).lower()
     auth_mode = os.getenv("AUTH_MODE", "production").lower()
     
-    logger.info(f"🔐 Using simple auth system - AUTH_MODE={auth_mode}")
+    logger.info(f"🔐 Using auth system - AUTH_MODE={auth_mode}")
     
-    # Add simple auth middleware globally (if available)
+    # Add auth middleware globally (if available)
     try:
-        from src.auth.simple_auth_middleware import get_auth_middleware
+        from src.auth.auth_middleware import get_auth_middleware
         auth_middleware = get_auth_middleware()
         
         # Use FastAPI middleware for global auth
@@ -98,9 +102,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
             response = await call_next(request)
             return response
         
-        logger.info("🔐 Simple auth middleware loaded successfully")
+        logger.info("🔐 Auth middleware loaded successfully")
     except ImportError:
-        logger.warning("🚫 Simple auth middleware not available")
+        logger.warning("🚫 Auth middleware not available")
     
     # Core API routers
     app.include_router(events_router, prefix="/api/events", tags=["events"])
@@ -116,7 +120,8 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(plugin_router, prefix="/api/plugins", tags=["plugins"])
     app.include_router(plugin_public_router, tags=["plugins-public"])
     app.include_router(tool_router, prefix="/api/tools", tags=["tools"])
-    app.include_router(audit_router, prefix="/api/audit", tags=["audit"])
+    # Temporarily disable audit router to prevent infinite loop
+    # app.include_router(audit_router, prefix="/api/audit", tags=["audit"])
     app.include_router(file_attachment_router, prefix="/api/files", tags=["files"])
     app.include_router(code_execution_router, prefix="/api/code", tags=["code"])
     app.include_router(chat_runtime_router, prefix="/api", tags=["chat-runtime"])

@@ -1,0 +1,10 @@
+{
+  "/api/models/library/route": "app/api/models/library/route.js",
+  "/api/copilot/start/route": "app/api/copilot/start/route.js",
+  "/api/health/degraded-mode/route": "app/api/health/degraded-mode/route.js",
+  "/api/auth/login/route": "app/api/auth/login/route.js",
+  "/api/auth/login-simple/route": "app/api/auth/login-simple/route.js",
+  "/api/dev-login/route": "app/api/dev-login/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/chat/page": "app/chat/page.js"
+}

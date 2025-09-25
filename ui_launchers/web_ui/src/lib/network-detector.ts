@@ -51,22 +51,35 @@ export class NetworkDetectionService {
    * Detect the current network environment
    */
   public async detectNetworkEnvironment(): Promise<NetworkDetectionResult> {
+    console.log('🌐 NetworkDetector: Starting network environment detection');
+    
     // Check cache first
-    if (this.detectionCache && 
+    if (this.detectionCache &&
         Date.now() - new Date(this.detectionCache.timestamp).getTime() < this.CACHE_TTL) {
+      console.log('🌐 NetworkDetector: Using cached detection result');
       return this.detectionCache;
     }
 
     const timestamp = new Date().toISOString();
     const envInfo = this.getCurrentEnvironmentInfo();
     
+    console.log('🌐 NetworkDetector: Current environment info:', envInfo);
+    
     // Perform various detection methods
     const dockerDetection = this.detectDockerEnvironment();
     const externalDetection = this.detectExternalAccess(envInfo);
     const localhostDetection = this.detectLocalhostEnvironment(envInfo);
     
+    console.log('🌐 NetworkDetector: Detection results:', {
+      dockerDetection,
+      externalDetection,
+      localhostDetection
+    });
+    
     // Test endpoint connectivity to confirm detection
     const endpointTests = await this.testPotentialEndpoints(envInfo);
+    
+    console.log('🌐 NetworkDetector: Endpoint test results:', endpointTests);
     
     // Determine the most likely environment
     const result = this.analyzeDetectionResults({
@@ -78,6 +91,8 @@ export class NetworkDetectionService {
       timestamp,
     });
 
+    console.log('🌐 NetworkDetector: Final detection result:', result);
+    
     // Cache the result
     this.detectionCache = result;
     
@@ -135,9 +150,21 @@ export class NetworkDetectionService {
 
     // Check environment variables (safe on server)
     if (typeof process !== 'undefined' && process.env) {
-      if (process.env.DOCKER_CONTAINER) { indicators.push('DOCKER_CONTAINER env var'); confidence += 30; }
-      if (process.env.HOSTNAME?.startsWith('docker-')) { indicators.push('Docker hostname pattern'); confidence += 20; }
-      if (process.env.KAREN_CONTAINER_MODE === 'true') { indicators.push('KAREN_CONTAINER_MODE flag'); confidence += 25; }
+      if (process.env.DOCKER_CONTAINER) {
+        indicators.push('DOCKER_CONTAINER env var');
+        confidence += 30;
+        console.log('🐳 NetworkDetector: Found DOCKER_CONTAINER env var:', process.env.DOCKER_CONTAINER);
+      }
+      if (process.env.HOSTNAME?.startsWith('docker-')) {
+        indicators.push('Docker hostname pattern');
+        confidence += 20;
+        console.log('🐳 NetworkDetector: Found Docker hostname pattern:', process.env.HOSTNAME);
+      }
+      if (process.env.KAREN_CONTAINER_MODE === 'true') {
+        indicators.push('KAREN_CONTAINER_MODE flag');
+        confidence += 25;
+        console.log('🐳 NetworkDetector: Found KAREN_CONTAINER_MODE flag');
+      }
     }
 
     // Browser-side heuristics only when running in browser
@@ -145,15 +172,31 @@ export class NetworkDetectionService {
       try {
         const win = window as any;
         const hostname = win?.location?.hostname ?? '';
-        if (hostname && (hostname.includes('docker') || hostname.includes('container'))) { indicators.push('Container hostname pattern'); confidence += 20; }
-        if (hostname && /^[a-f0-9]{12}$/.test(hostname)) { indicators.push('Container ID hostname'); confidence += 25; }
+        if (hostname && (hostname.includes('docker') || hostname.includes('container'))) {
+          indicators.push('Container hostname pattern');
+          confidence += 20;
+          console.log('🐳 NetworkDetector: Found container hostname pattern:', hostname);
+        }
+        if (hostname && /^[a-f0-9]{12}$/.test(hostname)) {
+          indicators.push('Container ID hostname');
+          confidence += 25;
+          console.log('🐳 NetworkDetector: Found container ID hostname:', hostname);
+        }
 
         const ua = navigator.userAgent.toLowerCase();
-        if (ua.includes('docker') || ua.includes('container')) { indicators.push('Container user agent'); confidence += 15; }
-      } catch { /* ignore */ }
+        if (ua.includes('docker') || ua.includes('container')) {
+          indicators.push('Container user agent');
+          confidence += 15;
+          console.log('🐳 NetworkDetector: Found container user agent pattern');
+        }
+      } catch (error) {
+        console.log('🐳 NetworkDetector: Browser-side Docker detection error:', error);
+      }
     }
 
-    return { isDocker: confidence > 30, confidence: Math.min(100, confidence), indicators };
+    const result = { isDocker: confidence > 30, confidence: Math.min(100, confidence), indicators };
+    console.log('🐳 NetworkDetector: Docker detection result:', result);
+    return result;
   }
 
   /**
@@ -324,6 +367,8 @@ export class NetworkDetectionService {
     let confidence = 0;
     let detectionMethod = 'default';
 
+    console.log('🔍 NetworkDetector: Analyzing detection results...');
+
     // Analyze Docker detection
     if (data.dockerDetection.isDocker && data.dockerDetection.confidence > 50) {
       environment = 'docker';
@@ -332,6 +377,7 @@ export class NetworkDetectionService {
       detectedPort = '8000';
       confidence = data.dockerDetection.confidence;
       detectionMethod = 'docker-detection';
+      console.log('🐳 NetworkDetector: Selected Docker environment with container networking');
     }
     // Analyze external access detection
     else if (data.externalDetection.isExternal && data.externalDetection.confidence > 50) {
@@ -341,6 +387,7 @@ export class NetworkDetectionService {
       detectedPort = '8000';
       confidence = data.externalDetection.confidence;
       detectionMethod = 'external-detection';
+      console.log('🌍 NetworkDetector: Selected external environment with external networking');
     }
     // Default to localhost
     else if (data.localhostDetection.isLocalhost) {
@@ -350,6 +397,9 @@ export class NetworkDetectionService {
       detectedPort = '8000';
       confidence = data.localhostDetection.confidence;
       detectionMethod = 'localhost-detection';
+      console.log('🏠 NetworkDetector: Selected localhost environment with localhost networking');
+    } else {
+      console.log('❓ NetworkDetector: Using default fallback configuration');
     }
 
     // Override with working endpoint if found
@@ -360,12 +410,13 @@ export class NetworkDetectionService {
         detectedPort = url.port || '8000';
         confidence = Math.min(100, confidence + 20); // Boost confidence
         detectionMethod += '+endpoint-test';
-      } catch {
-        // URL parsing failed, keep current values
+        console.log('✅ NetworkDetector: Overriding with working endpoint:', data.endpointTests.bestEndpoint);
+      } catch (error) {
+        console.log('❌ NetworkDetector: Failed to parse best endpoint URL:', error);
       }
     }
 
-    return {
+    const result = {
       environment,
       networkMode,
       detectedHost,
@@ -384,6 +435,9 @@ export class NetworkDetectionService {
         workingEndpoints: data.endpointTests.workingEndpoints,
       },
     };
+
+    console.log('🎯 NetworkDetector: Final analysis result:', result);
+    return result;
   }
 
   /**

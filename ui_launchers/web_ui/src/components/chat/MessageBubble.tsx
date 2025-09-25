@@ -15,7 +15,7 @@ export interface MessageBubbleProps {
   };
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+const MessageBubbleComponent = ({ message }: MessageBubbleProps) => {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const kire = (message.metadata && (message.metadata.kire || message.metadata.kire_metadata)) || undefined;
@@ -27,7 +27,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     <div className={`flex items-start gap-3 my-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
         <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full">
-          <Bot className="h-5 w-5 text-primary" />
+          <Bot className="h-5 w-5 text-primary" aria-hidden="true" />
         </Avatar>
       )}
       <Card className={`max-w-xl shadow-md rounded-xl ${isUser ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
@@ -53,11 +53,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       </Card>
       {isUser && (
         <Avatar className="h-10 w-10 self-start shrink-0 flex items-center justify-center bg-muted rounded-full">
-          <User className="h-5 w-5 text-secondary" />
+          <User className="h-5 w-5 text-secondary" aria-hidden="true" />
         </Avatar>
       )}
     </div>
   );
-}
+};
+
+// Memoize the component to prevent unnecessary re-renders
+export const MessageBubble = React.memo(MessageBubbleComponent);
 
 export default MessageBubble;

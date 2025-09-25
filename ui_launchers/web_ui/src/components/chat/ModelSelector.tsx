@@ -77,6 +77,9 @@ interface ModelSelectorProps {
 // formatFileSize is now imported from model-utils
 
 const getProviderIcon = (provider: string) => {
+  if (!provider) {
+    return <Cpu className="h-3 w-3" />; // Default icon for undefined provider
+  }
   switch (provider.toLowerCase()) {
     case "llama-cpp":
     case "local":
@@ -125,6 +128,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       setLoading(true);
       setError(null);
       
+      console.log('🔍 ModelSelector: Starting model loading from /api/models/library?quick=true');
+      
       // First, quick list for fast paint
       const quick = await backend.makeRequestPublic<{
         models: ModelInfo[];
@@ -133,40 +138,71 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         available_count: number;
       }>('/api/models/library?quick=true');
 
+      console.log('🔍 ModelSelector: Quick response received:', {
+        hasModels: !!quick?.models,
+        modelsCount: quick?.models?.length || 0,
+        modelsType: typeof quick?.models,
+        isArray: Array.isArray(quick?.models),
+        fullResponse: quick
+      });
+
       setModels(quick?.models || []);
 
       // Then, schedule a full refresh in background (non-blocking)
       setTimeout(async () => {
         try {
+          console.log('🔍 ModelSelector: Starting full model refresh from /api/models/library');
           const full = await backend.makeRequestPublic<{
             models: ModelInfo[];
             total_count: number;
             local_count: number;
             available_count: number;
           }>('/api/models/library');
+          
+          console.log('🔍 ModelSelector: Full response received:', {
+            hasModels: !!full?.models,
+            modelsCount: full?.models?.length || 0,
+            modelsType: typeof full?.models,
+            isArray: Array.isArray(full?.models),
+            fullResponse: full
+          });
+          
           if (full?.models && full.models.length >= (quick?.models?.length || 0)) {
             setModels(full.models);
+            console.log('🔍 ModelSelector: Updated models with full response, count:', full.models.length);
           }
         } catch (e) {
+          console.warn('🔍 ModelSelector: Background full refresh failed:', e);
           // ignore background errors
         }
       }, 2000);
     } catch (err) {
-      console.error('Failed to load models:', err);
+      console.error('🔍 ModelSelector: Failed to load models:', err);
       // Retry with quick mode and longer TTL if initial failed completely
       try {
+        console.log('🔍 ModelSelector: Retrying with fallback mode');
         const fallback = await backend.makeRequestPublic<{
           models: ModelInfo[];
           total_count: number;
           local_count: number;
           available_count: number;
         }>('/api/models/library?quick=true&ttl=60');
+        
+        console.log('🔍 ModelSelector: Fallback response received:', {
+          hasModels: !!fallback?.models,
+          modelsCount: fallback?.models?.length || 0,
+          modelsType: typeof fallback?.models,
+          isArray: Array.isArray(fallback?.models)
+        });
+        
         setModels(fallback?.models || []);
       } catch (e2) {
+        console.error('🔍 ModelSelector: Fallback also failed:', e2);
         setError('Failed to load models');
       }
     } finally {
       setLoading(false);
+      console.log('🔍 ModelSelector: Model loading completed, final models count:', models.length);
     }
   };
 
@@ -192,10 +228,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     Object.keys(groups).forEach((key) => {
       groups[key].sort((a, b) => {
         // Sort by provider first, then by name
-        if (a.provider !== b.provider) {
-          return a.provider.localeCompare(b.provider);
+        const providerA = a.provider || '';
+        const providerB = b.provider || '';
+        const nameA = a.name || '';
+        const nameB = b.name || '';
+        
+        if (providerA !== providerB) {
+          return providerA.localeCompare(providerB);
         }
-        return a.name.localeCompare(b.name);
+        return nameA.localeCompare(nameB);
       });
     });
 
@@ -203,17 +244,21 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   }, [models]);
 
   const selectedModel = models.find((m) => {
-    const modelValue = m.provider === 'local' ? `local:${m.name}` : `${m.provider}:${m.name}`;
+    const provider = m.provider || '';
+    const name = m.name || '';
+    const modelValue = provider === 'local' ? `local:${name}` : `${provider}:${name}`;
     return modelValue === value;
   });
 
   const renderModelItem = (model: ModelInfo) => {
-    const modelValue = model.provider === 'local' ? `local:${model.name}` : `${model.provider}:${model.name}`;
+    const provider = model.provider || '';
+    const name = model.name || '';
+    const modelValue = provider === 'local' ? `local:${name}` : `${provider}:${name}`;
     // Build a stable, unique key across potential duplicates coming from the library
     const uniqueKey = [
-      model.provider,
+      provider,
       model.id || '',
-      model.name || '',
+      name,
       model.local_path || '',
       model.download_url || ''
     ].join('|');
@@ -223,13 +268,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center space-x-3 flex-1 min-w-0">
             <div className="flex items-center space-x-1">
-              {getProviderIcon(model.provider)}
+              {getProviderIcon(provider)}
               {getStatusIcon(model.status, model.download_progress)}
             </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
-                <span className="font-medium truncate">{model.name}</span>
+                <span className="font-medium truncate">{name}</span>
                 <Badge variant={getStatusBadgeVariant(model.status)} className="text-xs">
                   {model.status}
                 </Badge>
@@ -237,7 +282,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               
               {showDetails && (
                 <div className="flex items-center space-x-2 mt-1 text-xs text-muted-foreground">
-                  <span className="capitalize">{model.provider}</span>
+                  <span className="capitalize">{provider}</span>
                   {model.size && (
                     <>
                       <span>•</span>
@@ -307,10 +352,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 {selectedModel && (
                   <div className="flex items-center space-x-2">
                     <div className="flex items-center space-x-1">
-                      {getProviderIcon(selectedModel.provider)}
+                      {getProviderIcon(selectedModel.provider || '')}
                       {getStatusIcon(selectedModel.status)}
                     </div>
-                    <span className="truncate">{selectedModel.name}</span>
+                    <span className="truncate">{selectedModel.name || 'Unknown Model'}</span>
                     <Badge variant={getStatusBadgeVariant(selectedModel.status)} className="text-xs">
                       {selectedModel.status}
                     </Badge>
@@ -325,7 +370,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               <div className="space-y-1">
                 <div className="font-medium">{selectedModel.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  {selectedModel.description || `${selectedModel.provider} model`}
+                  {selectedModel.description || `${selectedModel.provider || 'Unknown'} model`}
                 </div>
                 {selectedModel.metadata?.memory_requirement && (
                   <div className="text-xs">

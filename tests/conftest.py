@@ -1,158 +1,47 @@
-# mypy: ignore-errors
-"""Shared pytest configuration."""
-import importlib
-import os
+"""
+Global pytest configuration and fixtures for AI-Karen tests.
+"""
+
+import pytest
+import asyncio
+import tempfile
+import shutil
+from pathlib import Path
+from unittest.mock import Mock, AsyncMock
+
+# Copy the existing conftest content
 import sys
-import types
-import requests  # noqa: F401 - ensure real package is available
-import numpy  # noqa: F401 - ensure real package is available
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-# Provide lightweight stand-ins for optional dependencies
-sys.modules.setdefault("duckdb", importlib.import_module("tests.stubs.duckdb"))
-sys.modules.setdefault("pyautogui", importlib.import_module("tests.stubs.pyautogui"))
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create an instance of the default event loop for the test session."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
-os.environ.setdefault("KARI_MODEL_SIGNING_KEY", "0123456789abcdef0123456789abcdef")
-os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test")
-os.environ.setdefault("KARI_JOB_SIGNING_KEY", "test")
-os.environ.setdefault("DUCKDB_PATH", ":memory:")
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for tests."""
+    temp_dir = tempfile.mkdtemp()
+    yield Path(temp_dir)
+    shutil.rmtree(temp_dir)
 
-# Provide fastapi and pydantic stubs only if real packages unavailable
-try:  # pragma: no cover - prefer real packages
-    import fastapi  # noqa: F401
-    import fastapi.testclient  # noqa: F401
-except Exception:  # pragma: no cover
-    sys.modules.setdefault(
-        "fastapi", importlib.import_module("ai_karen_engine.fastapi_stub")
-    )
-    sys.modules.setdefault(
-        "fastapi_stub", importlib.import_module("ai_karen_engine.fastapi_stub")
-    )
-    sys.modules.setdefault(
-        "fastapi.testclient",
-        importlib.import_module("ai_karen_engine.fastapi_stub.testclient"),
-    )
+@pytest.fixture
+def mock_database_session():
+    """Mock database session for testing."""
+    session = AsyncMock()
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.close = AsyncMock()
+    return session
 
-try:  # pragma: no cover - prefer real package
-    import pydantic  # noqa: F401
-except Exception:  # pragma: no cover
-    sys.modules.setdefault(
-        "pydantic", importlib.import_module("ai_karen_engine.pydantic_stub")
-    )
-
-
-# Alias installed-style packages for tests
-sys.modules.setdefault("ai_karen_engine", importlib.import_module("ai_karen_engine"))
-sys.modules.setdefault("ui_logic", importlib.import_module("ui_logic"))
-sys.modules.setdefault("services", importlib.import_module("ai_karen_engine.services"))
-sys.modules.setdefault(
-    "integrations", importlib.import_module("ai_karen_engine.integrations")
-)
-sys.modules.setdefault(
-    "integrations.llm_registry",
-    importlib.import_module("ai_karen_engine.integrations.llm_registry"),
-)
-sys.modules.setdefault(
-    "integrations.model_discovery",
-    importlib.import_module("ai_karen_engine.integrations.model_discovery"),
-)
-sys.modules.setdefault(
-    "integrations.llm_utils",
-    importlib.import_module("ai_karen_engine.integrations.llm_utils"),
-)
-# Ensure required runtime dependencies are available
-try:  # pragma: no cover - fail early if missing
-    import fastapi  # noqa: F401
-    import pydantic  # noqa: F401
-except Exception as e:  # pragma: no cover
-    raise RuntimeError(
-        "FastAPI and Pydantic must be installed for tests. Install with `pip install fastapi pydantic`."
-    ) from e
-
-# Lightweight LLMOrchestrator stub to avoid heavyweight dependencies
-llm_stub = types.ModuleType("ai_karen_engine.llm_orchestrator")
-
-
-class LLMOrchestrator:
-    def __init__(self, pool=None):
-        self.default_llm = object()
-
-    def generate_text(self, prompt: str, *_, **__):
-        return prompt
-
-
-llm_stub.LLMOrchestrator = LLMOrchestrator
-sys.modules.setdefault("ai_karen_engine.llm_orchestrator", llm_stub)
-
-# Provide lightweight stubs for modules missing in the test environment
-cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
-
-cortex_stub = types.ModuleType("ai_karen_engine.core.cortex.dispatch")
-
-
-class CortexDispatcher:
-    async def dispatch(self, user_ctx, query: str, role: str = "user", **_):
-        text = query.lower()
-        if "hello" in text:
-            return {
-                "intent": "greet",
-                "confidence": 0.9,
-                "response": "Hey there! I'm Kari—your AI co-pilot. What can I help with today?",
-            }
-        if text.startswith("why") or "why" in text:
-            return {
-                "intent": "deep_reasoning",
-                "confidence": 0.8,
-                "response": "Because of entropy and other mysterious forces.",
-            }
-        if "time" in text:
-            return {"intent": "time_query", "confidence": 0.8, "response": "UTC"}
-        return {"intent": "hf_generate", "confidence": 0.5, "response": query}
-
-
-cortex_stub.CortexDispatcher = CortexDispatcher
-cortex_stub.dispatch = lambda *a, **k: CortexDispatcher().dispatch(*a, **k)
-cortex_stub.CortexDispatchError = Exception
-sys.modules.setdefault("ai_karen_engine.core.cortex.dispatch", cortex_stub)
-
-gpu_stub = types.ModuleType("ai_karen_engine.core.gpu_training")
-gpu_stub.torch = None
-
-
-def gpu_optimized_train(*_, **__):
-    raise RuntimeError("GPU training requires torch")
-
-
-gpu_stub.gpu_optimized_train = gpu_optimized_train
-sys.modules.setdefault("ai_karen_engine.core.gpu_training", gpu_stub)
-
-intent_stub = types.ModuleType("ai_karen_engine.core.intent_engine")
-
-
-class IntentEngine:
-    def detect(self, text: str) -> str:
-        return "greet" if "hello" in text else "hf_generate"
-
-
-intent_stub.IntentEngine = IntentEngine
-sys.modules.setdefault("ai_karen_engine.core.intent_engine", intent_stub)
-
-# Lightweight spaCy stub for document tests
-spacy_stub = types.ModuleType("spacy")
-
-
-class DummyDoc:
-    def __init__(self, text: str):
-        self.text = text
-        self.sents = [types.SimpleNamespace(text=t) for t in text.split("\n")]
-
-
-def blank(lang: str = "en"):
-    def nlp(text: str):
-        return DummyDoc(text)
-
-    nlp.add_pipe = lambda name: None
-    return nlp
-
-
-spacy_stub.blank = blank
-sys.modules.setdefault("spacy", spacy_stub)
+@pytest.fixture
+def mock_redis_client():
+    """Mock Redis client for testing."""
+    redis_client = AsyncMock()
+    redis_client.get = AsyncMock(return_value=None)
+    redis_client.set = AsyncMock(return_value=True)
+    redis_client.delete = AsyncMock(return_value=True)
+    return redis_client

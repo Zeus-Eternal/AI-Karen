@@ -188,7 +188,7 @@ export default function VoiceSettings() {
 
   if (typeof window !== 'undefined' && !window.speechSynthesis) {
     return (
-      <Card>
+      <Card variant="elevated">
         <CardHeader>
           <CardTitle className="text-lg">Text-to-Speech Voice</CardTitle>
         </CardHeader>
@@ -206,7 +206,7 @@ export default function VoiceSettings() {
   }
 
   return (
-    <Card>
+    <Card variant="elevated" className="interactive">
       <CardHeader>
         <CardTitle className="text-lg">Text-to-Speech Voice</CardTitle>
         <CardDescription>

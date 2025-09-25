@@ -68,8 +68,12 @@ class AuditLogger:
         self.audit_logger = logging.getLogger("kari.audit")
         self.audit_logger.setLevel(logging.INFO)
         
-        # Add file handler if enabled
-        if self.enable_file_logging:
+        # Prevent duplicate handlers and propagation
+        self.audit_logger.propagate = False
+        
+        # Check if handlers already exist to prevent duplicates
+        existing_handlers = [h for h in self.audit_logger.handlers if isinstance(h, logging.FileHandler)]
+        if not existing_handlers and self.enable_file_logging:
             self._setup_file_handler()
         
         # Event type registry for validation
@@ -639,11 +643,16 @@ class AuditLogger:
 
 # Global audit logger instance
 _audit_logger_instance: Optional[AuditLogger] = None
+_audit_logger_lock = False
 
 
 def get_audit_logger() -> AuditLogger:
     """Get global audit logger instance."""
-    global _audit_logger_instance
-    if _audit_logger_instance is None:
-        _audit_logger_instance = AuditLogger()
+    global _audit_logger_instance, _audit_logger_lock
+    if _audit_logger_instance is None and not _audit_logger_lock:
+        _audit_logger_lock = True
+        try:
+            _audit_logger_instance = AuditLogger()
+        finally:
+            _audit_logger_lock = False
     return _audit_logger_instance

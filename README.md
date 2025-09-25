@@ -564,6 +564,28 @@ docker compose logs -f api
 
 ## Troubleshooting
 
+### Quick Fixes
+
+For immediate solutions to common issues:
+- **[Environment Setup Fix](docs/quick-fixes/ENVIRONMENT_SETUP_FIX.md)** - Resolve Docker Compose warnings
+- **[Connection Issues Checklist](docs/quick-fixes/CONNECTION_ISSUES_CHECKLIST.md)** - Fix port 8001 connection errors
+- **[CORS Issues Fix](docs/troubleshooting/CORS_ISSUES_FIX.md)** - Resolve cross-origin request blocked errors
+- **[Port 8001 Connection Issue](docs/troubleshooting/PORT_8001_CONNECTION_ISSUE.md)** - Specific fix for frontend connection problems
+
+### Automated Fix Scripts
+
+Run these scripts to automatically diagnose and fix common issues:
+```bash
+# Fix environment variables and Docker Compose warnings
+./fix-connection-issue.sh
+
+# Fix CORS issues specifically
+./fix-cors-issue.sh
+
+# Comprehensive frontend-backend connection fix
+./fix-frontend-backend-connection.sh
+```
+
 ### Common Issues
 
 #### Database Connection Issues

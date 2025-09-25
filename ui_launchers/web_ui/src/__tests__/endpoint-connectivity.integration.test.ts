@@ -30,7 +30,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
         KAREN_BACKEND_URL: 'http://localhost:8000',
         KAREN_ENVIRONMENT: 'local',
         KAREN_NETWORK_MODE: 'localhost',
-        KAREN_FALLBACK_BACKEND_URLS: 'http://127.0.0.1:8000,http://localhost:8001',
+        KAREN_FALLBACK_BACKEND_URLS: 'http://127.0.0.1:8000',
         KAREN_HEALTH_CHECK_ENABLED: 'true',
       },
     } as any;
@@ -211,7 +211,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
       expect(results[2].isValid).toBe(true);  // Second fallback succeeded
 
       expect(results[1].endpoint).toBe('http://127.0.0.1:8000');
-      expect(results[2].endpoint).toBe('http://localhost:8001');
+      expect(results[2].endpoint).toBe('http://localhost:8000');
     });
 
     it('should handle all endpoints failing', async () => {
@@ -458,7 +458,7 @@ describe('Endpoint Connectivity Integration Tests', () => {
 
       // Verify fallback URLs are correct
       expect(results[1].endpoint).toBe('http://127.0.0.1:8000');
-      expect(results[2].endpoint).toBe('http://localhost:8001');
+      expect(results[2].endpoint).toBe('http://localhost:8000');
     });
 
     it('should handle gradual service recovery', async () => {

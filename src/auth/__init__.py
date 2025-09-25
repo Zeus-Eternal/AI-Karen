@@ -3,7 +3,7 @@ Simple Authentication Package for AI-Karen
 Minimal, production-ready JWT authentication system.
 """
 
-from .simple_auth_service import (
+from .auth_service import (
     get_auth_service,
     SimpleAuthService,
     UserModel,
@@ -11,7 +11,7 @@ from .simple_auth_service import (
     LoginResponse
 )
 
-from .simple_auth_middleware import (
+from .auth_middleware import (
     get_auth_middleware,
     get_current_user,
     require_auth,
@@ -19,7 +19,7 @@ from .simple_auth_middleware import (
     SimpleAuthMiddleware
 )
 
-from .simple_auth_routes import router as auth_router
+from .auth_routes import router as auth_router
 
 __all__ = [
     # Services
