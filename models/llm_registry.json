@@ -82,5 +82,17 @@
     "health_status": "unknown",
     "last_health_check": null,
     "error_message": null
+  },
+  {
+    "name": "fallback",
+    "provider_class": "FallbackProvider",
+    "description": "Deterministic offline fallback provider",
+    "supports_streaming": true,
+    "supports_embeddings": true,
+    "requires_api_key": false,
+    "default_model": "kari-fallback-v1",
+    "health_status": "healthy",
+    "last_health_check": null,
+    "error_message": null
   }
 ]

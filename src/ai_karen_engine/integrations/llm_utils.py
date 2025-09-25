@@ -11,11 +11,14 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, Union
 
-from sqlalchemy.exc import SQLAlchemyError
+try:  # pragma: no cover - optional dependency in some environments
+    from sqlalchemy.exc import SQLAlchemyError
+except Exception:  # pragma: no cover - fallback when SQLAlchemy is absent
 
-from ai_karen_engine.database.client import get_db_session_context
-from ai_karen_engine.database.models import LLMProvider, LLMRequest
-from ai_karen_engine.services.metrics_service import get_metrics_service
+    class SQLAlchemyError(Exception):
+        """Fallback SQLAlchemy error when dependency is unavailable."""
+
+        pass
 
 # Lazy imports to avoid circular import issues
 # Providers will be imported when needed in get_provider_class()
@@ -109,6 +112,19 @@ def record_llm_metric(
 
 def trace_llm_event(event: str, correlation_id: str, meta: Dict[str, Any]):
     logger.info(f"[TRACE] event={event} correlation_id={correlation_id} meta={meta}")
+
+
+# ========== Helpers ==========
+def _safe_get_metrics_service():
+    """Lazily import the metrics service, tolerating missing dependencies."""
+
+    try:
+        from ai_karen_engine.services.metrics_service import get_metrics_service
+
+        return get_metrics_service()
+    except Exception:  # pragma: no cover - metrics optional in minimal envs
+        logger.debug("Metrics service unavailable; using no-op", exc_info=True)
+        return None
 
 
 # ========== Provider Base ==========
@@ -279,6 +295,17 @@ class LLMUtils:
         user_ctx: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Persist request metrics for cost reporting."""
+
+        try:
+            from ai_karen_engine.database.client import get_db_session_context
+            from ai_karen_engine.database.models import LLMProvider, LLMRequest
+        except Exception:  # pragma: no cover - database layer optional in tests
+            logger.debug(
+                "Database stack unavailable; skipping LLM request persistence",
+                exc_info=True,
+            )
+            return
+
         try:
             with get_db_session_context() as session:
                 provider_rec = (
@@ -301,6 +328,10 @@ class LLMUtils:
                 session.commit()
         except SQLAlchemyError:
             logger.exception("Failed to record LLM request")
+        except Exception:  # pragma: no cover - safety net for unexpected errors
+            logger.debug(
+                "Unexpected error while recording LLM request", exc_info=True
+            )
 
     def generate_text(
         self,
@@ -312,14 +343,54 @@ class LLMUtils:
     ) -> str:
         # Respect explicit model by requesting a correctly initialized provider from registry
         provider_name = provider or self.default
+        requested_provider = provider_name
         model_name = kwargs.get("model")
+        provider_obj: Optional[LLMProviderBase]
         if self.use_registry:
             provider_obj = self.registry.get_provider(provider_name, model=model_name)  # type: ignore[arg-type]
-            if not provider_obj:
-                raise ProviderNotAvailable(f"Provider '{provider_name}' not available in registry.")
+
+            if provider_obj is None:
+                # Attempt graceful fallback to any available provider, prioritising deterministic fallback
+                fallback_candidates: List[str] = []
+                try:
+                    fallback_candidates = [
+                        name
+                        for name in self.registry.get_available_providers()
+                        if name != provider_name
+                    ]
+                except Exception:
+                    fallback_candidates = []
+
+                if "fallback" not in fallback_candidates and "fallback" in self.registry.list_providers():
+                    fallback_candidates.append("fallback")
+
+                for candidate in fallback_candidates:
+                    candidate_obj = self.registry.get_provider(candidate)
+                    if candidate_obj:
+                        provider_obj = candidate_obj
+                        provider_name = candidate
+                        logger.info(
+                            "Using fallback provider '%s' after '%s' was unavailable",
+                            provider_name,
+                            requested_provider,
+                        )
+                        break
+
+            if provider_obj is None:
+                raise ProviderNotAvailable(
+                    f"Provider '{requested_provider}' not available in registry."
+                )
+
+            if provider_obj.__class__.__name__ == "FallbackProvider":
+                provider_name = "fallback"
             # Do not cache by plain provider name to avoid model mix-ups
         else:
             provider_obj = self.get_provider(provider)
+            if provider_obj is None:
+                raise ProviderNotAvailable(
+                    f"Provider '{provider or self.default}' not registered."
+                )
+
         trace_id = trace_id or str(uuid.uuid4())
         model_name = model_name or getattr(provider_obj, "model", None)
         t0 = time.time()
@@ -332,54 +403,62 @@ class LLMUtils:
             "kwargs": kwargs,
         }
         trace_llm_event("generate_text_start", trace_id, meta)
-        metrics_service = get_metrics_service()
+        metrics_service = _safe_get_metrics_service()
         model_name = kwargs.get("model") or getattr(provider_obj, "model", None)
         try:
             out = provider_obj.generate_text(prompt, **kwargs)
             duration = time.time() - t0
             usage = getattr(provider_obj, "last_usage", {})
             self._record_request(
-                provider or self.default,
+                provider_name,
                 model_name,
                 usage,
                 duration,
                 user_ctx,
             )
-            metrics_service.record_llm_latency(
-                duration,
-                provider or self.default,
-                model_name or "",
-                "success",
-                trace_id,
-            )
+            if metrics_service:
+                try:
+                    metrics_service.record_llm_latency(
+                        duration,
+                        provider_name,
+                        model_name or "",
+                        "success",
+                        trace_id,
+                    )
+                except Exception:  # pragma: no cover - metrics optional
+                    logger.debug("Failed to record latency metric", exc_info=True)
             meta["duration"] = duration
             trace_llm_event("generate_text_success", trace_id, meta)
             return out
         except Exception as ex:
+            status = "error"
             duration = time.time() - t0
-            metrics_service.record_llm_latency(
-                duration,
-                provider or self.default,
-                model_name or "",
-                "error",
-                trace_id,
-            )
+            if metrics_service:
+                try:
+                    metrics_service.record_llm_latency(
+                        duration,
+                        provider or self.default,
+                        model_name or "",
+                        "error",
+                        trace_id,
+                    )
+                except Exception:
+                    logger.debug("Failed to record error latency metric", exc_info=True)
             meta.update({"duration": duration, "error": str(ex)})
             trace_llm_event("generate_text_error", trace_id, meta)
-            raise GenerationFailed(f"Provider '{provider}' failed: {ex}")
+            raise GenerationFailed(f"Provider '{provider_name}' failed: {ex}")
         finally:
             duration = time.time() - t0
-            try:
-                from ai_karen_engine.services.metrics_service import get_metrics_service
-
-                get_metrics_service().record_llm_latency(
-                    duration,
-                    provider=provider_name,
-                    model=model_name or "",
-                    status=status,
-                )
-            except Exception:
-                pass
+            if metrics_service:
+                try:
+                    metrics_service.record_llm_latency(
+                        duration,
+                        provider=provider_name,
+                        model=model_name or "",
+                        status=status,
+                    )
+                except Exception:
+                    logger.debug("Final latency metric recording failed", exc_info=True)
 
     def embed(
         self,
@@ -407,6 +486,7 @@ class LLMUtils:
             "kwargs": kwargs,
         }
         trace_llm_event("embed_start", trace_id, meta)
+        metrics_service = _safe_get_metrics_service()
         try:
             out = provider_obj.embed(text, **kwargs)
             duration = time.time() - t0
@@ -418,27 +498,50 @@ class LLMUtils:
                 duration,
                 user_ctx,
             )
+            if metrics_service:
+                try:
+                    metrics_service.record_llm_latency(
+                        duration,
+                        provider_name,
+                        model_name or "",
+                        "success",
+                        trace_id,
+                    )
+                except Exception:
+                    logger.debug("Failed to record embed latency metric", exc_info=True)
             meta["duration"] = duration
             trace_llm_event("embed_success", trace_id, meta)
             return out
         except Exception as ex:
             status = "error"
+            if metrics_service:
+                try:
+                    metrics_service.record_llm_latency(
+                        time.time() - t0,
+                        provider or self.default,
+                        model_name or "",
+                        "error",
+                        trace_id,
+                    )
+                except Exception:
+                    logger.debug("Failed to record embed error metric", exc_info=True)
             meta.update({"duration": time.time() - t0, "error": str(ex)})
             trace_llm_event("embed_error", trace_id, meta)
             raise EmbeddingFailed(f"Provider '{provider}' failed: {ex}")
         finally:
             duration = time.time() - t0
-            try:
-                from ai_karen_engine.services.metrics_service import get_metrics_service
-
-                get_metrics_service().record_llm_latency(
-                    duration,
-                    provider=provider_name,
-                    model=model_name or "",
-                    status=status,
-                )
-            except Exception:
-                pass
+            if metrics_service:
+                try:
+                    metrics_service.record_llm_latency(
+                        duration,
+                        provider=provider_name,
+                        model=model_name or "",
+                        status=status,
+                    )
+                except Exception:
+                    logger.debug(
+                        "Final embed latency metric recording failed", exc_info=True
+                    )
 
 
 # ========== Prompt-First Plugin API ==========
