@@ -36,11 +36,13 @@ except ImportError:
 
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
 from ai_karen_engine.integrations.providers import (
+    CopilotKitProvider,
     DeepseekProvider,
     GeminiProvider,
     HuggingFaceProvider,
     LlamaCppProvider,
     OpenAIProvider,
+    FallbackProvider,
 )
 from ai_karen_engine.integrations.kire_router import KIRERouter as KIREAdapter
 from ai_karen_engine.routing.types import RouteRequest
@@ -143,6 +145,7 @@ class LLMRegistry:
             "deepseek",
             "huggingface",
             "copilotkit",
+            "fallback",
         ]
 
         # Load schema for validation
@@ -543,6 +546,25 @@ class LLMRegistry:
                 "requires_api_key": True,
                 "default_model": "microsoft/DialoGPT-large",
             },
+            {
+                "name": "copilotkit",
+                "provider_class": "CopilotKitProvider",
+                "description": "CopilotKit AI-powered code assistance and contextual suggestions",
+                "supports_streaming": False,
+                "supports_embeddings": True,
+                "requires_api_key": True,
+                "default_model": "gpt-4",
+            },
+            {
+                "name": "fallback",
+                "provider_class": "FallbackProvider",
+                "description": "Deterministic offline fallback provider",
+                "supports_streaming": False,
+                "supports_embeddings": True,
+                "requires_api_key": False,
+                "default_model": "kari-fallback-v1",
+                "health_status": "healthy",
+            },
         ]
 
         for provider_info in builtin_providers:
@@ -712,6 +734,22 @@ class LLMRegistry:
 
         except Exception as ex:
             logger.error(f"Failed to create provider '{name}': {ex}")
+            registration = self._registrations.get(name)
+            if registration:
+                registration.health_status = "unhealthy"
+                registration.last_health_check = time.time()
+                registration.error_message = str(ex)
+                try:
+                    self._save_registry()
+                except Exception:
+                    logger.debug("Failed to persist registry after provider error", exc_info=True)
+
+            if name != "fallback" and "fallback" in self._registrations:
+                logger.warning(
+                    "Falling back to deterministic provider due to '%s' instantiation failure",
+                    name,
+                )
+                return self.get_provider("fallback")
 
         return None
 
@@ -770,6 +808,8 @@ class LLMRegistry:
             "GeminiProvider": GeminiProvider,
             "DeepseekProvider": DeepseekProvider,
             "HuggingFaceProvider": HuggingFaceProvider,
+            "CopilotKitProvider": CopilotKitProvider,
+            "FallbackProvider": FallbackProvider,
         }
 
         return class_map.get(class_name)

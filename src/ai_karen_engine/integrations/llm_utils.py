@@ -312,14 +312,54 @@ class LLMUtils:
     ) -> str:
         # Respect explicit model by requesting a correctly initialized provider from registry
         provider_name = provider or self.default
+        requested_provider = provider_name
         model_name = kwargs.get("model")
+        provider_obj: Optional[LLMProviderBase]
         if self.use_registry:
             provider_obj = self.registry.get_provider(provider_name, model=model_name)  # type: ignore[arg-type]
-            if not provider_obj:
-                raise ProviderNotAvailable(f"Provider '{provider_name}' not available in registry.")
+
+            if provider_obj is None:
+                # Attempt graceful fallback to any available provider, prioritising deterministic fallback
+                fallback_candidates: List[str] = []
+                try:
+                    fallback_candidates = [
+                        name
+                        for name in self.registry.get_available_providers()
+                        if name != provider_name
+                    ]
+                except Exception:
+                    fallback_candidates = []
+
+                if "fallback" not in fallback_candidates and "fallback" in self.registry.list_providers():
+                    fallback_candidates.append("fallback")
+
+                for candidate in fallback_candidates:
+                    candidate_obj = self.registry.get_provider(candidate)
+                    if candidate_obj:
+                        provider_obj = candidate_obj
+                        provider_name = candidate
+                        logger.info(
+                            "Using fallback provider '%s' after '%s' was unavailable",
+                            provider_name,
+                            requested_provider,
+                        )
+                        break
+
+            if provider_obj is None:
+                raise ProviderNotAvailable(
+                    f"Provider '{requested_provider}' not available in registry."
+                )
+
+            if provider_obj.__class__.__name__ == "FallbackProvider":
+                provider_name = "fallback"
             # Do not cache by plain provider name to avoid model mix-ups
         else:
             provider_obj = self.get_provider(provider)
+            if provider_obj is None:
+                raise ProviderNotAvailable(
+                    f"Provider '{provider or self.default}' not registered."
+                )
+
         trace_id = trace_id or str(uuid.uuid4())
         model_name = model_name or getattr(provider_obj, "model", None)
         t0 = time.time()
@@ -339,7 +379,7 @@ class LLMUtils:
             duration = time.time() - t0
             usage = getattr(provider_obj, "last_usage", {})
             self._record_request(
-                provider or self.default,
+                provider_name,
                 model_name,
                 usage,
                 duration,
@@ -347,7 +387,7 @@ class LLMUtils:
             )
             metrics_service.record_llm_latency(
                 duration,
-                provider or self.default,
+                provider_name,
                 model_name or "",
                 "success",
                 trace_id,
@@ -366,7 +406,7 @@ class LLMUtils:
             )
             meta.update({"duration": duration, "error": str(ex)})
             trace_llm_event("generate_text_error", trace_id, meta)
-            raise GenerationFailed(f"Provider '{provider}' failed: {ex}")
+            raise GenerationFailed(f"Provider '{provider_name}' failed: {ex}")
         finally:
             duration = time.time() - t0
             try:
