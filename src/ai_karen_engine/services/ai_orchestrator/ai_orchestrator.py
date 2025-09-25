@@ -34,6 +34,12 @@ class AIOrchestrator(BaseService):
         self._memory_service = None
         self._initialized = False
 
+        # Ensure a router instance exists for compatibility with legacy tests
+        # and call sites that patch ``llm_router`` directly.  The router itself
+        # still performs lazy provider resolution, and heavy degraded-mode
+        # helpers remain disabled unless explicitly requested.
+        self._get_llm_router()
+
     def _get_llm_router(self):
         """Lazily initialize LLM router to avoid circular imports."""
         if self.llm_router is None:
