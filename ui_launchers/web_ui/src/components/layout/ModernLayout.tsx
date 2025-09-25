@@ -19,6 +19,7 @@ type ResponsiveColumnCount = "1" | "2" | "3" | "4" | "5" | "6";
 
 interface BaseLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
+  className?: string;
 }
 
 interface LayoutGridProps extends BaseLayoutProps {
@@ -40,12 +41,14 @@ interface LayoutFlexProps extends BaseLayoutProps {
 interface LayoutSectionProps
   extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
+  className?: string;
   variant?: "default" | "card" | "glass";
   padding?: LayoutGap;
 }
 
 interface LayoutHeaderProps extends React.HTMLAttributes<HTMLElement> {
   children?: React.ReactNode;
+  className?: string;
   title?: string;
   description?: string;
   actions?: React.ReactNode;
@@ -54,6 +57,7 @@ interface LayoutHeaderProps extends React.HTMLAttributes<HTMLElement> {
 interface LayoutContainerProps extends BaseLayoutProps {
   size?: "sm" | "md" | "lg" | "xl" | "full";
   centered?: boolean;
+  className?: string;
 }
 
 const GAP_CLASS_MAP: Record<LayoutGap, string> = {
@@ -171,32 +175,34 @@ const FLEX_WRAP_CLASS_MAP: Record<"nowrap" | "wrap" | "wrap-reverse", string> = 
 };
 
 // Main Layout Container
-export const Layout = forwardRef<HTMLDivElement, BaseLayoutProps>(
-  ({ children, className, ...props }, ref) => (
+export const Layout = forwardRef<HTMLDivElement, BaseLayoutProps>(function Layout(
+  { children, className, ...props }: BaseLayoutProps,
+  ref
+) {
+  return (
     <div ref={ref} className={cn("container-fluid", className)} {...props}>
       {children}
     </div>
-  )
-);
+  );
+});
 
 Layout.displayName = "Layout";
 
 // Grid Layout Component
-export const LayoutGrid = forwardRef<HTMLDivElement, LayoutGridProps>(
-  (
-    {
-      children,
-      className,
-      columns = "auto-fit",
-      gap = "md",
-      responsive = true,
-      responsiveColumns,
-      minItemWidth,
-      style,
-      ...props
-    },
-    ref
-  ) => {
+export const LayoutGrid = forwardRef<HTMLDivElement, LayoutGridProps>(function LayoutGrid(
+  {
+    children,
+    className,
+    columns = "auto-fit",
+    gap = "md",
+    responsive = true,
+    responsiveColumns,
+    minItemWidth,
+    style,
+    ...props
+  }: LayoutGridProps,
+  ref
+) {
     const autoLayoutMode =
       columns === "auto-fit"
         ? "auto-fit"
@@ -236,86 +242,107 @@ export const LayoutGrid = forwardRef<HTMLDivElement, LayoutGridProps>(
       className
     );
 
-    return (
-      <div ref={ref} className={gridClasses} style={autoLayoutStyle} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+  return (
+    <div ref={ref} className={gridClasses} style={autoLayoutStyle} {...props}>
+      {children}
+    </div>
+  );
+});
 
 LayoutGrid.displayName = "LayoutGrid";
 
 // Flex Layout Component
-export const LayoutFlex = forwardRef<HTMLDivElement, LayoutFlexProps>(
-  (
-    {
-      children,
-      className,
-      direction = "row",
-      align = "start",
-      justify = "start",
-      wrap = "nowrap",
-      gap = "md",
-      ...props
-    },
-    ref
-  ) => {
+export const LayoutFlex = forwardRef<HTMLDivElement, LayoutFlexProps>(function LayoutFlex(
+  props: LayoutFlexProps,
+  ref
+) {
+  const {
+    children,
+    className,
+    direction = "row",
+    align = "start",
+    justify = "start",
+    wrap = "nowrap",
+    gap = "md",
+    ...otherProps
+  } = props;
+
     const normalizedWrap =
       typeof wrap === "boolean" ? (wrap ? "wrap" : "nowrap") : wrap;
-    const gapClass = GAP_CLASS_MAP[gap];
+    const gapClass = GAP_CLASS_MAP[gap as LayoutGap];
+
+    // Ensure direction, align, justify are non-null with defaults
+    const dir = direction as NonNullable<LayoutFlexProps["direction"]>;
+    const ali = align as NonNullable<LayoutFlexProps["align"]>;
+    const jus = justify as NonNullable<LayoutFlexProps["justify"]>;
+    const wrapKey = normalizedWrap as keyof typeof FLEX_WRAP_CLASS_MAP;
 
     const flexClasses = cn(
       "flex",
-      FLEX_DIRECTION_CLASS_MAP[direction],
-      FLEX_ALIGN_CLASS_MAP[align],
-      FLEX_JUSTIFY_CLASS_MAP[justify],
-      FLEX_WRAP_CLASS_MAP[normalizedWrap],
+      FLEX_DIRECTION_CLASS_MAP[dir],
+      FLEX_ALIGN_CLASS_MAP[ali],
+      FLEX_JUSTIFY_CLASS_MAP[jus],
+      FLEX_WRAP_CLASS_MAP[wrapKey],
       gapClass,
       className
     );
 
-    return (
-      <div ref={ref} className={flexClasses} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+  return (
+    <div ref={ref} className={flexClasses} {...otherProps}>
+      {children}
+    </div>
+  );
+});
 
 LayoutFlex.displayName = "LayoutFlex";
 
 // Section Component with modern styling
-export const LayoutSection = forwardRef<HTMLElement, LayoutSectionProps>(
-  (
-    { children, className, variant = "default", padding = "md", ...props },
-    ref
-  ) => {
-    const paddingClass = PADDING_CLASS_MAP[padding];
-    const variantClass = SECTION_VARIANT_CLASS_MAP[variant];
+export const LayoutSection = forwardRef<HTMLElement, LayoutSectionProps>(function LayoutSection(
+  props: LayoutSectionProps,
+  ref
+) {
+  const {
+    children,
+    className,
+    variant = "default",
+    padding = "md",
+    ...otherProps
+  } = props;
+
+    const paddingClass = PADDING_CLASS_MAP[padding as LayoutGap];
+    const varnt = variant as NonNullable<LayoutSectionProps["variant"]>;
+    const variantClass = SECTION_VARIANT_CLASS_MAP[varnt];
 
     const sectionClasses = cn(variantClass, paddingClass, className);
 
-    return (
-      <section ref={ref} className={sectionClasses} {...props}>
-        {children}
-      </section>
-    );
-  }
-);
+  return (
+    <section ref={ref} className={sectionClasses} {...otherProps}>
+      {children}
+    </section>
+  );
+});
 
 LayoutSection.displayName = "LayoutSection";
 
 // Page Header Component
-export const LayoutHeader = forwardRef<HTMLElement, LayoutHeaderProps>(
-  (
-    { children, className, title, description, actions, ...props },
-    ref
-  ) => (
+export const LayoutHeader = forwardRef<HTMLElement, LayoutHeaderProps>(function LayoutHeader(
+  props: LayoutHeaderProps,
+  ref
+) {
+  const {
+    children,
+    className,
+    title,
+    description,
+    actions,
+    ...otherProps
+  } = props;
+
+  return (
     <header
       ref={ref}
       className={cn("modern-card-header space-y-4", className)}
-      {...props}
+      {...otherProps}
     >
       <div className="flex-between">
         <div className="space-y-1">
@@ -330,23 +357,24 @@ export const LayoutHeader = forwardRef<HTMLElement, LayoutHeaderProps>(
       </div>
       {children}
     </header>
-  )
-);
+  );
+});
 
 LayoutHeader.displayName = "LayoutHeader";
 
 // Responsive Container with max-width constraints
-export const LayoutContainer = forwardRef<HTMLDivElement, LayoutContainerProps>(
-  (
-    {
-      children,
-      className,
-      size = "lg",
-      centered = true,
-      ...props
-    },
-    ref
-  ) => {
+export const LayoutContainer = forwardRef<HTMLDivElement, LayoutContainerProps>(function LayoutContainer(
+  props: LayoutContainerProps,
+  ref
+) {
+  const {
+    children,
+    className,
+    size = "lg",
+    centered = true,
+    ...otherProps
+  } = props;
+
     const containerClasses = cn(
       "w-full px-4 sm:px-6 lg:px-8",
       {
@@ -360,12 +388,11 @@ export const LayoutContainer = forwardRef<HTMLDivElement, LayoutContainerProps>(
       className
     );
 
-    return (
-      <div ref={ref} className={containerClasses} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+  return (
+    <div ref={ref} className={containerClasses} {...otherProps}>
+      {children}
+    </div>
+  );
+});
 
 LayoutContainer.displayName = "LayoutContainer";

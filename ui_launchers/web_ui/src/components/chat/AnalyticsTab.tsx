@@ -14,7 +14,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import type { ChatMessage } from './ChatInterface';
+import type { ChatMessage } from '@/components/ChatInterface';
 
 interface AnalyticsTabProps {
   analytics: any;

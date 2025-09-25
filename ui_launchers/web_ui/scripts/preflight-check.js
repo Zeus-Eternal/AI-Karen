@@ -3,8 +3,9 @@
 const http = require('http');
 
 async function checkBackendHealth() {
-  // Prioritize NEXT_PUBLIC_KAREN_BACKEND_URL for client-side compatibility
-  const BACKEND_URL = process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || process.env.KAREN_BACKEND_URL || 'http://localhost:8000';
+  // In Docker container, use KAREN_BACKEND_URL (http://api:8000) for server-side checks
+  // Otherwise fall back to NEXT_PUBLIC_KAREN_BACKEND_URL for local development
+  const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://localhost:8000';
   const HEALTH_ENDPOINT = `${BACKEND_URL}/health`;
   
   console.log(`🔍 Checking backend health at: ${HEALTH_ENDPOINT}`);
@@ -59,8 +60,9 @@ async function main() {
     console.error('');
     console.error('The backend API is not reachable. Please ensure:');
     console.error('1. The backend service is running');
-    console.error('2. The backend is healthy at http://api:8000/api/health');
+    console.error('2. The backend is healthy (check with: curl http://localhost:8000/health)');
     console.error('3. Docker services are started with: docker compose up -d');
+    console.error('4. If running in Docker, the api service should be accessible at http://api:8000');
     console.error('');
     process.exit(1);
   }

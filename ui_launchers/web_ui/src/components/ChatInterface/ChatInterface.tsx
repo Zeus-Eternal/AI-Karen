@@ -92,7 +92,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     enableCodeAssistance,
     enableContextualHelp,
     enableDocGeneration,
-    maxMessages: maxMessageCount,
+    maxMessages: maxMessages,
     onMessageSent,
     onMessageReceived,
   });
@@ -188,7 +188,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       />
     ),
     [
-      artifactManagement,
+      artifactManagement.artifacts,
+      artifactManagement.approveArtifact,
+      artifactManagement.rejectArtifact,
+      artifactManagement.applyArtifact,
       chatContext,
       chatSettings.settings,
       chatState.inputValue,
@@ -225,7 +228,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         className={`flex flex-col ${className} ${
           chatState.isFullscreen ? "fixed inset-0 z-50" : ""
         }`}
-        style={chatState.isFullscreen ? { height: "100vh" } : { height: heightValue }}
+        style={chatState.isFullscreen ? { height: "100vh" } : { height }}
         role="main"
         aria-label="Chat conversation interface"
         variant="glass"
@@ -244,7 +247,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               isFullscreen={chatState.isFullscreen}
               messages={chatState.messages}
               onSettingsChange={chatSettings.updateSettings}
-              onExport={onExport}
+              onExport={() => onExport?.(chatState.messages)}
               onShare={onShare}
               onToggleFullscreen={() => chatState.setIsFullscreen(!chatState.isFullscreen)}
               onShowRoutingHistory={() => chatState.setShowRoutingHistory(true)}

@@ -342,9 +342,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     );
   }
 
+  const controlledValue = value ?? "";
+
   return (
     <TooltipProvider>
-      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+      <Select value={controlledValue} onValueChange={onValueChange} disabled={disabled}>
         <Tooltip>
           <TooltipTrigger asChild>
             <SelectTrigger className={cn("w-full", className)}>

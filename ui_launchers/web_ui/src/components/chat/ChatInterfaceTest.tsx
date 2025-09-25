@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChatInterface } from './ChatInterface';
+import { ChatInterface } from '@/components/ChatInterface';
 import { SafeChatWrapper } from './SafeChatWrapper';
 import { safeError, safeWarn, safeInfo } from '@/lib/safe-console';
 

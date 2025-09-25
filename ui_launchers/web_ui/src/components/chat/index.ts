@@ -1,4 +1,4 @@
-export { ChatInterface } from './ChatInterface';
+export { ChatInterface } from '@/components/ChatInterface';
 export { CopilotChat } from './copilot';
 
 // Export supporting components

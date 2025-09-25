@@ -36,6 +36,9 @@ export const buildChatContext = (
 ): ChatContext => {
   const recentMessages = messages.slice(-5);
   const hasCode = recentMessages.some((message) => message.type === "code");
+  const complexity: ChatContext["conversationContext"]["complexity"] = hasCode
+    ? "complex"
+    : "medium";
 
   return {
     selectedText,
@@ -56,7 +59,7 @@ export const buildChatContext = (
     conversationContext: {
       topic: undefined,
       intent: undefined,
-      complexity: (hasCode ? "complex" : "medium") as const,
+      complexity,
     },
   };
 };
