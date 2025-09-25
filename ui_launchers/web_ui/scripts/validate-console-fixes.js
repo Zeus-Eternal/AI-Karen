@@ -37,7 +37,7 @@ function main() {
     'ui_launchers/web_ui/src/app/layout.tsx',
     'ui_launchers/web_ui/src/lib/console-error-fix.ts',
     'ui_launchers/web_ui/src/lib/safe-console.ts',
-    'ui_launchers/web_ui/src/components/chat/ChatInterface.tsx',
+    'ui_launchers/web_ui/src/components/ChatInterface/ChatInterface.tsx',
     'ui_launchers/web_ui/src/components/chat/SafeChatWrapper.tsx',
     'ui_launchers/web_ui/src/hooks/useReasoning.ts',
     'ui_launchers/web_ui/src/hooks/useModelSelection.ts',

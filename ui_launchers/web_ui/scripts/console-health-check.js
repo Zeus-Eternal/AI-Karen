@@ -66,8 +66,8 @@ function healthCheck() {
   
   // Check 4: ChatInterface uses safe console
   try {
-    const chatInterface = fs.readFileSync('ui_launchers/web_ui/src/components/chat/ChatInterface.tsx', 'utf8');
-    const usesSafeConsole = chatInterface.includes('safeError') && 
+    const chatInterface = fs.readFileSync('ui_launchers/web_ui/src/components/ChatInterface/ChatInterface.tsx', 'utf8');
+    const usesSafeConsole = chatInterface.includes('safeError') &&
                            !chatInterface.includes('console.error(');
     checks.push({
       name: 'ChatInterface Safe Console',

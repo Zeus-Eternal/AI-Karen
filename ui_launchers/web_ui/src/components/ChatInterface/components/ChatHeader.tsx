@@ -4,17 +4,10 @@ import React from "react";
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Download,
-  Share,
-  Activity,
-  Maximize2,
-  Minimize2,
-  Settings,
-  Sparkles,
-} from "lucide-react";
+import { Activity, Maximize2, Minimize2, Settings, Sparkles } from "lucide-react";
 import ModelSelector from "@/components/chat/ModelSelector";
-import type { ChatSettings } from "../types";
+import ExportShareHandler from "./ExportShareHandler";
+import type { ChatSettings, ChatMessage } from "../types";
 
 interface ChatHeaderProps {
   showHeader: boolean;
@@ -25,9 +18,10 @@ interface ChatHeaderProps {
   showSettings: boolean;
   settings: ChatSettings;
   isFullscreen: boolean;
+  messages: ChatMessage[];
   onSettingsChange: (settings: Partial<ChatSettings>) => void;
-  onExport: () => void;
-  onShare?: (messages: any[]) => void;
+  onExport?: (messages: ChatMessage[]) => void;
+  onShare?: (messages: ChatMessage[]) => void;
   onToggleFullscreen: () => void;
   onShowRoutingHistory: () => void;
 }
@@ -41,6 +35,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   showSettings,
   settings,
   isFullscreen,
+  messages,
   onSettingsChange,
   onExport,
   onShare,
@@ -72,17 +67,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             </Badge>
           )}
 
-          {enableExport && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onExport}
-              className="h-8 w-8 p-0"
-              title="Export Chat"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          )}
+          <ExportShareHandler
+            messages={messages}
+            enableExport={enableExport}
+            enableSharing={enableSharing}
+            onExport={onExport}
+            onShare={onShare}
+          />
 
           {/* Model selector */}
           <ModelSelector
@@ -92,18 +83,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             placeholder="Select model..."
             showDetails={true}
           />
-
-          {enableSharing && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onShare?.([])}
-              className="h-8 w-8 p-0"
-              title="Share Chat"
-            >
-              <Share className="h-4 w-4" />
-            </Button>
-          )}
 
           {/* Routing History */}
           <Button

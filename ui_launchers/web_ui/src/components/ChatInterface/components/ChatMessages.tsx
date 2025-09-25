@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import EnhancedMessageBubble from "@/components/chat/EnhancedMessageBubble";
+import MessageActions from "./MessageActions";
 import type { ChatMessage, ChatSettings, CopilotArtifact } from "../types";
 
 interface ChatMessagesProps {
@@ -67,7 +68,17 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
           </div>
         ) : (
           messages.map((message) => (
-            <div key={message.id} className="group relative" role="article" aria-label={`Message from ${message.role}`}>
+            <div
+              key={message.id}
+              className="group relative"
+              role="article"
+              aria-label={`Message from ${message.role}`}
+            >
+              <MessageActions
+                messageId={message.id}
+                onAction={onMessageAction}
+                className="absolute top-2 right-2"
+              />
               <EnhancedMessageBubble
                 role={message.role}
                 content={message.content}

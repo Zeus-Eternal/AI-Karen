@@ -1,3 +1,5 @@
+import type { ComponentType } from "react";
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -152,7 +154,8 @@ export interface CopilotAction {
   description: string;
   prompt: string;
   category: string;
-  icon?: string;
+  icon?: ComponentType<{ className?: string }> | string;
+  shortcut?: string;
   requiresSelection?: boolean;
   contextTypes?: string[];
 }
