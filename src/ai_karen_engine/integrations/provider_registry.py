@@ -184,6 +184,7 @@ class ProviderRegistry:
                 HuggingFaceProvider,
                 LlamaCppProvider,
                 OpenAIProvider,
+                FallbackProvider,
             )
 
             providers: List[Dict[str, Any]] = [
@@ -226,6 +227,14 @@ class ProviderRegistry:
                     "default_model": "microsoft/DialoGPT-large",
                     "requires_api_key": True,
                     "capabilities": ["text", "embeddings"],
+                },
+                {
+                    "name": "fallback",
+                    "cls": FallbackProvider,
+                    "description": "Deterministic offline responses for smoke tests and degraded mode",
+                    "default_model": "kari-fallback-v1",
+                    "requires_api_key": False,
+                    "capabilities": ["generic", "text"],
                 },
             ]
 

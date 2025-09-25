@@ -119,6 +119,15 @@ class FallbackProvider(LLMProviderBase):
         logger.debug("FallbackProvider returning deterministic response")
         return response
 
+    # The orchestrator prefers providers exposing ``generate_response`` (and
+    # sometimes ``enhanced_generate_response``) so mirror ``generate_text`` to
+    # keep compatibility with richer providers without duplicating logic.
+    def generate_response(self, prompt: str, **kwargs: Any) -> str:  # type: ignore[override]
+        return self.generate_text(prompt, **kwargs)
+
+    def enhanced_generate_response(self, prompt: str, **kwargs: Any) -> str:  # type: ignore[override]
+        return self.generate_text(prompt, **kwargs)
+
     def stream_generate(self, prompt: str, **kwargs: Any) -> Iterator[str]:
         """Provide a very small streaming-compatible generator."""
 

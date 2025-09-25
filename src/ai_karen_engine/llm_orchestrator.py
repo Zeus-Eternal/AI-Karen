@@ -438,7 +438,17 @@ class LLMOrchestrator:
                     provider = registry.get_provider(provider_name, model=m.name)
                     model_id = f"{provider_name}:{m.name}"
                     capabilities = m.capabilities or ["generic"]
-                    self.registry.register(model_id, provider, capabilities)
+                    register_kwargs = {}
+                    if provider_name.lower() == "fallback":
+                        # Ensure fallback provider is always tried last
+                        register_kwargs["weight"] = 100
+                        register_kwargs["tags"] = ["fallback", "deterministic"]
+                    self.registry.register(
+                        model_id,
+                        provider,
+                        capabilities,
+                        **register_kwargs,
+                    )
                     latency = self._warm_model(model_id, provider)
                     if latency is not None:
                         info = self.registry._models.get(model_id)
