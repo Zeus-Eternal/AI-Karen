@@ -85,6 +85,15 @@ class DegradedModeManager:
     """Manages degraded mode state and core helper models."""
 
     def __init__(self):
+        # Allow operators to tune the final degraded fallback surface without
+        # having to modify source.  These values are used when other routers
+        # request a provider/model tuple during catastrophic provider failure.
+        self._fallback_provider = os.getenv("KARI_DEGRADED_PROVIDER", "llamacpp")
+        self._fallback_model = os.getenv(
+            "KARI_DEGRADED_MODEL",
+            "tinyllama-1.1b-chat",
+        )
+
         self.status = DegradedModeStatus(
             is_active=False,
             reason=None,
@@ -174,6 +183,10 @@ class DegradedModeManager:
 
         # TinyLlama is always available as it's a simple fallback
         self.status.core_helpers_available["tiny_llama"] = True
+
+    def get_fallback_provider(self) -> Tuple[str, str]:
+        """Return the provider/model tuple exposed to external routers."""
+        return self._fallback_provider, self._fallback_model
 
     def activate_degraded_mode(self, reason: DegradedModeReason, failed_providers: List[str] = None):
         """Activate degraded mode with specified reason."""
@@ -427,3 +440,32 @@ def generate_degraded_mode_response(user_input: str, **kwargs: Any) -> Dict[str,
             return future.result()
     else:
         return loop.run_until_complete(manager.generate_degraded_response(user_input, **kwargs))
+
+
+class DegradedMode:
+    """Compatibility wrapper exposing the legacy static API surface."""
+
+    @staticmethod
+    def activate(reason: DegradedModeReason, failed_providers: Optional[List[str]] = None) -> None:
+        manager = get_degraded_mode_manager()
+        manager.activate_degraded_mode(reason, failed_providers)
+
+    @staticmethod
+    def deactivate() -> None:
+        manager = get_degraded_mode_manager()
+        manager.deactivate_degraded_mode()
+
+    @staticmethod
+    def get_status() -> DegradedModeStatus:
+        manager = get_degraded_mode_manager()
+        return manager.get_status()
+
+    @staticmethod
+    def get_fallback_provider() -> Tuple[str, str]:
+        manager = get_degraded_mode_manager()
+        return manager.get_fallback_provider()
+
+    @staticmethod
+    async def generate_response(user_input: str, **kwargs: Any) -> Dict[str, Any]:
+        manager = get_degraded_mode_manager()
+        return await manager.generate_degraded_response(user_input, **kwargs)
