@@ -1,26 +1,34 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Code, BarChart3 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Hooks
 import { useChatState } from "./hooks/useChatState";
-import { useChatMessages } from "./hooks/useChatMessages";
 import { useChatSettings } from "./hooks/useChatSettings";
 import { useChatAnalytics } from "./hooks/useChatAnalytics";
-import { useAuth } from "@/contexts/AuthContext";
+import { useMessageSending } from "./hooks/useMessageSending";
+import { useCopilotIntegration } from "./hooks/useCopilotIntegration";
+import { useVoiceInput } from "./hooks/useVoiceInput";
+import { useArtifactManagement } from "./hooks/useArtifactManagement";
 
 // Components
 import { ChatHeader } from "./components/ChatHeader";
-import { ChatMessages } from "./components/ChatMessages";
-import { ChatInput } from "./components/ChatInput";
-import { ChatCodeTab } from "./components/ChatCodeTab";
-import AnalyticsTab from "../chat/AnalyticsTab";
+import { ChatMainContent } from "./components/ChatMainContent";
+import { ChatTabs } from "./components/ChatTabs";
+import { DEFAULT_COPILOT_ACTIONS } from "./components/CopilotActions";
+
+// Utils & constants
+import {
+  DEFAULT_CHAT_HEIGHT,
+  DEFAULT_PLACEHOLDER,
+  MAX_DEFAULT_MESSAGES,
+} from "./constants";
+import { buildChatContext } from "./utils/messageUtils";
 
 // Types
-import { ChatInterfaceProps } from "./types";
+import { ChatInterfaceProps, CopilotAction } from "./types";
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Core Props
@@ -36,7 +44,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // UI Configuration
   className = "",
-  height = "600px",
+  height = DEFAULT_CHAT_HEIGHT,
   showHeader = true,
   showTabs = true,
   showSettings = true,
@@ -48,10 +56,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   enableExport = true,
   enableSharing = true,
   enableCollaboration = false,
-  maxMessages = 1000,
+  maxMessages = MAX_DEFAULT_MESSAGES,
 
   // Customization
-  placeholder = "Ask me anything about code, get suggestions, or request help...",
+  placeholder = DEFAULT_PLACEHOLDER,
   welcomeMessage,
   theme = "auto",
 
@@ -61,165 +69,145 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onShare,
   onAnalyticsUpdate,
 }) => {
-  console.log('🔍 ChatInterface: Component mounting with props:', {
-    initialMessagesCount: initialMessages.length,
-    useCopilotKit,
-    enableCodeAssistance,
-    enableVoiceInput,
-    className,
-    height
-  });
+  const { user } = useAuth();
 
-  // Initialize hooks
-  const chatState = useChatState(initialMessages);
-  const chatSettings = useChatSettings({}, onSettingsChange);
+  const chatState = useChatState(initialMessages, welcomeMessage);
+  const chatSettings = useChatSettings({ theme }, onSettingsChange);
   const chatAnalytics = useChatAnalytics(
     chatState.messages,
-    Date.now(),
+    chatState.sessionStartTime,
     onAnalyticsUpdate
   );
 
-  const { user } = useAuth(); // Assuming useAuth is available
-  console.log('🔍 ChatInterface: Auth context user:', user);
-  const chatMessages = useChatMessages(
-    chatState.messages,
-    chatState.setMessages,
-    chatState.isTyping,
-    chatState.setIsTyping,
-    chatSettings.settings,
-    chatState.sessionId,
-    chatState.conversationId,
+  const messageSending = useMessageSending({
+    messages: chatState.messages,
+    setMessages: chatState.setMessages,
+    isTyping: chatState.isTyping,
+    setIsTyping: chatState.setIsTyping,
+    settings: chatSettings.settings,
+    sessionId: chatState.sessionId,
+    conversationId: chatState.conversationId,
     user,
     useCopilotKit,
     enableCodeAssistance,
     enableContextualHelp,
     enableDocGeneration,
-    maxMessages
+    maxMessages: maxMessageCount,
+    onMessageSent,
+    onMessageReceived,
+  });
+
+  const artifactManagement = useArtifactManagement({
+    artifacts: chatState.copilotArtifacts,
+    updateArtifact: chatState.updateCopilotArtifact,
+    removeArtifact: chatState.removeCopilotArtifact,
+  });
+
+  const chatContext = useMemo(
+    () => buildChatContext(chatState.messages, chatSettings.settings, chatState.selectedText),
+    [chatState.messages, chatSettings.settings, chatState.selectedText]
   );
 
-  // Chat context based on current state
-  const chatContext = {
-    selectedText: chatState.selectedText,
-    currentFile: undefined, // TODO: Implement file context
-    language: chatSettings.settings.language,
-    recentMessages: chatState.messages.slice(-5).map(m => ({
-      role: m.role,
-      content: m.content.substring(0, 100) + (m.content.length > 100 ? "..." : ""),
-      timestamp: m.timestamp
-    })),
-    codeContext: {
-      hasCode: chatState.messages.some(m => m.type === "code"),
-      language: chatSettings.settings.language,
-      errorCount: 0 // TODO: Implement error counting
+  const copilotIntegration = useCopilotIntegration({
+    enabled: useCopilotKit,
+    actions: DEFAULT_COPILOT_ACTIONS,
+    messages: chatState.messages,
+    settings: chatSettings.settings,
+    context: chatContext,
+  });
+
+  const voiceInput = useVoiceInput({
+    enabled: enableVoiceInput,
+    isRecording: chatState.isRecording,
+    startRecording: chatState.startRecording,
+    stopRecording: chatState.stopRecording,
+  });
+
+  useEffect(() => {
+    if (!enableAnalytics && chatState.activeTab === "analytics") {
+      chatState.setActiveTab("chat");
+    }
+  }, [enableAnalytics, chatState.activeTab, chatState.setActiveTab]);
+
+  const handleMessageSubmit = useCallback(
+    (event: React.FormEvent) => {
+      event.preventDefault();
+      if (!messageSending.canSendMessage(chatState.inputValue)) {
+        return;
+      }
+      messageSending.sendMessage(chatState.inputValue, "text");
+      chatState.clearInput();
     },
-    conversationContext: {
-      topic: undefined, // TODO: Implement topic detection
-      intent: undefined, // TODO: Implement intent detection
-      complexity: "medium" as const
-    }
-  };
+    [chatState, messageSending]
+  );
 
-  // Voice input handlers
-  const handleVoiceStart = () => {
-    console.log('🔊 Voice recording started');
-    chatState.setIsRecording(true);
-  };
+  const handleCopilotAction = useCallback(
+    (action: CopilotAction) => {
+      const prompt = action.prompt;
+      messageSending.sendMessage(prompt, "text", { context: chatContext });
+    },
+    [chatContext, messageSending]
+  );
 
-  const handleVoiceStop = () => {
-    console.log('🔊 Voice recording stopped');
-    chatState.setIsRecording(false);
-  };
+  const handleQuickAction = useCallback(
+    (action: string, prompt: string, type?: string) => {
+      if (!prompt || !messageSending.canSendMessage(prompt)) {
+        return;
+      }
+      messageSending.sendMessage(prompt, type as any, { context: chatContext });
+    },
+    [chatContext, messageSending]
+  );
 
-  // Copilot action handler
-  const handleCopilotAction = (action: any) => {
-    console.log('🤖 Copilot action triggered:', action);
-    // TODO: Implement copilot action logic
-  };
-
-  // Quick action handler
-  const handleQuickAction = (action: string, prompt: string, type?: string) => {
-    console.log('⚡ Quick action:', { action, prompt, type });
-    if (prompt.trim() && !chatState.isTyping) {
-      chatMessages.sendMessage(prompt, type as any);
-    }
-  };
-
-  // Render chat tab content
-  const renderChatTab = () => (
-    <div className="flex-1 flex flex-col">
-      {/* Messages Area */}
-      <ChatMessages
+  const renderChatTab = useCallback(
+    () => (
+      <ChatMainContent
         messages={chatState.messages}
+        inputValue={chatState.inputValue}
+        placeholder={placeholder}
         isTyping={chatState.isTyping}
+        isRecording={chatState.isRecording}
         useCopilotKit={useCopilotKit}
         enableCodeAssistance={enableCodeAssistance}
+        enableVoiceInput={enableVoiceInput}
+        enableFileUpload={enableFileUpload}
         settings={chatSettings.settings}
-        onMessageAction={chatMessages.handleMessageAction}
-        onArtifactApprove={(artifactId: string) => {
-          console.log('Artifact approved:', artifactId);
-          // TODO: Implement artifact approval logic
-        }}
-        onArtifactReject={(artifactId: string) => {
-          console.log('Artifact rejected:', artifactId);
-          // TODO: Implement artifact rejection logic
-        }}
-        onArtifactApply={(artifactId: string) => {
-          console.log('Artifact applied:', artifactId);
-          // TODO: Implement artifact application logic
-        }}
+        chatContext={chatContext}
+        artifacts={artifactManagement.artifacts}
+        copilotActions={copilotIntegration.availableActions}
+        onInputChange={chatState.setInputValue}
+        onCopilotAction={handleCopilotAction}
+        onVoiceStart={voiceInput.handleVoiceStart}
+        onVoiceStop={voiceInput.handleVoiceStop}
+        onSubmit={handleMessageSubmit}
+        onQuickAction={handleQuickAction}
+        onMessageAction={messageSending.handleMessageAction}
+        onArtifactApprove={artifactManagement.approveArtifact}
+        onArtifactReject={artifactManagement.rejectArtifact}
+        onArtifactApply={artifactManagement.applyArtifact}
       />
-
-      {/* Input Area */}
-      <div className="border-t p-4" id="chat-input">
-        <ChatInput
-          inputValue={chatState.inputValue}
-          onInputChange={chatState.setInputValue}
-          onSubmit={(e: React.FormEvent) => {
-            e.preventDefault();
-            if (chatState.inputValue.trim() && !chatState.isTyping) {
-              chatMessages.sendMessage(chatState.inputValue, "text");
-              chatState.clearInput();
-            }
-          }}
-          placeholder={placeholder}
-          isTyping={chatState.isTyping}
-          isRecording={chatState.isRecording}
-          enableVoiceInput={enableVoiceInput}
-          enableFileUpload={enableFileUpload}
-          chatContext={chatContext}
-          onCopilotAction={handleCopilotAction}
-          onVoiceStart={handleVoiceStart}
-          onVoiceStop={handleVoiceStop}
-          onQuickAction={handleQuickAction}
-        />
-      </div>
-    </div>
-  );
-
-  // Render code tab content (simplified for now)
-  const renderCodeTab = () => (
-    <ChatCodeTab
-      codeValue={chatState.codeValue}
-      onCodeChange={chatState.setCodeValue}
-      settings={chatSettings.settings}
-      onSettingsChange={chatSettings.updateSettings}
-      isTyping={chatState.isTyping}
-      isAnalyzing={chatState.isAnalyzing}
-      showCodePreview={chatState.showCodePreview}
-      onPreviewToggle={() => chatState.setShowCodePreview(!chatState.showCodePreview)}
-      onCodeSubmit={() => {
-        if (chatState.codeValue.trim() && !chatState.isTyping) {
-          chatMessages.sendMessage(chatState.codeValue, "code");
-        }
-      }}
-      onQuickAction={(action, prompt, type) => {
-        if (!chatState.isTyping) {
-          return chatMessages.sendMessage(prompt, type as any);
-        }
-      }}
-      useCopilotKit={useCopilotKit}
-      enableDocGeneration={enableDocGeneration}
-    />
+    ),
+    [
+      artifactManagement,
+      chatContext,
+      chatSettings.settings,
+      chatState.inputValue,
+      chatState.isRecording,
+      chatState.isTyping,
+      chatState.messages,
+      enableCodeAssistance,
+      enableFileUpload,
+      enableVoiceInput,
+      copilotIntegration.availableActions,
+      handleCopilotAction,
+      handleMessageSubmit,
+      handleQuickAction,
+      messageSending.handleMessageAction,
+      placeholder,
+      useCopilotKit,
+      voiceInput.handleVoiceStart,
+      voiceInput.handleVoiceStop,
+    ]
   );
 
   return (
@@ -237,7 +225,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         className={`flex flex-col ${className} ${
           chatState.isFullscreen ? "fixed inset-0 z-50" : ""
         }`}
-        style={chatState.isFullscreen ? { height: "100vh" } : { height }}
+        style={chatState.isFullscreen ? { height: "100vh" } : { height: heightValue }}
         role="main"
         aria-label="Chat conversation interface"
         variant="glass"
@@ -254,8 +242,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               showSettings={showSettings}
               settings={chatSettings.settings}
               isFullscreen={chatState.isFullscreen}
+              messages={chatState.messages}
               onSettingsChange={chatSettings.updateSettings}
-              onExport={() => onExport?.(chatState.messages)}
+              onExport={onExport}
               onShare={onShare}
               onToggleFullscreen={() => chatState.setIsFullscreen(!chatState.isFullscreen)}
               onShowRoutingHistory={() => chatState.setShowRoutingHistory(true)}
@@ -265,47 +254,28 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         <CardContent className="flex-1 flex flex-col p-0">
           {showTabs ? (
-            <Tabs
-              value={chatState.activeTab}
-              onValueChange={(value: string) => chatState.setActiveTab(value as "chat" | "code" | "analytics")}
-              className="flex-1 flex flex-col"
-            >
-              <TabsList className="grid w-full grid-cols-3 mx-3 mt-3">
-                <TabsTrigger value="chat" className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  Chat
-                </TabsTrigger>
-                <TabsTrigger value="code" className="flex items-center gap-2">
-                  <Code className="h-4 w-4" />
-                  Code
-                </TabsTrigger>
-                <TabsTrigger
-                  value="analytics"
-                  className="flex items-center gap-2"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Analytics
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="chat" className="flex-1 flex flex-col mt-0">
-                {renderChatTab()}
-              </TabsContent>
-
-              <TabsContent value="code" className="flex-1 flex flex-col mt-0">
-                {renderCodeTab()}
-              </TabsContent>
-
-              <TabsContent
-                value="analytics"
-                className="flex-1 flex flex-col mt-0"
-              >
-                <AnalyticsTab 
-                  analytics={chatAnalytics.analytics} 
-                  messages={chatState.messages} 
-                />
-              </TabsContent>
-            </Tabs>
+            <ChatTabs
+              activeTab={chatState.activeTab}
+              showTabs={showTabs}
+              messages={chatState.messages}
+              settings={chatSettings.settings}
+              analytics={chatAnalytics.analytics}
+              codeValue={chatState.codeValue}
+              showCodePreview={chatState.showCodePreview}
+              isTyping={chatState.isTyping}
+              useCopilotKit={useCopilotKit}
+              enableDocGeneration={enableDocGeneration}
+              enableAnalytics={enableAnalytics}
+              onTabChange={(tab) => chatState.setActiveTab(tab)}
+              onSettingsChange={chatSettings.updateSettings}
+              onCodeChange={chatState.setCodeValue}
+              onPreviewToggle={() => chatState.setShowCodePreview(!chatState.showCodePreview)}
+              onCodeSubmit={() => {
+                if (!chatState.codeValue.trim()) return;
+                messageSending.sendMessage(chatState.codeValue, "code");
+              }}
+              renderChatTab={renderChatTab}
+            />
           ) : (
             renderChatTab()
           )}

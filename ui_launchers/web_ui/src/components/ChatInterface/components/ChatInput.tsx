@@ -3,8 +3,9 @@
 import React, { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mic, MicOff, Paperclip, Send, Loader2 } from "lucide-react";
-import CopilotActions, { type CopilotAction, type ChatContext } from "@/components/chat/CopilotActions";
+import { Paperclip, Send, Loader2 } from "lucide-react";
+import CopilotActions, { type CopilotAction, type ChatContext } from "./CopilotActions";
+import VoiceInputHandler from "./VoiceInputHandler";
 
 interface ChatInputProps {
   inputValue: string;
@@ -14,6 +15,7 @@ interface ChatInputProps {
   enableVoiceInput: boolean;
   enableFileUpload: boolean;
   chatContext: ChatContext;
+  copilotActions?: CopilotAction[];
   onInputChange: (value: string) => void;
   onCopilotAction: (action: CopilotAction) => void;
   onVoiceStart: () => void;
@@ -30,6 +32,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   enableVoiceInput,
   enableFileUpload,
   chatContext,
+  copilotActions,
   onInputChange,
   onCopilotAction,
   onVoiceStart,
@@ -56,20 +59,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
           {/* Voice Input Button */}
           {enableVoiceInput && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-12 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
-              onClick={isRecording ? onVoiceStop : onVoiceStart}
-              disabled={isTyping}
-            >
-              {isRecording ? (
-                <MicOff className="h-4 w-4 text-red-500" />
-              ) : (
-                <Mic className="h-4 w-4" />
-              )}
-            </Button>
+            <VoiceInputHandler
+              isRecording={isRecording}
+              isEnabled={!isTyping}
+              onStart={onVoiceStart}
+              onStop={onVoiceStop}
+              onTranscript={(transcript) => onInputChange(transcript)}
+              className="absolute right-12 top-1/2 -translate-y-1/2"
+              showConfidenceBadge={false}
+            />
           )}
 
           {/* File Upload Button */}
@@ -102,6 +100,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       {/* Quick Actions */}
       <div className="flex items-center justify-between mt-2">
         <CopilotActions
+          actions={copilotActions}
           onActionTriggered={onCopilotAction}
           context={chatContext}
           disabled={isTyping}
