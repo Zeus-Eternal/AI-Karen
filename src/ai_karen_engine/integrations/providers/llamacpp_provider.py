@@ -6,9 +6,10 @@ for local GGUF model execution using llama-cpp-python.
 """
 
 import logging
+import os
 import time
-from typing import Any, Dict, List, Optional, Union, Iterator
 from pathlib import Path
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase, GenerationFailed, EmbeddingFailed, record_llm_metric
 from ai_karen_engine.inference.llamacpp_runtime import LlamaCppRuntime
