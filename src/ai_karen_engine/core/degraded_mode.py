@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -107,37 +108,69 @@ class DegradedModeManager:
 
     def _initialize_services(self):
         """Initialize core helper services with fallback handling."""
-        try:
-            self.distilbert_service = DistilBertService()
-            self.status.core_helpers_available["distilbert"] = True
-            logger.info("DistilBERT service initialized for degraded mode")
-        except Exception as e:
-            logger.warning(f"Failed to initialize DistilBERT service: {e}")
-            self.status.core_helpers_available["distilbert"] = False
 
-        try:
-            self.spacy_service = SpacyService()
-            self.status.core_helpers_available["spacy"] = True
-            logger.info("spaCy service initialized for degraded mode")
-        except Exception as e:
-            logger.warning(f"Failed to initialize spaCy service: {e}")
-            self.status.core_helpers_available["spacy"] = False
+        # Heavy helpers (DistilBERT, spaCy, sentence transformers) attempt to
+        # download large models when they are not cached locally. In restricted
+        # or offline environments this blocks degraded-mode activation for tens
+        # of seconds while the libraries retry network requests.  To keep the
+        # platform responsive we default to a "minimal" degraded mode that only
+        # uses the lightweight TinyLlama heuristics unless explicitly enabled.
+        enable_heavy_helpers = (
+            os.getenv("KARI_ENABLE_DEGRADED_HELPERS", "").lower()
+            in {"1", "true", "yes"}
+        )
 
-        try:
-            self.embedding_manager = EmbeddingManager()
-            self.status.core_helpers_available["embeddings"] = True
-            logger.info("Embedding manager initialized for degraded mode")
-        except Exception as e:
-            logger.warning(f"Failed to initialize embedding manager: {e}")
-            self.status.core_helpers_available["embeddings"] = False
+        if not enable_heavy_helpers:
+            # Ensure downstream libraries remain in offline/fallback mode so
+            # they do not attempt network downloads later in the workflow.
+            os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+            os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
-        try:
-            self.nlp_service = NLPService()
-            self.status.core_helpers_available["nlp"] = True
-            logger.info("NLP service initialized for degraded mode")
-        except Exception as e:
-            logger.warning(f"Failed to initialize NLP service: {e}")
-            self.status.core_helpers_available["nlp"] = False
+            logger.info(
+                "Heavy degraded-mode helpers are disabled. Set "
+                "KARI_ENABLE_DEGRADED_HELPERS=1 to load DistilBERT, spaCy, "
+                "and embedding models when available."
+            )
+            self.status.core_helpers_available.update(
+                {
+                    "distilbert": False,
+                    "spacy": False,
+                    "embeddings": False,
+                    "nlp": False,
+                }
+            )
+        else:
+            try:
+                self.distilbert_service = DistilBertService()
+                self.status.core_helpers_available["distilbert"] = True
+                logger.info("DistilBERT service initialized for degraded mode")
+            except Exception as e:
+                logger.warning(f"Failed to initialize DistilBERT service: {e}")
+                self.status.core_helpers_available["distilbert"] = False
+
+            try:
+                self.spacy_service = SpacyService()
+                self.status.core_helpers_available["spacy"] = True
+                logger.info("spaCy service initialized for degraded mode")
+            except Exception as e:
+                logger.warning(f"Failed to initialize spaCy service: {e}")
+                self.status.core_helpers_available["spacy"] = False
+
+            try:
+                self.embedding_manager = EmbeddingManager()
+                self.status.core_helpers_available["embeddings"] = True
+                logger.info("Embedding manager initialized for degraded mode")
+            except Exception as e:
+                logger.warning(f"Failed to initialize embedding manager: {e}")
+                self.status.core_helpers_available["embeddings"] = False
+
+            try:
+                self.nlp_service = NLPService()
+                self.status.core_helpers_available["nlp"] = True
+                logger.info("NLP service initialized for degraded mode")
+            except Exception as e:
+                logger.warning(f"Failed to initialize NLP service: {e}")
+                self.status.core_helpers_available["nlp"] = False
 
         # TinyLlama is always available as it's a simple fallback
         self.status.core_helpers_available["tiny_llama"] = True

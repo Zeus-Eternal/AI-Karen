@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Optional, List, Union
 
 from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
@@ -33,6 +34,19 @@ class NLPServiceManager:
             return
         
         self.config = self._load_config()
+
+        enable_heavy_helpers = (
+            os.getenv("KARI_ENABLE_DEGRADED_HELPERS", "").lower()
+            in {"1", "true", "yes"}
+        )
+        if not enable_heavy_helpers:
+            os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+            os.environ.setdefault("HF_HUB_OFFLINE", "1")
+            logger.info(
+                "DistilBERT will run in offline fallback mode. Set "
+                "KARI_ENABLE_DEGRADED_HELPERS=1 to allow full model loading."
+            )
+
         self.spacy_service = SpacyService(self.config.spacy)
         self.distilbert_service = DistilBertService(self.config.distilbert)
         self.health_monitor = NLPHealthMonitor(
