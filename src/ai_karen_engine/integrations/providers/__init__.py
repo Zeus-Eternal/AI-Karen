@@ -8,6 +8,7 @@ from ai_karen_engine.integrations.providers.openai_provider import OpenAIProvide
 from ai_karen_engine.integrations.providers.gemini_provider import GeminiProvider
 from ai_karen_engine.integrations.providers.deepseek_provider import DeepseekProvider
 from ai_karen_engine.integrations.providers.copilotkit_provider import CopilotKitProvider
+from ai_karen_engine.integrations.providers.mock_provider import MockLLMProvider
 
 __all__ = [
     "HuggingFaceProvider",
@@ -15,5 +16,6 @@ __all__ = [
     "OpenAIProvider",
     "GeminiProvider",
     "DeepseekProvider",
-    "CopilotKitProvider"
+    "CopilotKitProvider",
+    "MockLLMProvider",
 ]

@@ -60,6 +60,18 @@
     "error_message": "No API token provided"
   },
   {
+    "name": "mock",
+    "provider_class": "MockLLMProvider",
+    "description": "Deterministic mock provider for offline testing",
+    "supports_streaming": true,
+    "supports_embeddings": true,
+    "requires_api_key": false,
+    "default_model": "mock-response",
+    "health_status": "unknown",
+    "last_health_check": null,
+    "error_message": null
+  },
+  {
     "name": "copilotkit",
     "provider_class": "CopilotKitProvider",
     "description": "CopilotKit AI-powered code assistance and contextual suggestions",

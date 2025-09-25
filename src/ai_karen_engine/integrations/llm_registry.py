@@ -40,6 +40,7 @@ from ai_karen_engine.integrations.providers import (
     GeminiProvider,
     HuggingFaceProvider,
     LlamaCppProvider,
+    MockLLMProvider,
     OpenAIProvider,
 )
 from ai_karen_engine.integrations.kire_router import KIRERouter as KIREAdapter
@@ -143,6 +144,7 @@ class LLMRegistry:
             "deepseek",
             "huggingface",
             "copilotkit",
+            "mock",
         ]
 
         # Load schema for validation
@@ -543,6 +545,15 @@ class LLMRegistry:
                 "requires_api_key": True,
                 "default_model": "microsoft/DialoGPT-large",
             },
+            {
+                "name": "mock",
+                "provider_class": "MockLLMProvider",
+                "description": "Deterministic mock provider for offline testing",
+                "supports_streaming": True,
+                "supports_embeddings": True,
+                "requires_api_key": False,
+                "default_model": "mock-response",
+            },
         ]
 
         for provider_info in builtin_providers:
@@ -660,60 +671,77 @@ class LLMRegistry:
         self._save_registry()
 
     def get_provider(self, name: str, **init_kwargs) -> Optional[LLMProviderBase]:
-        """
-        Get provider instance by name.
+        """Return an instantiated provider or gracefully fall back to mock."""
 
-        Args:
-            name: Provider name
-            **init_kwargs: Provider initialization arguments
-
-        Returns:
-            Provider instance or None if not found
-        """
-        if name not in self._registrations:
+        registration = self._registrations.get(name)
+        if not registration:
             logger.error(f"Provider '{name}' not registered")
-            return None
+            return self._handle_provider_creation_failure(name, f"{name}|", RuntimeError("provider not registered"))
 
-        # Build cache key including model so different model inits are not conflated
-        model_key = init_kwargs.get("model") or self._registrations[name].default_model or ""
+        model_key = init_kwargs.get("model") or registration.default_model or ""
         cache_key = f"{name}|{model_key}"
 
-        # Return cached instance if available
         if cache_key in self._providers:
             return self._providers[cache_key]
 
-        # Create new instance
         try:
-            registration = self._registrations[name]
             provider_class = self._get_provider_class(registration.provider_class)
+            if provider_class is None:
+                raise RuntimeError(f"Provider class '{registration.provider_class}' could not be resolved")
 
-            if provider_class:
-                # Use default model if not specified
-                if "model" not in init_kwargs and registration.default_model:
-                    init_kwargs["model"] = registration.default_model
+            if "model" not in init_kwargs and registration.default_model:
+                init_kwargs["model"] = registration.default_model
 
-                # Translate llamacpp model id to a concrete model_path when possible
-                if name == "llamacpp":
-                    # If a specific GGUF model was selected, resolve to a verified file path
-                    model_id = init_kwargs.get("model")
-                    if model_id and "model_path" not in init_kwargs:
-                        resolved = self._resolve_llamacpp_model_path_by_id(model_id)
-                        if resolved:
-                            init_kwargs["model_path"] = resolved
-                        else:
-                            logger.error(f"Unable to resolve verified GGUF for model_id '{model_id}'")
-                            return None
+            if name == "llamacpp":
+                model_id = init_kwargs.get("model")
+                if model_id and "model_path" not in init_kwargs:
+                    resolved = self._resolve_llamacpp_model_path_by_id(model_id)
+                    if resolved:
+                        init_kwargs["model_path"] = resolved
+                    else:
+                        raise RuntimeError(f"Unable to resolve verified GGUF for model_id '{model_id}'")
 
-                provider = provider_class(**init_kwargs)
-                self._providers[cache_key] = provider
-
-                logger.info(f"Created provider instance: {name} (model={init_kwargs.get('model')})")
-                return provider
+            provider = provider_class(**init_kwargs)
+            self._providers[cache_key] = provider
+            logger.info(f"Created provider instance: {name} (model={init_kwargs.get('model')})")
+            return provider
 
         except Exception as ex:
             logger.error(f"Failed to create provider '{name}': {ex}")
+            return self._handle_provider_creation_failure(name, cache_key, ex)
 
-        return None
+    def _handle_provider_creation_failure(
+        self, name: str, cache_key: str, error: Exception
+    ) -> Optional[LLMProviderBase]:
+        """Mark provider unhealthy and fall back to the mock provider when possible."""
+
+        registration = self._registrations.get(name)
+        if registration:
+            registration.health_status = "unhealthy"
+            registration.last_health_check = time.time()
+            registration.error_message = str(error)
+            try:
+                self._save_registry()
+            except Exception:
+                logger.debug("Failed to persist registry health update", exc_info=True)
+
+        if name == "mock":
+            return None
+
+        try:
+            fallback = self.get_provider("mock")
+        except Exception as fallback_error:  # pragma: no cover - defensive
+            logger.error(f"Mock provider instantiation failed: {fallback_error}")
+            return None
+
+        if fallback:
+            self._providers[cache_key] = fallback
+            logger.warning(
+                "Provider '%s' unavailable (%s); using mock provider instead.",
+                name,
+                error,
+            )
+        return fallback
 
     # -----------------------------
     # KIRE routing integration
@@ -770,6 +798,7 @@ class LLMRegistry:
             "GeminiProvider": GeminiProvider,
             "DeepseekProvider": DeepseekProvider,
             "HuggingFaceProvider": HuggingFaceProvider,
+            "MockLLMProvider": MockLLMProvider,
         }
 
         return class_map.get(class_name)
