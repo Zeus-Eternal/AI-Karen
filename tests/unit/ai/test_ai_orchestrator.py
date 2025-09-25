@@ -2,6 +2,39 @@
 Tests for AI Orchestrator Service.
 """
 
+import os
+import sys
+import types
+from importlib.machinery import ModuleSpec
+
+os.environ.setdefault("KARI_DUCKDB_PASSWORD", "test-password")
+os.environ.setdefault("KARI_JOB_SIGNING_KEY", "test-signing-key")
+
+# Provide lightweight stubs for optional heavy dependencies so imports remain fast
+if "sentence_transformers" not in sys.modules:
+    sentence_transformers_stub = types.ModuleType("sentence_transformers")
+    sentence_transformers_stub.SentenceTransformer = None
+    sys.modules["sentence_transformers"] = sentence_transformers_stub
+
+if "spacy" not in sys.modules:
+    spacy_stub = types.ModuleType("spacy")
+
+    def _stub_load(*args, **kwargs):  # pragma: no cover - fallback stub
+        raise OSError("spaCy model unavailable in tests")
+
+    spacy_stub.load = _stub_load
+    spacy_stub.__spec__ = ModuleSpec("spacy", loader=None)
+    sys.modules["spacy"] = spacy_stub
+
+    spacy_cli_stub = types.ModuleType("spacy.cli")
+
+    def _stub_download(*args, **kwargs):  # pragma: no cover - fallback stub
+        return None
+
+    spacy_cli_stub.__spec__ = ModuleSpec("spacy.cli", loader=None)
+    spacy_cli_stub.download = _stub_download
+    sys.modules["spacy.cli"] = spacy_cli_stub
+
 import pytest
 import asyncio
 from datetime import datetime
@@ -9,7 +42,9 @@ from unittest.mock import Mock, AsyncMock
 
 from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
     AIOrchestrator, FlowManager, DecisionEngine, ContextManager, PromptManager,
-    FlowRegistrationError, FlowExecutionError
+)
+from ai_karen_engine.services.ai_orchestrator.flow_manager import (
+    FlowRegistrationError, FlowExecutionError,
 )
 from src.ai_karen_engine.core.services.base import ServiceConfig
 from src.ai_karen_engine.models.shared_types import (
@@ -470,9 +505,9 @@ class TestAIOrchestrator:
         """Test conversation processing flow execution."""
         config = ServiceConfig(name="test_orchestrator")
         orchestrator = AIOrchestrator(config)
-        
+
         await orchestrator.startup()
-        
+
         input_data = FlowInput(
             prompt="Remember that I like coffee",
             conversation_history=[],
@@ -480,14 +515,60 @@ class TestAIOrchestrator:
             user_id="test_user",
             session_id="test_session"
         )
-        
+
         result = await orchestrator.conversation_processing_flow(input_data)
-        
+
         assert result.response is not None
         assert result.memory_to_store is not None
-        
+
         await orchestrator.shutdown()
-    
+
+    @pytest.mark.asyncio
+    async def test_conversation_processing_flow_fallback_when_llms_fail(self, monkeypatch):
+        """Ensure fallback messaging is returned when every provider is unavailable."""
+
+        class AlwaysFailRouter:
+            def __init__(self):
+                self.invoke_calls = 0
+
+            def invoke(self, *args, **kwargs):
+                self.invoke_calls += 1
+                raise RuntimeError("All providers are unreachable")
+
+        class DummyLLMUtils:
+            def generate_text(self, *args, **kwargs):  # pragma: no cover - should not be called
+                raise AssertionError("LLM utils should not be invoked when router fails")
+
+        router_instance = AlwaysFailRouter()
+
+        monkeypatch.setattr(
+            "ai_karen_engine.integrations.llm_router.LLMProfileRouter",
+            lambda *_, **__: router_instance,
+        )
+
+        config = ServiceConfig(name="test_orchestrator")
+        orchestrator = AIOrchestrator(config)
+
+        await orchestrator.startup()
+
+        orchestrator.llm_utils = DummyLLMUtils()
+
+        input_data = FlowInput(
+            prompt="Tell me something encouraging",
+            conversation_history=[],
+            user_settings={},
+            user_id="test_user",
+            session_id="test_session",
+        )
+
+        result = await orchestrator.conversation_processing_flow(input_data)
+
+        assert "language model is unavailable" in result.response.lower()
+        assert result.requires_plugin is False
+        assert router_instance.invoke_calls >= 1
+
+        await orchestrator.shutdown()
+
     def test_get_metrics(self):
         """Test metrics collection."""
         config = ServiceConfig(name="test_orchestrator")
