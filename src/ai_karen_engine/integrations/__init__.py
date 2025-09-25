@@ -1,26 +1,5 @@
 """Integration helpers for Kari AI (compatibility wrappers)."""
 
-from ai_karen_engine.integrations.automation_manager import AutomationManager
-from ai_karen_engine.integrations.local_rpa_client import LocalRPAClient
-from ai_karen_engine.integrations.llm_router import LLMProfileRouter
-from ai_karen_engine.integrations.voice_registry import (
-    VoiceRegistry,
-    get_voice_registry,
-    VoiceProviderBase,
-    DummyVoiceProvider,
-)
-from ai_karen_engine.integrations.video_registry import (
-    VideoRegistry,
-    get_video_registry,
-    VideoProviderBase,
-    DummyVideoProvider,
-)
-from ai_karen_engine.integrations.provider_registry import (
-    ProviderRegistry,
-    ModelInfo,
-    get_provider_registry,
-)
-
 __all__ = [
     "AutomationManager",
     "LocalRPAClient",
@@ -37,3 +16,69 @@ __all__ = [
     "DummyVideoProvider",
     "get_video_registry",
 ]
+
+
+def __getattr__(name):
+    if name == "AutomationManager":
+        from ai_karen_engine.integrations.automation_manager import AutomationManager as _AutomationManager
+
+        return _AutomationManager
+    if name == "LocalRPAClient":
+        from ai_karen_engine.integrations.local_rpa_client import LocalRPAClient as _LocalRPAClient
+
+        return _LocalRPAClient
+    if name == "LLMProfileRouter":
+        from ai_karen_engine.integrations.llm_router import LLMProfileRouter as _LLMProfileRouter
+
+        return _LLMProfileRouter
+    if name in {"ProviderRegistry", "ModelInfo", "get_provider_registry"}:
+        from ai_karen_engine.integrations.provider_registry import (
+            ProviderRegistry as _ProviderRegistry,
+            ModelInfo as _ModelInfo,
+            get_provider_registry as _get_provider_registry,
+        )
+
+        return {
+            "ProviderRegistry": _ProviderRegistry,
+            "ModelInfo": _ModelInfo,
+            "get_provider_registry": _get_provider_registry,
+        }[name]
+    if name in {
+        "VoiceRegistry",
+        "VoiceProviderBase",
+        "DummyVoiceProvider",
+        "get_voice_registry",
+    }:
+        from ai_karen_engine.integrations.voice_registry import (
+            VoiceRegistry as _VoiceRegistry,
+            VoiceProviderBase as _VoiceProviderBase,
+            DummyVoiceProvider as _DummyVoiceProvider,
+            get_voice_registry as _get_voice_registry,
+        )
+
+        return {
+            "VoiceRegistry": _VoiceRegistry,
+            "VoiceProviderBase": _VoiceProviderBase,
+            "DummyVoiceProvider": _DummyVoiceProvider,
+            "get_voice_registry": _get_voice_registry,
+        }[name]
+    if name in {
+        "VideoRegistry",
+        "VideoProviderBase",
+        "DummyVideoProvider",
+        "get_video_registry",
+    }:
+        from ai_karen_engine.integrations.video_registry import (
+            VideoRegistry as _VideoRegistry,
+            VideoProviderBase as _VideoProviderBase,
+            DummyVideoProvider as _DummyVideoProvider,
+            get_video_registry as _get_video_registry,
+        )
+
+        return {
+            "VideoRegistry": _VideoRegistry,
+            "VideoProviderBase": _VideoProviderBase,
+            "DummyVideoProvider": _DummyVideoProvider,
+            "get_video_registry": _get_video_registry,
+        }[name]
+    raise AttributeError(name)
