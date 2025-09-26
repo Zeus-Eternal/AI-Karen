@@ -7,21 +7,124 @@ Handles CLI argument parsing and server startup with custom configuration.
 import argparse
 import logging
 import os
+from typing import Optional
+
 from .config import Settings
 from .server_logging_filters import SuppressInvalidHTTPFilter
 
 logger = logging.getLogger("kari")
 
 
-def parse_args():
+def configure_logging(log_level: str) -> None:
+    """Configure application logging before the server starts."""
+
+    level = getattr(logging, log_level.upper(), logging.INFO)
+
+    # Reset existing handlers so repeated invocations (e.g. tests) reconfigure cleanly
+    root_logger = logging.getLogger()
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+    logger.setLevel(level)
+    logging.getLogger("uvicorn").setLevel(level)
+    logging.getLogger("uvicorn.error").setLevel(level)
+    logging.getLogger("uvicorn.access").setLevel(level)
+
+
+def _coerce_int(value: Optional[str], default: int) -> int:
+    """Safely coerce string values to integers with a fallback."""
+
+    if value is None:
+        return default
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        logger.warning("Invalid integer value '%s', falling back to %s", value, default)
+        return default
+
+
+def _coerce_bool(value: Optional[str], default: bool) -> bool:
+    """Convert environment string flags to booleans."""
+
+    if value is None:
+        return default
+
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+
+    logger.warning("Invalid boolean value '%s', falling back to %s", value, default)
+    return default
+
+
+def _validate_runtime_args(args: argparse.Namespace) -> argparse.Namespace:
+    """Validate and normalize runtime arguments for safe server startup."""
+
+    if not (0 < args.port < 65536):
+        raise ValueError(f"Port must be between 1 and 65535, got {args.port}")
+
+    if args.workers < 1:
+        logger.warning("Workers must be >= 1, forcing to 1 (received %s)", args.workers)
+        args.workers = 1
+
+    if args.reload and args.workers != 1:
+        logger.warning(
+            "Reload mode is incompatible with multiple workers. Forcing workers to 1."
+        )
+        args.workers = 1
+
+    if args.debug:
+        args.log_level = "DEBUG"
+
+    args.log_level = args.log_level.upper()
+
+    return args
+
+
+def parse_args(settings: Optional[Settings] = None) -> argparse.Namespace:
     """Parse command line arguments"""
+    settings = settings or Settings()
+
     parser = argparse.ArgumentParser(description="Kari AI Assistant Server")
-    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
-    parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
-    parser.add_argument("--workers", type=int, default=1, help="Number of workers")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-    return parser.parse_args()
+
+    default_host = os.getenv("KARI_SERVER_HOST", "0.0.0.0")
+    default_port = _coerce_int(os.getenv("KARI_SERVER_PORT"), 8000)
+    default_workers = _coerce_int(os.getenv("KARI_SERVER_WORKERS"), 1)
+    default_reload = _coerce_bool(os.getenv("KARI_SERVER_RELOAD"), False)
+    default_debug = _coerce_bool(os.getenv("KARI_SERVER_DEBUG"), settings.debug)
+    default_log_level = os.getenv("KARI_SERVER_LOG_LEVEL", settings.log_level).upper()
+
+    parser.add_argument("--host", default=default_host, help="Host to bind to")
+    parser.add_argument("--port", type=int, default=default_port, help="Port to bind to")
+
+    reload_group = parser.add_mutually_exclusive_group()
+    reload_group.add_argument("--reload", dest="reload", action="store_true", help="Enable auto-reload")
+    reload_group.add_argument("--no-reload", dest="reload", action="store_false", help="Disable auto-reload")
+    parser.set_defaults(reload=default_reload)
+
+    debug_group = parser.add_mutually_exclusive_group()
+    debug_group.add_argument("--debug", dest="debug", action="store_true", help="Enable debug mode")
+    debug_group.add_argument("--no-debug", dest="debug", action="store_false", help="Disable debug mode")
+    parser.set_defaults(debug=default_debug)
+
+    parser.add_argument("--workers", type=int, default=default_workers, help="Number of workers")
+    parser.add_argument(
+        "--log-level",
+        default=default_log_level,
+        type=lambda value: value.upper(),
+        choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
+        help="Log level for server output",
+    )
+
+    args = parser.parse_args()
+    return _validate_runtime_args(args)
 
 
 def setup_uvicorn_logging_filters():
@@ -116,16 +219,18 @@ def create_log_config():
     }
 
 
-def run_server(args=None):
+def run_server(args: Optional[argparse.Namespace] = None, settings: Optional[Settings] = None):
     """Run the Kari server with uvicorn"""
+    settings = settings or Settings()
+
     if args is None:
-        args = parse_args()
-    
-    settings = Settings()
-    
+        args = parse_args(settings=settings)
+    else:
+        args = _validate_runtime_args(args)
+
     # Setup uvicorn logging filters
     setup_uvicorn_logging_filters()
-    
+
     # Disable SSL for development
     ssl_context = None
     
@@ -140,6 +245,8 @@ def run_server(args=None):
         debug=args.debug,
         ssl_context=ssl_context,
         workers=args.workers,
+        reload=args.reload,
+        log_level=args.log_level,
         # Enhanced configuration for protocol-level error handling from settings
         max_invalid_requests_per_connection=settings.max_invalid_requests_per_connection,
         enable_protocol_error_handling=settings.enable_protocol_error_handling,
@@ -159,7 +266,14 @@ def run_server(args=None):
     )
 
     # Run the custom server
-    logger.info("🚀 Starting Kari AI server with enhanced protocol-level error handling")
+    logger.info(
+        "🚀 Starting Kari AI server on %s:%s (workers=%s, reload=%s, log_level=%s)",
+        args.host,
+        args.port,
+        args.workers,
+        args.reload,
+        args.log_level,
+    )
     custom_server.run()
 
 

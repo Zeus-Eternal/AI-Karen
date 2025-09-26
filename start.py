@@ -17,7 +17,7 @@ if str(project_root) not in sys.path:
 
 # Import the modular server components
 from server.app import create_app
-from server.run import run_server, parse_args
+from server.run import run_server, parse_args, configure_logging
 from server.config import Settings
 
 logger = logging.getLogger("kari")
@@ -26,20 +26,29 @@ logger = logging.getLogger("kari")
 def main():
     """Main entry point for the Kari server"""
     try:
-        # Parse command line arguments
-        args = parse_args()
-        
-        # Create the FastAPI app using the factory
-        app = create_app()
-        
+        # Load settings first to ensure environment validation happens early
+        settings = Settings()
+
+        # Configure logging according to settings/environment
+        configure_logging(settings.log_level)
+
+        # Parse command line arguments with settings-aware defaults
+        args = parse_args(settings=settings)
+
+        # Create the FastAPI app using the factory to fail fast on startup issues
+        _ = create_app()
+
         # Run the server
-        run_server(args)
+        run_server(args=args, settings=settings)
         
     except KeyboardInterrupt:
         logger.info("Server shutdown requested by user")
         sys.exit(0)
+    except ValueError as e:
+        logger.error("Invalid startup configuration: %s", e)
+        sys.exit(2)
     except Exception as e:
-        logger.error(f"Failed to start server: {e}")
+        logger.exception("Failed to start server: %s", e)
         sys.exit(1)
 
 
