@@ -25,16 +25,20 @@ function SidebarInner() {
   return (
     <>
       <SidebarRail />
-      <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20">
+      <Sidebar
+        variant="sidebar"
+        collapsible="icon"
+        className="border-r z-20 sidebar-enhanced"
+      >
         <ExtensionHeader />
-      <SidebarContent className="p-2 space-y-2 overflow-auto">
-        <SidebarNavigation />
-      </SidebarContent>
-      <SidebarFooter className="p-2 border-t">
-        <p className="text-xs text-muted-foreground text-center">
-          Extension Manager
-        </p>
-      </SidebarFooter>
+        <SidebarContent className="p-2 space-y-2 overflow-auto scroll-smooth">
+          <SidebarNavigation />
+        </SidebarContent>
+        <SidebarFooter className="p-2 border-t">
+          <p className="text-xs text-muted-foreground text-center">
+            Extension Manager
+          </p>
+        </SidebarFooter>
       </Sidebar>
     </>
   );

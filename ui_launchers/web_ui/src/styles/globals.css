@@ -114,6 +114,8 @@
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
     position: relative;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
   
   /* Ensure proper stacking context for modals and overlays */
@@ -175,11 +177,13 @@
     display: grid;
     grid-template-columns: auto 1fr;
     grid-template-rows: auto 1fr;
-    grid-template-areas: 
+    grid-template-areas:
       "header header"
       "sidebar main";
     min-height: 100vh;
     width: 100%;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
   
   .app-header {
@@ -199,14 +203,18 @@
     background: hsl(var(--sidebar-background));
     overflow-y: auto;
     max-height: calc(100vh - var(--header-height, 4rem));
+    color: hsl(var(--sidebar-foreground));
+    box-shadow: 1px 0 0 rgb(0 0 0 / 0.02);
   }
-  
+
   .app-main {
     grid-area: main;
     padding: 1.5rem;
     overflow-y: auto;
     max-height: calc(100vh - var(--header-height, 4rem));
     background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    box-shadow: inset 0 1px 0 rgb(0 0 0 / 0.01);
   }
   
   /* Chat Layout Grid */
@@ -441,6 +449,14 @@
     background: hsl(var(--background));
     min-height: calc(100vh - 4rem);
     padding: 1.5rem;
+    color: hsl(var(--foreground));
+  }
+
+  .modern-layout-root {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 3vw, 2rem);
+    padding-block: clamp(1rem, 2vw, 2rem);
   }
   
   /* Scroll area styling */
@@ -465,5 +481,15 @@
   
   .scroll-smooth::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@supports (min-height: 100svh) {
+  body {
+    min-height: 100svh;
+  }
+
+  .app-grid {
+    min-height: 100svh;
   }
 }
