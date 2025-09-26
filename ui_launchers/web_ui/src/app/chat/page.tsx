@@ -59,7 +59,7 @@ function ChatView() {
   return (
     <SidebarProvider>
       <div className="chat-grid">
-        <header className="chat-header header-enhanced">
+        <header className="chat-header header-enhanced" role="banner">
           <div className="container-fluid flex-between">
             <div className="flex-start space-x-3">
               <AppSidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive" />
@@ -91,59 +91,72 @@ function ChatView() {
           {webUIConfig.enableExtensions ? (
             <ExtensionSidebar />
           ) : (
-            <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20 sidebar-enhanced">
+            <Sidebar
+              variant="sidebar"
+              collapsible="icon"
+              className="border-r z-20 sidebar-enhanced"
+              aria-label="Main navigation"
+            >
               <AppSidebarHeader className="p-4">
-                <h2 className="text-lg font-semibold tracking-tight">Navigation</h2>
+                <h2 id="chat-primary-nav-title" className="text-lg font-semibold tracking-tight">
+                  Navigation
+                </h2>
               </AppSidebarHeader>
               <Separator className="my-1" />
               <AppSidebarContent className="p-2 scroll-smooth">
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname === "/chat"} className="w-full">
-                      <Link href="/chat">
-                        <MessageSquare />
-                        Chat
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild className="w-full">
-                      <Link href="/?view=dashboard">
-                        <LayoutGrid />
-                        Dashboard
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild className="w-full">
-                      <Link href="/?view=settings">
-                        <SettingsIconLucide />
-                        Settings
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild className="w-full">
-                      <Link href="/?view=commsCenter">
-                        <Bell />
-                        Comms Center
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-                <Separator className="my-2" />
-                <SidebarGroup>
-                  <SidebarGroupLabel className="text-sm">Plugins</SidebarGroupLabel>
+                <nav aria-labelledby="chat-primary-nav-title">
                   <SidebarMenu>
                     <SidebarMenuItem>
+                      <SidebarMenuButton asChild isActive={pathname === "/chat"} className="w-full">
+                        <Link href="/chat">
+                          <MessageSquare />
+                          Chat
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
                       <SidebarMenuButton asChild className="w-full">
-                        <Link href="/?view=pluginOverview">
-                          <PlugZap />
-                          Plugin Overview
+                        <Link href="/?view=dashboard">
+                          <LayoutGrid />
+                          Dashboard
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild className="w-full">
+                        <Link href="/?view=settings">
+                          <SettingsIconLucide />
+                          Settings
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild className="w-full">
+                        <Link href="/?view=commsCenter">
+                          <Bell />
+                          Comms Center
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>
+                </nav>
+                <Separator className="my-2" />
+                <SidebarGroup>
+                  <SidebarGroupLabel asChild className="text-sm font-medium">
+                    <h3 id="chat-plugins-nav-title">Plugins</h3>
+                  </SidebarGroupLabel>
+                  <nav aria-labelledby="chat-plugins-nav-title">
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild className="w-full">
+                          <Link href="/?view=pluginOverview">
+                            <PlugZap />
+                            Plugin Overview
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </nav>
                 </SidebarGroup>
               </AppSidebarContent>
               <AppSidebarFooter className="p-2 border-t">

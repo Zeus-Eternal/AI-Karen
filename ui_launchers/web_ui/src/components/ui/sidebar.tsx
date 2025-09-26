@@ -267,8 +267,9 @@ const SidebarTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button> & { asChild?: boolean; children?: React.ReactNode }
 >(({ className, onClick, asChild = false, children, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile, open, openMobile } = useSidebar();
   const Comp = asChild ? Slot : Button;
+  const expanded = isMobile ? openMobile : open;
 
   return (
     <Comp
@@ -276,14 +277,16 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
+      aria-expanded={expanded}
       onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
         if (onClick) {
-          onClick(event as any); 
+          onClick(event as any);
         }
         toggleSidebar();
       }}
+      type={asChild ? undefined : "button"}
       {...props}
-      className={cn(className)} 
+      className={cn(className)}
     >
       {asChild ? children : (
         <>
@@ -503,7 +506,6 @@ const SidebarMenu = React.forwardRef<
   <ul
     ref={ref}
     data-sidebar="menu"
-    role="menu"
     className={cn("flex w-full min-w-0 flex-col gap-1", className)}
     {...props}
   />
@@ -567,6 +569,7 @@ const SidebarMenuButton = React.forwardRef<
   ) => {
     const Comp = asChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
+    const ariaCurrent = isActive ? "page" : undefined
 
     const button = (
       <Comp
@@ -574,13 +577,8 @@ const SidebarMenuButton = React.forwardRef<
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
-        role="menuitem"
-        onKeyDown={(e: React.KeyboardEvent<HTMLButtonElement>) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            (props.onClick as any)?.(e as any);
-          }
-        }}
+        aria-current={ariaCurrent}
+        type={asChild ? undefined : "button"}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
         {...props}
       />
@@ -731,6 +729,7 @@ const SidebarMenuSubButton = React.forwardRef<
   }
 >(({ asChild = false, size = "md", isActive, className, ...props }, ref) => {
   const Comp = asChild ? Slot : "a"
+  const ariaCurrent = isActive ? "page" : undefined
 
   return (
     <Comp
@@ -738,14 +737,8 @@ const SidebarMenuSubButton = React.forwardRef<
       data-sidebar="menu-sub-button"
       data-size={size}
       data-active={isActive}
-      role="menuitem"
+      aria-current={ariaCurrent}
       tabIndex={0}
-      onKeyDown={(e: React.KeyboardEvent<HTMLAnchorElement>) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          (props.onClick as any)?.(e as any);
-        }
-      }}
       className={cn(
         "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
