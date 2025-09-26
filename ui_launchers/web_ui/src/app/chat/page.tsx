@@ -152,24 +152,26 @@ function ChatView() {
             </Sidebar>
           )}
 
-          <SidebarInset className="flex flex-col min-h-0">
+          <SidebarInset className="chat-surface min-h-0">
             <MetaBar />
             <div className="chat-messages">
               <div className="container max-w-screen-xl">
-                <ChatInterface
-                  className="h-full smooth-transition"
-                  useCopilotKit={true}
-                  enableCodeAssistance={true}
-                  enableContextualHelp={true}
-                  enableDocGeneration={true}
-                  showTabs={true}
-                  showSettings={true}
-                  enableVoiceInput={false}
-                  enableFileUpload={true}
-                  enableAnalytics={true}
-                  enableExport={true}
-                  enableSharing={false}
-                />
+                <div className="chat-panel">
+                  <ChatInterface
+                    className="h-full smooth-transition"
+                    useCopilotKit={true}
+                    enableCodeAssistance={true}
+                    enableContextualHelp={true}
+                    enableDocGeneration={true}
+                    showTabs={true}
+                    showSettings={true}
+                    enableVoiceInput={false}
+                    enableFileUpload={true}
+                    enableAnalytics={true}
+                    enableExport={true}
+                    enableSharing={false}
+                  />
+                </div>
               </div>
             </div>
           </SidebarInset>

@@ -179,6 +179,8 @@ const Sidebar = React.forwardRef<
             "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
             className
           )}
+          role="navigation"
+          aria-label="Sidebar"
           ref={ref}
           {...props}
         >
