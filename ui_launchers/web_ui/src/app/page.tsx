@@ -89,7 +89,7 @@ function AuthenticatedHomePage() {
   return (
     <SidebarProvider>
       <div className="app-grid">
-        <header className="app-header header-enhanced">
+        <header className="app-header header-enhanced" role="banner">
           <div className="container-fluid flex-between py-3 md:py-4">
             <div className="flex-start space-x-3">
               <AppSidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive">
@@ -125,82 +125,131 @@ function AuthenticatedHomePage() {
           {webUIConfig.enableExtensions ? (
             <ExtensionSidebar />
           ) : (
-            <Sidebar variant="sidebar" collapsible="icon" className="border-r z-20 sidebar-enhanced">
+            <Sidebar
+              variant="sidebar"
+              collapsible="icon"
+              className="border-r z-20 sidebar-enhanced"
+              aria-label="Main navigation"
+            >
               <AppSidebarHeader className="p-4">
-                <h2 className="text-lg font-semibold tracking-tight">Navigation</h2>
+                <h2 id="home-primary-nav-title" className="text-lg font-semibold tracking-tight">
+                  Navigation
+                </h2>
               </AppSidebarHeader>
               <Separator className="my-1" />
               <AppSidebarContent className="p-2 scroll-smooth">
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild className="w-full" isActive={pathname === '/chat'}>
-                      <Link href="/chat">
-                        <MessageSquare />
-                        Chat
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => navigate('dashboard')} isActive={activeMainView === 'dashboard'} className="w-full">
-                      <LayoutGrid />
-                      Dashboard
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => navigate('settings')} isActive={activeMainView === 'settings'} className="w-full">
-                      <SettingsIconLucide />
-                      Settings
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => navigate('commsCenter')} isActive={activeMainView === 'commsCenter'} className="w-full">
-                      <Bell />
-                      Comms Center
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-
-                <Separator className="my-2" />
-                <SidebarGroup>
-                  <SidebarGroupLabel className="text-sm">Plugins</SidebarGroupLabel>
+                <nav aria-labelledby="home-primary-nav-title">
                   <SidebarMenu>
                     <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => navigate('pluginOverview')} isActive={activeMainView === 'pluginOverview'} className="w-full">
-                        <PlugZap />
-                        Plugin Overview
+                      <SidebarMenuButton asChild className="w-full" isActive={pathname === '/chat'}>
+                        <Link href="/chat">
+                          <MessageSquare />
+                          Chat
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => navigate('pluginDatabaseConnector')} isActive={activeMainView === 'pluginDatabaseConnector'} className="w-full">
-                        <Database />
-                        Database Connector
+                      <SidebarMenuButton
+                        onClick={() => navigate('dashboard')}
+                        isActive={activeMainView === 'dashboard'}
+                        className="w-full"
+                      >
+                        <LayoutGrid />
+                        Dashboard
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => navigate('pluginFacebook')} isActive={activeMainView === 'pluginFacebook'} className="w-full">
-                        <Facebook />
-                        Facebook Plugin
+                      <SidebarMenuButton
+                        onClick={() => navigate('settings')}
+                        isActive={activeMainView === 'settings'}
+                        className="w-full"
+                      >
+                        <SettingsIconLucide />
+                        Settings
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => navigate('pluginGmail')} isActive={activeMainView === 'pluginGmail'} className="w-full">
-                        <Mail />
-                        Gmail Plugin
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => navigate('pluginDateTime')} isActive={activeMainView === 'pluginDateTime'} className="w-full">
-                        <CalendarDays />
-                        Date/Time Plugin
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton onClick={() => navigate('pluginWeather')} isActive={activeMainView === 'pluginWeather'} className="w-full">
-                        <CloudSun />
-                        Weather Service
+                      <SidebarMenuButton
+                        onClick={() => navigate('commsCenter')}
+                        isActive={activeMainView === 'commsCenter'}
+                        className="w-full"
+                      >
+                        <Bell />
+                        Comms Center
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>
+                </nav>
+
+                <Separator className="my-2" />
+                <SidebarGroup>
+                  <SidebarGroupLabel asChild className="text-sm font-medium">
+                    <h3 id="home-plugins-nav-title">Plugins</h3>
+                  </SidebarGroupLabel>
+                  <nav aria-labelledby="home-plugins-nav-title">
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => navigate('pluginOverview')}
+                          isActive={activeMainView === 'pluginOverview'}
+                          className="w-full"
+                        >
+                          <PlugZap />
+                          Plugin Overview
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => navigate('pluginDatabaseConnector')}
+                          isActive={activeMainView === 'pluginDatabaseConnector'}
+                          className="w-full"
+                        >
+                          <Database />
+                          Database Connector
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => navigate('pluginFacebook')}
+                          isActive={activeMainView === 'pluginFacebook'}
+                          className="w-full"
+                        >
+                          <Facebook />
+                          Facebook Plugin
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => navigate('pluginGmail')}
+                          isActive={activeMainView === 'pluginGmail'}
+                          className="w-full"
+                        >
+                          <Mail />
+                          Gmail Plugin
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => navigate('pluginDateTime')}
+                          isActive={activeMainView === 'pluginDateTime'}
+                          className="w-full"
+                        >
+                          <CalendarDays />
+                          Date/Time Plugin
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          onClick={() => navigate('pluginWeather')}
+                          isActive={activeMainView === 'pluginWeather'}
+                          className="w-full"
+                        >
+                          <CloudSun />
+                          Weather Service
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </nav>
                 </SidebarGroup>
               </AppSidebarContent>
               <AppSidebarFooter className="p-2 border-t">
