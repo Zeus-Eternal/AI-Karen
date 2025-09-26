@@ -1,9 +1,9 @@
-"""
-LLM Router Service
-Manages LLM provider selection, routing, and fallback logic with local-first priority
-"""
+"""Local-first LLM routing service with health, policy, and metrics support."""
+
+from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import logging
 import random
@@ -11,19 +11,103 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Union
+from typing import Any, AsyncIterator, Dict, Iterable, List, Optional, Sequence, Union
 
 from ai_karen_engine.integrations.llm_registry import get_registry, LLMRegistry
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
+
+
+class _DummyMetric:  # type: ignore[too-few-public-methods]
+    """Fallback metric collector when prometheus-client is unavailable."""
+
+    def labels(self, **_kwargs: Any) -> "_DummyMetric":
+        return self
+
+    def inc(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    def observe(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+
+try:  # pragma: no cover - prometheus is optional
+    from prometheus_client import Counter, Histogram, REGISTRY
+
+    METRICS_ENABLED = True
+except Exception:  # pragma: no cover - optional dependency missing
+    METRICS_ENABLED = False
+    Counter = Histogram = _DummyMetric  # type: ignore[assignment]
+
+
+def _get_or_create_metric(name: str, factory) -> Any:
+    """Return a metric collector, reusing existing instances when possible."""
+
+    if not METRICS_ENABLED:
+        return _DummyMetric()
+
+    if name in REGISTRY._names_to_collectors:  # type: ignore[attr-defined]
+        return REGISTRY._names_to_collectors[name]  # type: ignore[index]
+
+    return factory()
+
+
+PROVIDER_SELECTION_COUNTER = _get_or_create_metric(
+    "kari_llm_provider_selections_total",
+    lambda: Counter(
+        "kari_llm_provider_selections_total",
+        "LLM provider selections recorded by the router",
+        ["provider", "policy", "result"],
+    ),
+)
+
+PROVIDER_FALLBACK_COUNTER = _get_or_create_metric(
+    "kari_llm_provider_fallbacks_total",
+    lambda: Counter(
+        "kari_llm_provider_fallbacks_total",
+        "Fallback transitions between LLM providers",
+        ["from_provider", "to_provider", "reason"],
+    ),
+)
+
+PROVIDER_LATENCY_HISTOGRAM = _get_or_create_metric(
+    "kari_llm_provider_latency_seconds",
+    lambda: Histogram(
+        "kari_llm_provider_latency_seconds",
+        "Observed provider latency from the router",
+        ["provider", "policy"],
+        buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0],
+    ),
+)
+
+PROVIDER_FAILURE_COUNTER = _get_or_create_metric(
+    "kari_llm_provider_failures_total",
+    lambda: Counter(
+        "kari_llm_provider_failures_total",
+        "Failures encountered when invoking an LLM provider",
+        ["provider", "error_type"],
+    ),
+)
 
 logger = logging.getLogger(__name__)
 
 
 class ProviderPriority(Enum):
-    """Provider priority levels"""
-    LOCAL = 1      # Ollama, llama.cpp
-    REMOTE = 2     # OpenAI, Anthropic, Gemini
-    FALLBACK = 3   # Last resort providers
+    """Provider priority levels honoring Kari's local-first doctrine."""
+
+    LOCAL = 1  # llama.cpp, GGUF runtimes
+    TRANSFORMER = 2  # Transformers running locally (HF pipelines, GGML wrappers)
+    NLP = 3  # spaCy-powered deterministic responders
+    LIGHTWEIGHT = 4  # Small distilled models (e.g., DistilBERT, classifiers)
+    REMOTE = 5  # Managed APIs (OpenAI, Anthropic, Gemini, etc.)
+    FALLBACK = 6  # Deterministic and offline fallbacks
+
+
+class RoutingPolicy(Enum):
+    """Routing policies supported by the router."""
+
+    PRIORITY = "priority"  # Strict local-first priority order
+    ROUND_ROBIN = "round_robin"  # Rotate through healthy providers
+    HYBRID = "hybrid"  # Local-first buckets with in-bucket rotation
 
 
 @dataclass
@@ -74,6 +158,24 @@ class LLMRouter:
         self.max_consecutive_failures = 3
         self.response_timeout = 30  # seconds
 
+        # Routing policy configuration
+        self.routing_policy: RoutingPolicy = RoutingPolicy.PRIORITY
+        self.priority_order: List[ProviderPriority] = [
+            ProviderPriority.LOCAL,
+            ProviderPriority.TRANSFORMER,
+            ProviderPriority.NLP,
+            ProviderPriority.LIGHTWEIGHT,
+            ProviderPriority.REMOTE,
+            ProviderPriority.FALLBACK,
+        ]
+        self._round_robin_offset: int = 0
+        self._hybrid_state: Dict[ProviderPriority, int] = {}
+
+        # Background health monitoring
+        self._health_monitor_task: Optional[asyncio.Task[None]] = None
+        self._health_monitor_lock: Optional[asyncio.Lock] = None
+        self.background_health_interval = 180  # seconds
+
         # Retry/circuit breaker configuration
         self.retry_attempts = 3
         self.retry_initial_delay = 1.0
@@ -97,17 +199,46 @@ class LLMRouter:
         
         # Provider priority mapping
         self.provider_priorities = {
+            "llamacpp": ProviderPriority.LOCAL,
             "llama_cpp": ProviderPriority.LOCAL,
+            "transformers": ProviderPriority.TRANSFORMER,
+            "huggingface": ProviderPriority.TRANSFORMER,
+            "spacy": ProviderPriority.NLP,
+            "distilbert": ProviderPriority.LIGHTWEIGHT,
             "openai": ProviderPriority.REMOTE,
             "anthropic": ProviderPriority.REMOTE,
             "gemini": ProviderPriority.REMOTE,
             "deepseek": ProviderPriority.REMOTE,
-            "huggingface": ProviderPriority.FALLBACK,
-            # CopilotKit removed - it's a UI framework, not an LLM provider
+            "copilotkit": ProviderPriority.REMOTE,
+            "custom_copilotkit": ProviderPriority.REMOTE,
+            "fallback": ProviderPriority.FALLBACK,
         }
-        
+
         # Initialize health monitoring
         self._initialize_health_monitoring()
+
+    def configure_routing(
+        self,
+        policy: RoutingPolicy = RoutingPolicy.PRIORITY,
+        priority_order: Optional[Iterable[ProviderPriority]] = None,
+    ) -> None:
+        """Configure routing policy and priority ordering at runtime."""
+
+        self.routing_policy = policy
+        if priority_order:
+            ordered = list(dict.fromkeys(priority_order))
+            if not ordered:
+                raise ValueError("priority_order must contain at least one priority")
+            self.priority_order = ordered
+
+        # Reset rotation state when configuration changes
+        self._round_robin_offset = 0
+        self._hybrid_state.clear()
+
+    def set_provider_priority(self, provider_name: str, priority: ProviderPriority) -> None:
+        """Override the priority bucket for a specific provider."""
+
+        self.provider_priorities[provider_name] = priority
     
     def _initialize_health_monitoring(self):
         """Initialize health monitoring for all providers"""
@@ -127,6 +258,7 @@ class LLMRouter:
     ) -> Optional[tuple[str, Optional[str]]]:
         """Select the best available provider based on local-first priority."""
 
+        await self._ensure_background_health_task()
         user_preferences = user_preferences or {}
         preferred_provider = user_preferences.get("preferred_llm_provider")
         preferred_model = request.preferred_model or user_preferences.get("preferred_model")
@@ -141,15 +273,26 @@ class LLMRouter:
         if preferred_provider and preferred_model:
             info = self.registry.get_provider_info(preferred_provider)
             if info and info.get("default_model") == preferred_model and await self._is_provider_healthy(preferred_provider):
-                logger.info(
-                    "Using user preferred provider/model: %s/%s",
-                    preferred_provider,
-                    preferred_model,
+                self._structured_log(
+                    logging.INFO,
+                    "Using preferred provider/model",
+                    provider=preferred_provider,
+                    model=preferred_model,
+                    policy=self.routing_policy.value,
+                    conversation_id=request.conversation_id,
+                    platform=request.platform,
                 )
+                self._record_selection_metric(preferred_provider, "selected")
                 return preferred_provider, preferred_model
             else:
-                logger.warning(
-                    "Preferred model %s not available for provider %s", preferred_model, preferred_provider
+                self._structured_log(
+                    logging.WARNING,
+                    "Preferred provider/model unavailable",
+                    provider=preferred_provider,
+                    model=preferred_model,
+                    policy=self.routing_policy.value,
+                    conversation_id=request.conversation_id,
+                    platform=request.platform,
                 )
                 preferred_provider = None
                 preferred_model = None
@@ -160,16 +303,40 @@ class LLMRouter:
                 info = self.registry.get_provider_info(name)
                 if info and info.get("default_model") == preferred_model:
                     if await self._is_provider_healthy(name):
-                        logger.info("Selected provider %s for model %s", name, preferred_model)
+                        self._structured_log(
+                            logging.INFO,
+                            "Resolved provider for preferred model",
+                            provider=name,
+                            model=preferred_model,
+                            policy=self.routing_policy.value,
+                            conversation_id=request.conversation_id,
+                            platform=request.platform,
+                        )
+                        self._record_selection_metric(name, "selected")
                         return name, preferred_model
-            logger.warning("Preferred model %s not available; falling back", preferred_model)
+            self._structured_log(
+                logging.WARNING,
+                "Preferred model unavailable across providers",
+                model=preferred_model,
+                policy=self.routing_policy.value,
+                conversation_id=request.conversation_id,
+                platform=request.platform,
+            )
             preferred_model = None
 
         # Preferred provider without model
         if preferred_provider and await self._is_provider_healthy(preferred_provider):
-            logger.info(f"Using user preferred provider: {preferred_provider}")
+            self._structured_log(
+                logging.INFO,
+                "Using preferred provider",
+                provider=preferred_provider,
+                policy=self.routing_policy.value,
+                conversation_id=request.conversation_id,
+                platform=request.platform,
+            )
             info = self.registry.get_provider_info(preferred_provider)
             model_name = info.get("default_model") if info else None
+            self._record_selection_metric(preferred_provider, "selected")
             return preferred_provider, model_name
 
         # Get available providers sorted by priority
@@ -182,35 +349,55 @@ class LLMRouter:
                 suitable_providers.append(provider_name)
 
         if not suitable_providers:
-            logger.warning("No suitable providers found for request")
+            self._structured_log(
+                logging.WARNING,
+                "No suitable providers found for request",
+                policy=self.routing_policy.value,
+                conversation_id=request.conversation_id,
+                platform=request.platform,
+            )
+            self._record_selection_metric("none", "unavailable")
             return None
 
         selected_provider = suitable_providers[0]
         info = self.registry.get_provider_info(selected_provider)
         model_name = info.get("default_model") if info else None
-        logger.info(f"Selected provider: {selected_provider}")
+        self._structured_log(
+            logging.INFO,
+            "Selected provider via routing policy",
+            provider=selected_provider,
+            policy=self.routing_policy.value,
+            conversation_id=request.conversation_id,
+            platform=request.platform,
+        )
+        self._record_selection_metric(selected_provider, "selected")
         return selected_provider, model_name
     
     async def _get_available_providers_by_priority(self) -> List[str]:
-        """Get available providers sorted by priority (local first)"""
-        providers_by_priority = {
-            ProviderPriority.LOCAL: [],
-            ProviderPriority.REMOTE: [],
-            ProviderPriority.FALLBACK: []
-        }
-        
-        # Categorize providers by priority
-        for provider_name in self.registry.list_providers():
-            if await self._is_provider_healthy(provider_name):
-                priority = self.provider_priorities.get(provider_name, ProviderPriority.FALLBACK)
-                providers_by_priority[priority].append(provider_name)
-        
-        # Return sorted list (local first)
-        sorted_providers = []
-        for priority in [ProviderPriority.LOCAL, ProviderPriority.REMOTE, ProviderPriority.FALLBACK]:
-            sorted_providers.extend(providers_by_priority[priority])
-        
-        return sorted_providers
+        """Return healthy providers ordered according to the active policy."""
+
+        providers_by_priority = await self._collect_available_providers()
+        ordered: List[str] = []
+        for priority in self.priority_order:
+            bucket = providers_by_priority.get(priority, [])
+            if bucket:
+                ordered.extend(sorted(bucket))
+
+        if not ordered:
+            return ordered
+
+        if self.routing_policy == RoutingPolicy.PRIORITY:
+            return ordered
+
+        if self.routing_policy == RoutingPolicy.ROUND_ROBIN:
+            offset = self._round_robin_offset % len(ordered)
+            self._round_robin_offset = (self._round_robin_offset + 1) % len(ordered)
+            return ordered[offset:] + ordered[:offset]
+
+        if self.routing_policy == RoutingPolicy.HYBRID:
+            return self._apply_hybrid_policy(providers_by_priority)
+
+        return ordered
     
     async def _meets_requirements(self, provider_name: str, request: ChatRequest) -> bool:
         """Check if provider meets request requirements"""
@@ -228,7 +415,44 @@ class LLMRouter:
             pass
         
         return True
-    
+
+    async def _collect_available_providers(self) -> Dict[ProviderPriority, List[str]]:
+        """Group healthy providers by priority bucket."""
+
+        providers_by_priority: Dict[ProviderPriority, List[str]] = {
+            priority: [] for priority in self.priority_order
+        }
+
+        for provider_name in self.registry.list_providers():
+            if not await self._is_provider_healthy(provider_name):
+                continue
+            priority = self.provider_priorities.get(provider_name, ProviderPriority.FALLBACK)
+            if priority not in providers_by_priority:
+                providers_by_priority[priority] = []
+            providers_by_priority[priority].append(provider_name)
+
+        return providers_by_priority
+
+    def _apply_hybrid_policy(
+        self,
+        providers_by_priority: Dict[ProviderPriority, List[str]],
+    ) -> List[str]:
+        """Rotate providers within each priority bucket for hybrid routing."""
+
+        ordered: List[str] = []
+        for priority in self.priority_order:
+            bucket = providers_by_priority.get(priority, [])
+            if not bucket:
+                continue
+
+            bucket = sorted(bucket)
+            current_index = self._hybrid_state.get(priority, 0) % len(bucket)
+            self._hybrid_state[priority] = (current_index + 1) % len(bucket)
+            rotated = bucket[current_index:] + bucket[:current_index]
+            ordered.extend(rotated)
+
+        return ordered
+
     async def _is_provider_healthy(self, provider_name: str) -> bool:
         """Check if provider is healthy"""
         if provider_name not in self.provider_health:
@@ -304,12 +528,18 @@ class LLMRouter:
         """
         request_id = f"llm-router-{uuid.uuid4()}"
         failure_records: List[Dict[str, str]] = []
+        previous_provider: Optional[str] = None
+        previous_error: Optional[BaseException] = None
 
         selection = await self.select_provider(request, user_preferences)
         if not selection:
-            logger.error(
-                "[%s] No suitable provider available; invoking degraded mode fallback",
-                request_id,
+            self._structured_log(
+                logging.ERROR,
+                "No suitable provider available",
+                request_id=request_id,
+                policy=self.routing_policy.value,
+                conversation_id=request.conversation_id,
+                platform=request.platform,
             )
             degraded_message = await self._generate_degraded_fallback(
                 request,
@@ -317,11 +547,13 @@ class LLMRouter:
                 reason=None,
             )
             if degraded_message:
+                self._record_selection_metric("degraded_mode", "degraded")
                 yield degraded_message
                 return
             raise RuntimeError("No suitable provider available")
 
         provider_name, model_name = selection
+        previous_provider = provider_name
 
         try:
             async for chunk in self._attempt_provider_with_retries(
@@ -333,26 +565,45 @@ class LLMRouter:
                 yield chunk
             return
         except ProviderProcessingError as error:
-            logger.warning(
-                "[%s] Provider %s failed after retries: %s",
-                request_id,
-                provider_name,
-                error,
+            self._structured_log(
+                logging.WARNING,
+                "Provider failed after retries",
+                request_id=request_id,
+                provider=provider_name,
+                policy=self.routing_policy.value,
+                error=str(error),
+                conversation_id=request.conversation_id,
+                platform=request.platform,
             )
+            self._record_selection_metric(provider_name, "failure")
             await self._mark_provider_unhealthy(provider_name, str(error))
             failure_records.append({
                 "provider": provider_name,
                 "error": str(error.last_error) if error.last_error else str(error),
             })
+            previous_error = error.last_error or error
 
         fallback_providers = await self._get_fallback_providers(provider_name, request)
         for fallback_provider in fallback_providers:
             try:
-                logger.info(
-                    "[%s] Trying fallback provider: %s",
-                    request_id,
+                reason = self._derive_error_reason(previous_error) if previous_error else "fallback"
+                self._record_fallback_metric(
+                    previous_provider or "none",
                     fallback_provider,
+                    reason,
                 )
+                self._structured_log(
+                    logging.INFO,
+                    "Attempting fallback provider",
+                    request_id=request_id,
+                    provider=fallback_provider,
+                    from_provider=previous_provider,
+                    reason=reason,
+                    policy=self.routing_policy.value,
+                    conversation_id=request.conversation_id,
+                    platform=request.platform,
+                )
+                self._record_selection_metric(fallback_provider, "fallback_selected")
                 async for chunk in self._attempt_provider_with_retries(
                     fallback_provider,
                     request,
@@ -362,17 +613,24 @@ class LLMRouter:
                     yield chunk
                 return
             except ProviderProcessingError as error:
-                logger.warning(
-                    "[%s] Fallback provider %s failed: %s",
-                    request_id,
-                    fallback_provider,
-                    error,
+                self._structured_log(
+                    logging.WARNING,
+                    "Fallback provider failed",
+                    request_id=request_id,
+                    provider=fallback_provider,
+                    policy=self.routing_policy.value,
+                    error=str(error),
+                    conversation_id=request.conversation_id,
+                    platform=request.platform,
                 )
+                self._record_selection_metric(fallback_provider, "failure")
                 await self._mark_provider_unhealthy(fallback_provider, str(error))
                 failure_records.append({
                     "provider": fallback_provider,
                     "error": str(error.last_error) if error.last_error else str(error),
                 })
+                previous_provider = fallback_provider
+                previous_error = error.last_error or error
 
         degraded_reason = self._infer_degraded_reason(failure_records)
         degraded_message = await self._generate_degraded_fallback(
@@ -381,6 +639,13 @@ class LLMRouter:
             reason=degraded_reason,
         )
         if degraded_message:
+            if previous_provider and previous_error:
+                self._record_fallback_metric(
+                    previous_provider,
+                    "degraded_mode",
+                    self._derive_error_reason(previous_error),
+                )
+            self._record_selection_metric("degraded_mode", "degraded")
             yield degraded_message
             return
 
@@ -698,6 +963,11 @@ class LLMRouter:
             health.latency_samples.pop(0)
         health.latency_samples.append(latency)
 
+        PROVIDER_LATENCY_HISTOGRAM.labels(
+            provider=provider_name,
+            policy=self.routing_policy.value,
+        ).observe(latency)
+
     def _record_provider_failure(
         self,
         provider_name: str,
@@ -726,6 +996,11 @@ class LLMRouter:
         if health.consecutive_failures >= self.circuit_breaker_threshold:
             health.circuit_open_until = time.time() + self.circuit_breaker_timeout
 
+        PROVIDER_FAILURE_COUNTER.labels(
+            provider=provider_name,
+            error_type=self._normalize_metric_label(type(error).__name__),
+        ).inc()
+
     def _calculate_latency_metrics(self, health: ProviderHealth) -> Dict[str, float]:
         """Compute latency metrics for provider status output."""
 
@@ -738,6 +1013,118 @@ class LLMRouter:
         p95_value = samples[p95_index]
 
         return {"avg_ms": average * 1000, "p95_ms": p95_value * 1000}
+
+    def _structured_log(self, level: int, message: str, **payload: Any) -> None:
+        """Emit structured logs with router metadata."""
+
+        logger.log(level, message, extra={"llm_router": payload})
+
+    def _record_selection_metric(self, provider: str, result: str) -> None:
+        """Record provider selection outcomes."""
+
+        PROVIDER_SELECTION_COUNTER.labels(
+            provider=provider,
+            policy=self.routing_policy.value,
+            result=self._normalize_metric_label(result),
+        ).inc()
+
+    def _record_fallback_metric(self, from_provider: str, to_provider: str, reason: str) -> None:
+        """Record fallback transitions between providers."""
+
+        PROVIDER_FALLBACK_COUNTER.labels(
+            from_provider=from_provider,
+            to_provider=to_provider,
+            reason=self._normalize_metric_label(reason),
+        ).inc()
+
+    @staticmethod
+    def _normalize_metric_label(value: Optional[str]) -> str:
+        """Normalize free-form text for metric label usage."""
+
+        if not value:
+            return "unknown"
+        sanitized = value.strip().lower().replace(" ", "_")
+        return sanitized[:64]
+
+    def _derive_error_reason(self, error: Optional[BaseException]) -> str:
+        """Derive a stable reason label from an exception."""
+
+        if error is None:
+            return "unknown"
+        if isinstance(error, ProviderProcessingError) and error.last_error:
+            return self._normalize_metric_label(type(error.last_error).__name__)
+        return self._normalize_metric_label(type(error).__name__)
+
+    async def _ensure_background_health_task(self) -> None:
+        """Ensure a background health monitor loop is running."""
+
+        if self._health_monitor_task and not self._health_monitor_task.done():
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:  # pragma: no cover - called outside event loop
+            return
+
+        if self._health_monitor_lock is None:
+            self._health_monitor_lock = asyncio.Lock()
+
+        async with self._health_monitor_lock:
+            task = self._health_monitor_task
+            if task and not task.done():
+                return
+
+            self._health_monitor_task = loop.create_task(self._health_monitor_loop())
+
+    async def _health_monitor_loop(self) -> None:
+        """Background loop that periodically refreshes provider health."""
+
+        try:
+            while True:
+                try:
+                    await self.refresh_provider_health()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # pragma: no cover - defensive logging
+                    self._structured_log(
+                        logging.ERROR,
+                        "Background health refresh failed",
+                        error=str(exc),
+                        policy=self.routing_policy.value,
+                    )
+
+                await asyncio.sleep(self.background_health_interval)
+        except asyncio.CancelledError:
+            self._structured_log(
+                logging.DEBUG,
+                "Background health monitor cancelled",
+                policy=self.routing_policy.value,
+            )
+            raise
+
+    async def _cancel_health_monitor_task(self) -> None:
+        """Cancel the background health monitor task if active."""
+
+        task = self._health_monitor_task
+        if not task:
+            return
+
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        self._health_monitor_task = None
+
+    async def shutdown(self) -> None:
+        """Shutdown router background tasks."""
+
+        await self._cancel_health_monitor_task()
+
+    def __del__(self):  # pragma: no cover - defensive cleanup
+        """Best-effort cancellation of background tasks on destruction."""
+
+        task = getattr(self, "_health_monitor_task", None)
+        if task and not task.done():
+            task.cancel()
 
     def _infer_degraded_reason(self, failure_records: List[Dict[str, str]]):
         """Infer degraded mode reason from accumulated failure information."""
