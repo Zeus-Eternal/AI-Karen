@@ -521,19 +521,44 @@ async def chat_runtime_response_core(
         # Get Response Core orchestrator
         response_orchestrator = get_global_orchestrator(user_id=user_id)
         
-        # Process through Response Core
+        # Process through Response Core using the ResponseOrchestrator API
+        ui_caps = {
+            "platform": request.platform,
+            "conversation_id": conversation_id,
+            "tools": request.tools or [],
+            "memory_context": request.memory_context,
+            "user_preferences": request.user_preferences or {},
+        }
+
         result = response_orchestrator.respond(
-            conversation_id=conversation_id,
-            user_input=request.message,
-            correlation_id=correlation_id
+            request.message,
+            ui_caps=ui_caps,
         )
+
+        # ResponseOrchestrator returns a structured payload; extract content
+        if isinstance(result, dict):
+            content = result.get("content", "")
+            orchestrator_metadata = {
+                "intent": result.get("intent"),
+                "persona": result.get("persona"),
+                "mood": result.get("mood"),
+            }
+
+            orchestrator_metadata.update(result.get("metadata", {}))
+
+            if "onboarding" in result:
+                orchestrator_metadata["onboarding"] = result["onboarding"]
+        else:
+            content = str(result)
+            orchestrator_metadata = {}
 
         latency_ms = (time.time() - start_time) * 1000
 
         response = ChatRuntimeResponse(
-            content=result,
+            content=content,
             conversation_id=conversation_id,
             metadata={
+                **orchestrator_metadata,
                 "platform": request.platform,
                 "correlation_id": correlation_id,
                 "user_id": user_id,
@@ -551,7 +576,7 @@ async def chat_runtime_response_core(
                 "user_id": user_id,
                 "correlation_id": correlation_id,
                 "latency_ms": latency_ms,
-                "response_length": len(result),
+                "response_length": len(content),
             },
         )
 
