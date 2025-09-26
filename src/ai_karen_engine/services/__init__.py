@@ -56,6 +56,8 @@ __all__ = [
     "SpacyService",
     "DistilBertService",
     "NLPServiceManager",
+    "get_nlp_service_manager",
+    "reset_nlp_service_manager",
     "NLPHealthMonitor",
     "NLPConfig",
     "SpacyConfig",
@@ -162,7 +164,12 @@ from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
 from ai_karen_engine.services.distilbert_service import DistilBertService, EmbeddingResult
 from ai_karen_engine.services.nlp_health_monitor import NLPHealthMonitor
 from ai_karen_engine.services.nlp_config import NLPConfig, SpacyConfig, DistilBertConfig
-from ai_karen_engine.services.nlp_service_manager import NLPServiceManager, nlp_service_manager
+from ai_karen_engine.services.nlp_service_manager import (
+    NLPServiceManager,
+    get_nlp_service_manager,
+    reset_nlp_service_manager,
+    nlp_service_manager,
+)
 
 # Model Library service
 from ai_karen_engine.services.model_library_service import (

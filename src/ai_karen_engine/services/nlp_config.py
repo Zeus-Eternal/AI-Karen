@@ -28,7 +28,7 @@ class SpacyConfig(BaseModel):
         
         # Set defaults - enable parser for dependency parsing as required by task 3.2
         # Allow toggling auto-download behavior via env var
-        download_missing_env = os.getenv("SPACY_DOWNLOAD_MISSING", "true").lower() in ("1", "true", "yes")
+        download_missing_env = os.getenv("SPACY_DOWNLOAD_MISSING", "false").lower() in ("1", "true", "yes")
 
         defaults = {
             "model_name": model_name,

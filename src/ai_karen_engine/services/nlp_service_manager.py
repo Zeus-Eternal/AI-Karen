@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import threading
 from typing import Dict, Any, Optional, List, Union
 
 from ai_karen_engine.services.spacy_service import SpacyService, ParsedMessage
@@ -301,5 +302,58 @@ class NLPServiceManager:
         }
 
 
-# Global instance
-nlp_service_manager = NLPServiceManager()
+_nlp_manager_lock = threading.RLock()
+_nlp_manager_instance: Optional[NLPServiceManager] = None
+
+
+def get_nlp_service_manager() -> NLPServiceManager:
+    """Return the lazily-created :class:`NLPServiceManager` singleton."""
+
+    global _nlp_manager_instance
+    if _nlp_manager_instance is None:
+        with _nlp_manager_lock:
+            if _nlp_manager_instance is None:
+                logger.info("Initializing NLPServiceManager (lazy singleton)")
+                _nlp_manager_instance = NLPServiceManager()
+    return _nlp_manager_instance
+
+
+class _LazyNLPServiceManagerProxy:
+    """Attribute proxy that lazily instantiates the underlying manager on use."""
+
+    def _resolve(self) -> NLPServiceManager:
+        return get_nlp_service_manager()
+
+    def __getattr__(self, item):
+        return getattr(self._resolve(), item)
+
+    def __setattr__(self, key, value):
+        if key.startswith("_"):
+            super().__setattr__(key, value)
+        else:
+            setattr(self._resolve(), key, value)
+
+    def __repr__(self) -> str:  # pragma: no cover - simple debug helper
+        return f"<LazyNLPServiceManagerProxy wrapping {self._resolve()!r}>"
+
+    def __dir__(self):  # pragma: no cover - used for developer ergonomics
+        return sorted(set(dir(self._resolve())))
+
+
+nlp_service_manager = _LazyNLPServiceManagerProxy()
+
+
+def reset_nlp_service_manager() -> None:
+    """Reset the cached manager instance (primarily for tests)."""
+
+    global _nlp_manager_instance
+    with _nlp_manager_lock:
+        _nlp_manager_instance = None
+
+
+__all__ = [
+    "NLPServiceManager",
+    "get_nlp_service_manager",
+    "reset_nlp_service_manager",
+    "nlp_service_manager",
+]
