@@ -447,9 +447,61 @@ class LLMOrchestrator:
                             info.record_latency(latency)
                 except Exception as e:  # pragma: no cover - warmup is best effort
                     logger.warning(f"Provider preload failed for {provider_name}:{m.name}: {e}")
-        
+
         # Register local models as fallback
         self._register_local_models()
+        # Ensure we always have a deterministic fallback available
+        self._ensure_fallback_provider()
+
+    def _ensure_fallback_provider(self) -> None:
+        """Guarantee that a deterministic fallback model is available."""
+        try:
+            from ai_karen_engine.integrations.providers.fallback_provider import (
+                FallbackProvider,
+            )
+        except Exception as exc:  # pragma: no cover - import should always succeed
+            logger.error("Failed to import fallback provider: %s", exc)
+            return
+
+        fallback_provider = FallbackProvider()
+        fallback_model_id = f"fallback:{fallback_provider.model}"
+        fallback_caps = ["generic", "conversation", "text"]
+
+        # If already registered, refresh the instance to keep it healthy
+        with self.registry._lock:
+            existing = self.registry._models.get(fallback_model_id)
+            if existing:
+                existing.model = fallback_provider
+                existing.status = ModelStatus.ACTIVE
+                existing.tags = list({*existing.tags, "fallback", "offline"})
+                logger.debug("Refreshed fallback provider instance")
+                return
+
+        try:
+            self.registry.register(
+                fallback_model_id,
+                fallback_provider,
+                fallback_caps,
+                weight=1,
+                tags=["fallback", "offline"],
+            )
+            logger.info("Registered deterministic fallback provider")
+        except ValueError:
+            # Another thread may have registered it concurrently; refresh and exit
+            with self.registry._lock:
+                existing = self.registry._models.get(fallback_model_id)
+                if existing:
+                    existing.model = fallback_provider
+                    existing.status = ModelStatus.ACTIVE
+                    existing.tags = list({*existing.tags, "fallback", "offline"})
+            return
+
+        latency = self._warm_model(fallback_model_id, fallback_provider)
+        if latency is not None:
+            info = self.registry._models.get(fallback_model_id)
+            if info:
+                info.warmed = True
+                info.record_latency(latency)
 
     def _register_local_models(self) -> None:
         """Register local models as fallback options."""
