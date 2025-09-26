@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
-const TIMEOUT_MS = 10000;
+// Use the correct backend URL from environment variables
+const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://127.0.0.1:8000';
+const TIMEOUT_MS = 30000; // Increased timeout to 30 seconds
 
 export async function GET(request: NextRequest) {
   console.log('🔍 ModelsLibrary API: Request received', {
@@ -42,17 +43,19 @@ export async function GET(request: NextRequest) {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const timeout = setTimeout(() => {
+      console.log('🔍 ModelsLibrary API: Request timeout after', TIMEOUT_MS, 'ms');
+      controller.abort();
+    }, TIMEOUT_MS);
     
     try {
-      console.log('🔍 ModelsLibrary API: Attempting backend fetch', { url, timeout: TIMEOUT_MS });
+      console.log('🔍 ModelsLibrary API: Attempting backend fetch', { url, timeout: TIMEOUT_MS, backendUrl: BACKEND_URL });
       
       const response = await fetch(url, {
         method: 'GET',
         headers,
         signal: controller.signal,
-        // @ts-ignore Node/undici hints
-        keepalive: true,
+        // Remove deprecated options that might cause issues
         cache: 'no-store',
       });
       

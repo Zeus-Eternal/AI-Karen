@@ -13,7 +13,7 @@ export const ProfileSelector: React.FC = () => {
   const { toast } = useToast();
   const backend = getKarenBackend();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
-  const [active, setActive] = useState<string | null>(null);
+  const [active, setActive] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -27,7 +27,7 @@ export const ProfileSelector: React.FC = () => {
       });
       const out = (res as any)?.output || {};
       setProfiles(out.profiles || []);
-      setActive(out.active_profile || null);
+      setActive(out.active_profile || "");
     } catch (e) {
       toast({ variant: "destructive", title: "Failed to load profiles" });
     } finally {
@@ -123,7 +123,7 @@ export const ProfileSelector: React.FC = () => {
     <div className="flex items-center gap-2 flex-wrap">
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground">Profile</span>
-        <Select value={active || undefined} onValueChange={onChangeProfile} disabled={loading}>
+        <Select value={active} onValueChange={onChangeProfile} disabled={loading}>
           <SelectTrigger className="h-8 w-56">
             <SelectValue placeholder={loading ? "Loading..." : active || "Select profile"} />
           </SelectTrigger>

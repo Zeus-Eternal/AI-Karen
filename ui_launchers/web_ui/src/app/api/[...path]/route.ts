@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Force this route to be dynamic
+export const dynamic = 'force-dynamic';
+
 // IMPORTANT: Do not default to the web UI port; that creates a proxy loop.
 const BACKEND_URL =
   process.env.KAREN_BACKEND_URL ||

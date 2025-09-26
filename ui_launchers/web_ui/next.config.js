@@ -90,6 +90,36 @@ const nextConfig = {
       topLevelAwait: true,
     };
     
+    // Configure watch options to prevent EMFILE errors
+    if (dev && !isServer) {
+      config.watchOptions = {
+        ignored: [
+          '**/node_modules',
+          '**/.git',
+          '**/.next',
+          '**/dist',
+          '**/build',
+          '**/coverage',
+          '**/logs',
+          '**/temp_files',
+          '**/backups',
+          '**/quarantine',
+          '**/system_backups',
+          '**/monitoring',
+          '**/reports',
+          '**/scripts',
+          '**/docs',
+          '**/extensions',
+          '**/headers',
+          '**/models',
+          '**/plugins',
+          '/media/zeus/Development10/KIRO/**',
+        ],
+        aggregateTimeout: 300,
+        poll: 1000, // Use polling instead of file system events
+      };
+    }
+    
     return config;
   },
   
