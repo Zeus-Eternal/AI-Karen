@@ -315,7 +315,9 @@ class ServerConfig:
         port: int = 8000,
         debug: bool = False,
         workers: int = 1,
+        reload: bool = False,
         ssl_context: Optional[ssl.SSLContext] = None,
+        log_level: str = "info",
         max_invalid_requests_per_connection: int = 10,
         enable_protocol_error_handling: bool = True,
         log_invalid_requests: bool = True,
@@ -325,7 +327,9 @@ class ServerConfig:
         self.port = port
         self.debug = debug
         self.workers = workers
+        self.reload = reload
         self.ssl_context = ssl_context
+        self.log_level = log_level.lower()
         self.max_invalid_requests_per_connection = max_invalid_requests_per_connection
         self.enable_protocol_error_handling = enable_protocol_error_handling
         self.log_invalid_requests = log_invalid_requests
@@ -351,8 +355,9 @@ class CustomUvicornServer:
             "app": self.app,
             "host": self.config.host,
             "port": self.config.port,
-            "reload": self.config.debug,
+            "reload": self.config.reload,
             "workers": self.config.workers,
+            "log_level": self.config.log_level,
             "log_config": log_config,
             "access_log": False,  # We handle access logging in middleware
             "timeout_keep_alive": 30,
@@ -511,6 +516,8 @@ def create_custom_server(
     port: int = 8000,
     debug: bool = False,
     ssl_context: Optional[ssl.SSLContext] = None,
+    reload: bool = False,
+    log_level: str = "INFO",
     **kwargs
 ) -> CustomUvicornServer:
     """Factory function to create a custom uvicorn server."""
@@ -518,8 +525,10 @@ def create_custom_server(
         host=host,
         port=port,
         debug=debug,
+        reload=reload,
         ssl_context=ssl_context,
+        log_level=log_level,
         **kwargs
     )
-    
+
     return CustomUvicornServer(app, config)

@@ -196,12 +196,14 @@ class TestServerConfig:
     def test_default_config(self):
         """Test default server configuration."""
         config = ServerConfig()
-        
+
         assert config.host == "0.0.0.0"
         assert config.port == 8000
         assert config.debug is False
         assert config.workers == 1
+        assert config.reload is False
         assert config.ssl_context is None
+        assert config.log_level == "info"
         assert config.max_invalid_requests_per_connection == 10
         assert config.enable_protocol_error_handling is True
         assert config.log_invalid_requests is True
@@ -215,7 +217,9 @@ class TestServerConfig:
             port=9000,
             debug=True,
             workers=4,
+            reload=True,
             ssl_context=ssl_context,
+            log_level="WARNING",
             max_invalid_requests_per_connection=5,
             enable_protocol_error_handling=False,
             log_invalid_requests=False,
@@ -226,7 +230,9 @@ class TestServerConfig:
         assert config.port == 9000
         assert config.debug is True
         assert config.workers == 4
+        assert config.reload is True
         assert config.ssl_context == ssl_context
+        assert config.log_level == "warning"
         assert config.max_invalid_requests_per_connection == 5
         assert config.enable_protocol_error_handling is False
         assert config.log_invalid_requests is False
@@ -253,10 +259,12 @@ class TestCustomUvicornServer:
             port=9000,
             debug=True,
             workers=2,
+            reload=True,
+            log_level="WARNING",
             custom_param="test"
         )
         server = CustomUvicornServer("test:app", config)
-        
+
         uvicorn_config = server.create_server_config()
         
         assert uvicorn_config["app"] == "test:app"
@@ -264,6 +272,7 @@ class TestCustomUvicornServer:
         assert uvicorn_config["port"] == 9000
         assert uvicorn_config["reload"] is True
         assert uvicorn_config["workers"] == 2
+        assert uvicorn_config["log_level"] == "warning"
         assert uvicorn_config["custom_param"] == "test"
         assert "log_config" in uvicorn_config
         assert uvicorn_config["access_log"] is False
@@ -337,26 +346,32 @@ class TestCreateCustomServer:
         assert server.config.host == "0.0.0.0"
         assert server.config.port == 8000
         assert server.config.debug is False
+        assert server.config.reload is False
+        assert server.config.log_level == "info"
 
     def test_create_custom_server_custom_params(self):
         """Test creating custom server with custom parameters."""
         ssl_context = ssl.create_default_context()
-        
+
         server = create_custom_server(
             "test:app",
             host="127.0.0.1",
             port=9000,
             debug=True,
             ssl_context=ssl_context,
+            reload=True,
+            log_level="DEBUG",
             custom_param="test"
         )
-        
+
         assert isinstance(server, CustomUvicornServer)
         assert server.app == "test:app"
         assert server.config.host == "127.0.0.1"
         assert server.config.port == 9000
         assert server.config.debug is True
+        assert server.config.reload is True
         assert server.config.ssl_context == ssl_context
+        assert server.config.log_level == "debug"
         assert server.config.extra_config["custom_param"] == "test"
 
 
