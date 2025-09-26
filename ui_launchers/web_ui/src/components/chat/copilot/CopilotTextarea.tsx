@@ -20,6 +20,7 @@ import { useCopilotKit } from "./CopilotKitProvider";
 import { useHooks } from "@/contexts/HookContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { safeError } from "@/lib/safe-console";
 
 export interface AISuggestion {
   id: string;
@@ -120,7 +121,7 @@ export const CopilotTextarea: React.FC<CopilotTextareaProps> = ({
           { userId: user?.user_id }
         );
       } catch (error) {
-        console.error("Failed to fetch suggestions:", error);
+        safeError("Failed to fetch suggestions:", error);
         setSuggestions([]);
         setShowSuggestions(false);
       }
@@ -206,7 +207,7 @@ export const CopilotTextarea: React.FC<CopilotTextareaProps> = ({
         duration: 3000,
       });
     } catch (error) {
-      console.error("Code analysis failed:", error);
+      safeError("Code analysis failed:", error);
     } finally {
       setIsAnalyzing(false);
     }
@@ -231,7 +232,7 @@ export const CopilotTextarea: React.FC<CopilotTextareaProps> = ({
         duration: 3000,
       });
     } catch (error) {
-      console.error("Documentation generation failed:", error);
+      safeError("Documentation generation failed:", error);
     }
   }, [
     enableDocGeneration,

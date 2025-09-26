@@ -5,6 +5,7 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { safeError, safeDebug } from '@/lib/safe-console';
 
 interface Props {
   children: ReactNode;
@@ -37,7 +38,8 @@ export class ChatErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ChatErrorBoundary caught an error:', error, errorInfo);
+    safeError('ChatErrorBoundary caught an error:', error);
+    safeDebug('ChatErrorBoundary additional error info:', errorInfo);
     
     this.setState({
       error,
@@ -72,7 +74,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
         userId: localStorage.getItem('karen_user_id') || 'anonymous',
       };
 
-      console.error('Error Report:', errorReport);
+      safeDebug('Error Report:', errorReport);
       
       // Store error locally for debugging
       const existingErrors = JSON.parse(localStorage.getItem('karen_ui_errors') || '[]');
@@ -85,7 +87,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
       
       localStorage.setItem('karen_ui_errors', JSON.stringify(existingErrors));
     } catch (reportingError) {
-      console.error('Failed to report error:', reportingError);
+      safeError('Failed to report error:', reportingError);
     }
   };
 

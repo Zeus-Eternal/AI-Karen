@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import EnhancedMessageBubble from "@/components/chat/EnhancedMessageBubble";
 import MessageActions from "./MessageActions";
 import type { ChatMessage, ChatSettings, CopilotArtifact } from "../types";
+import { safeDebug } from "@/lib/safe-console";
 
 interface ChatMessagesProps {
   messages: ChatMessage[];
@@ -99,7 +100,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                 }}
                 onArtifactAction={(artifactId: string, actionId: string) => {
                   // Handle artifact actions
-                  console.log("Artifact action:", { artifactId, actionId });
+                  safeDebug("Artifact action:", { artifactId, actionId });
                 }}
                 onApprove={onArtifactApprove}
                 onReject={onArtifactReject}

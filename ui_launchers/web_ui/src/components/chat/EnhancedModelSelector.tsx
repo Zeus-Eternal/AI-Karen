@@ -51,6 +51,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getKarenBackend } from "@/lib/karen-backend";
 import { useToast } from "@/hooks/use-toast";
+import { safeError, safeWarn } from "@/lib/safe-console";
 
 interface ModelInfo {
   id: string;
@@ -165,18 +166,19 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
       if (backendInstance && typeof backendInstance.makeRequestPublic === 'function') {
         setBackend(backendInstance);
       } else {
-        console.error('Backend instance is invalid:', backendInstance);
+        safeError('Backend instance is invalid:', new Error('Invalid backend instance')); 
+        safeWarn('Backend instance details', backendInstance);
         setError('Backend service unavailable');
       }
     } catch (err) {
-      console.error('Failed to initialize backend:', err);
+      safeError('Failed to initialize backend:', err);
       setError('Failed to initialize backend service');
     }
   }, []);
 
   const loadModels = async () => {
     if (!backend) {
-      console.warn('Backend not initialized, skipping model loading');
+      safeWarn('Backend not initialized, skipping model loading');
       setError('Backend service not available');
       setLoading(false);
       return;
@@ -195,7 +197,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
       
       setModels(response?.models || []);
     } catch (err) {
-      console.error('Failed to load models:', err);
+      safeError('Failed to load models:', err);
       setError('Failed to load models');
     } finally {
       setLoading(false);

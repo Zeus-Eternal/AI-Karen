@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { safeDebug } from '@/lib/safe-console';
 
 export interface ConversationRow {
   id: string;
@@ -176,13 +177,13 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
 
     // Register data load hook
     hookIds.push(registerGridHook('conversations', 'dataLoad', async (params) => {
-      console.log('Conversation grid data loaded:', params);
+      safeDebug('Conversation grid data loaded:', params);
       return { success: true, rowCount: conversations.length };
     }));
 
     // Register row selection hook
     hookIds.push(registerGridHook('conversations', 'rowSelected', async (params) => {
-      console.log('Conversation row selected:', params);
+      safeDebug('Conversation row selected:', params);
       if (onConversationSelect && params.data) {
         onConversationSelect(params.data);
       }

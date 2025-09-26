@@ -3,6 +3,7 @@
 import React, { useState, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { safeError } from '@/lib/safe-console';
 
 interface InputBoxProps {
   onSend: (message: string) => Promise<void>;
@@ -25,7 +26,7 @@ export const InputBox: React.FC<InputBoxProps> = ({ onSend, isLoading, placehold
       setValue('');
     } catch (error) {
       // Swallow the error so the input stays usable; logging handled upstream.
-      console.error('InputBox send failed', error);
+      safeError('InputBox send failed', error);
     }
   };
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Square, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { safeError } from "@/lib/safe-console";
 
 interface VoiceInputHandlerProps {
   isRecording: boolean;
@@ -162,7 +163,7 @@ export const VoiceInputHandler: React.FC<VoiceInputHandlerProps> = ({
         recognitionRef.current.start();
         onStart();
       } catch (error) {
-        console.error("Error starting speech recognition:", error);
+        safeError("Error starting speech recognition:", error);
         onError?.("Failed to start voice input");
       }
     }

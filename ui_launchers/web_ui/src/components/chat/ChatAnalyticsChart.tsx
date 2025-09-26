@@ -11,6 +11,7 @@ import { TrendingUp, TrendingDown, Activity, Clock, MessageSquare, Zap } from 'l
 import { useHooks } from '@/contexts/HookContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subDays, subHours } from 'date-fns';
+import { safeDebug } from '@/lib/safe-console';
 
 export interface ChatAnalyticsData {
   timestamp: Date;
@@ -183,13 +184,13 @@ export const ChatAnalyticsChart: React.FC<ChatAnalyticsChartProps> = ({
 
     // Register data load hook
     hookIds.push(registerChartHook('chatAnalytics', 'dataLoad', async (params) => {
-      console.log('Chat analytics chart data loaded:', params);
+      safeDebug('Chat analytics chart data loaded:', params);
       return { success: true, dataPoints: chartData.length };
     }));
 
     // Register series click hook
     hookIds.push(registerChartHook('chatAnalytics', 'seriesClick', async (params) => {
-      console.log('Chart series clicked:', params);
+      safeDebug('Chart series clicked:', params);
       return { success: true, clickedData: params };
     }));
 

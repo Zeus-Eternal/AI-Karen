@@ -45,65 +45,20 @@ class WebUITransformationService:
     ) -> Tuple[ConversationProcessingRequest, FlowInput]:
         """Transform web UI chat request to backend format."""
         try:
-            # Create backend conversation processing request
-            backend_request = ConversationProcessingRequest(
-                prompt=web_ui_request.message,
-                conversation_history=web_ui_request.conversation_history,
-                user_settings=web_ui_request.user_settings,
-                context={
-                    "relevant_memories": web_ui_request.relevant_memories,
-                    "ui_source": "web_ui"
-                },
-                session_id=web_ui_request.session_id,
-                include_memories=True,
-                include_insights=True
-            )
-            
-            # Create flow input for AI orchestrator
-            flow_input = FlowInput(
-                prompt=web_ui_request.message,
-                conversation_history=web_ui_request.conversation_history,
-                user_settings=web_ui_request.user_settings,
-                context={
-                    "relevant_memories": web_ui_request.relevant_memories,
-                    "ui_source": "web_ui"
-                },
-                user_id=web_ui_request.user_id or "anonymous",
-                session_id=web_ui_request.session_id
-            )
-            
-            return backend_request, flow_input
-            
+            return ChatTransformationUtils.transform_chat_request_to_backend(web_ui_request)
+
         except Exception as e:
             logger.error(f"Failed to transform chat request: {e}")
             raise ValueError(f"Invalid chat request format: {e}")
-    
+
     @staticmethod
     def transform_backend_response_to_chat(
         backend_response: FlowOutput
     ) -> ChatProcessResponse:
         """Transform backend response to web UI chat format."""
         try:
-            # Handle ai_data conversion
-            ai_data_dict = None
-            acknowledgement = None
-            summary_was_generated = None
-            
-            if backend_response.ai_data:
-                ai_data_dict = backend_response.ai_data.model_dump()
-                # Extract specific fields if they exist
-                acknowledgement = ai_data_dict.get("acknowledgement")
-                summary_was_generated = ai_data_dict.get("summary_generated")
-            
-            return ChatProcessResponse(
-                finalResponse=backend_response.response,
-                acknowledgement=acknowledgement,
-                ai_data_for_final_response=ai_data_dict,
-                suggested_new_facts=backend_response.suggested_new_facts,
-                proactive_suggestion=backend_response.proactive_suggestion,
-                summary_was_generated=summary_was_generated
-            )
-            
+            return ChatTransformationUtils.transform_backend_response_to_chat(backend_response)
+
         except Exception as e:
             logger.error(f"Failed to transform backend response: {e}")
             raise ValueError(f"Invalid backend response format: {e}")

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { ChatSettings } from "../types";
+import { safeDebug } from "@/lib/safe-console";
 
 const defaultSettings: ChatSettings = {
   model: "local:tinyllama-1.1b",
@@ -29,7 +30,7 @@ export const useChatSettings = (
 
   const updateSettings = useCallback(
     (newSettings: Partial<ChatSettings>) => {
-      console.log('🔍 useChatSettings: Settings change triggered:', {
+      safeDebug('🔍 useChatSettings: Settings change triggered:', {
         previousModel: settings.model,
         newModel: newSettings.model,
         fullNewSettings: newSettings,
@@ -41,7 +42,7 @@ export const useChatSettings = (
 
       // Log model selection details
       if (newSettings.model && newSettings.model !== settings.model) {
-        console.log('🔍 useChatSettings: Model selection changed:', {
+        safeDebug('🔍 useChatSettings: Model selection changed:', {
           from: settings.model,
           to: newSettings.model,
           modelFormat: typeof newSettings.model,
