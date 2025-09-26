@@ -14,37 +14,88 @@ logger = logging.getLogger(__name__)
 # No prefix here since it's already mounted at /api/copilot in routers.py
 router = APIRouter(tags=["copilot"])
 
-# Ensure routing predictors are registered so /start can dispatch actions
-try:
-    from ai_karen_engine.integrations.copilotkit.routing_actions import (
-        ensure_kire_actions_registered,
-    )
-    ensure_kire_actions_registered()
-except Exception:
-    # Best-effort; if not present, action registry may be empty until lazily imported elsewhere
-    pass
+# Ensure routing predictors are registered so /start can dispatch actions.
+# Importing them eagerly pulls in heavy optional dependencies (spaCy,
+# transformers, SQLAlchemy). We defer registration until a request needs
+# it to keep unit tests and health checks lightweight.
+_routing_actions_ready = False
 
-# Graceful imports with fallbacks
-try:
-    from ai_karen_engine.services.enhanced_memory_service import get_memory_service
-except ImportError:
-    get_memory_service = None
 
-try:
-    from ai_karen_engine.services.llm_optimization import get_llm_provider
-except ImportError:
-    get_llm_provider = None
+def _ensure_routing_actions_registered() -> None:
+    global _routing_actions_ready
+    if _routing_actions_ready:
+        return
 
-try:
-    from ai_karen_engine.services.performance_monitor import get_metrics_service
-except ImportError:
-    get_metrics_service = None
+    try:
+        from ai_karen_engine.integrations.copilotkit.routing_actions import (
+            ensure_kire_actions_registered,
+        )
 
-try:
-    from ai_karen_engine.core.rbac import check_rbac_scope
-except ImportError:
-    async def check_rbac_scope(*args, **kwargs):
-        return True
+        ensure_kire_actions_registered()
+        _routing_actions_ready = True
+    except Exception:
+        # Best-effort; if not present, action registry may be empty until lazily imported elsewhere
+        pass
+
+# Optional imports removed: heavyweight services are resolved lazily where required.
+
+# Legacy RBAC helper is unused here; provide a stub to avoid heavy imports.
+async def check_rbac_scope(*args, **kwargs):  # pragma: no cover - compatibility shim
+    return True
+
+
+async def _resolve_user_context(request: Request) -> Optional[Dict[str, Any]]:
+    """Best-effort user context resolution without heavy imports."""
+
+    try:
+        from ai_karen_engine.core.dependencies import get_current_user_context
+    except Exception:
+        return None
+
+    try:
+        return await get_current_user_context(request)  # type: ignore[arg-type]
+    except Exception:
+        return None
+
+
+def _get_audit_logger():
+    """Lazily import the audit logger to avoid heavy startup costs."""
+
+    try:
+        from ai_karen_engine.services.audit_logger import get_audit_logger as _getter
+
+        return _getter()
+    except Exception:
+        return None
+
+
+def _get_predictor_registry():
+    """Return the predictor registry with graceful fallback."""
+
+    try:
+        from ai_karen_engine.core.predictors import predictor_registry as registry
+
+        return registry
+    except Exception:
+        return {}
+
+
+class _FallbackServiceStatus:
+    HEALTHY = "healthy"
+
+
+def _get_connection_health_manager():
+    """Lazily import the connection health manager components."""
+
+    try:
+        from ai_karen_engine.services.connection_health_manager import (
+            get_connection_health_manager as _getter,
+            ServiceStatus as _status,
+        )
+
+        return _getter(), _status
+    except Exception:
+        return None, _FallbackServiceStatus
 
 
 class ContextHit(BaseModel):
@@ -93,14 +144,6 @@ def get_correlation_id(request: Request) -> str:
 
 
 from functools import lru_cache
-from ai_karen_engine.core.dependencies import get_current_user_context
-# REMOVED: RBAC check_scopes - replaced with simple role checking
-from ai_karen_engine.services.audit_logger import get_audit_logger
-from ai_karen_engine.core.predictors import predictor_registry
-from ai_karen_engine.services.connection_health_manager import (
-    get_connection_health_manager,
-    ServiceStatus,
-)
 
 # Add the same orchestrator dependency as chat_runtime.py
 @lru_cache
@@ -169,12 +212,13 @@ async def copilot_health():
     Returns minimal info without invoking heavy dependencies.
     """
     try:
-        registered = list(getattr(predictor_registry, 'keys', lambda: [])())
-    except Exception:
-        try:
-            registered = list(predictor_registry.keys())  # type: ignore[attr-defined]
-        except Exception:
+        registry = _get_predictor_registry()
+        if hasattr(registry, "keys"):
+            registered = list(registry.keys())
+        else:
             registered = []
+    except Exception:
+        registered = []
 
     return {
         "status": "ok",
@@ -190,6 +234,7 @@ async def copilot_start_action(
     user_ctx: Optional[Dict[str, Any]] = None,
 ):
     """Generic CopilotKit action starter. Routes to predictor-registered actions."""
+    _ensure_routing_actions_registered()
     correlation_id = http_request.headers.get("X-Correlation-Id") or f"copilot_{int(time.time())}"
     
     # Parse request body manually
@@ -210,7 +255,7 @@ async def copilot_start_action(
         else:
             try:
                 # Try to resolve real context if available
-                user_ctx = await get_current_user_context(http_request)  # type: ignore[arg-type]
+                user_ctx = await _resolve_user_context(http_request)
             except Exception:
                 # If strict mode, deny
                 raise HTTPException(status_code=401, detail="Unauthorized")
@@ -229,19 +274,23 @@ async def copilot_start_action(
 
     # Audit: action started
     try:
-        await get_audit_logger().log_event(
-            event_type="copilot.action.started",
-            user_id=user_ctx.get("user_id"),
-            session_id=user_ctx.get("session_id"),
-            correlation_id=correlation_id,
-            details={"action": req.action, "payload_keys": list(req.payload.keys())},
-            surface="copilot",
-        )
+        audit_logger = _get_audit_logger()
+        if audit_logger:
+            await audit_logger.log_event(
+                event_type="copilot.action.started",
+                user_id=user_ctx.get("user_id"),
+                session_id=user_ctx.get("session_id"),
+                correlation_id=correlation_id,
+                details={"action": req.action, "payload_keys": list(req.payload.keys())},
+                surface="copilot",
+            )
     except Exception:
         pass
 
     # Dispatch to predictor registry
-    handler = predictor_registry.get(req.action)
+    registry = _get_predictor_registry()
+    handler_getter = getattr(registry, "get", lambda *_: None)
+    handler = handler_getter(req.action)
     if handler is None:
         # Try late registration of routing actions, then re-check
         try:
@@ -256,7 +305,9 @@ async def copilot_start_action(
                 pass
         except Exception:
             pass
-        handler = predictor_registry.get(req.action)
+        registry = _get_predictor_registry()
+        handler_getter = getattr(registry, "get", lambda *_: None)
+        handler = handler_getter(req.action)
         if handler is None:
             # Minimal safe fallbacks for profile-related actions to keep the UI usable
             if req.action == "routing.profile.list":
@@ -286,7 +337,8 @@ async def copilot_start_action(
 
             available = []
             try:
-                available = list(predictor_registry.keys())
+                registry = _get_predictor_registry()
+                available = list(registry.keys()) if hasattr(registry, "keys") else []
             except Exception:
                 available = []
             raise HTTPException(status_code=404, detail=f"Unknown action: {req.action}. Available: {available}")
@@ -303,14 +355,16 @@ async def copilot_start_action(
 
         # Audit: action completed
         try:
-            await get_audit_logger().log_event(
-                event_type="copilot.action.completed",
-                user_id=user_ctx.get("user_id"),
-                session_id=user_ctx.get("session_id"),
-                correlation_id=correlation_id,
-                details={"action": req.action, "success": True},
-                surface="copilot",
-            )
+            audit_logger = _get_audit_logger()
+            if audit_logger:
+                await audit_logger.log_event(
+                    event_type="copilot.action.completed",
+                    user_id=user_ctx.get("user_id"),
+                    session_id=user_ctx.get("session_id"),
+                    correlation_id=correlation_id,
+                    details={"action": req.action, "success": True},
+                    surface="copilot",
+                )
         except Exception:
             pass
 
@@ -318,16 +372,18 @@ async def copilot_start_action(
     except Exception as e:
         # Audit: action failed
         try:
-            await get_audit_logger().log_event(
-                event_type="copilot.action.failed",
-                user_id=user_ctx.get("user_id"),
-                session_id=user_ctx.get("session_id"),
-                correlation_id=correlation_id,
-                details={"action": req.action, "error": str(e)},
-                surface="copilot",
-                success=False,
-                error_message=str(e),
-            )
+            audit_logger = _get_audit_logger()
+            if audit_logger:
+                await audit_logger.log_event(
+                    event_type="copilot.action.failed",
+                    user_id=user_ctx.get("user_id"),
+                    session_id=user_ctx.get("session_id"),
+                    correlation_id=correlation_id,
+                    details={"action": req.action, "error": str(e)},
+                    surface="copilot",
+                    success=False,
+                    error_message=str(e),
+                )
         except Exception:
             pass
         raise HTTPException(status_code=500, detail=f"Action failed: {e}")
@@ -341,16 +397,18 @@ async def copilot_start_action_get(action: str, http_request: Request):
     Accepts `action` as a query param and calls the POST handler with empty payload/context.
     Keeps legacy or misconfigured clients working without 404s.
     """
+    _ensure_routing_actions_registered()
     req = StartActionRequest(action=action, payload={}, context={})
     return await copilot_start_action(req, http_request)
 
 @router.post("/assist")
 async def copilot_assist(
-    request: dict, 
+    request: dict,
     http_request: Request,
     chat_orchestrator = Depends(get_chat_orchestrator)
 ):
     """Production-ready copilot assist endpoint with real AI integration."""
+    _ensure_routing_actions_registered()
     start_time = time.time()
     correlation_id = get_correlation_id(http_request) or f"copilot_{int(time.time())}"
     
@@ -387,21 +445,33 @@ async def copilot_assist(
     # Health gate: short-circuit to degraded mode if critical services are unavailable
     try:
         if os.getenv("COPILOT_ASSIST_HEALTH_GATE", "true").lower() in ("1", "true", "yes"):
-            mgr = get_connection_health_manager()
+            mgr, status_cls = _get_connection_health_manager()
+            if mgr is None:
+                raise RuntimeError("connection health manager unavailable")
             unhealthy: List[str] = []
             critical_services: List[str] = ["database"]
             if os.getenv("MILVUS_REQUIRED", "false").lower() in ("1", "true", "yes"):
                 critical_services.append("milvus")
             for svc in critical_services:
-                status = mgr.get_service_status(svc)
-                if not status or status.status != ServiceStatus.HEALTHY:
+                status = None
+                try:
+                    status = mgr.get_service_status(svc)
+                except Exception:
+                    status = None
+                status_is_healthy = bool(
+                    status and getattr(status, "status", getattr(status, "value", None)) == status_cls.HEALTHY
+                )
+                if not status_is_healthy:
                     try:
                         # Perform a quick active check with a tight timeout
                         checked = await asyncio.wait_for(mgr.check_service_health(svc), timeout=1.0)
                         status = checked
                     except Exception:
                         pass
-                    if not status or status.status != ServiceStatus.HEALTHY:
+                    status_is_healthy = bool(
+                        status and getattr(status, "status", getattr(status, "value", None)) == status_cls.HEALTHY
+                    )
+                    if not status_is_healthy:
                         unhealthy.append(svc)
             if unhealthy:
                 total_time = (time.time() - start_time) * 1000
