@@ -13,9 +13,19 @@ from typing import Any, Dict, List, Optional, Union
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from ai_karen_engine.database.client import get_db_session_context
-from ai_karen_engine.database.models import LLMProvider, LLMRequest
-from ai_karen_engine.services.metrics_service import get_metrics_service
+# Database dependencies are optional during early startup or offline testing
+try:
+    from ai_karen_engine.database.client import get_db_session_context
+    from ai_karen_engine.database.models import LLMProvider, LLMRequest
+
+    _DB_AVAILABLE = True
+    _DB_IMPORT_ERROR = None
+except Exception as db_import_error:  # pragma: no cover - optional dependency path
+    get_db_session_context = None  # type: ignore[assignment]
+    LLMProvider = None  # type: ignore[assignment]
+    LLMRequest = None  # type: ignore[assignment]
+    _DB_AVAILABLE = False
+    _DB_IMPORT_ERROR = db_import_error
 
 # Lazy imports to avoid circular import issues
 # Providers will be imported when needed in get_provider_class()
@@ -54,6 +64,19 @@ except Exception:  # pragma: no cover - optional dep
     _LLM_COUNT = _LLM_LATENCY = _DummyMetric()
 
 logger = logging.getLogger("kari.llm_utils")
+
+
+# ========== Helpers ==========
+def _get_metrics_service_safe():
+    """Lazily import the metrics service to avoid circular dependencies."""
+
+    try:
+        from ai_karen_engine.services.metrics_service import get_metrics_service
+
+        return get_metrics_service()
+    except Exception:  # pragma: no cover - optional dependency path
+        logger.debug("Metrics service unavailable during import", exc_info=True)
+        return None
 
 
 # ========== Exceptions ==========
@@ -279,10 +302,19 @@ class LLMUtils:
         user_ctx: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Persist request metrics for cost reporting."""
+        if not _DB_AVAILABLE or not get_db_session_context or not LLMRequest:
+            if not _DB_AVAILABLE:
+                logger.debug(
+                    "Database dependencies unavailable; skipping LLM request recording"
+                )
+            return
+
         try:
-            with get_db_session_context() as session:
+            with get_db_session_context() as session:  # type: ignore[misc]
                 provider_rec = (
                     session.query(LLMProvider).filter_by(name=provider_name).first()
+                    if LLMProvider
+                    else None
                 )
                 provider_id = provider_rec.id if provider_rec else None
                 req = LLMRequest(
@@ -372,7 +404,7 @@ class LLMUtils:
             "kwargs": kwargs,
         }
         trace_llm_event("generate_text_start", trace_id, meta)
-        metrics_service = get_metrics_service()
+        metrics_service = _get_metrics_service_safe()
         model_name = kwargs.get("model") or getattr(provider_obj, "model", None)
         try:
             out = provider_obj.generate_text(prompt, **kwargs)
@@ -385,41 +417,40 @@ class LLMUtils:
                 duration,
                 user_ctx,
             )
-            metrics_service.record_llm_latency(
-                duration,
-                provider_name,
-                model_name or "",
-                "success",
-                trace_id,
-            )
+            if metrics_service:
+                metrics_service.record_llm_latency(
+                    duration,
+                    provider_name,
+                    model_name or "",
+                    "success",
+                    trace_id,
+                )
             meta["duration"] = duration
             trace_llm_event("generate_text_success", trace_id, meta)
             return out
         except Exception as ex:
             duration = time.time() - t0
-            metrics_service.record_llm_latency(
-                duration,
-                provider or self.default,
-                model_name or "",
-                "error",
-                trace_id,
-            )
+            if metrics_service:
+                metrics_service.record_llm_latency(
+                    duration,
+                    provider or self.default,
+                    model_name or "",
+                    "error",
+                    trace_id,
+                )
             meta.update({"duration": duration, "error": str(ex)})
             trace_llm_event("generate_text_error", trace_id, meta)
             raise GenerationFailed(f"Provider '{provider_name}' failed: {ex}")
         finally:
             duration = time.time() - t0
-            try:
-                from ai_karen_engine.services.metrics_service import get_metrics_service
-
-                get_metrics_service().record_llm_latency(
+            metrics_service_final = _get_metrics_service_safe()
+            if metrics_service_final:
+                metrics_service_final.record_llm_latency(
                     duration,
                     provider=provider_name,
                     model=model_name or "",
                     status=status,
                 )
-            except Exception:
-                pass
 
     def embed(
         self,
@@ -468,17 +499,14 @@ class LLMUtils:
             raise EmbeddingFailed(f"Provider '{provider}' failed: {ex}")
         finally:
             duration = time.time() - t0
-            try:
-                from ai_karen_engine.services.metrics_service import get_metrics_service
-
-                get_metrics_service().record_llm_latency(
+            metrics_service = _get_metrics_service_safe()
+            if metrics_service:
+                metrics_service.record_llm_latency(
                     duration,
                     provider=provider_name,
                     model=model_name or "",
                     status=status,
                 )
-            except Exception:
-                pass
 
 
 # ========== Prompt-First Plugin API ==========

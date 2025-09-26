@@ -178,12 +178,22 @@ class ProviderRegistry:
         """Best-effort auto-registration of core system providers."""
 
         try:
-            from ai_karen_engine.integrations.providers import (
+            from ai_karen_engine.integrations.providers.deepseek_provider import (
                 DeepseekProvider,
+            )
+            from ai_karen_engine.integrations.providers.gemini_provider import (
                 GeminiProvider,
+            )
+            from ai_karen_engine.integrations.providers.huggingface_provider import (
                 HuggingFaceProvider,
+            )
+            from ai_karen_engine.integrations.providers.llamacpp_provider import (
                 LlamaCppProvider,
+            )
+            from ai_karen_engine.integrations.providers.openai_provider import (
                 OpenAIProvider,
+            )
+            from ai_karen_engine.integrations.providers.fallback_provider import (
                 FallbackProvider,
             )
 
