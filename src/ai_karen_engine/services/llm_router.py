@@ -4,11 +4,12 @@ Manages LLM provider selection, routing, and fallback logic with local-first pri
 """
 
 import asyncio
+import inspect
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Dict, List, Optional, Union
 from enum import Enum
+from typing import Any, AsyncIterator, Dict, List, Optional, Union
 
 from ai_karen_engine.integrations.llm_registry import get_registry, LLMRegistry
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
@@ -290,24 +291,53 @@ class LLMRouter:
             provider = self.registry.get_provider(provider_name)
         if not provider:
             raise RuntimeError(f"Could not get provider instance: {provider_name}")
-        
-        # Prepare provider-specific parameters
+
         provider_params = {
             "max_tokens": request.max_tokens,
             "temperature": request.temperature,
         }
-        
-        # Remove None values
         provider_params = {k: v for k, v in provider_params.items() if v is not None}
-        
+
         if request.stream:
-            # Stream response
-            async for chunk in provider.stream_response(request.message, **provider_params):
-                yield chunk
-        else:
-            # Non-streaming response
-            response = await provider.generate_response(request.message, **provider_params)
-            yield response
+            stream_callable = getattr(provider, "stream_response", None)
+            if stream_callable:
+                stream_result = stream_callable(request.message, **provider_params)
+                if inspect.isawaitable(stream_result):
+                    stream_result = await stream_result
+
+                if stream_result is not None:
+                    if hasattr(stream_result, "__aiter__"):
+                        async for chunk in stream_result:
+                            yield chunk
+                        return
+                    if hasattr(stream_result, "__iter__") and not isinstance(stream_result, (str, bytes)):
+                        for chunk in stream_result:
+                            yield chunk
+                        return
+                    yield stream_result
+                    return
+
+            stream_generate = getattr(provider, "stream_generate", None)
+            if stream_generate:
+                stream_result = stream_generate(request.message, **provider_params)
+                if stream_result is not None:
+                    if hasattr(stream_result, "__iter__") and not isinstance(stream_result, (str, bytes)):
+                        for chunk in stream_result:
+                            yield chunk
+                        return
+                    yield stream_result
+                    return
+
+        generator_callable = getattr(provider, "generate_response", None)
+        if generator_callable is None:
+            generator_callable = getattr(provider, "generate_text", None)
+        if generator_callable is None:
+            raise RuntimeError(f"Provider {provider_name} does not support text generation")
+
+        result = generator_callable(request.message, **provider_params)
+        if inspect.isawaitable(result):
+            result = await result
+        yield result
     
     async def _get_fallback_providers(
         self,
