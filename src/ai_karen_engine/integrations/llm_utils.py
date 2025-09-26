@@ -684,7 +684,31 @@ class LLMUtils:
         model_name = provider_kwargs.get("model")
         provider_obj: Optional[LLMProviderBase]
         if self.use_registry:
-            provider_obj = self.registry.get_provider(provider_name, model=model_name)  # type: ignore[arg-type]
+            try:
+                provider_obj = self.registry.get_provider(
+                    provider_name, model=model_name
+                )  # type: ignore[arg-type]
+            except GenerationFailed as exc:
+                logger.warning(
+                    "Provider %s failed during initialization: %s",
+                    provider_name,
+                    exc,
+                )
+                self._record_failure(provider_name, exc)
+                raise ProviderNotAvailable(
+                    f"Provider '{provider_name}' not available in registry."
+                ) from exc
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning(
+                    "Unexpected error initializing provider %s: %s",
+                    provider_name,
+                    exc,
+                )
+                self._record_failure(provider_name, exc)
+                raise ProviderNotAvailable(
+                    f"Provider '{provider_name}' not available in registry."
+                ) from exc
+
             if provider_obj is None:
                 raise ProviderNotAvailable(
                     f"Provider '{provider_name}' not available in registry."
