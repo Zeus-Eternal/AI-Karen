@@ -351,7 +351,23 @@ async def chat_runtime_stream(
             )
             kire_decision = _routed.get("decision")
 
-            yield f"data: {json.dumps({'type': 'metadata', 'data': {'conversation_id': conversation_id, 'correlation_id': correlation_id, 'kire': {'provider': kire_decision.provider, 'model': kire_decision.model, 'reason': kire_decision.reasoning, 'confidence': kire_decision.confidence}}})}\n\n"
+            metadata_event = {
+                "type": "metadata",
+                "data": {
+                    "conversation_id": conversation_id,
+                    "correlation_id": correlation_id,
+                },
+            }
+            if kire_decision:
+                metadata_event["data"]["kire"] = {
+                    "provider": getattr(kire_decision, "provider", "unknown"),
+                    "model": getattr(kire_decision, "model", "unknown"),
+                    "reason": getattr(kire_decision, "reasoning", ""),
+                    "confidence": getattr(kire_decision, "confidence", 0.0),
+                    "fallback_chain": getattr(kire_decision, "fallback_chain", []),
+                }
+
+            yield f"data: {json.dumps(metadata_event)}\n\n"
 
             chat_request = ChatRequest(
                 message=request.message,
