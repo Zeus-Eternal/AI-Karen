@@ -35,19 +35,28 @@ except ImportError:
     ValidationError = Exception
 
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
-from ai_karen_engine.integrations.providers import (
-    CopilotKitProvider,
-    DeepseekProvider,
-    GeminiProvider,
-    HuggingFaceProvider,
-    LlamaCppProvider,
-    OpenAIProvider,
-    FallbackProvider,
-)
-from ai_karen_engine.integrations.kire_router import KIRERouter as KIREAdapter
+from importlib import import_module
 from ai_karen_engine.routing.types import RouteRequest
 
 logger = logging.getLogger("kari.llm_registry")
+
+try:
+    from ai_karen_engine.integrations.kire_router import KIRERouter as KIREAdapter
+
+    _KIRE_IMPORT_ERROR: Optional[Exception] = None
+except Exception as kire_import_error:  # pragma: no cover - optional dependency path
+    KIREAdapter = None  # type: ignore[assignment]
+    _KIRE_IMPORT_ERROR = kire_import_error
+
+_PROVIDER_MODULES = {
+    "LlamaCppProvider": "ai_karen_engine.integrations.providers.llamacpp_provider",
+    "OpenAIProvider": "ai_karen_engine.integrations.providers.openai_provider",
+    "GeminiProvider": "ai_karen_engine.integrations.providers.gemini_provider",
+    "DeepseekProvider": "ai_karen_engine.integrations.providers.deepseek_provider",
+    "HuggingFaceProvider": "ai_karen_engine.integrations.providers.huggingface_provider",
+    "CopilotKitProvider": "ai_karen_engine.integrations.providers.copilotkit_provider",
+    "FallbackProvider": "ai_karen_engine.integrations.providers.fallback_provider",
+}
 
 
 @dataclass
@@ -162,7 +171,7 @@ class LLMRegistry:
         self._setup_registry_watcher()
 
         # Lazy KIRE adapter
-        self._kire: Optional[KIREAdapter] = None
+        self._kire: Optional[Any] = None
 
     def _load_schema(self) -> Optional[Dict[str, Any]]:
         """Load registry schema for validation."""
@@ -772,6 +781,10 @@ class LLMRegistry:
         """
         try:
             if self._kire is None:
+                if KIREAdapter is None:
+                    raise RuntimeError(
+                        f"KIRE routing unavailable: {_KIRE_IMPORT_ERROR!r}"
+                    )
                 self._kire = KIREAdapter(llm_registry=self)
             decision = await self._kire.route(
                 user_id=user_ctx.get("user_id", "anon"),
@@ -802,17 +815,22 @@ class LLMRegistry:
 
     def _get_provider_class(self, class_name: str) -> Optional[Type[LLMProviderBase]]:
         """Get provider class by name."""
-        class_map = {
-            "LlamaCppProvider": LlamaCppProvider,
-            "OpenAIProvider": OpenAIProvider,
-            "GeminiProvider": GeminiProvider,
-            "DeepseekProvider": DeepseekProvider,
-            "HuggingFaceProvider": HuggingFaceProvider,
-            "CopilotKitProvider": CopilotKitProvider,
-            "FallbackProvider": FallbackProvider,
-        }
+        module_path = _PROVIDER_MODULES.get(class_name)
+        if not module_path:
+            return None
 
-        return class_map.get(class_name)
+        try:
+            module = import_module(module_path)
+        except Exception as exc:
+            logger.error("Failed to import provider module '%s': %s", module_path, exc)
+            return None
+
+        provider_cls = getattr(module, class_name, None)
+        if provider_cls is None:
+            logger.error(
+                "Provider class '%s' not found in module '%s'", class_name, module_path
+            )
+        return provider_cls
 
     # -----------------------------
     # Llama.cpp model resolution & verification
