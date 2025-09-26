@@ -6,10 +6,12 @@ Manages LLM provider selection, routing, and fallback logic with local-first pri
 import asyncio
 import inspect
 import logging
+import random
 import time
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, AsyncIterator, Dict, List, Optional, Union
+from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Union
 
 from ai_karen_engine.integrations.llm_registry import get_registry, LLMRegistry
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
@@ -33,6 +35,14 @@ class ProviderHealth:
     response_time: Optional[float] = None
     error_message: Optional[str] = None
     consecutive_failures: int = 0
+    last_failure: Optional[float] = None
+    circuit_open_until: float = 0.0
+    rate_limited_until: float = 0.0
+    requests_in_window: int = 0
+    window_start: float = 0.0
+    latency_samples: List[float] = field(default_factory=list)
+    last_exception_type: Optional[str] = None
+    total_requests: int = 0
 
 
 @dataclass
@@ -63,6 +73,27 @@ class LLMRouter:
         self.health_check_interval = 300  # 5 minutes
         self.max_consecutive_failures = 3
         self.response_timeout = 30  # seconds
+
+        # Retry/circuit breaker configuration
+        self.retry_attempts = 3
+        self.retry_initial_delay = 1.0
+        self.retry_backoff_factor = 2.0
+        self.retry_max_delay = 10.0
+        self.retry_jitter = 0.5
+
+        self.circuit_breaker_threshold = 3
+        self.circuit_breaker_timeout = 60.0
+
+        self.rate_limit_backoff = 15.0
+        self.latency_history_size = 20
+
+        self.default_rate_limit = {"max_requests": 30, "window_seconds": 60}
+        self.rate_limit_config: Dict[str, Dict[str, float]] = {
+            "openai": {"max_requests": 60, "window_seconds": 60},
+            "anthropic": {"max_requests": 30, "window_seconds": 60},
+            "gemini": {"max_requests": 40, "window_seconds": 60},
+            "deepseek": {"max_requests": 40, "window_seconds": 60},
+        }
         
         # Provider priority mapping
         self.provider_priorities = {
@@ -85,7 +116,8 @@ class LLMRouter:
                 name=provider_name,
                 is_healthy=True,  # Assume healthy initially
                 last_check=0,
-                consecutive_failures=0
+                consecutive_failures=0,
+                window_start=time.time(),
             )
     
     async def select_provider(
@@ -207,7 +239,25 @@ class LLMRouter:
         # Check if health check is recent enough
         if time.time() - health.last_check > self.health_check_interval:
             await self._perform_health_check(provider_name)
-        
+
+        # Circuit breaker handling
+        if health.circuit_open_until:
+            if time.time() < health.circuit_open_until:
+                logger.debug(
+                    "Provider %s circuit breaker open for %.2fs",
+                    provider_name,
+                    health.circuit_open_until - time.time(),
+                )
+                return False
+            health.circuit_open_until = 0.0
+            health.consecutive_failures = 0
+
+        # Rate limit cooldowns
+        if health.rate_limited_until and time.time() < health.rate_limited_until:
+            return False
+        if health.rate_limited_until and time.time() >= health.rate_limited_until:
+            health.rate_limited_until = 0.0
+
         return health.is_healthy and health.consecutive_failures < self.max_consecutive_failures
     
     async def _perform_health_check(self, provider_name: str):
@@ -225,10 +275,12 @@ class LLMRouter:
                 health.is_healthy = True
                 health.consecutive_failures = 0
                 health.error_message = None
+                health.last_exception_type = None
             else:
                 health.is_healthy = False
                 health.consecutive_failures += 1
                 health.error_message = health_result.get("error", "Unknown error")
+                health.last_exception_type = "HealthCheckError"
             
             logger.debug(f"Health check for {provider_name}: {health_result}")
             
@@ -238,6 +290,7 @@ class LLMRouter:
             health.is_healthy = False
             health.consecutive_failures += 1
             health.error_message = str(e)
+            health.last_exception_type = type(e).__name__
             
             logger.error(f"Health check failed for {provider_name}: {e}")
     
@@ -249,33 +302,88 @@ class LLMRouter:
         """
         Process chat request with automatic provider selection and fallback
         """
+        request_id = f"llm-router-{uuid.uuid4()}"
+        failure_records: List[Dict[str, str]] = []
+
         selection = await self.select_provider(request, user_preferences)
         if not selection:
+            logger.error(
+                "[%s] No suitable provider available; invoking degraded mode fallback",
+                request_id,
+            )
+            degraded_message = await self._generate_degraded_fallback(
+                request,
+                failure_records,
+                reason=None,
+            )
+            if degraded_message:
+                yield degraded_message
+                return
             raise RuntimeError("No suitable provider available")
+
         provider_name, model_name = selection
-        
-        # Try primary provider
+
         try:
-            async for chunk in self._process_with_provider(provider_name, request, model_name):
+            async for chunk in self._attempt_provider_with_retries(
+                provider_name,
+                request,
+                request_id=request_id,
+                model_name=model_name,
+            ):
                 yield chunk
             return
-        except Exception as e:
-            logger.warning(f"Provider {provider_name} failed: {e}")
-            await self._mark_provider_unhealthy(provider_name, str(e))
-        
-        # Try fallback providers
+        except ProviderProcessingError as error:
+            logger.warning(
+                "[%s] Provider %s failed after retries: %s",
+                request_id,
+                provider_name,
+                error,
+            )
+            await self._mark_provider_unhealthy(provider_name, str(error))
+            failure_records.append({
+                "provider": provider_name,
+                "error": str(error.last_error) if error.last_error else str(error),
+            })
+
         fallback_providers = await self._get_fallback_providers(provider_name, request)
         for fallback_provider in fallback_providers:
             try:
-                logger.info(f"Trying fallback provider: {fallback_provider}")
-                async for chunk in self._process_with_provider(fallback_provider, request):
+                logger.info(
+                    "[%s] Trying fallback provider: %s",
+                    request_id,
+                    fallback_provider,
+                )
+                async for chunk in self._attempt_provider_with_retries(
+                    fallback_provider,
+                    request,
+                    request_id=request_id,
+                    model_name=None,
+                ):
                     yield chunk
                 return
-            except Exception as e:
-                logger.warning(f"Fallback provider {fallback_provider} failed: {e}")
-                await self._mark_provider_unhealthy(fallback_provider, str(e))
-        
-        # If all providers failed
+            except ProviderProcessingError as error:
+                logger.warning(
+                    "[%s] Fallback provider %s failed: %s",
+                    request_id,
+                    fallback_provider,
+                    error,
+                )
+                await self._mark_provider_unhealthy(fallback_provider, str(error))
+                failure_records.append({
+                    "provider": fallback_provider,
+                    "error": str(error.last_error) if error.last_error else str(error),
+                })
+
+        degraded_reason = self._infer_degraded_reason(failure_records)
+        degraded_message = await self._generate_degraded_fallback(
+            request,
+            failure_records,
+            reason=degraded_reason,
+        )
+        if degraded_message:
+            yield degraded_message
+            return
+
         raise RuntimeError("All providers failed to process the request")
     
     async def _process_with_provider(
@@ -364,6 +472,16 @@ class LLMRouter:
             health.consecutive_failures += 1
             health.error_message = error_message
             health.last_check = time.time()
+            health.last_failure = time.time()
+            health.last_exception_type = "ProviderError"
+
+            if health.consecutive_failures >= self.circuit_breaker_threshold:
+                health.circuit_open_until = time.time() + self.circuit_breaker_timeout
+                logger.error(
+                    "Provider %s circuit breaker opened for %.0f seconds",
+                    provider_name,
+                    self.circuit_breaker_timeout,
+                )
     
     async def get_provider_status(self) -> Dict[str, Any]:
         """Get status of all providers"""
@@ -379,7 +497,8 @@ class LLMRouter:
         for provider_name, health in self.provider_health.items():
             provider_info = self.registry.get_provider_info(provider_name)
             priority = self.provider_priorities.get(provider_name, ProviderPriority.FALLBACK)
-            
+            latency_metrics = self._calculate_latency_metrics(health)
+
             status["providers"][provider_name] = {
                 "is_healthy": health.is_healthy,
                 "consecutive_failures": health.consecutive_failures,
@@ -389,19 +508,299 @@ class LLMRouter:
                 "priority": priority.name,
                 "supports_streaming": provider_info.get("supports_streaming", False) if provider_info else False,
                 "requires_api_key": provider_info.get("requires_api_key", False) if provider_info else False,
+                "circuit_open_until": health.circuit_open_until,
+                "rate_limited_until": health.rate_limited_until,
+                "latency_ms_avg": latency_metrics.get("avg_ms"),
+                "latency_ms_p95": latency_metrics.get("p95_ms"),
+                "total_requests": health.total_requests,
             }
-            
+
             if health.is_healthy:
                 status["health_summary"]["healthy"] += 1
             else:
                 status["health_summary"]["unhealthy"] += 1
-        
+
         return status
-    
+
+    async def _attempt_provider_with_retries(
+        self,
+        provider_name: str,
+        request: ChatRequest,
+        request_id: str,
+        model_name: Optional[str] = None,
+    ) -> AsyncIterator[str]:
+        """Attempt provider execution with retries, metrics, and rate limiting."""
+
+        await self._respect_rate_limit(provider_name)
+        errors: List[Exception] = []
+        delay = self.retry_initial_delay
+
+        for attempt in range(1, self.retry_attempts + 1):
+            start_time = time.time()
+            try:
+                async for chunk in self._instrumented_provider_call(
+                    provider_name,
+                    request,
+                    model_name=model_name,
+                    request_id=request_id,
+                    attempt=attempt,
+                ):
+                    yield chunk
+
+                duration = time.time() - start_time
+                self._record_provider_success(provider_name, duration)
+                self._log_provider_attempt(
+                    provider_name,
+                    request_id,
+                    attempt,
+                    duration,
+                    success=True,
+                )
+                return
+            except Exception as exc:
+                duration = time.time() - start_time
+                errors.append(exc)
+                self._record_provider_failure(provider_name, duration, exc)
+                self._log_provider_attempt(
+                    provider_name,
+                    request_id,
+                    attempt,
+                    duration,
+                    success=False,
+                    error=exc,
+                )
+
+                if attempt >= self.retry_attempts:
+                    break
+
+                sleep_for = min(delay, self.retry_max_delay)
+                jitter = random.uniform(0, self.retry_jitter)
+                logger.debug(
+                    "[%s] Provider %s retrying in %.2fs (attempt %d/%d)",
+                    request_id,
+                    provider_name,
+                    sleep_for + jitter,
+                    attempt,
+                    self.retry_attempts,
+                )
+                await asyncio.sleep(sleep_for + jitter)
+                delay *= self.retry_backoff_factor
+
+        raise ProviderProcessingError(provider_name, errors)
+
+    async def _instrumented_provider_call(
+        self,
+        provider_name: str,
+        request: ChatRequest,
+        model_name: Optional[str],
+        request_id: str,
+        attempt: int,
+    ) -> AsyncIterator[str]:
+        """Execute provider call while logging attempt metadata."""
+
+        logger.debug(
+            "[%s] Executing provider %s (attempt %d) streaming=%s",
+            request_id,
+            provider_name,
+            attempt,
+            request.stream,
+        )
+
+        async for chunk in self._process_with_provider(provider_name, request, model_name):
+            yield chunk
+
+    def _log_provider_attempt(
+        self,
+        provider_name: str,
+        request_id: str,
+        attempt: int,
+        duration: float,
+        success: bool,
+        error: Optional[BaseException] = None,
+    ) -> None:
+        """Log structured provider attempt outcomes."""
+
+        if success:
+            logger.info(
+                "[%s] Provider %s succeeded on attempt %d in %.2fs",
+                request_id,
+                provider_name,
+                attempt,
+                duration,
+            )
+        else:
+            logger.warning(
+                "[%s] Provider %s failed on attempt %d in %.2fs: %s",
+                request_id,
+                provider_name,
+                attempt,
+                duration,
+                error,
+            )
+
+    async def _respect_rate_limit(self, provider_name: str) -> None:
+        """Best-effort rate limiting to avoid exhausting provider quotas."""
+
+        health = self.provider_health.get(provider_name)
+        if not health:
+            return
+
+        if health.rate_limited_until and time.time() < health.rate_limited_until:
+            sleep_for = health.rate_limited_until - time.time()
+            if sleep_for > 0:
+                logger.warning(
+                    "Provider %s temporarily rate limited; sleeping for %.2fs",
+                    provider_name,
+                    sleep_for,
+                )
+                await asyncio.sleep(sleep_for)
+            health.rate_limited_until = 0.0
+
+        config = self.rate_limit_config.get(provider_name, self.default_rate_limit)
+        window_seconds = float(config.get("window_seconds", 60))
+        max_requests = int(config.get("max_requests", 30))
+
+        now = time.time()
+        if now - health.window_start > window_seconds:
+            health.window_start = now
+            health.requests_in_window = 0
+
+        if health.requests_in_window >= max_requests:
+            sleep_for = window_seconds - (now - health.window_start)
+            if sleep_for > 0:
+                logger.warning(
+                    "Provider %s reached rate limit window; pausing for %.2fs",
+                    provider_name,
+                    sleep_for,
+                )
+                await asyncio.sleep(sleep_for)
+            health.window_start = time.time()
+            health.requests_in_window = 0
+
+        health.requests_in_window += 1
+
+    def _record_provider_success(self, provider_name: str, latency: float) -> None:
+        """Record successful provider execution metrics."""
+
+        health = self.provider_health.get(provider_name)
+        if not health:
+            return
+
+        health.is_healthy = True
+        health.consecutive_failures = 0
+        health.error_message = None
+        health.last_exception_type = None
+        health.total_requests += 1
+        health.last_failure = None
+        health.circuit_open_until = 0.0
+
+        if len(health.latency_samples) >= self.latency_history_size:
+            health.latency_samples.pop(0)
+        health.latency_samples.append(latency)
+
+    def _record_provider_failure(
+        self,
+        provider_name: str,
+        latency: float,
+        error: BaseException,
+    ) -> None:
+        """Record provider failure and update circuit breaker/rate limits."""
+
+        health = self.provider_health.get(provider_name)
+        if not health:
+            return
+
+        health.is_healthy = False
+        health.consecutive_failures += 1
+        health.error_message = str(error)
+        health.last_failure = time.time()
+        health.last_exception_type = type(error).__name__
+        if len(health.latency_samples) >= self.latency_history_size:
+            health.latency_samples.pop(0)
+        health.latency_samples.append(latency)
+
+        message = str(error).lower()
+        if "rate limit" in message or "429" in message:
+            health.rate_limited_until = time.time() + self.rate_limit_backoff
+
+        if health.consecutive_failures >= self.circuit_breaker_threshold:
+            health.circuit_open_until = time.time() + self.circuit_breaker_timeout
+
+    def _calculate_latency_metrics(self, health: ProviderHealth) -> Dict[str, float]:
+        """Compute latency metrics for provider status output."""
+
+        if not health.latency_samples:
+            return {}
+
+        samples = sorted(health.latency_samples)
+        average = sum(samples) / len(samples)
+        p95_index = max(0, min(len(samples) - 1, int(len(samples) * 0.95) - 1))
+        p95_value = samples[p95_index]
+
+        return {"avg_ms": average * 1000, "p95_ms": p95_value * 1000}
+
+    def _infer_degraded_reason(self, failure_records: List[Dict[str, str]]):
+        """Infer degraded mode reason from accumulated failure information."""
+
+        from ai_karen_engine.core.degraded_mode import DegradedModeReason
+
+        if not failure_records:
+            return DegradedModeReason.ALL_PROVIDERS_FAILED
+
+        combined = " ".join(
+            record.get("error", "") for record in failure_records if record.get("error")
+        ).lower()
+
+        if any(keyword in combined for keyword in ("rate limit", "429")):
+            return DegradedModeReason.API_RATE_LIMITS
+        if any(keyword in combined for keyword in ("timeout", "timed out", "connection", "network")):
+            return DegradedModeReason.NETWORK_ISSUES
+        if any(keyword in combined for keyword in ("quota", "exhaust", "memory", "resource")):
+            return DegradedModeReason.RESOURCE_EXHAUSTION
+
+        return DegradedModeReason.ALL_PROVIDERS_FAILED
+
+    async def _generate_degraded_fallback(
+        self,
+        request: ChatRequest,
+        failure_records: List[Dict[str, str]],
+        reason,
+    ) -> Optional[str]:
+        """Generate degraded mode fallback response when LLMs are unavailable."""
+
+        try:
+            from ai_karen_engine.core.degraded_mode import (
+                DegradedModeReason,
+                get_degraded_mode_manager,
+            )
+
+            manager = get_degraded_mode_manager()
+            failed_providers = [record.get("provider", "unknown") for record in failure_records]
+            degraded_reason = reason or DegradedModeReason.ALL_PROVIDERS_FAILED
+
+            manager.activate_degraded_mode(degraded_reason, failed_providers)
+            envelope = await manager.generate_degraded_response(
+                request.message,
+                context=request.context or {},
+            )
+
+            if isinstance(envelope, dict):
+                final_text = envelope.get("final") or envelope.get("response")
+                if final_text:
+                    logger.error(
+                        "Returning degraded mode response due to provider failures: %s",
+                        failed_providers,
+                    )
+                    return final_text
+        except Exception as degraded_error:  # pragma: no cover - defensive fallback
+            logger.exception("Failed to generate degraded mode response: %s", degraded_error)
+
+        return None
+
     async def refresh_provider_health(self):
         """Refresh health status for all providers"""
         logger.info("Refreshing provider health status")
-        
+
         tasks = []
         for provider_name in self.provider_health.keys():
             tasks.append(self._perform_health_check(provider_name))
@@ -414,6 +813,26 @@ class LLMRouter:
     def default(cls) -> 'LLMRouter':
         """Create default LLM Router instance"""
         return cls()
+
+
+# Helper exceptions
+class ProviderProcessingError(RuntimeError):
+    """Raised when a provider fails after exhausting retry attempts."""
+
+    def __init__(self, provider_name: str, errors: Sequence[BaseException]):
+        self.provider_name = provider_name
+        self.errors = list(errors)
+        self.last_error: Optional[BaseException] = self.errors[-1] if self.errors else None
+
+        unique_messages: List[str] = []
+        for error in self.errors:
+            message = str(error)
+            if message and message not in unique_messages:
+                unique_messages.append(message)
+
+        attempts = len(self.errors) or 1
+        summary = "; ".join(unique_messages) if unique_messages else "unknown error"
+        super().__init__(f"{provider_name} failed after {attempts} attempts: {summary}")
 
 
 # Global router instance
