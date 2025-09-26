@@ -350,8 +350,8 @@ if FASTAPI_AVAILABLE:
     @router.post("/content/sanitize")
     async def sanitize_content(
         content: str,
-        max_length: int = 100,
         http_request: Request,
+        max_length: int = 100,
         privacy_service: PrivacyComplianceService = Depends(get_privacy_service)
     ):
         """
