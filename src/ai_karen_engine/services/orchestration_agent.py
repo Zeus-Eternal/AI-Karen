@@ -190,11 +190,37 @@ class OrchestrationAgent:
             return degraded
 
         # Invoke the selected provider
-        final_text, latency, usage = await self._invoke_provider(
-            selection_result.provider, 
-            selection_result.model, 
-            data
-        )
+        try:
+            final_text, latency, usage = await self._invoke_provider(
+                selection_result.provider,
+                selection_result.model,
+                data
+            )
+        except GenerationFailed as exc:
+            logger.error(
+                "LLM generation failed after fallback chain (provider=%s, model=%s): %s",
+                selection_result.provider,
+                selection_result.model,
+                exc,
+            )
+            return await self._handle_generation_failure(
+                data,
+                failure_reason="llm_generation_failed",
+                error=str(exc),
+                failed_provider=selection_result.provider,
+            )
+        except Exception as exc:  # pragma: no cover - safety net for provider errors
+            logger.exception(
+                "Unexpected error during provider invocation (provider=%s, model=%s)",
+                selection_result.provider,
+                selection_result.model,
+            )
+            return await self._handle_generation_failure(
+                data,
+                failure_reason="unexpected_invocation_error",
+                error=str(exc),
+                failed_provider=selection_result.provider,
+            )
 
         # Add dynamic suggestions
         suggestions = self._generate_suggestions(data, familiarity=self._estimate_familiarity(data))
@@ -224,12 +250,73 @@ class OrchestrationAgent:
         }
 
         return build_response_envelope(
-            final_text, 
-            selection_result.provider, 
-            selection_result.model or "default", 
-            metadata=meta, 
+            final_text,
+            selection_result.provider,
+            selection_result.model or "default",
+            metadata=meta,
             suggestions=suggestions
         )
+
+    async def _handle_generation_failure(
+        self,
+        data: OrchestrationInput,
+        *,
+        failure_reason: str,
+        error: Optional[str] = None,
+        failed_provider: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Gracefully degrade when all provider attempts fail."""
+
+        logger.warning(
+            "Falling back to degraded mode (reason=%s, provider=%s)",
+            failure_reason,
+            failed_provider,
+        )
+
+        failed_chain = self.default_hierarchy.copy()
+        if failed_provider and failed_provider not in failed_chain:
+            failed_chain.insert(0, failed_provider)
+
+        self.degraded_manager.activate_degraded_mode(
+            DegradedModeReason.ALL_PROVIDERS_FAILED,
+            failed_providers=failed_chain,
+        )
+
+        degraded = await self.degraded_manager.generate_degraded_response(data.message)
+        meta = degraded.setdefault("meta", {})
+        annotations = meta.setdefault("annotations", [])
+        if "LLM Fallback" not in annotations:
+            annotations.append("LLM Fallback")
+
+        meta["fallback_reason"] = failure_reason
+        if error:
+            meta["error"] = error
+        if failed_provider:
+            meta["failed_provider"] = failed_provider
+
+        routing_info = meta.setdefault("routing", {})
+        routing_info.update(
+            {
+                "selection_path": "degraded_mode",
+                "failure_reason": failure_reason,
+                "failed_provider": failed_provider,
+            }
+        )
+
+        suggestions = degraded.setdefault("suggestions", [])
+        fallback_suggestions = [
+            "Retry in a few minutes once providers recover.",
+            "Switch to a different preferred provider in settings.",
+            "Ask for a shorter or more focused response.",
+        ]
+        for suggestion in fallback_suggestions:
+            if suggestion not in suggestions:
+                suggestions.append(suggestion)
+
+        if len(suggestions) > 5:
+            degraded["suggestions"] = suggestions[:5]
+
+        return degraded
 
     def _validate_user_preferences(self, llm_preferences: Dict[str, str]) -> Dict[str, str]:
         """

@@ -7,12 +7,12 @@ Kari LLM Utils - Production Enterprise Version
 """
 
 import logging
+import os
+import random
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-
-import os
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -255,9 +255,34 @@ class LLMUtils:
         providers: Optional[Dict[str, LLMProviderBase]] = None,
         default: str = "llamacpp",
         use_registry: bool = True,
+        config: Optional[Dict[str, Any]] = None,
     ):
+        self.config = config or {}
         self.use_registry = use_registry
         self.default = default
+
+        # Runtime safety controls for retry/backoff and circuit breaking
+        self.max_retries = int(self._get_config_value("max_retries", 3))
+        self.base_retry_delay = float(self._get_config_value("base_retry_delay", 0.6))
+        self.max_retry_delay = float(self._get_config_value("max_retry_delay", 8.0))
+        self.circuit_breaker_threshold = int(
+            self._get_config_value("circuit_breaker_threshold", 3)
+        )
+        self.circuit_breaker_cooldown = float(
+            self._get_config_value("circuit_breaker_cooldown", 45.0)
+        )
+        self.rate_limit_cooldown = float(
+            self._get_config_value("rate_limit_cooldown", 20.0)
+        )
+        self.max_rate_limit_cooldown = float(
+            self._get_config_value("max_rate_limit_cooldown", 90.0)
+        )
+        self.rate_limit_retry_window = float(
+            self._get_config_value("rate_limit_retry_window", 1.5)
+        )
+
+        # Provider state cache for circuit breaker / rate limiting metadata
+        self._provider_state: Dict[str, Dict[str, Any]] = {}
 
         if self.use_registry and not _should_use_registry():
             self.use_registry = False
@@ -424,115 +449,379 @@ class LLMUtils:
         user_ctx: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> str:
-        # Respect explicit model by requesting a correctly initialized provider from registry
-        provider_name = provider or self.default
-        requested_provider = provider_name
-        model_name = kwargs.get("model")
-        provider_obj: Optional[LLMProviderBase]
-        if self.use_registry:
-            provider_obj = self.registry.get_provider(provider_name, model=model_name)  # type: ignore[arg-type]
-
-            if provider_obj is None:
-                # Attempt graceful fallback to any available provider, prioritising deterministic fallback
-                fallback_candidates: List[str] = []
-                try:
-                    fallback_candidates = [
-                        name
-                        for name in self.registry.get_available_providers()
-                        if name != provider_name
-                    ]
-                except Exception:
-                    fallback_candidates = []
-
-                if "fallback" not in fallback_candidates and "fallback" in self.registry.list_providers():
-                    fallback_candidates.append("fallback")
-
-                for candidate in fallback_candidates:
-                    candidate_obj = self.registry.get_provider(candidate)
-                    if candidate_obj:
-                        provider_obj = candidate_obj
-                        provider_name = candidate
-                        logger.info(
-                            "Using fallback provider '%s' after '%s' was unavailable",
-                            provider_name,
-                            requested_provider,
-                        )
-                        break
-
-            if provider_obj is None:
-                raise ProviderNotAvailable(
-                    f"Provider '{requested_provider}' not available in registry."
-                )
-
-            if provider_obj.__class__.__name__ == "FallbackProvider":
-                provider_name = "fallback"
-            # Do not cache by plain provider name to avoid model mix-ups
-        else:
-            provider_obj = self.get_provider(provider)
-            if provider_obj is None:
-                raise ProviderNotAvailable(
-                    f"Provider '{provider or self.default}' not registered."
-                )
-
+        requested_provider = provider or self.default
+        requested_model = kwargs.get("model")
         trace_id = trace_id or str(uuid.uuid4())
-        model_name = model_name or getattr(provider_obj, "model", None)
-        t0 = time.time()
-        status = "success"
-        meta = {
+        start_time = time.time()
+        overall_provider = requested_provider or self.default
+        overall_model = requested_model or ""
+        overall_status = "error"
+
+        provider_chain = self._build_provider_chain(requested_provider)
+        metrics_service = _get_metrics_service_safe()
+        meta_base = {
             "prompt": prompt[:100],
-            "provider": provider_name,
+            "provider_chain": provider_chain,
+            "requested_provider": requested_provider,
+            "requested_model": requested_model,
             "user_roles": user_ctx.get("roles") if user_ctx else None,
             "trace_id": trace_id,
             "kwargs": kwargs,
         }
-        trace_llm_event("generate_text_start", trace_id, meta)
-        metrics_service = _get_metrics_service_safe()
-        model_name = kwargs.get("model") or getattr(provider_obj, "model", None)
+        trace_llm_event("generate_text_start", trace_id, meta_base)
+        logger.info(
+            "LLM request start",
+            extra={
+                "event": "llm_request_start",
+                "trace_id": trace_id,
+                "provider_chain": provider_chain,
+                "requested_provider": requested_provider,
+            },
+        )
+
+        errors: List[str] = []
+        base_kwargs = dict(kwargs)
+
         try:
-            out = provider_obj.generate_text(prompt, **kwargs)
-            duration = time.time() - t0
-            usage = getattr(provider_obj, "last_usage", {})
-            self._record_request(
-                provider_name,
-                model_name,
-                usage,
-                duration,
-                user_ctx,
+            for provider_name in provider_chain:
+                state = self._get_provider_state(provider_name)
+                if self._is_circuit_open(provider_name, state):
+                    remaining = state.get("open_until", 0) - time.monotonic()
+                    logger.warning(
+                        "Circuit open for provider %s – skipping attempt (%.1fs remaining)",
+                        provider_name,
+                        max(0.0, remaining),
+                    )
+                    errors.append(f"{provider_name}: circuit_open")
+                    continue
+
+                if self._should_skip_for_rate_limit(provider_name, state):
+                    wait_remaining = state.get("rate_limited_until", 0) - time.monotonic()
+                    logger.info(
+                        "Provider %s is cooling down after rate limit (%.1fs remaining)",
+                        provider_name,
+                        max(0.0, wait_remaining),
+                    )
+                    errors.append(f"{provider_name}: rate_limited")
+                    continue
+
+                provider_kwargs = dict(base_kwargs)
+                if provider_name != requested_provider:
+                    provider_kwargs.pop("model", None)
+
+                try:
+                    provider_obj = self._resolve_provider(provider_name, provider_kwargs)
+                except ProviderNotAvailable as exc:
+                    logger.warning("Provider %s unavailable: %s", provider_name, exc)
+                    errors.append(f"{provider_name}: unavailable")
+                    continue
+
+                effective_provider = (
+                    "fallback"
+                    if provider_obj.__class__.__name__ == "FallbackProvider"
+                    else provider_name
+                )
+
+                if effective_provider != provider_name:
+                    effective_state = self._get_provider_state(effective_provider)
+                    if self._is_circuit_open(effective_provider, effective_state):
+                        remaining = effective_state.get("open_until", 0) - time.monotonic()
+                        logger.warning(
+                            "Circuit open for fallback provider %s – skipping (%.1fs remaining)",
+                            effective_provider,
+                            max(0.0, remaining),
+                        )
+                        errors.append(f"{effective_provider}: circuit_open")
+                        continue
+                    if self._should_skip_for_rate_limit(effective_provider, effective_state):
+                        wait_remaining = effective_state.get("rate_limited_until", 0) - time.monotonic()
+                        logger.info(
+                            "Fallback provider %s cooling down after rate limit (%.1fs remaining)",
+                            effective_provider,
+                            max(0.0, wait_remaining),
+                        )
+                        errors.append(f"{effective_provider}: rate_limited")
+                        continue
+
+                model_name = provider_kwargs.get("model") or getattr(provider_obj, "model", None)
+
+                for attempt in range(1, self.max_retries + 1):
+                    attempt_start = time.time()
+                    status = "success"
+                    attempt_meta = {
+                        **meta_base,
+                        "provider": effective_provider,
+                    "model": model_name,
+                    "attempt": attempt,
+                }
+                try:
+                    output = provider_obj.generate_text(prompt, **provider_kwargs)
+                    duration = time.time() - attempt_start
+                    usage = getattr(provider_obj, "last_usage", {})
+                    self._record_request(
+                        effective_provider,
+                        model_name,
+                        usage,
+                        duration,
+                        user_ctx,
+                    )
+                    if metrics_service:
+                        metrics_service.record_llm_latency(
+                            duration,
+                            provider=effective_provider,
+                            model=model_name or "",
+                            status="success",
+                            correlation_id=trace_id,
+                        )
+                    self._record_success(effective_provider)
+                    attempt_meta["duration"] = duration
+                    trace_llm_event("generate_text_success", trace_id, attempt_meta)
+                    logger.info(
+                        "LLM provider %s succeeded on attempt %d (%.3fs)",
+                        effective_provider,
+                        attempt,
+                        duration,
+                        extra={
+                            "event": "llm_request_success",
+                            "trace_id": trace_id,
+                            "provider": effective_provider,
+                            "model": model_name,
+                            "attempt": attempt,
+                            "duration": duration,
+                        },
+                    )
+                    overall_provider = effective_provider
+                    if model_name:
+                        overall_model = model_name
+                    overall_status = "success"
+                    return output
+                except Exception as ex:  # pragma: no cover - provider specific errors vary
+                    status = "error"
+                    duration = time.time() - attempt_start
+                    if metrics_service:
+                        metrics_service.record_llm_latency(
+                            duration,
+                            provider=effective_provider,
+                            model=model_name or "",
+                            status="error",
+                            correlation_id=trace_id,
+                        )
+                    self._record_failure(effective_provider, ex)
+                    attempt_meta.update({
+                        "duration": duration,
+                        "error": str(ex),
+                        "status": status,
+                    })
+                    trace_llm_event("generate_text_error", trace_id, attempt_meta)
+                    logger.warning(
+                        "Provider %s attempt %d failed: %s",
+                        effective_provider,
+                        attempt,
+                        ex,
+                        extra={
+                            "event": "llm_request_failure",
+                            "trace_id": trace_id,
+                            "provider": effective_provider,
+                            "model": model_name,
+                            "attempt": attempt,
+                            "duration": duration,
+                        },
+                    )
+                    errors.append(f"{effective_provider} attempt {attempt}: {ex}")
+                    overall_provider = effective_provider
+                    if model_name:
+                        overall_model = model_name
+
+                    if self._is_rate_limit_error(ex):
+                        cooldown = self._mark_rate_limited(effective_provider, attempt)
+                        logger.warning(
+                            "Rate limit detected for provider %s (cooldown %.1fs)",
+                            effective_provider,
+                            cooldown,
+                        )
+                        break
+
+                    if attempt >= self.max_retries:
+                        break
+
+                    delay = self._compute_backoff(attempt)
+                    logger.debug(
+                        "Retrying provider %s in %.2fs (attempt %d)",
+                        provider_name,
+                        delay,
+                        attempt + 1,
+                    )
+                    time.sleep(delay)
+
+            detail = "; ".join(errors[-5:]) if errors else "no additional details"
+            logger.error(
+                "All providers failed for trace %s: %s",
+                trace_id,
+                detail,
+                extra={
+                    "event": "llm_request_exhausted",
+                    "trace_id": trace_id,
+                    "provider_chain": provider_chain,
+                    "errors": errors,
+                },
             )
-            if metrics_service:
-                metrics_service.record_llm_latency(
-                    duration,
-                    provider_name,
-                    model_name or "",
-                    "success",
-                    trace_id,
-                )
-            meta["duration"] = duration
-            trace_llm_event("generate_text_success", trace_id, meta)
-            return out
-        except Exception as ex:
-            duration = time.time() - t0
-            if metrics_service:
-                metrics_service.record_llm_latency(
-                    duration,
-                    provider or self.default,
-                    model_name or "",
-                    "error",
-                    trace_id,
-                )
-            meta.update({"duration": duration, "error": str(ex)})
-            trace_llm_event("generate_text_error", trace_id, meta)
-            raise GenerationFailed(f"Provider '{provider_name}' failed: {ex}")
+            raise GenerationFailed(f"All providers failed. Details: {detail}")
         finally:
-            duration = time.time() - t0
+            total_duration = time.time() - start_time
             metrics_service_final = _get_metrics_service_safe()
             if metrics_service_final:
                 metrics_service_final.record_llm_latency(
-                    duration,
-                    provider=provider_name,
-                    model=model_name or "",
-                    status=status,
+                    total_duration,
+                    provider=overall_provider,
+                    model=overall_model or "",
+                    status=overall_status,
+                    correlation_id=trace_id,
                 )
+    
+    def _resolve_provider(
+        self, provider_name: str, provider_kwargs: Dict[str, Any]
+    ) -> LLMProviderBase:
+        model_name = provider_kwargs.get("model")
+        provider_obj: Optional[LLMProviderBase]
+        if self.use_registry:
+            provider_obj = self.registry.get_provider(provider_name, model=model_name)  # type: ignore[arg-type]
+            if provider_obj is None:
+                raise ProviderNotAvailable(
+                    f"Provider '{provider_name}' not available in registry."
+                )
+            if provider_obj.__class__.__name__ == "FallbackProvider":
+                provider_kwargs.setdefault("model", getattr(provider_obj, "model", None))
+            return provider_obj
+
+        provider_obj = self.get_provider(provider_name)
+        if provider_obj is None:
+            raise ProviderNotAvailable(
+                f"Provider '{provider_name}' not registered."
+            )
+        return provider_obj
+
+    def _build_provider_chain(self, requested_provider: str) -> List[str]:
+        chain: List[str] = []
+        if requested_provider:
+            chain.append(requested_provider)
+
+        if self.use_registry:
+            try:
+                defaults = self.registry.default_chain(healthy_only=False)
+            except Exception:
+                defaults = []
+            for name in defaults:
+                if name not in chain:
+                    chain.append(name)
+            if "fallback" not in chain and hasattr(self.registry, "list_providers"):
+                try:
+                    if "fallback" in self.registry.list_providers():
+                        chain.append("fallback")
+                except Exception:
+                    pass
+        else:
+            for name in self.providers.keys():
+                if name not in chain:
+                    chain.append(name)
+
+        return chain
+
+    def _get_provider_state(self, provider: str) -> Dict[str, Any]:
+        state = self._provider_state.setdefault(
+            provider,
+            {
+                "failures": 0,
+                "open_until": None,
+                "rate_limited_until": None,
+                "last_error": None,
+            },
+        )
+        return state
+
+    def _record_success(self, provider: str) -> None:
+        state = self._get_provider_state(provider)
+        state["failures"] = 0
+        state["open_until"] = None
+        state["last_error"] = None
+        state["rate_limited_until"] = None
+
+    def _record_failure(self, provider: str, error: Exception) -> None:
+        state = self._get_provider_state(provider)
+        state["failures"] = state.get("failures", 0) + 1
+        state["last_error"] = str(error)
+        if state["failures"] >= self.circuit_breaker_threshold:
+            state["open_until"] = time.monotonic() + self.circuit_breaker_cooldown
+            logger.warning(
+                "Circuit breaker opened for provider %s after %d failures",
+                provider,
+                state["failures"],
+            )
+
+    def _is_circuit_open(self, provider: str, state: Dict[str, Any]) -> bool:
+        open_until = state.get("open_until")
+        if not open_until:
+            return False
+        if time.monotonic() >= open_until:
+            state["open_until"] = None
+            state["failures"] = 0
+            return False
+        return True
+
+    def _mark_rate_limited(self, provider: str, attempt: int) -> float:
+        cooldown = min(
+            self.rate_limit_cooldown * attempt,
+            self.max_rate_limit_cooldown,
+        )
+        state = self._get_provider_state(provider)
+        state["rate_limited_until"] = time.monotonic() + cooldown
+        return cooldown
+
+    def _should_skip_for_rate_limit(
+        self, provider: str, state: Dict[str, Any]
+    ) -> bool:
+        until = state.get("rate_limited_until")
+        if not until:
+            return False
+        remaining = until - time.monotonic()
+        if remaining <= 0:
+            state["rate_limited_until"] = None
+            return False
+        if remaining <= self.rate_limit_retry_window:
+            time.sleep(max(0.0, remaining))
+            state["rate_limited_until"] = None
+            return False
+        return True
+
+    def _compute_backoff(self, attempt: int) -> float:
+        base = min(self.base_retry_delay * (2 ** (attempt - 1)), self.max_retry_delay)
+        jitter = random.uniform(0, base * 0.25)
+        return base + jitter
+
+    def _is_rate_limit_error(self, error: Exception) -> bool:
+        message = str(error).lower()
+        if "rate limit" in message or "429" in message:
+            return True
+        status = getattr(error, "status", None) or getattr(error, "status_code", None)
+        return status == 429
+
+    def _get_config_value(self, key: str, default: Any) -> Any:
+        if key in self.config:
+            return self.config[key]
+        env_key = f"AI_KAREN_LLM_{key.upper()}"
+        value = os.getenv(env_key)
+        if value is None:
+            return default
+        try:
+            if isinstance(default, bool):
+                return value.lower() in {"1", "true", "yes", "on"}
+            if isinstance(default, int):
+                return int(value)
+            if isinstance(default, float):
+                return float(value)
+        except ValueError:
+            logger.debug("Invalid environment override for %s: %s", key, value)
+            return default
+        return value
 
     def embed(
         self,
