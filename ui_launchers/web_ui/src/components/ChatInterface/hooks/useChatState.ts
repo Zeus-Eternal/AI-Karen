@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { ChatMessage, CopilotArtifact } from "../types";
 import { generateUUID } from "@/lib/uuid";
 import { useInputPreservation } from "@/hooks/use-input-preservation";
+import { safeDebug, safeError } from "@/lib/safe-console";
 
 export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage?: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -128,13 +129,13 @@ export const useChatState = (initialMessages: ChatMessage[] = [], welcomeMessage
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(chunks, { type: "audio/wav" });
         // TODO: Implement speech-to-text conversion
-        console.log("Voice recording stopped, audio blob created:", audioBlob);
+        safeDebug("Voice recording stopped, audio blob created:", audioBlob);
       };
 
       mediaRecorder.start();
       setIsRecording(true);
     } catch (error) {
-      console.error("Failed to access microphone:", error);
+      safeError("Failed to access microphone:", error);
       throw error;
     }
   }, [isRecording]);

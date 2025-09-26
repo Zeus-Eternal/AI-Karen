@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useHooks } from "@/contexts/HookContext";
 import { getConfigManager } from "@/lib/endpoint-config";
 import { sanitizeInput } from "@/lib/utils";
-import { safeError, safeWarn, safeInfo } from "@/lib/safe-console";
+import { safeError, safeWarn, safeInfo, safeDebug } from "@/lib/safe-console";
 import { generateUUID } from "@/lib/uuid";
 import { ChatMessage, ChatSettings, CopilotArtifact } from "../types";
 
@@ -54,7 +54,10 @@ export const useChatMessages = (
     ) => {
       // Early validation to prevent errors
       if (!content?.trim() || isTyping) {
-        safeWarn('SendMessage called with invalid parameters:', { content: !!content, isTyping });
+        safeWarn("SendMessage called with invalid parameters:", {
+          content: !!content,
+          isTyping,
+        });
         return;
       }
 
@@ -209,7 +212,7 @@ export const useChatMessages = (
 
           // Debug logging to diagnose connection issues
           safeInfo("🔍 useChatMessages: Sending chat request to:", runtimeUrl());
-          safeInfo("🔍 useChatMessages: Request payload:", {
+          safeDebug("🔍 useChatMessages: Request payload:", {
             model: payload.model,
             session_id: payload.session_id,
             conversation_id: payload.conversation_id,
@@ -224,14 +227,14 @@ export const useChatMessages = (
           });
 
           // Enhanced diagnostic logging for response
-          console.log('🔍 useChatMessages: Response received:', {
+          safeDebug("🔍 useChatMessages: Response received:", {
             status: response.status,
             statusText: response.statusText,
             url: response.url,
             ok: response.ok,
             headers: Object.fromEntries(response.headers.entries()),
-            contentType: response.headers.get('content-type'),
-            timestamp: new Date().toISOString()
+            contentType: response.headers.get("content-type"),
+            timestamp: new Date().toISOString(),
           });
 
           if (!response.ok) {
@@ -239,13 +242,17 @@ export const useChatMessages = (
             try {
               const errorText = await response.text();
               errorDetails = errorText;
-              console.error('🔍 useChatMessages: Error response body:', {
-                errorText,
-                status: response.status,
-                statusText: response.statusText
-              });
+              safeError(
+                "🔍 useChatMessages: Error response body:",
+                Object.assign(
+                  new Error(
+                    `Status ${response.status} ${response.statusText}: ${errorText}`
+                  ),
+                  { status: response.status, statusText: response.statusText }
+                ),
+              );
             } catch (e) {
-              console.error('🔍 useChatMessages: Could not read error response:', e);
+              safeError("🔍 useChatMessages: Could not read error response:", e);
             }
             throw new Error(
               `HTTP ${response.status}: ${response.statusText}${
@@ -255,7 +262,7 @@ export const useChatMessages = (
           }
 
           if (!response.body) {
-            console.error('🔍 useChatMessages: No response body received');
+            safeError("🔍 useChatMessages: No response body received");
             throw new Error("No response body");
           }
 
@@ -450,16 +457,17 @@ export const useChatMessages = (
           // Calculate final metrics
           const latency = Math.round(performance.now() - startTime);
 
-          console.log('🔍 useChatMessages: Response processing completed:', {
+          safeDebug("🔍 useChatMessages: Response processing completed:", {
             fullTextLength: fullText.length,
-            fullTextPreview: fullText.substring(0, 100) + (fullText.length > 100 ? '...' : ''),
+            fullTextPreview:
+              fullText.substring(0, 100) + (fullText.length > 100 ? "..." : ""),
             latencyMs: latency,
             metadata: metadata,
             hasMetadata: !!metadata,
             metadataKeys: metadata ? Object.keys(metadata) : [],
             modelFromMetadata: metadata?.model,
             modelFromSettings: settings.model,
-            finalModel: (metadata && (metadata as any).model) || settings.model
+            finalModel: (metadata && (metadata as any).model) || settings.model,
           });
 
           // Create final message
@@ -478,13 +486,13 @@ export const useChatMessages = (
             },
           };
 
-          console.log('🔍 useChatMessages: Final message created:', {
+          safeDebug("🔍 useChatMessages: Final message created:", {
             messageId: finalMessage.id,
             contentLength: finalMessage.content.length,
             status: finalMessage.status,
             model: finalMessage.metadata?.model,
             latencyMs: finalMessage.metadata?.latencyMs,
-            tokens: finalMessage.metadata?.tokens
+            tokens: finalMessage.metadata?.tokens,
           });
 
           // Update message
@@ -512,11 +520,11 @@ export const useChatMessages = (
             onMessageReceived(finalMessage);
           }
 
-          console.log('🔍 useChatMessages: Message successfully processed and stored:', {
+          safeInfo("🔍 useChatMessages: Message successfully processed and stored:", {
             messageId: assistantId,
             totalMessages: messages.length + 1,
             success: true,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
 
           // Generate artifacts for certain message types
@@ -526,7 +534,7 @@ export const useChatMessages = (
             finalMessage.content.includes("```")
           ) {
             // TODO: Implement artifact generation
-            console.log('🔍 useChatMessages: Should generate artifacts for message:', finalMessage.id);
+            safeDebug('🔍 useChatMessages: Should generate artifacts for message:', finalMessage.id);
           }
         } catch (error) {
           if ((error as any)?.name === "AbortError") {
@@ -711,7 +719,7 @@ export const useChatMessages = (
 
         case "select":
           // Selection is handled in useChatState
-          console.log('Message selection should be handled in useChatState');
+          safeDebug("Message selection should be handled in useChatState");
           break;
       }
     },

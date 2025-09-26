@@ -30,6 +30,7 @@ import { getChatService } from '@/services/chatService';
 import { format } from 'date-fns';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { safeError } from '@/lib/safe-console';
 
 interface ChatMessage {
   id: string;
@@ -86,7 +87,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
           setSessionId(newSessionId);
           setConversationId(newConversationId);
         } catch (error) {
-          console.error('Failed to initialize chat session:', error);
+          safeError('Failed to initialize chat session:', error);
           toast({
             variant: 'destructive',
             title: 'Chat Initialization Failed',
@@ -121,7 +122,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
           }));
           setConversations(conversationData);
         } catch (error) {
-          console.error('Failed to load conversations:', error);
+          safeError('Failed to load conversations:', error);
         }
       }
     };
@@ -172,7 +173,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       await chatService.addMessageToConversation(conversationId, assistantMessage);
 
     } catch (error) {
-      console.error('Failed to process message:', error);
+      safeError('Failed to process message:', error);
       toast({
         variant: 'destructive',
         title: 'Message Failed',

@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getConfigManager } from '@/lib/endpoint-config';
 import { getApiClient } from '@/lib/api-client';
+import { safeDebug } from '@/lib/safe-console';
 
 export interface CopilotKitConfig {
   apiKey?: string;
@@ -109,7 +110,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
     const assistEndpoint = config.endpoints.assist;
     const fullUrl = `${baseUrl.replace(/\/+$/, "")}${assistEndpoint}`;
     
-    console.log('CopilotKit: Runtime URL configured:', {
+    safeDebug('CopilotKit: Runtime URL configured:', {
       baseUrl,
       assistEndpoint,
       fullUrl,
@@ -137,19 +138,19 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
 
     // Register suggestion hook
     hookIds.push(registerHook('copilot_suggestion_request', async (context: any) => {
-      console.log('CopilotKit suggestion requested:', context);
+      safeDebug('CopilotKit suggestion requested:', context);
       return { success: true, provider: 'copilotkit' };
     }));
 
     // Register code analysis hook
     hookIds.push(registerHook('copilot_code_analysis', async (context: any) => {
-      console.log('CopilotKit code analysis:', context);
+      safeDebug('CopilotKit code analysis:', context);
       return { success: true, analysisType: context.type };
     }));
 
     // Register documentation generation hook
     hookIds.push(registerHook('copilot_doc_generation', async (context: any) => {
-      console.log('CopilotKit documentation generation:', context);
+      safeDebug('CopilotKit documentation generation:', context);
       return { success: true, language: context.language };
     }));
 

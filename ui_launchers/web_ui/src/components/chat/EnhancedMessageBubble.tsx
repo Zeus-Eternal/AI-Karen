@@ -9,6 +9,7 @@ import { Bot, User, Copy, RefreshCw, Link as LinkIcon, Info } from 'lucide-react
 import { CopilotArtifacts, type CopilotArtifact } from './CopilotArtifacts';
 import { MessageBubble as BasicMessageBubble } from './MessageBubble';
 import { copyToClipboard } from '@/lib/clipboard';
+import { safeWarn } from '@/lib/safe-console';
 
 type Role = 'user' | 'assistant' | 'system';
 
@@ -78,11 +79,11 @@ const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = (props) => {
       // Fallback to direct clipboard handling using utility
       await copyToClipboard(content, {
         onError: (error) => {
-          console.warn('Failed to copy message to clipboard:', error);
-        }
+          safeWarn('Failed to copy message to clipboard:', error);
+        },
       });
     } catch (error) {
-      console.warn('Failed to copy to clipboard:', error);
+      safeWarn('Failed to copy to clipboard:', error);
       // Silent fail - the user will see no feedback, which is acceptable for a copy operation
     }
   };

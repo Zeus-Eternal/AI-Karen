@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getKarenBackend } from "@/lib/karen-backend";
+import { safeError, safeWarn, safeDebug } from "@/lib/safe-console";
 import { 
   Model, 
   ModelLibraryResponse, 
@@ -128,7 +129,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       setLoading(true);
       setError(null);
       
-      console.log('🔍 ModelSelector: Starting model loading from /api/models/library?quick=true');
+      safeDebug('🔍 ModelSelector: Starting model loading from /api/models/library?quick=true');
       
       // First, quick list for fast paint
       const quick = await backend.makeRequestPublic<{
@@ -138,7 +139,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         available_count: number;
       }>('/api/models/library?quick=true');
 
-      console.log('🔍 ModelSelector: Quick response received:', {
+      safeDebug('🔍 ModelSelector: Quick response received:', {
         hasModels: !!quick?.models,
         modelsCount: quick?.models?.length || 0,
         modelsType: typeof quick?.models,
@@ -151,7 +152,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       // Then, schedule a full refresh in background (non-blocking)
       setTimeout(async () => {
         try {
-          console.log('🔍 ModelSelector: Starting full model refresh from /api/models/library');
+          safeDebug('🔍 ModelSelector: Starting full model refresh from /api/models/library');
           const full = await backend.makeRequestPublic<{
             models: ModelInfo[];
             total_count: number;
@@ -159,50 +160,50 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             available_count: number;
           }>('/api/models/library');
           
-          console.log('🔍 ModelSelector: Full response received:', {
+          safeDebug('🔍 ModelSelector: Full response received:', {
             hasModels: !!full?.models,
             modelsCount: full?.models?.length || 0,
             modelsType: typeof full?.models,
             isArray: Array.isArray(full?.models),
             fullResponse: full
           });
-          
+
           if (full?.models && full.models.length >= (quick?.models?.length || 0)) {
             setModels(full.models);
-            console.log('🔍 ModelSelector: Updated models with full response, count:', full.models.length);
+            safeDebug('🔍 ModelSelector: Updated models with full response, count:', full.models.length);
           }
         } catch (e) {
-          console.warn('🔍 ModelSelector: Background full refresh failed:', e);
+          safeWarn('🔍 ModelSelector: Background full refresh failed:', e);
           // ignore background errors
         }
       }, 2000);
     } catch (err) {
-      console.error('🔍 ModelSelector: Failed to load models:', err);
+      safeError('🔍 ModelSelector: Failed to load models:', err);
       // Retry with quick mode and longer TTL if initial failed completely
       try {
-        console.log('🔍 ModelSelector: Retrying with fallback mode');
+        safeDebug('🔍 ModelSelector: Retrying with fallback mode');
         const fallback = await backend.makeRequestPublic<{
           models: ModelInfo[];
           total_count: number;
           local_count: number;
           available_count: number;
         }>('/api/models/library?quick=true&ttl=60');
-        
-        console.log('🔍 ModelSelector: Fallback response received:', {
+
+        safeDebug('🔍 ModelSelector: Fallback response received:', {
           hasModels: !!fallback?.models,
           modelsCount: fallback?.models?.length || 0,
           modelsType: typeof fallback?.models,
           isArray: Array.isArray(fallback?.models)
         });
-        
+
         setModels(fallback?.models || []);
       } catch (e2) {
-        console.error('🔍 ModelSelector: Fallback also failed:', e2);
+        safeError('🔍 ModelSelector: Fallback also failed:', e2);
         setError('Failed to load models');
       }
     } finally {
       setLoading(false);
-      console.log('🔍 ModelSelector: Model loading completed, final models count:', models.length);
+      safeDebug('🔍 ModelSelector: Model loading completed, final models count:', models.length);
     }
   };
 

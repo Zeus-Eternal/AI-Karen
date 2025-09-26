@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { safeDebug } from '@/lib/safe-console';
 
 export interface MemoryRow {
   id: string;
@@ -309,12 +310,12 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
     const hookIds: string[] = [];
 
     hookIds.push(registerGridHook('memories', 'dataLoad', async (params) => {
-      console.log('Memory grid data loaded:', params);
+      safeDebug('Memory grid data loaded:', params);
       return { success: true, memoryCount: memoryData.length };
     }));
 
     hookIds.push(registerGridHook('memories', 'rowSelected', async (params) => {
-      console.log('Memory row selected:', params);
+      safeDebug('Memory row selected:', params);
       return { success: true, selectedMemory: params.data };
     }));
 
