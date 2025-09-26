@@ -118,26 +118,36 @@ __all__ = [
     "setup_routing",
 ]
 
-from ai_karen_engine.core.default_models import (  # type: ignore
-    get_classifier,
-    get_embedding_manager,
-    get_spacy_client,
-    load_default_models,
-)
+_LAZY_IMPORTS = {
+    "load_default_models": "ai_karen_engine.core.default_models",
+    "get_embedding_manager": "ai_karen_engine.core.default_models",
+    "get_spacy_client": "ai_karen_engine.core.default_models",
+    "get_classifier": "ai_karen_engine.core.default_models",
+    "generate_degraded_mode_response": "ai_karen_engine.core.degraded_mode",
+    "HealthChecker": "ai_karen_engine.core.health_checker",
+    "ProviderStatus": "ai_karen_engine.core.health_checker",
+    "build_response_envelope": "ai_karen_engine.core.response_envelope",
+}
 
-__all__ += [
-    "load_default_models",
-    "get_embedding_manager",
-    "get_spacy_client",
-    "get_classifier",
-]
-from ai_karen_engine.core.degraded_mode import generate_degraded_mode_response
-from ai_karen_engine.core.health_checker import HealthChecker, ProviderStatus
-from ai_karen_engine.core.response_envelope import build_response_envelope
+__all__ += list(_LAZY_IMPORTS.keys())
 
-__all__ += [
-    "HealthChecker",
-    "ProviderStatus",
-    "build_response_envelope",
-    "generate_degraded_mode_response",
-]
+
+def __getattr__(name):
+    """Lazily import heavy core modules on first access.
+
+    Some core helpers pull in large dependency graphs (e.g. NLP services and
+    database layers). Importing them eagerly causes circular import problems
+    when low-level infrastructure modules – such as the database client – are
+    imported early during application start-up.  By deferring these imports
+    until they are actually needed we keep the public API unchanged while
+    avoiding import-time recursion.
+    """
+
+    if name in _LAZY_IMPORTS:
+        import importlib
+
+        module = importlib.import_module(_LAZY_IMPORTS[name])
+        attr = getattr(module, name)
+        globals()[name] = attr
+        return attr
+    raise AttributeError(name)

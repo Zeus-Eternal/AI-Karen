@@ -410,9 +410,7 @@ class LLMUtils:
         finally:
             duration = time.time() - t0
             try:
-                from ai_karen_engine.services.metrics_service import get_metrics_service
-
-                get_metrics_service().record_llm_latency(
+                metrics_service.record_llm_latency(
                     duration,
                     provider=provider_name,
                     model=model_name or "",
@@ -469,9 +467,8 @@ class LLMUtils:
         finally:
             duration = time.time() - t0
             try:
-                from ai_karen_engine.services.metrics_service import get_metrics_service
-
-                get_metrics_service().record_llm_latency(
+                metrics_service = get_metrics_service()
+                metrics_service.record_llm_latency(
                     duration,
                     provider=provider_name,
                     model=model_name or "",
