@@ -64,14 +64,6 @@ export default function RootLayout({
         <meta name="color-scheme" content="light dark" />
       </head>
       <body className={`${inter.variable} ${robotoMono.variable} font-sans antialiased scroll-smooth`}>
-        {/* Skip to main content link for accessibility */}
-        <a 
-          href="#main-content" 
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50 interactive"
-          aria-label="Skip to main content"
-        >
-          Skip to main content
-        </a>
         {/* Console error fix script - load early to prevent interceptor issues */}
         <Script
           id="console-error-fix"
@@ -125,11 +117,13 @@ export default function RootLayout({
         />
         
         {/* Accessible skip link for keyboard users */}
-        <a href="#content" className="skip-link">Skip to content</a>
+        <a href="#main-content" className="skip-link" aria-label="Skip to main content">
+          Skip to main content
+        </a>
         <ThemeBridge>
           <Providers>
             <HealthStatusBadge />
-            <main id="content" role="main" className="min-h-dvh focus:outline-none smooth-transition content-area">
+            <main id="main-content" role="main" className="min-h-dvh focus:outline-none smooth-transition content-area">
               <div className="container-fluid modern-layout-root">
                 {children}
               </div>

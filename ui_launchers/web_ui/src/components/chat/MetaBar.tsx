@@ -126,8 +126,10 @@ export const MetaBar: React.FC<MetaBarProps> = ({
   }
 
   return (
-    <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-      {items}
+    <div className="chat-meta-bar">
+      <div className="container max-w-screen-xl flex flex-wrap items-center gap-2 py-2">
+        {items}
+      </div>
     </div>
   );
 };
