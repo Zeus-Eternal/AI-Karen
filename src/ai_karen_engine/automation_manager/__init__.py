@@ -35,12 +35,18 @@ import duckdb
 # === Security Constants ===
 MAX_WORKERS = int(os.getenv("KARI_MAX_AUTOMATION_WORKERS", "4"))
 JOB_TIMEOUT = int(os.getenv("KARI_JOB_TIMEOUT", "300"))
+
+_ephemeral_duckdb_password = False
 DUCKDB_PASSWORD = os.getenv("KARI_DUCKDB_PASSWORD")
 if not DUCKDB_PASSWORD:
-    raise RuntimeError("KARI_DUCKDB_PASSWORD must be set in the environment!")
+    DUCKDB_PASSWORD = hashlib.sha256(os.urandom(32)).hexdigest()
+    _ephemeral_duckdb_password = True
+
+_ephemeral_signing_key = False
 SIGNING_KEY = os.getenv("KARI_JOB_SIGNING_KEY")
 if not SIGNING_KEY:
-    raise RuntimeError("KARI_JOB_SIGNING_KEY must be set in the environment!")
+    SIGNING_KEY = hashlib.sha256(os.urandom(32)).hexdigest()
+    _ephemeral_signing_key = True
 
 # === Secure Logging ===
 def _resolve_log_dir() -> Path:
@@ -69,6 +75,16 @@ logging.basicConfig(
 )
 log = logging.getLogger("automation_manager")
 log.setLevel(logging.INFO)
+
+if _ephemeral_duckdb_password:
+    log.warning(
+        "KARI_DUCKDB_PASSWORD not set; generated ephemeral development password. Set the env var for persistent encrypted storage."
+    )
+
+if _ephemeral_signing_key:
+    log.warning(
+        "KARI_JOB_SIGNING_KEY not set; generated ephemeral development signing key. Provide a stable key in production."
+    )
 
 # === Hardware Isolation ===
 try:

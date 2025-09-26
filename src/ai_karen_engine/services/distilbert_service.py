@@ -5,6 +5,7 @@ Production-ready DistilBERT service with fallback mechanisms and monitoring.
 from __future__ import annotations
 
 import asyncio
+import importlib
 import os
 import hashlib
 import logging
@@ -22,17 +23,36 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Optional dependencies with graceful fallback
-try:
-    import torch
-    from transformers import AutoTokenizer, AutoModel
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    torch = None
-    AutoTokenizer = None
-    AutoModel = None
-    TRANSFORMERS_AVAILABLE = False
-    logger.warning("Transformers not available, fallback mode will be used")
+torch = None  # type: ignore[assignment]
+AutoTokenizer = None  # type: ignore[assignment]
+AutoModel = None  # type: ignore[assignment]
+_TRANSFORMERS_STACK_STATUS: Optional[bool] = None
+
+
+def _ensure_transformers_stack() -> bool:
+    """Lazily import torch/transformers to avoid expensive startup costs."""
+    global torch, AutoTokenizer, AutoModel, _TRANSFORMERS_STACK_STATUS
+
+    if _TRANSFORMERS_STACK_STATUS is not None:
+        return _TRANSFORMERS_STACK_STATUS
+
+    try:
+        torch = importlib.import_module("torch")  # type: ignore[assignment]
+        transformers_module = importlib.import_module("transformers")
+        AutoTokenizer = getattr(transformers_module, "AutoTokenizer")  # type: ignore[assignment]
+        AutoModel = getattr(transformers_module, "AutoModel")  # type: ignore[assignment]
+        _TRANSFORMERS_STACK_STATUS = True
+    except Exception as exc:  # pragma: no cover - depends on optional deps
+        torch = None  # type: ignore[assignment]
+        AutoTokenizer = None  # type: ignore[assignment]
+        AutoModel = None  # type: ignore[assignment]
+        _TRANSFORMERS_STACK_STATUS = False
+        logger.info(
+            "Transformers stack unavailable; DistilBERT service will use fallback mode (%s)",
+            exc,
+        )
+
+    return _TRANSFORMERS_STACK_STATUS
 
 
 @dataclass
@@ -149,11 +169,11 @@ class DistilBertService:
     
     def _initialize(self):
         """Initialize DistilBERT service with model loading and fallback setup."""
-        if not TRANSFORMERS_AVAILABLE:
-            logger.warning("Transformers not available, using fallback mode")
+        if not _ensure_transformers_stack():
+            logger.info("DistilBERT service running in lightweight fallback mode")
             self.fallback_mode = True
             return
-        
+
         try:
             self.device = self._setup_device()
             self.tokenizer, self.model = self._load_model()
@@ -176,23 +196,27 @@ class DistilBertService:
     
     def _setup_device(self):
         """Setup compute device (GPU/CPU)."""
-        if self.config.enable_gpu:
-            if torch.cuda.is_available():
-                device = torch.device("cuda")
-                logger.info(f"Using GPU: {torch.cuda.get_device_name()}")
-            else:
-                device = torch.device("cpu")
-                logger.info("CUDA unavailable, using CPU for inference")
-        else:
-            device = torch.device("cpu")
-            logger.info("Using CPU for inference")
+        if torch is None:
+            logger.info("PyTorch not available; defaulting to CPU mode")
+            return "cpu"
+
+        if self.config.enable_gpu and torch.cuda.is_available():
+            device = torch.device("cuda")
+            logger.info(f"Using GPU: {torch.cuda.get_device_name()}")
+            return device
+
+        device = torch.device("cpu")
+        logger.info("Using CPU for inference")
         return device
-    
+
     def _load_model(self):
         """Load DistilBERT model and tokenizer."""
         try:
             # Respect offline mode to avoid network calls
             offline = os.getenv("TRANSFORMERS_OFFLINE", "").lower() in ("1", "true", "yes")
+            if AutoTokenizer is None or AutoModel is None:
+                raise RuntimeError("Transformers library is unavailable")
+
             tokenizer = AutoTokenizer.from_pretrained(
                 self.config.model_name,
                 local_files_only=offline,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import logging
 import os
 import time
@@ -11,12 +12,9 @@ from typing import List, Optional, Dict, Any
 import numpy as np
 from functools import lru_cache
 
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    SentenceTransformer = None
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
+SentenceTransformer = None  # type: ignore[assignment]
+_SENTENCE_TRANSFORMERS_STATUS: Optional[bool] = None
+SENTENCE_TRANSFORMERS_AVAILABLE: bool = False
 
 logger = logging.getLogger(__name__)
 
@@ -65,17 +63,41 @@ class EmbeddingManager:
         # Initialize LRU cache for embeddings
         self._get_cached_embedding = lru_cache(maxsize=cache_size)(self._compute_embedding)
 
+    def _ensure_sentence_transformers(self) -> bool:
+        """Lazily import sentence-transformers to avoid heavy imports during startup."""
+        global SentenceTransformer, _SENTENCE_TRANSFORMERS_STATUS, SENTENCE_TRANSFORMERS_AVAILABLE
+
+        if _SENTENCE_TRANSFORMERS_STATUS is not None:
+            return _SENTENCE_TRANSFORMERS_STATUS
+
+        try:
+            module = importlib.import_module("sentence_transformers")
+            SentenceTransformer = getattr(module, "SentenceTransformer")  # type: ignore[assignment]
+            _SENTENCE_TRANSFORMERS_STATUS = True
+            SENTENCE_TRANSFORMERS_AVAILABLE = True
+        except Exception as exc:  # pragma: no cover - depends on optional dependency
+            SentenceTransformer = None  # type: ignore[assignment]
+            _SENTENCE_TRANSFORMERS_STATUS = False
+            SENTENCE_TRANSFORMERS_AVAILABLE = False
+            logger.info(
+                "[EmbeddingManager] sentence-transformers not available; using fallback embeddings (%s)",
+                exc,
+            )
+
+        return _SENTENCE_TRANSFORMERS_STATUS
+
     def _load_distilbert_model(self) -> bool:
         """Load the DistilBERT model with proper error handling."""
-        if not SENTENCE_TRANSFORMERS_AVAILABLE:
-            logger.error("[EmbeddingManager] sentence-transformers not installed")
-            logger.error("[EmbeddingManager] Install with: pip install sentence-transformers")
+        if not self._ensure_sentence_transformers():
+            logger.warning(
+                "[EmbeddingManager] sentence-transformers not installed; skipping DistilBERT load"
+            )
             return False
 
         try:
             logger.info(f"[EmbeddingManager] Loading DistilBERT model: {self.model_name}")
             start_time = time.time()
-            
+
             # Load the sentence-transformers model
             self.model = SentenceTransformer(self.model_name)
             
