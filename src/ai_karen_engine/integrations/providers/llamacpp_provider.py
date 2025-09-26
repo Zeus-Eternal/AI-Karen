@@ -62,24 +62,40 @@ class LlamaCppProvider(LLMProviderBase):
           2) Largest valid .gguf under models/llama-cpp
           3) Auto-download a TinyLlama predefined model (if allowed), then load
         """
-        # 1) Try Model Library registry for local llama-cpp models
-        try:
-            from ai_karen_engine.services.model_library_service import ModelLibraryService
-            lib = ModelLibraryService()
-            models = lib.get_available_models()
-            local_candidates = [
-                m for m in models
-                if m.provider == "llama-cpp" and m.status == "local" and m.local_path and Path(m.local_path).exists()
-            ]
-            if local_candidates:
-                # Prefer the largest local model (rough proxy for completeness)
-                local_candidates.sort(key=lambda m: (Path(m.local_path).stat().st_size if m.local_path else 0), reverse=True)
-                self.model_path = local_candidates[0].local_path  # type: ignore[assignment]
-                self.runtime.load_model(self.model_path)
-                logger.info(f"Loaded default model from Model Library: {self.model_path}")
-                return
-        except Exception as e:
-            logger.debug(f"Model Library scan failed: {e}")
+        allow_model_library = (
+            os.getenv("AI_KAREN_ENABLE_MODEL_LIBRARY", "")
+            .lower()
+            in {"1", "true", "yes", "on"}
+        )
+        if allow_model_library:
+            try:
+                from ai_karen_engine.services.model_library_service import ModelLibraryService
+
+                lib = ModelLibraryService()
+                models = lib.get_available_models()
+                local_candidates = [
+                    m
+                    for m in models
+                    if m.provider == "llama-cpp"
+                    and m.status == "local"
+                    and m.local_path
+                    and Path(m.local_path).exists()
+                ]
+                if local_candidates:
+                    local_candidates.sort(
+                        key=lambda m: (
+                            Path(m.local_path).stat().st_size if m.local_path else 0
+                        ),
+                        reverse=True,
+                    )
+                    self.model_path = local_candidates[0].local_path  # type: ignore[assignment]
+                    self.runtime.load_model(self.model_path)
+                    logger.info(
+                        "Loaded default model from Model Library: %s", self.model_path
+                    )
+                    return
+            except Exception as e:
+                logger.debug("Model Library scan failed: %s", e)
 
         # 2) Scan models/llama-cpp for .gguf and choose the largest valid file
         try:
@@ -108,18 +124,22 @@ class LlamaCppProvider(LLMProviderBase):
             logger.debug(f"Directory scan failed: {e}")
 
         # 3) Auto-download TinyLlama if allowed
-        allow_download = os.getenv("KARI_AUTO_DOWNLOAD_LLM", "true").lower() in ("1", "true", "yes")
-        if allow_download:
+        allow_download = (
+            os.getenv("KARI_AUTO_DOWNLOAD_LLM", "false")
+            .lower()
+            in {"1", "true", "yes", "on"}
+        )
+        if allow_download and allow_model_library:
             try:
                 from ai_karen_engine.services.model_library_service import ModelLibraryService
+
                 lib = ModelLibraryService()
                 preferred = ["tinyllama-1.1b-chat-q4", "tinyllama-1.1b-instruct-q4"]
                 for model_id in preferred:
                     task = lib.download_model(model_id)
                     if not task:
                         continue
-                    # Poll until done (with a max wait)
-                    logger.info(f"Downloading {model_id} ...")
+                    logger.info("Downloading %s ...", model_id)
                     start = time.time()
                     while True:
                         st = lib.get_download_status(task.task_id)
@@ -130,18 +150,16 @@ class LlamaCppProvider(LLMProviderBase):
                             break
                         time.sleep(1.0)
                     if st and st.status == "completed":
-                        # Add to registry and load
                         lib._add_downloaded_model_to_registry(task)
-                        # Find the actual file under models/llama-cpp
                         target = Path("models/llama-cpp") / task.filename
                         if target.exists():
                             self.model_path = str(target)
                             self.runtime.load_model(self.model_path)
-                            logger.info(f"Loaded downloaded model: {self.model_path}")
+                            logger.info("Loaded downloaded model: %s", self.model_path)
                             return
                 logger.error("Auto-download failed or no preferred models available")
             except Exception as e:
-                logger.error(f"Auto-download encountered an error: {e}")
+                logger.error("Auto-download encountered an error: %s", e)
 
         # If we reach here, fail fast with a clear message
         raise GenerationFailed(

@@ -9,23 +9,109 @@ Kari LLM Utils - Production Enterprise Version
 import logging
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+
+import os
 
 from sqlalchemy.exc import SQLAlchemyError
 
 # Database dependencies are optional during early startup or offline testing
-try:
-    from ai_karen_engine.database.client import get_db_session_context
-    from ai_karen_engine.database.models import LLMProvider, LLMRequest
+get_db_session_context = None  # type: ignore[assignment]
+LLMProvider = None  # type: ignore[assignment]
+LLMRequest = None  # type: ignore[assignment]
+_DB_AVAILABLE = False
+_DB_IMPORT_ERROR: Optional[Exception] = None
+_DB_IMPORT_ATTEMPTED = False
 
-    _DB_AVAILABLE = True
-    _DB_IMPORT_ERROR = None
-except Exception as db_import_error:  # pragma: no cover - optional dependency path
-    get_db_session_context = None  # type: ignore[assignment]
-    LLMProvider = None  # type: ignore[assignment]
-    LLMRequest = None  # type: ignore[assignment]
-    _DB_AVAILABLE = False
-    _DB_IMPORT_ERROR = db_import_error
+
+def _db_logging_enabled() -> bool:
+    """Return ``True`` when database logging should be attempted."""
+
+    flag = os.getenv("AI_KAREN_ENABLE_DB_LOGGING")
+    if flag is None:
+        return False
+
+    return flag.lower() in {"1", "true", "yes", "on"}
+
+
+def _ensure_db_dependencies() -> bool:
+    """Lazy loader for optional database dependencies used for request logging."""
+
+    global _DB_AVAILABLE, _DB_IMPORT_ERROR, _DB_IMPORT_ATTEMPTED
+    global get_db_session_context, LLMProvider, LLMRequest
+
+    if _DB_AVAILABLE:
+        return True
+
+    if _DB_IMPORT_ATTEMPTED:
+        return False
+
+    _DB_IMPORT_ATTEMPTED = True
+
+    if not _db_logging_enabled():
+        _DB_IMPORT_ERROR = RuntimeError(
+            "LLM request logging disabled (AI_KAREN_ENABLE_DB_LOGGING not set)."
+        )
+        logger.debug("Skipping DB logging imports: %s", _DB_IMPORT_ERROR)
+        return False
+
+    try:
+        from ai_karen_engine.database.client import get_db_session_context as _get_ctx
+        from ai_karen_engine.database.models import LLMProvider as _LLMProvider
+        from ai_karen_engine.database.models import LLMRequest as _LLMRequest
+
+        get_db_session_context = _get_ctx  # type: ignore[assignment]
+        LLMProvider = _LLMProvider  # type: ignore[assignment]
+        LLMRequest = _LLMRequest  # type: ignore[assignment]
+        _DB_AVAILABLE = True
+        _DB_IMPORT_ERROR = None
+        logger.info("LLM request logging enabled via database instrumentation")
+        return True
+    except Exception as db_import_error:  # pragma: no cover - optional dependency path
+        _DB_IMPORT_ERROR = db_import_error
+        logger.warning(
+            "Database instrumentation for LLM logging unavailable: %s",
+            db_import_error,
+        )
+        return False
+
+
+def _has_local_llama_model() -> bool:
+    """Return ``True`` when a local llama.cpp model appears to be available."""
+
+    try:
+        model_dir = Path(os.getenv("AI_KAREN_LLAMA_MODEL_DIR", "models/llama-cpp"))
+        if not model_dir.exists():
+            return False
+        for path in model_dir.glob("*.gguf"):
+            if path.is_file():
+                return True
+    except Exception:
+        return False
+    return False
+
+
+def _should_use_registry() -> bool:
+    """Determine whether the full LLM registry should be initialized."""
+
+    if os.getenv("AI_KAREN_FORCE_SIMPLE_LLM", "").lower() in {"1", "true", "yes", "on"}:
+        logger.info("Simple LLM mode forced via AI_KAREN_FORCE_SIMPLE_LLM")
+        return False
+
+    if os.getenv("AI_KAREN_ENABLE_FULL_REGISTRY", "").lower() in {"1", "true", "yes", "on"}:
+        return True
+
+    if os.getenv("OPENAI_API_KEY"):
+        return True
+
+    if _has_local_llama_model():
+        return True
+
+    logger.info(
+        "LLM registry disabled automatically (no API keys or local llama.cpp models detected)"
+    )
+    return False
 
 # Lazy imports to avoid circular import issues
 # Providers will be imported when needed in get_provider_class()
@@ -173,56 +259,51 @@ class LLMUtils:
         self.use_registry = use_registry
         self.default = default
 
-        if use_registry:
-            # Use registry for provider management (import here to avoid circular import)
-            from ai_karen_engine.integrations.llm_registry import get_registry
+        if self.use_registry and not _should_use_registry():
+            self.use_registry = False
 
-            self.registry = get_registry()
-            self.providers = {}  # Cache for instantiated providers
-
-            # Prefer first available provider when the configured default is unavailable
+        if self.use_registry:
             try:
-                available = set(self.registry.get_available_providers())
-                if self.default not in available:
-                    # Use registry's auto select (first suitable/available)
-                    picked = self.registry.auto_select_provider({})
-                    if picked:
-                        logger.info(
-                            f"Default provider '{self.default}' unavailable; using first available: '{picked}'"
-                        )
-                        self.default = picked
-            except Exception:
-                # Do not fail init if registry probing has issues
-                logger.debug("Default provider auto-select probe failed", exc_info=True)
-        else:
-            # Legacy mode - use provided providers or create default ones
+                # Use registry for provider management (import here to avoid circular import)
+                from ai_karen_engine.integrations.llm_registry import get_registry
+
+                self.registry = get_registry()
+                self.providers = {}  # Cache for instantiated providers
+
+                # Prefer first available provider when the configured default is unavailable
+                try:
+                    available = set(self.registry.get_available_providers())
+                    if self.default not in available:
+                        picked = self.registry.auto_select_provider({})
+                        if picked:
+                            logger.info(
+                                "Default provider '%s' unavailable; using first available: '%s'",
+                                self.default,
+                                picked,
+                            )
+                            self.default = picked
+                except Exception:
+                    logger.debug("Default provider auto-select probe failed", exc_info=True)
+            except Exception as registry_error:
+                logger.warning(
+                    "LLM registry unavailable (%s); falling back to simple provider mode",
+                    registry_error,
+                )
+                self.use_registry = False
+
+        if not self.use_registry:
             if providers is None:
-                # Lazy import providers to avoid circular imports
-                from ai_karen_engine.integrations.providers.deepseek_provider import (
-                    DeepseekProvider,
-                )
-                from ai_karen_engine.integrations.providers.gemini_provider import (
-                    GeminiProvider,
-                )
-                from ai_karen_engine.integrations.providers.huggingface_provider import (
-                    HuggingFaceProvider,
-                )
-                from ai_karen_engine.integrations.providers.llamacpp_provider import (
-                    LlamaCppProvider,
-                )
-                from ai_karen_engine.integrations.providers.openai_provider import (
-                    OpenAIProvider,
+                from ai_karen_engine.integrations.providers.fallback_provider import (
+                    FallbackProvider,
                 )
 
-                providers = {
-                    "llama-cpp": LlamaCppProvider(),
-                    "openai": OpenAIProvider(),
-                    "gemini": GeminiProvider(),
-                    "deepseek": DeepseekProvider(),
-                    "huggingface": HuggingFaceProvider(),
-                }
+                providers = {"fallback": FallbackProvider()}
+
             self.providers = providers
             self.registry = None
+
+            if self.default not in self.providers:
+                self.default = next(iter(self.providers))
 
     def get_provider(self, provider: Optional[str] = None) -> LLMProviderBase:
         provider_name = provider or self.default
@@ -302,10 +383,11 @@ class LLMUtils:
         user_ctx: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Persist request metrics for cost reporting."""
-        if not _DB_AVAILABLE or not get_db_session_context or not LLMRequest:
-            if not _DB_AVAILABLE:
+        if not _ensure_db_dependencies() or not get_db_session_context or not LLMRequest:
+            if _DB_IMPORT_ERROR:
                 logger.debug(
-                    "Database dependencies unavailable; skipping LLM request recording"
+                    "Database dependencies unavailable; skipping LLM request recording: %s",
+                    _DB_IMPORT_ERROR,
                 )
             return
 
