@@ -11,9 +11,16 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Explicitly set the root directory to prevent Next.js from looking at parent directories
   experimental: {
     // Other experimental features can go here
   },
+  
+  // Force Next.js to use this directory as the workspace root
+  distDir: '.next',
+  
+  // Explicitly set the output file tracing root to prevent workspace detection issues
+  outputFileTracingRoot: __dirname,
   
   // TypeScript configuration
   typescript: {
@@ -61,6 +68,16 @@ const nextConfig = {
   },
   
   webpack: (config, { isServer, dev }) => {
+    if (isServer) {
+      // Node's runtime expects server chunks to live alongside webpack-runtime.js
+      // so we force id-based filenames to keep them flat (e.g. "5611.js").
+      config.output = {
+        ...config.output,
+        chunkFilename: '[id].js',
+        hotUpdateChunkFilename: '[id].[fullhash].hot-update.js',
+      };
+    }
+
     // Handle ES modules properly
     if (!isServer) {
       config.resolve.fallback = {
