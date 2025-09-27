@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
-const CANDIDATE_BACKENDS = [
-  BACKEND_URL,
-  'http://ai-karen-api:8000',
-  'http://api:8000',
-  'http://localhost:8000',
-  'http://127.0.0.1:8000',
-].filter(Boolean) as string[];
+import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+
+const BACKEND_BASES = getBackendCandidates();
 const AUTH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AUTH_PROXY_TIMEOUT_MS || process.env.KAREN_AUTH_PROXY_TIMEOUT_MS || 30000);
 
 export async function POST(request: NextRequest) {
@@ -15,7 +10,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Forward the request to the backend dev-login endpoint for simple auth
-    const bases = Array.from(new Set(CANDIDATE_BACKENDS.map(u => u!.replace(/\/+$/, ''))));
+    const bases = BACKEND_BASES;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -31,7 +26,7 @@ export async function POST(request: NextRequest) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
         try {
-          response = await fetch(`${base}/api/auth/dev-login`, {
+          response = await fetch(withBackendPath('/api/auth/dev-login', base), {
             method: 'POST',
             headers,
             body: JSON.stringify({}),
@@ -47,7 +42,7 @@ export async function POST(request: NextRequest) {
           // Try legacy bypass endpoints as fallback
           const controller2 = new AbortController();
           const timeout2 = setTimeout(() => controller2.abort(), AUTH_TIMEOUT_MS);
-          const alt = await fetch(`${base}/api/auth/login-bypass`, {
+          const alt = await fetch(withBackendPath('/api/auth/login-bypass', base), {
             method: 'POST',
             headers,
             body: JSON.stringify({ email: 'dev@local', password: 'dev' }),

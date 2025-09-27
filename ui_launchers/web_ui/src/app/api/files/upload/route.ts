@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
+import { withBackendPath } from '@/app/api/_utils/backend';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,8 +12,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
 
     // Forward the request to the backend files upload endpoint
-    const base = BACKEND_URL.replace(/\/+$/, '');
-    const backendUrl = `${base}/api/files/upload`;
+    const backendUrl = withBackendPath('/api/files/upload');
 
     const headers: HeadersInit = {};
 

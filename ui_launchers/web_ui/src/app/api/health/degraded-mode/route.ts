@@ -1,25 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
-const CANDIDATE_BACKENDS = [
-  BACKEND_URL,
-  'http://ai-karen-api:8000',
-  'http://api:8000',
-  'http://localhost:8000',
-  'http://127.0.0.1:8000',
-].filter(Boolean) as string[];
+import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+
+const CANDIDATE_BACKENDS = getBackendCandidates();
 const HEALTH_TIMEOUT_MS = 5000;
 
 export async function GET(request: NextRequest) {
   try {
     // Try multiple backend base URLs to be resilient to Docker/host differences
-    const bases = Array.from(new Set(CANDIDATE_BACKENDS.map(u => u!.replace(/\/+$/, ''))));
+    const bases = CANDIDATE_BACKENDS;
     let lastErr: any = null;
     let healthResponse: PromiseSettledResult<Response> | null = null;
     let providersResponse: PromiseSettledResult<Response> | null = null;
     for (const base of bases) {
-      const healthUrl = `${base}/health`;
-      const providersUrl = `${base}/api/providers`;
+      const healthUrl = withBackendPath('/health', base);
+      const providersUrl = withBackendPath('/api/providers', base);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
       try {
