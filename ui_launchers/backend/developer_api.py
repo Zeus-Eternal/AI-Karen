@@ -6,18 +6,31 @@ Enhanced Developer API with AG-UI integration for Kari components.
 from __future__ import annotations
 
 import logging
-import time
+import uuid
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from sqlalchemy import func, select
 
 from src.ai_karen_engine.plugin_manager import get_plugin_manager
 from src.ai_karen_engine.extensions.manager import ExtensionManager
 from src.ai_karen_engine.hooks.hook_manager import get_hook_manager
 from src.ai_karen_engine.core.memory.ag_ui_manager import AGUIMemoryManager
 from src.ai_karen_engine.auth.session import get_current_user
-from src.ai_karen_engine.database.conversation_manager import ConversationManager
+from src.ai_karen_engine.database.conversation_manager import (
+    ConversationManager,
+    normalize_user_id,
+)
+from src.ai_karen_engine.database.models import (
+    LLMRequest,
+    TenantConversation,
+    TenantMessage,
+    TenantMessageTool,
+    UsageCounter,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/developer", tags=["developer"])
@@ -191,35 +204,250 @@ class KariDevStudioAPI:
             self.ensure_conversation_manager()
         else:
             logger.warning(
-                "get_chat_metrics called without db_client; returning placeholder metrics"
+                "get_chat_metrics called without db_client; chat metrics will be empty"
             )
 
         end = datetime.utcnow()
         start = end - timedelta(hours=hours)
-        # TODO: replace with real data from conversation_manager
-        metrics = []
-        t = start
-        while t <= end:
-            now_mod = int(time.time()) % 100
-            metrics.append({
-                "timestamp": t.isoformat(),
-                "total_messages": 50 + now_mod,
-                "ai_suggestions": 20 + (now_mod % 30),
-                "tool_calls": 10 + (now_mod % 20),
-                "memory_operations": 5 + (now_mod % 15),
-                "response_time_ms": 800 + (now_mod % 500),
-                "user_satisfaction": 0.85 + ((now_mod % 15) / 100.0),
-            })
-            t += timedelta(minutes=30)
+
+        tenant_filter = user_context.get("tenant_id")
+        user_filter = user_context.get("user_id")
+
+        normalized_user_id: Optional[str] = None
+        if user_filter:
+            try:
+                normalized_user_id = str(normalize_user_id(user_filter))
+            except Exception:  # pragma: no cover - defensive fallback
+                normalized_user_id = str(user_filter)
+
+        metrics_by_bucket: Dict[datetime, Dict[str, Any]] = defaultdict(
+            lambda: {
+                "total_messages": 0,
+                "ai_suggestions": 0,
+                "tool_calls": 0,
+                "memory_operations": 0,
+                "response_time_ms_sum": 0.0,
+                "response_time_count": 0,
+                "positive_feedback": 0,
+                "negative_feedback": 0,
+                "feedback_total": 0,
+            }
+        )
+
+        def _empty_response() -> Dict[str, Any]:
+            bucket = start.replace(minute=0, second=0, microsecond=0)
+            zero_metric = {
+                "timestamp": bucket.isoformat(),
+                "total_messages": 0,
+                "ai_suggestions": 0,
+                "tool_calls": 0,
+                "memory_operations": 0,
+                "response_time_ms": 0.0,
+                "user_satisfaction": None,
+            }
+            return {
+                "metrics": [zero_metric],
+                "summary": {
+                    "total_messages": 0,
+                    "avg_response_time": 0.0,
+                    "avg_satisfaction": None,
+                    "total_ai_suggestions": 0,
+                    "total_tool_calls": 0,
+                },
+                "timeframe": {
+                    "start": start.isoformat(),
+                    "end": end.isoformat(),
+                    "hours": hours,
+                },
+                "last_updated": datetime.utcnow().isoformat(),
+            }
+
+        if not self.conversation_manager or not getattr(self.conversation_manager, "db_client", None):
+            logger.warning("Conversation manager unavailable; returning empty chat metrics")
+            return _empty_response()
+
+        try:
+            async with self.conversation_manager.db_client.get_async_session() as session:
+                usage_stmt = (
+                    select(
+                        UsageCounter.metric,
+                        UsageCounter.window_start,
+                        func.sum(UsageCounter.value),
+                    )
+                    .where(
+                        UsageCounter.window_start >= start,
+                        UsageCounter.window_start <= end,
+                    )
+                    .group_by(UsageCounter.metric, UsageCounter.window_start)
+                    .order_by(UsageCounter.window_start.asc())
+                )
+
+                if tenant_filter:
+                    usage_stmt = usage_stmt.where(UsageCounter.tenant_id == str(tenant_filter))
+                if normalized_user_id:
+                    usage_stmt = usage_stmt.where(UsageCounter.user_id == normalized_user_id)
+
+                for metric_name, bucket, value in (await session.execute(usage_stmt)).all():
+                    if bucket is None:
+                        continue
+                    data = metrics_by_bucket[bucket]
+                    if metric_name == "messages":
+                        data["total_messages"] += value or 0
+                    elif metric_name == "tool_calls":
+                        data["tool_calls"] += value or 0
+                    elif metric_name == "ai_suggestions":
+                        data["ai_suggestions"] += value or 0
+                    elif metric_name == "memory_operations":
+                        data["memory_operations"] += value or 0
+                    elif metric_name == "feedback_positive":
+                        data["positive_feedback"] += value or 0
+                    elif metric_name == "feedback_negative":
+                        data["negative_feedback"] += value or 0
+                    elif metric_name == "feedback_total":
+                        data["feedback_total"] += value or 0
+
+                message_stmt = (
+                    select(
+                        func.date_trunc("hour", TenantMessage.created_at),
+                        func.count(TenantMessage.id),
+                    )
+                    .join(
+                        TenantConversation,
+                        TenantConversation.id == TenantMessage.conversation_id,
+                    )
+                    .where(
+                        TenantMessage.created_at >= start,
+                        TenantMessage.created_at <= end,
+                    )
+                    .group_by(func.date_trunc("hour", TenantMessage.created_at))
+                    .order_by(func.date_trunc("hour", TenantMessage.created_at))
+                )
+
+                if normalized_user_id:
+                    message_stmt = message_stmt.where(
+                        TenantConversation.user_id == uuid.UUID(normalized_user_id)
+                    )
+
+                for bucket, count in (await session.execute(message_stmt)).all():
+                    data = metrics_by_bucket[bucket]
+                    data["total_messages"] = max(data["total_messages"], int(count or 0))
+
+                tool_stmt = (
+                    select(
+                        func.date_trunc("hour", TenantMessageTool.created_at),
+                        func.count(TenantMessageTool.id),
+                    )
+                    .where(
+                        TenantMessageTool.created_at >= start,
+                        TenantMessageTool.created_at <= end,
+                    )
+                    .group_by(func.date_trunc("hour", TenantMessageTool.created_at))
+                    .order_by(func.date_trunc("hour", TenantMessageTool.created_at))
+                )
+
+                for bucket, count in (await session.execute(tool_stmt)).all():
+                    data = metrics_by_bucket[bucket]
+                    data["tool_calls"] = max(data["tool_calls"], int(count or 0))
+
+                latency_stmt = (
+                    select(
+                        func.date_trunc("hour", LLMRequest.created_at),
+                        func.sum(LLMRequest.latency_ms),
+                        func.count(LLMRequest.id),
+                    )
+                    .where(
+                        LLMRequest.created_at >= start,
+                        LLMRequest.created_at <= end,
+                        LLMRequest.latency_ms.isnot(None),
+                    )
+                    .group_by(func.date_trunc("hour", LLMRequest.created_at))
+                    .order_by(func.date_trunc("hour", LLMRequest.created_at))
+                )
+
+                if tenant_filter:
+                    latency_stmt = latency_stmt.where(LLMRequest.tenant_id == str(tenant_filter))
+                if normalized_user_id:
+                    latency_stmt = latency_stmt.where(LLMRequest.user_id == normalized_user_id)
+
+                for bucket, latency_sum, latency_count in (
+                    await session.execute(latency_stmt)
+                ).all():
+                    data = metrics_by_bucket[bucket]
+                    data["response_time_ms_sum"] += float(latency_sum or 0.0)
+                    data["response_time_count"] += int(latency_count or 0)
+
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.error("Failed to aggregate chat metrics: %s", exc)
+            return _empty_response()
+
+        if not metrics_by_bucket:
+            return _empty_response()
+
+        metrics: List[Dict[str, Any]] = []
+        total_messages = 0
+        total_ai_suggestions = 0
+        total_tool_calls = 0
+        response_time_sum = 0.0
+        response_time_count = 0
+        satisfaction_sum = 0.0
+        satisfaction_count = 0
+
+        for bucket in sorted(metrics_by_bucket.keys()):
+            data = metrics_by_bucket[bucket]
+            response_count = data["response_time_count"]
+            avg_response = (
+                data["response_time_ms_sum"] / response_count if response_count else 0.0
+            )
+
+            feedback_total = (
+                data["feedback_total"]
+                if data["feedback_total"]
+                else data["positive_feedback"] + data["negative_feedback"]
+            )
+            satisfaction = (
+                data["positive_feedback"] / feedback_total if feedback_total else None
+            )
+
+            metrics.append(
+                {
+                    "timestamp": bucket.isoformat(),
+                    "total_messages": int(data["total_messages"]),
+                    "ai_suggestions": int(data["ai_suggestions"]),
+                    "tool_calls": int(data["tool_calls"]),
+                    "memory_operations": int(data["memory_operations"]),
+                    "response_time_ms": float(round(avg_response, 2)),
+                    "user_satisfaction": (
+                        float(round(satisfaction, 4)) if satisfaction is not None else None
+                    ),
+                }
+            )
+
+            total_messages += int(data["total_messages"])
+            total_ai_suggestions += int(data["ai_suggestions"])
+            total_tool_calls += int(data["tool_calls"])
+            response_time_sum += data["response_time_ms_sum"]
+            response_time_count += response_count
+            if satisfaction is not None:
+                satisfaction_sum += satisfaction
+                satisfaction_count += 1
+
+        avg_response_time = (
+            response_time_sum / response_time_count if response_time_count else 0.0
+        )
+        avg_satisfaction = (
+            satisfaction_sum / satisfaction_count if satisfaction_count else None
+        )
 
         return {
             "metrics": metrics,
             "summary": {
-                "total_messages": sum(m["total_messages"] for m in metrics),
-                "avg_response_time": sum(m["response_time_ms"] for m in metrics) / len(metrics),
-                "avg_satisfaction": sum(m["user_satisfaction"] for m in metrics) / len(metrics),
-                "total_ai_suggestions": sum(m["ai_suggestions"] for m in metrics),
-                "total_tool_calls": sum(m["tool_calls"] for m in metrics),
+                "total_messages": total_messages,
+                "avg_response_time": round(avg_response_time, 2),
+                "avg_satisfaction": (
+                    float(round(avg_satisfaction, 4)) if avg_satisfaction is not None else None
+                ),
+                "total_ai_suggestions": total_ai_suggestions,
+                "total_tool_calls": total_tool_calls,
             },
             "timeframe": {"start": start.isoformat(), "end": end.isoformat(), "hours": hours},
             "last_updated": datetime.utcnow().isoformat(),
