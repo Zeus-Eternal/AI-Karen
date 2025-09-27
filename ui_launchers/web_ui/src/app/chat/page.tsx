@@ -46,10 +46,9 @@ const ExtensionSidebar = dynamic(() => import("@/components/extensions/Extension
 
 export default function ChatPage() {
   return (
-    // Temporarily bypass ProtectedRoute for testing
-    // <ProtectedRoute>
+    <ProtectedRoute>
       <ChatView />
-    // </ProtectedRoute>
+    </ProtectedRoute>
   );
 }
 

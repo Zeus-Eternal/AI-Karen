@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
     
     # Load configuration (environment loading is handled in config module)
     settings = Settings()
+    environment = settings.environment.lower()
     
     # Configure logging
     configure_logging()
@@ -95,10 +96,17 @@ def create_app() -> FastAPI:
     # Register endpoint groups
     register_admin_endpoints(app, settings)
     register_health_endpoints(app)
-    register_debug_endpoints(app, settings)
-    
-    # Setup developer API
-    setup_developer_api(app)
+
+    if settings.debug and environment != "production":
+        register_debug_endpoints(app, settings)
+    else:
+        logger.info("Debug endpoints disabled for non-debug or production environments")
+
+    # Setup developer API (non-production only)
+    if environment != "production":
+        setup_developer_api(app)
+    else:
+        logger.info("Developer API disabled in production environment")
     
     # Add compatibility aliases for copilot
     try:
