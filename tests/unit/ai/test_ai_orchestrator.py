@@ -371,9 +371,9 @@ class TestPromptManager:
     def test_prompt_manager_initialization(self):
         """Test PromptManager initializes correctly."""
         manager = PromptManager()
-        
+
         assert len(manager._templates) > 0
-        assert "decide_action" in manager._templates
+        assert "decision_making" in manager._templates
         assert "conversation_processing" in manager._templates
     
     def test_register_template(self):
@@ -394,7 +394,7 @@ class TestPromptManager:
     def test_render_prompt(self):
         """Test prompt rendering."""
         manager = PromptManager()
-        
+
         template = {
             "system_prompt": "You are a test assistant",
             "user_template": "User says: {message}",
@@ -429,6 +429,53 @@ class TestPromptManager:
         
         assert manager.validate_template(invalid_template) is False
 
+    def test_render_prompt_defaults_missing_values(self):
+        """Rendering should fill in missing variables with empty strings."""
+
+        manager = PromptManager()
+
+        template = {
+            "system_prompt": "System: {message}",
+            "user_template": "User: {message}",
+            "variables": ["message", "unused"],
+        }
+
+        manager.register_template("simple", template)
+        rendered = manager.render_prompt("simple", {"message": "Hello"})
+
+        assert rendered["system_prompt"] == "System: Hello"
+        assert rendered["user_prompt"] == "User: Hello"
+
+    def test_build_system_prompt_with_literal_braces(self):
+        """Custom instructions containing braces should render literally."""
+
+        manager = PromptManager()
+        rendered = manager.build_system_prompt(
+            "conversation_processing",
+            {
+                "personality_tone": "friendly",
+                "personality_verbosity": "balanced",
+                "custom_persona_instructions": "Use {curly} values"
+            },
+        )
+
+        assert "Use {curly} values" in rendered
+
+    def test_build_user_prompt_with_literal_braces(self):
+        """User prompt variables with braces should not break formatting."""
+
+        manager = PromptManager()
+        rendered = manager.build_user_prompt(
+            "conversation_processing",
+            prompt="Track {value} for me",
+            context_info="Context {info}",
+            plugin_info="Plugin {data}",
+            memory_info="Memory {state}",
+            user_preferences="Preference {pref}",
+        )
+
+        assert "Track {value} for me" in rendered
+        assert "Context {info}" in rendered
 
 class TestAIOrchestrator:
     """Test AIOrchestrator service."""
