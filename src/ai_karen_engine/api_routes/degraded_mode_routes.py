@@ -1,6 +1,7 @@
 """API routes for degraded mode management."""
 
 import logging
+import time
 from typing import Any, Dict
 
 from ai_karen_engine.core.degraded_mode import get_degraded_mode_manager, DegradedModeReason
@@ -172,6 +173,3 @@ async def get_degraded_mode_metrics() -> Dict[str, Any]:
         logger.error(f"Failed to get degraded mode metrics: {e}")
         raise HTTPException(status_code=500, detail="Failed to get degraded mode metrics")
 
-
-# Add time import that was missing
-import time

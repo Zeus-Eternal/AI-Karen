@@ -133,7 +133,7 @@ def register_debug_endpoints(app: FastAPI, settings: Settings) -> None:
                 "error": str(e)
             }
     
-    @app.post("/api/reasoning/analyze", tags=["reasoning"])
+    @app.post("/api/debug/reasoning/analyze", tags=["reasoning", "debug"])
     async def analyze_with_reasoning(request: dict):
         """Analyze user input using the reasoning system with fallbacks"""
         try:

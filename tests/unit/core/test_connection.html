@@ -20,7 +20,7 @@
     <div class="info">
         <strong>Testing connections to:</strong><br>
         • Backend (Direct): http://127.0.0.1:8000<br>
-        • Frontend Proxy: http://localhost:8010/api/karen<br>
+        • Frontend Proxy: http://localhost:8010/api<br>
     </div>
 
     <button onclick="testDirectConnection()">Test Direct Backend</button>
@@ -62,7 +62,7 @@
             results.innerHTML = '<div class="info">Testing frontend proxy connection...</div>';
             
             try {
-                const response = await fetch('http://localhost:8010/api/karen/api/health/degraded-mode');
+                const response = await fetch('http://localhost:8010/api/health/degraded-mode');
                 const data = await response.json();
                 
                 results.innerHTML = `
@@ -109,7 +109,7 @@
             
             // Test proxy connection
             try {
-                const response = await fetch('http://localhost:8010/api/karen/api/health/degraded-mode');
+                const response = await fetch('http://localhost:8010/api/health/degraded-mode');
                 const data = await response.json();
                 html += `
                     <div class="success">

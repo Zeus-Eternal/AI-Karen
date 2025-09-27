@@ -42,7 +42,7 @@ class ReasoningService {
   async analyze(request: ReasoningRequest): Promise<ReasoningResponse> {
     try {
       // Use the Next.js proxy route instead of direct backend URL
-      const response = await fetch('/api/karen/api/reasoning/analyze', {
+      const response = await fetch('/api/reasoning/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

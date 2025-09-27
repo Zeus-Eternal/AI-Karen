@@ -61,7 +61,7 @@ export function DegradedModeBanner({
       // Use the Next.js proxy route instead of direct backend URL with a timeout
       const controller = new AbortController()
       const t = setTimeout(() => controller.abort(), 15000)
-      const response = await fetch('/api/karen/api/health/degraded-mode/recover', {
+      const response = await fetch('/api/health/degraded-mode/recover', {
         method: 'POST',
         signal: controller.signal,
       })

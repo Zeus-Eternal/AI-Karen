@@ -38,6 +38,7 @@ from ai_karen_engine.api_routes.tool_routes import router as tool_router
 from ai_karen_engine.api_routes.web_api_compatibility import router as web_api_router
 from ai_karen_engine.api_routes.websocket_routes import router as websocket_router
 from ai_karen_engine.api_routes.chat_runtime import router as chat_runtime_router
+from ai_karen_engine.api_routes.degraded_mode_routes import router as degraded_mode_router
 from ai_karen_engine.api_routes.llm_routes import router as llm_router
 from ai_karen_engine.api_routes.provider_routes import router as provider_router
 from ai_karen_engine.api_routes.provider_routes import public_router as provider_public_router
@@ -57,6 +58,7 @@ from ai_karen_engine.api_routes.provider_compatibility_routes import router as p
 from ai_karen_engine.api_routes.model_orchestrator_routes import router as model_orchestrator_router
 from ai_karen_engine.api_routes.validation_metrics_routes import router as validation_metrics_router
 from ai_karen_engine.api_routes.performance_routes import router as performance_routes
+from ai_karen_engine.api_routes.reasoning_routes import router as reasoning_router
 
 
 def wire_routers(app: FastAPI, settings: Settings) -> None:
@@ -152,3 +154,5 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(validation_metrics_router, tags=["validation-metrics"])
     app.include_router(performance_routes, prefix="/api/performance", tags=["performance"])
     app.include_router(settings_router)
+    app.include_router(degraded_mode_router)
+    app.include_router(reasoning_router)

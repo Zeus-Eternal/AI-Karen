@@ -15,7 +15,7 @@ def test_frontend_status():
     try:
         # Test the degraded mode endpoint
         print("\n1. Testing degraded mode endpoint...")
-        response = requests.get("http://localhost:8010/api/karen/api/health/degraded-mode")
+        response = requests.get("http://localhost:8010/api/health/degraded-mode")
         
         if response.status_code == 200:
             data = response.json()

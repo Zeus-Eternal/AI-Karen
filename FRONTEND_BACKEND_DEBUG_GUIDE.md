@@ -23,7 +23,7 @@ Based on your console logs, here are the main issues and their fixes:
 **Root Cause**: Backend URL mismatch (now fixed)
 
 ### 4. Degraded Mode Service (503 Error)
-**Problem**: `http://10.96.136.74:8010/api/karen/api/health/degraded-mode` returning 503
+**Problem**: `http://10.96.136.74:8010/api/health/degraded-mode` returning 503
 
 **Root Cause**: This endpoint doesn't exist on your backend - it's a configuration issue
 
