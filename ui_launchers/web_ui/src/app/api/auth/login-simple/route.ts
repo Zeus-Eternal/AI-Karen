@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+import { isSimpleAuthEnabled } from '@/lib/auth/env';
 
 const BACKEND_BASES = getBackendCandidates();
 const AUTH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AUTH_PROXY_TIMEOUT_MS || process.env.KAREN_AUTH_PROXY_TIMEOUT_MS || 30000);
 
 export async function POST(request: NextRequest) {
+  if (!isSimpleAuthEnabled()) {
+    console.warn('Login-simple endpoint invoked but simple auth is disabled for this environment.');
+    return NextResponse.json({ error: 'Simple auth is disabled' }, { status: 404 });
+  }
+
   try {
     const body = await request.json();
     
