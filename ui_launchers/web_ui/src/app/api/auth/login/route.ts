@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
-const FALLBACK_URLS = [
-  BACKEND_URL,
-  'http://ai-karen-api:8000',
-  'http://api:8000',
-  'http://localhost:8000'
-].filter(Boolean) as string[];
+import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+
+const BACKEND_BASES = getBackendCandidates();
 const AUTH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AUTH_PROXY_TIMEOUT_MS || process.env.KAREN_AUTH_PROXY_TIMEOUT_MS || 30000);
 
 export async function POST(request: NextRequest) {
@@ -15,7 +11,7 @@ export async function POST(request: NextRequest) {
     
     // Forward the request to the backend with timeout + transient retry
     // Try multiple backend base URLs to survive Docker/host differences
-    const bases = Array.from(new Set(FALLBACK_URLS.map((u: string) => u.replace(/\/+$/, ''))));
+    const bases = BACKEND_BASES;
     let url = '';
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -28,7 +24,7 @@ export async function POST(request: NextRequest) {
     let lastErr: any = null;
     for (const base of bases) {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        url = `${base}/api/auth/login`;
+        url = withBackendPath('/api/auth/login', base);
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
         try {
@@ -47,7 +43,7 @@ export async function POST(request: NextRequest) {
           if (!response.ok && (response.status === 404 || response.status === 405)) {
             const controller2 = new AbortController();
             const timeout2 = setTimeout(() => controller2.abort(), AUTH_TIMEOUT_MS);
-            response = await fetch(`${base}/auth/login`, {
+            response = await fetch(withBackendPath('/auth/login', base), {
               method: 'POST',
               headers,
               body: JSON.stringify(body),
@@ -68,7 +64,7 @@ export async function POST(request: NextRequest) {
               const controller3 = new AbortController();
               const timeout3 = setTimeout(() => controller3.abort(), AUTH_TIMEOUT_MS);
               try {
-                const devResp = await fetch(`${base}/api/auth/dev-login`, {
+                const devResp = await fetch(withBackendPath('/api/auth/dev-login', base), {
                   method: 'POST',
                   headers,
                   body: JSON.stringify({}),

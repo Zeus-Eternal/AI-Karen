@@ -2,27 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // IMPORTANT: Never use NEXT_PUBLIC_* here (those may point back to the Next server and cause loops)
 
-const PRIMARY_BACKEND = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
-const BACKEND_CANDIDATES = [
-  PRIMARY_BACKEND,
-  'http://ai-karen-api:8000',
-  'http://api:8000',
-  'http://localhost:8000',
-  'http://host.docker.internal:8000',
-  'http://127.0.0.1:8000',
-].filter(Boolean) as string[];
+import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+
+const BACKEND_CANDIDATES = getBackendCandidates(['http://host.docker.internal:8000']);
 const TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_PROXY_LONG_TIMEOUT_MS || process.env.KAREN_API_PROXY_LONG_TIMEOUT_MS || 20000);
 
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const searchParams = url.searchParams.toString();
-    const bases = Array.from(new Set(BACKEND_CANDIDATES.map((u: string) => u.replace(/\/+$/, ''))));
+    const bases = BACKEND_CANDIDATES;
 
     let response: Response | null = null;
     let lastErr: any = null;
     for (const base of bases) {
-      const backendUrl = `${base}/api/providers/discovery${searchParams ? `?${searchParams}` : ''}`;
+      const backendUrl = withBackendPath(`/api/providers/discovery${searchParams ? `?${searchParams}` : ''}`, base);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
       try {
@@ -45,7 +39,7 @@ export async function GET(request: NextRequest) {
         if ([401, 403, 404].includes(response.status)) {
           const controller2 = new AbortController();
           const timeout2 = setTimeout(() => controller2.abort(), TIMEOUT_MS);
-          const publicUrl = `${base}/api/public/providers/discovery${searchParams ? `?${searchParams}` : ''}`;
+          const publicUrl = withBackendPath(`/api/public/providers/discovery${searchParams ? `?${searchParams}` : ''}`, base);
           try {
             const publicResp = await fetch(publicUrl, {
               method: 'GET',

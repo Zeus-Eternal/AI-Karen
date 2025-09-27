@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
+import { withBackendPath } from '@/app/api/_utils/backend';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,8 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // Forward the request to the backend models all endpoint
-    const base = BACKEND_URL.replace(/\/+$/, '');
-    const backendUrl = `${base}/api/models/all?${searchParams.toString()}`;
+    const backendUrl = `${withBackendPath('/api/models/all')}?${searchParams.toString()}`;
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',

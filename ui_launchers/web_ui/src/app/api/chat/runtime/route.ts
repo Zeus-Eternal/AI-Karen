@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
+import { withBackendPath } from '@/app/api/_utils/backend';
 const isVerboseLogging = process.env.NODE_ENV !== 'production';
 
 export async function POST(request: NextRequest) {
@@ -31,13 +31,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the request to the backend chat runtime endpoint
-    const base = BACKEND_URL.replace(/\/+$/, '');
-    const backendUrl = `${base}/api/chat/runtime`;
+    const backendUrl = withBackendPath('/api/chat/runtime');
+    const resolvedBase = backendUrl.replace(/\/api\/chat\/runtime$/, '');
 
     if (isVerboseLogging) {
       console.log('🔍 ChatRuntime API: Backend URL constructed', {
         backendUrl,
-        baseUrl: base
+        resolvedBase
       });
     }
 

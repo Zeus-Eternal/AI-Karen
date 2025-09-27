@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
+import { withBackendPath } from '@/app/api/_utils/backend';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,8 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Forward the request to the backend chat runtime stream endpoint
-    const base = BACKEND_URL.replace(/\/+$/, '');
-    const backendUrl = `${base}/api/chat/runtime/stream`;
+    const backendUrl = withBackendPath('/api/chat/runtime/stream');
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',

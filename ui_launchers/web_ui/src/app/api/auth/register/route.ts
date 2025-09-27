@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
+import { withBackendPath } from '@/app/api/_utils/backend';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,8 +8,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Forward the registration request to the backend
-    const base = BACKEND_URL.replace(/\/+$/, '');
-    const backendUrl = `${base}/api/auth/register`;
+    const backendUrl = withBackendPath('/api/auth/register');
 
     const response = await fetch(backendUrl, {
       method: 'POST',

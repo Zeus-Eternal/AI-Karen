@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
+import { withBackendPath } from '@/app/api/_utils/backend';
 const HEALTH_TIMEOUT_MS = 10000; // Longer timeout for recovery operations
 
 export async function POST(request: NextRequest) {
   try {
     // Forward the request to the backend degraded-mode recovery endpoint
-    const base = BACKEND_URL.replace(/\/+$/, '');
-    const url = `${base}/api/health/degraded-mode/recover`;
+    const url = withBackendPath('/api/health/degraded-mode/recover');
     
     // Get request body if present
     let body: any = null;

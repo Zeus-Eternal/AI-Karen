@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
-const CANDIDATE_BACKENDS = [
-  BACKEND_URL,
+import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+
+const BACKEND_BASES = getBackendCandidates([
   process.env.NEXT_PUBLIC_KAREN_BACKEND_URL,
   process.env.NEXT_PUBLIC_BACKEND_URL,
-  'http://localhost:8000',
   'http://host.docker.internal:8000',
-  'http://127.0.0.1:8000',
-].filter(Boolean) as string[];
+]);
 const HEALTH_TIMEOUT_MS = 5000; // Shorter timeout for health checks
 
 export async function GET(request: NextRequest) {
   try {
     // Try multiple backend bases to avoid degraded status due to a single bad base URL
-    const bases = Array.from(new Set(CANDIDATE_BACKENDS.map(u => u!.replace(/\/+$/, ''))));
+    const bases = BACKEND_BASES;
     let healthResponse: PromiseSettledResult<Response> | null = null;
     let providersResponse: PromiseSettledResult<Response> | null = null;
     let timeout: NodeJS.Timeout | null = null;
@@ -28,7 +26,7 @@ export async function GET(request: NextRequest) {
         let picked: Response | null = null;
         for (const hp of healthPaths) {
           try {
-            const res = await fetch(`${base}${hp}`, {
+            const res = await fetch(withBackendPath(hp, base), {
               method: 'GET',
               headers: {
                 'Accept': 'application/json',
@@ -50,7 +48,7 @@ export async function GET(request: NextRequest) {
 
         // Fetch providers (best-effort) for enrichment only
         try {
-          const pRes = await fetch(`${base}/api/models/providers`, {
+          const pRes = await fetch(withBackendPath('/api/models/providers', base), {
             method: 'GET',
             headers: {
               'Accept': 'application/json',

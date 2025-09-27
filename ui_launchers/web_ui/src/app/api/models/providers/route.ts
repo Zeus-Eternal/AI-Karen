@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.KAREN_BACKEND_URL || 'http://ai-karen-api:8000';
+import { withBackendPath } from '@/app/api/_utils/backend';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,8 +9,7 @@ export async function GET(request: NextRequest) {
     const cookie = request.headers.get('cookie');
 
     // Forward the request to the backend models providers endpoint
-    const base = BACKEND_URL.replace(/\/+$/, '');
-    const backendUrl = `${base}/api/models/providers`;
+    const backendUrl = withBackendPath('/api/models/providers');
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
