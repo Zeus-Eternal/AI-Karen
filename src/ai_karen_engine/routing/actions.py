@@ -9,21 +9,27 @@ Intents:
 from __future__ import annotations
 
 import hashlib
+import threading
 import time
-from typing import Any, Dict, Optional
+from collections import deque
+from typing import Any, Deque, Dict, Optional
 
 from ai_karen_engine.core.predictors import register_predictor
 from ai_karen_engine.routing.kire_router import KIRERouter
 from ai_karen_engine.routing.types import RouteRequest
 from ai_karen_engine.integrations.llm_registry import get_registry
 from ai_karen_engine.integrations.task_analyzer import TaskAnalyzer
-from ai_karen_engine.routing.kire_router import KIRERouter
 from ai_karen_engine.routing.decision_logger import DecisionLogger
 from ai_karen_engine.monitoring.kire_metrics import KIRE_ACTIONS_TOTAL
 
 
 _router = KIRERouter(llm_registry=get_registry())
 _logger = DecisionLogger()
+
+_RATE_LIMIT_WINDOW_SECONDS = 60
+_RATE_LIMIT_MAX_CALLS = 45
+_rate_limit_lock = threading.Lock()
+_rate_limit_counters: Dict[str, Deque[float]] = {}
 
 
 def _require_admin(user_ctx: Dict[str, Any]) -> None:
@@ -47,6 +53,13 @@ def _task_from_query(query: str) -> str:
 
 async def routing_select_handler(user_ctx: Dict[str, Any], query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     user_id = user_ctx.get("user_id", "anon")
+    try:
+        _require_routing_access(user_ctx)
+        _enforce_rate_limit(user_id)
+    except PermissionError:
+        KIRE_ACTIONS_TOTAL.labels(action="routing.select", status="forbidden").inc()
+        raise
+
     analyzer = TaskAnalyzer()
     analysis = analyzer.analyze(query, user_ctx=user_ctx, context=context)
     task_type = (context or {}).get("task_type") or analysis.task_type
@@ -282,3 +295,21 @@ register_predictor("routing.profile.list", routing_profile_list_handler)
 register_predictor("routing.profile.validate", routing_profile_validate_handler)
 register_predictor("routing.profile.export", routing_profile_export_handler)
 register_predictor("routing.profile.import", routing_profile_import_handler)
+def _require_routing_access(user_ctx: Dict[str, Any]) -> None:
+    roles = {r.lower() for r in (user_ctx or {}).get("roles", [])}
+    scopes = {s.lower() for s in (user_ctx or {}).get("scopes", [])}
+    if roles.intersection({"admin", "routing", "ops"}) or scopes.intersection({"routing:select", "routing:*", "llm:route"}):
+        return
+    raise PermissionError("RBAC_DENIED: routing.select requires routing role or scope")
+
+
+def _enforce_rate_limit(user_id: str) -> None:
+    key = user_id or "anon"
+    now = time.time()
+    with _rate_limit_lock:
+        bucket = _rate_limit_counters.setdefault(key, deque())
+        while bucket and now - bucket[0] > _RATE_LIMIT_WINDOW_SECONDS:
+            bucket.popleft()
+        if len(bucket) >= _RATE_LIMIT_MAX_CALLS:
+            raise PermissionError("RATE_LIMIT_EXCEEDED: routing.select throttle hit")
+        bucket.append(now)

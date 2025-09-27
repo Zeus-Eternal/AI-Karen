@@ -1,28 +1,36 @@
-"""
-KIRE Router - intelligent LLM routing that integrates with existing LLMRegistry.
-"""
+"""KIRE Router - intelligent LLM routing that integrates with existing LLMRegistry."""
 from __future__ import annotations
-import time
+
 import hashlib
 import json
+import logging
+import time
+from dataclasses import asdict
 from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.core.cache import MemoryCache, get_request_deduplicator
 from ai_karen_engine.monitoring.kire_metrics import (
-    KIRE_DECISIONS_TOTAL,
     KIRE_CACHE_EVENTS_TOTAL,
+    KIRE_DECISION_CONFIDENCE,
+    KIRE_DECISIONS_TOTAL,
     KIRE_LATENCY_SECONDS,
+    KIRE_PROVIDER_SELECTION_TOTAL,
 )
 
 # Use shared MemoryCache impl to align with CopilotKit infra
 _cache = MemoryCache(max_size=2048, default_ttl=300)
 _cache_index: Dict[str, set] = {}
+_provider_cache_index: Dict[str, set] = {}
+_cache_owner: Dict[str, Dict[str, str]] = {}
 _deduper = get_request_deduplicator()
+
+logger = logging.getLogger(__name__)
 
 from ai_karen_engine.routing.types import RouteRequest, RouteDecision
 from ai_karen_engine.routing.profile_resolver import ProfileResolver
 from ai_karen_engine.routing.decision_logger import DecisionLogger
-from ai_karen_engine.integrations.task_analyzer import TaskAnalyzer
+from ai_karen_engine.integrations.task_analyzer import TaskAnalyzer, TaskAnalysis
+from ai_karen_engine.routing.cognitive_reasoner import CognitiveReasoner, RoutingCognition
 
 # Import existing components
 try:
@@ -30,9 +38,25 @@ try:
 except ImportError:
     # Fallback if provider status not available
     class ProviderHealth:
+        """Conservative provider health fallback when status integration is missing."""
+
+        SOURCE = "fallback"
+        HAS_BACKEND = False
+        _warned = False
+
+        @classmethod
+        def _warn(cls) -> None:
+            if cls._warned:
+                return
+            logger.warning(
+                "Provider health integration missing; enforcing degraded routing mode"
+            )
+            cls._warned = True
+
         @staticmethod
         async def is_healthy(provider: str) -> bool:
-            return True  # Assume healthy for now
+            ProviderHealth._warn()
+            return False
 
 try:
     from ai_karen_engine.core.degraded_mode import DegradedMode
@@ -53,6 +77,7 @@ class KIRERouter:
         self.profile_resolver = ProfileResolver()
         self.logger = DecisionLogger()
         self.task_analyzer = TaskAnalyzer()
+        self.cognitive_reasoner = CognitiveReasoner()
     
     async def route_provider_selection(self, request: RouteRequest) -> RouteDecision:
         """Main routing method - returns routing decision."""
@@ -87,18 +112,30 @@ class KIRERouter:
                 profile, request.task_type, request.khrp_step
             )
             # Analyze query for task hints/capabilities
-            analysis = self.task_analyzer.analyze(request.query, context=request.context)
-            task_type = request.task_type or analysis.task_type
+            analysis = self.task_analyzer.analyze(
+                request.query,
+                user_ctx={"roles": (request.context or {}).get("user_roles", [])},
+                context=request.context,
+            )
+            cognition = self.cognitive_reasoner.evaluate(request, analysis, profile)
+            task_type = request.task_type or cognition.primary_goal or analysis.task_type
 
             # Start from profile assignment or default config
             provider = assignment.provider if assignment else "openai"
             model = assignment.model if assignment else "gpt-4o-mini"
             chain = profile.fallback_chain if profile else ["openai", "deepseek", "llamacpp"]
-            
+
             async def _decide():
                 # Apply capability/constraint matching and health checks
                 return await self._refine_by_requirements(
-                    provider, model, request, chain, analysis.required_capabilities, task_type
+                    provider,
+                    model,
+                    request,
+                    chain,
+                    analysis.required_capabilities,
+                    task_type,
+                    analysis,
+                    cognition,
                 )
 
             # Deduplicate identical in-flight routing decisions (same cache key)
@@ -118,14 +155,24 @@ class KIRERouter:
                 )
                 KIRE_DECISIONS_TOTAL.labels(status="error", task_type=request.task_type or "chat").inc()
                 KIRE_LATENCY_SECONDS.labels(task_type=request.task_type or "chat").observe((time.perf_counter() - t0))
+                KIRE_PROVIDER_SELECTION_TOTAL.labels(
+                    provider=provider,
+                    model=model,
+                    status="error",
+                    task_type=request.task_type or "chat",
+                ).inc()
             except Exception:
                 pass
             raise
         
+        confidence_bucket = self._confidence_bucket(conf)
+        reasoning_trace = reason
+        if cognition.narrative and cognition.narrative not in reason:
+            reasoning_trace = f"{reason}; {cognition.narrative}" if reason else cognition.narrative
         decision = RouteDecision(
             provider=provider,
             model=model,
-            reasoning=reason,
+            reasoning=reasoning_trace,
             confidence=conf,
             fallback_chain=chain,
             metadata={
@@ -135,19 +182,20 @@ class KIRERouter:
                     "required_capabilities": analysis.required_capabilities,
                     "confidence": analysis.confidence,
                     "step_hint": analysis.khrp_step_hint,
+                    "tool_intents": analysis.tool_intents,
+                    "user_need_state": analysis.user_need_state,
                 },
-                "execution_time_ms": (time.perf_counter() - t0) * 1000
+                "cognition": asdict(cognition),
+                "confidence_bucket": confidence_bucket,
+                "health_source": getattr(ProviderHealth, "SOURCE", "live"),
+                "execution_time_ms": (time.perf_counter() - t0) * 1000,
             }
         )
         
         # Cache only high-confidence, non-dynamic steps
         if conf >= 0.8 and request.khrp_step not in ("evidence_gathering", "tool_execution"):
             _cache.set(cache_key, decision)
-            # index by user for targeted invalidation
-            try:
-                _cache_index.setdefault(request.user_id, set()).add(cache_key)
-            except Exception:
-                pass
+            self._register_cache_entry(cache_key, decision.provider, request.user_id)
             KIRE_CACHE_EVENTS_TOTAL.labels(event="store").inc()
         
         # Log decision
@@ -164,69 +212,132 @@ class KIRERouter:
         try:
             KIRE_DECISIONS_TOTAL.labels(status="success", task_type=request.task_type or "chat").inc()
             KIRE_LATENCY_SECONDS.labels(task_type=request.task_type or "chat").observe((time.perf_counter() - t0))
+            KIRE_PROVIDER_SELECTION_TOTAL.labels(
+                provider=decision.provider,
+                model=decision.model,
+                status="success",
+                task_type=request.task_type or "chat",
+            ).inc()
+            KIRE_DECISION_CONFIDENCE.labels(
+                task_type=request.task_type or "chat",
+                provider=decision.provider,
+                model=decision.model,
+            ).observe(decision.confidence)
         except Exception:
             pass
         
         return decision
     
-    async def _refine_by_requirements(self, provider: str, model: str, 
-                                    req: RouteRequest, chain: List[str], required_caps: List[str], inferred_task: str) -> tuple[str, str, str, float]:
+    async def _refine_by_requirements(
+        self,
+        provider: str,
+        model: str,
+        req: RouteRequest,
+        chain: List[str],
+        required_caps: List[str],
+        inferred_task: str,
+        analysis: TaskAnalysis,
+        cognition: RoutingCognition,
+    ) -> tuple[str, str, str, float]:
         """Refine provider/model selection based on requirements and health."""
-        # KHRP step-specific preferences
+
+        reason_segments: List[str] = []
+
+        # Ensure provider supports required capabilities or tool intents
+        if not self.task_analyzer.provider_supports(provider, required_caps):
+            reason_segments.append(f"{provider} lacks capabilities {required_caps}")
+            for alt in chain:
+                if alt == provider:
+                    continue
+                if self.task_analyzer.provider_supports(alt, required_caps) and await ProviderHealth.is_healthy(alt):
+                    provider, model = alt, self._default_model(alt)
+                    reason_segments.append(f"switching to {alt} for capabilities")
+                    break
+
+        # KHRP step-specific preferences emphasise deliberate reasoning
         if req.khrp_step in ("reasoning_core",):
-            # Prefer models that are stronger in reasoning if available
             preferred = [("openai", "gpt-4o"), ("deepseek", "deepseek-chat")]
             for prov, mod in preferred:
                 if await ProviderHealth.is_healthy(prov):
                     provider, model = prov, mod
+                    reason_segments.append(f"reasoning_core prefers {prov}/{mod}")
                     break
+
+        # Human-like urgency bias: escalate to reliable providers under stress
+        if cognition.need_urgency == "high" and provider != "openai":
+            if await ProviderHealth.is_healthy("openai"):
+                provider, model = "openai", "gpt-4o"
+                reason_segments.append("high urgency escalated to openai/gpt-4o")
+        elif cognition.need_urgency == "elevated" and provider == "llamacpp":
+            if await ProviderHealth.is_healthy("deepseek"):
+                provider, model = "deepseek", "deepseek-chat"
+                reason_segments.append("elevated urgency upgraded to deepseek")
+
+        # Tool affordance routing for distributed cognition
+        tool_bias = set((analysis.tool_intents or []) + (cognition.recommended_tools or []))
+        if "web_browse" in tool_bias and provider not in {"openai", "huggingface"}:
+            if await ProviderHealth.is_healthy("openai"):
+                provider, model = "openai", "gpt-4o-mini"
+                reason_segments.append("web browsing preference -> openai with tool calling")
+        if "code_execution" in tool_bias and provider != "deepseek":
+            if await ProviderHealth.is_healthy("deepseek"):
+                provider, model = "deepseek", "deepseek-coder"
+                reason_segments.append("code execution intent -> deepseek coder")
 
         # Task/capability-specific steering
         if "embeddings" in required_caps:
             if await ProviderHealth.is_healthy("huggingface"):
                 provider, model = "huggingface", "sentence-transformers/all-MiniLM-L6-v2"
-        elif inferred_task == "summarization":
+                reason_segments.append("embedding capability -> huggingface transformers")
+        elif inferred_task == "summarization" and provider != "llamacpp":
             if await ProviderHealth.is_healthy("llamacpp"):
                 provider, model = "llamacpp", "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf"
+                reason_segments.append("summarization uses llamacpp low-latency")
 
         # Health gate on chosen provider
-        if not await ProviderHealth.is_healthy(provider):
-            reason = f"{provider} unhealthy; selecting fallback"
-            
-            # Try fallback chain
+        health_source = getattr(ProviderHealth, "SOURCE", "live")
+        provider_healthy = await ProviderHealth.is_healthy(provider)
+        if not provider_healthy:
+            reason_segments.append(f"{provider} reported unhealthy")
+            if health_source == "fallback":
+                reason = "; ".join(reason_segments + ["provider health unavailable; entering degraded mode"])
+            else:
+                reason = "; ".join(reason_segments + [f"{provider} unhealthy; selecting fallback"])
+
             for fb in chain:
                 if await ProviderHealth.is_healthy(fb):
-                    return fb, self._default_model(fb), reason, 0.75
-            
-            # Final degraded mode
+                    return fb, self._default_model(fb), reason, max(0.68, cognition.confidence * 0.8)
+
             degraded_provider, degraded_model = DegradedMode.get_fallback_provider()
-            return degraded_provider, degraded_model, "degraded-mode", 0.6
-        
+            return degraded_provider, degraded_model, reason, 0.55
+
         # Apply task-specific optimizations
         if inferred_task == "code" and provider == "openai":
-            # Prefer deepseek for coding tasks
             if await ProviderHealth.is_healthy("deepseek"):
-                return "deepseek", "deepseek-coder", "optimized for coding", 0.95
+                reason_segments.append("code task optimized with deepseek coder")
+                return "deepseek", "deepseek-coder", "; ".join(reason_segments), min(0.96, max(0.9, cognition.confidence))
 
         # Cost gate (simple heuristic)
         max_cost = req.requirements.get("max_cost_per_call") if req.requirements else None
         if max_cost is not None:
             est_cost = self._estimate_cost(provider, model, req)
             if est_cost is not None and est_cost > max_cost:
-                # Try cheaper alternatives in chain
                 for alt in chain:
                     if not await ProviderHealth.is_healthy(alt):
                         continue
                     alt_model = self._default_model(alt)
                     alt_cost = self._estimate_cost(alt, alt_model, req)
                     if alt_cost is not None and alt_cost <= max_cost:
-                        return alt, alt_model, f"cost gate: {provider}/{model}->{alt}/{alt_model}", 0.82
-                # Keep selection but lower confidence and flag cost breach
-                return provider, model, "over_cost_budget; using profile selection", 0.75
-        
-        # Default: use profile assignment
-        reason = f"profile assignment for {inferred_task}"
-        return provider, model, reason, 0.9
+                        reason_segments.append(
+                            f"cost gate reroute {provider}/{model} -> {alt}/{alt_model}"
+                        )
+                        return alt, alt_model, "; ".join(reason_segments), min(0.85, cognition.confidence)
+                reason_segments.append("over cost budget; honoring profile selection")
+                return provider, model, "; ".join(reason_segments), min(0.78, cognition.confidence)
+
+        base_confidence = max(0.82, min(0.95, cognition.confidence + analysis.confidence * 0.1))
+        reason_segments.append(f"profile assignment for {inferred_task}")
+        return provider, model, "; ".join(reason_segments), base_confidence
     
     def _default_model(self, provider: str) -> str:
         """Get default model for provider."""
@@ -241,10 +352,84 @@ class KIRERouter:
     
     def _generate_cache_key(self, request: RouteRequest) -> str:
         """Generate cache key for routing request."""
-        req_hash = hashlib.md5(
-            json.dumps(request.requirements, sort_keys=True).encode()
-        ).hexdigest()[:8]
-        return f"{request.user_id}:{request.task_type}:{request.khrp_step or 'none'}:{req_hash}"
+        req_hash = self._stable_hash(request.requirements)[:8]
+        query_fingerprint = self._stable_hash({
+            "query": self._normalize_query(request.query),
+            "task": request.task_type,
+        })[:8]
+        context_signature = self._stable_hash(self._context_signature(request.context))[:8]
+        return (
+            f"{request.user_id}:{request.task_type or 'chat'}:{request.khrp_step or 'none'}:"
+            f"{req_hash}:{query_fingerprint}:{context_signature}"
+        )
+
+    @staticmethod
+    def _context_signature(context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        if not context:
+            return {}
+        allowed_keys = {
+            "tenant_id",
+            "session_id",
+            "request_metadata",
+            "task_hint",
+            "capability_hints",
+        }
+        signature = {k: context.get(k) for k in allowed_keys if k in context}
+        request_metadata = signature.get("request_metadata")
+        if isinstance(request_metadata, dict):
+            signature["request_metadata"] = {
+                k: request_metadata.get(k)
+                for k in ("correlation_id", "session_id", "tenant_id")
+                if k in request_metadata
+            }
+        return signature
+
+    @staticmethod
+    def _normalize_query(query: str) -> str:
+        return " ".join((query or "").split()).lower()
+
+    @staticmethod
+    def _stable_hash(payload: Any) -> str:
+        try:
+            serialized = json.dumps(payload, sort_keys=True, default=str)
+        except TypeError:
+            serialized = repr(payload)
+        return hashlib.md5(serialized.encode()).hexdigest()
+
+    @staticmethod
+    def _confidence_bucket(confidence: float) -> str:
+        if confidence >= 0.95:
+            return ">=0.95"
+        if confidence >= 0.9:
+            return "0.90-0.95"
+        if confidence >= 0.8:
+            return "0.80-0.89"
+        if confidence >= 0.65:
+            return "0.65-0.79"
+        return "<0.65"
+
+    @staticmethod
+    def _register_cache_entry(cache_key: str, provider: str, user_id: str) -> None:
+        _cache_owner[cache_key] = {"provider": provider, "user_id": user_id}
+        _cache_index.setdefault(user_id, set()).add(cache_key)
+        _provider_cache_index.setdefault(provider, set()).add(cache_key)
+
+    @staticmethod
+    def _evict_cache_key(cache_key: str) -> None:
+        _cache.delete(cache_key)
+        owner = _cache_owner.pop(cache_key, None)
+        if not owner:
+            return
+        user_keys = _cache_index.get(owner["user_id"])
+        if user_keys is not None:
+            user_keys.discard(cache_key)
+            if not user_keys:
+                _cache_index.pop(owner["user_id"], None)
+        provider_keys = _provider_cache_index.get(owner["provider"])
+        if provider_keys is not None:
+            provider_keys.discard(cache_key)
+            if not provider_keys:
+                _provider_cache_index.pop(owner["provider"], None)
 
     def _estimate_cost(self, provider: str, model: str, req: RouteRequest) -> Optional[float]:
         """Very rough per-call cost estimate based on provider defaults.
@@ -268,15 +453,15 @@ def invalidate_user_cache(user_id: str):
     """Invalidate cache entries for a specific user using index."""
     keys = list(_cache_index.get(user_id, set()))
     for k in keys:
-        _cache.delete(k)
-    _cache_index.pop(user_id, None)
+        KIRERouter._evict_cache_key(k)
 
 
 def invalidate_provider_cache(_provider: str):
     """Invalidate routing cache broadly on provider health changes."""
-    # Simple strategy: clear all entries because decisions embed provider choice
-    _cache.clear()
-    _cache_index.clear()
+    keys = list(_provider_cache_index.get(_provider, set()))
+    for k in keys:
+        KIRERouter._evict_cache_key(k)
+    _provider_cache_index.pop(_provider, None)
 
 
 def get_routing_cache_stats() -> Dict[str, Any]:
