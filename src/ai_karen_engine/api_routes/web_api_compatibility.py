@@ -6,6 +6,7 @@ to the correct backend services with proper request/response transformation.
 """
 
 import logging
+import sys
 import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -48,9 +49,48 @@ from ai_karen_engine.core.dependencies import (
 )
 from ai_karen_engine.models.shared_types import ToolType
 
+# Ensure both `ai_karen_engine` and `src.ai_karen_engine` module paths reference the same module
+sys.modules.setdefault(
+    "src.ai_karen_engine.api_routes.web_api_compatibility",
+    sys.modules[__name__],
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["web-ui-compatibility"])
+
+
+async def _get_plugin_service_optional():
+    """Return plugin service when available, otherwise gracefully disable plugin execution."""
+
+    try:
+        return await get_plugin_service()
+    except HTTPException as exc:
+        # During development or when plugins are not configured we still want to answer chat requests.
+        logger.warning(
+            "Plugin service unavailable (%s). Continuing without plugin execution support.",
+            exc.detail,
+        )
+        return None
+    except Exception as exc:  # pragma: no cover - defensive logging
+        logger.error(
+            "Unexpected error retrieving plugin service: %s. Disabling plugin execution for this request.",
+            exc,
+        )
+        return None
+
+
+async def _get_ai_orchestrator_dynamic() -> AIOrchestrator:
+    """Resolve AI orchestrator service using the current module attribute (supports patched versions)."""
+
+    getter = globals().get("get_ai_orchestrator_service", get_ai_orchestrator_service)
+    try:
+        return await getter()  # type: ignore[call-arg]
+    except TypeError:
+        result = getter()  # type: ignore[call-arg]
+        if hasattr(result, "__await__"):
+            return await result  # type: ignore[return-value]
+        return result
 
 
 def get_request_id(request: Request) -> str:
@@ -111,8 +151,8 @@ def create_fallback_chat_response(
 async def chat_process_compatibility(
     raw_request: Dict[str, Any],
     http_request: Request,
-    ai_orchestrator: AIOrchestrator = Depends(get_ai_orchestrator_service),
-    plugin_service=Depends(get_plugin_service),
+    ai_orchestrator: AIOrchestrator = Depends(_get_ai_orchestrator_dynamic),
+    plugin_service=Depends(_get_plugin_service_optional),
 ):
     """
     Compatibility endpoint that maps /api/chat/process to /api/ai/conversation-processing.
@@ -236,7 +276,7 @@ async def chat_process_compatibility(
         )
 
         widget_tag = None
-        if result.requires_plugin:
+        if result.requires_plugin and plugin_service is not None:
             if result.tool_to_call == ToolType.GET_WEATHER and result.tool_input:
                 try:
                     exec_result = await plugin_service.execute_plugin(
@@ -272,6 +312,10 @@ async def chat_process_compatibility(
                     widget_tag = "\ue200gmail\ue202summary\ue201"
                 except Exception as e:
                     logger.error(f"[{request_id}] Gmail plugin execution failed: {e}")
+        elif result.requires_plugin:
+            logger.info(
+                f"[{request_id}] Plugin execution skipped because plugin service is unavailable."
+            )
 
         # Transform response to web UI format with error handling
         try:
@@ -1605,5 +1649,3 @@ async def trigger_health_check(http_request: Request):
         )
 
 
-# Note: Exception handlers are handled within individual endpoints
-# since APIRouter doesn't support exception_handler decorator

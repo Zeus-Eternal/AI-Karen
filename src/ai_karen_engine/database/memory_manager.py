@@ -20,14 +20,13 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from sqlalchemy import delete, select, text
 
 from ai_karen_engine.core.embedding_manager import EmbeddingManager  # Required
 from ai_karen_engine.core.milvus_client import MilvusClient  # Optional at runtime
-from ai_karen_engine.database.client import MultiTenantPostgresClient
 from ai_karen_engine.database.models import TenantMemoryItem
 
 # Optional metrics
@@ -111,6 +110,12 @@ class MemoryQuery:
 # ---------------------------------------------------------------------------
 # Manager
 # ---------------------------------------------------------------------------
+
+
+if TYPE_CHECKING:
+    from ai_karen_engine.database.client import MultiTenantPostgresClient
+else:  # pragma: no cover - used only for type checking to avoid circular imports
+    MultiTenantPostgresClient = Any  # type: ignore[misc,assignment]
 
 
 class MemoryManager:
