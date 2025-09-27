@@ -27,6 +27,17 @@ try:  # pragma: no cover - optional dependency
         "Total KIRE action invocations",
         ["action", "status"],
     )
+    KIRE_PROVIDER_SELECTION_TOTAL = Counter(
+        "kire_provider_selection_total",
+        "KIRE provider/model selection outcomes",
+        ["provider", "model", "status", "task_type"],
+    )
+    KIRE_DECISION_CONFIDENCE = Histogram(
+        "kire_routing_decision_confidence",
+        "Confidence distribution for routing decisions",
+        ["task_type", "provider", "model"],
+        buckets=(0.0, 0.25, 0.5, 0.65, 0.8, 0.9, 0.96, 1.01),
+    )
 except Exception:  # pragma: no cover - fallback
 
     class _Dummy:
@@ -43,10 +54,14 @@ except Exception:  # pragma: no cover - fallback
     KIRE_CACHE_EVENTS_TOTAL = _Dummy()
     KIRE_LATENCY_SECONDS = _Dummy()
     KIRE_ACTIONS_TOTAL = _Dummy()
+    KIRE_PROVIDER_SELECTION_TOTAL = _Dummy()
+    KIRE_DECISION_CONFIDENCE = _Dummy()
 
 __all__ = [
     "KIRE_DECISIONS_TOTAL",
     "KIRE_CACHE_EVENTS_TOTAL",
     "KIRE_LATENCY_SECONDS",
     "KIRE_ACTIONS_TOTAL",
+    "KIRE_PROVIDER_SELECTION_TOTAL",
+    "KIRE_DECISION_CONFIDENCE",
 ]
