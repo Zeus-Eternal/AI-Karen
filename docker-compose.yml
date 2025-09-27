@@ -251,6 +251,8 @@ services:
       # Redis connection with password; matches the `redis` service
       # Uses the same REDIS_PASSWORD provided via env_file (.env)
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
 
       # Recommended hardening for production
       ENABLE_SECURITY_ANALYSIS: "true"
@@ -265,10 +267,17 @@ services:
       DATABASE_URL: "postgresql://karen_user:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
       POSTGRES_URL: "postgresql+asyncpg://karen_user:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
       AUTH_DATABASE_URL: "postgresql+asyncpg://karen_user:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_USER: "${POSTGRES_USER}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD}"
+      DB_NAME: "${POSTGRES_DB}"
       ELASTICSEARCH_HOST: "elasticsearch"
       ELASTICSEARCH_PORT: "9200"
       MILVUS_HOST: "milvus"
       MILVUS_PORT: "19530"
+      VECTOR_DB_HOST: "milvus"
+      VECTOR_DB_PORT: "19530"
       # Wait for Milvus to report healthy before enabling vector features (seconds)
       MILVUS_HEALTH_WAIT_SECONDS: "180"
       MILVUS_HEALTH_HOST: "milvus"
