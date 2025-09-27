@@ -107,8 +107,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Combine the data
+    const sanitizedHealthData: Record<string, any> =
+      healthData && typeof healthData === 'object' ? healthData : {};
+
+    const { status: rawStatus, ...healthDetails } = sanitizedHealthData;
+
     const combinedData = {
-      ...healthData,
+      ...healthDetails,
+      ...(rawStatus ? { raw_status: rawStatus } : {}),
       providers: providersData?.providers || [],
       total_providers: providersData?.total_providers || 0,
       models_available: providersData?.providers?.reduce((total: number, provider: any) =>
@@ -118,9 +124,13 @@ export async function GET(request: NextRequest) {
 
     // Normalize status for clients and always return HTTP 200 to avoid noisy client errors
     const backendOk = !!(healthResponse && healthResponse.status === 'fulfilled' && healthResponse.value.ok);
+    const normalizedStatus = backendOk
+      ? (rawStatus && rawStatus !== 'unknown' ? rawStatus : 'healthy')
+      : (rawStatus && rawStatus !== 'unknown' ? rawStatus : 'degraded');
+
     const normalized = {
-      status: backendOk ? 'healthy' : 'degraded',
       ...combinedData,
+      status: normalizedStatus,
     };
     return NextResponse.json(normalized, { status: 200 });
       

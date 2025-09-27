@@ -16,7 +16,7 @@ export function middleware(request: NextRequest) {
     "script-src 'self' 'unsafe-eval' 'unsafe-inline' https:",
     "style-src 'self' 'unsafe-inline' https:",
     "img-src 'self' data: https:",
-    "font-src 'self' https:",
+    "font-src 'self' https: data:",
     "connect-src 'self' http://localhost:* http://127.0.0.1:* https: wss: ws://localhost:* ws://127.0.0.1:*",
     "frame-ancestors 'none'",
     "base-uri 'self'",
