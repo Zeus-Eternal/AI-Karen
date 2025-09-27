@@ -1,149 +1,221 @@
 /*
 Kari UI - Enterprise Theme
-Diamond-Grade for Fortune 500 war rooms.
+Polished corporate aesthetic with elevated surfaces and adaptive tokens.
 */
 
 :root {
-    --background: #f4f5fa;
-    --surface: #f8f9fc;
-    --surface-alt: #f0f1f7;
-    --text: #171826;
-    --text-secondary: #384058;
-    --accent: #0052cc;
-    --accent-hover: #1786ff;
-    --border: #e2e6ed;
-    --shadow: 0 2px 14px rgba(0, 82, 204, 0.10), 0 2px 7px rgba(0,0,0,0.07);
-    --radius: 16px;
-    --font-main: 'Inter', 'Segoe UI', Arial, sans-serif;
-    --code-bg: #e6f0fa;
-    --success: #18b374;
-    --error: #ff2c6d;
-    --warning: #ffc221;
+  color-scheme: light;
+  accent-color: #0b63ce;
+
+  --font-sans: "Inter", "SF Pro Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --background: #eef2f9;
+  --surface: #f9fbff;
+  --surface-alt: #f0f4fc;
+  --surface-muted: #e2e8f5;
+  --text: #101624;
+  --text-secondary: #334155;
+  --accent: #0b63ce;
+  --accent-hover: #1d7df2;
+  --accent-soft: #4f97ff;
+  --border: #d5deed;
+  --border-strong: #b7c3d9;
+  --shadow-soft: 0 22px 50px -35px rgb(15 23 42 / 0.55);
+  --shadow-strong: 0 30px 80px -40px rgb(30 64 175 / 0.4);
+  --radius: 16px;
+  --code-bg: #e1efff;
+  --success: #12b981;
+  --error: #f43f5e;
+  --warning: #f59e0b;
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
+  --transition-base: 170ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-emphasis: 210ms cubic-bezier(0.2, 0, 0, 1);
+  --scrollbar-size: 10px;
 }
 
-body, .stApp {
-    background: linear-gradient(120deg, #f4f7fb 60%, #e6f0fa 100%);
-    color: var(--text);
-    font-family: var(--font-main);
+body,
+.stApp {
+  background: linear-gradient(135deg, #eef2f9 0%, #dce7fb 100%);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-feature-settings: "liga" 1, "kern" 1;
+  line-height: 1.65;
+  letter-spacing: 0.008em;
+  min-height: 100vh;
+  margin: 0;
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 .stApp {
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  background: var(--surface);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  overflow: hidden;
 }
 
-h1, h2, h3, h4 {
-    color: var(--accent);
-    font-weight: 700;
-    letter-spacing: 0.01em;
+h1,
+h2,
+h3,
+h4 {
+  color: var(--accent);
+  font-weight: 700;
+  text-wrap: balance;
+  letter-spacing: 0.012em;
 }
 
-a, .stLink {
-    color: var(--accent);
-    text-decoration: underline;
-    transition: color 0.2s;
-}
-a:hover, .stLink:hover {
-    color: var(--accent-hover);
+:where(a, .stLink) {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 0.1em;
+  text-underline-offset: 0.22em;
+  transition: color var(--transition-base), text-decoration-color var(--transition-base);
 }
 
-.stButton>button, .stSidebar .stButton>button {
-    background: linear-gradient(90deg, var(--accent) 70%, #17a7ff 100%);
-    color: #fff;
-    border-radius: var(--radius);
-    box-shadow: 0 2px 10px rgba(23, 134, 255, 0.15);
-    border: none;
-    font-weight: 600;
-    padding: 0.55em 1.1em;
-    transition: background 0.18s, box-shadow 0.18s;
+:where(a:hover, a:focus-visible, .stLink:hover, .stLink:focus-visible) {
+  color: var(--accent-hover);
+  text-decoration-color: var(--accent-hover);
 }
-.stButton>button:hover, .stSidebar .stButton>button:hover {
-    background: linear-gradient(90deg, var(--accent-hover) 70%, #0052cc 100%);
-    box-shadow: 0 4px 18px rgba(23,134,255,0.19);
+
+:where(.stButton > button, .stSidebar .stButton > button) {
+  background: linear-gradient(140deg, var(--accent) 0%, var(--accent-soft) 100%);
+  color: #f8fafc;
+  border: none;
+  border-radius: calc(var(--radius) - 4px);
+  font-weight: 600;
+  padding: 0.6em 1.3em;
+  box-shadow: var(--shadow-soft);
+  transition: transform var(--transition-emphasis), box-shadow var(--transition-base),
+    background var(--transition-base);
+}
+
+:where(.stButton > button, .stSidebar .stButton > button):hover {
+  transform: translateY(-1px);
+  background: linear-gradient(140deg, var(--accent-hover) 0%, var(--accent) 100%);
+  box-shadow: var(--shadow-strong);
+}
+
+:where(.stButton > button, .stSidebar .stButton > button):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(226 232 240 / 0.9), var(--focus-ring);
 }
 
 .stSidebar {
-    background: rgba(250, 251, 254, 0.95);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding-top: 10px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8), var(--shadow-soft);
+  padding-top: clamp(0.5rem, 1vw, 1rem);
 }
 
-.stSidebar .stMarkdown, .stSidebar h2, .stSidebar h3 {
-    color: var(--text-secondary);
+.stSidebar :where(.stMarkdown, h2, h3) {
+  color: var(--text-secondary);
 }
 
-input, textarea, select, .stTextInput>div>input {
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.47em 1em;
-    color: var(--text);
-    transition: border 0.18s, background 0.18s;
-}
-input:focus, textarea:focus, select:focus, .stTextInput>div>input:focus {
-    outline: none;
-    border: 2px solid var(--accent);
-    background: #e3edff;
+:where(input, textarea, select, .stTextInput > div > input) {
+  background: var(--surface-alt);
+  border: 1.5px solid var(--border);
+  border-radius: calc(var(--radius) - 6px);
+  padding: 0.55em 1.05em;
+  color: var(--text);
+  transition: border-color var(--transition-base), background-color var(--transition-base),
+    box-shadow var(--transition-base);
 }
 
-.stMarkdown code, pre, .stCodeBlock {
-    background: var(--code-bg);
-    color: #0052cc;
-    border-radius: 6px;
-    padding: 0.15em 0.47em;
-    font-size: 1em;
+:where(input, textarea, select, .stTextInput > div > input):focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface-muted);
+  box-shadow: var(--focus-ring);
 }
 
-.stAlert, .stWarning {
-    background: #fff6db;
-    border-left: 5px solid var(--warning);
-    color: #ad7600;
-    border-radius: 8px;
-    margin: 10px 0;
+:where(pre, code, .stCodeBlock) {
+  background: var(--code-bg);
+  color: #1d4ed8;
+  border-radius: 8px;
+  padding: 0.3em 0.65em;
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+:where(.stAlert, .stWarning) {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  border-left: 4px solid var(--warning);
+  color: color-mix(in srgb, var(--warning) 70%, #0f172a);
+  border-radius: 10px;
+  padding: 0.85em 1.2em;
+  margin-block: 0.75rem;
 }
 
 .stSuccess {
-    background: #e5fbee;
-    border-left: 5px solid var(--success);
-    color: #18b374;
-    border-radius: 8px;
-    margin: 10px 0;
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  border-left: 4px solid var(--success);
+  color: color-mix(in srgb, var(--success) 70%, #083344);
+  border-radius: 10px;
+  padding: 0.85em 1.2em;
+  margin-block: 0.75rem;
 }
 
 .stError {
-    background: #ffe6ee;
-    border-left: 5px solid var(--error);
-    color: #ff2c6d;
-    border-radius: 8px;
-    margin: 10px 0;
+  background: color-mix(in srgb, var(--error) 22%, transparent);
+  border-left: 4px solid var(--error);
+  color: color-mix(in srgb, var(--error) 75%, #111827);
+  border-radius: 10px;
+  padding: 0.85em 1.2em;
+  margin-block: 0.75rem;
 }
 
 .stProgress {
-    background: #e4e8f2;
-    border-radius: var(--radius);
-    height: 10px;
-    margin: 6px 0;
+  background: var(--surface-muted);
+  border-radius: var(--radius);
+  height: 0.65rem;
+  margin-block: 0.5rem;
+  overflow: hidden;
 }
 
 .stTab {
-    background: var(--surface-alt);
-    border-radius: var(--radius) var(--radius) 0 0;
-    box-shadow: 0 1px 3px rgba(0,82,204,0.08);
+  background: var(--surface-alt);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--text);
 }
 
 ::-webkit-scrollbar {
-    width: 10px;
-    background: #e0e8f0;
+  width: var(--scrollbar-size);
 }
+
+::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--surface-alt) 80%, transparent);
+}
+
 ::-webkit-scrollbar-thumb {
-    background: #0052cc33;
-    border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-base: 0ms;
+    --transition-emphasis: 0ms;
+  }
+
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media (max-width: 600px) {
-    .stSidebar, .stApp {
-        border-radius: 8px;
-        box-shadow: none;
-    }
+  .stSidebar,
+  .stApp {
+    border-radius: 12px;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
