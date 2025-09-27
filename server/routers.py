@@ -139,7 +139,9 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(provider_public_router, prefix="/api/public/providers", tags=["public-providers"])
     app.include_router(profile_router, prefix="/api/profiles", tags=["profiles"])
     app.include_router(error_response_router, prefix="/api", tags=["error-response"])
-    app.include_router(health_router, prefix="/api/health", tags=["health"])
+    # Health router already defines a "/health" prefix, so mount it at the API root
+    # to expose endpoints like "/api/health" and "/api/health/degraded-mode".
+    app.include_router(health_router, prefix="/api", tags=["health"])
     app.include_router(model_management_router, tags=["model-management"])
     app.include_router(enhanced_huggingface_router, prefix="/api", tags=["enhanced-huggingface"])
     app.include_router(response_core_router, tags=["response-core"])

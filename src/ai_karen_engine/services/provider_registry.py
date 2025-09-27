@@ -250,7 +250,31 @@ class ProviderRegistryService:
         """Get current status of a provider"""
         with self._lock:
             status = self._provider_status_cache.get(name)
-            
+
+            if status is None:
+                # Provider may have been auto-registered in the base registry
+                # before this service instance was created. Populate a fresh
+                # status entry on-demand so availability checks reflect the
+                # real provider roster.
+                provider_info = self.base_registry.get_provider_info(name)
+                if provider_info:
+                    try:
+                        capabilities = self._detect_provider_capabilities(
+                            provider_info.provider_class
+                        )
+                        self._update_provider_status(
+                            name,
+                            capabilities,
+                            provider_info.requires_api_key,
+                        )
+                        status = self._provider_status_cache.get(name)
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to initialize provider status for %s: %s",
+                            name,
+                            exc,
+                        )
+
             # Check if cache is stale
             if status and (datetime.utcnow() - status.last_check).total_seconds() > self._cache_ttl:
                 # Refresh status

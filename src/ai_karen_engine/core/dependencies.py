@@ -149,11 +149,37 @@ async def get_current_tenant_id(
 # Service dependencies
 async def get_ai_orchestrator_service() -> AIOrchestrator:
     """Get AI Orchestrator service instance."""
+    registry_error: Optional[Exception] = None
+
     try:
         registry = get_service_registry()
         return await registry.get_service("ai_orchestrator")
-    except Exception as e:
-        logger.error(f"Failed to get AI Orchestrator service: {e}")
+    except (ValueError, RuntimeError) as exc:
+        # Service registry may not be initialized yet when lazy startup is enabled.
+        registry_error = exc
+        logger.debug("Service registry lookup for AI orchestrator failed: %s", exc)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        logger.error("Failed to access AI orchestrator via registry: %s", exc)
+        registry_error = exc
+
+    # Fallback to lazy service registry when optimized startup defers instantiation.
+    try:
+        from ai_karen_engine.core.lazy_loading import lazy_registry, setup_lazy_services
+
+        if not lazy_registry.list_services():
+            await setup_lazy_services()
+
+        service = await lazy_registry.get_service_instance("ai_orchestrator")
+        if registry_error:
+            logger.info(
+                "Using lazy-loaded AI orchestrator because registry access failed: %s",
+                registry_error,
+            )
+        return service
+    except Exception as lazy_exc:
+        logger.error("Lazy AI orchestrator initialization failed: %s", lazy_exc)
+        if registry_error:
+            logger.error("Registry error prior to lazy fallback: %s", registry_error)
         raise HTTPException(
             status_code=503, detail="AI Orchestrator service unavailable"
         )
