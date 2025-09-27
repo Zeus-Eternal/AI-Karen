@@ -59,6 +59,24 @@ class _NoDecisionRegistry:
         return {"decision": None}
 
 
+class _FakeResponseCoreOrchestrator:
+    """Stubbed response core orchestrator used for testing the prompt flow."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, Dict[str, Any]]] = []
+
+    def respond(self, message: str, ui_caps: Dict[str, Any] | None = None) -> Dict[str, Any]:  # type: ignore[override]
+        ui_caps = ui_caps or {}
+        self.calls.append((message, ui_caps))
+        return {
+            "content": "Response core says hello",
+            "intent": "greeting",
+            "persona": "default",
+            "mood": "cheerful",
+            "metadata": {"route": "response-core"},
+        }
+
+
 @pytest.fixture()
 def test_app(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Create a FastAPI app with overridden dependencies for testing."""
@@ -118,3 +136,30 @@ def test_chat_runtime_stream_handles_missing_kire(test_app: TestClient, monkeypa
     assert metadata_lines, "Expected at least one metadata event"
     payload = json.loads(metadata_lines[0].split("data: ", 1)[1])
     assert "kire" not in payload["data"]
+
+
+def test_chat_runtime_response_core_round_trip(
+    test_app: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The response-core route should return prompt output when available."""
+
+    fake_orchestrator = _FakeResponseCoreOrchestrator()
+    monkeypatch.setattr(
+        chat_runtime,
+        "get_global_orchestrator",
+        lambda user_id: fake_orchestrator,
+    )
+
+    response = test_app.post(
+        "/chat/runtime/response-core",
+        json={"message": "Hello core"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["content"] == "Response core says hello"
+    assert payload["metadata"]["orchestrator"] == "response_core"
+    assert fake_orchestrator.calls  # ensure the orchestrator was invoked
+    called_message, ui_caps = fake_orchestrator.calls[0]
+    assert called_message == "Hello core"
+    assert ui_caps["platform"] == "web"
