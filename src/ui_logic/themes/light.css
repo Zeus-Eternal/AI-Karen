@@ -1,75 +1,220 @@
 /*
 Kari UI - Light Theme
-Simple bright default look.
+Modern neutral palette with improved accessibility and responsive motion.
 */
 
 :root {
-    --background: #ffffff;
-    --surface: #f5f5f5;
-    --surface-alt: #fafafa;
-    --text: #222222;
-    --text-secondary: #555555;
-    --accent: #1e88e5;
-    --accent-hover: #1565c0;
-    --border: #dddddd;
-    --shadow: 0 2px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08);
-    --radius: 12px;
-    --font-main: 'Inter', 'Segoe UI', Arial, sans-serif;
-    --code-bg: #f4f4f4;
-    --success: #28a745;
-    --error: #dc3545;
-    --warning: #ffc107;
+  color-scheme: light;
+  accent-color: #2563eb;
+
+  --font-sans: "Inter", "SF Pro Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --background: #f7f8fb;
+  --surface: #ffffff;
+  --surface-alt: #f2f4f9;
+  --surface-muted: #e9ecf5;
+  --text: #1f2937;
+  --text-secondary: #4b5563;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #3b82f6;
+  --border: #d8dce7;
+  --border-strong: #c2c9da;
+  --shadow-soft: 0 18px 40px -32px rgb(15 23 42 / 0.35);
+  --radius: 14px;
+  --code-bg: #eef2ff;
+  --success: #16a34a;
+  --error: #dc2626;
+  --warning: #f59e0b;
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
+  --transition-base: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-emphasis: 200ms cubic-bezier(0.2, 0, 0, 1);
+  --scrollbar-size: 10px;
 }
 
-body, .stApp {
-    background: var(--surface);
-    color: var(--text);
-    font-family: var(--font-main);
+body,
+.stApp {
+  background: linear-gradient(140deg, #f7f8fb 0%, #eef2ff 100%);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-feature-settings: "liga" 1, "kern" 1;
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+  min-height: 100vh;
+  margin: 0;
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 .stApp {
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
 }
 
-h1, h2, h3, h4 {
-    color: var(--accent);
-    font-weight: 700;
-    letter-spacing: 0.01em;
+h1,
+h2,
+h3,
+h4 {
+  color: var(--text);
+  font-weight: 700;
+  text-wrap: balance;
+  letter-spacing: 0.015em;
 }
 
-a, .stLink {
-    color: var(--accent);
-    text-decoration: underline;
-    transition: color 0.2s;
-}
-a:hover, .stLink:hover {
-    color: var(--accent-hover);
-}
-
-.stButton>button, .stSidebar .stButton>button {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius);
-    font-weight: 600;
-    padding: 0.5em 1em;
-    transition: background 0.2s;
-}
-.stButton>button:hover, .stSidebar .stButton>button:hover {
-    background: var(--accent-hover);
+:where(a, .stLink) {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 0.09em;
+  text-underline-offset: 0.2em;
+  transition: color var(--transition-base), text-decoration-color var(--transition-base);
 }
 
-input, textarea, select, .stTextInput>div>input {
-    background: var(--surface-alt);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.4em 0.8em;
-    color: var(--text);
+:where(a:hover, a:focus-visible, .stLink:hover, .stLink:focus-visible) {
+  color: var(--accent-hover);
+  text-decoration-color: var(--accent-hover);
 }
 
-pre, code, .stCodeBlock {
-    background: var(--code-bg);
-    border-radius: 6px;
-    padding: 0.15em 0.4em;
+:where(.stButton > button, .stSidebar .stButton > button) {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-soft) 100%);
+  color: #f8fafc;
+  border: none;
+  border-radius: calc(var(--radius) - 4px);
+  font-weight: 600;
+  padding: 0.6em 1.25em;
+  box-shadow: 0 10px 25px -20px rgb(37 99 235 / 0.6);
+  transition: transform var(--transition-emphasis), box-shadow var(--transition-base),
+    background var(--transition-base);
+}
+
+:where(.stButton > button, .stSidebar .stButton > button):hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent) 100%);
+  box-shadow: 0 18px 36px -18px rgb(37 99 235 / 0.45);
+}
+
+:where(.stButton > button, .stSidebar .stButton > button):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(226 232 240 / 0.9), var(--focus-ring);
+}
+
+.stSidebar {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7), var(--shadow-soft);
+  padding-top: clamp(0.5rem, 1vw, 1rem);
+}
+
+.stSidebar :where(.stMarkdown, h2, h3) {
+  color: var(--text-secondary);
+}
+
+:where(input, textarea, select, .stTextInput > div > input) {
+  background: var(--surface-alt);
+  border: 1.4px solid var(--border);
+  border-radius: calc(var(--radius) - 6px);
+  padding: 0.55em 1em;
+  color: var(--text);
+  transition: border-color var(--transition-base), background-color var(--transition-base),
+    box-shadow var(--transition-base);
+}
+
+:where(input, textarea, select, .stTextInput > div > input):focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface-muted);
+  box-shadow: var(--focus-ring);
+}
+
+:where(pre, code, .stCodeBlock) {
+  background: var(--code-bg);
+  color: #1e293b;
+  border-radius: 8px;
+  padding: 0.3em 0.6em;
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+:where(.stAlert, .stWarning) {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  border-left: 4px solid var(--warning);
+  color: color-mix(in srgb, var(--warning) 70%, #111827);
+  border-radius: 10px;
+  padding: 0.85em 1.2em;
+  margin-block: 0.75rem;
+}
+
+.stSuccess {
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  border-left: 4px solid var(--success);
+  color: color-mix(in srgb, var(--success) 70%, #0f172a);
+  border-radius: 10px;
+  padding: 0.85em 1.2em;
+  margin-block: 0.75rem;
+}
+
+.stError {
+  background: color-mix(in srgb, var(--error) 18%, transparent);
+  border-left: 4px solid var(--error);
+  color: color-mix(in srgb, var(--error) 75%, #111827);
+  border-radius: 10px;
+  padding: 0.85em 1.2em;
+  margin-block: 0.75rem;
+}
+
+.stProgress {
+  background: var(--surface-muted);
+  border-radius: var(--radius);
+  height: 0.65rem;
+  margin-block: 0.5rem;
+  overflow: hidden;
+}
+
+.stTab {
+  background: var(--surface-alt);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--text);
+}
+
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--surface-alt) 80%, transparent);
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-base: 0ms;
+    --transition-emphasis: 0ms;
+  }
+
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .stSidebar,
+  .stApp {
+    border-radius: 12px;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
