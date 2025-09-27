@@ -5,9 +5,12 @@ and ≥ +15% MRR improvement vs ANN-only.
 """
 
 import asyncio
+import hashlib
+import json
 import logging
 import time
 import uuid
+from collections import OrderedDict, deque
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Tuple, Union
 from enum import Enum
@@ -236,7 +239,7 @@ class OptimizedVectorIndex:
                     total_latency_ms=total_latency_ms,
                     index_latency_ms=index_latency_ms,
                     rerank_latency_ms=rerank_latency_ms,
-                    cache_hit=False,  # TODO: Implement caching
+                    cache_hit=False,
                     results_count=len(results),
                     correlation_id=correlation_id
                 )
@@ -470,7 +473,7 @@ class VectorOptimizationService:
         self.config = config or VectorSearchConfig()
         self.indexes: Dict[str, OptimizedVectorIndex] = {}
         self.executor = ThreadPoolExecutor(max_workers=self.config.max_workers)
-        
+
         # Performance tracking
         self.global_metrics = {
             "total_searches": 0,
@@ -481,13 +484,195 @@ class VectorOptimizationService:
             "recall_rate": 0.0,
             "mrr_improvement": 0.0
         }
-    
+
+        # Cache storage for query results (LRU with TTL)
+        self._cache: "OrderedDict[str, Tuple[float, List[Dict[str, Any]], Dict[str, Any]]]" = OrderedDict()
+        self._cache_lock = threading.RLock()
+
+        # Maintain rolling latency history for percentile calculations
+        self._latency_history = deque(maxlen=1000)
+
     def get_or_create_index(self, collection_name: str, dimension: int) -> OptimizedVectorIndex:
         """Get or create an optimized index for a collection"""
         if collection_name not in self.indexes:
             self.indexes[collection_name] = OptimizedVectorIndex(self.config, dimension)
-        
+
         return self.indexes[collection_name]
+
+    def _cache_operational(self) -> bool:
+        """Return True if caching is enabled and properly configured."""
+        return (
+            self.config.cache_enabled
+            and self.config.cache_size > 0
+            and self.config.cache_ttl_seconds > 0
+        )
+
+    def _normalize_query_vector(
+        self, query_vector: Union[List[float], np.ndarray]
+    ) -> np.ndarray:
+        """Ensure query vectors are numpy float32 arrays."""
+        if isinstance(query_vector, list):
+            query_vector = np.array(query_vector, dtype=np.float32)
+        elif not isinstance(query_vector, np.ndarray):
+            query_vector = np.array(query_vector, dtype=np.float32)
+        elif query_vector.dtype != np.float32:
+            query_vector = query_vector.astype(np.float32)
+
+        return np.ascontiguousarray(query_vector)
+
+    def _make_cache_key(
+        self,
+        collection_name: str,
+        query_vector: np.ndarray,
+        top_k: int,
+        metadata_filter: Optional[Dict[str, Any]]
+    ) -> Optional[str]:
+        """Create a stable cache key for the provided query."""
+        if not self._cache_operational():
+            return None
+
+        try:
+            vector_hash = hashlib.sha1(query_vector.tobytes()).hexdigest()
+            filter_repr = ""
+            if metadata_filter:
+                filter_repr = json.dumps(metadata_filter, sort_keys=True, default=str)
+
+            return f"{collection_name}:{top_k}:{vector_hash}:{filter_repr}"
+        except Exception:
+            return None
+
+    def _snapshot_results(self, results: List[SearchResult]) -> List[Dict[str, Any]]:
+        """Create a serializable snapshot of search results."""
+        snapshot: List[Dict[str, Any]] = []
+        for result in results:
+            snapshot.append(
+                {
+                    "id": result.id,
+                    "score": result.score,
+                    "metadata": dict(result.metadata),
+                    "rerank_score": result.rerank_score,
+                    "original_rank": result.original_rank,
+                    "final_rank": result.final_rank,
+                }
+            )
+        return snapshot
+
+    def _hydrate_results(self, snapshot: List[Dict[str, Any]]) -> List[SearchResult]:
+        """Restore SearchResult objects from cached snapshots."""
+        hydrated: List[SearchResult] = []
+        for entry in snapshot:
+            hydrated.append(
+                SearchResult(
+                    id=entry["id"],
+                    score=entry["score"],
+                    metadata=dict(entry["metadata"]),
+                    rerank_score=entry.get("rerank_score"),
+                    original_rank=entry.get("original_rank"),
+                    final_rank=entry.get("final_rank"),
+                )
+            )
+        return hydrated
+
+    def _evict_expired_locked(self, now: Optional[float] = None) -> None:
+        """Remove expired cache entries. Caller must hold cache lock."""
+        if not self._cache:
+            return
+
+        ttl = self.config.cache_ttl_seconds
+        if ttl <= 0:
+            self._cache.clear()
+            return
+
+        now = now or time.time()
+        keys_to_delete = [
+            key for key, (timestamp, _, _) in self._cache.items()
+            if now - timestamp > ttl
+        ]
+
+        for key in keys_to_delete:
+            self._cache.pop(key, None)
+
+    def _get_from_cache(
+        self, cache_key: Optional[str]
+    ) -> Optional[Tuple[List[SearchResult], Dict[str, Any]]]:
+        """Retrieve cached search results if available."""
+        if not cache_key or not self._cache_operational():
+            return None
+
+        with self._cache_lock:
+            self._evict_expired_locked()
+            if cache_key not in self._cache:
+                return None
+
+            timestamp, snapshot, metrics_snapshot = self._cache.pop(cache_key)
+            # Reinsert to maintain LRU ordering
+            self._cache[cache_key] = (timestamp, snapshot, metrics_snapshot)
+
+            return self._hydrate_results(snapshot), metrics_snapshot
+
+    def _store_in_cache(
+        self,
+        cache_key: Optional[str],
+        results: List[SearchResult],
+        metrics: SearchMetrics
+    ) -> None:
+        """Persist search results to the cache."""
+        if not cache_key or not self._cache_operational():
+            return
+
+        with self._cache_lock:
+            self._evict_expired_locked()
+            snapshot = self._snapshot_results(results)
+            metrics_snapshot = {
+                "recall_rate": metrics.recall_rate,
+                "mrr_score": metrics.mrr_score,
+            }
+
+            self._cache[cache_key] = (time.time(), snapshot, metrics_snapshot)
+
+            while len(self._cache) > self.config.cache_size:
+                self._cache.popitem(last=False)
+
+    def _update_latency_metrics(self, latency_ms: float) -> None:
+        """Update rolling latency statistics."""
+        self._latency_history.append(latency_ms)
+        if not self._latency_history:
+            return
+
+        sorted_latencies = sorted(self._latency_history)
+        index = int(len(sorted_latencies) * 0.95)
+        index = min(max(index, 0), len(sorted_latencies) - 1)
+        self.global_metrics["p95_latency_ms"] = sorted_latencies[index]
+
+    def _record_search_metrics(self, metrics: SearchMetrics, cache_hit: bool) -> None:
+        """Record global metrics after a search operation."""
+        latency_ms = metrics.total_latency_ms
+
+        self.global_metrics["total_searches"] += 1
+        if cache_hit:
+            self.global_metrics["cache_hits"] += 1
+        else:
+            self.global_metrics["cache_misses"] += 1
+
+        alpha = 0.1  # Exponential moving average factor
+        self.global_metrics["avg_latency_ms"] = (
+            self.global_metrics["avg_latency_ms"] * (1 - alpha)
+            + latency_ms * alpha
+        )
+
+        self._update_latency_metrics(latency_ms)
+
+        if metrics.recall_rate is not None:
+            self.global_metrics["recall_rate"] = (
+                self.global_metrics["recall_rate"] * (1 - alpha)
+                + metrics.recall_rate * alpha
+            )
+
+        if metrics.mrr_score is not None:
+            self.global_metrics["mrr_improvement"] = (
+                self.global_metrics["mrr_improvement"] * (1 - alpha)
+                + metrics.mrr_score * alpha
+            )
     
     async def search_optimized(
         self,
@@ -499,12 +684,40 @@ class VectorOptimizationService:
     ) -> Tuple[List[SearchResult], SearchMetrics]:
         """Perform optimized vector search"""
         correlation_id = correlation_id or str(uuid.uuid4())
-        
+
         try:
+            request_start = time.time()
+
             # Convert query vector to numpy array
-            if isinstance(query_vector, list):
-                query_vector = np.array(query_vector, dtype=np.float32)
-            
+            query_vector = self._normalize_query_vector(query_vector)
+
+            cache_key = self._make_cache_key(collection_name, query_vector, top_k, metadata_filter)
+            cached = self._get_from_cache(cache_key)
+
+            if cached:
+                cached_results, cached_metrics = cached
+                total_latency_ms = (time.time() - request_start) * 1000
+
+                metrics = SearchMetrics(
+                    total_latency_ms=total_latency_ms,
+                    index_latency_ms=0.0,
+                    rerank_latency_ms=0.0,
+                    cache_hit=True,
+                    results_count=len(cached_results),
+                    recall_rate=cached_metrics.get("recall_rate"),
+                    mrr_score=cached_metrics.get("mrr_score"),
+                    correlation_id=correlation_id
+                )
+
+                self._record_search_metrics(metrics, cache_hit=True)
+
+                logger.debug(
+                    "Returning cached optimized search results",
+                    extra={"correlation_id": correlation_id}
+                )
+
+                return cached_results, metrics
+
             # Get the index
             if collection_name not in self.indexes:
                 logger.warning(f"Index not found for collection: {collection_name}")
@@ -518,20 +731,16 @@ class VectorOptimizationService:
                 )
             
             index = self.indexes[collection_name]
-            
+
             # Perform search
             results, metrics = index.search(query_vector, top_k, metadata_filter)
-            
+
+            # Persist in cache for future lookups
+            self._store_in_cache(cache_key, results, metrics)
+
             # Update global metrics
-            self.global_metrics["total_searches"] += 1
-            
-            # Update running averages
-            alpha = 0.1  # Exponential moving average factor
-            self.global_metrics["avg_latency_ms"] = (
-                self.global_metrics["avg_latency_ms"] * (1 - alpha) +
-                metrics.total_latency_ms * alpha
-            )
-            
+            self._record_search_metrics(metrics, cache_hit=False)
+
             logger.info(
                 f"Optimized search completed: {len(results)} results in {metrics.total_latency_ms:.2f}ms",
                 extra={"correlation_id": correlation_id}
@@ -681,5 +890,5 @@ def get_vector_optimization_service(config: Optional[VectorSearchConfig] = None)
     
     if _vector_optimization_service is None:
         _vector_optimization_service = VectorOptimizationService(config)
-    
+
     return _vector_optimization_service

@@ -210,6 +210,61 @@ class TestVectorOptimization:
         # Check average latency is reasonable
         avg_latency = sum(latencies) / len(latencies)
         assert avg_latency < 25.0, f"Average latency {avg_latency:.2f}ms is too high"
+
+    @pytest.mark.asyncio
+    async def test_search_results_are_cached(self, vector_config, sample_vectors):
+        """Searches with identical parameters should reuse cached results."""
+        vectors, metadata = sample_vectors
+        collection_name = "cache_collection"
+        dimension = len(vectors[0])
+
+        service = VectorOptimizationService(vector_config)
+        await service.add_vectors_batch(collection_name, vectors, metadata, dimension)
+
+        query_vector = vectors[0]
+
+        first_results, first_metrics = await service.search_optimized(
+            collection_name, query_vector, top_k=5
+        )
+
+        assert first_metrics.cache_hit is False
+        assert service.global_metrics["cache_misses"] == 1
+
+        second_results, second_metrics = await service.search_optimized(
+            collection_name, query_vector, top_k=5
+        )
+
+        assert second_metrics.cache_hit is True
+        assert [r.id for r in first_results] == [r.id for r in second_results]
+        assert service.global_metrics["cache_hits"] == 1
+        assert service.global_metrics["cache_misses"] == 1
+
+    @pytest.mark.asyncio
+    async def test_cache_respects_ttl(self, vector_config, sample_vectors):
+        """Cached entries should expire after the configured TTL."""
+        vectors, metadata = sample_vectors
+        collection_name = "ttl_collection"
+        dimension = len(vectors[0])
+
+        vector_config.cache_ttl_seconds = 1
+        service = VectorOptimizationService(vector_config)
+        await service.add_vectors_batch(collection_name, vectors, metadata, dimension)
+
+        query_vector = vectors[1]
+
+        _, first_metrics = await service.search_optimized(
+            collection_name, query_vector, top_k=5
+        )
+        assert first_metrics.cache_hit is False
+
+        await asyncio.sleep(1.1)
+
+        _, second_metrics = await service.search_optimized(
+            collection_name, query_vector, top_k=5
+        )
+
+        assert second_metrics.cache_hit is False
+        assert service.global_metrics["cache_misses"] >= 2
     
     def test_performance_stats(self, vector_config, sample_vectors):
         """Test performance statistics collection"""
