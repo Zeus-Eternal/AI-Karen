@@ -221,15 +221,29 @@ async def chat_runtime(
         )
 
         # Route via LLMRegistry.get_provider_with_routing to select provider/model
-        reg = get_registry()
-        _routed = await reg.get_provider_with_routing(
-            user_ctx={"user_id": user_context.get("user_id", "anon")},
-            query=request.message,
-            task_type="chat",
-            khrp_step="output_rendering",
-            requirements={}
-        )
-        kire_decision = _routed.get("decision")
+        kire_decision = None
+        kire_error: Optional[str] = None
+        try:
+            reg = get_registry()
+            _routed = await reg.get_provider_with_routing(
+                user_ctx={"user_id": user_context.get("user_id", "anon")},
+                query=request.message,
+                task_type="chat",
+                khrp_step="output_rendering",
+                requirements={}
+            )
+            if _routed:
+                kire_decision = _routed.get("decision")
+        except Exception as exc:  # pragma: no cover - handled in tests via monkeypatch
+            kire_error = str(exc)
+            logger.warning(
+                "KIRE routing unavailable, continuing without decision",
+                extra={
+                    "user_id": user_context.get("user_id"),
+                    "correlation_id": correlation_id,
+                    "error": kire_error,
+                },
+            )
 
         chat_request = ChatRequest(
             message=request.message,
@@ -271,6 +285,11 @@ async def chat_runtime(
                 "processing_time": orchestrator_response.processing_time,
                 "latency_ms": latency_ms,
                 **orchestrator_response.metadata,
+                **(
+                    {"kire_routing": {"status": "error", "detail": kire_error}}
+                    if kire_error
+                    else {}
+                ),
                 # Surface KIRE decision in API response metadata
                 **({
                     "kire_metadata": {
@@ -341,15 +360,29 @@ async def chat_runtime_stream(
             )
 
             # KIRE routing for streaming via registry; send early metadata with selection
-            reg = get_registry()
-            _routed = await reg.get_provider_with_routing(
-                user_ctx={"user_id": user_context.get("user_id", "anon")},
-                query=request.message,
-                task_type="chat",
-                khrp_step="output_rendering",
-                requirements={}
-            )
-            kire_decision = _routed.get("decision")
+            kire_decision = None
+            kire_error: Optional[str] = None
+            try:
+                reg = get_registry()
+                _routed = await reg.get_provider_with_routing(
+                    user_ctx={"user_id": user_context.get("user_id", "anon")},
+                    query=request.message,
+                    task_type="chat",
+                    khrp_step="output_rendering",
+                    requirements={}
+                )
+                if _routed:
+                    kire_decision = _routed.get("decision")
+            except Exception as exc:  # pragma: no cover - handled in tests via monkeypatch
+                kire_error = str(exc)
+                logger.warning(
+                    "KIRE routing unavailable for streaming, continuing",
+                    extra={
+                        "user_id": user_context.get("user_id"),
+                        "correlation_id": correlation_id,
+                        "error": kire_error,
+                    },
+                )
 
             metadata_event = {
                 "type": "metadata",
@@ -358,6 +391,11 @@ async def chat_runtime_stream(
                     "correlation_id": correlation_id,
                 },
             }
+            if kire_error:
+                metadata_event["data"]["kire_routing"] = {
+                    "status": "error",
+                    "detail": kire_error,
+                }
             if kire_decision:
                 metadata_event["data"]["kire"] = {
                     "provider": getattr(kire_decision, "provider", "unknown"),

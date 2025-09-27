@@ -59,6 +59,11 @@ class _NoDecisionRegistry:
         return {"decision": None}
 
 
+class _FailingRegistry:
+    async def get_provider_with_routing(self, **_: Any) -> Dict[str, Any]:  # type: ignore[override]
+        raise RuntimeError("router offline")
+
+
 @pytest.fixture()
 def test_app(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Create a FastAPI app with overridden dependencies for testing."""
@@ -118,3 +123,33 @@ def test_chat_runtime_stream_handles_missing_kire(test_app: TestClient, monkeypa
     assert metadata_lines, "Expected at least one metadata event"
     payload = json.loads(metadata_lines[0].split("data: ", 1)[1])
     assert "kire" not in payload["data"]
+
+
+def test_chat_runtime_recovers_from_registry_failure(test_app: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Non-streaming route should respond even if routing lookup fails."""
+
+    monkeypatch.setattr(chat_runtime, "get_registry", lambda: _FailingRegistry())
+
+    response = test_app.post("/chat/runtime", json={"message": "Hello"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["content"] == "Hello world"
+    assert payload["metadata"]["kire_routing"]["status"] == "error"
+
+
+def test_chat_runtime_stream_emits_error_metadata_when_registry_fails(
+    test_app: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Streaming metadata should include routing error details when lookup raises."""
+
+    monkeypatch.setattr(chat_runtime, "get_registry", lambda: _FailingRegistry())
+
+    with test_app.stream("POST", "/chat/runtime/stream", json={"message": "Stream please"}) as response:
+        lines = list(response.iter_lines())
+
+    assert response.status_code == 200
+    metadata_lines = [line for line in lines if '"type": "metadata"' in line]
+    assert metadata_lines, "Expected metadata despite routing failure"
+    payload = json.loads(metadata_lines[0].split("data: ", 1)[1])
+    assert payload["data"]["kire_routing"]["status"] == "error"
