@@ -22,10 +22,40 @@
   --karen-alert-gap: 0.75rem;
   --karen-alert-padding: 1rem;
   --karen-alert-border-radius: 0.5rem;
-  
+
   /* Z-index layers */
   --karen-toast-z-index: 100;
   --karen-overlay-z-index: 50;
+
+  /* Toast appearance */
+  --karen-toast-blur: 18px;
+  --karen-toast-shadow: 0 20px 45px -25px rgb(15 23 42 / 0.35);
+  --karen-toast-shadow-hover: 0 28px 55px -25px rgb(15 23 42 / 0.45);
+  --karen-toast-border-color: color-mix(in srgb, currentColor 18%, transparent);
+  --karen-toast-max-width: min(420px, calc(100vw - 2rem));
+  --karen-toast-surface: color-mix(in srgb, hsl(var(--background, 0 0% 100%)) 92%, transparent);
+  --karen-toast-surface-strong: color-mix(in srgb, hsl(var(--background, 0 0% 100%)) 85%, transparent);
+}
+
+/* Base toast styling */
+.karen-toast {
+  width: min(100%, var(--karen-toast-max-width));
+  max-width: var(--karen-toast-max-width);
+  backdrop-filter: blur(var(--karen-toast-blur));
+  -webkit-backdrop-filter: blur(var(--karen-toast-blur));
+  box-shadow: var(--karen-toast-shadow);
+  border-radius: var(--karen-alert-border-radius);
+  border: 1px solid var(--karen-toast-border-color);
+  background: var(--karen-toast-surface);
+  transition:
+    transform var(--karen-animation-fast) var(--karen-ease-out),
+    box-shadow var(--karen-animation-normal) var(--karen-ease-out),
+    background-color var(--karen-animation-fast) var(--karen-ease-out);
+}
+
+.karen-toast:hover,
+.karen-toast:focus-within {
+  box-shadow: var(--karen-toast-shadow-hover);
 }
 
 /* High contrast mode support */
@@ -72,6 +102,7 @@
     --karen-animation-fast: 0ms;
     --karen-animation-normal: 0ms;
     --karen-animation-slow: 0ms;
+    transition: none !important;
   }
   
   .karen-toast * {
@@ -83,6 +114,16 @@
   
   .karen-progress-bar {
     transition: none !important;
+  }
+}
+
+/* Reduced transparency preferences */
+@media (prefers-reduced-transparency: reduce) {
+  .karen-toast {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--karen-toast-surface-strong) !important;
+    box-shadow: var(--karen-toast-shadow);
   }
 }
 
@@ -104,14 +145,17 @@
 
 /* Enhanced mobile responsiveness */
 @media (max-width: 640px) {
+  :root {
+    --karen-toast-max-width: calc(100vw - 1rem);
+  }
+
   .karen-toast-viewport {
     padding: 0.5rem;
     gap: 0.5rem;
   }
-  
+
   .karen-toast {
     margin: 0;
-    max-width: calc(100vw - 1rem);
     padding: 0.75rem;
   }
   
@@ -151,6 +195,22 @@
   }
 }
 
+@supports not (backdrop-filter: blur(1px)) {
+  .karen-toast {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--karen-toast-surface-strong);
+  }
+}
+
+@media (prefers-contrast: more) {
+  .karen-toast {
+    border-width: 2px;
+    box-shadow: none;
+    background: var(--karen-toast-surface-strong);
+  }
+}
+
 /* Print styles */
 @media print {
   .karen-toast-viewport {
@@ -160,10 +220,25 @@
 
 /* Dark mode enhancements */
 @media (prefers-color-scheme: dark) {
-  .karen-toast {
-    backdrop-filter: blur(8px);
+  :root {
+    --karen-toast-surface: color-mix(
+      in srgb,
+      hsl(var(--background, 210 11% 12%)) 88%,
+      rgb(15 23 42 / 0.6) 12%
+    );
+    --karen-toast-surface-strong: color-mix(
+      in srgb,
+      hsl(var(--background, 210 11% 12%)) 75%,
+      rgb(15 23 42 / 0.75) 25%
+    );
   }
-  
+
+  .karen-toast {
+    background: var(--karen-toast-surface-strong);
+    backdrop-filter: blur(var(--karen-toast-blur));
+    -webkit-backdrop-filter: blur(var(--karen-toast-blur));
+  }
+
   .karen-progress-bar {
     opacity: 0.9;
   }
