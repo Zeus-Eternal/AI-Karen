@@ -8,11 +8,11 @@ import time
 import uuid
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
 from ai_karen_engine.core.dependencies import get_current_user_context
@@ -89,6 +89,18 @@ class ChatRuntimeRequest(BaseModel):
     platform: Optional[str] = Field(default="web", description="Platform identifier")
     conversation_id: Optional[str] = Field(None, description="Conversation ID")
     stream: bool = Field(default=True, description="Enable streaming response")
+    model: Optional[str] = Field(
+        default=None, description="Explicit model identifier requested by the client"
+    )
+    provider: Optional[str] = Field(
+        default=None, description="Explicit provider requested by the client"
+    )
+    temperature: Optional[float] = Field(
+        default=None, ge=0.0, le=2.0, description="Requested sampling temperature"
+    )
+    max_tokens: Optional[int] = Field(
+        default=None, gt=0, description="Requested maximum tokens for the response"
+    )
 
 
 class ChatRuntimeResponse(BaseModel):
@@ -144,7 +156,72 @@ async def validate_chat_request(request: ChatRuntimeRequest) -> ChatRuntimeReque
             detail="Message too long (max 10KB)",
         )
 
+    if request.max_tokens is not None and request.max_tokens <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="max_tokens must be greater than zero",
+        )
+
     return request
+
+
+def _extract_generation_preferences(
+    request: ChatRuntimeRequest,
+) -> Tuple[Optional[str], Optional[str], Dict[str, Any]]:
+    """Derive generation hints from the request and associated metadata."""
+
+    hints: Dict[str, Any] = {}
+
+    def _first_non_empty(values: Iterable[Optional[str]]) -> Optional[str]:
+        for value in values:
+            if isinstance(value, str):
+                cleaned = value.strip()
+                if cleaned:
+                    return cleaned
+        return None
+
+    user_prefs = request.user_preferences or {}
+    context_prefs = {}
+    if request.context and isinstance(request.context, dict):
+        context_prefs = request.context.get("llm_preferences", {}) or {}
+
+    provider = _first_non_empty(
+        (
+            request.provider,
+            user_prefs.get("preferred_llm_provider"),
+            context_prefs.get("preferred_llm_provider"),
+        )
+    )
+    if provider:
+        hints["provider"] = provider
+
+    model = _first_non_empty(
+        (
+            request.model,
+            user_prefs.get("preferred_model"),
+            context_prefs.get("preferred_model"),
+        )
+    )
+    if model:
+        hints["model"] = model
+
+    temperature = request.temperature
+    if temperature is None:
+        temp_from_prefs = user_prefs.get("temperature") if isinstance(user_prefs, dict) else None
+        if isinstance(temp_from_prefs, (int, float)):
+            temperature = float(temp_from_prefs)
+    if temperature is not None:
+        hints["temperature"] = temperature
+
+    max_tokens = request.max_tokens
+    if max_tokens is None:
+        tokens_from_prefs = user_prefs.get("max_tokens") if isinstance(user_prefs, dict) else None
+        if isinstance(tokens_from_prefs, int) and tokens_from_prefs > 0:
+            max_tokens = tokens_from_prefs
+    if max_tokens is not None:
+        hints["max_tokens"] = max_tokens
+
+    return provider, model, hints
 
 
 # Orchestrator dependency
@@ -231,6 +308,34 @@ async def chat_runtime(
         )
         kire_decision = _routed.get("decision")
 
+        user_provider, user_model, generation_hints = _extract_generation_preferences(request)
+        preferred_provider = user_provider or (
+            getattr(kire_decision, "provider", None) if kire_decision else None
+        )
+        preferred_model = user_model or (
+            getattr(kire_decision, "model", None) if kire_decision else None
+        )
+
+        metadata_payload: Dict[str, Any] = {
+            **(request.context or {}),
+            "platform": request.platform,
+            "request_metadata": request_metadata,
+        }
+        if generation_hints:
+            metadata_payload["requested_generation"] = generation_hints
+        if preferred_provider:
+            metadata_payload["preferred_llm_provider"] = preferred_provider
+        if preferred_model:
+            metadata_payload["preferred_model"] = preferred_model
+        if kire_decision:
+            metadata_payload["kire"] = {
+                "provider": kire_decision.provider,
+                "model": kire_decision.model,
+                "reason": kire_decision.reasoning,
+                "confidence": kire_decision.confidence,
+                "fallback_chain": kire_decision.fallback_chain,
+            }
+
         chat_request = ChatRequest(
             message=request.message,
             user_id=user_context.get("user_id"),
@@ -238,49 +343,39 @@ async def chat_runtime(
             session_id=correlation_id,
             stream=False,
             include_context=True,
-            metadata={
-                **(request.context or {}),
-                "platform": request.platform,
-                "request_metadata": request_metadata,
-                # Hint orchestrator to use the KIRE-selected model first
-                **({
-                    "preferred_llm_provider": kire_decision.provider,
-                    "preferred_model": kire_decision.model,
-                    "kire": {
-                        "provider": kire_decision.provider,
-                        "model": kire_decision.model,
-                        "reason": kire_decision.reasoning,
-                        "confidence": kire_decision.confidence,
-                        "fallback_chain": kire_decision.fallback_chain,
-                    },
-                } if kire_decision else {}),
-            },
+            metadata=metadata_payload,
         )
 
         orchestrator_response = await chat_orchestrator.process_message(chat_request)
 
         latency_ms = (time.time() - start_time) * 1000
 
+        response_metadata: Dict[str, Any] = {
+            "platform": request.platform,
+            "correlation_id": orchestrator_response.correlation_id,
+            "user_id": user_context.get("user_id"),
+            "processing_time": orchestrator_response.processing_time,
+            "latency_ms": latency_ms,
+            **orchestrator_response.metadata,
+        }
+        if generation_hints and "requested_generation" not in response_metadata:
+            response_metadata["requested_generation"] = generation_hints
+        if preferred_provider and "preferred_llm_provider" not in response_metadata:
+            response_metadata["preferred_llm_provider"] = preferred_provider
+        if preferred_model and "preferred_model" not in response_metadata:
+            response_metadata["preferred_model"] = preferred_model
+        if kire_decision:
+            response_metadata.setdefault("kire_metadata", {
+                "provider": kire_decision.provider,
+                "model": kire_decision.model,
+                "reason": kire_decision.reasoning,
+                "confidence": kire_decision.confidence,
+            })
+
         response = ChatRuntimeResponse(
             content=orchestrator_response.response,
             conversation_id=conversation_id,
-            metadata={
-                "platform": request.platform,
-                "correlation_id": orchestrator_response.correlation_id,
-                "user_id": user_context.get("user_id"),
-                "processing_time": orchestrator_response.processing_time,
-                "latency_ms": latency_ms,
-                **orchestrator_response.metadata,
-                # Surface KIRE decision in API response metadata
-                **({
-                    "kire_metadata": {
-                        "provider": kire_decision.provider,
-                        "model": kire_decision.model,
-                        "reason": kire_decision.reasoning,
-                        "confidence": kire_decision.confidence,
-                    }
-                } if kire_decision else {}),
-            },
+            metadata=response_metadata,
         )
 
         logger.info(
@@ -351,6 +446,14 @@ async def chat_runtime_stream(
             )
             kire_decision = _routed.get("decision")
 
+            user_provider, user_model, generation_hints = _extract_generation_preferences(request)
+            preferred_provider = user_provider or (
+                getattr(kire_decision, "provider", None) if kire_decision else None
+            )
+            preferred_model = user_model or (
+                getattr(kire_decision, "model", None) if kire_decision else None
+            )
+
             metadata_event = {
                 "type": "metadata",
                 "data": {
@@ -358,6 +461,12 @@ async def chat_runtime_stream(
                     "correlation_id": correlation_id,
                 },
             }
+            if generation_hints:
+                metadata_event["data"]["requested_generation"] = generation_hints
+            if preferred_provider:
+                metadata_event["data"]["preferred_llm_provider"] = preferred_provider
+            if preferred_model:
+                metadata_event["data"]["preferred_model"] = preferred_model
             if kire_decision:
                 metadata_event["data"]["kire"] = {
                     "provider": getattr(kire_decision, "provider", "unknown"),
@@ -369,6 +478,26 @@ async def chat_runtime_stream(
 
             yield f"data: {json.dumps(metadata_event)}\n\n"
 
+            metadata_payload: Dict[str, Any] = {
+                **(request.context or {}),
+                "platform": request.platform,
+                "request_metadata": request_metadata,
+            }
+            if generation_hints:
+                metadata_payload["requested_generation"] = generation_hints
+            if preferred_provider:
+                metadata_payload["preferred_llm_provider"] = preferred_provider
+            if preferred_model:
+                metadata_payload["preferred_model"] = preferred_model
+            if kire_decision:
+                metadata_payload["kire"] = {
+                    "provider": kire_decision.provider,
+                    "model": kire_decision.model,
+                    "reason": kire_decision.reasoning,
+                    "confidence": kire_decision.confidence,
+                    "fallback_chain": kire_decision.fallback_chain,
+                }
+
             chat_request = ChatRequest(
                 message=request.message,
                 user_id=user_context.get("user_id"),
@@ -376,23 +505,7 @@ async def chat_runtime_stream(
                 session_id=correlation_id,
                 stream=True,
                 include_context=True,
-                metadata={
-                    **(request.context or {}),
-                    "platform": request.platform,
-                    "request_metadata": request_metadata,
-                    # Hint orchestrator to use the KIRE-selected model first
-                    **({
-                        "preferred_llm_provider": kire_decision.provider,
-                        "preferred_model": kire_decision.model,
-                        "kire": {
-                            "provider": kire_decision.provider,
-                            "model": kire_decision.model,
-                            "reason": kire_decision.reasoning,
-                            "confidence": kire_decision.confidence,
-                            "fallback_chain": kire_decision.fallback_chain,
-                        },
-                    } if kire_decision else {}),
-                },
+                metadata=metadata_payload,
             )
 
             stream = await chat_orchestrator.process_message(chat_request)
@@ -420,6 +533,12 @@ async def chat_runtime_stream(
                         "latency_ms": total_latency,
                         "first_token_latency_ms": first_latency,
                     }
+                    if generation_hints and "requested_generation" not in completion_data:
+                        completion_data["requested_generation"] = generation_hints
+                    if preferred_provider and "preferred_llm_provider" not in completion_data:
+                        completion_data["preferred_llm_provider"] = preferred_provider
+                    if preferred_model and "preferred_model" not in completion_data:
+                        completion_data["preferred_model"] = preferred_model
                     yield f"data: {json.dumps({'type': 'complete', 'data': completion_data})}\n\n"
 
             logger.info(
