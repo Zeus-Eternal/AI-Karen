@@ -108,7 +108,11 @@ class SimpleAuthMiddleware:
             "email": user.email,
             "full_name": user.full_name,
             "roles": user.roles,
-            "token_payload": payload
+            "tenant_id": getattr(user, "tenant_id", "default"),
+            "two_factor_enabled": getattr(user, "two_factor_enabled", False),
+            "preferences": getattr(user, "preferences", {}),
+            "is_active": user.is_active,
+            "token_payload": payload,
         }
 
 # Global middleware instance
