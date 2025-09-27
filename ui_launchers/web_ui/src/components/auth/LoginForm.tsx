@@ -19,6 +19,9 @@ interface LoginFormProps {
   onSuccess?: () => void;
 }
 
+const DEV_ADMIN_EMAIL = process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL || 'admin@example.com';
+const DEV_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD || 'adminadmin';
+
 export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const { login, isLoading } = useAuth();
   const [credentials, setCredentials] = useState<LoginCredentials>({
@@ -96,7 +99,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               <Input
                 id="email"
                 type="email"
-                placeholder={process.env.NODE_ENV === 'development' ? "admin@example.com" : "Enter your email"}
+                placeholder={process.env.NODE_ENV === 'development' ? DEV_ADMIN_EMAIL : 'Enter your email'}
                 value={credentials.email}
                 onChange={handleInputChange('email')}
                 disabled={isLoading}
@@ -111,7 +114,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               <Input
                 id="password"
                 type="password"
-                placeholder={process.env.NODE_ENV === 'development' ? "admin" : "Enter your password"}
+                placeholder={process.env.NODE_ENV === 'development' ? DEV_ADMIN_PASSWORD : 'Enter your password'}
                 value={credentials.password}
                 onChange={handleInputChange('password')}
                 disabled={isLoading}
@@ -146,12 +149,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
             {process.env.NODE_ENV === 'development' && !credentials.email && !credentials.password && (
               <Alert>
                 <AlertDescription className="flex items-center justify-between">
-                  <span><strong>Development Mode:</strong> Use admin@example.com / admin or wait for auto-login</span>
+                  <span><strong>Development Mode:</strong> Use {DEV_ADMIN_EMAIL} / {DEV_ADMIN_PASSWORD} or wait for auto-login</span>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setCredentials({ email: 'admin@example.com', password: 'admin', totp_code: '' })}
+                    onClick={() => setCredentials({ email: DEV_ADMIN_EMAIL, password: DEV_ADMIN_PASSWORD, totp_code: '' })}
                     className="ml-2"
                   >
                     Fill

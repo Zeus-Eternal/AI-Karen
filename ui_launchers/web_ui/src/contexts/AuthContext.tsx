@@ -4,6 +4,9 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { login as sessionLogin, logout as sessionLogout, getCurrentUser } from '@/lib/auth/session';
 import { authStateManager, type AuthSnapshot } from './AuthStateManager';
 
+const DEV_ADMIN_EMAIL = process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL || 'admin@example.com';
+const DEV_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD || 'adminadmin';
+
 export interface User {
   user_id: string;
   email: string;
@@ -296,8 +299,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           console.log('Development mode: attempting auto-login');
           await login({
-            email: 'admin@example.com',
-            password: 'admin',
+            email: DEV_ADMIN_EMAIL,
+            password: DEV_ADMIN_PASSWORD,
           });
           console.log('Auto-login successful');
         } catch (error) {
