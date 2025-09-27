@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+import { isDevLoginEnabled, isSimpleAuthEnabled } from '@/lib/auth/env';
 
 const BACKEND_BASES = getBackendCandidates();
 const AUTH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AUTH_PROXY_TIMEOUT_MS || process.env.KAREN_AUTH_PROXY_TIMEOUT_MS || 30000);
+const SIMPLE_AUTH_ENABLED = isSimpleAuthEnabled();
+const DEV_LOGIN_ENABLED = isDevLoginEnabled();
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,44 +44,47 @@ export async function POST(request: NextRequest) {
           lastErr = null;
           // Fallback to simple-auth mount if API path not found
           if (!response.ok && (response.status === 404 || response.status === 405)) {
-            const controller2 = new AbortController();
-            const timeout2 = setTimeout(() => controller2.abort(), AUTH_TIMEOUT_MS);
-            response = await fetch(withBackendPath('/auth/login', base), {
-              method: 'POST',
-              headers,
-              body: JSON.stringify(body),
-              signal: controller2.signal,
-              // @ts-ignore Node/undici hints
-              keepalive: true,
-              cache: 'no-store',
-            });
-            clearTimeout(timeout2);
+            if (SIMPLE_AUTH_ENABLED) {
+              const controller2 = new AbortController();
+              const timeout2 = setTimeout(() => controller2.abort(), AUTH_TIMEOUT_MS);
+              response = await fetch(withBackendPath('/auth/login', base), {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body),
+                signal: controller2.signal,
+                // @ts-ignore Node/undici hints
+                keepalive: true,
+                cache: 'no-store',
+              });
+              clearTimeout(timeout2);
+            } else {
+              console.warn('Login proxy: Simple auth fallback disabled. Skipping /auth/login retry.');
+            }
           }
 
           if (response.ok) break;
 
           // On server errors, try dev-login as final fallback in dev
-          if (!response.ok && response.status >= 500) {
-            const enableDevLogin = process.env.NODE_ENV !== 'production';
-            if (enableDevLogin) {
-              const controller3 = new AbortController();
-              const timeout3 = setTimeout(() => controller3.abort(), AUTH_TIMEOUT_MS);
-              try {
-                const devResp = await fetch(withBackendPath('/api/auth/dev-login', base), {
-                  method: 'POST',
-                  headers,
-                  body: JSON.stringify({}),
-                  signal: controller3.signal,
-                  keepalive: true as any,
-                  cache: 'no-store',
-                });
-                clearTimeout(timeout3);
-                if (devResp.ok) {
-                  response = devResp;
-                  break;
-                }
-              } catch {}
-            }
+          if (!response.ok && response.status >= 500 && DEV_LOGIN_ENABLED) {
+            const controller3 = new AbortController();
+            const timeout3 = setTimeout(() => controller3.abort(), AUTH_TIMEOUT_MS);
+            try {
+              const devResp = await fetch(withBackendPath('/api/auth/dev-login', base), {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({}),
+                signal: controller3.signal,
+                keepalive: true as any,
+                cache: 'no-store',
+              });
+              clearTimeout(timeout3);
+              if (devResp.ok) {
+                response = devResp;
+                break;
+              }
+            } catch {}
+          } else if (!response.ok && response.status >= 500 && !DEV_LOGIN_ENABLED) {
+            console.warn('Login proxy: Dev login fallback disabled.');
           }
 
         } catch (err: any) {
