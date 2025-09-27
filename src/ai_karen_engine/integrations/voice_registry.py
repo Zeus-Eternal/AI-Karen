@@ -17,10 +17,18 @@ class VoiceRegistry(ProviderRegistry):
         self.register_provider(
             "dummy",
             DummyVoiceProvider,
-            description="Example voice provider",
-            models=[ModelInfo(name="dummy-voice")],
+            description="Deterministic offline synthesiser for smoke tests and QA",
+            models=[
+                ModelInfo(
+                    name="sine-demo",
+                    description="Lightweight sine-wave generator",
+                    capabilities=["text-to-speech", "waveform-analysis"],
+                    default_settings={"sample_rate": 16_000},
+                )
+            ],
             requires_api_key=False,
-            default_model="dummy-voice",
+            default_model="sine-demo",
+            category="VOICE",
         )
 
 
