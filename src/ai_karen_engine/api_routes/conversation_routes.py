@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from ai_karen_engine.core.dependencies import (
     get_conversation_service,
     get_current_tenant_id,
+    get_current_user_context,
 )
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.database.conversation_manager import MessageRole
@@ -260,12 +261,16 @@ def _convert_conversation_to_response(conversation) -> ConversationResponse:
 async def create_conversation(
     request: CreateConversationRequest,
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
 ):
     """Create a new conversation with web UI features."""
     try:
+        user_id = user_ctx.get("user_id")
+
         conversation = await conversation_service.create_web_ui_conversation(
-            tenant_id="00000000-0000-0000-0000-000000000001",  # Default tenant UUID
-            user_id="00000000-0000-0000-0000-000000000002",  # Anonymous user UUID
+            tenant_id=tenant_id,
+            user_id=user_id,
             session_id=request.session_id,
             ui_source=request.ui_source,
             title=request.title,
@@ -317,13 +322,16 @@ async def get_conversation(
     conversation_id: str,
     include_context: bool = Query(True, description="Include context data"),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
 ):
     """Get conversation by ID with web UI features."""
     try:
         conversation = await conversation_service.get_web_ui_conversation(
-            tenant_id="00000000-0000-0000-0000-000000000001",
+            tenant_id=tenant_id,
             conversation_id=conversation_id,
             include_context=include_context,
+            user_id=user_ctx.get("user_id"),
         )
 
         if not conversation:
@@ -344,6 +352,56 @@ async def get_conversation(
         raise
     except Exception as e:
         logger.exception("Failed to get conversation", error=str(e))
+        error_response = create_service_error_response(
+            service_name="conversation",
+            error=e,
+            error_code=WebAPIErrorCode.INTERNAL_SERVER_ERROR,
+            user_message="Failed to get conversation. Please try again.",
+        )
+        raise HTTPException(
+            status_code=get_http_status_for_error_code(
+                WebAPIErrorCode.INTERNAL_SERVER_ERROR
+            ),
+            detail=error_response.model_dump(mode="json"),
+        )
+
+
+@router.get("/by-session/{session_id}", response_model=ConversationResponse)
+async def get_conversation_by_session(
+    session_id: str,
+    include_context: bool = Query(True, description="Include context data"),
+    conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
+):
+    """Retrieve a conversation using its session identifier."""
+
+    try:
+        conversation = await conversation_service.get_web_ui_conversation_by_session(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            user_id=user_ctx.get("user_id"),
+            include_context=include_context,
+        )
+
+        if not conversation:
+            error_response = create_generic_error_response(
+                error_code=WebAPIErrorCode.NOT_FOUND,
+                message="Conversation not found",
+                user_message="The requested conversation could not be found.",
+                details={"session_id": session_id},
+            )
+            raise HTTPException(
+                status_code=get_http_status_for_error_code(WebAPIErrorCode.NOT_FOUND),
+                detail=error_response.model_dump(mode="json"),
+            )
+
+        return _convert_conversation_to_response(conversation)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to get conversation by session", error=str(e))
         error_response = create_service_error_response(
             service_name="conversation",
             error=e,
@@ -613,12 +671,14 @@ async def list_conversations(
     limit: int = Query(50, ge=1, le=100, description="Maximum number of conversations"),
     offset: int = Query(0, ge=0, description="Number of conversations to skip"),
     conversation_service: WebUIConversationService = Depends(get_conversation_service),
+    tenant_id: str = Depends(get_current_tenant_id),
+    user_ctx: Dict[str, Any] = Depends(get_current_user_context),
 ):
     """List conversations for current user."""
     try:
         conversations = await conversation_service.base_manager.list_conversations(
-            tenant_id="00000000-0000-0000-0000-000000000001",
-            user_id="00000000-0000-0000-0000-000000000002",
+            tenant_id=tenant_id,
+            user_id=user_ctx.get("user_id"),
             active_only=active_only,
             limit=limit,
             offset=offset,

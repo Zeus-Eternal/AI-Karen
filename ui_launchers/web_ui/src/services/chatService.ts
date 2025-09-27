@@ -15,6 +15,7 @@ import type {
 } from '@/lib/types';
 
 export interface ConversationSession {
+  conversationId: string;
   sessionId: string;
   userId: string;
   createdAt: Date;
@@ -127,10 +128,11 @@ export class ChatService {
         return this.cache.get(sessionId)!;
       }
 
-      const response = await this.apiClient.get(`/api/conversations/${sessionId}`);
+      const response = await this.apiClient.get(`/api/conversations/by-session/${sessionId}`);
 
       const data = response.data;
       const session: ConversationSession = {
+        conversationId: data.id,
         sessionId: data.session_id,
         userId: data.user_id,
         createdAt: new Date(data.created_at),
@@ -168,16 +170,24 @@ export class ChatService {
     }
   }
 
-  async getUserConversations(userId: string): Promise<ConversationSession[]> {
+  async getUserConversations(_userId: string): Promise<ConversationSession[]> {
     try {
-      const response = await this.apiClient.get(`/api/conversations/user/${userId}`);
+      const response = await this.apiClient.get('/api/conversations');
 
       return response.data.conversations.map((conv: any) => ({
+        conversationId: conv.id,
         sessionId: conv.session_id,
         userId: conv.user_id,
         createdAt: new Date(conv.created_at),
         updatedAt: new Date(conv.updated_at),
-        messages: [],
+        messages: (conv.messages || []).map((msg: any) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(msg.timestamp),
+          aiData: msg.metadata?.ai_data,
+          shouldAutoPlay: msg.metadata?.should_auto_play,
+        })),
         context: conv.metadata || {},
         summary: conv.summary,
       }));
