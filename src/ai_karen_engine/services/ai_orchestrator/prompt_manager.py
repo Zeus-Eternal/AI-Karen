@@ -13,6 +13,31 @@ class PromptManager:
         for name in self._templates:
             self.logger.info(f"Registered prompt template: {name}")
     
+    @staticmethod
+    def _sanitize_for_format(value: Any) -> Any:
+        """Prepare values for safe formatting by escaping curly braces."""
+
+        if isinstance(value, str):
+            return value.replace("{", "{{").replace("}", "}}")
+        return value
+
+    def _format_template(self, template_str: str, variables: Dict[str, Any]) -> str:
+        """Format a template string with sanitization and graceful fallback."""
+
+        sanitized = {
+            key: self._sanitize_for_format(value)
+            for key, value in variables.items()
+        }
+
+        try:
+            formatted = template_str.format(**sanitized)
+        except KeyError as exc:
+            missing = exc.args[0]
+            self.logger.error(f"Missing template variable: {missing}")
+            raise
+
+        return formatted.replace("{{", "{").replace("}}", "}")
+
     def _load_default_templates(self) -> Dict[str, Dict[str, Any]]:
         """Load default prompt templates. For production, this should load from a config file."""
         return {
@@ -86,13 +111,16 @@ Analyze the user's intent and decide if any tools are needed. If tools are requi
         # Build custom instructions
         custom_instructions = ""
         if custom_persona_instructions:
-            custom_instructions = f"**Custom Instructions:** {custom_persona_instructions}"
+            custom_instructions = "**Custom Instructions:** " + custom_persona_instructions
         
         # Format the system prompt
         try:
-            system_prompt = template["system_prompt"].format(
-                personality_instructions=personality_instructions,
-                custom_instructions=custom_instructions
+            system_prompt = self._format_template(
+                template["system_prompt"],
+                {
+                    "personality_instructions": personality_instructions,
+                    "custom_instructions": custom_instructions,
+                },
             )
             return system_prompt
         except KeyError as e:
@@ -154,8 +182,56 @@ Analyze the user's intent and decide if any tools are needed. If tools are requi
                         "available_tools": "No tools available"
                     }
                     formatted_kwargs[var] = defaults.get(var, "")
-            
-            return template["user_template"].format(**formatted_kwargs)
+
+            return self._format_template(template["user_template"], formatted_kwargs)
         except KeyError as e:
             self.logger.error(f"Missing template variable: {e}")
             return kwargs.get("prompt", "")
+
+    def register_template(self, name: str, template: Dict[str, Any]) -> None:
+        """Register a new prompt template after validation."""
+
+        if not self.validate_template(template):
+            raise ValueError(f"Invalid template structure for '{name}'")
+
+        self._templates[name] = template
+        self.logger.info(f"Registered prompt template: {name}")
+
+    def validate_template(self, template: Dict[str, Any]) -> bool:
+        """Validate that a template contains the required fields."""
+
+        required_fields = {"system_prompt", "user_template", "variables"}
+        if not required_fields.issubset(template):
+            return False
+
+        if not isinstance(template["variables"], list):
+            return False
+
+        if not isinstance(template["system_prompt"], str):
+            return False
+
+        if not isinstance(template["user_template"], str):
+            return False
+
+        return True
+
+    def render_prompt(self, template_name: str, variables: Dict[str, Any]) -> Dict[str, str]:
+        """Render both system and user prompts for a given template."""
+
+        template = self.get_template(template_name)
+        if not template:
+            raise ValueError(f"Template '{template_name}' not found")
+
+        template_vars = template.get("variables", [])
+        formatted_variables = {
+            var: variables.get(var, "") for var in template_vars
+        }
+
+        return {
+            "system_prompt": self._format_template(
+                template["system_prompt"], formatted_variables
+            ),
+            "user_prompt": self._format_template(
+                template["user_template"], formatted_variables
+            ),
+        }
