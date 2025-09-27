@@ -8,6 +8,11 @@
  */
 
 import { getApiClient } from '@/lib/api-client';
+import { isDevLoginEnabled, isProductionEnvironment, isSimpleAuthEnabled } from '@/lib/auth/env';
+
+const SIMPLE_AUTH_ENABLED = isSimpleAuthEnabled();
+const DEV_LOGIN_ENABLED = isDevLoginEnabled();
+const IS_PRODUCTION = isProductionEnvironment();
 
 // Types for session management
 export interface SessionData {
@@ -396,7 +401,10 @@ export async function login(email: string, password: string, totpCode?: string):
       NODE_ENV: process.env.NODE_ENV,
       NEXT_PUBLIC_AUTH_DIRECT_FIRST: process.env.NEXT_PUBLIC_AUTH_DIRECT_FIRST,
       NEXT_PUBLIC_KAREN_BACKEND_URL: process.env.NEXT_PUBLIC_KAREN_BACKEND_URL,
-      NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL
+      NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
+      SIMPLE_AUTH_ENABLED,
+      DEV_LOGIN_ENABLED,
+      IS_PRODUCTION,
     });
 
     const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs: number): Promise<Response> => {
@@ -464,8 +472,12 @@ export async function login(email: string, password: string, totpCode?: string):
       if (DIRECT_FIRST) {
         // Try backend simple-auth mount (/auth/login) for 404/405, otherwise try proxy
         if (response && (status === 404 || status === 405)) {
-          console.warn(`🔐 Auth Session: Backend /api/auth/login returned ${status}. Trying /auth/login on backend...`);
-          response = await attemptLogin(`${DIRECT_BACKEND}/auth/login`);
+          if (SIMPLE_AUTH_ENABLED) {
+            console.warn(`🔐 Auth Session: Backend /api/auth/login returned ${status}. Trying /auth/login on backend...`);
+            response = await attemptLogin(`${DIRECT_BACKEND}/auth/login`);
+          } else {
+            console.warn('🔐 Auth Session: Backend fallback to /auth/login disabled. Skipping simple auth endpoint.');
+          }
         }
         if (!response || !response.ok) {
           console.warn(`🔐 Auth Session: Backend login failed (${status ?? 'no-response'}). Trying Next.js API route...`);
@@ -490,14 +502,20 @@ export async function login(email: string, password: string, totpCode?: string):
 
       // Try simplified login route in all cases if not OK yet
       if (!response || !response.ok) {
-        console.warn(`🔐 Auth Session: Primary login failed (${status ?? 'no-response'} ${errorText || ''}). Trying /api/auth/login-simple ...`);
-        response = await attemptLogin('/api/auth/login-simple');
+        if (SIMPLE_AUTH_ENABLED) {
+          console.warn(`🔐 Auth Session: Primary login failed (${status ?? 'no-response'} ${errorText || ''}). Trying /api/auth/login-simple ...`);
+          response = await attemptLogin('/api/auth/login-simple');
+        } else {
+          console.warn('🔐 Auth Session: Simple auth fallback disabled. Skipping /api/auth/login-simple retry.');
+        }
       }
 
       // Dev-only final fallback
-      if ((!response || !response.ok) && (process.env.NODE_ENV !== 'production') && (process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === 'true')) {
+      if ((!response || !response.ok) && DEV_LOGIN_ENABLED) {
         console.warn(`🔐 Auth Session: Simplified login failed (${response ? response.status : 'no-response'}). Trying /api/dev-login ...`);
         response = await attemptLogin('/api/dev-login');
+      } else if (!response || !response.ok) {
+        console.warn('🔐 Auth Session: Dev login fallback disabled. Skipping /api/dev-login retry.');
       }
 
       if (!response || !response.ok) {
