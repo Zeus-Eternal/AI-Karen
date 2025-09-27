@@ -1240,9 +1240,9 @@ class WebUIConversationService:
                 # Base query conditions
                 query_conditions = []
                 if user_id:
-                query_conditions.append(
-                    TenantConversation.user_id == normalize_user_id(user_id)
-                )
+                    query_conditions.append(
+                        TenantConversation.user_id == normalize_user_id(user_id)
+                    )
                 if time_range:
                     query_conditions.append(TenantConversation.created_at >= time_range[0])
                     query_conditions.append(TenantConversation.created_at <= time_range[1])

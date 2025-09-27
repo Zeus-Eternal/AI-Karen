@@ -170,7 +170,11 @@ class LazyService(Generic[ServiceType]):
         try:
             yield
         finally:
-            self._lock.release()
+            try:
+                self._lock.release()
+            except RuntimeError:
+                # Lock may already be released if initialization raised.
+                pass
     
     @property
     def is_initialized(self) -> bool:
@@ -400,10 +404,18 @@ def create_nlp_service_factory():
 
 def create_ai_orchestrator_factory():
     """Factory for AI orchestrator service."""
+
     def factory():
-        from ai_orchestrator.service import AIOrchestrator
-        service = AIOrchestrator()
+        from ai_karen_engine.core.services.base import ServiceConfig
+        from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
+            AIOrchestrator,
+        )
+
+        service = AIOrchestrator(
+            ServiceConfig(name="ai_orchestrator", dependencies=[], config={})
+        )
         return service
+
     return factory
 
 
@@ -496,8 +508,14 @@ class LazyServiceManager:
             from ai_karen_engine.services.nlp_service_manager import NLPServiceManager
             return NLPServiceManager()
         elif name == "ai_orchestrator":
-            from ai_orchestrator.service import AIOrchestrator
-            return AIOrchestrator()
+            from ai_karen_engine.core.services.base import ServiceConfig
+            from ai_karen_engine.services.ai_orchestrator.ai_orchestrator import (
+                AIOrchestrator,
+            )
+
+            return AIOrchestrator(
+                ServiceConfig(name="ai_orchestrator", dependencies=[], config={})
+            )
         elif name == "analytics_service":
             from ai_karen_engine.services.analytics_service import AnalyticsService
             return AnalyticsService()
