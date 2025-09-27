@@ -22,6 +22,7 @@ from ai_karen_engine.database.conversation_manager import (
     Conversation,
     Message,
     MessageRole,
+    normalize_user_id,
 )
 from ai_karen_engine.database.models import TenantConversation
 from ai_karen_engine.services.memory_service import (
@@ -586,7 +587,8 @@ class WebUIConversationService:
         self,
         tenant_id: Union[str, uuid.UUID],
         conversation_id: str,
-        include_context: bool = True
+        include_context: bool = True,
+        user_id: Optional[str] = None,
     ) -> Optional[WebUIConversation]:
         """Get conversation with web UI features."""
         try:
@@ -594,13 +596,24 @@ class WebUIConversationService:
             base_conversation = await self.base_manager.get_conversation(
                 tenant_id, conversation_id, include_context=False
             )
-            
+
             if not base_conversation:
                 return None
-            
+
+            # Enforce ownership when requested
+            if user_id:
+                expected_user_id = str(normalize_user_id(user_id))
+                if str(base_conversation.user_id) != expected_user_id:
+                    logger.warning(
+                        "User %s attempted to access conversation %s they do not own",
+                        user_id,
+                        conversation_id,
+                    )
+                    return None
+
             # Get web UI specific data
             web_ui_data = await self._get_web_ui_conversation_data(tenant_id, conversation_id)
-            
+
             # Convert to WebUIConversation
             web_ui_conversation = await self._convert_to_web_ui_conversation(
                 base_conversation,
@@ -618,9 +631,48 @@ class WebUIConversationService:
                 await self._add_web_ui_context(tenant_id, web_ui_conversation)
             
             return web_ui_conversation
-            
+
         except Exception as e:
             logger.error(f"Failed to get web UI conversation: {e}")
+            return None
+
+    async def get_web_ui_conversation_by_session(
+        self,
+        tenant_id: Union[str, uuid.UUID],
+        session_id: str,
+        user_id: Optional[str] = None,
+        include_context: bool = True,
+    ) -> Optional[WebUIConversation]:
+        """Lookup a conversation using its tracked session identifier."""
+
+        try:
+            async with self.db_client.get_async_session() as session:
+                query = select(TenantConversation).where(
+                    TenantConversation.session_id == session_id
+                )
+
+                if user_id:
+                    query = query.where(
+                        TenantConversation.user_id == normalize_user_id(user_id)
+                    )
+
+                result = await session.execute(query)
+                db_conversation = result.scalar_one_or_none()
+
+            if not db_conversation:
+                return None
+
+            return await self.get_web_ui_conversation(
+                tenant_id,
+                str(db_conversation.id),
+                include_context=include_context,
+                user_id=user_id,
+            )
+
+        except Exception as e:
+            logger.error(
+                "Failed to get conversation by session %s: %s", session_id, e
+            )
             return None
     
     async def add_web_ui_message(
@@ -804,12 +856,16 @@ class WebUIConversationService:
             # Update database with session tracking
             async with self.db_client.get_async_session() as session:
                 # Update all conversations for this session with session tracking data
+                normalized_user_id = normalize_user_id(user_id)
+
                 await session.execute(
                     update(TenantConversation)
-                    .where(and_(
-                        TenantConversation.session_id == session_id,
-                        TenantConversation.user_id == uuid.UUID(user_id)
-                    ))
+                    .where(
+                        and_(
+                            TenantConversation.session_id == session_id,
+                            TenantConversation.user_id == normalized_user_id,
+                        )
+                    )
                     .values(
                         ui_context=func.jsonb_set(
                             TenantConversation.ui_context,
@@ -1184,7 +1240,9 @@ class WebUIConversationService:
                 # Base query conditions
                 query_conditions = []
                 if user_id:
-                    query_conditions.append(TenantConversation.user_id == uuid.UUID(user_id))
+                query_conditions.append(
+                    TenantConversation.user_id == normalize_user_id(user_id)
+                )
                 if time_range:
                     query_conditions.append(TenantConversation.created_at >= time_range[0])
                     query_conditions.append(TenantConversation.created_at <= time_range[1])
