@@ -16,6 +16,10 @@ logger = logging.getLogger("kari")
 
 def register_debug_endpoints(app: FastAPI, settings: Settings) -> None:
     """Register all debug and development endpoints"""
+
+    if settings.environment.lower() == "production" or not getattr(settings, "debug", False):
+        logger.info("Skipping debug endpoints in production or when debug mode is disabled")
+        return
     
     @app.get("/api/system/dev-warnings", tags=["system"])
     async def get_dev_warnings():

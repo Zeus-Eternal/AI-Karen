@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     prometheus_enabled: bool = True
     https_redirect: bool = False
     rate_limit: str = "300/minute"
-    debug: bool = True
+    debug: bool = Field(default=False, env="KARI_DEBUG_MODE")
     plugin_dir: str = "/app/plugins"
     llm_refresh_interval: int = 3600
     
