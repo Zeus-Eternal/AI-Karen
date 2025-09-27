@@ -8,6 +8,7 @@ import { getConfigManager } from "@/lib/endpoint-config";
 import { sanitizeInput } from "@/lib/utils";
 import { safeError, safeWarn, safeInfo, safeDebug } from "@/lib/safe-console";
 import { generateUUID } from "@/lib/uuid";
+import type { ChatRuntimeRequest as BackendChatRuntimeRequest } from "@/types/chat";
 import { ChatMessage, ChatSettings, CopilotArtifact } from "../types";
 
 export const useChatMessages = (
@@ -31,15 +32,6 @@ export const useChatMessages = (
   const { toast } = useToast();
   const configManager = getConfigManager();
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Runtime URL configuration with CopilotKit support
-  const runtimeUrl = useCallback(() => {
-    const baseUrl = configManager.getBackendUrl();
-    const endpoint = useCopilotKit
-      ? "/copilot/assist"
-      : "/api/ai-orchestrator/conversation-processing";
-    return `${baseUrl.replace(/\/+$/, "")}${endpoint}`;
-  }, [configManager, useCopilotKit]);
 
   // Core message sending logic with full streaming support
   const sendMessage = useCallback(
@@ -123,13 +115,23 @@ export const useChatMessages = (
 
         setMessages((prev) => [...prev, placeholder]);
 
+        const baseUrl = configManager.getBackendUrl();
+        const trimmedBaseUrl = baseUrl.replace(/\/+$/, "");
+        const joinBackendPath = (path: string) => (trimmedBaseUrl ? `${trimmedBaseUrl}${path}` : path);
+
+        const streamingEnabled = !!settings.enableStreaming;
+        const chatRuntimePath = streamingEnabled ? "/api/chat/runtime/stream" : "/api/chat/runtime";
+        const fallbackPath = useCopilotKit ? "/copilot/assist" : "/api/ai/conversation-processing";
+        const chatRuntimeUrl = joinBackendPath(chatRuntimePath);
+        const fallbackUrl = joinBackendPath(fallbackPath);
+        let activeEndpoint = chatRuntimeUrl;
+
         try {
           const controller = new AbortController();
           abortControllerRef.current = controller;
           const startTime = performance.now();
 
-          // Prepare request payload based on endpoint
-          // Derive preferred provider/model
+          // Derive preferred provider/model for routing hints
           let selectedProvider: string | undefined;
           let selectedModelOnly: string | undefined;
           if (settings.model.includes(":")) {
@@ -138,9 +140,69 @@ export const useChatMessages = (
             selectedModelOnly = rest.join(":");
           }
 
-          const payload = useCopilotKit
+          const originalContext = options.context;
+          const { tools: contextTools, ...contextWithoutTools } = originalContext || {};
+          const normalizedTools = Array.isArray(contextTools)
+            ? contextTools.filter((tool): tool is string => typeof tool === 'string')
+            : undefined;
+
+          const llmPreferences = {
+            preferred_llm_provider: selectedProvider,
+            preferred_model: selectedModelOnly || settings.model,
+          };
+
+          const runtimeContext: Record<string, any> = {
+            type,
+            language: options.language || settings.language,
+            session_id: sessionId,
+            conversation_id: conversationId,
+            user_id: user?.user_id,
+            platform: "web",
+            enable_analysis: options.enableAnalysis || enableCodeAssistance,
+            conversation_history: messages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+            user_settings: {
+              model: settings.model,
+              temperature: settings.temperature,
+              max_tokens: settings.maxTokens,
+              language: settings.language,
+              enable_suggestions: settings.enableSuggestions,
+            },
+            llm_preferences: llmPreferences,
+            copilot_features: {
+              code_assistance: enableCodeAssistance,
+              contextual_help: enableContextualHelp,
+              doc_generation: enableDocGeneration,
+            },
+            ...contextWithoutTools,
+          };
+
+          const chatRuntimePayload: BackendChatRuntimeRequest = {
+            message: sanitizedContent,
+            conversation_id: conversationId || undefined,
+            stream: streamingEnabled,
+            context: runtimeContext,
+            tools: normalizedTools,
+            memory_context: sessionId || conversationId || undefined,
+            user_preferences: {
+              model: settings.model,
+              temperature: settings.temperature,
+              max_tokens: settings.maxTokens,
+              enable_suggestions: settings.enableSuggestions,
+              ...llmPreferences,
+            },
+            platform: "web",
+            model: settings.model,
+            provider: selectedProvider,
+            temperature: settings.temperature,
+            max_tokens: settings.maxTokens,
+          };
+
+          const legacyPayload = useCopilotKit
             ? {
-                // CopilotKit payload format
+                // CopilotKit payload format (fallback)
                 message: sanitizedContent,
                 session_id: sessionId,
                 conversation_id: conversationId,
@@ -150,7 +212,7 @@ export const useChatMessages = (
                 max_tokens: settings.maxTokens,
                 type,
                 language: options.language || settings.language,
-                context: options.context,
+                context: originalContext,
                 user_id: user?.user_id,
                 enable_analysis: options.enableAnalysis || enableCodeAssistance,
                 enable_suggestions: settings.enableSuggestions,
@@ -159,14 +221,10 @@ export const useChatMessages = (
                   contextual_help: enableContextualHelp,
                   doc_generation: enableDocGeneration,
                 },
-                // Provide explicit LLM preferences for routers that support them
-                llm_preferences: {
-                  preferred_llm_provider: selectedProvider,
-                  preferred_model: selectedModelOnly || settings.model,
-                },
+                llm_preferences: llmPreferences,
               }
             : {
-                // AI Orchestrator payload format
+                // AI Orchestrator payload format (fallback)
                 prompt: sanitizedContent,
                 conversation_history: messages.map((m) => ({
                   role: m.role,
@@ -187,15 +245,12 @@ export const useChatMessages = (
                   user_id: user?.user_id,
                   platform: "web",
                   enable_analysis: options.enableAnalysis || enableCodeAssistance,
-                  ...options.context,
+                  ...originalContext,
                 },
                 session_id: sessionId,
                 include_memories: true,
                 include_insights: true,
-                llm_preferences: {
-                  preferred_llm_provider: selectedProvider,
-                  preferred_model: selectedModelOnly || settings.model,
-                },
+                llm_preferences: llmPreferences,
               };
 
           // Get authentication headers
@@ -204,6 +259,9 @@ export const useChatMessages = (
             sessionStorage.getItem("kari_session_token");
           const headers = {
             "Content-Type": "application/json",
+            Accept: streamingEnabled
+              ? "text/event-stream, application/json"
+              : "application/json",
             ...(authToken && { Authorization: `Bearer ${authToken}` }),
             ...(user?.user_id && { "X-User-ID": user.user_id }),
             "X-Session-ID": sessionId || "",
@@ -211,55 +269,89 @@ export const useChatMessages = (
           };
 
           // Debug logging to diagnose connection issues
-          safeInfo("🔍 useChatMessages: Sending chat request to:", runtimeUrl());
-          safeDebug("🔍 useChatMessages: Request payload:", {
-            model: payload.model,
-            session_id: payload.session_id,
-            conversation_id: payload.conversation_id,
-            stream: payload.stream,
+          safeInfo("🔍 useChatMessages: Preparing chat runtime request", {
+            primary: chatRuntimeUrl,
+            fallback: fallbackUrl,
+            streaming: streamingEnabled,
+          });
+          safeDebug("🔍 useChatMessages: Primary payload preview", {
+            model: chatRuntimePayload.model,
+            provider: chatRuntimePayload.provider,
+            conversation_id: chatRuntimePayload.conversation_id,
+            stream: chatRuntimePayload.stream,
           });
 
-          const response = await fetch(runtimeUrl(), {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-            signal: controller.signal,
-          });
+          const executeRequest = async (url: string, body: any) =>
+            fetch(url, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(body),
+              signal: controller.signal,
+            });
+
+          let response: Response;
+          let responseOrigin: "chat-runtime" | "copilot" | "ai-orchestrator" = "chat-runtime";
+
+          try {
+            response = await executeRequest(chatRuntimeUrl, chatRuntimePayload);
+            if (!response.ok) {
+              const errorText = await response.text().catch(() => "");
+              const error = new Error(
+                `Chat runtime HTTP ${response.status}: ${response.statusText}${
+                  errorText ? ` - ${errorText}` : ""
+                }`
+              );
+              (error as any).status = response.status;
+              (error as any).statusText = response.statusText;
+              (error as any).endpoint = chatRuntimeUrl;
+              throw error;
+            }
+            responseOrigin = "chat-runtime";
+          } catch (primaryError) {
+            safeWarn("🔍 useChatMessages: Chat runtime request failed, attempting fallback", {
+              endpoint: chatRuntimeUrl,
+              error:
+                primaryError instanceof Error
+                  ? primaryError.message
+                  : String(primaryError),
+            });
+
+            activeEndpoint = fallbackUrl;
+            try {
+              response = await executeRequest(fallbackUrl, legacyPayload);
+            } catch (fallbackNetworkError) {
+              throw fallbackNetworkError;
+            }
+
+            if (!response.ok) {
+              const fallbackBody = await response.text().catch(() => "");
+              safeError("🔍 useChatMessages: Fallback request failed", {
+                status: response.status,
+                statusText: response.statusText,
+                endpoint: fallbackUrl,
+                body: fallbackBody,
+              });
+              throw new Error(
+                `HTTP ${response.status}: ${response.statusText}${
+                  fallbackBody ? ` - ${fallbackBody}` : ""
+                }`
+              );
+            }
+
+            responseOrigin = useCopilotKit ? "copilot" : "ai-orchestrator";
+          }
 
           // Enhanced diagnostic logging for response
-          safeDebug("🔍 useChatMessages: Response received:", {
+          safeDebug("🔍 useChatMessages: Response received", {
             status: response.status,
             statusText: response.statusText,
-            url: response.url,
+            url: response.url || activeEndpoint,
             ok: response.ok,
             headers: Object.fromEntries(response.headers.entries()),
             contentType: response.headers.get("content-type"),
             timestamp: new Date().toISOString(),
+            origin: responseOrigin,
           });
-
-          if (!response.ok) {
-            let errorDetails = "";
-            try {
-              const errorText = await response.text();
-              errorDetails = errorText;
-              safeError(
-                "🔍 useChatMessages: Error response body:",
-                Object.assign(
-                  new Error(
-                    `Status ${response.status} ${response.statusText}: ${errorText}`
-                  ),
-                  { status: response.status, statusText: response.statusText }
-                ),
-              );
-            } catch (e) {
-              safeError("🔍 useChatMessages: Could not read error response:", e);
-            }
-            throw new Error(
-              `HTTP ${response.status}: ${response.statusText}${
-                errorDetails ? ` - ${errorDetails}` : ""
-              }`
-            );
-          }
 
           if (!response.body) {
             safeError("🔍 useChatMessages: No response body received");
@@ -330,7 +422,15 @@ export const useChatMessages = (
                     if (usage.total_tokens || (usage.prompt_tokens && usage.completion_tokens)) {
                       metaUpdate.tokens = usage.total_tokens || (usage.prompt_tokens + usage.completion_tokens);
                     }
+                    if (typeof metaUpdate.total_tokens === "number" && metaUpdate.tokens === undefined) {
+                      metaUpdate.tokens = metaUpdate.total_tokens;
+                    }
+                    if (typeof (metaUpdate as any).totalTokens === "number" && metaUpdate.tokens === undefined) {
+                      metaUpdate.tokens = (metaUpdate as any).totalTokens;
+                    }
                     if (json.cost !== undefined) metaUpdate.cost = json.cost;
+                    if (metaUpdate.origin === undefined) metaUpdate.origin = responseOrigin;
+                    if (metaUpdate.endpoint === undefined) metaUpdate.endpoint = activeEndpoint;
                     metadata = { ...metadata, ...metaUpdate };
                   }
 
@@ -361,7 +461,7 @@ export const useChatMessages = (
                     }
                   }
 
-                  if (json.done === true || json.event === "done") {
+                  if (json.done === true || json.event === "done" || json.type === "complete") {
                     streamDone = true;
                   }
                 } catch (e) {
@@ -411,7 +511,15 @@ export const useChatMessages = (
                   if (usage.total_tokens || (usage.prompt_tokens && usage.completion_tokens)) {
                     metaUpdate.tokens = usage.total_tokens || (usage.prompt_tokens + usage.completion_tokens);
                   }
+                  if (typeof metaUpdate.total_tokens === "number" && metaUpdate.tokens === undefined) {
+                    metaUpdate.tokens = metaUpdate.total_tokens;
+                  }
+                  if (typeof (metaUpdate as any).totalTokens === "number" && metaUpdate.tokens === undefined) {
+                    metaUpdate.tokens = (metaUpdate as any).totalTokens;
+                  }
                   if (json.cost !== undefined) metaUpdate.cost = json.cost;
+                  if (metaUpdate.origin === undefined) metaUpdate.origin = responseOrigin;
+                  if (metaUpdate.endpoint === undefined) metaUpdate.endpoint = activeEndpoint;
                   metadata = { ...metadata, ...metaUpdate };
                 }
               } catch {
@@ -454,6 +562,12 @@ export const useChatMessages = (
             }
           }
 
+          metadata = {
+            ...metadata,
+            origin: metadata?.origin ?? responseOrigin,
+            endpoint: metadata?.endpoint ?? activeEndpoint,
+          };
+
           // Calculate final metrics
           const latency = Math.round(performance.now() - startTime);
 
@@ -483,6 +597,8 @@ export const useChatMessages = (
                 (metadata && (metadata as any).tokens) ||
                 Math.ceil(fullText.length / 4),
               cost: metadata.cost || 0,
+              origin: metadata.origin ?? responseOrigin,
+              endpoint: metadata.endpoint ?? activeEndpoint,
             },
           };
 
@@ -553,7 +669,9 @@ export const useChatMessages = (
               sessionId,
               conversationId,
               userId: user?.user_id,
-              runtimeUrl: runtimeUrl(),
+              endpoint: activeEndpoint,
+              primaryEndpoint: chatRuntimeUrl,
+              fallbackEndpoint: fallbackUrl,
               messageType: type,
             }
           };
@@ -646,7 +764,6 @@ export const useChatMessages = (
       triggerHooks,
       onMessageSent,
       onMessageReceived,
-      runtimeUrl,
       useCopilotKit,
       enableCodeAssistance,
       enableContextualHelp,

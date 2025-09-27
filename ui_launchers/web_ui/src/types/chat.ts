@@ -61,21 +61,24 @@ export interface CreateConversationRequest {
 export interface ChatRuntimeRequest {
   message: string;
   conversation_id?: string;
+  stream?: boolean;
+  context?: Record<string, any>;
+  tools?: string[];
+  memory_context?: string;
+  user_preferences?: Record<string, any>;
+  platform?: string;
+  /** Optional hints for routing/model selection */
   model?: string;
   provider?: string;
   temperature?: number;
   max_tokens?: number;
-  stream?: boolean;
-  context?: Record<string, any>;
 }
 
 export interface ChatRuntimeResponse {
-  response: string;
-  conversation_id: string;
-  message_id: string;
-  model_used: string;
-  provider_used: string;
-  tokens_used?: number;
-  processing_time_ms?: number;
+  content: string;
+  conversation_id?: string;
   metadata?: Record<string, any>;
+  tool_calls?: Array<Record<string, any>>;
+  memory_operations?: Array<Record<string, any>>;
+  timestamp?: string;
 }
