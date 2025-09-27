@@ -6,9 +6,9 @@ Creates and configures the FastAPI app with all components.
 
 import os
 import logging
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, Response
-from fastapi.responses import JSONResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
 # Import all modular components
@@ -315,109 +315,31 @@ def create_app() -> FastAPI:
     # Add degraded mode status endpoint
     @app.get("/api/health/degraded-mode", tags=["system"])
     async def degraded_mode_status():
-        """Check if system is running in degraded mode"""
+        """Compatibility proxy that forwards to the canonical health router."""
+
         try:
-            from datetime import datetime, timezone
-            from pathlib import Path
-            
-            # Check various system components for degraded mode
-            degraded_components = []
-            
-            # Check database
-            try:
-                from ai_karen_engine.services.database_connection_manager import get_database_manager
-                db_manager = get_database_manager()
-                if db_manager.is_degraded():
-                    degraded_components.append("database")
-            except Exception:
-                degraded_components.append("database")
-            
-            # Check Redis
-            try:
-                from ai_karen_engine.services.redis_connection_manager import get_redis_manager
-                redis_manager = get_redis_manager()
-                if redis_manager.is_degraded():
-                    degraded_components.append("redis")
-            except Exception:
-                degraded_components.append("redis")
-            
-            # Check AI providers - but consider local models as available
-            failed_providers = []
-            try:
-                from ai_karen_engine.services.provider_registry import get_provider_registry_service
-                provider_service = get_provider_registry_service()
-                system_status = provider_service.get_system_status()
-                
-                # Check if we have local models available
-                models_dir = Path("models")
-                tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
-                
-                # Check spaCy availability
-                spacy_available = False
-                try:
-                    import spacy
-                    nlp = spacy.load("en_core_web_sm")
-                    spacy_available = True
-                except:
-                    pass
-                
-                # Only consider degraded if NO providers AND NO local models
-                if system_status["available_providers"] == 0 and not (tinyllama_available or spacy_available):
-                    degraded_components.append("ai_providers")
-                    failed_providers = system_status.get("failed_providers", [])
-                elif system_status["available_providers"] == 0:
-                    # We have local models, so just note the failed remote providers
-                    failed_providers = system_status.get("failed_providers", [])
-                    
-            except Exception:
-                # Check if local models are available as fallback
-                try:
-                    models_dir = Path("models")
-                    tinyllama_available = (models_dir / "llama-cpp" / "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf").exists()
-                    
-                    import spacy
-                    nlp = spacy.load("en_core_web_sm")
-                    spacy_available = True
-                    
-                    # Only degraded if no local models
-                    if not (tinyllama_available or spacy_available):
-                        degraded_components.append("ai_providers")
-                        failed_providers = ["unknown"]
-                except:
-                    degraded_components.append("ai_providers")
-                    failed_providers = ["unknown"]
-            
-            is_degraded = len(degraded_components) > 0
-            
-            # Determine degraded mode reason
-            reason = None
-            if is_degraded:
-                if "ai_providers" in degraded_components and "database" in degraded_components:
-                    reason = "all_providers_failed"
-                elif "database" in degraded_components:
-                    reason = "network_issues"
-                elif "ai_providers" in degraded_components:
-                    reason = "all_providers_failed"
-                else:
-                    reason = "resource_exhaustion"
-            
-            return {
-                "degraded_mode": is_degraded,
-                "reason": reason,
-                "degraded_components": degraded_components,
-                "failed_providers": failed_providers,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "fallback_systems_active": True
-            }
-            
-        except Exception as e:
-            from datetime import datetime, timezone
+            from ai_karen_engine.api_routes.health import (
+                degraded_mode_status_compat,
+            )
+
+            payload = await degraded_mode_status_compat()
+            return payload
+        except Exception as exc:
+            logger.warning("Degraded mode proxy fallback due to error: %s", exc)
             return {
                 "degraded_mode": True,
-                "reason": "system_error",
-                "error": str(e),
+                "is_active": True,
+                "ai_status": "degraded",
+                "reason": "health_check_failed",
+                "failed_providers": [],
+                "degraded_components": ["health_router"],
+                "core_helpers_available": {
+                    "fallback_responses": True,
+                    "local_fallback_ready": False,
+                },
+                "fallback_systems_active": True,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "fallback_systems_active": True
+                "error": str(exc),
             }
     
     logger.info("FastAPI application created and configured successfully")

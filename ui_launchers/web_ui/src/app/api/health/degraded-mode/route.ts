@@ -67,17 +67,17 @@ export async function GET(request: NextRequest) {
       if (healthResponse && healthResponse.status === 'fulfilled' && healthResponse.value.ok) {
         const contentType = healthResponse.value.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
-          try { 
-            healthData = await healthResponse.value.json(); 
-          } catch { 
-            healthData = { status: 'ok' }; 
+          try {
+            healthData = await healthResponse.value.json();
+          } catch {
+            healthData = { status: 'ok' };
           }
         } else {
-          try { 
-            const text = await healthResponse.value.text(); 
+          try {
+            const text = await healthResponse.value.text();
             healthData = { status: text === 'ok' ? 'ok' : 'degraded' };
-          } catch { 
-            healthData = { status: 'ok' }; 
+          } catch {
+            healthData = { status: 'ok' };
           }
         }
       }
@@ -92,26 +92,49 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Transform to degraded-mode format with provider information
-      const isHealthy = healthData.status === 'ok';
+      const statusValue = (healthData.status || healthData.state || '').toString().toLowerCase();
+      const normalizedStatus = ['ok', 'healthy', 'up'].includes(statusValue) ? 'healthy' : 'degraded';
+
       const providers = providersData?.providers || [];
-      const totalModels = providers.reduce((total: number, provider: any) => 
-        total + (provider.total_models || 0), 0);
-      
+      const totalModels = providers.reduce((total: number, provider: any) =>
+        total + (provider.total_models || provider.cached_models_count || 0), 0);
+
+      const localFallbackReady = providers.some((provider: any) =>
+        provider.provider_type === 'local' &&
+        ['healthy', 'degraded', 'unknown'].includes((provider.health_status || '').toLowerCase())
+      );
+
+      const remoteProviderOutages = providers
+        .filter((provider: any) =>
+          provider.provider_type !== 'local' &&
+          ['degraded', 'unhealthy', 'unknown'].includes((provider.health_status || '').toLowerCase())
+        )
+        .map((provider: any) => provider.name);
+
+      const aiStatus = remoteProviderOutages.length > 0 && !localFallbackReady
+        ? 'degraded'
+        : (healthData.ai_status || normalizedStatus);
+
+      const isActive = !(normalizedStatus === 'healthy' && aiStatus === 'healthy');
+
       const data = {
-        is_active: !isHealthy,
-        reason: isHealthy ? '' : 'System experiencing issues',
-        infrastructure_issues: [],
+        degraded_mode: isActive,
+        is_active: isActive,
+        status: normalizedStatus,
+        reason: normalizedStatus === 'healthy' ? '' : 'System experiencing issues',
+        infrastructure_issues: healthData.infrastructure_issues || [],
         core_helpers_available: {
           fallback_responses: true,
-          total_ai_capabilities: isHealthy && totalModels > 0
+          local_fallback_ready: localFallbackReady,
+          total_ai_capabilities: localFallbackReady || totalModels > 0
         },
-        ai_status: isHealthy ? 'healthy' : 'degraded',
-        failed_providers: providers.filter((p: any) => (p.total_models || 0) === 0).map((p: any) => p.name),
-        providers: providers,
-        total_providers: providersData?.total_providers || 0,
+        ai_status: aiStatus,
+        failed_providers: remoteProviderOutages,
+        providers,
+        total_providers: providersData?.total_providers || providers.length,
         models_available: totalModels,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        compatibility_payload: healthData.payload || null
       };
 
       // Always respond 200; encode degraded state in body

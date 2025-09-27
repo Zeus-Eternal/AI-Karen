@@ -14,6 +14,10 @@ from typing import Any, Dict, List, Optional
 
 from ai_karen_engine.core.error_handler import handle_api_exception
 from ai_karen_engine.integrations.registry import get_registry
+from ai_karen_engine.services.provider_registry import (
+    ProviderCapability,
+    get_provider_registry_service,
+)
 from ai_karen_engine.utils.dependency_checks import import_fastapi, import_pydantic
 
 APIRouter, Depends, HTTPException = import_fastapi(
@@ -26,6 +30,25 @@ logger = logging.getLogger("kari.provider_routes")
 router = APIRouter(tags=["providers"])
 # Public router (no auth dependencies). Exposed under /api/public/providers
 public_router = APIRouter(tags=["public-providers"])
+
+
+FRIENDLY_PROVIDER_NAMES = {
+    "openai": "OpenAI",
+    "gemini": "Google Gemini",
+    "deepseek": "DeepSeek",
+    "huggingface": "Hugging Face",
+    "anthropic": "Anthropic Claude",
+    "llamacpp": "Llama.cpp Local",
+    "local": "Local Fallback",
+}
+
+DOC_URLS = {
+    "openai": "https://platform.openai.com/docs",
+    "gemini": "https://ai.google.dev/docs",
+    "deepseek": "https://platform.deepseek.com/docs",
+    "huggingface": "https://huggingface.co/docs",
+    "anthropic": "https://docs.anthropic.com",
+}
 
 
 # Request/Response Models
@@ -57,6 +80,7 @@ class ProviderHealthResult(BaseModel):
 class ProviderInfo(BaseModel):
     """Provider information model."""
     name: str
+    display_name: Optional[str] = None
     description: str
     category: str
     requires_api_key: bool
@@ -200,6 +224,107 @@ def get_llm_registry():
     return get_registry()
 
 
+def _determine_provider_type(spec, status) -> str:
+    if spec and getattr(spec, "requires_api_key", False):
+        if "local_execution" in getattr(spec, "capabilities", []) or getattr(spec, "supports_local_models", False):
+            return "hybrid"
+        return "remote"
+    return "local"
+
+
+def _normalize_capabilities(spec, status) -> List[str]:
+    caps = set()
+    spec_caps = getattr(spec, "capabilities", None) or []
+    for cap in spec_caps:
+        caps.add(cap)
+    if status and getattr(status, "capabilities", None):
+        caps.update(cap.value if isinstance(cap, ProviderCapability) else str(cap) for cap in status.capabilities)
+    return sorted(caps)
+
+
+def _build_provider_entry(
+    name: str,
+    registry,
+    registry_service,
+    *,
+    healthy_only: bool,
+    category_filter: Optional[str],
+    llm_only: bool,
+) -> Optional[ProviderInfo]:
+    spec = registry.get_provider_spec(name)
+    status = registry_service.get_provider_status(name)
+
+    if spec is None and status is None:
+        return None
+
+    category = getattr(spec, "category", category_filter or "LLM")
+    if llm_only and category != "LLM":
+        return None
+    if category_filter and category != category_filter:
+        return None
+
+    resolved_status = "unknown"
+    if status:
+        if status.is_available:
+            resolved_status = "healthy"
+        elif spec and getattr(spec, "requires_api_key", False) and not status.has_api_key:
+            resolved_status = "degraded"
+        elif status.health_status.value:
+            resolved_status = status.health_status.value
+        else:
+            resolved_status = "unknown"
+    if healthy_only and resolved_status != "healthy":
+        return None
+
+    friendly_name = FRIENDLY_PROVIDER_NAMES.get(
+        name,
+        getattr(spec, "display_name", None) or getattr(spec, "description", None) or name.title(),
+    )
+    description = getattr(spec, "description", None) or friendly_name
+
+    model_library_info: Dict[str, Any] = {}
+    try:
+        from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
+
+        compatibility_service = ProviderModelCompatibilityService()
+        validation = compatibility_service.validate_provider_model_setup(name)
+        model_library_info = {
+            "has_compatible_models": validation.get("has_compatible_models", False),
+            "local_models_count": validation.get("local_models_count", 0),
+            "available_for_download": validation.get("available_for_download", 0),
+            "total_compatible": validation.get("total_compatible", 0),
+        }
+    except Exception as exc:  # pragma: no cover - best effort enrichment
+        logger.debug("Model library info unavailable for %s: %s", name, exc)
+
+    provider_info = ProviderInfo(
+        name=getattr(spec, "name", name),
+        display_name=friendly_name,
+        description=description,
+        category=category,
+        requires_api_key=bool(getattr(spec, "requires_api_key", False)),
+        capabilities=_normalize_capabilities(spec, status),
+        is_llm_provider=(category == "LLM"),
+        provider_type=_determine_provider_type(spec, status),
+        health_status=resolved_status,
+        error_message=getattr(status, "error_message", None),
+        last_health_check=(
+            status.last_check.timestamp() if status and getattr(status, "last_check", None) else None
+        ),
+        cached_models_count=model_library_info.get(
+            "local_models_count", len(getattr(spec, "fallback_models", []) or [])
+        ),
+        last_discovery=None,
+        api_base_url=getattr(spec, "api_base_url", None),
+        documentation_url=DOC_URLS.get(name),
+        pricing_info=getattr(spec, "pricing_info", None),
+    )
+
+    if status:
+        provider_info.health_status = resolved_status
+    return provider_info
+
+
 @router.get("/", response_model=List[ProviderInfo])
 async def list_providers(
     category: Optional[str] = None,
@@ -218,66 +343,35 @@ async def list_providers(
         List of provider information
     """
     try:
-        if llm_only:
-            provider_names = registry.list_llm_providers(healthy_only=healthy_only)
-        else:
-            provider_names = registry.list_providers(category=category, healthy_only=healthy_only)
-        providers = []
-        
+        registry_service = get_provider_registry_service()
+        provider_names: List[str] = []
+
+        # Start with providers known to the registry service for accurate availability
+        system_status = registry_service.get_system_status()
+        provider_names.extend(system_status.get("provider_details", {}).keys())
+
+        # Ensure we include any additional providers registered with the LLM registry
+        extra_names = registry.list_providers(category=category, healthy_only=False)
+        for name in extra_names:
+            if name not in provider_names:
+                provider_names.append(name)
+
+        providers: List[ProviderInfo] = []
         for name in provider_names:
-            spec = registry.get_provider_spec(name)
-            if not spec:
-                continue
-                
-            health = registry.get_health_status(f"provider:{name}")
-            
-            # Determine provider type based on capabilities and requirements
-            provider_type = "local"
-            if spec.requires_api_key:
-                provider_type = "remote"
-            if "local_execution" in spec.capabilities and spec.requires_api_key:
-                provider_type = "hybrid"
-                
-            # Get documentation URL based on provider
-            doc_urls = {
-                "openai": "https://platform.openai.com/docs",
-                "gemini": "https://ai.google.dev/docs",
-                "deepseek": "https://platform.deepseek.com/docs",
-                "huggingface": "https://huggingface.co/docs",
-            }
-            
-            # Get model availability from Model Library
-            model_library_info = {}
-            try:
-                from ai_karen_engine.services.provider_model_compatibility import ProviderModelCompatibilityService
-                compatibility_service = ProviderModelCompatibilityService()
-                validation = compatibility_service.validate_provider_model_setup(name)
-                model_library_info = {
-                    "has_compatible_models": validation.get("has_compatible_models", False),
-                    "local_models_count": validation.get("local_models_count", 0),
-                    "available_for_download": validation.get("available_for_download", 0),
-                    "total_compatible": validation.get("total_compatible", 0)
-                }
-            except Exception as e:
-                logger.warning(f"Failed to get model library info for {name}: {e}")
-            
-            provider_info = ProviderInfo(
-                name=spec.name,
-                description=spec.description,
-                category=spec.category,
-                requires_api_key=spec.requires_api_key,
-                capabilities=list(spec.capabilities),
-                is_llm_provider=(spec.category == "LLM"),
-                provider_type=provider_type,
-                health_status=health.status if health else "unknown",
-                error_message=health.error_message if health else None,
-                last_health_check=health.last_check if health else None,
-                cached_models_count=model_library_info.get("local_models_count", len(spec.fallback_models)),
-                documentation_url=doc_urls.get(name)
+            provider_info = _build_provider_entry(
+                name,
+                registry,
+                registry_service,
+                healthy_only=healthy_only,
+                category_filter=category,
+                llm_only=llm_only,
             )
-            
-            providers.append(provider_info)
-        
+            if provider_info:
+                providers.append(provider_info)
+
+        # Stable sort by display name for UI friendliness
+        providers.sort(key=lambda p: (p.display_name or p.name).lower())
+
         return providers
         
     except Exception as ex:
@@ -300,46 +394,23 @@ async def list_llm_providers(
         List of LLM provider information
     """
     try:
-        provider_names = registry.list_llm_providers(healthy_only=healthy_only)
-        providers = []
-        
+        registry_service = get_provider_registry_service()
+        provider_names: List[str] = registry.list_llm_providers(healthy_only=False)
+
+        providers: List[ProviderInfo] = []
         for name in provider_names:
-            spec = registry.get_provider_spec(name)
-            if not spec or spec.category != "LLM":
-                continue
-                
-            health = registry.get_health_status(f"provider:{name}")
-            
-            provider_type = "local"
-            if spec.requires_api_key:
-                provider_type = "remote"
-            if "local_execution" in spec.capabilities and spec.requires_api_key:
-                provider_type = "hybrid"
-                
-            doc_urls = {
-                "openai": "https://platform.openai.com/docs",
-                "gemini": "https://ai.google.dev/docs", 
-                "deepseek": "https://platform.deepseek.com/docs",
-                "huggingface": "https://huggingface.co/docs",
-            }
-            
-            provider_info = ProviderInfo(
-                name=spec.name,
-                description=spec.description,
-                category=spec.category,
-                requires_api_key=spec.requires_api_key,
-                capabilities=list(spec.capabilities),
-                is_llm_provider=True,
-                provider_type=provider_type,
-                health_status=health.status if health else "unknown",
-                error_message=health.error_message if health else None,
-                last_health_check=health.last_check if health else None,
-                cached_models_count=len(spec.fallback_models),
-                documentation_url=doc_urls.get(name)
+            provider_info = _build_provider_entry(
+                name,
+                registry,
+                registry_service,
+                healthy_only=healthy_only,
+                category_filter="LLM",
+                llm_only=True,
             )
-            
-            providers.append(provider_info)
-        
+            if provider_info:
+                providers.append(provider_info)
+
+        providers.sort(key=lambda p: (p.display_name or p.name).lower())
         return providers
         
     except Exception as ex:
