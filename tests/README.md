@@ -24,12 +24,13 @@ tests/
 │   ├── database/                   # Database integration tests (2 files)
 │   ├── auth/                       # Authentication flow tests
 │   ├── services/                   # Service integration tests (9 files)
+│   ├── marketplace/                # Marketplace example validation
 │   └── external/                   # External service integration (20 files)
 ├── e2e/                           # End-to-end tests
 ├── performance/                    # Performance and load tests (16 files)
 ├── security/                      # Security-focused tests (5 files)
-├── manual/                        # Manual test scripts and helpers (3 files)
-│   └── scripts/                   # Shell scripts for manual testing (3 files)
+├── manual/                        # Manual test scripts and helpers
+│   └── scripts/                   # Shell scripts for manual testing
 ├── stubs/                         # Test stubs and mocks
 └── data/                          # Test data and fixtures
 ```
@@ -44,16 +45,17 @@ tests/
 - **Middleware (21 files)**: Authentication, RBAC, session management
 - **Utils (9 files)**: Utility functions, encryption, validation
 
-### Integration Tests (44 files)
+### Integration Tests (45 files)
 - **External (20 files)**: Third-party service integrations
 - **API (13 files)**: API endpoint integration tests
 - **Services (9 files)**: Service-to-service integration
+- **Marketplace**: Marketplace example validation
 - **Database (2 files)**: Database integration flows
 
 ### Specialized Tests
 - **Performance (16 files)**: Load testing, benchmarks, optimization
 - **Security (5 files)**: Security components, threat detection
-- **Manual (6 files)**: Manual tests and scripts
+- **Manual**: Manual tests and scripts
 
 ## Running Tests
 

@@ -1,8 +1,12 @@
 import asyncio
 import importlib.util
-from pathlib import Path
-import types
 import sys
+import types
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+MARKETPLACE_PATH = REPO_ROOT / "src" / "marketplace"
 
 
 def load_memory_helper():
@@ -21,7 +25,7 @@ def load_memory_helper():
     sys.modules.setdefault("ai_karen_engine.core.memory", memory_pkg)
     sys.modules.setdefault("ai_karen_engine.core.memory.manager", fake_manager)
 
-    path = Path(__file__).resolve().parents[1] / "memory_manager.py"
+    path = MARKETPLACE_PATH / "memory_manager.py"
     spec = importlib.util.spec_from_file_location("pm_memory_manager", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)  # type: ignore[arg-type]
@@ -34,7 +38,7 @@ unified_memory = memory_mod.unified_memory
 
 
 def load_module():
-    path = Path(__file__).resolve().parents[1] / "examples/hello-world/handler.py"
+    path = MARKETPLACE_PATH / "examples/hello-world/handler.py"
     spec = importlib.util.spec_from_file_location("hello_world_handler", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)  # type: ignore[arg-type]
