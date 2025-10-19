@@ -9,7 +9,7 @@ echo "=" * 40
 export REDIS_PASSWORD="JEmvDv4I17iRY2lJbmWuJOkL"
 export POSTGRES_PASSWORD="karen_secure_pass_change_me"
 export MINIO_ACCESS_KEY="karen_minio_user"
-export MINIO_SECRET_KEY="$D128S7#yl&y*dJn4TxvpbIhS*bKkW7M"
+export MINIO_SECRET_KEY="D128S7ylydJn4TxvpbIhSbKkW7M"
 
 # Stop any existing services
 echo "🛑 Stopping existing services..."

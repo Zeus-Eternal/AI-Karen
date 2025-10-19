@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Callable
 
+from ai_karen_engine.core.predictors import predictor_registry, run_predictor
+
 # Import will be done at runtime to avoid circular imports
 
 
@@ -28,6 +30,7 @@ class StepType(Enum):
     WAIT = "wait"  # Wait for a condition
     TRANSFORM = "transform"  # Transform data
     MCP_TOOL = "mcp_tool"  # Execute an MCP tool
+    ROUTING = "routing"  # Execute a CORTEX routing action
 
 
 class StepStatus(Enum):
@@ -351,6 +354,10 @@ class WorkflowEngine:
                 result = await self._execute_mcp_tool_step(
                     workflow, execution, step, step_execution, user_context
                 )
+            elif step.type == StepType.ROUTING:
+                result = await self._execute_routing_step(
+                    workflow, execution, step, step_execution, user_context
+                )
             else:
                 raise ValueError(f"Unsupported step type: {step.type}")
 
@@ -450,6 +457,48 @@ class WorkflowEngine:
         )
 
         # Store result in variables if output_key is specified
+        output_key = step.config.get("output_key")
+        if output_key:
+            execution.variables[output_key] = result
+
+        return result
+
+    async def _execute_routing_step(
+        self,
+        workflow: WorkflowDefinition,
+        execution: WorkflowExecution,
+        step: WorkflowStep,
+        step_execution: WorkflowStepExecution,
+        user_context: Dict[str, Any],
+    ) -> Any:
+        """Execute a routing step via CORTEX predictor registry."""
+
+        action = step.config.get("action")
+        if not action:
+            raise ValueError(f"Routing step {step.id} missing action")
+
+        handler = predictor_registry.get(action)
+        if handler is None:
+            raise ValueError(f"Routing action '{action}' is not registered")
+
+        query_value = step.config.get("query", "")
+        resolved_query = self._resolve_variables(query_value, execution.variables)
+        context_value = step.config.get("context", {})
+        resolved_context = self._resolve_variables(context_value, execution.variables)
+
+        step_execution.inputs = {
+            "action": action,
+            "query": resolved_query,
+            "context": resolved_context,
+        }
+
+        result = await run_predictor(
+            handler,
+            user_context,
+            resolved_query,
+            resolved_context if isinstance(resolved_context, dict) else {},
+        )
+
         output_key = step.config.get("output_key")
         if output_key:
             execution.variables[output_key] = result

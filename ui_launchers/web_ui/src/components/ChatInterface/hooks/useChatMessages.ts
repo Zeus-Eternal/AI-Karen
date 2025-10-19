@@ -402,15 +402,21 @@ export const useChatMessages = (
                   const json = JSON.parse(data);
 
                   // Merge metadata
+                  const jsonType = (json as any)?.type;
+
                   if (
-                    json.event === "meta" ||
-                    json.type === "meta" ||
-                    json.kind === "metadata" ||
-                    json.metadata ||
-                    json.meta ||
-                    json.data ||
-                    json.usage ||
-                    json.model
+                    jsonType !== "token" &&
+                    jsonType !== "delta" &&
+                    (
+                      json.event === "meta" ||
+                      jsonType === "meta" ||
+                      json.kind === "metadata" ||
+                      json.metadata ||
+                      json.meta ||
+                      json.data ||
+                      json.usage ||
+                      json.model
+                    )
                   ) {
                     const usage = json.usage || json.token_usage || {};
                     const baseMeta = json.metadata || json.meta || json.data || {};
@@ -440,14 +446,33 @@ export const useChatMessages = (
                     json.delta ||
                     json.content ||
                     json.text ||
-                    json.answer
+                    json.answer ||
+                    (jsonType === "token" && json.data)
                   ) {
+                    const tokenData =
+                      (jsonType === "token" && typeof json.data === "object")
+                        ? (
+                            typeof json.data.token === "string"
+                              ? json.data.token
+                              : typeof json.data.delta === "string"
+                                ? json.data.delta
+                                : typeof json.data.content === "string"
+                                  ? json.data.content
+                                  : typeof json.data.text === "string"
+                                    ? json.data.text
+                                    : typeof json.data.answer === "string"
+                                      ? json.data.answer
+                                      : ""
+                          )
+                        : "";
+
                     const newContent =
                       (typeof json === "string" && json) ||
                       (typeof json.delta === "string" && json.delta) ||
-                      json.content ||
-                      json.text ||
-                      json.answer ||
+                      (json.content as string | undefined) ||
+                      (json.text as string | undefined) ||
+                      (json.answer as string | undefined) ||
+                      tokenData ||
                       "";
                     if (newContent) {
                       fullText += newContent;
@@ -483,17 +508,37 @@ export const useChatMessages = (
               let data = tail.startsWith("data:") ? tail.replace(/^data:\s*/, "") : tail;
               try {
                 const json = JSON.parse(data);
+                const jsonTypeTail = (json as any)?.type;
                 if (
                   typeof json === "string" ||
                   json.content ||
                   json.text ||
-                  json.answer
+                  json.answer ||
+                  (jsonTypeTail === "token" && json.data)
                 ) {
+                  const tokenDataTail =
+                    (jsonTypeTail === "token" && typeof json.data === "object")
+                      ? (
+                          typeof json.data.token === "string"
+                            ? json.data.token
+                            : typeof json.data.delta === "string"
+                              ? json.data.delta
+                              : typeof json.data.content === "string"
+                                ? json.data.content
+                                : typeof json.data.text === "string"
+                                  ? json.data.text
+                                  : typeof json.data.answer === "string"
+                                    ? json.data.answer
+                                    : ""
+                        )
+                      : "";
+
                   const newContent =
                     (typeof json === "string" && json) ||
-                    json.content ||
-                    json.text ||
-                    json.answer ||
+                    (json.content as string | undefined) ||
+                    (json.text as string | undefined) ||
+                    (json.answer as string | undefined) ||
+                    tokenDataTail ||
                     "";
                   if (newContent) {
                     fullText += newContent;
@@ -502,7 +547,11 @@ export const useChatMessages = (
                     );
                   }
                 }
-                if (json.metadata || json.meta || json.data || json.usage || json.model) {
+                if (
+                  jsonTypeTail !== "token" &&
+                  jsonTypeTail !== "delta" &&
+                  (json.metadata || json.meta || json.data || json.usage || json.model)
+                ) {
                   const usage = json.usage || json.token_usage || {};
                   const baseMeta = json.metadata || json.meta || json.data || {};
                   const metaUpdate: any = { ...(baseMeta as any) };

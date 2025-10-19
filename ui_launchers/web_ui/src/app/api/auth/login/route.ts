@@ -129,11 +129,54 @@ export async function POST(request: NextRequest) {
     // Create the response with the data
     const nextResponse = NextResponse.json(data);
     
-    // Forward any Set-Cookie headers from the backend
-    const setCookieHeader = response.headers.get('set-cookie');
-    if (setCookieHeader) {
-      // Forward cookie(s) from backend to client
-      nextResponse.headers.set('Set-Cookie', setCookieHeader);
+    // Forward any Set-Cookie headers from the backend. Node/undici may expose
+    // multiple Set-Cookie headers; prefer reading them all if available.
+    try {
+      // @ts-ignore runtime may provide getAll
+      const headersAny = response.headers as any;
+      const setCookieHeaders: string[] = Array.isArray(headersAny.getAll ? headersAny.getAll('set-cookie') : headersAny.getAll?.('set-cookie'))
+        ? (headersAny.getAll ? headersAny.getAll('set-cookie') : [])
+        : (response.headers.get('set-cookie') ? [response.headers.get('set-cookie') as string] : []);
+
+      for (const raw of setCookieHeaders) {
+        if (!raw) continue;
+        // Parse simple cookie string into name/value and attributes.
+        const parts = raw.split(';').map(p => p.trim());
+        const [nameValue, ...attrs] = parts;
+        const eq = nameValue.indexOf('=');
+        if (eq === -1) continue;
+        const name = nameValue.substring(0, eq);
+        const value = nameValue.substring(eq + 1);
+
+        const cookieOptions: any = { path: '/' };
+        for (const attr of attrs) {
+          const [k, v] = attr.split('=').map(s => s.trim());
+          const key = k.toLowerCase();
+          if (key === 'httponly') cookieOptions.httpOnly = true;
+          else if (key === 'secure') cookieOptions.secure = true;
+          else if (key === 'samesite') cookieOptions.sameSite = (v || '').toLowerCase();
+          else if (key === 'path') cookieOptions.path = v || '/';
+          else if (key === 'max-age') cookieOptions.maxAge = Number(v);
+          else if (key === 'expires') {
+            const date = new Date(v);
+            if (!Number.isNaN(date.getTime())) {
+              cookieOptions.expires = date;
+            }
+          }
+        }
+
+        try {
+          nextResponse.cookies.set(name, value, cookieOptions);
+        } catch (e) {
+          // If NextResponse.cookies.set fails for any cookie, fall back to
+          // forwarding the raw header to ensure the cookie is sent.
+          nextResponse.headers.append('Set-Cookie', raw);
+        }
+      }
+    } catch (e) {
+      // Safe fallback: forward single header if parsing fails
+      const single = response.headers.get('set-cookie');
+      if (single) nextResponse.headers.set('Set-Cookie', single);
     }
 
     // Also set our own auth_token cookie for downstream proxying

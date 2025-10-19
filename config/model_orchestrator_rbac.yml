@@ -20,6 +20,12 @@ roles:
       - model:pin
       - model:unpin
       - model:quota:manage
+      - routing:select
+      - routing:profile:manage
+      - routing:profile:view
+      - routing:health
+      - routing:audit
+      - routing:dry_run
     description: "Full administrative access to all model operations"
 
   # Model Manager role - operational model management
@@ -61,6 +67,34 @@ roles:
       - model:compatibility:check
       - model:license:accept
     description: "Development-focused model access without administrative operations"
+
+  # Routing Administrator - full access to KIRE routing controls
+  routing_admin:
+    permissions:
+      - routing:select
+      - routing:profile:manage
+      - routing:profile:view
+      - routing:health
+      - routing:audit
+      - routing:dry_run
+    description: "Full administrative access to routing actions and profiles"
+
+  # Routing Operator - operational routing access without destructive profile edits
+  routing_operator:
+    permissions:
+      - routing:select
+      - routing:profile:view
+      - routing:health
+      - routing:dry_run
+    description: "Operational access for executing routing decisions and inspecting state"
+
+  # Routing Auditor - read-only access to routing telemetry
+  routing_auditor:
+    permissions:
+      - routing:profile:view
+      - routing:health
+      - routing:audit
+    description: "Read-only access for auditing routing outcomes and provider health"
 
 # Permission definitions
 permissions:
@@ -153,6 +187,36 @@ permissions:
     action: "update"
     requires_admin: true
 
+  routing:select:
+    description: "Execute routing decisions for provider/model selection"
+    resource: "routing"
+    action: "invoke"
+
+  routing:profile:view:
+    description: "View routing profiles and assignments"
+    resource: "routing"
+    action: "read"
+
+  routing:profile:manage:
+    description: "Create, update, import, or activate routing profiles"
+    resource: "routing"
+    action: "write"
+
+  routing:health:
+    description: "Inspect provider health for routing"
+    resource: "routing"
+    action: "read"
+
+  routing:audit:
+    description: "Retrieve routing audit history and reports"
+    resource: "routing"
+    action: "read"
+
+  routing:dry_run:
+    description: "Perform routing dry-run analysis without executing providers"
+    resource: "routing"
+    action: "invoke"
+
 # Resource definitions
 resources:
   models:
@@ -160,15 +224,18 @@ resources:
     
   registry:
     description: "Model registry and configuration"
-    
+
   licenses:
     description: "Model license information and acceptance records"
-    
+
   quotas:
     description: "Storage quotas and resource limits"
-    
+
   system:
     description: "System health and status information"
+
+  routing:
+    description: "Intelligent routing engine actions, profiles, and telemetry"
 
 # Policy rules
 policies:
@@ -186,12 +253,28 @@ policies:
     effect: "deny"
     actions: ["model:download", "model:remove", "model:migrate", "model:gc"]
     condition: "not has_role(['admin', 'model_manager', 'developer'])"
-    
+
   # Admin-only operations
   admin_only:
     effect: "deny"
     actions: ["model:migrate", "model:registry:write", "model:license:manage", "model:quota:manage"]
     condition: "not has_role(['admin'])"
+
+  # Routing operations require routing-specific roles
+  routing_write:
+    effect: "deny"
+    actions: ["routing:profile:manage"]
+    condition: "not has_role(['admin', 'routing_admin'])"
+
+  routing_execute:
+    effect: "deny"
+    actions: ["routing:select", "routing:dry_run"]
+    condition: "not has_role(['admin', 'routing_admin', 'routing_operator'])"
+
+  routing_read:
+    effect: "deny"
+    actions: ["routing:profile:view", "routing:health", "routing:audit"]
+    condition: "not has_role(['admin', 'routing_admin', 'routing_operator', 'routing_auditor'])"
     
   # License acceptance tracking
   license_tracking:
@@ -211,7 +294,7 @@ policies:
     effect: "deny"
     actions: ["model:download"]
     condition: "rate_limit_exceeded"
-    
+
 # Audit configuration
 audit:
   enabled: true
@@ -224,6 +307,9 @@ audit:
     - model:license:accept
     - model:license:manage
     - model:quota:manage
+    - routing:select
+    - routing:profile:manage
+    - routing:audit
   retention_days: 365
   include_metadata: true
   include_user_context: true

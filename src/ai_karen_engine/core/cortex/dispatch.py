@@ -96,7 +96,7 @@ async def dispatch(
             handler = predictor_registry.get(intent)
             if handler is None:
                 raise UnsupportedIntentError(f"No predictor registered for intent '{intent}'")
-            result = run_predictor(handler, user_ctx, query, context or memory_ctx)
+            result = await run_predictor(handler, user_ctx, query, context or memory_ctx)
             trace.append({"stage": "predictor_executed", "predictor": intent})
 
         elif mode == "memory" or memory_ctx:

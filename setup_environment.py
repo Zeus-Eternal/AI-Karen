@@ -46,7 +46,7 @@ def create_complete_env():
 # ============================================================================
 # API Configuration
 # ============================================================================
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 NEXT_PUBLIC_KAREN_BACKEND_URL=http://127.0.0.1:8000
 KAREN_BACKEND_URL=http://127.0.0.1:8000
 API_BASE_URL=http://127.0.0.1:8000

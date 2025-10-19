@@ -70,7 +70,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false, error: 'Validation request failed' }, { status: 502 });
     }
 
-    const setCookieHeader = response.headers.get('set-cookie');
+    // Collect Set-Cookie headers if present. Prefer runtime getAll if available.
+    const headersAny = response.headers as any;
+    const setCookieHeaders: string[] = Array.isArray(headersAny?.getAll ? headersAny.getAll('set-cookie') : headersAny?.getAll?.('set-cookie'))
+      ? (headersAny.getAll ? headersAny.getAll('set-cookie') : [])
+      : (response.headers.get('set-cookie') ? [response.headers.get('set-cookie') as string] : []);
     const contentType = response.headers.get('content-type') || '';
     let data: any = {};
     if (contentType.includes('application/json')) {
@@ -85,8 +89,10 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       const errorPayload = typeof data === 'string' ? { valid: false, error: data } : { valid: false, ...data };
       const nextResponse = NextResponse.json(errorPayload, { status: response.status });
-      if (setCookieHeader) {
-        nextResponse.headers.set('Set-Cookie', setCookieHeader);
+      // Forward raw Set-Cookie headers so browser stores cookies
+      for (const raw of setCookieHeaders) {
+        if (!raw) continue;
+        try { nextResponse.headers.append('Set-Cookie', raw); } catch {}
       }
       return nextResponse;
     }
@@ -103,8 +109,9 @@ export async function GET(request: NextRequest) {
           tenant_id: data.tenant_id || 'default'
         }
       });
-      if (setCookieHeader) {
-        nextResponse.headers.set('Set-Cookie', setCookieHeader);
+      for (const raw of setCookieHeaders) {
+        if (!raw) continue;
+        try { nextResponse.headers.append('Set-Cookie', raw); } catch {}
       }
       return nextResponse;
     } else {
