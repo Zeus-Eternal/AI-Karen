@@ -7,9 +7,15 @@ const AUTH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AUTH_PROXY_TIMEOUT_MS || 
 
 export async function GET(request: NextRequest) {
   try {
+    const DEBUG_AUTH = Boolean(process.env.DEBUG_AUTH || process.env.NEXT_PUBLIC_DEBUG_AUTH);
     // Forward the request to the backend with timeout + transient retry
     const authHeader = request.headers.get('authorization');
     const cookieHeader = request.headers.get('cookie');
+
+    if (DEBUG_AUTH) {
+      console.log('Validate proxy incoming Authorization:', authHeader);
+      console.log('Validate proxy incoming Cookie:', cookieHeader);
+    }
 
     const headers: Record<string, string> = {
       Accept: 'application/json',
@@ -70,11 +76,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false, error: 'Validation request failed' }, { status: 502 });
     }
 
-    // Collect Set-Cookie headers if present. Prefer runtime getAll if available.
-    const headersAny = response.headers as any;
-    const setCookieHeaders: string[] = Array.isArray(headersAny?.getAll ? headersAny.getAll('set-cookie') : headersAny?.getAll?.('set-cookie'))
-      ? (headersAny.getAll ? headersAny.getAll('set-cookie') : [])
-      : (response.headers.get('set-cookie') ? [response.headers.get('set-cookie') as string] : []);
+  // Collect Set-Cookie headers if present. Prefer runtime getAll if available.
+    const setCookieHeaders: string[] = [];
+    try {
+      const headersAny = response.headers as any;
+      if (typeof headersAny.entries === 'function') {
+        for (const [k, v] of headersAny.entries()) {
+          if (String(k).toLowerCase() === 'set-cookie' && v) setCookieHeaders.push(String(v));
+        }
+      }
+      const single = response.headers.get('set-cookie');
+      if (single && !setCookieHeaders.includes(single)) setCookieHeaders.push(single);
+    } catch (e) {
+      // ignore
+    }
+  if (DEBUG_AUTH) console.log('Validate proxy: backend Set-Cookie headers:', setCookieHeaders);
     const contentType = response.headers.get('content-type') || '';
     let data: any = {};
     if (contentType.includes('application/json')) {
@@ -92,7 +108,12 @@ export async function GET(request: NextRequest) {
       // Forward raw Set-Cookie headers so browser stores cookies
       for (const raw of setCookieHeaders) {
         if (!raw) continue;
-        try { nextResponse.headers.append('Set-Cookie', raw); } catch {}
+        try {
+          if (DEBUG_AUTH) console.log('Validate proxy forwarding Set-Cookie raw:', raw);
+          nextResponse.headers.append('Set-Cookie', raw);
+        } catch (e) {
+          if (DEBUG_AUTH) console.log('Validate proxy failed to append Set-Cookie header', e);
+        }
       }
       return nextResponse;
     }
@@ -111,7 +132,12 @@ export async function GET(request: NextRequest) {
       });
       for (const raw of setCookieHeaders) {
         if (!raw) continue;
-        try { nextResponse.headers.append('Set-Cookie', raw); } catch {}
+        try {
+          if (DEBUG_AUTH) console.log('Validate proxy forwarding Set-Cookie raw:', raw);
+          nextResponse.headers.append('Set-Cookie', raw);
+        } catch (e) {
+          if (DEBUG_AUTH) console.log('Validate proxy failed to append Set-Cookie header', e);
+        }
       }
       return nextResponse;
     } else {

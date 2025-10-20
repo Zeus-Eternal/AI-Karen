@@ -10,6 +10,7 @@ const DEV_LOGIN_ENABLED = isDevLoginEnabled();
 
 export async function POST(request: NextRequest) {
   try {
+  const DEBUG_AUTH = Boolean(process.env.DEBUG_AUTH || process.env.NEXT_PUBLIC_DEBUG_AUTH);
     const body = await request.json();
     
     // Forward the request to the backend with timeout + transient retry
@@ -131,14 +132,25 @@ export async function POST(request: NextRequest) {
     
     // Forward any Set-Cookie headers from the backend. Node/undici may expose
     // multiple Set-Cookie headers; prefer reading them all if available.
-    try {
-      // @ts-ignore runtime may provide getAll
-      const headersAny = response.headers as any;
-      const setCookieHeaders: string[] = Array.isArray(headersAny.getAll ? headersAny.getAll('set-cookie') : headersAny.getAll?.('set-cookie'))
-        ? (headersAny.getAll ? headersAny.getAll('set-cookie') : [])
-        : (response.headers.get('set-cookie') ? [response.headers.get('set-cookie') as string] : []);
+  try {
+      const setCookieHeaders: string[] = [];
+      try {
+        // Prefer iterating entries (works in Node/fetch runtimes)
+        const headersAny = response.headers as any;
+        if (typeof headersAny.entries === 'function') {
+          for (const [k, v] of headersAny.entries()) {
+            if (String(k).toLowerCase() === 'set-cookie' && v) setCookieHeaders.push(String(v));
+          }
+        }
+        // Fallback to single header
+        const single = response.headers.get('set-cookie');
+        if (single && !setCookieHeaders.includes(single)) setCookieHeaders.push(single);
+      } catch (e) {
+        // ignore; leave setCookieHeaders empty
+      }
 
-      for (const raw of setCookieHeaders) {
+  if (DEBUG_AUTH) console.log('Login proxy: backend Set-Cookie headers:', setCookieHeaders);
+  for (const raw of setCookieHeaders) {
         if (!raw) continue;
         // Parse simple cookie string into name/value and attributes.
         const parts = raw.split(';').map(p => p.trim());
@@ -170,6 +182,7 @@ export async function POST(request: NextRequest) {
         } catch (e) {
           // If NextResponse.cookies.set fails for any cookie, fall back to
           // forwarding the raw header to ensure the cookie is sent.
+          if (DEBUG_AUTH) console.log('Login proxy: failed to set cookie via NextResponse.cookies.set, appending raw header', name, e);
           nextResponse.headers.append('Set-Cookie', raw);
         }
       }
