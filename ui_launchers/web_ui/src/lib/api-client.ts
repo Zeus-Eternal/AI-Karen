@@ -109,35 +109,16 @@ export class ApiClient {
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
       try {
-        // Add JWT token to headers if available
+        // Simple headers - no token management needed (cookies handle auth)
         const headers = {
           ...this.config.defaultHeaders,
           ...request.headers,
         };
 
-        // Add Authorization header with JWT token from session management
-        // Skip auth for refresh endpoint to avoid circular dependency
-        const isRefreshEndpoint = request.endpoint === '/api/auth/refresh';
-        
-        if (typeof window !== 'undefined' && !isRefreshEndpoint) {
-          try {
-            // Import session management dynamically to avoid circular dependency
-            const { getAuthHeader } = await import('./auth/session');
-            const authHeaders = getAuthHeader();
-            Object.assign(headers, authHeaders);
-          } catch (error) {
-            // Fallback to localStorage for backward compatibility
-            const accessToken = localStorage.getItem('karen_access_token');
-            if (accessToken) {
-              headers['Authorization'] = `Bearer ${accessToken}`;
-            }
-          }
-        }
-
         const response = await fetch(url, {
           method,
           headers,
-          body: request.body ? JSON.stringify(request.body) : undefined,
+          body: request.body instanceof FormData ? request.body : (request.body ? JSON.stringify(request.body) : undefined),
           signal: controller.signal,
           credentials: 'include', // Include cookies for authentication
         });
@@ -178,6 +159,11 @@ export class ApiClient {
         );
 
         if (!response.ok) {
+          // Simple 401 error handling - redirect to login immediately
+          if (response.status === 401 && typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+
           const apiError = this.createApiError(
             `HTTP ${response.status}: ${response.statusText}`,
             response.status,
@@ -402,7 +388,7 @@ export class ApiClient {
   }
 
   /**
-   * Upload file helper
+   * Upload file helper with automatic cookie handling
    */
   public async uploadFile<T = any>(
     endpoint: string,
@@ -421,6 +407,7 @@ export class ApiClient {
     }
 
     // Don't set Content-Type header to let browser set it with boundary
+    // Cookies are automatically included via credentials: 'include'
     return this.request<T>({
       endpoint,
       method: 'POST',

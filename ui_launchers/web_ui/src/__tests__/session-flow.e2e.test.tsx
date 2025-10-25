@@ -15,15 +15,13 @@ import { useSession } from '@/contexts/SessionProvider';
 import { useError } from '@/contexts/ErrorProvider';
 import { getIntegratedApiClient } from '@/lib/api-client-integrated';
 import * as sessionModule from '@/lib/auth/session';
-import * as sessionRecoveryModule from '@/lib/auth/session-recovery';
+// Session recovery service removed - using simplified authentication
 
 // Mock the session and API modules
 vi.mock('@/lib/auth/session');
-vi.mock('@/lib/auth/session-recovery');
 vi.mock('@/lib/api-client-integrated');
 
 const mockSession = sessionModule as any;
-const mockSessionRecovery = sessionRecoveryModule as any;
 const mockApiClient = getIntegratedApiClient as any;
 
 // Test component that uses session and error contexts

@@ -24,10 +24,10 @@ vi.mock('../LoginForm', () => ({
   LoginForm: () => <div data-testid="login-form">Login Form</div>,
 }));
 
-vi.mock('@/lib/auth/session-rehydration.service', () => ({
-  SessionRehydrationService: vi.fn().mockImplementation(() => ({
-    rehydrate: vi.fn().mockResolvedValue(undefined),
-  })),
+// Session rehydration service removed - using simplified authentication
+vi.mock('@/lib/auth/session', () => ({
+  isAuthenticated: vi.fn(),
+  validateSession: vi.fn().mockResolvedValue(true),
 }));
 
 const mockAuthService = authService as any;

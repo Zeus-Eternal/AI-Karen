@@ -9,11 +9,11 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { useIntelligentError, useIntelligentErrorBoundary, useIntelligentApiError } from '../use-intelligent-error';
-import { getEnhancedApiClient } from '@/lib/auth/api-client-enhanced';
+import { getApiClient } from '@/lib/api-client';
 
-// Mock the enhanced API client
-vi.mock('@/lib/auth/api-client-enhanced', () => ({
-  getEnhancedApiClient: vi.fn(),
+// Mock the API client
+vi.mock('@/lib/api-client', () => ({
+  getApiClient: vi.fn(),
 }));
 
 describe('useIntelligentError', () => {
@@ -35,7 +35,7 @@ describe('useIntelligentError', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    (getEnhancedApiClient as any).mockReturnValue(mockApiClient);
+    (getApiClient as any).mockReturnValue(mockApiClient);
     mockApiClient.post.mockResolvedValue({ data: mockAnalysisResponse });
   });
 
@@ -405,7 +405,7 @@ describe('useIntelligentErrorBoundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    (getEnhancedApiClient as any).mockReturnValue(mockApiClient);
+    (getApiClient as any).mockReturnValue(mockApiClient);
     mockApiClient.post.mockResolvedValue({ data: {} });
   });
 
@@ -449,7 +449,7 @@ describe('useIntelligentApiError', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    (getEnhancedApiClient as any).mockReturnValue(mockApiClient);
+    (getApiClient as any).mockReturnValue(mockApiClient);
     mockApiClient.post.mockResolvedValue({ data: {} });
   });
 

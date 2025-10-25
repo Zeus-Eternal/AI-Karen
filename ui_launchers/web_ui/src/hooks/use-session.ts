@@ -6,8 +6,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  bootSession,
-  ensureToken,
   isAuthenticated,
   getCurrentUser,
   hasRole,
@@ -27,7 +25,6 @@ export interface UseSessionReturn {
   isLoading: boolean;
   login: (email: string, password: string, totpCode?: string) => Promise<void>;
   logout: () => Promise<void>;
-  ensureToken: () => Promise<void>;
   hasRole: (role: string) => boolean;
   refreshSession: () => void;
 }
@@ -52,18 +49,8 @@ export function useSession(): UseSessionReturn {
 
   // Initialize session on mount
   useEffect(() => {
-    const initializeSession = async () => {
-      try {
-        await bootSession();
-      } catch (error) {
-        // Silent failure for session boot
-      } finally {
-        updateSessionState();
-        setIsLoading(false);
-      }
-    };
-
-    initializeSession();
+    updateSessionState();
+    setIsLoading(false);
   }, [updateSessionState]);
 
   const login = useCallback(async (email: string, password: string, totpCode?: string) => {
@@ -86,10 +73,7 @@ export function useSession(): UseSessionReturn {
     }
   }, [updateSessionState]);
 
-  const ensureTokenWrapper = useCallback(async () => {
-    await ensureToken();
-    updateSessionState();
-  }, [updateSessionState]);
+
 
   const hasRoleWrapper = useCallback((role: string) => {
     return hasRole(role);
@@ -105,7 +89,6 @@ export function useSession(): UseSessionReturn {
     isLoading,
     login,
     logout,
-    ensureToken: ensureTokenWrapper,
     hasRole: hasRoleWrapper,
     refreshSession,
   };

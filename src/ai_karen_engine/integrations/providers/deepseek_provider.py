@@ -40,14 +40,22 @@ class DeepseekProvider(LLMProviderBase):
         self.base_url = base_url
         self.timeout = timeout
         self.max_retries = max_retries
+        self.initialization_error: Optional[str] = None
+        self.client: Optional[Any] = None
         
-        if not self.api_key:
-            logger.warning("No Deepseek API key provided. Set DEEPSEEK_API_KEY environment variable.")
-        
-        # Deepseek uses OpenAI-compatible API, so we can use the OpenAI client
+        # Graceful initialization - don't fail if API key is missing
+        self._initialize_client()
+
+    def _initialize_client(self):
+        """Initialize DeepSeek client with graceful error handling."""
         try:
             import openai
             self.openai = openai
+            
+            if not self.api_key:
+                self.initialization_error = "No DeepSeek API key provided. Set DEEPSEEK_API_KEY environment variable."
+                logger.warning(self.initialization_error)
+                return
             
             # Initialize client with Deepseek settings
             self.client = openai.OpenAI(
@@ -56,8 +64,37 @@ class DeepseekProvider(LLMProviderBase):
                 timeout=self.timeout
             )
             
+            # Validate API key by making a simple request
+            self._validate_api_key()
+            
         except ImportError:
-            raise GenerationFailed("OpenAI Python package required for Deepseek. Install with: pip install openai")
+            self.initialization_error = "OpenAI Python package required for DeepSeek. Install with: pip install openai"
+            logger.error(self.initialization_error)
+        except Exception as ex:
+            self.initialization_error = f"DeepSeek client initialization failed: {ex}"
+            logger.error(self.initialization_error)
+
+    def _validate_api_key(self):
+        """Validate API key with a minimal request."""
+        if not self.client or not self.api_key:
+            return
+            
+        try:
+            # Make a minimal request to validate the API key
+            self.client.models.list()
+            logger.info("DeepSeek API key validated successfully")
+        except Exception as ex:
+            error_msg = str(ex).lower()
+            if "api key" in error_msg or "unauthorized" in error_msg:
+                self.initialization_error = "Invalid DeepSeek API key. Please check your DEEPSEEK_API_KEY environment variable."
+            elif "rate limit" in error_msg or "quota" in error_msg:
+                # Rate limit during validation is not a fatal error
+                logger.warning("Rate limited during API key validation, but key appears valid")
+            else:
+                self.initialization_error = f"API key validation failed: {ex}"
+            
+            if self.initialization_error:
+                logger.error(self.initialization_error)
     
     def _retry_with_backoff(self, func, *args, **kwargs):
         """Execute function with exponential backoff retry logic."""
@@ -84,7 +121,7 @@ class DeepseekProvider(LLMProviderBase):
         raise last_exception
     
     def _is_retryable_error(self, error: Exception) -> bool:
-        """Check if an error is retryable."""
+        """Check if an error is retryable with enhanced classification."""
         error_str = str(error).lower()
         
         # Rate limiting and server errors are retryable
@@ -96,8 +133,28 @@ class DeepseekProvider(LLMProviderBase):
             "connection",
             "503",
             "502", 
-            "500"
+            "500",
+            "internal server error",
+            "service unavailable",
+            "bad gateway"
         ]
+        
+        # Non-retryable errors (fail fast)
+        non_retryable_patterns = [
+            "invalid api key",
+            "unauthorized",
+            "forbidden",
+            "not found",
+            "invalid request",
+            "400",
+            "401",
+            "403",
+            "404"
+        ]
+
+        # Check non-retryable first
+        if any(pattern in error_str for pattern in non_retryable_patterns):
+            return False
         
         return any(pattern in error_str for pattern in retryable_patterns)
     
@@ -105,8 +162,12 @@ class DeepseekProvider(LLMProviderBase):
         """Generate text using Deepseek API."""
         t0 = time.time()
         
-        if not self.api_key:
-            raise GenerationFailed("Deepseek API key required")
+        # Check initialization status
+        if self.initialization_error:
+            raise GenerationFailed(self.initialization_error)
+            
+        if not self.client:
+            raise GenerationFailed("DeepSeek client not initialized")
         
         try:
             model = kwargs.pop("model", self.model)
@@ -158,8 +219,12 @@ class DeepseekProvider(LLMProviderBase):
     
     def stream_generate(self, prompt: str, **kwargs) -> Iterator[str]:
         """Generate text with streaming support."""
-        if not self.api_key:
-            raise GenerationFailed("Deepseek API key required")
+        # Check initialization status
+        if self.initialization_error:
+            raise GenerationFailed(self.initialization_error)
+            
+        if not self.client:
+            raise GenerationFailed("DeepSeek client not initialized")
         
         try:
             model = kwargs.pop("model", self.model)
@@ -221,30 +286,39 @@ class DeepseekProvider(LLMProviderBase):
             raise EmbeddingFailed(f"Deepseek embedding failed: {ex}")
     
     def get_models(self) -> List[str]:
-        """Get list of available models from Deepseek."""
+        """Get list of available models from DeepSeek with fallback to static list."""
         try:
-            if not self.api_key:
+            if self.initialization_error or not self.client:
+                logger.info("Using fallback model list due to initialization issues")
                 return self._get_common_models()
             
             def _list_models():
                 models = self.client.models.list()
                 return [model.id for model in models.data]
             
-            return self._retry_with_backoff(_list_models)
+            discovered_models = self._retry_with_backoff(_list_models)
+            
+            # Merge with common models to ensure we have a comprehensive list
+            common_models = self._get_common_models()
+            all_models = list(set(discovered_models + common_models))
+            
+            logger.info(f"Discovered {len(discovered_models)} models from API, total available: {len(all_models)}")
+            return sorted(all_models)
             
         except Exception as ex:
-            logger.warning(f"Could not fetch Deepseek models: {ex}")
+            logger.warning(f"Could not fetch DeepSeek models: {ex}")
             return self._get_common_models()
     
     def _get_common_models(self) -> List[str]:
-        """Get list of common Deepseek models."""
+        """Get list of common DeepSeek models."""
         return [
             "deepseek-chat",
-            "deepseek-coder"
+            "deepseek-coder",
+            "deepseek-reasoner"
         ]
     
     def get_provider_info(self) -> Dict[str, Any]:
-        """Get provider metadata."""
+        """Get provider metadata with initialization status."""
         try:
             models = self.get_models()
         except Exception:
@@ -255,26 +329,40 @@ class DeepseekProvider(LLMProviderBase):
             "model": self.model,
             "base_url": self.base_url,
             "has_api_key": bool(self.api_key),
+            "api_key_valid": self.initialization_error is None and self.client is not None,
+            "initialization_error": self.initialization_error,
             "available_models": models,
             "supports_streaming": True,
             "supports_embeddings": False,  # Not yet supported
             "supports_code_generation": True,
+            "supports_reasoning": True,
             "timeout": self.timeout,
             "max_retries": self.max_retries
         }
     
     def health_check(self) -> Dict[str, Any]:
-        """Perform health check on Deepseek API with model availability information."""
-        if not self.api_key:
+        """Perform comprehensive health check on DeepSeek API."""
+        # Check initialization status first
+        if self.initialization_error:
             return {
                 "status": "unhealthy",
-                "error": "No API key provided"
+                "error": self.initialization_error,
+                "provider": "deepseek",
+                "initialization_status": "failed"
+            }
+
+        if not self.client:
+            return {
+                "status": "unhealthy",
+                "error": "DeepSeek client not initialized",
+                "provider": "deepseek",
+                "initialization_status": "failed"
             }
         
         try:
             start_time = time.time()
             
-            # Simple test request
+            # Test API connectivity with minimal request
             response = self.client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[{"role": "user", "content": "Hello"}],
@@ -285,9 +373,45 @@ class DeepseekProvider(LLMProviderBase):
             
             health_result = {
                 "status": "healthy",
+                "provider": "deepseek",
                 "response_time": response_time,
-                "model_tested": "deepseek-chat"
+                "model_tested": "deepseek-chat",
+                "initialization_status": "success",
+                "api_key_status": "valid",
+                "connectivity": "ok"
             }
+
+            # Test model discovery
+            try:
+                available_models = self.get_models()
+                health_result["model_discovery"] = {
+                    "status": "success",
+                    "models_found": len(available_models),
+                    "sample_models": available_models[:5]  # First 5 models
+                }
+            except Exception as e:
+                health_result["model_discovery"] = {
+                    "status": "failed",
+                    "error": str(e)
+                }
+                health_result["warnings"] = health_result.get("warnings", [])
+                health_result["warnings"].append("Model discovery failed, using fallback list")
+
+            # Test capability detection
+            try:
+                health_result["capabilities"] = {
+                    "text_generation": True,
+                    "code_generation": True,
+                    "reasoning": True,
+                    "streaming": True,
+                    "embeddings": False,  # Not supported yet
+                    "function_calling": False  # Check if supported
+                }
+            except Exception as e:
+                health_result["capabilities"] = {
+                    "text_generation": True,
+                    "detection_error": str(e)
+                }
 
             # Add Model Library compatibility check
             try:
@@ -317,9 +441,32 @@ class DeepseekProvider(LLMProviderBase):
             return health_result
             
         except Exception as ex:
+            error_msg = str(ex).lower()
+            
+            # Classify the error for better diagnostics
+            if "api key" in error_msg or "unauthorized" in error_msg:
+                error_type = "authentication_error"
+                specific_error = "Invalid or expired API key"
+            elif "rate limit" in error_msg or "quota" in error_msg:
+                error_type = "rate_limit_error"
+                specific_error = "Rate limit exceeded or quota reached"
+            elif "timeout" in error_msg or "connection" in error_msg:
+                error_type = "connectivity_error"
+                specific_error = "Network connectivity issue"
+            elif "model" in error_msg and "not found" in error_msg:
+                error_type = "model_error"
+                specific_error = "Requested model not available"
+            else:
+                error_type = "unknown_error"
+                specific_error = str(ex)
+            
             return {
                 "status": "unhealthy",
-                "error": str(ex),
+                "provider": "deepseek",
+                "error": specific_error,
+                "error_type": error_type,
+                "raw_error": str(ex),
+                "initialization_status": "success" if not self.initialization_error else "failed",
                 "model_library": {
                     "available": False,
                     "error": "Provider health check failed"

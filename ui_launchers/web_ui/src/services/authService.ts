@@ -1,9 +1,9 @@
 import { LoginCredentials, LoginResponse, User, DeepPartial } from '@/types/auth';
-import { getEnhancedApiClient } from '@/lib/auth/api-client-enhanced';
+import { getApiClient } from '@/lib/api-client';
 import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
 
 export class AuthService {
-  private apiClient = getEnhancedApiClient();
+  private apiClient = getApiClient();
   private errorHandler = getServiceErrorHandler();
 
   constructor() {
@@ -89,7 +89,7 @@ export class AuthService {
     }
   }
 
-  async updateUserPreferences(_token: string, preferences: DeepPartial<User['preferences']>): Promise<void> {
+  async updateUserPreferences(_token: string, preferences: any): Promise<void> {
     try {
       await this.apiClient.put('/api/users/me/preferences', preferences);
     } catch (error: any) {

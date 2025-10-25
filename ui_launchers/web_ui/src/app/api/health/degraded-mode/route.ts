@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
 
 const CANDIDATE_BACKENDS = getBackendCandidates();
-const HEALTH_TIMEOUT_MS = 5000;
+const HEALTH_TIMEOUT_MS = 2000;
 
 export async function GET(request: NextRequest) {
   try {

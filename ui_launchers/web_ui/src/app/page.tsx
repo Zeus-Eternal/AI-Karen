@@ -1,18 +1,34 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Brain, MessageSquare, SettingsIcon as SettingsIconLucide, Bell, SlidersHorizontal, LayoutGrid, Database, Facebook, BookOpenCheck, Mail, CalendarDays, CloudSun, PlugZap } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import SettingsDialogComponent from '@/components/settings/SettingsDialog';
-import DatabaseConnectorPluginPage from '@/components/plugins/DatabaseConnectorPluginPage';
-import FacebookPluginPage from '@/components/plugins/FacebookPluginPage';
-import GmailPluginPage from '@/components/plugins/GmailPluginPage';
-import DateTimePluginPage from '@/components/plugins/DateTimePluginPage';
-import WeatherPluginPage from '@/components/plugins/WeatherPluginPage';
-import PluginOverviewPage from '@/components/plugins/PluginOverviewPage'; // Ensure this is imported
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import {
+  Brain,
+  MessageSquare,
+  SettingsIcon as SettingsIconLucide,
+  Bell,
+  SlidersHorizontal,
+  LayoutGrid,
+  Database,
+  Facebook,
+  BookOpenCheck,
+  Mail,
+  CalendarDays,
+  CloudSun,
+  PlugZap,
+} from "lucide-react";
+import dynamic from "next/dynamic";
+import SettingsDialogComponent from "@/components/settings/SettingsDialog";
+import DatabaseConnectorPluginPage from "@/components/plugins/DatabaseConnectorPluginPage";
+import FacebookPluginPage from "@/components/plugins/FacebookPluginPage";
+import GmailPluginPage from "@/components/plugins/GmailPluginPage";
+import DateTimePluginPage from "@/components/plugins/DateTimePluginPage";
+import WeatherPluginPage from "@/components/plugins/WeatherPluginPage";
+import PluginOverviewPage from "@/components/plugins/PluginOverviewPage"; // Ensure this is imported
+import { Button, IconButton } from "@/components/ui/polymorphic/button";
+import { GridContainer } from "@/components/ui/layout/grid-container";
+import { FlexContainer } from "@/components/ui/layout/flex-container";
 import {
   Sheet,
   SheetTrigger,
@@ -34,22 +50,41 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { Separator } from '@/components/ui/separator';
-import NotificationsSection from '@/components/sidebar/NotificationsSection';
-import Dashboard from '@/components/dashboard/Dashboard';
-import { webUIConfig } from '@/lib/config';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { AuthenticatedHeader } from '@/components/layout/AuthenticatedHeader';
+import { Separator } from "@/components/ui/separator";
+import NotificationsSection from "@/components/sidebar/NotificationsSection";
+import Dashboard from "@/components/dashboard/Dashboard";
+import { webUIConfig } from "@/lib/config";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
+import { TextSelectionProvider } from "@/components/ui/text-selection-provider";
 
-const ExtensionSidebar = dynamic(() => import('@/components/extensions/ExtensionSidebar'));
+// Import text selection test in development
+if (process.env.NODE_ENV === 'development') {
+  import('@/utils/text-selection-test');
+}
 
-type ActiveView = 'settings' | 'dashboard' | 'commsCenter' | 'pluginDatabaseConnector' | 'pluginFacebook' | 'pluginGmail' | 'pluginDateTime' | 'pluginWeather' | 'pluginOverview';
+const ExtensionSidebar = dynamic(
+  () => import("@/components/extensions/ExtensionSidebar")
+);
+
+type ActiveView =
+  | "settings"
+  | "dashboard"
+  | "commsCenter"
+  | "pluginDatabaseConnector"
+  | "pluginFacebook"
+  | "pluginGmail"
+  | "pluginDateTime"
+  | "pluginWeather"
+  | "pluginOverview";
 
 export default function HomePage() {
   return (
-    <ProtectedRoute>
-      <AuthenticatedHomePage />
-    </ProtectedRoute>
+    <TextSelectionProvider enableGlobalSelection={true} enableKeyboardShortcuts={true}>
+      <ProtectedRoute>
+        <AuthenticatedHomePage />
+      </ProtectedRoute>
+    </TextSelectionProvider>
   );
 }
 
@@ -57,57 +92,82 @@ function AuthenticatedHomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const parseView = (sp: ReturnType<typeof useSearchParams> | null): ActiveView => {
-    const v = sp?.get('view') ?? '';
+  const parseView = (
+    sp: ReturnType<typeof useSearchParams> | null
+  ): ActiveView => {
+    const v = sp?.get("view") ?? "";
     const allowed: ActiveView[] = [
-      'settings',
-      'dashboard',
-      'commsCenter',
-      'pluginDatabaseConnector',
-      'pluginFacebook',
-      'pluginGmail',
-      'pluginDateTime',
-      'pluginWeather',
-      'pluginOverview',
+      "settings",
+      "dashboard",
+      "commsCenter",
+      "pluginDatabaseConnector",
+      "pluginFacebook",
+      "pluginGmail",
+      "pluginDateTime",
+      "pluginWeather",
+      "pluginOverview",
     ];
-    return (allowed as readonly string[]).includes(v) ? (v as ActiveView) : 'dashboard';
+    return (allowed as readonly string[]).includes(v)
+      ? (v as ActiveView)
+      : "dashboard";
   };
-  const initialView = parseView(searchParams as any);
-  const [activeMainView, setActiveMainView] = useState<ActiveView>(initialView);
+
+  const [activeMainView, setActiveMainView] = useState<ActiveView>(() =>
+    parseView(searchParams as any)
+  );
 
   useEffect(() => {
-    setActiveMainView(initialView);
-  }, [initialView]);
+    const currentView = parseView(searchParams as any);
+    if (currentView !== activeMainView) {
+      setActiveMainView(currentView);
+    }
+  }, [searchParams, activeMainView]);
 
   const navigate = (view: ActiveView) => {
     setActiveMainView(view);
-    const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
-    params.set('view', view);
+    const params = new URLSearchParams(
+      searchParams ? searchParams.toString() : ""
+    );
+    params.set("view", view);
     router.push(`/?${params.toString()}`);
   };
 
   return (
     <SidebarProvider>
-      <div className="app-grid">
+      <GridContainer className="app-grid" columns="auto 1fr" rows="auto 1fr">
         <header className="app-header header-enhanced" role="banner">
-          <div className="container-fluid flex-between py-3 md:py-4">
-            <div className="flex-start space-x-3">
+          <FlexContainer
+            className="container-fluid py-3 md:py-4"
+            justify="between"
+            align="center"
+          >
+            <FlexContainer className="space-x-3" align="center">
               <AppSidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive">
-                {/* Default PanelLeft icon will be rendered by AppSidebarTrigger itself */}
+                <span className="sr-only">Toggle sidebar</span>
               </AppSidebarTrigger>
               <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0 smooth-transform" />
               <h1 className="text-xl md:text-2xl font-semibold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 Karen AI
               </h1>
-            </div>
-            <div className="flex items-center gap-2">
+            </FlexContainer>
+            <FlexContainer className="gap-2" align="center">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Settings" className="focus-ring smooth-transition">
-                    <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground smooth-transition" />
-                  </Button>
+                  <IconButton
+                    variant="ghost"
+                    aria-label="Settings"
+                    className="focus-ring smooth-transition"
+                    icon={
+                      <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground smooth-transition" />
+                    }
+                  >
+                    Settings
+                  </IconButton>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col modern-card-glass">
+                <SheetContent
+                  side="right"
+                  className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col modern-card-glass"
+                >
                   <SheetHeader className="p-4 border-b">
                     <SheetTitle>Settings</SheetTitle>
                   </SheetHeader>
@@ -117,8 +177,8 @@ function AuthenticatedHomePage() {
                 </SheetContent>
               </Sheet>
               <AuthenticatedHeader />
-            </div>
-          </div>
+            </FlexContainer>
+          </FlexContainer>
         </header>
 
         <div className="flex flex-1 min-h-0">
@@ -132,7 +192,10 @@ function AuthenticatedHomePage() {
               aria-label="Main navigation"
             >
               <AppSidebarHeader className="p-4">
-                <h2 id="home-primary-nav-title" className="text-lg font-semibold tracking-tight">
+                <h2
+                  id="home-primary-nav-title"
+                  className="text-lg font-semibold tracking-tight"
+                >
                   Navigation
                 </h2>
               </AppSidebarHeader>
@@ -141,7 +204,11 @@ function AuthenticatedHomePage() {
                 <nav aria-labelledby="home-primary-nav-title">
                   <SidebarMenu>
                     <SidebarMenuItem>
-                      <SidebarMenuButton asChild className="w-full" isActive={pathname === '/chat'}>
+                      <SidebarMenuButton
+                        asChild
+                        className="w-full"
+                        isActive={pathname === "/chat"}
+                      >
                         <Link href="/chat">
                           <MessageSquare />
                           Chat
@@ -150,8 +217,8 @@ function AuthenticatedHomePage() {
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        onClick={() => navigate('dashboard')}
-                        isActive={activeMainView === 'dashboard'}
+                        onClick={() => navigate("dashboard")}
+                        isActive={activeMainView === "dashboard"}
                         className="w-full"
                       >
                         <LayoutGrid />
@@ -160,8 +227,8 @@ function AuthenticatedHomePage() {
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        onClick={() => navigate('settings')}
-                        isActive={activeMainView === 'settings'}
+                        onClick={() => navigate("settings")}
+                        isActive={activeMainView === "settings"}
                         className="w-full"
                       >
                         <SettingsIconLucide />
@@ -170,8 +237,8 @@ function AuthenticatedHomePage() {
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
-                        onClick={() => navigate('commsCenter')}
-                        isActive={activeMainView === 'commsCenter'}
+                        onClick={() => navigate("commsCenter")}
+                        isActive={activeMainView === "commsCenter"}
                         className="w-full"
                       >
                         <Bell />
@@ -190,8 +257,8 @@ function AuthenticatedHomePage() {
                     <SidebarMenu>
                       <SidebarMenuItem>
                         <SidebarMenuButton
-                          onClick={() => navigate('pluginOverview')}
-                          isActive={activeMainView === 'pluginOverview'}
+                          onClick={() => navigate("pluginOverview")}
+                          isActive={activeMainView === "pluginOverview"}
                           className="w-full"
                         >
                           <PlugZap />
@@ -200,8 +267,10 @@ function AuthenticatedHomePage() {
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton
-                          onClick={() => navigate('pluginDatabaseConnector')}
-                          isActive={activeMainView === 'pluginDatabaseConnector'}
+                          onClick={() => navigate("pluginDatabaseConnector")}
+                          isActive={
+                            activeMainView === "pluginDatabaseConnector"
+                          }
                           className="w-full"
                         >
                           <Database />
@@ -210,8 +279,8 @@ function AuthenticatedHomePage() {
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton
-                          onClick={() => navigate('pluginFacebook')}
-                          isActive={activeMainView === 'pluginFacebook'}
+                          onClick={() => navigate("pluginFacebook")}
+                          isActive={activeMainView === "pluginFacebook"}
                           className="w-full"
                         >
                           <Facebook />
@@ -220,8 +289,8 @@ function AuthenticatedHomePage() {
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton
-                          onClick={() => navigate('pluginGmail')}
-                          isActive={activeMainView === 'pluginGmail'}
+                          onClick={() => navigate("pluginGmail")}
+                          isActive={activeMainView === "pluginGmail"}
                           className="w-full"
                         >
                           <Mail />
@@ -230,8 +299,8 @@ function AuthenticatedHomePage() {
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton
-                          onClick={() => navigate('pluginDateTime')}
-                          isActive={activeMainView === 'pluginDateTime'}
+                          onClick={() => navigate("pluginDateTime")}
+                          isActive={activeMainView === "pluginDateTime"}
                           className="w-full"
                         >
                           <CalendarDays />
@@ -240,8 +309,8 @@ function AuthenticatedHomePage() {
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton
-                          onClick={() => navigate('pluginWeather')}
-                          isActive={activeMainView === 'pluginWeather'}
+                          onClick={() => navigate("pluginWeather")}
+                          isActive={activeMainView === "pluginWeather"}
                           className="w-full"
                         >
                           <CloudSun />
@@ -253,26 +322,32 @@ function AuthenticatedHomePage() {
                 </SidebarGroup>
               </AppSidebarContent>
               <AppSidebarFooter className="p-2 border-t">
-                <p className="text-xs text-muted-foreground text-center">Karen AI Menu</p>
+                <p className="text-xs text-muted-foreground text-center">
+                  Karen AI Menu
+                </p>
               </AppSidebarFooter>
             </Sidebar>
           )}
 
           <SidebarInset className="app-main">
-            <div className="space-y-fluid">
-              {activeMainView === 'dashboard' && <Dashboard />}
-              {activeMainView === 'settings' && <SettingsDialogComponent />}
-              {activeMainView === 'pluginDatabaseConnector' && <DatabaseConnectorPluginPage />}
-              {activeMainView === 'pluginFacebook' && <FacebookPluginPage />}
-              {activeMainView === 'pluginGmail' && <GmailPluginPage />}
-              {activeMainView === 'pluginDateTime' && <DateTimePluginPage />}
-              {activeMainView === 'pluginWeather' && <WeatherPluginPage />}
-              {activeMainView === 'pluginOverview' && <PluginOverviewPage />}
-              {activeMainView === 'commsCenter' && (
-                <div className="space-y-fluid">
+            <FlexContainer direction="column" className="space-y-fluid">
+              {activeMainView === "dashboard" && <Dashboard />}
+              {activeMainView === "settings" && <SettingsDialogComponent />}
+              {activeMainView === "pluginDatabaseConnector" && (
+                <DatabaseConnectorPluginPage />
+              )}
+              {activeMainView === "pluginFacebook" && <FacebookPluginPage />}
+              {activeMainView === "pluginGmail" && <GmailPluginPage />}
+              {activeMainView === "pluginDateTime" && <DateTimePluginPage />}
+              {activeMainView === "pluginWeather" && <WeatherPluginPage />}
+              {activeMainView === "pluginOverview" && <PluginOverviewPage />}
+              {activeMainView === "commsCenter" && (
+                <FlexContainer direction="column" className="space-y-fluid">
                   <div className="modern-card">
                     <div className="modern-card-header">
-                      <h2 className="text-2xl font-semibold tracking-tight">Communications Center</h2>
+                      <h2 className="text-2xl font-semibold tracking-tight">
+                        Communications Center
+                      </h2>
                       <p className="text-sm text-muted-foreground mt-2">
                         Updates, alerts, and notes from Karen.
                       </p>
@@ -283,19 +358,27 @@ function AuthenticatedHomePage() {
                   </div>
                   <div className="modern-card">
                     <div className="modern-card-header">
-                      <h3 className="text-lg font-semibold">My Notes (Conceptual)</h3>
+                      <h3 className="text-lg font-semibold">
+                        My Notes (Conceptual)
+                      </h3>
                     </div>
                     <div className="modern-card-content min-h-[150px]">
-                      <p className="text-sm text-muted-foreground">This space is reserved for future features.</p>
-                      <p className="mt-2 text-sm text-muted-foreground">For example, Karen might save summaries of long conversations or important points she's learned here for your easy review.</p>
+                      <p className="text-sm text-muted-foreground">
+                        This space is reserved for future features.
+                      </p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        For example, Karen might save summaries of long
+                        conversations or important points she's learned here for
+                        your easy review.
+                      </p>
                     </div>
                   </div>
-                </div>
+                </FlexContainer>
               )}
-            </div>
+            </FlexContainer>
           </SidebarInset>
         </div>
-      </div>
+      </GridContainer>
     </SidebarProvider>
   );
 }

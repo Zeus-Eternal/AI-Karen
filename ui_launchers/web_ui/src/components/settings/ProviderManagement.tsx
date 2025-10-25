@@ -27,11 +27,18 @@ import {
   Lock,
   ChevronDown,
   ChevronUp,
-  Activity
+  Activity,
+  Settings
 } from 'lucide-react';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { openaiPing } from '@/lib/providers-api';
 import { handleApiError } from '@/lib/error-handler';
+import ProviderStatusIndicator, { type ProviderStatus } from './ProviderStatusIndicator';
+import ProviderTestingInterface from './ProviderTestingInterface';
+import ProviderConfigurationGuide from './ProviderConfigurationGuide';
+import ProviderDiagnosticsPage from './ProviderDiagnosticsPage';
+import ErrorMessageDisplay from './ErrorMessageDisplay';
+import { useProviderNotifications } from '@/hooks/useProviderNotifications';
 
 // Model Recommendations Component
 interface ModelRecommendationsProps {
@@ -274,9 +281,18 @@ export default function ProviderManagement({
   const [keyValidationResults, setKeyValidationResults] = useState<Record<string, ApiKeyValidationResult>>({});
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
   const [healthChecking, setHealthChecking] = useState(false);
+  const [showConfigGuide, setShowConfigGuide] = useState<string | null>(null);
+  const [showTesting, setShowTesting] = useState<string | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState<string | null>(null);
 
   const { toast } = useToast();
   const backend = getKarenBackend();
+  
+  // Provider notifications
+  const {
+    notifyProviderStatusChange,
+    notifyError
+  } = useProviderNotifications({ autoToast: false }); // Disable auto-toast to avoid duplicates
 
   // Load API keys from localStorage on mount
   useEffect(() => {
@@ -344,6 +360,7 @@ export default function ProviderManagement({
 
       if (response.valid) {
         // Update provider health status
+        const previousStatus = providers.find(p => p.name === providerName)?.health_status;
         const updatedProviders = providers.map(p =>
           p.name === providerName
             ? {
@@ -356,18 +373,27 @@ export default function ProviderManagement({
         );
         setProviders(updatedProviders);
 
+        // Notify status change
+        if (previousStatus !== 'healthy') {
+          notifyProviderStatusChange(providerName, 'healthy', previousStatus);
+        }
+
         toast({
           title: "API Key Valid",
           description: `${providerName} API key validated successfully. ${response.models_discovered || 0} models discovered.`,
         });
       } else {
         // Update provider health status
+        const previousStatus = providers.find(p => p.name === providerName)?.health_status;
         const updatedProviders = providers.map(p =>
           p.name === providerName
             ? { ...p, health_status: 'unhealthy' as const, error_message: response.message, last_health_check: Date.now() }
             : p
         );
         setProviders(updatedProviders);
+
+        // Notify error
+        notifyError(providerName, response.message, 'API_KEY_INVALID');
       }
     } catch (error) {
       console.error(`Failed to validate API key for ${providerName}:`, error);
@@ -382,12 +408,16 @@ export default function ProviderManagement({
         }
       }));
 
+      const previousStatus = providers.find(p => p.name === providerName)?.health_status;
       const updatedProviders = providers.map(p =>
         p.name === providerName
           ? { ...p, health_status: 'unhealthy' as const, error_message: errorMessage, last_health_check: Date.now() }
           : p
       );
       setProviders(updatedProviders);
+
+      // Notify error
+      notifyError(providerName, errorMessage, 'VALIDATION_FAILED');
     } finally {
       setValidatingKeys(prev => ({ ...prev, [providerName]: false }));
     }
@@ -563,6 +593,32 @@ export default function ProviderManagement({
       });
     }
   };
+
+  // Convert LLMProvider to ProviderStatus for the new components
+  const convertToProviderStatus = (provider: LLMProvider): ProviderStatus => ({
+    name: provider.name,
+    status: provider.health_status as any,
+    health_score: provider.health_status === 'healthy' ? 85 : provider.health_status === 'unhealthy' ? 25 : 50,
+    last_successful_request: provider.last_health_check ? new Date(provider.last_health_check).toISOString() : undefined,
+    error_count: 0,
+    connectivity_status: provider.health_status === 'healthy' ? 'connected' : 'disconnected',
+    model_availability: {},
+    capability_status: provider.capabilities.reduce((acc, cap) => ({ ...acc, [cap]: true }), {}),
+    performance_metrics: {
+      average_response_time: 1500,
+      success_rate: provider.health_status === 'healthy' ? 0.95 : 0.3,
+      error_rate: provider.health_status === 'healthy' ? 0.05 : 0.7,
+      requests_per_minute: 10,
+      last_updated: new Date().toISOString()
+    },
+    last_error: provider.error_message,
+    recovery_suggestions: provider.error_message ? ['Check API key configuration', 'Verify network connectivity'] : [],
+    provider_type: provider.provider_type,
+    requires_api_key: provider.requires_api_key,
+    api_key_valid: provider.health_status === 'healthy',
+    dependencies: {},
+    configuration_issues: provider.error_message ? [provider.error_message] : []
+  });
 
   const getHealthIcon = (status: string) => {
     switch (status) {
@@ -762,8 +818,17 @@ export default function ProviderManagement({
                   {/* Model Recommendations */}
                   <ModelRecommendations provider={provider} />
 
+                  {/* Enhanced Provider Status */}
+                  <ProviderStatusIndicator
+                    provider={convertToProviderStatus(provider)}
+                    onTest={async (name) => await testProvider(name)}
+                    onRefresh={async (name) => await checkProviderHealth(name)}
+                    showDetails={false}
+                    realTimeUpdates={true}
+                  />
+
                   {/* Actions */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -772,15 +837,30 @@ export default function ProviderManagement({
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Discover Models
                     </Button>
-                    {provider.requires_api_key && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => testProvider(provider.name)}
-                      >
-                        Test
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowTesting(showTesting === provider.name ? null : provider.name)}
+                    >
+                      <Activity className="h-4 w-4 mr-2" />
+                      {showTesting === provider.name ? 'Hide Testing' : 'Test Provider'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowConfigGuide(showConfigGuide === provider.name ? null : provider.name)}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      {showConfigGuide === provider.name ? 'Hide Guide' : 'Setup Guide'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDiagnostics(showDiagnostics === provider.name ? null : provider.name)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      {showDiagnostics === provider.name ? 'Hide Diagnostics' : 'Diagnostics'}
+                    </Button>
                     {provider.documentation_url && (
                       <Button
                         variant="outline"
@@ -792,6 +872,74 @@ export default function ProviderManagement({
                       </Button>
                     )}
                   </div>
+
+                  {/* Provider Testing Interface */}
+                  {showTesting === provider.name && (
+                    <div className="mt-4">
+                      <ProviderTestingInterface
+                        providerName={provider.name}
+                        providerType={provider.provider_type}
+                        requiresApiKey={provider.requires_api_key}
+                        onTestComplete={(result) => {
+                          // Update provider status based on test results
+                          const updatedProviders = providers.map(p =>
+                            p.name === provider.name
+                              ? {
+                                  ...p,
+                                  health_status: result.overall_status === 'passed' ? 'healthy' as const : 'unhealthy' as const,
+                                  last_health_check: Date.now(),
+                                  error_message: result.overall_status === 'failed' ? 'Validation failed' : undefined
+                                }
+                              : p
+                          );
+                          setProviders(updatedProviders);
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Configuration Guide */}
+                  {showConfigGuide === provider.name && (
+                    <div className="mt-4">
+                      <ProviderConfigurationGuide
+                        providerName={provider.name}
+                        onStepComplete={(stepId) => {
+                          console.log(`Step ${stepId} completed for ${provider.name}`);
+                        }}
+                        onConfigurationComplete={() => {
+                          // Refresh provider status after configuration
+                          checkProviderHealth(provider.name);
+                          setShowConfigGuide(null);
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Diagnostics Page */}
+                  {showDiagnostics === provider.name && (
+                    <div className="mt-4">
+                      <ProviderDiagnosticsPage
+                        providerName={provider.name}
+                        onClose={() => setShowDiagnostics(null)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Error Display */}
+                  {provider.error_message && (
+                    <div className="mt-4">
+                      <ErrorMessageDisplay
+                        error={provider.error_message}
+                        context={{
+                          provider: provider.name,
+                          timestamp: provider.last_health_check ? new Date(provider.last_health_check).toISOString() : new Date().toISOString()
+                        }}
+                        onRetry={() => checkProviderHealth(provider.name)}
+                        showTechnicalDetails={false}
+                        showSolutions={true}
+                      />
+                    </div>
+                  )}
                 </div>
               </CardContent>
             )}

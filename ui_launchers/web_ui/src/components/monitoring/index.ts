@@ -1,9 +1,10 @@
 /**
- * Monitoring Components Index
- * Exports all monitoring and diagnostic components
+ * Monitoring dashboard components exports
  */
 
-export { EndpointStatusDashboard } from './endpoint-status-dashboard';
-export { EndpointStatusIndicator } from './endpoint-status-indicator';
-export { HealthDashboard } from './health-dashboard';
-export { MonitoringStatus } from './monitoring-status';
+export * from './types';
+export { ConnectionStatusIndicator } from './ConnectionStatusIndicator';
+export { PerformanceMetricsDisplay } from './PerformanceMetricsDisplay';
+export { ErrorRateDisplay } from './ErrorRateDisplay';
+export { AuthenticationMetricsDisplay } from './AuthenticationMetricsDisplay';
+export { RealTimeMonitoringDashboard } from './RealTimeMonitoringDashboard';

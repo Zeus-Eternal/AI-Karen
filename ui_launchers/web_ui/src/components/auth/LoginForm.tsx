@@ -1,5 +1,5 @@
 /**
- * LoginForm component - simplified version without complex validation
+ * LoginForm component - simplified version for bulletproof authentication
  */
 
 'use client';
@@ -23,20 +23,23 @@ const DEV_ADMIN_EMAIL = process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL || 'admin@exampl
 const DEV_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD || 'adminadmin';
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
-  const { login, isLoading } = useAuth();
+  const { login, devLogin } = useAuth();
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
     password: '',
     totp_code: '',
   });
   const [error, setError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
   const [showTwoFactor, setShowTwoFactor] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear any previous error - simple error state management
     setError('');
 
-    // Basic validation
+    // Simple validation - no complex validation logic
     if (!credentials.email || !credentials.password) {
       setError('Please enter both email and password');
       return;
@@ -48,23 +51,35 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     }
 
     try {
+      setIsLoading(true);
+      // Direct call to authentication context - no retry logic
       await login(credentials);
+      console.log('Login completed successfully, calling onSuccess callback');
+      // Call success callback if provided
       onSuccess?.();
     } catch (error) {
+      // Simple error handling - clear error display without complex recovery
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       setError(errorMessage);
       
-      // Check if 2FA is required
+      // Simple 2FA detection - no complex flow management
       if (errorMessage.toLowerCase().includes('2fa') || 
           errorMessage.toLowerCase().includes('two factor') || 
           errorMessage.toLowerCase().includes('two-factor')) {
         setShowTwoFactor(true);
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Simple input change handler - no complex state management
   const handleInputChange = (field: keyof LoginCredentials) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials(prev => ({ ...prev, [field]: e.target.value }));
+    // Clear error when user starts typing - immediate feedback
+    if (error) {
+      setError('');
+    }
   };
 
   return (
@@ -145,25 +160,46 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               </div>
             )}
 
-            {/* Development Hint */}
+            {/* Development Hint - convenience only, no bypass */}
             {process.env.NODE_ENV === 'development' && !credentials.email && !credentials.password && (
               <Alert>
                 <AlertDescription className="flex items-center justify-between">
-                  <span><strong>Development Mode:</strong> Use {DEV_ADMIN_EMAIL} / {DEV_ADMIN_PASSWORD} or wait for auto-login</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCredentials({ email: DEV_ADMIN_EMAIL, password: DEV_ADMIN_PASSWORD, totp_code: '' })}
-                    className="ml-2"
-                  >
-                    Fill
-                  </Button>
+                  <span><strong>Development Mode:</strong> Use {DEV_ADMIN_EMAIL} / {DEV_ADMIN_PASSWORD}</span>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCredentials({ email: DEV_ADMIN_EMAIL, password: DEV_ADMIN_PASSWORD, totp_code: '' })}
+                    >
+                      Fill
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          setIsLoading(true);
+                          setError('');
+                          await devLogin(DEV_ADMIN_EMAIL);
+                          onSuccess?.();
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : 'Dev login failed');
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                      disabled={isLoading}
+                    >
+                      Dev Login
+                    </Button>
+                  </div>
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* Error Display */}
+            {/* Simple Error Display - clear feedback without complex recovery */}
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>

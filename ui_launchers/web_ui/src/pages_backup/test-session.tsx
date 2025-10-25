@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from '@/contexts/SessionProvider';
 import { getApiClient } from '@/lib/api-client';
-import { getSession, clearSession, bootSession, refreshToken, isAuthenticated } from '@/lib/auth/session';
+import { getSession, clearSession, validateSession, isAuthenticated, hasSessionCookie, getCurrentUser } from '@/lib/auth/session';
 
 interface SessionTestResult {
   timestamp: string;
@@ -25,8 +25,7 @@ export default function TestSessionPage() {
     isAuthenticated: contextAuthenticated, 
     user, 
     isLoading, 
-    refreshSession,
-    attemptRecovery 
+    refreshSession
   } = useSession();
   
   const [testResults, setTestResults] = useState<SessionTestResult[]>([]);
@@ -81,27 +80,27 @@ export default function TestSessionPage() {
     }
   };
 
-  const testTokenRefresh = async () => {
+  const testValidateSession = async () => {
     setIsRunningTest(true);
     try {
-      await refreshToken();
-      addTestResult('Token Refresh', true, 'Token refreshed successfully');
+      const isValid = await validateSession();
+      addTestResult('Validate Session', isValid, isValid ? 'Session validated successfully' : 'Session validation failed');
       refreshSession();
     } catch (error: any) {
-      addTestResult('Token Refresh', false, error.message);
+      addTestResult('Validate Session', false, error.message);
     } finally {
       setIsRunningTest(false);
     }
   };
 
-  const testBootSession = async () => {
+  const testCheckCookie = async () => {
     setIsRunningTest(true);
     try {
-      await bootSession();
-      addTestResult('Boot Session', true, 'Session booted successfully');
+      const hasCookie = hasSessionCookie();
+      addTestResult('Check Session Cookie', hasCookie, hasCookie ? 'Session cookie found' : 'No session cookie');
       refreshSession();
     } catch (error: any) {
-      addTestResult('Boot Session', false, error.message);
+      addTestResult('Check Session Cookie', false, error.message);
     } finally {
       setIsRunningTest(false);
     }
@@ -110,13 +109,14 @@ export default function TestSessionPage() {
   const testSessionRecovery = async () => {
     setIsRunningTest(true);
     try {
-      const result = await attemptRecovery();
+      // In cookie-based auth, recovery is just re-validating the session
+      const isValid = await validateSession();
       addTestResult(
         'Session Recovery',
-        result.success,
-        result.message || (result.success ? 'Recovery successful' : 'Recovery failed'),
-        result
+        isValid,
+        isValid ? 'Session recovery successful' : 'Session recovery failed'
       );
+      refreshSession();
     } catch (error: any) {
       addTestResult('Session Recovery', false, error.message);
     } finally {
@@ -218,18 +218,18 @@ export default function TestSessionPage() {
                 Validate Session
               </button>
               <button
-                onClick={testTokenRefresh}
+                onClick={testValidateSession}
                 disabled={isRunningTest}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
               >
-                Refresh Token
+                Validate Session
               </button>
               <button
-                onClick={testBootSession}
+                onClick={testCheckCookie}
                 disabled={isRunningTest}
                 className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
               >
-                Boot Session
+                Check Cookie
               </button>
               <button
                 onClick={testSessionRecovery}

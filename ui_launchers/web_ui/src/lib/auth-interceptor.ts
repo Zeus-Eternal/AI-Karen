@@ -3,7 +3,7 @@
  * Handles 401 errors and automatic token refresh
  */
 
-import { bootSession, clearSession, refreshToken, isAuthenticated } from './auth/session';
+import { clearSession, isAuthenticated, validateSession } from './auth/session';
 
 export interface RequestInterceptor {
   onRequest?: (config: RequestInit) => Promise<RequestInit>;
@@ -16,23 +16,17 @@ class AuthInterceptor implements RequestInterceptor {
   private refreshPromise: Promise<void> | null = null;
 
   async onRequest(config: RequestInit): Promise<RequestInit> {
-    // Don't add auth headers to login/refresh endpoints
+    // Don't add auth headers to login/logout endpoints
     const url = (config as any).url || '';
-    if (url.includes('/auth/login') || url.includes('/auth/refresh')) {
+    if (url.includes('/auth/login') || url.includes('/auth/logout')) {
       return config;
     }
 
-    // Ensure we have a valid session before making the request
-    try {
-      if (!isAuthenticated()) {
-        await bootSession();
-      }
-    } catch (error) {
-      console.log('Failed to ensure authentication before request:', error);
-      // Don't block the request - let it proceed and handle 401 in response
-    }
-
-    return config;
+    // Ensure cookies are included for authentication
+    return {
+      ...config,
+      credentials: 'include'
+    };
   }
 
   async onResponse(response: Response): Promise<Response> {
@@ -40,31 +34,19 @@ class AuthInterceptor implements RequestInterceptor {
     if (response.status === 401) {
       const url = response.url;
       
-      // Don't retry auth endpoints
-      if (url.includes('/auth/login') || url.includes('/auth/refresh')) {
+      // Don't redirect for auth endpoints
+      if (url.includes('/auth/login') || url.includes('/auth/logout')) {
         return response;
       }
 
-      console.log('Received 401 response, attempting token refresh');
+      console.log('Received 401 response, clearing session and redirecting to login');
       
-      try {
-        await this.handleTokenRefresh();
-        
-        // Clone the original request and retry
-        const originalRequest = (response as any).originalRequest;
-        if (originalRequest) {
-          console.log('Retrying request after token refresh');
-          const retryResponse = await fetch(originalRequest.url, originalRequest);
-          return retryResponse;
-        }
-      } catch (error) {
-        console.error('Token refresh failed:', error);
-        clearSession();
-        
-        // Redirect to login if we're in a browser environment
-        if (typeof window !== 'undefined' && !url.includes('/api/auth/')) {
-          window.location.href = '/login';
-        }
+      // Clear session state
+      clearSession();
+      
+      // Redirect to login if we're in a browser environment
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
       }
     }
 
@@ -76,45 +58,15 @@ class AuthInterceptor implements RequestInterceptor {
     if (error.status === 401 || error.message?.includes('401')) {
       console.log('Handling 401 error in interceptor');
       
-      try {
-        await this.handleTokenRefresh();
-      } catch (refreshError) {
-        console.error('Token refresh failed in error handler:', refreshError);
-        clearSession();
-        
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+      // Clear session and redirect to login
+      clearSession();
+      
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
       }
     }
 
     throw error;
-  }
-
-  private async handleTokenRefresh(): Promise<void> {
-    // Prevent multiple simultaneous refresh attempts
-    if (this.refreshInProgress) {
-      if (this.refreshPromise) {
-        return this.refreshPromise;
-      }
-      return;
-    }
-
-    this.refreshInProgress = true;
-    this.refreshPromise = (async () => {
-      try {
-        await refreshToken();
-        console.log('Token refresh successful');
-      } catch (error) {
-        console.error('Token refresh failed:', error);
-        throw error;
-      } finally {
-        this.refreshInProgress = false;
-        this.refreshPromise = null;
-      }
-    })();
-
-    return this.refreshPromise;
   }
 }
 
@@ -171,9 +123,10 @@ export function requiresAuth(url: string): boolean {
 
 /**
  * Add authentication headers to a request
+ * In cookie-based auth, this just ensures credentials are included
  */
 export function addAuthHeaders(headers: Record<string, string> = {}): Record<string, string> {
-  // This will be handled by the session management
-  // Just return the headers as-is since session.ts handles auth headers
+  // Cookie-based authentication doesn't need manual headers
+  // The credentials: 'include' option handles cookie authentication
   return headers;
 }

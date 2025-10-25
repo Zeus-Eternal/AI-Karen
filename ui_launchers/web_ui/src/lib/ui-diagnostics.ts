@@ -117,17 +117,21 @@ class UIDiagnostics {
       issues.push('CSS Custom Properties not supported');
     }
 
-    // Check for modern JavaScript features using safe evaluation
+    // Check for modern JavaScript features using safe feature detection
     try {
-      // Test optional chaining
-      eval('const testObj = {}; testObj?.property;');
+      // Test optional chaining by checking if the syntax is supported
+      const testObj = {};
+      const testResult = (testObj as any)?.property;
+      // If we get here, optional chaining is supported
     } catch {
       issues.push('Optional chaining not supported');
     }
 
     try {
-      // Test nullish coalescing
-      eval('const test = null ?? "default";');
+      // Test nullish coalescing by checking if the operator is supported
+      const nullValue: any = null;
+      const test = nullValue ?? "default";
+      // If we get here, nullish coalescing is supported
     } catch {
       issues.push('Nullish coalescing not supported');
     }

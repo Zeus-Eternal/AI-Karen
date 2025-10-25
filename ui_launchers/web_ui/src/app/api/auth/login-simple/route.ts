@@ -1,109 +1,118 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getBackendCandidates, withBackendPath } from '@/app/api/_utils/backend';
+import { 
+  makeBackendRequest, 
+  getTimeoutConfig, 
+  getRetryPolicy 
+} from '@/app/api/_utils/backend';
 import { isSimpleAuthEnabled } from '@/lib/auth/env';
+import { ConnectionError } from '@/lib/connection/connection-manager';
 
-const BACKEND_BASES = getBackendCandidates();
-const AUTH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_AUTH_PROXY_TIMEOUT_MS || process.env.KAREN_AUTH_PROXY_TIMEOUT_MS || 30000);
+interface ErrorResponse {
+  error: string;
+  errorType: string;
+  retryable: boolean;
+  retryAfter?: number;
+  responseTime?: number;
+  timestamp: string;
+}
+
+const timeoutConfig = getTimeoutConfig();
+const retryPolicy = getRetryPolicy();
+
+/**
+ * Get error type from exception
+ */
+function getErrorType(error: any): 'timeout' | 'network' | 'credentials' | 'database' | 'server' {
+  if (!error) return 'server';
+  
+  const message = String(error.message || error).toLowerCase();
+  
+  if (error.name === 'AbortError' || message.includes('timeout')) {
+    return 'timeout';
+  }
+  if (message.includes('network') || message.includes('connection') || message.includes('fetch')) {
+    return 'network';
+  }
+  if (message.includes('database') || message.includes('db')) {
+    return 'database';
+  }
+  
+  return 'server';
+}
+
+/**
+ * Check if error is retryable
+ */
+function isRetryableError(error: any): boolean {
+  if (!error) return false;
+  
+  const message = String(error.message || error).toLowerCase();
+  const isTimeout = error.name === 'AbortError' || message.includes('timeout');
+  const isNetwork = message.includes('network') || message.includes('connection') || message.includes('fetch');
+  const isSocket = message.includes('und_err_socket') || message.includes('other side closed');
+  
+  return isTimeout || isNetwork || isSocket;
+}
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   if (!isSimpleAuthEnabled()) {
-    console.warn('Login-simple endpoint invoked but simple auth is disabled for this environment.');
-    return NextResponse.json({ error: 'Simple auth is disabled' }, { status: 404 });
+    const errorResponse: ErrorResponse = {
+      error: 'Simple auth is disabled',
+      errorType: 'server',
+      retryable: false,
+      responseTime: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+    };
+    return NextResponse.json(errorResponse, { status: 404 });
   }
 
   try {
     const body = await request.json();
     
-    // Forward the request to the backend dev-login endpoint for simple auth
-    const bases = BACKEND_BASES;
+    // Forward the request to the backend using enhanced backend utilities
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Connection': 'keep-alive',
+      'X-Request-ID': `simple-auth-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     };
 
-    const maxAttempts = 2;
-    let response: Response | null = null;
-    let lastErr: any = null;
-    
-    for (const base of bases) {
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
-        try {
-          response = await fetch(withBackendPath('/api/auth/dev-login', base), {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({}),
-            signal: controller.signal,
-            // @ts-ignore Node/undici hints
-            keepalive: true,
-            cache: 'no-store',
-          });
-          clearTimeout(timeout);
-          lastErr = null;
-          if (response.ok) break;
+    const connectionOptions = {
+      timeout: timeoutConfig.authentication,
+      retryAttempts: retryPolicy.maxAttempts,
+      retryDelay: retryPolicy.baseDelay,
+      exponentialBackoff: retryPolicy.jitterEnabled,
+      headers,
+    };
 
-          // Try legacy bypass endpoints as fallback
-          const controller2 = new AbortController();
-          const timeout2 = setTimeout(() => controller2.abort(), AUTH_TIMEOUT_MS);
-          const alt = await fetch(withBackendPath('/api/auth/login-bypass', base), {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ email: 'dev@local', password: 'dev' }),
-            signal: controller2.signal,
-            // @ts-ignore Node/undici hints
-            keepalive: true,
-            cache: 'no-store',
-          });
-          clearTimeout(timeout2);
-          if (alt.ok) { response = alt; break; }
-
-        } catch (err: any) {
-          clearTimeout(timeout);
-          lastErr = err;
-          const msg = String(err?.message || err);
-          const isAbort = err?.name === 'AbortError';
-          const isSocket = msg.includes('UND_ERR_SOCKET') || msg.includes('other side closed');
-          if (attempt < maxAttempts && (isAbort || isSocket)) {
-            await new Promise(res => setTimeout(res, 300));
-            continue;
-          }
-          continue;
-        }
-      }
-      if (response?.ok) break;
-    }
-    
-    if (!response) {
-      console.error('Login-simple proxy fatal error:', lastErr);
-      return NextResponse.json({ error: 'Login request failed' }, { status: 502 });
-    }
-
-    const contentType = response.headers.get('content-type') || '';
-    let data: any = {};
-    if (contentType.includes('application/json')) {
-      try { data = await response.json(); } catch { data = {}; }
-    } else {
-      try { data = await response.text(); } catch { data = ''; }
-      if (typeof data === 'string' && response.ok) {
-        data = { message: data };
+    let result;
+    try {
+      // Try primary authentication endpoint
+      result = await makeBackendRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }, connectionOptions);
+      
+    } catch (error) {
+      // Try legacy bypass endpoints as fallback
+      try {
+        result = await makeBackendRequest('/api/auth/login-bypass', {
+          method: 'POST',
+          body: JSON.stringify({ email: 'dev@local', password: 'dev' }),
+        }, connectionOptions);
+      } catch (fallbackError) {
+        throw error; // Throw original error if fallback also fails
       }
     }
 
-    if (!response.ok) {
-      return NextResponse.json(
-        typeof data === 'string' ? { error: data } : data,
-        { status: response.status }
-      );
-    }
+    const totalResponseTime = Date.now() - startTime;
+    const data = result.data;
     
     // Create the response with the data
     const nextResponse = NextResponse.json(data);
     
     // Forward any Set-Cookie headers from the backend
-    const setCookieHeader = response.headers.get('set-cookie');
+    const setCookieHeader = result.headers.get('set-cookie');
     if (setCookieHeader) {
       nextResponse.headers.set('Set-Cookie', setCookieHeader);
     }
@@ -128,9 +137,40 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('Login-simple proxy error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    const totalResponseTime = Date.now() - startTime;
+    
+    // Extract error information from ConnectionError if available
+    let errorType: 'timeout' | 'network' | 'credentials' | 'database' | 'server' = 'server';
+    let statusCode = 500;
+    let retryable = true;
+    
+    if (error instanceof ConnectionError) {
+      statusCode = error.statusCode || 500;
+      retryable = error.retryable;
+      
+      switch (error.category) {
+        case 'timeout_error':
+          errorType = 'timeout';
+          break;
+        case 'network_error':
+          errorType = 'network';
+          break;
+        case 'http_error':
+          errorType = statusCode === 401 || statusCode === 403 ? 'credentials' : 'server';
+          break;
+        default:
+          errorType = 'server';
+      }
+    }
+    
+    const errorResponse: ErrorResponse = {
+      error: error instanceof Error ? error.message : 'Internal server error',
+      errorType,
+      retryable,
+      responseTime: totalResponseTime,
+      timestamp: new Date().toISOString(),
+    };
+    
+    return NextResponse.json(errorResponse, { status: statusCode });
   }
 }

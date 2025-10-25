@@ -1,0 +1,128 @@
+{
+  "config": {
+    "configFile": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/playwright.audit.config.ts",
+    "rootDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-audit-report"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-audit-report/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 15000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 10000
+      },
+      {
+        "outputDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 10000
+      },
+      {
+        "outputDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 10000
+      },
+      {
+        "outputDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 10000
+      },
+      {
+        "outputDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 10000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "version": "1.38.1",
+    "workers": 8,
+    "webServer": null
+  },
+  "suites": [],
+  "errors": [
+    {
+      "message": "Playwright Test did not expect test.describe() to be called here.\nMost common reasons include:\n- You are calling test.describe() in a configuration file.\n- You are calling test.describe() in a file that is imported by the configuration file.\n- You have two different versions of @playwright/test. This usually happens\n  when one of the dependencies in your package.json depends on @playwright/test.",
+      "stack": "Error: Playwright Test did not expect test.describe() to be called here.\nMost common reasons include:\n- You are calling test.describe() in a configuration file.\n- You are calling test.describe() in a file that is imported by the configuration file.\n- You have two different versions of @playwright/test. This usually happens\n  when one of the dependencies in your package.json depends on @playwright/test.\n    at TestTypeImpl._currentSuite (/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/node_modules/@playwright/test/node_modules/playwright/lib/common/testType.js:74:13)\n    at TestTypeImpl._describe (/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/node_modules/@playwright/test/node_modules/playwright/lib/common/testType.js:114:24)\n    at Function.describe (/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/node_modules/@playwright/test/node_modules/playwright/lib/transform/transform.js:275:12)\n    at Object.<anonymous> (/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/e2e/simple-audit.spec.ts:4:6)",
+      "location": {
+        "file": "/media/zeus/Development12/KIRO/AI-Karen/ui_launchers/web_ui/e2e/simple-audit.spec.ts",
+        "column": 6,
+        "line": 4
+      },
+      "snippet": "\u001b[90m   at \u001b[39msimple-audit.spec.ts:4\n\n\u001b[0m \u001b[90m 2 |\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 3 |\u001b[39m \u001b[90m// Simple audit that works with existing server\u001b[39m\u001b[0m\n\u001b[0m\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Simple Web Container Audit'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\u001b[0m\n\u001b[0m \u001b[90m   |\u001b[39m      \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 5 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\u001b[0m\n\u001b[0m \u001b[90m 6 |\u001b[39m     \u001b[90m// Set base URL directly\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'http://localhost:8000'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+    },
+    {
+      "message": "No tests found",
+      "stack": "Error: No tests found\n"
+    }
+  ]
+}

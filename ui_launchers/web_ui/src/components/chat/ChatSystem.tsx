@@ -152,7 +152,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       const result = await chatService.processUserMessage(
         message,
         messages,
-        (user.preferences || {}) as any,
+        {} as any, // Preferences not available in simplified mode
         { userId: user.user_id, sessionId: sessionId || undefined }
       );
 

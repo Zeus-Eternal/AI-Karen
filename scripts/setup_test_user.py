@@ -7,8 +7,16 @@ import asyncio
 import sys
 import os
 
-# Add the src directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# Add the repository `src` directory to the path so local package imports (ai_karen_engine)
+# resolve correctly in editors (Pylance) and at runtime. Use an absolute path one level
+# up from the scripts folder (repo root /src).
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(repo_root, 'src'))
+
+# Also add backup/legacy source locations used in this repo (some modules live in backups)
+backup_src = os.path.join(repo_root, 'backups', 'complex_auth_system', 'src')
+if os.path.isdir(backup_src):
+    sys.path.insert(0, backup_src)
 
 async def setup_test_user():
     """Create a test user in the fallback database"""

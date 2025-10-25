@@ -3,8 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { HealthDashboard } from '../monitoring/health-dashboard';
 import UsageAnalyticsCharts from '../analytics/UsageAnalyticsCharts';
 import AuditLogTable from '../analytics/AuditLogTable';
-import { LayoutGrid, LayoutHeader, LayoutSection } from '../layout/ModernLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { GridContainer } from '@/components/ui/layout/grid-container';
+import { FlexContainer } from '@/components/ui/layout/flex-container';
+import { Card } from '@/components/ui/compound/card';
+import { TextSelectionDemo } from '@/components/ui/text-selection-demo';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -12,44 +14,63 @@ export default function Dashboard() {
   const isAdmin = user.roles?.includes('admin') || user.roles?.includes('super_admin');
   
   return (
-    <div className="space-y-fluid">
-      <LayoutHeader
-        title={isAdmin ? 'Admin Dashboard' : 'My Dashboard'}
-        description={!isAdmin ? `Welcome, ${user.email ?? 'User'}` : undefined}
-      />
+    <FlexContainer direction="column" className="space-y-fluid">
+      <div className="modern-card-header">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {isAdmin ? 'Admin Dashboard' : 'My Dashboard'}
+        </h2>
+        {!isAdmin && (
+          <p className="text-sm text-muted-foreground mt-2">
+            Welcome, {user.email ?? 'User'}
+          </p>
+        )}
+      </div>
       
-      <LayoutGrid columns="auto-fit" gap="lg" responsive>
+      <GridContainer 
+        columns="repeat(auto-fit, minmax(300px, 1fr))" 
+        gap="var(--space-lg)"
+        className="dashboard-grid"
+      >
         {isAdmin && (
-          <Card>
-            <CardHeader>
-              <CardTitle>System Health</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card.Root className="modern-card">
+            <Card.Header>
+              <Card.Title>System Health</Card.Title>
+            </Card.Header>
+            <Card.Content>
               <HealthDashboard />
-            </CardContent>
-          </Card>
+            </Card.Content>
+          </Card.Root>
         )}
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Usage Analytics</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Card.Root className="modern-card">
+          <Card.Header>
+            <Card.Title>Usage Analytics</Card.Title>
+          </Card.Header>
+          <Card.Content>
             <UsageAnalyticsCharts />
-          </CardContent>
-        </Card>
+          </Card.Content>
+        </Card.Root>
         
         {isAdmin && (
-          <Card className="col-span-full">
-            <CardHeader>
-              <CardTitle>Audit Logs</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card.Root className="modern-card col-span-full">
+            <Card.Header>
+              <Card.Title>Audit Logs</Card.Title>
+            </Card.Header>
+            <Card.Content>
               <AuditLogTable />
-            </CardContent>
-          </Card>
+            </Card.Content>
+          </Card.Root>
         )}
-      </LayoutGrid>
-    </div>
+        
+        <Card.Root className="modern-card col-span-full">
+          <Card.Header>
+            <Card.Title>Text Selection Test</Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <TextSelectionDemo />
+          </Card.Content>
+        </Card.Root>
+      </GridContainer>
+    </FlexContainer>
   );
 }

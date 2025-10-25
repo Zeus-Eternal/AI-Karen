@@ -10,11 +10,11 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { IntelligentErrorPanel, IntelligentErrorPanelProps } from '../IntelligentErrorPanel';
-import { getEnhancedApiClient } from '@/lib/auth/api-client-enhanced';
+import { getApiClient } from '@/lib/api-client';
 
-// Mock the enhanced API client
-vi.mock('@/lib/auth/api-client-enhanced', () => ({
-  getEnhancedApiClient: vi.fn(),
+// Mock the API client
+vi.mock('@/lib/api-client', () => ({
+  getApiClient: vi.fn(),
 }));
 
 // Mock Lucide icons
@@ -68,7 +68,7 @@ describe('IntelligentErrorPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (getEnhancedApiClient as any).mockReturnValue(mockApiClient);
+    (getApiClient as any).mockReturnValue(mockApiClient);
     mockApiClient.post.mockResolvedValue({ data: mockAnalysisResponse });
   });
 

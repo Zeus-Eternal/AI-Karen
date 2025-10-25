@@ -1,19 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  LineChart,
-  Line,
-} from "recharts";
+// Temporarily commented out recharts imports due to lodash dependency issues
+// import {
+//   BarChart,
+//   Bar,
+//   XAxis,
+//   YAxis,
+//   Tooltip,
+//   ResponsiveContainer,
+//   CartesianGrid,
+//   LineChart,
+//   Line,
+// } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ChartTooltipContent, ChartContainer } from "@/components/ui/chart";
+// Temporarily commented out chart components due to recharts dependency issues
+// import { ChartTooltipContent, ChartContainer } from "@/components/ui/chart";
 
 interface FeatureUsage {
   name: string;
@@ -112,15 +114,12 @@ export default function UsageAnalyticsCharts() {
           <CardTitle>Popular Features</CardTitle>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={{ bar: { color: "hsl(var(--primary))" } }}>
-            <BarChart data={features}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis />
-              <Tooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="usage_count" name="Usage" fill="var(--color-bar)" />
-            </BarChart>
-          </ChartContainer>
+          {/* Temporarily disabled recharts due to lodash dependency issues */}
+          <div className="flex items-center justify-center h-64">
+            <div className="text-muted-foreground">
+              Chart temporarily unavailable - recharts dependency issue
+            </div>
+          </div>
         </CardContent>
       </Card>
       <Card>
@@ -128,20 +127,12 @@ export default function UsageAnalyticsCharts() {
           <CardTitle>Peak Usage Hours</CardTitle>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={{ line: { color: "hsl(var(--primary))" } }}>
-            <LineChart data={peakHours}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hour" />
-              <YAxis allowDecimals={false} />
-              <Tooltip content={<ChartTooltipContent />} />
-              <Line
-                type="monotone"
-                dataKey="count"
-                name="Activity"
-                stroke="var(--color-line)"
-              />
-            </LineChart>
-          </ChartContainer>
+          {/* Temporarily disabled recharts due to lodash dependency issues */}
+          <div className="flex items-center justify-center h-64">
+            <div className="text-muted-foreground">
+              Chart temporarily unavailable - recharts dependency issue
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

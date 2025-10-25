@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class ModelType(str, Enum):
     """Types of LLM models"""
-    LOCAL = "local"           # Ollama, llama.cpp
+    LOCAL = "local"           # llama.cpp, Transformers
     REMOTE_API = "remote_api" # OpenAI, Anthropic, Gemini
     CACHED = "cached"         # Pre-loaded models
     STREAMING = "streaming"   # Streaming-optimized models
@@ -121,7 +121,7 @@ class ModelPreloader:
     
     async def _load_local_model(self, config: ModelConfig):
         """Load local model into memory"""
-        # This would interface with Ollama, llama.cpp, or other local providers
+        # This would interface with llama.cpp, Transformers, or other local providers
         # For now, simulate loading time
         await asyncio.sleep(0.1)  # Simulate load time
         

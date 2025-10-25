@@ -25,6 +25,7 @@ from .middleware import configure_middleware
 from .performance import load_performance_settings
 from .routers import wire_routers
 from .startup import create_lifespan, register_startup_tasks
+from .database_config import get_database_config, database_lifespan
 from .admin_endpoints import register_admin_endpoints
 from .health_endpoints import register_health_endpoints
 from .debug_endpoints import register_debug_endpoints
@@ -64,8 +65,11 @@ def create_app() -> FastAPI:
     # Setup metrics
     initialize_metrics()
     
-    # Create lifespan manager
+    # Create lifespan manager with database configuration
     lifespan = create_lifespan(settings)
+    
+    # Initialize database configuration
+    db_config = get_database_config(settings)
     
     # Create FastAPI app
     app = FastAPI(
@@ -186,7 +190,7 @@ def create_app() -> FastAPI:
             except Exception:
                 service_status = {"status": "unknown"}
             
-            # Check connection health
+            # Check connection health with enhanced database information
             connection_status = {}
             try:
                 from ai_karen_engine.services.database_connection_manager import get_database_manager
@@ -195,12 +199,23 @@ def create_app() -> FastAPI:
                 db_manager = get_database_manager()
                 redis_manager = get_redis_manager()
                 
+                # Get detailed database status
+                db_health = await db_config.get_database_health()
+                
                 connection_status = {
-                    "database": "degraded" if db_manager.is_degraded() else "healthy",
+                    "database": {
+                        "status": "degraded" if db_manager.is_degraded() else "healthy",
+                        "pool_info": db_health.get("pool_info", {}),
+                        "configuration": db_health.get("configuration", {}),
+                        "connection_failures": db_health.get("connection_failures", 0),
+                    },
                     "redis": "degraded" if redis_manager.is_degraded() else "healthy"
                 }
-            except Exception:
-                connection_status = {"database": "unknown", "redis": "unknown"}
+            except Exception as e:
+                connection_status = {
+                    "database": {"status": "unknown", "error": str(e)}, 
+                    "redis": "unknown"
+                }
             
             # Check model availability
             model_status = {}
@@ -285,6 +300,17 @@ def create_app() -> FastAPI:
             except Exception as _e:
                 logger.warning(f"Deferred router wiring failed: {_e}")
     
+    # Add shutdown handler for graceful database cleanup
+    @app.on_event("shutdown")
+    async def _shutdown_database() -> None:
+        """Graceful shutdown of database connections"""
+        try:
+            logger.info("Starting database shutdown process")
+            await db_config.cleanup()
+            logger.info("Database shutdown completed successfully")
+        except Exception as e:
+            logger.error(f"Error during database shutdown: {e}")
+    
     # Add metrics endpoint
     @app.get("/metrics", tags=["monitoring"])
     async def metrics(api_key: str = Depends(api_key_header)):
@@ -311,6 +337,131 @@ def create_app() -> FastAPI:
             "available": sorted(PLUGIN_MAP.keys()),
             "count": len(PLUGIN_MAP),
         }
+    
+    # Add database health endpoint
+    @app.get("/api/health/database", tags=["system"])
+    async def database_health():
+        """Database health check endpoint with detailed connection information"""
+        try:
+            health_info = await db_config.get_database_health()
+            return {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "database": health_info
+            }
+        except Exception as e:
+            logger.error(f"Database health check failed: {e}")
+            return {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "database": {
+                    "status": "error",
+                    "healthy": False,
+                    "error": str(e)
+                }
+            }
+    
+    # Add database connection test endpoint
+    @app.get("/api/health/database/test", tags=["system"])
+    async def test_database_connection():
+        """Test database connection with timeout"""
+        try:
+            start_time = datetime.now(timezone.utc)
+            success = await db_config.test_database_connection()
+            end_time = datetime.now(timezone.utc)
+            
+            response_time = (end_time - start_time).total_seconds() * 1000
+            
+            return {
+                "timestamp": start_time.isoformat(),
+                "connection_test": {
+                    "success": success,
+                    "response_time_ms": response_time,
+                    "timeout_configured": settings.db_connection_timeout,
+                }
+            }
+        except Exception as e:
+            logger.error(f"Database connection test failed: {e}")
+            return {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "connection_test": {
+                    "success": False,
+                    "error": str(e),
+                    "timeout_configured": settings.db_connection_timeout,
+                }
+            }
+    
+    # Add database health monitor endpoint
+    @app.get("/api/health/database/monitor", tags=["system"])
+    async def database_health_monitor():
+        """Get comprehensive database health monitoring information"""
+        try:
+            health_monitor = db_config.get_database_health_monitor()
+            
+            if not health_monitor:
+                return {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "monitor": {
+                        "status": "not_initialized",
+                        "error": "Database health monitor not initialized"
+                    }
+                }
+            
+            # Get current health status
+            current_health = health_monitor.get_current_health()
+            
+            # Get pool status
+            pool_status = health_monitor.get_pool_status()
+            
+            # Get metrics history (last 10 entries)
+            metrics_history = health_monitor.get_metrics_history()[-10:]
+            
+            return {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "monitor": {
+                    "status": current_health.status.value,
+                    "is_connected": current_health.is_connected,
+                    "response_time_ms": current_health.response_time,
+                    "error_count": current_health.error_count,
+                    "consecutive_failures": current_health.consecutive_failures,
+                    "last_check": current_health.last_check.isoformat(),
+                    "last_success": current_health.last_success.isoformat() if current_health.last_success else None,
+                    "last_error": current_health.last_error,
+                    "degraded_features": current_health.degraded_features,
+                    "recovery_attempts": current_health.recovery_attempts,
+                    "next_recovery_attempt": current_health.next_recovery_attempt.isoformat() if current_health.next_recovery_attempt else None,
+                    "metadata": current_health.metadata,
+                },
+                "pool_status": pool_status,
+                "metrics_history": [
+                    {
+                        "timestamp": m.timestamp.isoformat(),
+                        "connection_count": m.connection_count,
+                        "active_connections": m.active_connections,
+                        "idle_connections": m.idle_connections,
+                        "response_time_ms": m.response_time_ms,
+                        "query_success_rate": m.query_success_rate,
+                        "error_count": m.error_count,
+                        "pool_status": m.pool_status.value,
+                    }
+                    for m in metrics_history
+                ],
+                "configuration": {
+                    "health_check_interval": settings.db_health_check_interval,
+                    "max_connection_failures": settings.db_max_connection_failures,
+                    "connection_retry_delay": settings.db_connection_retry_delay,
+                    "connection_timeout": settings.db_connection_timeout,
+                    "query_timeout": settings.db_query_timeout,
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Database health monitor endpoint failed: {e}")
+            return {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "monitor": {
+                    "status": "error",
+                    "error": str(e)
+                }
+            }
     
     # Add degraded mode status endpoint
     @app.get("/api/health/degraded-mode", tags=["system"])

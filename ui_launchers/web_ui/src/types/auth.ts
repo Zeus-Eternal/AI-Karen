@@ -1,34 +1,22 @@
 export interface User {
   user_id: string;
-  email?: string;
-  roles: string[];
+  email: string;
+  full_name?: string;
+  role?: 'super_admin' | 'admin' | 'user'; // New role field for admin system
+  roles: string[]; // Legacy field for backward compatibility
   tenant_id: string;
-  two_factor_enabled: boolean;
-  preferences: {
-    personalityTone: string;
-    personalityVerbosity: string;
-    memoryDepth: string;
-    customPersonaInstructions: string;
-    preferredLLMProvider: string;
-    preferredModel: string;
-    temperature: number;
-    maxTokens: number;
-    notifications: {
-      email: boolean;
-      push: boolean;
-    };
-    ui: {
-      theme: string;
-      language: string;
-      avatarUrl?: string;
-    };
-  };
+  preferences?: Record<string, any>;
+  is_verified?: boolean;
+  is_active?: boolean;
+  created_at?: Date;
+  updated_at?: Date;
+  last_login_at?: Date;
+  two_factor_enabled?: boolean;
 }
 
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
 }
 
 export interface LoginCredentials {
@@ -52,15 +40,9 @@ export interface LoginResponse {
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  register: (credentials: LoginCredentials) => Promise<void>;
-  requestPasswordReset: (email: string) => Promise<void>;
-  resetPassword: (token: string, newPassword: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
-  updateCredentials: (newUsername?: string, newPassword?: string) => Promise<void>;
-  updateUserPreferences: (preferences: DeepPartial<User['preferences']>) => Promise<void>;
+  logout: () => void;
+  checkAuth: () => Promise<boolean>;
 }
 
 // Enhanced Authentication Types and Interfaces

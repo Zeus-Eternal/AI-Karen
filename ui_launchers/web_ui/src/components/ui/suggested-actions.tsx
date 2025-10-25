@@ -148,7 +148,7 @@ export const SuggestedActions: React.FC<SuggestedActionsProps> = ({
           onClick={() => handleActionClick(action, index)}
           disabled={isExecuting || isCompleted}
           variant="outline"
-          size={isCompact ? "sm" : "default"}
+          size={isCompact ? "sm" : "md"}
           className={cn(
             'relative overflow-hidden transition-all duration-200',
             isCompleted && 'bg-green-50 border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300',

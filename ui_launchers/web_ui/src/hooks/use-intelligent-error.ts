@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeError, safeWarn } from '@/lib/safe-console';
-import { getEnhancedApiClient } from '@/lib/auth/api-client-enhanced';
+import { getApiClient } from '@/lib/api-client';
 
 export interface ErrorAnalysisRequest {
   error_message: string;
@@ -81,7 +81,7 @@ export function useIntelligentError(options: UseIntelligentErrorOptions = {}): U
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<{ error: Error | string; context?: Partial<ErrorAnalysisRequest> } | null>(null);
 
-  const apiClient = getEnhancedApiClient();
+  const apiClient = getApiClient();
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 

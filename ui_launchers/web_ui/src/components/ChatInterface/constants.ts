@@ -1,4 +1,4 @@
-export const DEFAULT_CHAT_HEIGHT = "600px";
+export const DEFAULT_CHAT_HEIGHT = "100%";
 export const DEFAULT_PLACEHOLDER =
   "Ask me anything about code, get suggestions, or request help...";
 export const MAX_DEFAULT_MESSAGES = 1000;

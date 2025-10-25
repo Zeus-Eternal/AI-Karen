@@ -12,11 +12,10 @@ import { Label } from '@/components/ui/label'
 
 export default function ProfilePage() {
   const [isClient, setIsClient] = useState(false)
-  const { user, updateCredentials, updateUserPreferences, logout } = useAuth()
+  const { user, logout } = useAuth()
   const router = useRouter()
   const [memoryCount, setMemoryCount] = useState<number | null>(null)
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
     setIsClient(true)
@@ -24,7 +23,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!isClient || !user?.user_id) return
-    setUsername(user.user_id)
     
     getMemoryService()
       .getMemoryStats(user.user_id)
@@ -43,16 +41,11 @@ export default function ProfilePage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user?.user_id) return
-    await updateCredentials(username !== user.user_id ? username : undefined, password || undefined)
-    setPassword('')
+    setMessage('Profile updates are currently not available.')
   }
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    
-    await authService.uploadAvatar(file)
+    setMessage('Avatar upload is currently not available.')
   }
 
   return (
@@ -63,36 +56,22 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>Logged in as <span className="font-semibold">{user?.user_id}</span></div>
+          <div>Email: <span className="font-semibold">{user?.email}</span></div>
+          <div>Roles: <span className="font-semibold">{user?.roles.join(', ')}</span></div>
           {memoryCount !== null && <div>Total memories: {memoryCount}</div>}
-          <form onSubmit={handleSave} className="space-y-3">
-            <Input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" />
-            <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" />
-            <div className="space-y-2">
-              <Label>Theme</Label>
-              <Select defaultValue={user?.preferences?.ui?.theme} onValueChange={val => updateUserPreferences({ ui: { ...user?.preferences?.ui, theme: val } })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="light">Light</SelectItem>
-                  <SelectItem value="dark">Dark</SelectItem>
-                  <SelectItem value="system">System</SelectItem>
-                </SelectContent>
-              </Select>
+          
+          {message && (
+            <div className="p-3 bg-yellow-100 border border-yellow-300 rounded text-sm">
+              {message}
             </div>
-            <div className="space-y-2">
-              <Label>Avatar</Label>
-              <Input type="file" accept="image/*" onChange={handleAvatarUpload} />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit">Save</Button>
-              <Button type="button" variant="secondary" onClick={logout}>Log Out</Button>
-            </div>
-          </form>
-          <div>
-            {user?.two_factor_enabled ? (
-              <a href="/setup-2fa" className="underline">Manage 2FA</a>
-            ) : (
-              <a href="/setup-2fa" className="underline">Enable Two-Factor Authentication</a>
-            )}
+          )}
+          
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" onClick={logout}>Log Out</Button>
+          </div>
+          
+          <div className="text-sm text-gray-600">
+            Profile editing and two-factor authentication setup are currently not available.
           </div>
         </CardContent>
       </Card>

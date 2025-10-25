@@ -122,8 +122,12 @@ export const useChatMessages = (
         const streamingEnabled = !!settings.enableStreaming;
         const chatRuntimePath = streamingEnabled ? "/api/chat/runtime/stream" : "/api/chat/runtime";
         const fallbackPath = useCopilotKit ? "/copilot/assist" : "/api/ai/conversation-processing";
-        const chatRuntimeUrl = joinBackendPath(chatRuntimePath);
-        const fallbackUrl = joinBackendPath(fallbackPath);
+
+        const useProxy = (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !== "false";
+        const proxyUrlFor = (path: string) => `/api/chat/proxy?path=${encodeURIComponent(path)}`;
+
+        const chatRuntimeUrl = useProxy ? proxyUrlFor(chatRuntimePath) : joinBackendPath(chatRuntimePath);
+        const fallbackUrl = useProxy ? proxyUrlFor(fallbackPath) : joinBackendPath(fallbackPath);
         let activeEndpoint = chatRuntimeUrl;
 
         try {

@@ -22,7 +22,9 @@ export default function ExtensionHeader() {
     <SidebarHeader className="space-y-2">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Extension Manager</h2>
-        <SidebarTrigger />
+        <SidebarTrigger>
+          <span className="sr-only">Toggle sidebar</span>
+        </SidebarTrigger>
       </div>
       <Tabs
         value={currentCategory}

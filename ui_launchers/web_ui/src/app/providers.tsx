@@ -3,7 +3,7 @@
 
 import { HookProvider } from '@/contexts/HookContext';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { SessionProvider } from '@/contexts/SessionProvider';
+
 import { ErrorProvider } from '@/contexts/ErrorProvider';
 import { CopilotKitProvider } from '@/components/chat/copilot';
 import { GlobalErrorBoundary } from '@/components/error/GlobalErrorBoundary';
@@ -65,26 +65,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }}
         maxGlobalErrors={10}
       >
-        <SessionProvider
-          autoRehydrate={false}
-          onSessionChange={(isAuthenticated, user) => {
-            console.log('Session changed:', { isAuthenticated, user });
-          }}
-          onSessionError={(error) => {
-            console.error('Session error:', error);
-          }}
-          onRecoveryAttempt={(result) => {
-            console.log('Session recovery attempt:', result);
-          }}
-        >
-          <AuthProvider>
-            <HookProvider>
-              <CopilotKitProvider>
-                {children}
-              </CopilotKitProvider>
-            </HookProvider>
-          </AuthProvider>
-        </SessionProvider>
+        <AuthProvider>
+          <HookProvider>
+            <CopilotKitProvider>
+              {children}
+            </CopilotKitProvider>
+          </HookProvider>
+        </AuthProvider>
       </ErrorProvider>
     </GlobalErrorBoundary>
   );

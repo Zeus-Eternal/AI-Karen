@@ -370,13 +370,15 @@ services:
       NODE_ENV: development
       # Avoid Tailwind JIT timing logs (console.time/console.timeEnd label warnings)
       DEBUG: -tailwindcss
+      # Suppress Node.js warnings
+      NODE_OPTIONS: --no-warnings
       # Server-side (inside container) should call the API service directly
       KAREN_BACKEND_URL: http://api:8000
       # Client-side (browser) should call the backend directly
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
       NEXT_PUBLIC_KAREN_BACKEND_URL: http://localhost:8000
     ports:
-      - "8010:8011"
+      - "8010:8000"
     volumes:
       - ./ui_launchers/web_ui:/app
       - ./.env.local:/app/.env.local:ro

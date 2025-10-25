@@ -58,12 +58,75 @@ export {
   SuggestedActions
 } from './suggested-actions';
 
+// Modern Layout System Components
+export {
+  GridContainer,
+  TwoColumnGrid,
+  ThreeColumnGrid,
+  AutoFitGrid,
+  ResponsiveCardGrid,
+  DashboardGrid,
+  FlexContainer,
+  HStack,
+  VStack,
+  Center,
+  SpaceBetween,
+  ResponsiveFlex,
+  FlexItem,
+  ResponsiveContainer,
+  PageContainer,
+  SectionContainer,
+  CardContainer,
+  SidebarContainer,
+  ContentContainer,
+  useContainerQuery,
+  useContainerSize,
+  type GridContainerProps,
+  type FlexContainerProps,
+  type FlexItemProps,
+  type ResponsiveContainerProps,
+  type ContainerBreakpoints,
+  type ContainerSize,
+  type ResponsiveValue,
+} from './layout';
+
 // Component Types
 export type {
   LoadingProps,
   ErrorBoundaryProps,
   SuggestedActionsProps
 } from './types';
+
+// Right Panel Components
+export {
+  RightPanel,
+  RightPanelHeader,
+  RightPanelContent,
+  RightPanelNavigation,
+  useRightPanel,
+  type RightPanelProps,
+  type RightPanelView,
+  type RightPanelHeaderProps,
+  type RightPanelContentProps,
+  type RightPanelNavigationProps,
+} from './right-panel';
+
+// Panel Components
+export {
+  PanelHeader,
+  type PanelHeaderProps,
+} from './panel-header';
+
+export {
+  PanelContent,
+  PanelSection,
+  type PanelContentProps,
+  type PanelSectionProps,
+} from './panel-content';
+
+export {
+  type PanelContentProps as PanelContentPropsBase,
+} from './panel-content';
 
 // Re-export commonly used types
 export type { VariantProps } from 'class-variance-authority';

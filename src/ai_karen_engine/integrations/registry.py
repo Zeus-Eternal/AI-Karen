@@ -18,9 +18,13 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import os
 import threading
 import time
+import traceback
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
 
 logger = logging.getLogger(__name__)
@@ -51,6 +55,28 @@ class ProviderSpec:
     
     # Health check function
     health_check: Optional[Callable[[], Dict[str, Any]]] = None
+    
+    # Initialization requirements
+    required_env_vars: List[str] = field(default_factory=list)
+    required_dependencies: List[str] = field(default_factory=list)
+    required_files: List[str] = field(default_factory=list)
+    
+    # Error handling configuration
+    max_retries: int = 3
+    retry_delay: float = 1.0
+    timeout_seconds: float = 30.0
+    
+    # Health monitoring configuration
+    health_check_interval: int = 60
+    health_check_timeout: float = 10.0
+    
+    # Fallback configuration
+    fallback_priority: int = 50
+    can_fallback_to: List[str] = field(default_factory=list)
+    
+    # Recovery configuration
+    auto_recovery_enabled: bool = True
+    recovery_check_interval: int = 300
 
 
 @dataclass
@@ -114,6 +140,44 @@ class HealthStatus:
     capabilities: Dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class InitializationResult:
+    """Result of provider initialization."""
+    provider_name: str
+    success: bool
+    error_message: Optional[str] = None
+    missing_dependencies: List[str] = field(default_factory=list)
+    configuration_issues: List[str] = field(default_factory=list)
+    initialization_time: float = 0.0
+    instance: Optional[Any] = None
+    warnings: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ValidationResult:
+    """Result of configuration validation."""
+    valid: bool
+    errors: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    missing_env_vars: List[str] = field(default_factory=list)
+    missing_files: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ProviderDiagnostics:
+    """Detailed diagnostic information for a provider."""
+    name: str
+    status: str
+    health_score: float
+    last_successful_request: Optional[datetime]
+    error_count: int
+    configuration: Dict[str, Any]
+    capabilities: List[str]
+    models: List[str]
+    dependencies: Dict[str, bool]
+    initialization_result: Optional[InitializationResult] = None
+
+
 # -----------------------------
 # Registry Implementation
 # -----------------------------
@@ -134,6 +198,8 @@ class LLMRegistry:
         self._runtime_instances: Dict[str, Dict[int, Any]] = {}
         self._health_status: Dict[str, HealthStatus] = {}
         self._disabled_providers: Set[str] = set()
+        self._initialization_results: Dict[str, InitializationResult] = {}
+        self._provider_diagnostics: Dict[str, ProviderDiagnostics] = {}
         self._lock = threading.RLock()
         
         # Auto-register core providers and runtimes
@@ -206,6 +272,410 @@ class LLMRegistry:
                 bucket[cache_key] = spec
             
             return bucket[cache_key]
+    
+    def initialize_all_providers(self) -> Dict[str, InitializationResult]:
+        """Initialize all registered providers with comprehensive error handling."""
+        logger.info("Starting comprehensive provider initialization...")
+        results = {}
+        
+        # First, run dependency check
+        try:
+            from .dependency_checker import DependencyChecker
+            dep_checker = DependencyChecker(self)
+            dep_report = dep_checker.check_all_dependencies()
+            logger.info(f"Dependency check complete: {dep_report.overall_status}")
+        except Exception as e:
+            logger.warning(f"Dependency check failed: {e}")
+            dep_report = None
+        
+        with self._lock:
+            for provider_name, spec in self._providers.items():
+                if provider_name in self._disabled_providers:
+                    logger.info(f"Skipping disabled provider: {provider_name}")
+                    continue
+                
+                start_time = time.time()
+                result = self._initialize_single_provider(provider_name, spec, dep_report)
+                result.initialization_time = time.time() - start_time
+                
+                results[provider_name] = result
+                self._initialization_results[provider_name] = result
+                
+                # Log result
+                if result.success:
+                    logger.info(f"✓ Provider '{provider_name}' initialized successfully in {result.initialization_time:.2f}s")
+                    if result.warnings:
+                        for warning in result.warnings:
+                            logger.warning(f"  Warning: {warning}")
+                else:
+                    logger.error(f"✗ Provider '{provider_name}' initialization failed: {result.error_message}")
+                    if result.missing_dependencies:
+                        logger.error(f"  Missing dependencies: {', '.join(result.missing_dependencies)}")
+                        # Provide installation guidance
+                        if dep_report and provider_name in dep_report.provider_status:
+                            dep_status = dep_report.provider_status[provider_name]
+                            logger.info(f"  Installation guide:\n{dep_status.installation_guide}")
+                    if result.configuration_issues:
+                        logger.error(f"  Configuration issues: {', '.join(result.configuration_issues)}")
+        
+        # Summary with recommendations
+        successful = sum(1 for r in results.values() if r.success)
+        total = len(results)
+        logger.info(f"Provider initialization complete: {successful}/{total} providers initialized successfully")
+        
+        if dep_report and dep_report.global_recommendations:
+            logger.info("Global recommendations:")
+            for rec in dep_report.global_recommendations:
+                logger.info(f"  • {rec}")
+        
+        return results
+    
+    def _initialize_single_provider(self, provider_name: str, spec: ProviderSpec, dep_report=None) -> InitializationResult:
+        """Initialize a single provider with comprehensive error handling."""
+        result = InitializationResult(provider_name=provider_name, success=False)
+        
+        try:
+            logger.debug(f"Initializing provider: {provider_name}")
+            
+            # Step 1: Use dependency report if available
+            if dep_report and provider_name in dep_report.provider_status:
+                dep_status = dep_report.provider_status[provider_name]
+                if not dep_status.all_dependencies_met:
+                    result.missing_dependencies = dep_status.missing_required
+                    result.error_message = f"Missing required dependencies: {', '.join(dep_status.missing_required)}"
+                    # Add fallback suggestions
+                    if dep_status.fallback_suggestions:
+                        result.warnings.extend([f"Fallback suggestion: {suggestion}" for suggestion in dep_status.fallback_suggestions])
+                    return result
+            else:
+                # Fallback to manual dependency checking
+                missing_deps = []
+                for dep in spec.required_dependencies:
+                    try:
+                        __import__(dep)
+                    except ImportError:
+                        missing_deps.append(dep)
+                
+                if missing_deps:
+                    result.missing_dependencies = missing_deps
+                    result.error_message = f"Missing required dependencies: {', '.join(missing_deps)}"
+                    return result
+            
+            # Step 2: Check required environment variables
+            missing_env_vars = []
+            for env_var in spec.required_env_vars:
+                if not os.getenv(env_var):
+                    missing_env_vars.append(env_var)
+            
+            if missing_env_vars:
+                result.configuration_issues.extend([f"Missing environment variable: {var}" for var in missing_env_vars])
+                result.error_message = f"Missing required environment variables: {', '.join(missing_env_vars)}"
+                return result
+            
+            # Step 3: Check required files
+            missing_files = []
+            for file_path in spec.required_files:
+                if not Path(file_path).exists():
+                    missing_files.append(file_path)
+            
+            if missing_files:
+                result.configuration_issues.extend([f"Missing required file: {file}" for file in missing_files])
+                result.error_message = f"Missing required files: {', '.join(missing_files)}"
+                return result
+            
+            # Step 4: Validate configuration if validator exists
+            if spec.validate:
+                try:
+                    config = self._get_provider_config(provider_name)
+                    if not spec.validate(config):
+                        result.configuration_issues.append("Configuration validation failed")
+                        result.error_message = "Provider configuration validation failed"
+                        return result
+                except Exception as e:
+                    result.configuration_issues.append(f"Configuration validation error: {str(e)}")
+                    result.error_message = f"Configuration validation error: {str(e)}"
+                    return result
+            
+            # Step 5: Attempt to create provider instance
+            try:
+                instance = self._create_provider_instance(provider_name, spec)
+                if instance:
+                    result.instance = instance
+                    result.success = True
+                    logger.debug(f"Provider '{provider_name}' instance created successfully")
+                else:
+                    result.error_message = "Failed to create provider instance"
+                    return result
+            except Exception as e:
+                result.error_message = f"Provider instance creation failed: {str(e)}"
+                logger.debug(f"Provider '{provider_name}' instance creation failed: {traceback.format_exc()}")
+                return result
+            
+            # Step 6: Perform initial health check
+            try:
+                health_result = self.health_check(f"provider:{provider_name}")
+                if health_result.status == "unhealthy":
+                    result.warnings.append(f"Initial health check failed: {health_result.error_message}")
+            except Exception as e:
+                result.warnings.append(f"Initial health check error: {str(e)}")
+            
+            # Step 7: Test model discovery if available
+            if spec.discover:
+                try:
+                    models = spec.discover()
+                    if not models and not spec.fallback_models:
+                        result.warnings.append("No models discovered and no fallback models available")
+                    else:
+                        logger.debug(f"Provider '{provider_name}' discovered {len(models)} models")
+                except Exception as e:
+                    result.warnings.append(f"Model discovery failed: {str(e)}")
+            
+            result.success = True
+            return result
+            
+        except Exception as e:
+            result.error_message = f"Unexpected initialization error: {str(e)}"
+            logger.error(f"Unexpected error initializing provider '{provider_name}': {traceback.format_exc()}")
+            return result
+    
+    def _get_provider_config(self, provider_name: str) -> Dict[str, Any]:
+        """Get configuration for a provider from environment variables."""
+        config = {}
+        
+        # Common configuration patterns
+        api_key_vars = [
+            f"{provider_name.upper()}_API_KEY",
+            f"{provider_name.upper()}_KEY",
+            f"API_KEY_{provider_name.upper()}",
+        ]
+        
+        for var in api_key_vars:
+            value = os.getenv(var)
+            if value:
+                config["api_key"] = value
+                break
+        
+        # Provider-specific configurations
+        if provider_name == "openai":
+            config.update({
+                "api_key": os.getenv("OPENAI_API_KEY", ""),
+                "base_url": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+                "organization": os.getenv("OPENAI_ORGANIZATION", ""),
+            })
+        elif provider_name == "gemini":
+            config.update({
+                "api_key": os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", "")),
+            })
+        elif provider_name == "deepseek":
+            config.update({
+                "api_key": os.getenv("DEEPSEEK_API_KEY", ""),
+                "base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
+            })
+        elif provider_name == "huggingface":
+            config.update({
+                "api_key": os.getenv("HUGGINGFACE_API_KEY", os.getenv("HF_TOKEN", "")),
+                "cache_dir": os.getenv("HF_CACHE_DIR", ""),
+            })
+        
+        return config
+    
+    def _create_provider_instance(self, provider_name: str, spec: ProviderSpec) -> Optional[Any]:
+        """Create an instance of a provider."""
+        try:
+            # This is a placeholder - actual provider instances would be created
+            # by importing and instantiating the specific provider classes
+            config = self._get_provider_config(provider_name)
+            
+            # For now, we'll return the spec with config attached
+            # In a real implementation, this would create actual provider instances
+            instance = {
+                "spec": spec,
+                "config": config,
+                "provider_name": provider_name,
+                "created_at": datetime.now(),
+            }
+            
+            return instance
+            
+        except Exception as e:
+            logger.error(f"Failed to create provider instance for '{provider_name}': {e}")
+            return None
+    
+    def validate_provider_config(self, provider_name: str) -> ValidationResult:
+        """Validate provider configuration including dependencies and API keys."""
+        result = ValidationResult(valid=True)
+        
+        spec = self._providers.get(provider_name)
+        if not spec:
+            result.valid = False
+            result.errors.append(f"Provider '{provider_name}' not registered")
+            return result
+        
+        # Check environment variables
+        for env_var in spec.required_env_vars:
+            if not os.getenv(env_var):
+                result.missing_env_vars.append(env_var)
+                result.errors.append(f"Missing environment variable: {env_var}")
+        
+        # Check dependencies
+        for dep in spec.required_dependencies:
+            try:
+                __import__(dep)
+            except ImportError:
+                result.errors.append(f"Missing dependency: {dep}")
+        
+        # Check files
+        for file_path in spec.required_files:
+            if not Path(file_path).exists():
+                result.missing_files.append(file_path)
+                result.errors.append(f"Missing file: {file_path}")
+        
+        # Validate configuration
+        if spec.validate:
+            try:
+                config = self._get_provider_config(provider_name)
+                if not spec.validate(config):
+                    result.errors.append("Configuration validation failed")
+            except Exception as e:
+                result.errors.append(f"Configuration validation error: {str(e)}")
+        
+        result.valid = len(result.errors) == 0
+        return result
+    
+    def get_provider_diagnostics(self, provider_name: str) -> Optional[ProviderDiagnostics]:
+        """Get detailed diagnostic information for a provider."""
+        spec = self._providers.get(provider_name)
+        if not spec:
+            return None
+        
+        health_status = self.get_health_status(f"provider:{provider_name}")
+        init_result = self._initialization_results.get(provider_name)
+        
+        # Calculate health score
+        health_score = 0.0
+        if health_status:
+            if health_status.status == "healthy":
+                health_score = 1.0
+            elif health_status.status == "degraded":
+                health_score = 0.5
+            elif health_status.status == "unknown":
+                health_score = 0.3
+        
+        # Get configuration (sanitized)
+        config = self._get_provider_config(provider_name)
+        sanitized_config = {}
+        for key, value in config.items():
+            if "key" in key.lower() or "token" in key.lower():
+                sanitized_config[key] = "***" if value else ""
+            else:
+                sanitized_config[key] = value
+        
+        # Get models
+        models = []
+        if spec.discover:
+            try:
+                discovered = spec.discover()
+                models = [model.get("id", model.get("name", "unknown")) for model in discovered]
+            except Exception:
+                models = [model.get("id", model.get("name", "unknown")) for model in spec.fallback_models]
+        else:
+            models = [model.get("id", model.get("name", "unknown")) for model in spec.fallback_models]
+        
+        # Check dependencies
+        dependencies = {}
+        for dep in spec.required_dependencies:
+            try:
+                __import__(dep)
+                dependencies[dep] = True
+            except ImportError:
+                dependencies[dep] = False
+        
+        return ProviderDiagnostics(
+            name=provider_name,
+            status=health_status.status if health_status else "unknown",
+            health_score=health_score,
+            last_successful_request=None,  # Would be tracked in real implementation
+            error_count=0,  # Would be tracked in real implementation
+            configuration=sanitized_config,
+            capabilities=list(spec.capabilities),
+            models=models,
+            dependencies=dependencies,
+            initialization_result=init_result
+        )
+    
+    def repair_provider(self, provider_name: str) -> InitializationResult:
+        """Attempt to repair a failed provider by re-initializing dependencies."""
+        logger.info(f"Attempting to repair provider: {provider_name}")
+        
+        spec = self._providers.get(provider_name)
+        if not spec:
+            return InitializationResult(
+                provider_name=provider_name,
+                success=False,
+                error_message=f"Provider '{provider_name}' not registered"
+            )
+        
+        # Clear any cached instances
+        self._provider_instances.pop(provider_name, {})
+        
+        # Re-initialize the provider
+        start_time = time.time()
+        result = self._initialize_single_provider(provider_name, spec)
+        result.initialization_time = time.time() - start_time
+        
+        # Update stored results
+        self._initialization_results[provider_name] = result
+        
+        if result.success:
+            logger.info(f"✓ Provider '{provider_name}' repaired successfully")
+            # Re-enable if it was disabled
+            self._disabled_providers.discard(provider_name)
+        else:
+            logger.error(f"✗ Provider '{provider_name}' repair failed: {result.error_message}")
+        
+        return result
+    
+    def get_installation_guidance(self, provider_name: str) -> Dict[str, Any]:
+        """Get installation guidance for a provider."""
+        try:
+            from .dependency_checker import DependencyChecker
+            dep_checker = DependencyChecker(self)
+            dep_status = dep_checker.check_provider_dependencies(provider_name)
+            
+            return {
+                "provider_name": provider_name,
+                "dependencies_met": dep_status.all_dependencies_met,
+                "missing_required": dep_status.missing_required,
+                "missing_optional": dep_status.missing_optional,
+                "installation_guide": dep_status.installation_guide,
+                "fallback_suggestions": dep_status.fallback_suggestions,
+            }
+        except Exception as e:
+            logger.error(f"Error getting installation guidance for {provider_name}: {e}")
+            return {
+                "provider_name": provider_name,
+                "error": str(e)
+            }
+    
+    def get_system_dependency_report(self) -> Dict[str, Any]:
+        """Get comprehensive system dependency report."""
+        try:
+            from .dependency_checker import DependencyChecker
+            dep_checker = DependencyChecker(self)
+            report = dep_checker.check_all_dependencies()
+            
+            return {
+                "overall_status": report.overall_status,
+                "provider_count": len(report.provider_status),
+                "ready_providers": [name for name, status in report.provider_status.items() if status.all_dependencies_met],
+                "providers_with_issues": [name for name, status in report.provider_status.items() if not status.all_dependencies_met],
+                "global_recommendations": report.global_recommendations,
+                "quick_setup_commands": report.quick_setup_commands,
+                "system_info": report.system_info,
+            }
+        except Exception as e:
+            logger.error(f"Error getting system dependency report: {e}")
+            return {"error": str(e)}
     
     # ---------- Runtime Registration ----------
     
@@ -531,6 +1001,10 @@ class LLMRegistry:
             discover=self._discover_openai_models,
             validate=self._validate_openai_key,
             health_check=self._health_check_openai,
+            required_env_vars=["OPENAI_API_KEY"],
+            required_dependencies=["openai"],
+            fallback_priority=90,
+            can_fallback_to=["gemini", "deepseek", "huggingface"],
             fallback_models=[
                 {"id": "gpt-4o", "name": "GPT-4o", "family": "gpt", "capabilities": ["text", "vision"]},
                 {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "family": "gpt", "capabilities": ["text"]},
@@ -549,6 +1023,10 @@ class LLMRegistry:
             discover=self._discover_gemini_models,
             validate=self._validate_gemini_key,
             health_check=self._health_check_gemini,
+            required_env_vars=["GEMINI_API_KEY"],
+            required_dependencies=["google-generativeai"],
+            fallback_priority=85,
+            can_fallback_to=["openai", "deepseek", "huggingface"],
             fallback_models=[
                 {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro", "family": "gemini", "capabilities": ["text", "vision"]},
                 {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash", "family": "gemini", "capabilities": ["text", "vision"]},
@@ -566,6 +1044,10 @@ class LLMRegistry:
             discover=self._discover_deepseek_models,
             validate=self._validate_deepseek_key,
             health_check=self._health_check_deepseek,
+            required_env_vars=["DEEPSEEK_API_KEY"],
+            required_dependencies=["openai"],  # DeepSeek uses OpenAI-compatible API
+            fallback_priority=80,
+            can_fallback_to=["openai", "gemini", "huggingface"],
             fallback_models=[
                 {"id": "deepseek-chat", "name": "DeepSeek Chat", "family": "deepseek", "capabilities": ["text", "code"]},
                 {"id": "deepseek-coder", "name": "DeepSeek Coder", "family": "deepseek", "capabilities": ["code"]},
@@ -583,6 +1065,9 @@ class LLMRegistry:
             discover=self._discover_huggingface_models,
             validate=self._validate_huggingface_key,
             health_check=self._health_check_huggingface,
+            required_dependencies=["transformers", "torch"],
+            fallback_priority=70,
+            can_fallback_to=["local", "superkent"],
             fallback_models=[
                 {"id": "microsoft/DialoGPT-large", "name": "DialoGPT Large", "family": "gpt", "format": "safetensors"},
                 {"id": "microsoft/DialoGPT-medium", "name": "DialoGPT Medium", "family": "gpt", "format": "safetensors"},
@@ -599,6 +1084,9 @@ class LLMRegistry:
             capabilities={"local_execution", "privacy"},
             discover=self._discover_local_models,
             health_check=self._health_check_local,
+            required_dependencies=["llama-cpp-python"],
+            fallback_priority=60,
+            can_fallback_to=["superkent"],
             fallback_models=[]  # Will be populated by scanning local files
         )
         self.register_provider(local_spec)
@@ -612,6 +1100,8 @@ class LLMRegistry:
             capabilities={"local_execution", "privacy"},
             discover=self._discover_local_models,
             health_check=self._health_check_local,
+            required_dependencies=["requests"],
+            fallback_priority=50,
             fallback_models=[]
         )
         self.register_provider(superkent_spec)
@@ -1060,6 +1550,9 @@ __all__ = [
     "RuntimeSpec", 
     "ModelMetadata",
     "HealthStatus",
+    "InitializationResult",
+    "ValidationResult",
+    "ProviderDiagnostics",
     "LLMRegistry",
     "get_registry",
     "initialize_registry",

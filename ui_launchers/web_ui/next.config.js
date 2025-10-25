@@ -16,6 +16,9 @@ const nextConfig = {
     // Other experimental features can go here
   },
   
+  // Allow cross-origin requests from Docker container network
+  allowedDevOrigins: ['172.21.0.12'],
+  
   // Force Next.js to use this directory as the workspace root
   distDir: '.next',
   
@@ -27,6 +30,9 @@ const nextConfig = {
     // Enable type checking during build for better code quality
     ignoreBuildErrors: false,
   },
+
+  // Suppress hydration warnings in development
+  reactStrictMode: false,
 
   // ESLint configuration
   eslint: {
@@ -89,6 +95,13 @@ const nextConfig = {
         crypto: false,
       };
     }
+
+    // Fix lodash module resolution for slate-react (used by CopilotKit)
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'lodash/debounce': require.resolve('lodash.debounce'),
+      'lodash/throttle': require.resolve('lodash.throttle'),
+    };
     
     // Fix module resolution for CommonJS/ESM hybrid packages
     config.module.rules.push({
@@ -106,6 +119,98 @@ const nextConfig = {
       ...config.experiments,
       topLevelAwait: true,
     };
+
+    // Bundle optimization for production
+    if (!dev && !isServer) {
+      // Optimize chunk splitting
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            // Vendor libraries
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+              priority: 10,
+              reuseExistingChunk: true,
+            },
+            // React and React DOM
+            react: {
+              test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+              name: 'react',
+              chunks: 'all',
+              priority: 20,
+              reuseExistingChunk: true,
+            },
+            // UI libraries (Radix, Framer Motion, etc.)
+            ui: {
+              test: /[\\/]node_modules[\\/](@radix-ui|framer-motion|lucide-react)[\\/]/,
+              name: 'ui-libs',
+              chunks: 'all',
+              priority: 15,
+              reuseExistingChunk: true,
+            },
+            // Charts and data visualization
+            charts: {
+              test: /[\\/]node_modules[\\/](ag-charts|ag-grid|recharts)[\\/]/,
+              name: 'charts',
+              chunks: 'all',
+              priority: 15,
+              reuseExistingChunk: true,
+            },
+            // Utilities and smaller libraries
+            utils: {
+              test: /[\\/]node_modules[\\/](date-fns|clsx|class-variance-authority|tailwind-merge)[\\/]/,
+              name: 'utils',
+              chunks: 'all',
+              priority: 12,
+              reuseExistingChunk: true,
+            },
+            // Common chunks for frequently used modules
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              priority: 5,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
+          },
+        },
+        // Enable module concatenation for better tree shaking
+        concatenateModules: true,
+        // Enable side effects optimization
+        sideEffects: false,
+      };
+
+      // Tree shaking optimization
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        // Optimize lodash imports
+        'lodash': 'lodash-es',
+        // Remove date-fns alias as it's causing issues
+      };
+
+      // Add webpack plugins for optimization
+      const webpack = require('webpack');
+      
+      config.plugins.push(
+        // Ignore moment.js locales to reduce bundle size
+        new webpack.IgnorePlugin({
+          resourceRegExp: /^\.\/locale$/,
+          contextRegExp: /moment$/,
+        }),
+        // Define environment variables for dead code elimination
+        new webpack.DefinePlugin({
+          'process.env.NODE_ENV': JSON.stringify('production'),
+          __DEV__: false,
+        })
+      );
+
+      // Next.js already handles CSS extraction/minification; rely on built-in pipeline
+    }
     
     // Configure watch options to prevent EMFILE errors
     if (dev && !isServer) {

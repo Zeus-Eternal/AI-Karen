@@ -18,7 +18,9 @@ import { MetaBar } from "@/components/chat";
 
 import { ChatInterface } from "@/components/chat";
 import { webUIConfig } from "@/lib/config";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/polymorphic/button";
+import { GridContainer } from "@/components/ui/layout/grid-container";
+import { FlexContainer } from "@/components/ui/layout/flex-container";
 import {
   Sheet,
   SheetTrigger,
@@ -57,22 +59,24 @@ function ChatView() {
 
   return (
     <SidebarProvider>
-      <div className="chat-grid">
+      <GridContainer className="chat-grid" rows="auto 1fr auto">
         <header className="chat-header header-enhanced" role="banner">
-          <div className="container-fluid flex-between">
-            <div className="flex-start space-x-3">
-              <AppSidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive" />
+          <FlexContainer className="container-fluid" justify="between" align="center">
+            <FlexContainer className="space-x-3" align="center">
+              <AppSidebarTrigger className="mr-1 md:mr-2 smooth-transition interactive">
+                <span className="sr-only">Toggle sidebar</span>
+              </AppSidebarTrigger>
               <Brain className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0 smooth-transform" />
               <h1 className="text-xl md:text-2xl font-semibold tracking-tight bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 Karen AI
               </h1>
-            </div>
-            <div className="flex items-center gap-2">
+            </FlexContainer>
+            <FlexContainer className="gap-2" align="center">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Settings" className="focus-ring smooth-transition">
-                    <SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground smooth-transition" />
-                  </Button>
+                  <IconButton variant="ghost" aria-label="Settings" className="focus-ring smooth-transition" icon={<SlidersHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground smooth-transition" />}>
+                    Settings
+                  </IconButton>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[90vw] max-w-sm sm:w-[480px] p-0 flex flex-col modern-card-glass">
                   <SheetHeader className="p-4 border-b">
@@ -82,8 +86,8 @@ function ChatView() {
                 </SheetContent>
               </Sheet>
               <AuthenticatedHeader />
-            </div>
-          </div>
+            </FlexContainer>
+          </FlexContainer>
         </header>
 
         <div className="flex flex-1 min-h-0">
@@ -166,7 +170,7 @@ function ChatView() {
 
           <SidebarInset className="chat-surface min-h-0">
             <MetaBar />
-            <div className="chat-messages">
+            <div id="chat-messages" className="chat-messages">
               <div className="container max-w-screen-xl">
                 <div className="chat-panel">
                   <ChatInterface
@@ -188,7 +192,7 @@ function ChatView() {
             </div>
           </SidebarInset>
         </div>
-      </div>
+      </GridContainer>
     </SidebarProvider>
   );
 }

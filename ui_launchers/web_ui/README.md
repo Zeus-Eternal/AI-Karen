@@ -106,6 +106,7 @@ Production (next start): `http://localhost:8020`
 
 Default demo users are provided for testing:
 
+* **Admin:** `admin@example.com` / `password123`
 * **Admin:** `admin@kari.ai` / `password123`
 * **User:** `user@kari.ai` / `password123`
 

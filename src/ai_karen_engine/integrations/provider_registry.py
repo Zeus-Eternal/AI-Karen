@@ -202,7 +202,7 @@ class ProviderRegistry:
                     "name": "llamacpp",
                     "cls": LlamaCppProvider,
                     "description": "Local llama.cpp runtime for GGUF models",
-                    "default_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+                    "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
                     "requires_api_key": False,
                     "capabilities": ["text"],
                 },

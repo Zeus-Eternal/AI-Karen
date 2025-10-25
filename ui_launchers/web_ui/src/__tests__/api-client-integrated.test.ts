@@ -10,16 +10,13 @@
 import { vi } from 'vitest';
 import { IntegratedApiClient, getIntegratedApiClient, initializeIntegratedApiClient } from '@/lib/api-client-integrated';
 import * as apiClientModule from '@/lib/api-client';
-import * as enhancedApiClientModule from '@/lib/auth/api-client-enhanced';
 import * as sessionModule from '@/lib/auth/session';
 
 // Mock dependencies
 vi.mock('@/lib/api-client');
-vi.mock('@/lib/auth/api-client-enhanced');
 vi.mock('@/lib/auth/session');
 
 const mockApiClient = apiClientModule as any;
-const mockEnhancedApiClient = enhancedApiClientModule as any;
 const mockSession = sessionModule as any;
 
 describe('IntegratedApiClient', () => {
@@ -61,12 +58,9 @@ describe('IntegratedApiClient', () => {
       getApiClient: vi.fn().mockReturnValue(mockRegularClient),
     };
 
-    mockEnhancedApiClient.getEnhancedApiClient.mockReturnValue(mockEnhancedClientInstance);
-
     // Mock session functions
     mockSession.isAuthenticated.mockReturnValue(false);
-    mockSession.ensureToken.mockResolvedValue();
-    mockSession.getAuthHeader.mockReturnValue({});
+    mockSession.clearSession.mockImplementation(() => {});
   });
 
   describe('Constructor and Initialization', () => {
@@ -74,7 +68,6 @@ describe('IntegratedApiClient', () => {
       const client = new IntegratedApiClient();
       expect(client).toBeInstanceOf(IntegratedApiClient);
       expect(mockApiClient.getApiClient).toHaveBeenCalled();
-      expect(mockEnhancedApiClient.getEnhancedApiClient).toHaveBeenCalled();
     });
 
     it('should create instance with custom options', () => {

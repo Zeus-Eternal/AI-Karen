@@ -271,9 +271,9 @@ const ChangePasswordSection: React.FC = () => {
 };
 
 export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
-  const { user, logout, updateUserPreferences, isLoading } = useAuth();
+  const { user, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [preferences, setPreferences] = useState(user?.preferences || {
+  const [preferences, setPreferences] = useState({
     personalityTone: '',
     personalityVerbosity: '',
     memoryDepth: '',
@@ -296,48 +296,19 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   const [saveMessage, setSaveMessage] = useState('');
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const url = await authService.uploadAvatar(file);
-      setPreferences(prev => ({
-        ...prev,
-        ui: { ...(prev.ui || {}), avatarUrl: url },
-      }));
-    } catch (error) {
-      console.error('Failed to upload avatar:', error);
-    }
+    setSaveMessage('Avatar upload is currently not available in simplified authentication mode.');
+    setTimeout(() => setSaveMessage(''), 3000);
   };
 
-  // Show loading state while auth is initializing
-  if (isLoading) {
-    return (
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </CardContent>
-      </Card>
-    );
-  }
+
 
   if (!user) {
     return null;
   }
 
   const handleSavePreferences = async () => {
-    try {
-      setIsSaving(true);
-      await updateUserPreferences(preferences);
-      setIsEditing(false);
-      setSaveMessage('Preferences saved successfully!');
-      setTimeout(() => setSaveMessage(''), 3000);
-    } catch (error) {
-      console.error('Failed to save preferences:', error);
-      setSaveMessage('Failed to save preferences. Please try again.');
-      setTimeout(() => setSaveMessage(''), 3000);
-    } finally {
-      setIsSaving(false);
-    }
+    setSaveMessage('User preferences updates are currently not available in simplified authentication mode.');
+    setTimeout(() => setSaveMessage(''), 3000);
   };
 
   const handleLogout = () => {
@@ -601,7 +572,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                 variant="outline"
                 onClick={() => {
                   setIsEditing(false);
-                  setPreferences(user.preferences);
+                  // Reset preferences - not available in simplified mode
                 }}
               >
                 Cancel

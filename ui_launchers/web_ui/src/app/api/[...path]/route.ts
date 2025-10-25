@@ -27,6 +27,20 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     }
     
     const path = resolvedParams.path?.join('/') || '';
+    
+    // Skip Next.js static files and other assets that should be handled by Next.js
+    // Return early with proper 404 to let Next.js handle these
+    if (path.startsWith('_next/') || path.startsWith('static/') || path.includes('.css') || path.includes('.js') || path.includes('.map') || path.includes('.woff') || path.includes('.woff2') || path.includes('.ttf') || path.includes('.eot') || path.includes('.svg') || path.includes('.png') || path.includes('.jpg') || path.includes('.jpeg') || path.includes('.gif') || path.includes('.ico')) {
+      // Don't handle these requests at all - let Next.js serve them
+      return NextResponse.next();
+    }
+
+    // Skip page routes that should be handled by Next.js (not API calls)
+    // These are requests for actual pages, not API endpoints
+    const pageRoutes = ['login', 'signup', 'profile', 'admin', 'chat', 'models', 'setup', 'reset-password', 'verify-email', 'unauthorized', 'setup-2fa'];
+    if (pageRoutes.includes(path) || pageRoutes.some(route => path.startsWith(route + '/'))) {
+      return NextResponse.next();
+    }
     const url = new URL(request.url);
     const searchParams = url.searchParams.toString();
     const backendUrl = `${BACKEND_URL}/api/${path}${searchParams ? `?${searchParams}` : ''}`;

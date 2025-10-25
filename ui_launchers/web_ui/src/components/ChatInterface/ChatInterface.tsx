@@ -215,15 +215,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <React.Fragment>
-      {/* Skip to main content link for accessibility */}
-      <a
-        href="#chat-input"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50 transition-all duration-200"
-        tabIndex={0}
-      >
-        Skip to message input
-      </a>
-
       <Card
         className={`flex flex-col ${className} ${
           chatState.isFullscreen ? "fixed inset-0 z-50" : ""

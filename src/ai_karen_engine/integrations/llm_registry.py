@@ -517,7 +517,7 @@ class LLMRegistry:
                 "supports_streaming": True,
                 "supports_embeddings": True,
                 "requires_api_key": False,
-                "default_model": "llama3.2:latest",
+                "default_model": "Phi-3-mini-4k-instruct-q4.gguf",
             },
             {
                 "name": "openai",

@@ -1,0 +1,74 @@
+[
+  {
+    "type": "log",
+    "text": "🔍 Environment variable lookup for KAREN_BACKEND_URL: {nextPublicKey: NEXT_PUBLIC_KAREN_BACKEND_URL, nextPublicValue: undefined, regularValue: undefined, finalValue: http://localhost:8000, defaultValue: http://localhost:8000}"
+  },
+  {
+    "type": "log",
+    "text": "🔍 Environment variable lookup for API_BASE_URL: {nextPublicKey: NEXT_PUBLIC_API_BASE_URL, nextPublicValue: undefined, regularValue: undefined, finalValue: http://localhost:8000, defaultValue: http://localhost:8000}"
+  },
+  {
+    "type": "log",
+    "text": "🔧 ConfigManager: Initial configuration loaded: {backendUrl: http://localhost:8000, environment: local, networkMode: localhost, fallbackUrls: Array(1), NODE_ENV: development}"
+  },
+  {
+    "type": "log",
+    "text": "🔍 Environment variable lookup for API_BASE_URL: {nextPublicKey: NEXT_PUBLIC_API_BASE_URL, nextPublicValue: undefined, regularValue: undefined, finalValue: , defaultValue: }"
+  },
+  {
+    "type": "log",
+    "text": "🔍 Environment variable lookup for KAREN_BACKEND_URL: {nextPublicKey: NEXT_PUBLIC_KAREN_BACKEND_URL, nextPublicValue: undefined, regularValue: undefined, finalValue: , defaultValue: }"
+  },
+  {
+    "type": "log",
+    "text": "🏠 Forcing localhost configuration for local development {NODE_ENV: development, KAREN_ENVIRONMENT: local}"
+  },
+  {
+    "type": "log",
+    "text": "🌐 ConfigManager: Final configuration after environment detection: {backendUrl: http://localhost:8000, environment: local, networkMode: localhost, currentHostname: localhost, windowLocation: Object}"
+  },
+  {
+    "type": "log",
+    "text": "🔍 Environment variable lookup for API_BASE_URL: {nextPublicKey: NEXT_PUBLIC_API_BASE_URL, nextPublicValue: undefined, regularValue: undefined, finalValue: , defaultValue: }"
+  },
+  {
+    "type": "log",
+    "text": "🔍 Environment variable lookup for KAREN_BACKEND_URL: {nextPublicKey: NEXT_PUBLIC_KAREN_BACKEND_URL, nextPublicValue: undefined, regularValue: undefined, finalValue: , defaultValue: }"
+  },
+  {
+    "type": "log",
+    "text": "🏠 Forcing localhost configuration for local development {NODE_ENV: development, KAREN_ENVIRONMENT: local}"
+  },
+  {
+    "type": "info",
+    "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+  },
+  {
+    "type": "debug",
+    "text": "CopilotKit: Runtime URL configured: {baseUrl: http://localhost:8000, assistEndpoint: /copilot/assist, fullUrl: http://localhost:8000/copilot/assist, fallbackUrls: Array(1)}"
+  },
+  {
+    "type": "debug",
+    "text": "CopilotKit: Runtime URL configured: {baseUrl: http://localhost:8000, assistEndpoint: /copilot/assist, fullUrl: http://localhost:8000/copilot/assist, fallbackUrls: Array(1)}"
+  },
+  {
+    "type": "debug",
+    "text": "CopilotKit: Runtime URL configured: {baseUrl: http://localhost:8000, assistEndpoint: /copilot/assist, fullUrl: http://localhost:8000/copilot/assist, fallbackUrls: Array(1)}"
+  },
+  {
+    "type": "debug",
+    "text": "CopilotKit: Runtime URL configured: {baseUrl: http://localhost:8000, assistEndpoint: /copilot/assist, fullUrl: http://localhost:8000/copilot/assist, fallbackUrls: Array(1)}"
+  },
+  {
+    "type": "warning",
+    "text": "Detected `scroll-behavior: smooth` on the `<html>` element. In a future version, Next.js will no longer automatically disable smooth scrolling during route transitions. To prepare for this change, add `data-scroll-behavior=\"smooth\"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior"
+  },
+  {
+    "type": "log",
+    "text": "[Fast Refresh] rebuilding"
+  },
+  {
+    "type": "log",
+    "text": "[Fast Refresh] done in 1209ms"
+  }
+]

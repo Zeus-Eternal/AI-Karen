@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getEnhancedApiClient } from '@/lib/auth/api-client-enhanced';
+import { getApiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 
 // Types based on the backend API
@@ -123,7 +123,7 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
   const [retryCount, setRetryCount] = useState(0);
   const [showDetails, setShowDetails] = useState(showTechnicalDetails);
 
-  const apiClient = getEnhancedApiClient();
+  const apiClient = getApiClient();
 
   const errorMessage = typeof error === 'string' ? error : error.message;
 

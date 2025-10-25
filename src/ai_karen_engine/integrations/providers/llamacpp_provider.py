@@ -270,7 +270,7 @@ class LlamaCppProvider(LLMProviderBase):
                 raise EmbeddingFailed(f"LlamaCpp embedding failed: {ex}")
     
     def get_models(self) -> List[str]:
-        """Get list of available GGUF models from Model Library registry."""
+        """Get list of available GGUF models with enhanced scanning."""
         models = []
         
         try:
@@ -289,21 +289,27 @@ class LlamaCppProvider(LLMProviderBase):
         except Exception as e:
             logger.warning(f"Failed to get models from Model Library: {e}")
         
-        # Fallback to directory scan if Model Library unavailable
-        if not models:
-            models_dir = Path("models/llama-cpp")
-            if models_dir.exists():
-                for model_file in models_dir.glob("*.gguf"):
-                    models.append(model_file.name)
+        # Enhanced directory scan with validation
+        scanned_models = self._scan_local_models()
+        models.extend(scanned_models)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_models = []
+        for model in models:
+            if model not in seen:
+                seen.add(model)
+                unique_models.append(model)
         
         # Add currently loaded model if not in list
         if self.model_path:
             model_name = Path(self.model_path).name
-            if model_name not in models:
-                models.append(model_name)
+            if model_name not in unique_models:
+                unique_models.append(model_name)
         
         # Return predefined models as fallback if none found
-        if not models:
+        if not unique_models:
+            logger.warning("No local GGUF models found, returning fallback list")
             return [
                 "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
                 "llama-2-7b-chat.Q4_K_M.gguf",
@@ -311,7 +317,253 @@ class LlamaCppProvider(LLMProviderBase):
                 "mistral-7b-instruct-v0.1.Q4_K_M.gguf"
             ]
         
-        return sorted(models)
+        return sorted(unique_models)
+
+    def _scan_local_models(self) -> List[str]:
+        """Scan local directories for GGUF models with validation."""
+        models = []
+        
+        # Scan multiple potential directories
+        scan_dirs = [
+            Path("models/llama-cpp"),
+            Path("models"),
+            Path("./models"),
+            Path("../models"),
+        ]
+        
+        for models_dir in scan_dirs:
+            if not models_dir.exists():
+                continue
+                
+            logger.debug(f"Scanning directory: {models_dir}")
+            
+            # Look for GGUF files
+            for model_file in models_dir.rglob("*.gguf"):
+                if self._validate_gguf_file(model_file):
+                    models.append(model_file.name)
+                    logger.debug(f"Found valid GGUF model: {model_file}")
+            
+            # Also look for safetensors files (for transformers compatibility)
+            for model_file in models_dir.rglob("*.safetensors"):
+                if self._validate_safetensors_file(model_file):
+                    models.append(model_file.name)
+                    logger.debug(f"Found valid safetensors model: {model_file}")
+        
+        return models
+
+    def _validate_gguf_file(self, file_path: Path) -> bool:
+        """Validate that a file is a proper GGUF model."""
+        try:
+            # Check file size (should be at least 1MB for a valid model)
+            if file_path.stat().st_size < 1024 * 1024:
+                return False
+            
+            # Check GGUF magic header
+            with open(file_path, "rb") as f:
+                magic = f.read(4)
+                if magic != b"GGUF":
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            logger.debug(f"GGUF validation failed for {file_path}: {e}")
+            return False
+
+    def _validate_safetensors_file(self, file_path: Path) -> bool:
+        """Validate that a file is a proper safetensors model."""
+        try:
+            # Check file size (should be at least 1MB for a valid model)
+            if file_path.stat().st_size < 1024 * 1024:
+                return False
+            
+            # Basic safetensors validation - check for JSON header
+            with open(file_path, "rb") as f:
+                # Read first 8 bytes to get header length
+                header_size_bytes = f.read(8)
+                if len(header_size_bytes) != 8:
+                    return False
+                
+                header_size = int.from_bytes(header_size_bytes, byteorder='little')
+                if header_size > 100 * 1024 * 1024:  # Sanity check: header shouldn't be > 100MB
+                    return False
+                
+                # Try to read and parse the JSON header
+                header_bytes = f.read(header_size)
+                if len(header_bytes) != header_size:
+                    return False
+                
+                import json
+                header = json.loads(header_bytes.decode('utf-8'))
+                
+                # Check if it looks like a model (has tensors)
+                if not isinstance(header, dict) or not header:
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            logger.debug(f"Safetensors validation failed for {file_path}: {e}")
+            return False
+
+    def extract_model_metadata(self, model_path: str) -> Dict[str, Any]:
+        """Extract metadata from a GGUF or safetensors model file."""
+        file_path = Path(model_path)
+        
+        if not file_path.exists():
+            return {"error": "File not found"}
+        
+        metadata = {
+            "file_name": file_path.name,
+            "file_size": file_path.stat().st_size,
+            "file_type": file_path.suffix.lower(),
+            "capabilities": [],
+            "parameters": {}
+        }
+        
+        try:
+            if file_path.suffix.lower() == ".gguf":
+                metadata.update(self._extract_gguf_metadata(file_path))
+            elif file_path.suffix.lower() == ".safetensors":
+                metadata.update(self._extract_safetensors_metadata(file_path))
+            
+            # Infer capabilities based on metadata
+            metadata["capabilities"] = self._infer_model_capabilities(metadata)
+            
+        except Exception as e:
+            metadata["error"] = f"Metadata extraction failed: {e}"
+            logger.warning(f"Failed to extract metadata from {model_path}: {e}")
+        
+        return metadata
+
+    def _extract_gguf_metadata(self, file_path: Path) -> Dict[str, Any]:
+        """Extract metadata from GGUF file."""
+        metadata = {}
+        
+        try:
+            # Try to use llama-cpp-python to get metadata if available
+            try:
+                from llama_cpp import Llama
+                
+                # Create a temporary instance to get metadata
+                temp_llama = Llama(
+                    model_path=str(file_path),
+                    n_ctx=1,  # Minimal context
+                    verbose=False
+                )
+                
+                # Get model info
+                if hasattr(temp_llama, 'metadata'):
+                    metadata["model_metadata"] = temp_llama.metadata
+                
+                # Clean up
+                del temp_llama
+                
+            except Exception as e:
+                logger.debug(f"Could not extract GGUF metadata with llama-cpp: {e}")
+            
+            # Basic file analysis
+            with open(file_path, "rb") as f:
+                # Skip magic header
+                f.seek(4)
+                
+                # Try to read version and other basic info
+                version_bytes = f.read(4)
+                if len(version_bytes) == 4:
+                    version = int.from_bytes(version_bytes, byteorder='little')
+                    metadata["gguf_version"] = version
+            
+            # Infer model type from filename
+            filename_lower = file_path.name.lower()
+            if "chat" in filename_lower or "instruct" in filename_lower:
+                metadata["model_type"] = "chat"
+            elif "code" in filename_lower:
+                metadata["model_type"] = "code"
+            elif "embed" in filename_lower:
+                metadata["model_type"] = "embedding"
+            else:
+                metadata["model_type"] = "base"
+            
+            # Extract quantization info from filename
+            if "q4" in filename_lower:
+                metadata["quantization"] = "Q4"
+            elif "q8" in filename_lower:
+                metadata["quantization"] = "Q8"
+            elif "f16" in filename_lower:
+                metadata["quantization"] = "F16"
+            elif "f32" in filename_lower:
+                metadata["quantization"] = "F32"
+            
+        except Exception as e:
+            logger.debug(f"GGUF metadata extraction error: {e}")
+        
+        return metadata
+
+    def _extract_safetensors_metadata(self, file_path: Path) -> Dict[str, Any]:
+        """Extract metadata from safetensors file."""
+        metadata = {}
+        
+        try:
+            with open(file_path, "rb") as f:
+                # Read header
+                header_size_bytes = f.read(8)
+                header_size = int.from_bytes(header_size_bytes, byteorder='little')
+                header_bytes = f.read(header_size)
+                
+                import json
+                header = json.loads(header_bytes.decode('utf-8'))
+                
+                # Extract tensor information
+                tensor_count = len([k for k in header.keys() if k != "__metadata__"])
+                metadata["tensor_count"] = tensor_count
+                
+                # Extract model metadata if available
+                if "__metadata__" in header:
+                    metadata["model_metadata"] = header["__metadata__"]
+                
+                # Infer model type from metadata or filename
+                filename_lower = file_path.name.lower()
+                if "chat" in filename_lower or "instruct" in filename_lower:
+                    metadata["model_type"] = "chat"
+                elif "code" in filename_lower:
+                    metadata["model_type"] = "code"
+                elif "embed" in filename_lower:
+                    metadata["model_type"] = "embedding"
+                else:
+                    metadata["model_type"] = "base"
+            
+        except Exception as e:
+            logger.debug(f"Safetensors metadata extraction error: {e}")
+        
+        return metadata
+
+    def _infer_model_capabilities(self, metadata: Dict[str, Any]) -> List[str]:
+        """Infer model capabilities from metadata."""
+        capabilities = []
+        
+        model_type = metadata.get("model_type", "base")
+        
+        # Basic capabilities
+        capabilities.append("text-generation")
+        
+        # Type-specific capabilities
+        if model_type == "chat":
+            capabilities.extend(["chat", "instruction-following"])
+        elif model_type == "code":
+            capabilities.extend(["code-generation", "code-completion"])
+        elif model_type == "embedding":
+            capabilities.append("embeddings")
+        
+        # File format capabilities
+        if metadata.get("file_type") == ".gguf":
+            capabilities.extend(["local-inference", "cpu-optimized"])
+            
+            # Quantization-specific capabilities
+            quantization = metadata.get("quantization", "")
+            if quantization in ["Q4", "Q8"]:
+                capabilities.append("memory-efficient")
+        
+        return capabilities
     
     def load_model(self, model_path: str) -> bool:
         """Load a specific GGUF model."""
@@ -409,10 +661,43 @@ class LlamaCppProvider(LLMProviderBase):
         return info
     
     def health_check(self) -> Dict[str, Any]:
-        """Perform health check using runtime with Model Library integration."""
+        """Perform comprehensive health check with enhanced model scanning."""
         try:
             # Get basic runtime health
             health_result = self.runtime.health_check()
+            health_result["provider"] = "llama-cpp"
+            
+            # Enhanced model availability check
+            try:
+                available_models = self.get_models()
+                scanned_models = self._scan_local_models()
+                
+                health_result["model_scanning"] = {
+                    "status": "success",
+                    "total_models_found": len(available_models),
+                    "scanned_models_count": len(scanned_models),
+                    "sample_models": available_models[:5]  # First 5 models
+                }
+                
+                # Validate a few models
+                validated_models = []
+                for model_name in available_models[:3]:  # Check first 3 models
+                    model_path = self._find_model_path(model_name)
+                    if model_path and self._validate_gguf_file(Path(model_path)):
+                        validated_models.append(model_name)
+                
+                health_result["model_validation"] = {
+                    "validated_models": validated_models,
+                    "validation_success_rate": len(validated_models) / min(len(available_models), 3) if available_models else 0
+                }
+                
+            except Exception as e:
+                health_result["model_scanning"] = {
+                    "status": "failed",
+                    "error": str(e)
+                }
+                health_result["warnings"] = health_result.get("warnings", [])
+                health_result["warnings"].append("Model scanning failed")
             
             # Add Model Library availability check
             try:
@@ -441,6 +726,22 @@ class LlamaCppProvider(LLMProviderBase):
                 health_result["warnings"] = health_result.get("warnings", [])
                 health_result["warnings"].append(f"Model Library unavailable: {e}")
             
+            # Add current model metadata if available
+            if self.model_path:
+                try:
+                    current_model_metadata = self.extract_model_metadata(self.model_path)
+                    health_result["current_model"] = {
+                        "path": self.model_path,
+                        "metadata": current_model_metadata,
+                        "loaded": self.runtime.is_loaded()
+                    }
+                except Exception as e:
+                    health_result["current_model"] = {
+                        "path": self.model_path,
+                        "metadata_error": str(e),
+                        "loaded": self.runtime.is_loaded()
+                    }
+            
             return health_result
             
         except Exception as ex:
@@ -453,6 +754,38 @@ class LlamaCppProvider(LLMProviderBase):
                     "error": "Provider health check failed"
                 }
             }
+
+    def _find_model_path(self, model_name: str) -> Optional[str]:
+        """Find the full path for a model by name."""
+        # Check common directories
+        search_dirs = [
+            Path("models/llama-cpp"),
+            Path("models"),
+            Path("./models"),
+        ]
+        
+        for search_dir in search_dirs:
+            if search_dir.exists():
+                model_path = search_dir / model_name
+                if model_path.exists():
+                    return str(model_path)
+        
+        # Check Model Library
+        try:
+            from ai_karen_engine.services.model_library_service import ModelLibraryService
+            model_library = ModelLibraryService()
+            available_models = model_library.get_available_models()
+            
+            for model_info in available_models:
+                if (model_info.provider == "llama-cpp" and 
+                    model_info.local_path and
+                    Path(model_info.local_path).name == model_name):
+                    return model_info.local_path
+                    
+        except Exception:
+            pass
+        
+        return None
 
     # Lightweight status helpers
     def ping(self) -> bool:
@@ -468,3 +801,96 @@ class LlamaCppProvider(LLMProviderBase):
             return self.get_models()
         except Exception:
             return []
+
+    def create_model_fallback_chain(self, preferred_capabilities: List[str] = None) -> List[str]:
+        """Create a fallback chain of models based on capabilities and availability."""
+        available_models = self.get_models()
+        
+        if not available_models:
+            return []
+        
+        # If no specific capabilities requested, return all models sorted by size (larger first)
+        if not preferred_capabilities:
+            return self._sort_models_by_preference(available_models)
+        
+        # Group models by capabilities
+        capability_groups = {
+            "chat": [],
+            "code": [],
+            "embedding": [],
+            "base": []
+        }
+        
+        for model_name in available_models:
+            model_path = self._find_model_path(model_name)
+            if model_path:
+                metadata = self.extract_model_metadata(model_path)
+                model_type = metadata.get("model_type", "base")
+                capability_groups[model_type].append(model_name)
+        
+        # Build fallback chain based on preferred capabilities
+        fallback_chain = []
+        
+        for capability in preferred_capabilities:
+            if capability in ["chat", "instruction-following"] and capability_groups["chat"]:
+                fallback_chain.extend(self._sort_models_by_preference(capability_groups["chat"]))
+            elif capability in ["code-generation", "code-completion"] and capability_groups["code"]:
+                fallback_chain.extend(self._sort_models_by_preference(capability_groups["code"]))
+            elif capability == "embeddings" and capability_groups["embedding"]:
+                fallback_chain.extend(self._sort_models_by_preference(capability_groups["embedding"]))
+        
+        # Add base models as final fallback
+        fallback_chain.extend(self._sort_models_by_preference(capability_groups["base"]))
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_chain = []
+        for model in fallback_chain:
+            if model not in seen:
+                seen.add(model)
+                unique_chain.append(model)
+        
+        return unique_chain
+
+    def _sort_models_by_preference(self, models: List[str]) -> List[str]:
+        """Sort models by preference (size, quantization, etc.)."""
+        def model_score(model_name: str) -> tuple:
+            """Calculate preference score for a model."""
+            name_lower = model_name.lower()
+            
+            # Size preference (larger models first, but not too large)
+            size_score = 0
+            if "7b" in name_lower:
+                size_score = 100
+            elif "13b" in name_lower:
+                size_score = 90
+            elif "3b" in name_lower:
+                size_score = 80
+            elif "1b" in name_lower:
+                size_score = 70
+            elif "70b" in name_lower:
+                size_score = 60  # Too large for most systems
+            
+            # Quantization preference (Q4 is good balance)
+            quant_score = 0
+            if "q4" in name_lower:
+                quant_score = 50
+            elif "q8" in name_lower:
+                quant_score = 40
+            elif "f16" in name_lower:
+                quant_score = 30
+            elif "q2" in name_lower:
+                quant_score = 20
+            
+            # Model family preference
+            family_score = 0
+            if "llama" in name_lower:
+                family_score = 30
+            elif "mistral" in name_lower:
+                family_score = 25
+            elif "tinyllama" in name_lower:
+                family_score = 20
+            
+            return (size_score + quant_score + family_score, model_name)
+        
+        return [model for _, model in sorted([(model_score(m), m) for m in models], reverse=True)]

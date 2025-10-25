@@ -139,7 +139,7 @@ export default function ModelLibrary() {
     loading: boolean;
     onConfirm: () => Promise<void>;
     icon?: 'warning' | 'info' | 'question';
-    details?: string;
+    details?: string[];
     resolutionSteps?: string[];
   }>({
     open: false,
@@ -1213,18 +1213,17 @@ export default function ModelLibrary() {
 
       {/* Confirmation Dialog */}
       <ConfirmationDialog
-        open={confirmationDialog.open}
-        onOpenChange={(open) => setConfirmationDialog(prev => ({ ...prev, open }))}
+        isOpen={confirmationDialog.open}
+        onClose={() => setConfirmationDialog(prev => ({ ...prev, open: false }))}
         title={confirmationDialog.title}
         message={confirmationDialog.message}
         confirmText={confirmationDialog.confirmText}
         cancelText={confirmationDialog.cancelText}
-        variant={confirmationDialog.variant}
+        type={confirmationDialog.variant === 'destructive' ? 'danger' : 'info'}
         loading={confirmationDialog.loading}
         onConfirm={confirmationDialog.onConfirm}
         icon={confirmationDialog.icon}
         details={confirmationDialog.details}
-        resolutionSteps={confirmationDialog.resolutionSteps}
       />
     </div>
   );

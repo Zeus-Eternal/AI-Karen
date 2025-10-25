@@ -14,74 +14,23 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { requestPasswordReset, resetPassword } = useAuth();
   const token = searchParams?.get('token');
   
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState('Password reset is currently not available. Please contact an administrator.');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!email) {
-      setError('Email is required');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      await requestPasswordReset(email);
-      setSuccess('Password reset instructions have been sent to your email.');
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
+    setError('Password reset is currently not available. Please contact an administrator.');
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!newPassword || !confirmPassword) {
-      setError('Both password fields are required');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
-    }
-
-    if (!token) {
-      setError('Invalid reset token');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      await resetPassword(token, newPassword);
-      setSuccess('Password has been reset successfully. You can now sign in with your new password.');
-      setTimeout(() => {
-        router.push('/login');
-      }, 3000);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
+    setError('Password reset is currently not available. Please contact an administrator.');
   };
 
   return (

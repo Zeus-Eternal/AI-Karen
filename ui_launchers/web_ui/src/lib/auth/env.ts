@@ -30,15 +30,7 @@ export function isProductionEnvironment(): boolean {
   return process.env.NODE_ENV === 'production';
 }
 
-export function isDevLoginEnabled(): boolean {
-  const explicit = readEnv([
-    'NEXT_PUBLIC_ENABLE_DEV_LOGIN',
-    'ENABLE_DEV_LOGIN',
-    'KAREN_ENABLE_DEV_LOGIN',
-  ]);
 
-  return toBooleanFlag(explicit, !isProductionEnvironment());
-}
 
 export function isSimpleAuthEnabled(): boolean {
   const explicit = readEnv([
@@ -47,20 +39,5 @@ export function isSimpleAuthEnabled(): boolean {
     'KAREN_ENABLE_SIMPLE_AUTH',
   ]);
 
-  if (typeof explicit !== 'undefined') {
-    return toBooleanFlag(explicit, false);
-  }
-
-  // Fall back to dev login flag to preserve backwards compatibility
-  const devLoginFlag = readEnv([
-    'NEXT_PUBLIC_ENABLE_DEV_LOGIN',
-    'ENABLE_DEV_LOGIN',
-    'KAREN_ENABLE_DEV_LOGIN',
-  ]);
-
-  if (typeof devLoginFlag !== 'undefined') {
-    return toBooleanFlag(devLoginFlag, false);
-  }
-
-  return !isProductionEnvironment();
+  return toBooleanFlag(explicit, !isProductionEnvironment());
 }

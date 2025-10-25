@@ -10,9 +10,7 @@ import { vi } from 'vitest';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '../ProtectedRoute';
 import { authService } from '@/services/authService';
-vi.mock('@/lib/auth/session-rehydration.service', () => ({
-  SessionRehydrationService: vi.fn().mockImplementation(() => ({ rehydrate: vi.fn().mockResolvedValue(undefined) })),
-}));
+// Session rehydration service removed - using simplified authentication
 
 // Mock the authService
 vi.mock('@/services/authService', () => ({

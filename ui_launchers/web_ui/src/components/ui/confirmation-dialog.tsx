@@ -1,154 +1,371 @@
-"use client";
+/**
+ * Confirmation Dialog Components
+ * 
+ * Reusable confirmation dialogs for destructive administrative actions
+ * with clear messaging and keyboard navigation support.
+ * 
+ * Requirements: 7.2, 7.7
+ */
 
-import React from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Loader2, AlertTriangle, Info, HelpCircle } from 'lucide-react';
+'use client';
 
-interface ConfirmationDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+import React, { useEffect, useRef } from 'react';
+import { AlertTriangle, Trash2, UserX, Shield, X } from 'lucide-react';
+
+export interface ConfirmationDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
   title: string;
   message: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: 'default' | 'destructive';
+  type?: 'danger' | 'warning' | 'info';
   loading?: boolean;
-  onConfirm: () => void | Promise<void>;
-  onCancel?: () => void;
-  icon?: 'warning' | 'info' | 'question';
-  details?: string;
-  resolutionSteps?: string[];
+  requiresTyping?: boolean;
+  confirmationText?: string;
+  details?: string[];
+  icon?: React.ReactNode;
 }
 
-/**
- * @file confirmation-dialog.tsx
- * @description Reusable confirmation dialog component for destructive operations
- * 
- * Features:
- * - Customizable title, message, and button text
- * - Support for destructive and default variants
- * - Loading states during async operations
- * - Optional details and resolution steps
- * - Different icon types for different contexts
- */
 export function ConfirmationDialog({
-  open,
-  onOpenChange,
+  isOpen,
+  onClose,
+  onConfirm,
   title,
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  variant = 'default',
+  type = 'warning',
   loading = false,
-  onConfirm,
-  onCancel,
-  icon = 'question',
+  requiresTyping = false,
+  confirmationText,
   details,
-  resolutionSteps
+  icon
 }: ConfirmationDialogProps) {
-  
-  const handleConfirm = async () => {
-    try {
-      await onConfirm();
-    } catch (error) {
-      // Error handling is done by the parent component
-      console.error('Confirmation action failed:', error);
-    }
-  };
+  const [typedText, setTypedText] = React.useState('');
+  const [isValid, setIsValid] = React.useState(!requiresTyping);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
-  const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
+  // Reset state when dialog opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setTypedText('');
+      setIsValid(!requiresTyping);
+      // Focus the cancel button by default for safety
+      setTimeout(() => cancelButtonRef.current?.focus(), 100);
     }
-    onOpenChange(false);
-  };
+  }, [isOpen, requiresTyping]);
 
-  const getIcon = () => {
-    switch (icon) {
+  // Validate typed text
+  useEffect(() => {
+    if (requiresTyping && confirmationText) {
+      setIsValid(typedText.trim().toLowerCase() === confirmationText.toLowerCase());
+    }
+  }, [typedText, confirmationText, requiresTyping]);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      } else if (event.key === 'Enter' && isValid && !loading) {
+        event.preventDefault();
+        onConfirm();
+      } else if (event.key === 'Tab') {
+        // Trap focus within dialog
+        const focusableElements = dialogRef.current?.querySelectorAll(
+          'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements && focusableElements.length > 0) {
+          const firstElement = focusableElements[0] as HTMLElement;
+          const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+          
+          if (event.shiftKey && document.activeElement === firstElement) {
+            event.preventDefault();
+            lastElement.focus();
+          } else if (!event.shiftKey && document.activeElement === lastElement) {
+            event.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isValid, loading, onClose, onConfirm]);
+
+  const getTypeStyles = () => {
+    switch (type) {
+      case 'danger':
+        return {
+          iconColor: 'text-red-600',
+          confirmButton: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
+          border: 'border-red-200'
+        };
       case 'warning':
-        return <AlertTriangle className="h-6 w-6 text-amber-500" />;
+        return {
+          iconColor: 'text-yellow-600',
+          confirmButton: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500',
+          border: 'border-yellow-200'
+        };
       case 'info':
-        return <Info className="h-6 w-6 text-blue-500" />;
-      case 'question':
+        return {
+          iconColor: 'text-blue-600',
+          confirmButton: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+          border: 'border-blue-200'
+        };
       default:
-        return <HelpCircle className="h-6 w-6 text-gray-500" />;
+        return {
+          iconColor: 'text-yellow-600',
+          confirmButton: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500',
+          border: 'border-yellow-200'
+        };
     }
   };
+
+  const getDefaultIcon = () => {
+    switch (type) {
+      case 'danger':
+        return <AlertTriangle className="h-6 w-6" />;
+      case 'warning':
+        return <AlertTriangle className="h-6 w-6" />;
+      case 'info':
+        return <Shield className="h-6 w-6" />;
+      default:
+        return <AlertTriangle className="h-6 w-6" />;
+    }
+  };
+
+  const styles = getTypeStyles();
+
+  if (!isOpen) return null;
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-md">
-        <AlertDialogHeader>
-          <div className="flex items-center gap-3">
-            {getIcon()}
-            <AlertDialogTitle className="text-lg font-semibold">
-              {title}
-            </AlertDialogTitle>
-          </div>
-          <AlertDialogDescription className="text-sm text-muted-foreground mt-2">
-            {message}
-          </AlertDialogDescription>
-          
-          {details && (
-            <div className="mt-3 p-3 bg-muted rounded-md">
-              <p className="text-sm text-muted-foreground">
-                {details}
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto"
+      aria-labelledby="confirmation-dialog-title"
+      aria-describedby="confirmation-dialog-description"
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Dialog */}
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div 
+          ref={dialogRef}
+          className={`relative bg-white rounded-lg shadow-xl max-w-md w-full border ${styles.border}`}
+        >
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+            aria-label="Close dialog"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div className="p-6">
+            {/* Icon and Title */}
+            <div className="flex items-center mb-4">
+              <div className={`flex-shrink-0 ${styles.iconColor}`}>
+                {icon || getDefaultIcon()}
+              </div>
+              <h3 
+                id="confirmation-dialog-title"
+                className="ml-3 text-lg font-medium text-gray-900"
+              >
+                {title}
+              </h3>
+            </div>
+
+            {/* Message */}
+            <div id="confirmation-dialog-description" className="mb-4">
+              <p className="text-sm text-gray-700 mb-3">
+                {message}
               </p>
+
+              {/* Additional details */}
+              {details && details.length > 0 && (
+                <div className="bg-gray-50 rounded-md p-3 mb-3">
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    {details.map((detail, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="inline-block w-2 h-2 bg-gray-400 rounded-full mt-1.5 mr-2 flex-shrink-0" />
+                        {detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Typing confirmation */}
+              {requiresTyping && confirmationText && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Type <span className="font-mono bg-gray-100 px-1 rounded">{confirmationText}</span> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={typedText}
+                    onChange={(e) => setTypedText(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={confirmationText}
+                    autoComplete="off"
+                    spellCheck="false"
+                  />
+                </div>
+              )}
             </div>
-          )}
-          
-          {resolutionSteps && resolutionSteps.length > 0 && (
-            <div className="mt-3">
-              <p className="text-sm font-medium mb-2">To resolve this:</p>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                {resolutionSteps.map((step, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="text-xs bg-muted rounded-full w-4 h-4 flex items-center justify-center mt-0.5 shrink-0">
-                      {index + 1}
-                    </span>
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ul>
+
+            {/* Actions */}
+            <div className="flex justify-end space-x-3">
+              <button
+                ref={cancelButtonRef}
+                onClick={onClose}
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {cancelText}
+              </button>
+              <button
+                ref={confirmButtonRef}
+                onClick={onConfirm}
+                disabled={!isValid || loading}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${styles.confirmButton}`}
+              >
+                {loading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Processing...
+                  </div>
+                ) : (
+                  confirmText
+                )}
+              </button>
             </div>
-          )}
-        </AlertDialogHeader>
-        
-        <AlertDialogFooter className="gap-2">
-          <AlertDialogCancel asChild>
-            <Button 
-              variant="outline" 
-              onClick={handleCancel}
-              disabled={loading}
-            >
-              {cancelText}
-            </Button>
-          </AlertDialogCancel>
-          
-          <AlertDialogAction asChild>
-            <Button
-              variant={variant}
-              onClick={handleConfirm}
-              disabled={loading}
-              className="gap-2"
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {confirmText}
-            </Button>
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Predefined confirmation dialogs for common admin actions
+export function DeleteUserConfirmation({
+  isOpen,
+  onClose,
+  onConfirm,
+  userEmail,
+  loading = false
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  userEmail: string;
+  loading?: boolean;
+}) {
+  return (
+    <ConfirmationDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      title="Delete User Account"
+      message={`Are you sure you want to delete the user account for ${userEmail}?`}
+      confirmText="Delete User"
+      type="danger"
+      loading={loading}
+      requiresTyping={true}
+      confirmationText="DELETE"
+      details={[
+        'This action cannot be undone',
+        'All user data will be permanently removed',
+        'The user will lose access immediately',
+        'Any ongoing sessions will be terminated'
+      ]}
+      icon={<Trash2 className="h-6 w-6" />}
+    />
+  );
+}
+
+export function DeactivateUserConfirmation({
+  isOpen,
+  onClose,
+  onConfirm,
+  userEmail,
+  loading = false
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  userEmail: string;
+  loading?: boolean;
+}) {
+  return (
+    <ConfirmationDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      title="Deactivate User Account"
+      message={`Are you sure you want to deactivate the user account for ${userEmail}?`}
+      confirmText="Deactivate"
+      type="warning"
+      loading={loading}
+      details={[
+        'The user will not be able to log in',
+        'Existing sessions will be terminated',
+        'The account can be reactivated later',
+        'User data will be preserved'
+      ]}
+      icon={<UserX className="h-6 w-6" />}
+    />
+  );
+}
+
+export function BulkOperationConfirmation({
+  isOpen,
+  onClose,
+  onConfirm,
+  operation,
+  itemCount,
+  loading = false
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  operation: string;
+  itemCount: number;
+  loading?: boolean;
+}) {
+  return (
+    <ConfirmationDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      title={`Bulk ${operation}`}
+      message={`Are you sure you want to ${operation.toLowerCase()} ${itemCount} user${itemCount === 1 ? '' : 's'}?`}
+      confirmText={`${operation} ${itemCount} User${itemCount === 1 ? '' : 's'}`}
+      type="warning"
+      loading={loading}
+      details={[
+        `This will affect ${itemCount} user account${itemCount === 1 ? '' : 's'}`,
+        'The operation may take some time to complete',
+        'You will receive a summary when finished',
+        'Some operations may fail individually'
+      ]}
+    />
   );
 }
 

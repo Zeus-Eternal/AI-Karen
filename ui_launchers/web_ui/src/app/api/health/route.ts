@@ -7,7 +7,7 @@ const BACKEND_BASES = getBackendCandidates([
   process.env.NEXT_PUBLIC_BACKEND_URL,
   'http://host.docker.internal:8000',
 ]);
-const HEALTH_TIMEOUT_MS = 5000; // Shorter timeout for health checks
+const HEALTH_TIMEOUT_MS = 2000; // Much shorter timeout for health checks
 
 export async function GET(request: NextRequest) {
   try {

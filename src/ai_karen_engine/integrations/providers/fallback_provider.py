@@ -81,9 +81,39 @@ class FallbackProvider(LLMProviderBase):
     # ------------------------------------------------------------------
     # LLMProviderBase interface
     def generate_text(self, prompt: str, **kwargs: Any) -> str:  # type: ignore[override]
-        """Return a friendly deterministic message acknowledging the prompt."""
+        """Try to use real LLM first, fall back to deterministic response if needed."""
 
         start = datetime.utcnow()
+        
+        # Try to use the real llamacpp provider first
+        try:
+            from ai_karen_engine.integrations.llm_registry import get_registry
+            registry = get_registry()
+            llamacpp_provider = registry.get_provider("llamacpp")
+            
+            if llamacpp_provider:
+                # Try to generate with the real llamacpp provider
+                real_response = llamacpp_provider.generate_text(prompt, **kwargs)
+                if real_response and len(real_response.strip()) > 0:
+                    logger.info("FallbackProvider successfully used real llamacpp provider")
+                    
+                    # Calculate usage for the real response
+                    duration = (datetime.utcnow() - start).total_seconds()
+                    token_estimate = max(1, len(prompt.split()))
+                    completion_tokens = max(1, len(real_response.split()))
+                    self.last_usage = {
+                        "prompt_tokens": token_estimate,
+                        "completion_tokens": completion_tokens,
+                        "total_tokens": token_estimate + completion_tokens,
+                        "cost": 0.0,
+                    }
+                    
+                    record_llm_metric("generate_text", duration, True, "fallback_with_real_llm")
+                    return real_response
+        except Exception as e:
+            logger.debug(f"FallbackProvider could not use real LLM: {e}")
+        
+        # Fall back to deterministic response
         prompt_summary = self._summarize_prompt(prompt)
 
         self._history.append(prompt_summary)

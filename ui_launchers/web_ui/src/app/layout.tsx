@@ -115,16 +115,11 @@ export default function RootLayout({
             `,
           }}
         />
-        
-        {/* Accessible skip link for keyboard users */}
-        <a href="#main-content" className="skip-link" aria-label="Skip to main content">
-          Skip to main content
-        </a>
         <ThemeBridge>
           <Providers>
             <HealthStatusBadge />
-            <main id="main-content" role="main" className="min-h-dvh focus:outline-none smooth-transition content-area">
-              <div className="container-fluid modern-layout-root">
+            <main id="main-content" role="main" className="min-h-dvh focus:outline-none smooth-transition">
+              <div className="modern-layout-root">
                 {children}
               </div>
             </main>

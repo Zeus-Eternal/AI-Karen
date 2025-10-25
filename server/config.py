@@ -8,8 +8,13 @@ Handles environment loading, settings validation, and sys.path setup.
 from dotenv import load_dotenv
 import os
 import sys
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+try:
+    from pydantic import Field, BaseModel
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+except ImportError:
+    # Fallback to pydantic stub
+    from ai_karen_engine.pydantic_stub import Field, BaseModel, BaseSettings
+    SettingsConfigDict = dict
 
 # Load .env file and ensure critical variables are set
 load_dotenv(dotenv_path=".env")
@@ -114,13 +119,40 @@ class Settings(BaseSettings):
     # Protocol-level error handling settings
     max_invalid_requests_per_connection: int = Field(default=10, env="MAX_INVALID_REQUESTS_PER_CONNECTION")
     enable_protocol_error_handling: bool = Field(default=True, env="ENABLE_PROTOCOL_ERROR_HANDLING")
+    
+    # Database Connection Configuration (Requirements 4.3, 4.4)
+    db_connection_timeout: int = Field(default=45, env="DB_CONNECTION_TIMEOUT")  # Increased from 15 to 45 seconds
+    db_query_timeout: int = Field(default=30, env="DB_QUERY_TIMEOUT")
+    db_pool_size: int = Field(default=10, env="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=20, env="DB_MAX_OVERFLOW")
+    db_pool_recycle: int = Field(default=3600, env="DB_POOL_RECYCLE")  # 1 hour
+    db_pool_pre_ping: bool = Field(default=True, env="DB_POOL_PRE_PING")
+    db_pool_timeout: int = Field(default=30, env="DB_POOL_TIMEOUT")
+    db_echo: bool = Field(default=False, env="DB_ECHO")
+    
+    # Database Health Monitoring
+    db_health_check_interval: int = Field(default=30, env="DB_HEALTH_CHECK_INTERVAL")  # seconds
+    db_max_connection_failures: int = Field(default=5, env="DB_MAX_CONNECTION_FAILURES")
+    db_connection_retry_delay: int = Field(default=5, env="DB_CONNECTION_RETRY_DELAY")  # seconds
+    
+    # Graceful Shutdown Configuration
+    shutdown_timeout: int = Field(default=30, env="SHUTDOWN_TIMEOUT")  # seconds
+    enable_graceful_shutdown: bool = Field(default=True, env="ENABLE_GRACEFUL_SHUTDOWN")
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
-    )
+    if isinstance(SettingsConfigDict, type):
+        model_config = SettingsConfigDict(
+            env_file=".env",
+            env_file_encoding="utf-8",
+            case_sensitive=False,
+            extra="ignore",
+        )
+    else:
+        # Fallback for older pydantic versions
+        class Config:
+            env_file = ".env"
+            env_file_encoding = "utf-8"
+            case_sensitive = False
+            extra = "ignore"
 
 
 # Global settings instance

@@ -185,12 +185,8 @@ Please describe what you were doing when this error occurred:
         <SessionErrorBoundary
           onAuthError={(authError) => {
             console.log('Authentication error handled by SessionErrorBoundary:', authError);
-          }}
-          onRecoveryAttempt={(result) => {
-            console.log('Session recovery attempt:', result);
-            if (result.success) {
-              this.handleRetry();
-            }
+            // Handle retry logic here if needed
+            this.handleRetry();
           }}
         >
           {this.props.children}

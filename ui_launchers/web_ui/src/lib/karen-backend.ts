@@ -11,6 +11,7 @@ import type {
   AiData
 } from './types';
 import { webUIConfig, type WebUIConfig } from './config';
+import { logger } from './logger';
 import { getPerformanceMonitor } from './performance-monitor';
 import { getStoredApiKey } from './secure-api-key';
 import { ErrorHandler, errorHandler, type ErrorInfo } from './error-handler';
@@ -197,8 +198,8 @@ class KarenBackendService {
     this.performanceMonitoring = webUIConfig.performanceMonitoring;
     this.logLevel = webUIConfig.logLevel;
 
-    // Always log the configuration for debugging backend connectivity issues
-    console.log('KarenBackendService initialized with config:', {
+    // Log the configuration in a gated way
+    logger.info('KarenBackendService initialized with config:', {
       baseUrl: this.config.baseUrl,
       webUIConfigBackendUrl: webUIConfig.backendUrl,
       timeout: this.config.timeout,
@@ -312,7 +313,7 @@ class KarenBackendService {
           bodyLog = '[non-JSON body]';
         }
       }
-      console.log(`[REQUEST] ${options.method || 'GET'} ${primaryUrl}`, {
+      logger.info(`[REQUEST] ${options.method || 'GET'} ${primaryUrl}`, {
         headers: this.debugLogging ? headers : { 
           'Content-Type': headers['Content-Type'],
           'Authorization': headers['Authorization'] ? '[REDACTED]' : 'none'
@@ -419,9 +420,16 @@ class KarenBackendService {
           // Use warn instead of error for health checks to reduce noise when backend is unavailable
           const isHealthCheck = endpoint.includes('/health') || endpoint.includes('/api/plugins') || endpoint.includes('/analytics/system');
           if (isHealthCheck) {
-            console.warn('KarenBackendService 4xx/5xx', response.status, response.url);
+            logger.warn('KarenBackendService 4xx/5xx', { status: response.status, url: response.url });
           } else {
-            console.error('KarenBackendService 4xx/5xx', response.status, response.url);
+            // Rate-limit repetitive retryable errors (like 504) to avoid console spam
+            const rateLimitKey = `status_${response.status}_${endpoint}`;
+            const isRetryable = APIError.isRetryableStatus(response.status);
+            if (isRetryable) {
+              logger.error('KarenBackendService 4xx/5xx', { status: response.status, url: response.url }, { rateLimitKey, rateLimitMs: 5000 });
+            } else {
+              logger.error('KarenBackendService 4xx/5xx', { status: response.status, url: response.url });
+            }
           }
           // Try to parse structured error response
           let errorDetails: WebUIErrorResponse | undefined;
@@ -626,10 +634,10 @@ class KarenBackendService {
           if (this.failureCount >= webUIConfig.circuitBreakerThreshold) {
             this.circuitOpenUntil = Date.now() + webUIConfig.circuitBreakerResetTime;
             if (this.requestLogging) {
-              console.error(`[CIRCUIT] Opened for ${webUIConfig.circuitBreakerResetTime}ms after ${this.failureCount} failures`);
+              logger.error(`[CIRCUIT] Opened for ${webUIConfig.circuitBreakerResetTime}ms after ${this.failureCount} failures`, undefined);
             }
           }
-          console.error(`Backend request failed for ${endpoint} after ${attempt + 1} attempts:`, lastError);
+          logger.error(`Backend request failed for ${endpoint} after ${attempt + 1} attempts:`, lastError);
           if (safeFallback !== undefined) {
             return safeFallback;
           }
@@ -653,7 +661,7 @@ class KarenBackendService {
     if (this.failureCount >= webUIConfig.circuitBreakerThreshold) {
       this.circuitOpenUntil = Date.now() + webUIConfig.circuitBreakerResetTime;
       if (this.requestLogging) {
-        console.error(`[CIRCUIT] Opened for ${webUIConfig.circuitBreakerResetTime}ms after ${this.failureCount} failures`);
+        logger.error(`[CIRCUIT] Opened for ${webUIConfig.circuitBreakerResetTime}ms after ${this.failureCount} failures`, undefined);
       }
     }
     if (safeFallback !== undefined) {
@@ -677,7 +685,7 @@ class KarenBackendService {
       try {
         await this.makeRequest(req.endpoint, req.options, req.useCache, req.cacheTtl, req.maxRetries, req.retryDelay);
       } catch (err) {
-        console.error('Queued request failed:', err);
+        logger.error('Queued request failed:', err as any);
       }
     }
   };
@@ -823,7 +831,6 @@ class KarenBackendService {
       // Check authentication status before attempting to store memory
       const isAuthenticated = await this.ensureAuthenticated();
       if (!isAuthenticated) {
-        console.debug('No authentication available for memory storage, skipping');
         return null;
       }
 
@@ -839,7 +846,7 @@ class KarenBackendService {
         metadata: metadata || {},
       };
 
-      console.log('Storing memory with payload:', requestPayload);
+  logger.info('Storing memory with payload:', requestPayload);
 
       // Use the secure memory storage endpoint with proper authentication
       const response = await this.makeRequest<{ memory_id: string }>('/api/memory/commit', {
@@ -847,13 +854,12 @@ class KarenBackendService {
         body: JSON.stringify(requestPayload),
       });
 
-      console.log('Memory store response:', response);
+  logger.info('Memory store response:', response);
       return response.memory_id;
     } catch (error) {
       if (error instanceof APIError) {
         // Handle authentication errors gracefully without retry
         if (error.status === 401) {
-          console.debug('Authentication failed for memory storage, clearing session');
           this.clearSessionToken();
           return null;
         } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
@@ -864,7 +870,7 @@ class KarenBackendService {
           return null;
         }
       }
-      console.error('Failed to store memory:', error);
+  logger.error('Failed to store memory:', error);
       return null;
     }
   }
@@ -874,7 +880,6 @@ class KarenBackendService {
       // Check authentication status before querying memories
       const isAuthenticated = await this.ensureAuthenticated();
       if (!isAuthenticated) {
-        console.debug('No authentication available for memory query, returning empty results');
         return [];
       }
 
@@ -909,16 +914,16 @@ class KarenBackendService {
     } catch (error) {
       if (error instanceof APIError) {
         if (error.details?.type === 'MEMORY_ERROR') {
-          console.warn('Memory service error:', error.details);
+          logger.warn('Memory service error:', error.details);
           return []; // Return empty array for graceful degradation
         } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
-          console.warn('Memory service unavailable, using cache if available');
+          logger.warn('Memory service unavailable, using cache if available');
           // Try to return cached results or empty array
           return this.getCachedMemories(query) || [];
         }
       }
 
-      console.error('Failed to query memories:', error);
+  logger.error('Failed to query memories:', error);
       return [];
     }
   }
@@ -944,7 +949,7 @@ class KarenBackendService {
           return { total_memories: 0, last_updated: new Date().toISOString() };
         }
       }
-      console.error('Failed to get memory stats:', error);
+  logger.error('Failed to get memory stats:', error);
       return {};
     }
   }
@@ -972,7 +977,7 @@ class KarenBackendService {
           return cached.data.plugins || [];
         }
       }
-      console.error('Failed to get available plugins:', error);
+  logger.error('Failed to get available plugins:', error);
       return [];
     }
   }
@@ -1008,7 +1013,7 @@ class KarenBackendService {
         errorMessage = error.message;
       }
 
-      console.error(`Failed to execute plugin ${pluginName}:`, error);
+  logger.error(`Failed to execute plugin ${pluginName}:`, error);
       return {
         success: false,
         error: errorMessage,
@@ -1031,10 +1036,9 @@ class KarenBackendService {
     } catch (error) {
       // Silently handle authentication errors in health monitoring
       if (error instanceof Error && error.message.includes('401')) {
-        console.debug('System metrics unavailable (authentication required)');
+        // Authentication required - use fallback data
       } else {
-        // Downgrade noisy errors during health polling
-        console.warn('System metrics unavailable, using fallback data:', (error as Error)?.message || error);
+        console.error('System metrics unavailable:', (error as Error)?.message || error);
       }
       
       // Return mock data as fallback
@@ -1056,7 +1060,7 @@ class KarenBackendService {
     try {
       return await this.makeRequest<UsageAnalytics>(`/api/analytics/usage?range=${timeRange}`, {}, true);
     } catch (error) {
-      console.error('Failed to get usage analytics:', error);
+  logger.error('Failed to get usage analytics:', error);
       // Return mock data as fallback
       return {
         total_interactions: 234,
@@ -1084,27 +1088,27 @@ class KarenBackendService {
       // Try different possible health check endpoints
       const healthEndpoints = ['/api/health', '/health', '/api/status', '/status', '/api/ping', '/ping'];
       
-      console.log('🏥 Starting health check, trying endpoints:', healthEndpoints);
+  logger.info('🏥 Starting health check, trying endpoints:', healthEndpoints);
       
       for (const endpoint of healthEndpoints) {
         try {
-          console.log(`🏥 Trying health endpoint: ${endpoint}`);
+          logger.info(`🏥 Trying health endpoint: ${endpoint}`);
           const result = await this.makeRequest<{
             status: 'healthy' | 'degraded' | 'error';
             services: Record<string, any>;
             timestamp: string;
           }>(endpoint, {}, false);
-          console.log(`🏥 Health endpoint ${endpoint} succeeded:`, result);
+          logger.info(`🏥 Health endpoint ${endpoint} succeeded:`, result);
           return result;
         } catch (error) {
-          console.log(`🏥 Health endpoint ${endpoint} failed:`, error instanceof Error ? error.message : error);
+          logger.warn(`🏥 Health endpoint ${endpoint} failed:`, error instanceof Error ? error.message : error);
           continue;
         }
       }
       
       // If all health endpoints fail, backend is likely running but doesn't support health checks
       // Return degraded status instead of error to indicate basic connectivity
-      console.log('🏥 Backend is running but health endpoints are not available - using degraded mode');
+  logger.info('🏥 Backend is running but health endpoints are not available - using degraded mode');
       return {
         status: 'degraded',
         services: {
@@ -1117,7 +1121,7 @@ class KarenBackendService {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      console.error('Health check failed:', error);
+  logger.error('Health check failed:', error);
       return {
         status: 'error',
         services: {
@@ -1147,12 +1151,11 @@ class KarenBackendService {
       // Ensure we're authenticated before processing the message
       const isAuthenticated = await this.ensureAuthenticated();
       if (!isAuthenticated) {
-        console.debug(`[${requestId}] No authentication available for chat processing, proceeding without memory features`);
         // Continue processing without memory features rather than failing completely
       }
 
       // Log request for debugging
-      console.log(`[${requestId}] Processing user message:`, {
+  logger.info(`[${requestId}] Processing user message:`, {
         message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
         userId,
         sessionId: sid,
@@ -1219,7 +1222,7 @@ class KarenBackendService {
       const responseTime = Date.now() - startTime;
 
       // Log successful response for debugging
-      console.log(`[${requestId}] Chat processing successful:`, {
+  logger.info(`[${requestId}] Chat processing successful:`, {
         responseTime: `${responseTime}ms`,
         responseLength: response.finalResponse?.length || 0,
         hasAiData: !!response.aiDataForFinalResponse,
@@ -1246,42 +1249,42 @@ class KarenBackendService {
 
       return response;
     } catch (error) {
-      console.error(`[${requestId}] Failed to process user message:`, error);
+  logger.error(`[${requestId}] Failed to process user message:`, error);
 
       // Handle different error types with specific fallback responses
       if (error instanceof APIError) {
         if (error.details?.type === 'CHAT_PROCESSING_ERROR') {
-          console.warn(`[${requestId}] Chat processing error:`, error.details);
+          logger.warn(`[${requestId}] Chat processing error:`, error.details);
           return {
             finalResponse: "I'm having trouble processing your message right now. Could you try rephrasing it or asking something else?",
           };
         } else if (error.details?.type === 'SERVICE_UNAVAILABLE') {
-          console.warn(`[${requestId}] AI service unavailable:`, error.details);
+          logger.warn(`[${requestId}] AI service unavailable:`, error.details);
           return {
             finalResponse: "My AI services are temporarily unavailable. Please try again in a few minutes, and I'll be ready to help you.",
           };
         } else if (error.details?.type === 'VALIDATION_ERROR') {
-          console.warn(`[${requestId}] Validation error:`, error.details);
+          logger.warn(`[${requestId}] Validation error:`, error.details);
           return {
             finalResponse: "I noticed there might be an issue with your message format. Could you try asking your question in a different way?",
           };
         } else if (error.details?.type === 'TIMEOUT_ERROR') {
-          console.warn(`[${requestId}] Request timeout:`, error.details);
+          logger.warn(`[${requestId}] Request timeout:`, error.details);
           return {
             finalResponse: "Your request is taking longer than expected to process. Please try again with a shorter message or try again in a moment.",
           };
         } else if (error.details?.type === 'NETWORK_ERROR') {
-          console.warn(`[${requestId}] Network error:`, error.details);
+          logger.warn(`[${requestId}] Network error:`, error.details);
           return {
             finalResponse: "I'm having trouble connecting to my backend services. Please check your internet connection and try again.",
           };
         } else if (error.status === 429) {
-          console.warn(`[${requestId}] Rate limit exceeded:`, error.details);
+          logger.warn(`[${requestId}] Rate limit exceeded:`, error.details);
           return {
             finalResponse: "I'm receiving a lot of requests right now. Please wait a moment before sending another message.",
           };
         } else if (error.status >= 500) {
-          console.warn(`[${requestId}] Server error:`, error.details);
+          logger.warn(`[${requestId}] Server error:`, error.details);
           return {
             finalResponse: "I'm experiencing some technical difficulties. Please try again in a few minutes.",
           };
@@ -1316,7 +1319,7 @@ class KarenBackendService {
           return null;
         }
       }
-      console.error('Failed to get user profile:', error);
+  logger.error('Failed to get user profile:', error);
       return null;
     }
   }
@@ -1341,7 +1344,7 @@ class KarenBackendService {
           return false;
         }
       }
-      console.error('Failed to update user preferences:', error);
+  logger.error('Failed to update user preferences:', error);
       return false;
     }
   }
@@ -1419,7 +1422,7 @@ class KarenBackendService {
     if (typeof window !== 'undefined') {
       this.config.baseUrl = '';
       if (this.requestLogging) {
-        console.log('🔄 KarenBackendService: Forced browser configuration (empty baseUrl)');
+    logger.info('🔄 KarenBackendService: Forced browser configuration (empty baseUrl)');
       }
     }
   }

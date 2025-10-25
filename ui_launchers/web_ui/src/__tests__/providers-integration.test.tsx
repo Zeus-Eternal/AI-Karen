@@ -18,7 +18,7 @@ import { useHook } from '@/contexts/HookContext';
 
 // Mock all the dependencies
 vi.mock('@/lib/auth/session');
-vi.mock('@/lib/auth/session-recovery');
+// Session recovery service removed - using simplified authentication
 vi.mock('@/lib/api-client-integrated');
 vi.mock('@/hooks/use-intelligent-error');
 

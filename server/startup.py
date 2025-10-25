@@ -18,6 +18,30 @@ def register_startup_tasks(app: FastAPI) -> None:
     """Register startup tasks for LLM providers and services"""
     
     @app.on_event("startup")
+    async def _init_database_config() -> None:
+        """Initialize database configuration with enhanced settings"""
+        try:
+            from .database_config import get_database_config
+            from .config import Settings
+            
+            settings = Settings()
+            db_config = get_database_config(settings)
+            
+            # Initialize database with enhanced configuration
+            success = await db_config.initialize_database()
+            if success:
+                logger.info("Database configuration initialized successfully")
+                
+                # Setup graceful shutdown
+                await db_config.setup_graceful_shutdown()
+                logger.info("Database graceful shutdown configured")
+            else:
+                logger.warning("Database initialization failed, continuing with degraded mode")
+                
+        except Exception as e:
+            logger.error(f"Database configuration initialization failed: {e}")
+    
+    @app.on_event("startup")
     async def _init_llm_providers() -> None:
         try:
             import os

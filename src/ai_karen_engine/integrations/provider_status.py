@@ -8,6 +8,34 @@ from typing import Any, Dict
 from .llm_registry import get_registry
 
 
+class ProviderHealth:
+    """Provider health checking utility that integrates with the LLM registry."""
+    
+    SOURCE = "registry"
+    
+    @staticmethod
+    async def is_healthy(provider_name: str) -> bool:
+        """Check if a provider is healthy based on registry status."""
+        try:
+            registry = get_registry()
+            provider_info = registry.get_provider_info(provider_name)
+            if not provider_info:
+                return False
+            
+            # Check health status from registry
+            health_status = provider_info.get("health_status", "unknown")
+            
+            # Consider "healthy" and "unknown" as healthy for local providers
+            # This allows local providers like llamacpp to work even if not explicitly health-checked
+            if provider_name == "llamacpp" and health_status in ["healthy", "unknown"]:
+                return True
+            
+            return health_status == "healthy"
+        except Exception:
+            # If we can't check health, assume unhealthy for safety
+            return False
+
+
 def collect_provider_statuses() -> Dict[str, Any]:
     """Ping each registered provider and gather basic statistics."""
 
@@ -40,5 +68,5 @@ def collect_provider_statuses() -> Dict[str, Any]:
     return statuses
 
 
-__all__ = ["collect_provider_statuses"]
+__all__ = ["collect_provider_statuses", "ProviderHealth"]
 

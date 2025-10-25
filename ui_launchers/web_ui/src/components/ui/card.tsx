@@ -1,93 +1,106 @@
-import * as React from "react";
+/**
+ * Card UI Component
+ * 
+ * Reusable card component for displaying content in containers.
+ */
 
-import { cn } from "@/lib/utils";
+import React from 'react';
 
-type BaseCardProps = React.HTMLAttributes<HTMLDivElement>;
-
-interface CardProps extends BaseCardProps {
-  interactive?: boolean;
-  variant?: "default" | "elevated" | "outlined" | "glass";
+interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  role?: string;
+  'aria-label'?: string;
+  variant?: string;
+  onClick?: () => void;
 }
 
-const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, interactive = false, variant = "default", ...props }: CardProps, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "rounded-lg border bg-card text-card-foreground smooth-transition",
-        {
-          "modern-card": variant === "default",
-          "modern-card-elevated": variant === "elevated",
-          "modern-card-outlined": variant === "outlined",
-          "modern-card-glass": variant === "glass",
-          interactive,
-          "cursor-pointer": interactive,
-        },
-        className
-      )}
-      {...props}
-    />
-  )
-);
-Card.displayName = "Card";
+interface CardHeaderProps {
+  children: React.ReactNode;
+  className?: string;
+}
 
-const CardHeader = React.forwardRef<HTMLDivElement, BaseCardProps>(
-  ({ className, ...props }: BaseCardProps, ref) => (
-    <div
-      ref={ref}
-      data-testid="card-header"
-      className={cn("modern-card-header space-y-1.5", className)}
-      {...props}
-    />
-  )
-);
-CardHeader.displayName = "CardHeader";
+interface CardTitleProps {
+  children: React.ReactNode;
+  className?: string;
+}
 
-const CardTitle = React.forwardRef<HTMLDivElement, BaseCardProps>(
-  ({ className, ...props }: BaseCardProps, ref) => (
-    <div
-      ref={ref}
-      data-testid="card-title"
-      className={cn("text-2xl font-semibold leading-none tracking-tight", className)}
-      {...props}
-    />
-  )
-);
-CardTitle.displayName = "CardTitle";
+interface CardContentProps {
+  children: React.ReactNode;
+  className?: string;
+}
 
-const CardDescription = React.forwardRef<HTMLDivElement, BaseCardProps>(
-  ({ className, ...props }: BaseCardProps, ref) => (
-    <div
-      ref={ref}
-      data-testid="card-description"
-      className={cn("text-sm text-muted-foreground", className)}
-      {...props}
-    />
-  )
-);
-CardDescription.displayName = "CardDescription";
+interface CardDescriptionProps {
+  children: React.ReactNode;
+  className?: string;
+}
 
-const CardContent = React.forwardRef<HTMLDivElement, BaseCardProps>(
-  ({ className, ...props }: BaseCardProps, ref) => (
-    <div
-      ref={ref}
-      data-testid="card-content"
-      className={cn("modern-card-content", className)}
-      {...props}
-    />
-  )
-);
-CardContent.displayName = "CardContent";
+interface CardFooterProps {
+  children: React.ReactNode;
+  className?: string;
+}
 
-const CardFooter = React.forwardRef<HTMLDivElement, BaseCardProps>(
-  ({ className, ...props }: BaseCardProps, ref) => (
-    <div
-      ref={ref}
-      className={cn("modern-card-footer flex items-center", className)}
-      {...props}
-    />
-  )
-);
-CardFooter.displayName = "CardFooter";
+export const Card: React.FC<CardProps> = ({ 
+  children, 
+  className = '', 
+  style,
+  role,
+  'aria-label': ariaLabel,
+  variant,
+  onClick 
+}) => {
+  const variantClasses = variant === 'glass' ? 'bg-white/80 backdrop-blur-sm' : 'bg-white';
+  
+  return (
+    <div 
+      className={`${variantClasses} rounded-lg border border-gray-200 shadow-sm ${className}`}
+      style={style}
+      role={role}
+      aria-label={ariaLabel}
+      onClick={onClick}
+    >
+      {children}
+    </div>
+  );
+};
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
+export const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '' }) => {
+  return (
+    <div className={`px-6 py-4 border-b border-gray-200 ${className}`}>
+      {children}
+    </div>
+  );
+};
+
+export const CardTitle: React.FC<CardTitleProps> = ({ children, className = '' }) => {
+  return (
+    <h3 className={`text-lg font-semibold text-gray-900 ${className}`}>
+      {children}
+    </h3>
+  );
+};
+
+export const CardContent: React.FC<CardContentProps> = ({ children, className = '' }) => {
+  return (
+    <div className={`px-6 py-4 ${className}`}>
+      {children}
+    </div>
+  );
+};
+
+export const CardDescription: React.FC<CardDescriptionProps> = ({ children, className = '' }) => {
+  return (
+    <p className={`text-sm text-muted-foreground ${className}`}>
+      {children}
+    </p>
+  );
+};
+
+export const CardFooter: React.FC<CardFooterProps> = ({ children, className = '' }) => {
+  return (
+    <div className={`px-6 py-4 border-t border-gray-200 ${className}`}>
+      {children}
+    </div>
+  );
+};

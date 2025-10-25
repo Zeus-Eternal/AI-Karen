@@ -39,6 +39,8 @@ class GeminiProvider(LLMProviderBase):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.timeout = timeout
         self.max_retries = max_retries
+        self.initialization_error: Optional[str] = None
+        self.genai: Optional[Any] = None
         
         # Default safety settings - can be customized
         self.safety_settings = safety_settings or {
@@ -48,21 +50,53 @@ class GeminiProvider(LLMProviderBase):
             "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_MEDIUM_AND_ABOVE"
         }
         
-        if not self.api_key:
-            logger.warning("No Gemini API key provided. Set GEMINI_API_KEY environment variable.")
-        
+        # Graceful initialization - don't fail if API key is missing
+        self._initialize_client()
+
+    def _initialize_client(self):
+        """Initialize Gemini client with graceful error handling."""
         try:
             import google.generativeai as genai
             self.genai = genai
             
-            if self.api_key:
-                genai.configure(api_key=self.api_key)
+            if not self.api_key:
+                self.initialization_error = "No Gemini API key provided. Set GEMINI_API_KEY environment variable."
+                logger.warning(self.initialization_error)
+                return
                 
+            genai.configure(api_key=self.api_key)
+            
+            # Validate API key by listing models
+            self._validate_api_key()
+            
         except ImportError:
-            raise GenerationFailed(
-                "Google Generative AI package not installed. "
-                "Install with: pip install google-generativeai"
-            )
+            self.initialization_error = "Google Generative AI package not installed. Install with: pip install google-generativeai"
+            logger.error(self.initialization_error)
+        except Exception as ex:
+            self.initialization_error = f"Gemini client initialization failed: {ex}"
+            logger.error(self.initialization_error)
+
+    def _validate_api_key(self):
+        """Validate API key with a minimal request."""
+        if not self.genai or not self.api_key:
+            return
+            
+        try:
+            # Try to list models to validate the API key
+            list(self.genai.list_models())
+            logger.info("Gemini API key validated successfully")
+        except Exception as ex:
+            error_msg = str(ex).lower()
+            if "api key" in error_msg or "unauthorized" in error_msg or "forbidden" in error_msg:
+                self.initialization_error = "Invalid Gemini API key. Please check your GEMINI_API_KEY environment variable."
+            elif "quota" in error_msg or "rate limit" in error_msg:
+                # Rate limit during validation is not a fatal error
+                logger.warning("Rate limited during API key validation, but key appears valid")
+            else:
+                self.initialization_error = f"API key validation failed: {ex}"
+            
+            if self.initialization_error:
+                logger.error(self.initialization_error)
     
     def _retry_with_backoff(self, func, *args, **kwargs):
         """Execute function with exponential backoff retry logic."""
@@ -89,7 +123,7 @@ class GeminiProvider(LLMProviderBase):
         raise last_exception
     
     def _is_retryable_error(self, error: Exception) -> bool:
-        """Check if an error is retryable."""
+        """Check if an error is retryable with enhanced classification."""
         error_str = str(error).lower()
         
         # Rate limiting and server errors are retryable
@@ -101,8 +135,30 @@ class GeminiProvider(LLMProviderBase):
             "timeout",
             "503",
             "502",
-            "500"
+            "500",
+            "internal server error",
+            "service unavailable",
+            "bad gateway",
+            "resource exhausted"
         ]
+        
+        # Non-retryable errors (fail fast)
+        non_retryable_patterns = [
+            "invalid api key",
+            "unauthorized",
+            "forbidden",
+            "not found",
+            "invalid request",
+            "400",
+            "401",
+            "403",
+            "404",
+            "safety"  # Safety filter blocks are not retryable
+        ]
+
+        # Check non-retryable first
+        if any(pattern in error_str for pattern in non_retryable_patterns):
+            return False
         
         return any(pattern in error_str for pattern in retryable_patterns)
     
@@ -122,8 +178,12 @@ class GeminiProvider(LLMProviderBase):
         """Generate text using Gemini API."""
         t0 = time.time()
         
-        if not self.api_key:
-            raise GenerationFailed("Gemini API key required")
+        # Check initialization status
+        if self.initialization_error:
+            raise GenerationFailed(self.initialization_error)
+            
+        if not self.genai:
+            raise GenerationFailed("Gemini client not initialized")
         
         try:
             model_name = kwargs.pop("model", self.model)
@@ -193,8 +253,12 @@ class GeminiProvider(LLMProviderBase):
     
     def stream_generate(self, prompt: str, **kwargs) -> Iterator[str]:
         """Generate text with streaming support."""
-        if not self.api_key:
-            raise GenerationFailed("Gemini API key required")
+        # Check initialization status
+        if self.initialization_error:
+            raise GenerationFailed(self.initialization_error)
+            
+        if not self.genai:
+            raise GenerationFailed("Gemini client not initialized")
         
         try:
             model_name = kwargs.pop("model", self.model)
@@ -245,8 +309,12 @@ class GeminiProvider(LLMProviderBase):
         """Generate embeddings using Gemini embedding models."""
         t0 = time.time()
         
-        if not self.api_key:
-            raise EmbeddingFailed("Gemini API key required")
+        # Check initialization status
+        if self.initialization_error:
+            raise EmbeddingFailed(self.initialization_error)
+            
+        if not self.genai:
+            raise EmbeddingFailed("Gemini client not initialized")
         
         try:
             # Use embedding model
@@ -288,9 +356,10 @@ class GeminiProvider(LLMProviderBase):
                 raise EmbeddingFailed(f"Gemini embedding failed: {ex}")
     
     def get_models(self) -> List[str]:
-        """Get list of available models from Gemini."""
+        """Get list of available models from Gemini with fallback to static list."""
         try:
-            if not self.api_key:
+            if self.initialization_error or not self.genai:
+                logger.info("Using fallback model list due to initialization issues")
                 return self._get_common_models()
             
             def _list_models():
@@ -300,7 +369,14 @@ class GeminiProvider(LLMProviderBase):
                         models.append(model.name.replace("models/", ""))
                 return models
             
-            return self._retry_with_backoff(_list_models)
+            discovered_models = self._retry_with_backoff(_list_models)
+            
+            # Merge with common models to ensure we have a comprehensive list
+            common_models = self._get_common_models()
+            all_models = list(set(discovered_models + common_models))
+            
+            logger.info(f"Discovered {len(discovered_models)} models from API, total available: {len(all_models)}")
+            return sorted(all_models)
             
         except Exception as ex:
             logger.warning(f"Could not fetch Gemini models: {ex}")
@@ -316,7 +392,7 @@ class GeminiProvider(LLMProviderBase):
         ]
     
     def get_provider_info(self) -> Dict[str, Any]:
-        """Get provider metadata."""
+        """Get provider metadata with initialization status."""
         try:
             models = self.get_models()
         except Exception:
@@ -326,6 +402,8 @@ class GeminiProvider(LLMProviderBase):
             "name": "gemini",
             "model": self.model,
             "has_api_key": bool(self.api_key),
+            "api_key_valid": self.initialization_error is None and self.genai is not None,
+            "initialization_error": self.initialization_error,
             "available_models": models,
             "supports_streaming": True,
             "supports_embeddings": True,
@@ -336,17 +414,28 @@ class GeminiProvider(LLMProviderBase):
         }
     
     def health_check(self) -> Dict[str, Any]:
-        """Perform health check on Gemini API with model availability information."""
-        if not self.api_key:
+        """Perform comprehensive health check on Gemini API."""
+        # Check initialization status first
+        if self.initialization_error:
             return {
                 "status": "unhealthy",
-                "error": "No API key provided"
+                "error": self.initialization_error,
+                "provider": "gemini",
+                "initialization_status": "failed"
+            }
+
+        if not self.genai:
+            return {
+                "status": "unhealthy",
+                "error": "Gemini client not initialized",
+                "provider": "gemini",
+                "initialization_status": "failed"
             }
         
         try:
             start_time = time.time()
             
-            # Simple test request
+            # Test API connectivity with minimal request
             model = self.genai.GenerativeModel("gemini-1.5-flash")
             response = model.generate_content(
                 "Hello",
@@ -357,9 +446,46 @@ class GeminiProvider(LLMProviderBase):
             
             health_result = {
                 "status": "healthy",
+                "provider": "gemini",
                 "response_time": response_time,
-                "model_tested": "gemini-1.5-flash"
+                "model_tested": "gemini-1.5-flash",
+                "initialization_status": "success",
+                "api_key_status": "valid",
+                "connectivity": "ok"
             }
+
+            # Test model discovery
+            try:
+                available_models = self.get_models()
+                health_result["model_discovery"] = {
+                    "status": "success",
+                    "models_found": len(available_models),
+                    "sample_models": available_models[:5]  # First 5 models
+                }
+            except Exception as e:
+                health_result["model_discovery"] = {
+                    "status": "failed",
+                    "error": str(e)
+                }
+                health_result["warnings"] = health_result.get("warnings", [])
+                health_result["warnings"].append("Model discovery failed, using fallback list")
+
+            # Test capability detection
+            try:
+                # Check if multimodal capabilities are available
+                test_model = self.genai.GenerativeModel("gemini-1.5-flash")
+                health_result["capabilities"] = {
+                    "text_generation": True,
+                    "multimodal": True,
+                    "streaming": True,
+                    "embeddings": True,
+                    "safety_filtering": True
+                }
+            except Exception as e:
+                health_result["capabilities"] = {
+                    "text_generation": True,
+                    "detection_error": str(e)
+                }
 
             # Add Model Library compatibility check
             try:
@@ -389,9 +515,35 @@ class GeminiProvider(LLMProviderBase):
             return health_result
             
         except Exception as ex:
+            error_msg = str(ex).lower()
+            
+            # Classify the error for better diagnostics
+            if "api key" in error_msg or "unauthorized" in error_msg or "forbidden" in error_msg:
+                error_type = "authentication_error"
+                specific_error = "Invalid or expired API key"
+            elif "quota" in error_msg or "rate limit" in error_msg:
+                error_type = "rate_limit_error"
+                specific_error = "Quota exceeded or rate limited"
+            elif "safety" in error_msg or "blocked" in error_msg:
+                error_type = "safety_filter_error"
+                specific_error = "Content blocked by safety filters"
+            elif "timeout" in error_msg or "connection" in error_msg:
+                error_type = "connectivity_error"
+                specific_error = "Network connectivity issue"
+            elif "model" in error_msg and "not found" in error_msg:
+                error_type = "model_error"
+                specific_error = "Requested model not available"
+            else:
+                error_type = "unknown_error"
+                specific_error = str(ex)
+            
             return {
                 "status": "unhealthy",
-                "error": str(ex),
+                "provider": "gemini",
+                "error": specific_error,
+                "error_type": error_type,
+                "raw_error": str(ex),
+                "initialization_status": "success" if not self.initialization_error else "failed",
                 "model_library": {
                     "available": False,
                     "error": "Provider health check failed"

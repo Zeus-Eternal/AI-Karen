@@ -233,6 +233,7 @@ class HTTPRequestValidator:
                 "/ping",
                 "/api/status",
                 "/status",
+                "/api/chat/",
                 "/api/providers/",
                 "/api/auth/",
                 "/api/plugins",
@@ -435,7 +436,7 @@ class HTTPRequestValidator:
         Returns:
             Dictionary with basic security analysis results
         """
-        threats_found = []
+        threats_found: List[str] = []
         threat_level = "none"
         
         try:
@@ -499,12 +500,27 @@ class HTTPRequestValidator:
             Dictionary with sanitized request data
         """
         try:
+            # Safely extract method
+            method = getattr(request, 'method', 'unknown') if request else 'unknown'
+            
+            # Safely extract path
+            path = 'unknown'
+            if request and hasattr(request, 'url') and request.url:
+                url_path = getattr(request.url, 'path', None)
+                path = str(url_path) if url_path is not None else 'unknown'
+            
+            # Safely extract client IP
+            client_ip = 'unknown'
+            if request and hasattr(request, 'client') and request.client:
+                client_host = getattr(request.client, 'host', None)
+                client_ip = client_host if client_host is not None else 'unknown'
+            
             sanitized = {
-                "method": getattr(request, 'method', 'unknown'),
-                "path": str(getattr(request.url, 'path', '/')) if hasattr(request, 'url') else 'unknown',
+                "method": method,
+                "path": path,
                 "query_params": {},
                 "headers": {},
-                "client_ip": getattr(request.client, 'host', 'unknown') if hasattr(request, 'client') and request.client else "unknown"
+                "client_ip": client_ip
             }
             
             # Safely handle query parameters
@@ -529,9 +545,12 @@ class HTTPRequestValidator:
             
             # Sanitize query parameters
             sensitive_params = {"password", "token", "key", "secret", "auth"}
-            for param, value in sanitized["query_params"].items():
-                if any(sensitive in param.lower() for sensitive in sensitive_params):
-                    sanitized["query_params"][param] = "[REDACTED]"
+            query_params: Dict[str, Any] = dict(sanitized.get("query_params", {}))
+            for param, value in list(query_params.items()):
+                param_lower = param.lower() if isinstance(param, str) else str(param)
+                if any(sensitive in param_lower for sensitive in sensitive_params):
+                    query_params[param] = "[REDACTED]"
+            sanitized["query_params"] = query_params
             
             return sanitized
             
@@ -551,26 +570,53 @@ class HTTPRequestValidator:
                 threat_level = self._map_threat_level(result.security_threat_level)
             
             # Extract client information
-            client_ip = getattr(request.client, 'host', 'unknown') if hasattr(request, 'client') and request.client else "unknown"
+            client_ip = "unknown"
+            if request and hasattr(request, 'client') and request.client:
+                client_host = getattr(request.client, 'host', None)
+                client_ip = client_host if client_host is not None else "unknown"
             client_ip_hash = self._hash_ip(client_ip) if client_ip != "unknown" else "unknown"
             
             # Extract request characteristics
-            endpoint = str(request.url.path) if hasattr(request, 'url') else "unknown"
-            method = getattr(request, 'method', 'unknown')
-            user_agent = request.headers.get('user-agent', '') if hasattr(request, 'headers') else ''
+            endpoint = "unknown"
+            if request and hasattr(request, 'url') and request.url:
+                url_path = getattr(request.url, 'path', None)
+                endpoint = str(url_path) if url_path is not None else "unknown"
+            
+            method = getattr(request, 'method', 'unknown') if request else 'unknown'
+            user_agent = ''
+            if request and hasattr(request, 'headers') and request.headers:
+                user_agent = request.headers.get('user-agent', '')
             user_agent_category = self._categorize_user_agent(user_agent)
             
             # Extract attack categories from validation details
-            attack_categories = []
-            if result.validation_details and 'security_analysis' in result.validation_details:
-                security_analysis = result.validation_details['security_analysis']
-                attack_categories = security_analysis.get('threats_found', [])
-            
-            # Prepare additional labels
-            additional_labels = {
-                'confidence_score': str(result.validation_details.get('security_analysis', {}).get('confidence_score', 0.0)),
-                'client_reputation': result.validation_details.get('security_analysis', {}).get('client_reputation', 'unknown'),
-                'validation_rule_details': result.error_type or 'standard_validation'
+            validation_details: Dict[str, Any] = result.validation_details or {}
+            security_analysis_raw = validation_details.get('security_analysis', {})
+            security_analysis = security_analysis_raw if isinstance(security_analysis_raw, dict) else {}
+
+            raw_attack_categories = security_analysis.get('threats_found', []) or []
+            if not isinstance(raw_attack_categories, list):
+                raw_attack_categories = [raw_attack_categories]
+            attack_categories: List[str] = [
+                str(category)
+                for category in raw_attack_categories
+                if isinstance(category, str)
+            ]
+
+            confidence_score = security_analysis.get('confidence_score', 0.0)
+            try:
+                confidence_str = f"{float(confidence_score):.2f}"
+            except (TypeError, ValueError):
+                confidence_str = "0.00"
+
+            client_reputation = security_analysis.get('client_reputation', 'unknown')
+            if not isinstance(client_reputation, str):
+                client_reputation = str(client_reputation)
+
+            validation_rule_details = result.error_type or 'standard_validation'
+            additional_labels: Dict[str, str] = {
+                'confidence_score': confidence_str,
+                'client_reputation': client_reputation,
+                'validation_rule_details': validation_rule_details,
             }
             
             # Record request characteristics

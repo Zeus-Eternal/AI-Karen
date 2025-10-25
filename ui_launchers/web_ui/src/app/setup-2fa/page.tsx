@@ -6,24 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 export default function Setup2FAPage() {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [qrUrl, setQrUrl] = useState('');
   const [code, setCode] = useState('');
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState('Two-factor authentication setup is currently not available.');
 
   useEffect(() => {
-    authService.setupTwoFactor().then(res => setQrUrl(res.otpauth_url)).catch(err => setMessage(err.message));
+    setMessage('Two-factor authentication setup is currently not available.');
   }, []);
 
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await authService.confirmTwoFactor(code);
-      setMessage('Two-factor authentication enabled');
-      await refreshUser();
-    } catch (err: any) {
-      setMessage(err.message);
-    }
+    setMessage('Two-factor authentication setup is currently not available.');
   };
 
   if (!user) return null;

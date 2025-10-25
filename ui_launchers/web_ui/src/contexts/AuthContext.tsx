@@ -1,32 +1,36 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { login as sessionLogin, logout as sessionLogout, getCurrentUser } from '@/lib/auth/session';
-import { authStateManager, type AuthSnapshot } from './AuthStateManager';
-
-const DEV_ADMIN_EMAIL = process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL || 'admin@example.com';
-const DEV_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD || 'adminadmin';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+  useRef,
+} from "react";
+import {
+  logout as sessionLogout,
+  getCurrentUser,
+  hasSessionCookie,
+} from "@/lib/auth/session";
+import {
+  getConnectionManager,
+  ConnectionError,
+  ErrorCategory,
+} from "@/lib/connection/connection-manager";
+import {
+  getTimeoutManager,
+  OperationType,
+} from "@/lib/connection/timeout-manager";
 
 export interface User {
-  user_id: string;
+  userId: string;
   email: string;
-  full_name?: string | null;
   roles: string[];
-  tenant_id: string;
-  preferences: {
-    memoryDepth: string;
-    personalityTone: string;
-    personalityVerbosity: string;
-    customPersonaInstructions: string;
-    preferredLLMProvider: string;
-    preferredModel: string;
-    temperature: number;
-    maxTokens: number;
-    notifications: { email: boolean; push: boolean };
-    ui: { theme: string; language: string; avatarUrl?: string };
-  };
-  two_factor_enabled: boolean;
-  is_verified?: boolean;
+  tenantId: string;
+  role?: "super_admin" | "admin" | "user";
+  permissions?: string[];
 }
 
 export interface LoginCredentials {
@@ -35,29 +39,35 @@ export interface LoginCredentials {
   totp_code?: string;
 }
 
-export interface RegisterCredentials {
-  email: string;
-  password: string;
+export interface AuthError {
+  message: string;
+  category: ErrorCategory;
+  retryable: boolean;
+  statusCode?: number;
+  timestamp: Date;
 }
 
 export interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
   isLoading: boolean;
+  error: AuthError | null;
+  isRefreshing: boolean;
+  lastActivity: Date | null;
 }
 
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
+  authState: AuthState;
   login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
-  updateCredentials: (newUsername?: string, newPassword?: string) => Promise<void>;
-  updateUserPreferences: (preferences: Partial<User['preferences']>) => Promise<void>;
-  requestPasswordReset: (email: string) => Promise<void>;
-  resetPassword: (token: string, newPassword: string) => Promise<void>;
-  register: (credentials: RegisterCredentials) => Promise<void>;
+  logout: () => void;
+  devLogin: (email?: string) => Promise<void>;
+  checkAuth: () => Promise<boolean>;
+  refreshSession: () => Promise<boolean>;
+  clearError: () => void;
+  hasRole: (role: "super_admin" | "admin" | "user") => boolean;
+  hasPermission: (permission: string) => boolean;
+  isAdmin: () => boolean;
+  isSuperAdmin: () => boolean;
 }
 
 export interface AuthProviderProps {
@@ -66,302 +76,698 @@ export interface AuthProviderProps {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Export the context for testing purposes
+export { AuthContext };
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  // Enhanced authentication state with error handling and loading states
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
   const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false,
-    isLoading: true,
+    isLoading: false,
+    error: null,
+    isRefreshing: false,
+    lastActivity: null,
   });
 
-  const login = async (credentials: LoginCredentials): Promise<void> => {
-    try {
-      setAuthState(prev => ({ ...prev, isLoading: true }));
-      await sessionLogin(credentials.email, credentials.password, credentials.totp_code);
-      const currentUser = getCurrentUser();
-      if (!currentUser) {
-        throw new Error('Failed to get user data after login');
-      }
-      const user: User = {
-        user_id: currentUser.userId,
-        email: currentUser.email,
-        roles: currentUser.roles,
-        tenant_id: currentUser.tenantId,
-        full_name: null,
-        two_factor_enabled: false,
-        is_verified: true,
-        preferences: {
-          memoryDepth: 'high',
-          personalityTone: 'professional',
-          personalityVerbosity: 'balanced',
-          customPersonaInstructions: '',
-          preferredLLMProvider: 'openai',
-          preferredModel: 'gpt-4',
-          temperature: 0.7,
-          maxTokens: 2048,
-          notifications: { email: true, push: false },
-          ui: { theme: 'system', language: 'en' },
-        },
-      };
-      setAuthState({ user, isAuthenticated: true, isLoading: false });
-      
-      // Update auth state manager
-      authStateManager.updateState({ isAuthenticated: true, user: currentUser });
-    } catch (error) {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
-      throw error;
-    }
+  // Connection manager and timeout configuration
+  const connectionManager = getConnectionManager();
+  const timeoutManager = getTimeoutManager();
+
+  // Session refresh timer
+  const sessionRefreshTimer = useRef<NodeJS.Timeout | null>(null);
+  const sessionRefreshInterval = 15 * 60 * 1000; // 15 minutes
+
+  // Flag to prevent multiple simultaneous auth checks
+  const isCheckingAuth = useRef<boolean>(false);
+
+  // Helper functions - declare these first
+  const determineUserRole = (
+    roles: string[]
+  ): "super_admin" | "admin" | "user" => {
+    if (roles.includes("super_admin")) return "super_admin";
+    if (roles.includes("admin")) return "admin";
+    return "user";
   };
 
-  const logout = async (): Promise<void> => {
-    try {
-      await sessionLogout();
-    } catch (error) {
-      console.warn('Logout request failed:', error);
-    } finally {
-      setAuthState({ user: null, isAuthenticated: false, isLoading: false });
-      authStateManager.updateState({ isAuthenticated: false, user: null });
-    }
-  };
-
-  const refreshUser = async (): Promise<void> => {
-    try {
-      const currentUser = getCurrentUser();
-      if (currentUser) {
-        const user: User = {
-          user_id: currentUser.userId,
-          email: currentUser.email,
-          roles: currentUser.roles,
-          tenant_id: currentUser.tenantId,
-          full_name: null,
-          two_factor_enabled: false,
-          is_verified: true,
-          preferences: {
-            memoryDepth: 'high',
-            personalityTone: 'professional',
-            personalityVerbosity: 'balanced',
-            customPersonaInstructions: '',
-            preferredLLMProvider: 'openai',
-            preferredModel: 'gpt-4',
-            temperature: 0.7,
-            maxTokens: 2048,
-            notifications: { email: true, push: false },
-            ui: { theme: 'system', language: 'en' },
-          },
-        };
-        setAuthState({ user, isAuthenticated: true, isLoading: false });
-      } else {
-        setAuthState({ user: null, isAuthenticated: false, isLoading: false });
-      }
-    } catch (error) {
-      console.error('Failed to refresh user:', error);
-      setAuthState({ user: null, isAuthenticated: false, isLoading: false });
-    }
-  };
-
-  const updateCredentials = async (newUsername?: string, newPassword?: string): Promise<void> => {
-    if (!authState.user) {
-      throw new Error('No user logged in');
-    }
-    
-    try {
-      // TODO: Implement actual credential update API call
-      console.log('Updating credentials:', { newUsername, hasNewPassword: !!newPassword });
-      
-      // For now, just update the local state if username changed
-      if (newUsername && newUsername !== authState.user.user_id) {
-        setAuthState(prev => ({
-          ...prev,
-          user: prev.user ? { ...prev.user, user_id: newUsername } : null
-        }));
-      }
-    } catch (error) {
-      console.error('Failed to update credentials:', error);
-      throw error;
-    }
-  };
-
-  const updateUserPreferences = async (preferences: Partial<User['preferences']>): Promise<void> => {
-    if (!authState.user) {
-      throw new Error('No user logged in');
-    }
-    
-    try {
-      // Update local state immediately for better UX
-      setAuthState(prev => ({
-        ...prev,
-        user: prev.user ? {
-          ...prev.user,
-          preferences: { ...prev.user.preferences, ...preferences }
-        } : null
-      }));
-      
-      // TODO: Implement actual preferences update API call
-      console.log('Updating user preferences:', preferences);
-    } catch (error) {
-      console.error('Failed to update user preferences:', error);
-      // Revert local state on error
-      await refreshUser();
-      throw error;
-    }
-  };
-
-  const requestPasswordReset = async (email: string): Promise<void> => {
-    try {
-      // TODO: Implement actual password reset request API call
-      console.log('Requesting password reset for:', email);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For now, just log the request
-      console.log('Password reset email sent to:', email);
-    } catch (error) {
-      console.error('Failed to request password reset:', error);
-      throw new Error('Failed to send password reset email. Please try again.');
-    }
-  };
-
-  const resetPassword = async (token: string, newPassword: string): Promise<void> => {
-    try {
-      // TODO: Implement actual password reset API call
-      console.log('Resetting password with token:', token.substring(0, 10) + '...');
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For now, just log the reset
-      console.log('Password reset successfully');
-    } catch (error) {
-      console.error('Failed to reset password:', error);
-      throw new Error('Failed to reset password. Please try again or request a new reset link.');
-    }
-  };
-
-  const register = async (credentials: RegisterCredentials): Promise<void> => {
-    try {
-      setAuthState(prev => ({ ...prev, isLoading: true }));
-      
-      // TODO: Implement actual registration API call
-      console.log('Registering user:', credentials.email);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For now, just log the registration
-      console.log('User registered successfully:', credentials.email);
-      
-      setAuthState(prev => ({ ...prev, isLoading: false }));
-    } catch (error) {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
-      console.error('Failed to register user:', error);
-      throw new Error('Failed to create account. Please try again.');
-    }
-  };
-
-  useEffect(() => {
-    const snapshot = authStateManager.getState();
-    
-    // Convert SessionUser to User format if needed
-    const initialUser = snapshot.user && snapshot.user.userId ? {
-      user_id: snapshot.user.userId,
-      email: snapshot.user.email || '',
-      full_name: null,
-      roles: snapshot.user.roles || [],
-      tenant_id: snapshot.user.tenantId || '',
-      preferences: {
-        memoryDepth: 'high',
-        personalityTone: 'professional',
-        personalityVerbosity: 'balanced',
-        customPersonaInstructions: '',
-        preferredLLMProvider: 'openai',
-        preferredModel: 'gpt-4',
-        temperature: 0.7,
-        maxTokens: 2048,
-        notifications: { email: true, push: false },
-        ui: { theme: 'system', language: 'en' },
-      },
-      two_factor_enabled: false,
-      is_verified: true,
-    } as User : null;
-    setAuthState({ user: initialUser, isAuthenticated: snapshot.isAuthenticated, isLoading: false });
-
-    // Auto-login in development mode
-    const autoLogin = async () => {
-      if (process.env.NODE_ENV === 'development' && !snapshot.isAuthenticated && !authState.isLoading) {
-        try {
-          console.log('Development mode: attempting auto-login');
-          await login({
-            email: DEV_ADMIN_EMAIL,
-            password: DEV_ADMIN_PASSWORD,
-          });
-          console.log('Auto-login successful');
-        } catch (error) {
-          console.log('Auto-login failed:', error);
-          // Don't throw error for auto-login failures
+  // Convert technical errors to user-friendly messages
+  const getUserFriendlyErrorMessage = (error: ConnectionError): string => {
+    switch (error.category) {
+      case ErrorCategory.NETWORK_ERROR:
+        return "Unable to connect to server. Please check your internet connection and try again.";
+      case ErrorCategory.TIMEOUT_ERROR:
+        return "Login is taking longer than expected. Please wait or try again.";
+      case ErrorCategory.HTTP_ERROR:
+        if (error.statusCode === 401) {
+          return "Invalid email or password. Please try again.";
         }
-      }
-    };
+        if (error.statusCode === 429) {
+          return "Too many login attempts. Please wait a moment and try again.";
+        }
+        if (error.statusCode && error.statusCode >= 500) {
+          return "Authentication service temporarily unavailable. Please try again.";
+        }
+        return error.message;
+      case ErrorCategory.CIRCUIT_BREAKER_ERROR:
+        return "Authentication service is temporarily unavailable. Please try again in a few moments.";
+      case ErrorCategory.CONFIGURATION_ERROR:
+        return "System configuration error. Please contact support.";
+      default:
+        return error.message;
+    }
+  };
 
-    // Subscribe to auth state manager updates
-    const unsubscribe = authStateManager.subscribe((state) => {
-      const user = state.user && state.user.userId ? {
-        user_id: state.user.userId,
-        email: state.user.email || '',
-        full_name: null,
-        roles: state.user.roles || [],
-        tenant_id: state.user.tenantId || '',
-        preferences: {
-          memoryDepth: 'high',
-          personalityTone: 'professional',
-          personalityVerbosity: 'balanced',
-          customPersonaInstructions: '',
-          preferredLLMProvider: 'openai',
-          preferredModel: 'gpt-4',
-          temperature: 0.7,
-          maxTokens: 2048,
-          notifications: { email: true, push: false },
-          ui: { theme: 'system', language: 'en' },
-        },
-        two_factor_enabled: false,
-        is_verified: true,
-      } as User : null;
-      setAuthState({ user, isAuthenticated: state.isAuthenticated, isLoading: false });
+  // Create standardized auth error from various error types
+  const createAuthError = (error: any): AuthError => {
+    if (error instanceof ConnectionError) {
+      return {
+        message: getUserFriendlyErrorMessage(error),
+        category: error.category,
+        retryable: error.retryable,
+        statusCode: error.statusCode,
+        timestamp: new Date(),
+      };
+    }
+
+    if (error instanceof Error) {
+      return {
+        message: error.message,
+        category: ErrorCategory.UNKNOWN_ERROR,
+        retryable: true,
+        timestamp: new Date(),
+      };
+    }
+
+    return {
+      message: "An unexpected error occurred",
+      category: ErrorCategory.UNKNOWN_ERROR,
+      retryable: true,
+      timestamp: new Date(),
+    };
+  };
+
+  // Helper function to get default permissions for a role
+  const getRolePermissions = (
+    role: "super_admin" | "admin" | "user"
+  ): string[] => {
+    switch (role) {
+      case "super_admin":
+        return [
+          "user_management",
+          "admin_management",
+          "system_config",
+          "audit_logs",
+          "security_settings",
+          "user_create",
+          "user_edit",
+          "user_delete",
+          "admin_create",
+          "admin_edit",
+          "admin_delete",
+        ];
+      case "admin":
+        return ["user_management", "user_create", "user_edit", "user_delete"];
+      case "user":
+      default:
+        return [];
+    }
+  };
+
+  const stopSessionRefreshTimer = useCallback((): void => {
+    if (sessionRefreshTimer.current) {
+      clearInterval(sessionRefreshTimer.current);
+      sessionRefreshTimer.current = null;
+    }
+  }, []);
+
+  // Enhanced logout with proper cleanup
+  const logout = useCallback((): void => {
+    // Stop session refresh timer
+    stopSessionRefreshTimer();
+
+    // Clear all authentication state
+    setUser(null);
+    setIsAuthenticated(false);
+    setAuthState({
+      isLoading: false,
+      error: null,
+      isRefreshing: false,
+      lastActivity: null,
     });
 
-    // Only attempt auto-login after a short delay to allow session provider to initialize
-    const timer = setTimeout(autoLogin, 2000);
-    
+    // Call session logout to clear server-side session cookie
+    sessionLogout().catch((error) => {
+      console.warn("Logout request failed:", error);
+    });
+
+    console.log("AuthContext: User logged out");
+
+    // Immediate redirect to login after logout
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+  }, [stopSessionRefreshTimer]);
+
+  // Session refresh functionality - will be defined after checkAuth
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    if (authState.isRefreshing) {
+      return false; // Prevent concurrent refresh attempts
+    }
+
+    setAuthState((prev) => ({ ...prev, isRefreshing: true }));
+
+    try {
+      // Inline session validation to avoid circular dependency
+      const currentUser = getCurrentUser();
+      if (currentUser && isAuthenticated) {
+        setAuthState((prev) => ({
+          ...prev,
+          lastActivity: new Date(),
+          isRefreshing: false,
+        }));
+        return true;
+      }
+
+      if (!hasSessionCookie()) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setAuthState((prev) => ({ ...prev, error: null, isRefreshing: false }));
+        return false;
+      }
+
+      const validateUrl = "/api/auth/validate-session";
+      const timeout = timeoutManager.getTimeout(
+        OperationType.SESSION_VALIDATION
+      );
+
+      const result = await connectionManager.makeRequest(
+        validateUrl,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          credentials: "include",
+        },
+        {
+          timeout,
+          retryAttempts: 1,
+          exponentialBackoff: false,
+        }
+      );
+
+      if (result.data.valid && (result.data.user || result.data.user_data)) {
+        const userData = result.data.user || result.data.user_data;
+        const user: User = {
+          userId: userData.user_id,
+          email: userData.email,
+          roles: userData.roles || [],
+          tenantId: userData.tenant_id,
+          role: determineUserRole(userData.roles || []),
+          permissions: userData.permissions,
+        };
+
+        setUser(user);
+        setIsAuthenticated(true);
+        setAuthState((prev) => ({
+          ...prev,
+          error: null,
+          lastActivity: new Date(),
+          isRefreshing: false,
+        }));
+
+        return true;
+      }
+
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthState((prev) => ({ ...prev, error: null, isRefreshing: false }));
+      return false;
+    } catch (error) {
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthState((prev) => ({ ...prev, isRefreshing: false }));
+      return false;
+    }
+  }, [
+    authState.isRefreshing,
+    isAuthenticated,
+    connectionManager,
+    timeoutManager,
+  ]);
+
+  // Session refresh timer management
+  const startSessionRefreshTimer = useCallback((): void => {
+    if (sessionRefreshTimer.current) {
+      clearInterval(sessionRefreshTimer.current);
+    }
+
+    sessionRefreshTimer.current = setInterval(async () => {
+      console.log("AuthContext: Performing automatic session refresh");
+      const success = await refreshSession();
+      if (!success) {
+        console.warn("AuthContext: Session refresh failed, logging out");
+        logout();
+      }
+    }, sessionRefreshInterval);
+  }, [refreshSession, logout]);
+
+  // Enhanced login method with improved error handling and ConnectionManager integration
+  const login = async (credentials: LoginCredentials): Promise<void> => {
+    console.log("AuthContext: Starting login for", credentials.email);
+    setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      // Use ConnectionManager for reliable authentication request
+      const loginUrl = "/api/auth/login";
+      const timeout = timeoutManager.getTimeout(OperationType.AUTHENTICATION);
+
+      const requestBody = {
+        email: credentials.email,
+        password: credentials.password,
+        ...(credentials.totp_code && { totp_code: credentials.totp_code }),
+      };
+
+      const result = await connectionManager.makeRequest(
+        loginUrl,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(requestBody),
+          credentials: "include",
+        },
+        {
+          timeout,
+          retryAttempts: 2, // Limited retries for authentication
+          exponentialBackoff: true,
+        }
+      );
+
+      // Handle successful login response
+      const userData = result.data.user || result.data.user_data;
+      if (!userData) {
+        throw new ConnectionError(
+          "No user data in login response",
+          ErrorCategory.CONFIGURATION_ERROR,
+          false,
+          0
+        );
+      }
+
+      // Create user object
+      const user: User = {
+        userId: userData.user_id,
+        email: userData.email,
+        roles: userData.roles || [],
+        tenantId: userData.tenant_id,
+        role: determineUserRole(userData.roles || []),
+        permissions: userData.permissions,
+      };
+
+      // Update authentication state
+      setUser(user);
+      setIsAuthenticated(true);
+      setAuthState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: null,
+        lastActivity: new Date(),
+      }));
+
+      // Start session refresh timer
+      startSessionRefreshTimer();
+
+      console.log("AuthContext: Authentication successful", {
+        userId: user.userId,
+        role: user.role,
+        retryCount: result.retryCount,
+        duration: result.duration,
+      });
+
+      // Small delay to ensure state is fully updated before callback
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    } catch (error) {
+      // Enhanced error handling with categorization
+      const authError = createAuthError(error);
+
+      // Clear authentication state
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: authError,
+      }));
+
+      // Stop any existing session refresh timer
+      stopSessionRefreshTimer();
+
+      console.error("AuthContext: Login failed", {
+        error: authError.message,
+        category: authError.category,
+        retryable: authError.retryable,
+        statusCode: authError.statusCode,
+      });
+
+      throw error;
+    }
+  };
+
+  // Dev login function for development environment
+  const devLogin = useCallback(
+    async (email: string = "admin@example.com"): Promise<void> => {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("Dev login is not available in production");
+      }
+
+      setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      try {
+        const result = await connectionManager.makeRequest(
+          "/api/auth/dev-login",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ email }),
+            credentials: "include",
+          },
+          {
+            timeout: timeoutManager.getTimeout(OperationType.AUTHENTICATION),
+            retryAttempts: 1,
+          }
+        );
+
+        const userData = result.data.user || result.data.user_data;
+        if (!userData) {
+          throw new Error("No user data in dev login response");
+        }
+
+        // Create user object
+        const user: User = {
+          userId: userData.user_id,
+          email: userData.email,
+          roles: userData.roles || [],
+          tenantId: userData.tenant_id,
+          role: determineUserRole(userData.roles || []),
+          permissions: userData.permissions,
+        };
+
+        // Update authentication state
+        setUser(user);
+        setIsAuthenticated(true);
+        setAuthState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: null,
+          lastActivity: new Date(),
+        }));
+
+        // Start session refresh timer
+        startSessionRefreshTimer();
+
+        console.log("AuthContext: Dev login successful", {
+          userId: user.userId,
+          email: user.email,
+        });
+      } catch (error) {
+        console.error("AuthContext: Dev login failed", error);
+        const authError: AuthError = {
+          message: error instanceof Error ? error.message : "Dev login failed",
+          category: ErrorCategory.UNKNOWN_ERROR,
+          retryable: true,
+          timestamp: new Date(),
+        };
+        setAuthState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: authError,
+        }));
+        throw error;
+      }
+    },
+    [connectionManager, timeoutManager, startSessionRefreshTimer]
+  );
+
+  // Role and permission checking functions
+  const hasRole = useCallback(
+    (role: "super_admin" | "admin" | "user"): boolean => {
+      if (!user) return false;
+
+      // Check the new role field first, then fall back to roles array
+      if (user.role) {
+        return user.role === role;
+      }
+
+      // Legacy support: check roles array
+      return user.roles.includes(role);
+    },
+    [user]
+  );
+
+  const hasPermission = useCallback(
+    (permission: string): boolean => {
+      if (!user) return false;
+
+      // Check permissions array if available
+      if (user.permissions) {
+        return user.permissions.includes(permission);
+      }
+
+      // Default permissions based on role
+      const rolePermissions = getRolePermissions(
+        user.role || (user.roles[0] as "super_admin" | "admin" | "user")
+      );
+      return rolePermissions.includes(permission);
+    },
+    [user]
+  );
+
+  const isAdmin = useCallback((): boolean => {
+    return hasRole("admin") || hasRole("super_admin");
+  }, [hasRole]);
+
+  const isSuperAdmin = useCallback((): boolean => {
+    return hasRole("super_admin");
+  }, [hasRole]);
+
+  // Enhanced authentication check with improved error handling
+  const checkAuth = async (): Promise<boolean> => {
+    // Prevent multiple simultaneous auth checks
+    if (isCheckingAuth.current) {
+      console.log("AuthContext: Auth check already in progress, skipping");
+      return isAuthenticated;
+    }
+
+    isCheckingAuth.current = true;
+    console.log("AuthContext: Starting checkAuth");
+
+    try {
+      // First check if we already have a valid session in memory
+      const currentUser = getCurrentUser();
+      if (currentUser && isAuthenticated) {
+        console.log("AuthContext: Using existing session", {
+          userId: currentUser.userId,
+        });
+        setAuthState((prev) => ({ ...prev, lastActivity: new Date() }));
+        return true;
+      }
+
+      // Check for session cookie first
+      if (!hasSessionCookie()) {
+        console.log("AuthContext: No session cookie found");
+        setUser(null);
+        setIsAuthenticated(false);
+        setAuthState((prev) => ({ ...prev, error: null }));
+        return false;
+      }
+
+      console.log("AuthContext: Session cookie found, validating...");
+
+      // Use ConnectionManager for session validation
+      const validateUrl = "/api/auth/validate-session";
+      const timeout = timeoutManager.getTimeout(
+        OperationType.SESSION_VALIDATION
+      );
+
+      const result = await connectionManager.makeRequest(
+        validateUrl,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          credentials: "include",
+        },
+        {
+          timeout,
+          retryAttempts: 1, // Single retry for validation
+          exponentialBackoff: false,
+        }
+      );
+
+      if (result.data.valid && (result.data.user || result.data.user_data)) {
+        const userData = result.data.user || result.data.user_data;
+        const user: User = {
+          userId: userData.user_id,
+          email: userData.email,
+          roles: userData.roles || [],
+          tenantId: userData.tenant_id,
+          role: determineUserRole(userData.roles || []),
+          permissions: userData.permissions,
+        };
+
+        setUser(user);
+        setIsAuthenticated(true);
+        setAuthState((prev) => ({
+          ...prev,
+          error: null,
+          lastActivity: new Date(),
+        }));
+
+        // Start session refresh timer if not already running
+        if (!sessionRefreshTimer.current) {
+          startSessionRefreshTimer();
+        }
+
+        console.log("AuthContext: Session validated successfully", {
+          userId: user.userId,
+          email: user.email,
+          duration: result.duration,
+        });
+        return true;
+      }
+
+      // Invalid session
+      console.log(
+        "AuthContext: Session validation failed - invalid session data"
+      );
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthState((prev) => ({ ...prev, error: null }));
+      stopSessionRefreshTimer();
+      return false;
+    } catch (error) {
+      // Enhanced error handling
+      const authError = createAuthError(error);
+
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthState((prev) => ({
+        ...prev,
+        error: authError.retryable ? authError : null, // Only show retryable errors
+      }));
+      stopSessionRefreshTimer();
+
+      console.error("AuthContext: Authentication check failed:", {
+        error: authError.message,
+        category: authError.category,
+        retryable: authError.retryable,
+        originalError: error,
+      });
+
+      return false;
+    } finally {
+      isCheckingAuth.current = false;
+    }
+  };
+
+  // Clear authentication error
+  const clearError = useCallback((): void => {
+    setAuthState((prev) => ({ ...prev, error: null }));
+  }, []);
+
+  // Initialize authentication state on mount and cleanup on unmount
+  useEffect(() => {
+    // Don't check auth if we're on the login page to prevent loops
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname === "/login"
+    ) {
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      return;
+    }
+
+    // Set initial loading state to prevent premature redirects
+    setAuthState((prev) => ({ ...prev, isLoading: true }));
+
+    // Only check auth if we're not already authenticated
+    // This prevents unnecessary API calls and potential race conditions
+    if (!isAuthenticated) {
+      checkAuth().finally(() => {
+        // Ensure loading state is cleared even if checkAuth fails
+        setAuthState((prev) => ({ ...prev, isLoading: false }));
+      });
+    } else {
+      // If already authenticated, clear loading state
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+    }
+
+    // Cleanup timer on unmount
     return () => {
-      clearTimeout(timer);
-      unsubscribe();
+      stopSessionRefreshTimer();
     };
-  }, [authState.isLoading]);
+  }, []);
+
+  // Update activity timestamp on user interaction
+  useEffect(() => {
+    const updateActivity = () => {
+      if (isAuthenticated) {
+        setAuthState((prev) => ({ ...prev, lastActivity: new Date() }));
+      }
+    };
+
+    // Listen for user activity
+    const events = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "scroll",
+      "touchstart",
+    ];
+    events.forEach((event) => {
+      document.addEventListener(event, updateActivity, { passive: true });
+    });
+
+    return () => {
+      events.forEach((event) => {
+        document.removeEventListener(event, updateActivity);
+      });
+    };
+  }, [isAuthenticated]);
 
   const contextValue: AuthContextType = {
-    user: authState.user,
-    isAuthenticated: authState.isAuthenticated,
-    isLoading: authState.isLoading,
+    user,
+    isAuthenticated,
+    authState,
     login,
     logout,
-    refreshUser,
-    updateCredentials,
-    updateUserPreferences,
-    requestPasswordReset,
-    resetPassword,
-    register,
+    devLogin,
+    checkAuth,
+    refreshSession,
+    clearError,
+    hasRole,
+    hasPermission,
+    isAdmin,
+    isSuperAdmin,
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 };

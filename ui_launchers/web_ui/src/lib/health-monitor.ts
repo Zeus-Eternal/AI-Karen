@@ -76,8 +76,8 @@ class HealthMonitor {
       {
         id: 'high-error-rate',
         name: 'High Error Rate',
-        condition: (metrics) => metrics.errorRate > 0.1, // 10% error rate
-        message: 'API error rate is above 10%',
+        condition: (metrics) => metrics.errorRate > 0.2, // 20% error rate
+        message: 'API error rate is above 20%',
         severity: 'high',
         cooldown: 300000, // 5 minutes
       },
@@ -92,16 +92,16 @@ class HealthMonitor {
       {
         id: 'slow-response-time',
         name: 'Slow Response Time',
-        condition: (metrics) => metrics.averageResponseTime > 5000, // 5 seconds
-        message: 'Average API response time is above 5 seconds',
+        condition: (metrics) => metrics.averageResponseTime > 3000, // 3 seconds
+        message: 'Average API response time is above 3 seconds',
         severity: 'medium',
         cooldown: 600000, // 10 minutes
       },
       {
         id: 'very-slow-response-time',
         name: 'Very Slow Response Time',
-        condition: (metrics) => metrics.averageResponseTime > 10000, // 10 seconds
-        message: 'Average API response time is critically slow (>10s)',
+        condition: (metrics) => metrics.averageResponseTime > 8000, // 8 seconds
+        message: 'Average API response time is critically slow (>8s)',
         severity: 'high',
         cooldown: 300000, // 5 minutes
       },

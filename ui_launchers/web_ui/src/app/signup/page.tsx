@@ -13,7 +13,6 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { register } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,35 +23,7 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!formData.email || !formData.password) {
-      setError('Email and password are required');
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      await register({
-        email: formData.email,
-        password: formData.password,
-      });
-      router.push('/login?message=Account created successfully. Please sign in.');
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
+    setError('Registration is currently not available. Please contact an administrator.');
   };
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {

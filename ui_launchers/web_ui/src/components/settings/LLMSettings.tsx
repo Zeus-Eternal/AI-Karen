@@ -39,6 +39,8 @@ import ModelProviderIntegration from './ModelProviderIntegration';
 import ModelWorkflowTest from './ModelWorkflowTest';
 import ModelLibraryIntegrationTest from './ModelLibraryIntegrationTest';
 import { HelpTooltip, HelpSection, QuickHelp } from '@/components/ui/help-tooltip';
+import ProviderNotificationSystem from './ProviderNotificationSystem';
+import { useProviderNotifications } from '@/hooks/useProviderNotifications';
 
 interface LLMProvider {
   name: string;
@@ -148,20 +150,34 @@ export default function LLMSettings() {
   
   const { toast } = useToast();
   const backend = getKarenBackend();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
+  
+  // Provider notifications
+  const {
+    notifications,
+    unreadCount,
+    criticalCount,
+    notifyProviderStatusChange,
+    notifyFallback,
+    notifySystemHealth,
+    notifyError
+  } = useProviderNotifications({
+    realTimeUpdates: true,
+    autoToast: true
+  });
 
   // Load settings and preferences on mount, but wait for auth
   useEffect(() => {
-    // Only load settings if auth is not loading and we're either authenticated or in development mode
-    if (!authLoading && (isAuthenticated || process.env.NODE_ENV === 'development')) {
+    // Only load settings if authenticated or in development mode
+    if (isAuthenticated || process.env.NODE_ENV === 'development') {
       loadSettings();
       loadSavedPreferences();
-    } else if (!authLoading && !isAuthenticated) {
+    } else if (!isAuthenticated) {
       // If not authenticated and not in development, show a message
       console.log('Not authenticated, skipping settings load');
       setLoading(false);
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated]);
 
   // Set a timeout to prevent infinite loading
   useEffect(() => {
@@ -603,7 +619,7 @@ export default function LLMSettings() {
 
       {/* Main Tabbed Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="providers" className="flex items-center gap-2">
             <Cloud className="h-4 w-4" />
             Providers
@@ -618,6 +634,15 @@ export default function LLMSettings() {
             <Users className="h-4 w-4" />
             Profiles
             <HelpTooltip helpKey="profileManagement" category="llmSettings" variant="inline" size="sm" />
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Notifications
+            {(unreadCount > 0 || criticalCount > 0) && (
+              <Badge variant="destructive" className="text-xs ml-1">
+                {criticalCount > 0 ? criticalCount : unreadCount}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -738,6 +763,28 @@ export default function LLMSettings() {
             activeProfile={activeProfile}
             setActiveProfile={setActiveProfile as any}
             providers={providers}
+          />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-6">
+          <ProviderNotificationSystem
+            onNotificationAction={(notificationId, actionId) => {
+              // Handle notification actions
+              console.log(`Notification action: ${actionId} for ${notificationId}`);
+              
+              // Example: Handle retry action
+              if (actionId === 'retry') {
+                // Trigger provider health check or retry operation
+                handleRefresh();
+              }
+              
+              // Example: Handle configure action
+              if (actionId === 'configure') {
+                // Switch to providers tab
+                setActiveTab('providers');
+              }
+            }}
+            realTimeUpdates={true}
           />
         </TabsContent>
       </Tabs>

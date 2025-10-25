@@ -8,28 +8,23 @@
  */
 
 import { getApiClient, type ApiClient, type ApiRequest, type ApiResponse, type ApiError } from './api-client';
-import { getEnhancedApiClient, type EnhancedApiClient } from './auth/api-client-enhanced';
-import { ensureToken, getAuthHeader, isAuthenticated } from './auth/session';
+import { isAuthenticated, clearSession } from './auth/session';
 
 export interface IntegratedApiClientOptions {
-  useEnhancedAuth?: boolean;
   autoRetryOn401?: boolean;
   includeCredentials?: boolean;
 }
 
 /**
- * Integrated API Client that combines the existing API client with enhanced session management
+ * Integrated API Client that combines the existing API client with simplified session management
  */
 export class IntegratedApiClient {
   private apiClient: ApiClient;
-  private enhancedApiClient: EnhancedApiClient;
   private options: IntegratedApiClientOptions;
 
   constructor(options: IntegratedApiClientOptions = {}) {
     this.apiClient = getApiClient();
-    this.enhancedApiClient = getEnhancedApiClient();
     this.options = {
-      useEnhancedAuth: true,
       autoRetryOn401: true,
       includeCredentials: true,
       ...options,
@@ -37,37 +32,25 @@ export class IntegratedApiClient {
   }
 
   /**
-   * Make an authenticated request using the enhanced API client
+   * Make an authenticated request with simple 401 handling
    */
   private async makeAuthenticatedRequest<T = any>(request: ApiRequest): Promise<ApiResponse<T>> {
-    if (this.options.useEnhancedAuth && this.isProtectedEndpoint(request.endpoint)) {
-      // Use enhanced API client for protected endpoints
-      return this.enhancedApiClient.request(request);
-    } else {
-      // Use regular API client for public endpoints or when enhanced auth is disabled
-      return this.makeRegularRequest<T>(request);
-    }
-  }
-
-  /**
-   * Make a request using the regular API client with manual auth header injection
-   */
-  private async makeRegularRequest<T = any>(request: ApiRequest): Promise<ApiResponse<T>> {
-    // Add auth headers if user is authenticated
-    if (isAuthenticated()) {
-      try {
-        await ensureToken();
-        const authHeaders = getAuthHeader();
-        request.headers = {
-          ...request.headers,
-          ...authHeaders,
-        };
-      } catch (error) {
-        console.warn('Failed to ensure token for regular request:', error);
+    try {
+      // Use regular API client with automatic cookie handling
+      return await this.apiClient.request<T>(request);
+    } catch (error: any) {
+      // Simple 401 error handling - clear session and redirect to login
+      if (error.status === 401) {
+        console.log('Integrated API Client: 401 error detected, clearing session and redirecting');
+        clearSession();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
       }
+      
+      // For all other errors, throw immediately (no complex retry logic)
+      throw error;
     }
-
-    return this.apiClient.request<T>(request);
   }
 
   /**
@@ -174,11 +157,22 @@ export class IntegratedApiClient {
     additionalFields?: Record<string, string>,
     options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body' | 'headers'>
   ): Promise<ApiResponse<T>> {
-    if (this.options.useEnhancedAuth && this.isProtectedEndpoint(endpoint)) {
-      return this.enhancedApiClient.uploadFile<T>(endpoint, file, fieldName, additionalFields, options);
-    } else {
-      return this.apiClient.uploadFile<T>(endpoint, file, fieldName, additionalFields, options);
+    // Create form data
+    const formData = new FormData();
+    formData.append(fieldName, file);
+    
+    if (additionalFields) {
+      Object.entries(additionalFields).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
     }
+
+    return this.makeAuthenticatedRequest<T>({
+      endpoint,
+      method: 'POST',
+      body: formData,
+      ...options,
+    });
   }
 
   /**
@@ -231,13 +225,10 @@ export class IntegratedApiClient {
   }
 
   /**
-   * Get the underlying API clients
+   * Get the underlying API client
    */
-  getClients() {
-    return {
-      regular: this.apiClient,
-      enhanced: this.enhancedApiClient,
-    };
+  getClient() {
+    return this.apiClient;
   }
 
   /**

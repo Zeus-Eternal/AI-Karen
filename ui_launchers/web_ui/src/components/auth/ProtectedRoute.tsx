@@ -3,119 +3,133 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSession } from '@/contexts/SessionProvider';
-import { LoginForm } from './LoginForm';
-import { Loader2 } from 'lucide-react';
-import { SessionRehydrationService } from '@/lib/auth/session-rehydration.service';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  requiredRole?: 'super_admin' | 'admin' | 'user';
+  requiredPermission?: string;
   fallback?: ReactNode;
   redirectTo?: string;
+  showLoadingState?: boolean;
+  loadingMessage?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+  children, 
+  requiredRole,
+  requiredPermission,
   fallback,
-  redirectTo = '/login'
+  redirectTo = '/unauthorized',
+  showLoadingState = true,
+  loadingMessage = 'Checking permissions...'
 }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  const { isInitialized: sessionInitialized, isLoading: sessionLoading } = useSession();
+  const { isAuthenticated, hasRole, hasPermission, user, authState } = useAuth();
   const router = useRouter();
-  const [rehydrating, setRehydrating] = useState(true);
-  const [rehydrationError, setRehydrationError] = useState<string | null>(null);
-  const [grace, setGrace] = useState(true);
+  const [hasRedirected, setHasRedirected] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const runRehydration = () => {
-    setRehydrating(true);
-    setRehydrationError(null);
-    const service = new SessionRehydrationService();
-    service
-      .rehydrate()
-      .catch(err => {
-        setRehydrationError(err instanceof Error ? err.message : 'Rehydration failed');
-      })
-      .finally(() => setRehydrating(false));
-  };
-
+  // Reset redirect flag when authentication state changes
   useEffect(() => {
-    runRehydration();
-    // Always provide a short grace window after mount to allow session provider
-    // to initialize from HttpOnly cookies, even if no localStorage tokens exist.
-    // Increase grace period in development to allow auto-login to complete
-    const gracePeriod = process.env.NODE_ENV === 'development' ? 3000 : 1500;
-    const t = setTimeout(() => setGrace(false), gracePeriod);
-    return () => clearTimeout(t);
+    setHasRedirected(false);
+  }, [isAuthenticated, user?.user_id]);
+
+  // Initialize after first render to avoid hydration issues
+  useEffect(() => {
+    setIsInitialized(true);
   }, []);
 
+  // Handle authentication and authorization
   useEffect(() => {
-    // Only redirect if session provider is initialized and unauthenticated
-    if (!sessionLoading && sessionInitialized && !grace && !isAuthenticated) {
-      // Check if we're already on an auth page to avoid redirect loops
-      const currentPath = window.location.pathname;
-      const authPages = ['/login', '/signup', '/reset-password', '/verify-email'];
-      
-      if (!authPages.includes(currentPath)) {
-        router.replace(redirectTo);
+    // Don't run on server or before initialization
+    if (!isInitialized || typeof window === 'undefined') return;
+    
+    // Don't redirect multiple times
+    if (hasRedirected) return;
+    
+    // If still loading, wait
+    if (authState.isLoading) return;
+    
+    // If not authenticated, redirect to login
+    if (!isAuthenticated) {
+      const currentPath = window.location.pathname + window.location.search;
+      // Avoid redirect loops - don't redirect if already on login or unauthorized pages
+      if (currentPath !== '/login' && currentPath !== '/unauthorized' && !currentPath.startsWith('/login')) {
+        sessionStorage.setItem('redirectAfterLogin', currentPath);
+        console.log('ProtectedRoute: Redirecting to login, storing redirect path:', currentPath);
+        setHasRedirected(true);
+        // Use a small delay to prevent race conditions
+        setTimeout(() => {
+          router.replace('/login');
+        }, 100);
       }
+      return;
     }
-  }, [isAuthenticated, sessionLoading, sessionInitialized, grace, router, redirectTo]);
 
-  if (sessionLoading || rehydrating) {
+    // Check role requirement if specified
+    if (requiredRole && !hasRole(requiredRole)) {
+      console.warn(`Access denied: User role '${user?.role}' does not meet requirement '${requiredRole}'`);
+      setHasRedirected(true);
+      router.replace(redirectTo);
+      return;
+    }
+
+    // Check permission requirement if specified
+    if (requiredPermission && !hasPermission(requiredPermission)) {
+      console.warn(`Access denied: User lacks required permission '${requiredPermission}'`);
+      setHasRedirected(true);
+      router.replace(redirectTo);
+      return;
+    }
+  }, [isInitialized, isAuthenticated, authState.isLoading, requiredRole, requiredPermission, hasRedirected, redirectTo, hasRole, hasPermission, user?.role, router]);
+
+  // Don't show loading state if we're on login page to prevent flash
+  const isOnLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
+  
+  // Show loading state while checking authentication
+  if (authState.isLoading && showLoadingState && !isOnLoginPage) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading...</p>
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 text-xs text-gray-500">
-              <p>Session Loading: {sessionLoading ? 'Yes' : 'No'}</p>
-              <p>Rehydrating: {rehydrating ? 'Yes' : 'No'}</p>
-              <p>Grace Period: {grace ? 'Active' : 'Expired'}</p>
-              <p>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center space-y-4">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="space-y-2 text-center">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {loadingMessage}
+              </div>
             </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (rehydrationError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <p className="text-red-500">{rehydrationError}</p>
-          <button
-            className="px-4 py-2 bg-primary text-primary-foreground rounded"
-            onClick={runRehydration}
-            data-testid="retry-button"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  // If not authenticated, don't render anything (redirect is handled above)
   if (!isAuthenticated) {
-    // If we're on an auth page, show the fallback or LoginForm
-    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-    const authPages = ['/login', '/signup', '/reset-password', '/verify-email'];
-    
-    if (authPages.includes(currentPath)) {
-      return fallback || <LoginForm />;
-    }
-    
-    // For other pages, the useEffect will handle the redirect
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Redirecting to login...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
+  // Check role requirement if specified
+  if (requiredRole && !hasRole(requiredRole)) {
+    if (fallback) {
+      return <>{fallback}</>;
+    }
+    return null; // Redirect is handled above
+  }
+
+  // Check permission requirement if specified
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    if (fallback) {
+      return <>{fallback}</>;
+    }
+    return null; // Redirect is handled above
+  }
+
+  // Render children if all checks pass
   return <>{children}</>;
 };
