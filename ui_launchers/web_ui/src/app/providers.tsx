@@ -7,6 +7,8 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ErrorProvider } from '@/contexts/ErrorProvider';
 import { CopilotKitProvider } from '@/components/chat/copilot';
 import { GlobalErrorBoundary } from '@/components/error/GlobalErrorBoundary';
+import { SimpleErrorFallback } from '@/components/error/SimpleErrorFallback';
+import { ExtensionIntegrationProvider } from '@/lib/extensions/extension-initializer';
 import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { webUIConfig } from '@/lib/config';
@@ -43,8 +45,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [toast]);
   return (
     <GlobalErrorBoundary
-      showIntelligentResponse={true}
+      showIntelligentResponse={process.env.NODE_ENV === 'production'}
       enableSessionRecovery={true}
+      fallback={(error, errorInfo, retry) => (
+        <SimpleErrorFallback error={error} resetError={retry} />
+      )}
       onError={(error, errorInfo) => {
         console.error('Global error caught:', error, errorInfo);
         // Could integrate with error reporting service here
@@ -67,9 +72,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         <AuthProvider>
           <HookProvider>
-            <CopilotKitProvider>
-              {children}
-            </CopilotKitProvider>
+            <ExtensionIntegrationProvider>
+              <CopilotKitProvider>
+                {children}
+              </CopilotKitProvider>
+            </ExtensionIntegrationProvider>
           </HookProvider>
         </AuthProvider>
       </ErrorProvider>

@@ -449,7 +449,7 @@ export default function ModelCard({ model, onAction, searchQuery = '' }: ModelCa
           )}
 
           {/* Tags */}
-          {model.metadata.tags.length > 0 && (
+          {model.metadata?.tags && model.metadata.tags.length > 0 && (
             <div className="space-y-2">
               <span className="text-sm text-muted-foreground">Tags:</span>
               <div className="flex flex-wrap gap-1">

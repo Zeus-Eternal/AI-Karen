@@ -353,22 +353,77 @@ async def get_available_models(
                 predefined = service.metadata_service.get_predefined_models()
                 seen_ids = set()
                 model_responses: List[ModelInfoResponse] = []
+                
+                # Also try to get models from discovery cache directly
+                discovered_models = []
+                try:
+                    import json
+                    from pathlib import Path
+                    discovery_cache_path = Path("models/.discovery_cache/discovery_cache.json")
+                    if discovery_cache_path.exists():
+                        with open(discovery_cache_path, 'r') as f:
+                            discovery_data = json.load(f)
+                        logger.debug(f"Found {len(discovery_data)} models in discovery cache")
+                        
+                        # Convert discovery cache entries to model objects
+                        for model_id, model_data in discovery_data.items():
+                            try:
+                                # Create a simple model object from discovery data
+                                class DiscoveredModel:
+                                    def __init__(self, data):
+                                        self.id = data.get('id', model_id)
+                                        self.name = data.get('name', model_id)
+                                        self.type = data.get('type', 'unknown')
+                                        self.size = data.get('size', 0)
+                                        self.status = data.get('status', 'available')
+                                        self.capabilities = data.get('capabilities', [])
+                                        self.path = data.get('path', '')
+                                        self.checksum = data.get('checksum', '')
+                                        self.metadata = data.get('metadata', {})
+                                
+                                discovered_models.append(DiscoveredModel(model_data))
+                            except Exception as e:
+                                logger.debug(f"Failed to parse discovery model {model_id}: {e}")
+                                continue
+                    else:
+                        logger.debug("Discovery cache file not found")
+                except Exception as e:
+                    logger.debug(f"Could not load discovery cache: {e}")
+                    discovered_models = []
 
                 # Map registry entries (local) - only include models with valid IDs
                 for entry in raw:
                     try:
                         mid = str(entry.get("id") or entry.get("name") or "").strip()
-                        if not mid or mid in seen_ids:
+                        # Skip empty names, directory entries, or cache directories
+                        if (not mid or mid in seen_ids or 
+                            mid in ["", "metadata_cache", "downloads", "llama-cpp", "transformers", "TinyLlama"] or
+                            mid.startswith("./models/")):
                             continue
                         seen_ids.add(mid)
                         prov = str(entry.get("provider") or entry.get("type") or "local")
+                        # Infer capabilities based on model type and name if not explicitly set
+                        capabilities = list(entry.get("capabilities") or [])
+                        if not capabilities:
+                            # Add default capabilities based on provider/type and name
+                            if prov in ["llama-cpp", "llama-gguf"] or mid.endswith(".gguf"):
+                                capabilities = ["text-generation", "chat", "local-inference"]
+                            elif prov == "transformers":
+                                capabilities = ["text-generation", "feature-extraction"]
+                                if "chat" in mid.lower() or "dialog" in mid.lower():
+                                    capabilities.append("chat")
+                                if "bert" in mid.lower():
+                                    capabilities.extend(["text-classification", "token-classification"])
+                            elif prov == "hf_hub":
+                                capabilities = ["text-generation", "feature-extraction"]
+                        
                         model_responses.append(ModelInfoResponse(
                             id=mid,
                             name=str(entry.get("name") or mid),
                             provider=prov,
                             size=0,
                             description=(entry.get("metadata") or {}).get("description", f"Local model: {mid}"),
-                            capabilities=list(entry.get("capabilities") or []),
+                            capabilities=capabilities,
                             status="local",
                             download_progress=None,
                             metadata=entry.get("metadata") or {},
@@ -383,6 +438,42 @@ async def get_available_models(
                         logger.debug(f"Quick map registry entry failed: {map_err}")
                         continue
 
+                # Add discovered models from discovery engine
+                for discovered_model in discovered_models:
+                    try:
+                        mid = discovered_model.id
+                        if mid in seen_ids:
+                            continue
+                        seen_ids.add(mid)
+                        
+                        # Map discovery engine model to API response
+                        model_responses.append(ModelInfoResponse(
+                            id=mid,
+                            name=discovered_model.name,
+                            provider=discovered_model.type,  # discovery engine uses 'type' field
+                            size=int(discovered_model.size or 0),
+                            description=discovered_model.metadata.description if discovered_model.metadata else f"Discovered model: {discovered_model.name}",
+                            capabilities=list(discovered_model.capabilities or []),
+                            status=discovered_model.status,
+                            download_progress=None,
+                            metadata={
+                                "category": discovered_model.category.value if hasattr(discovered_model.category, 'value') else str(discovered_model.category),
+                                "specialization": [s.value if hasattr(s, 'value') else str(s) for s in (discovered_model.specialization or [])],
+                                "tags": discovered_model.tags or [],
+                                "requirements": discovered_model.requirements.__dict__ if discovered_model.requirements else {},
+                                "modalities": [m.__dict__ if hasattr(m, '__dict__') else m for m in (discovered_model.modalities or [])]
+                            } if discovered_model.metadata else {},
+                            local_path=discovered_model.path,
+                            download_url=None,
+                            checksum=discovered_model.checksum,
+                            disk_usage=None,
+                            last_used=None,
+                            download_date=None,
+                        ))
+                    except Exception as map_err:
+                        logger.debug(f"Quick map discovered model failed: {map_err}")
+                        continue
+                
                 # Add predefined available models not already local
                 for mid, pdata in predefined.items():
                     if mid in seen_ids:

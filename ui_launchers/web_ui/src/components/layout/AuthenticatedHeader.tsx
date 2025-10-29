@@ -33,7 +33,7 @@ export const AuthenticatedHeader: React.FC = () => {
     return null;
   }
 
-  const userInitials = (user?.email?.charAt(0) ?? user?.user_id?.charAt(0) ?? '?').toUpperCase();
+  const userInitials = (user?.email?.charAt(0) ?? user?.userId?.charAt(0) ?? '?').toUpperCase();
 
   // Simple logout handler - no confirmation dialog
   const handleLogout = () => {
@@ -57,7 +57,7 @@ export const AuthenticatedHeader: React.FC = () => {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.email ?? user?.user_id ?? ''}</p>
+                <p className="text-sm font-medium leading-none">{user?.email ?? user?.userId ?? ''}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {Array.isArray(user?.roles)
                     ? user.roles.join(', ')

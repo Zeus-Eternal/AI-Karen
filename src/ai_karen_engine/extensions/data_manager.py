@@ -102,7 +102,8 @@ class ExtensionDataManager:
     
     def __init__(
         self, 
-        extension_name: str,
+        db_session_or_extension_name,
+        extension_name: Optional[str] = None,
         database_url: Optional[str] = None,
         storage_type: StorageType = StorageType.SQLITE
     ):
@@ -110,27 +111,47 @@ class ExtensionDataManager:
         Initialize the data manager.
         
         Args:
-            extension_name: Name of the extension
+            db_session_or_extension_name: Database session (new style) or extension name (legacy)
+            extension_name: Extension name (when using db_session)
             database_url: Database connection URL
             storage_type: Type of storage backend to use
         """
-        self.extension_name = extension_name
+        # Handle both old and new constructor signatures for backward compatibility
+        if extension_name is None and isinstance(db_session_or_extension_name, str):
+            # Legacy constructor: ExtensionDataManager(extension_name, ...)
+            self.extension_name = db_session_or_extension_name
+            self.db_session = None
+        else:
+            # New constructor: ExtensionDataManager(db_session, extension_name, ...)
+            self.db_session = db_session_or_extension_name
+            self.extension_name = extension_name or "unknown"
+        
         self.storage_type = storage_type
-        self.logger = logging.getLogger(f"extension.data.{extension_name}")
+        self.logger = logging.getLogger(f"extension.data.{self.extension_name}")
         
         # Table prefix for this extension
-        self.table_prefix = f"ext_{self._sanitize_name(extension_name)}_"
+        self.table_prefix = f"ext_{self._sanitize_name(self.extension_name)}_"
         
         # Database connection
         self.engine: Optional[Engine] = None
-        self.metadata = MetaData()
+        self.metadata = MetaData() if SQLALCHEMY_AVAILABLE else None
         self.tables: Dict[str, Table] = {}
         
+        # NoSQL-style document storage (JSON-based)
+        self._document_collections: Dict[str, str] = {}  # collection_name -> table_name mapping
+        
+        # Privacy and compliance tracking
+        self._data_retention_policies: Dict[str, Dict[str, Any]] = {}
+        self._encryption_keys: Dict[str, str] = {}
+        
         # Initialize database connection
-        if SQLALCHEMY_AVAILABLE:
+        if SQLALCHEMY_AVAILABLE and not self.db_session:
             self._initialize_database(database_url)
-        else:
+        elif not SQLALCHEMY_AVAILABLE:
             self.logger.warning("SQLAlchemy not available, using in-memory storage")
+            self._memory_storage: Dict[str, List[Dict[str, Any]]] = {}
+        else:
+            # Using provided db_session
             self._memory_storage: Dict[str, List[Dict[str, Any]]] = {}
     
     def _sanitize_name(self, name: str) -> str:
@@ -703,6 +724,371 @@ class ExtensionDataManager:
             self.logger.error(f"Failed to set config {config_key}: {e}")
             return False
     
+    async def create_document_collection(
+        self,
+        collection_name: str,
+        tenant_id: str,
+        schema_validation: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Create a NoSQL-style document collection.
+        
+        Args:
+            collection_name: Name of the collection
+            tenant_id: Tenant ID
+            schema_validation: Optional JSON schema for document validation
+            
+        Returns:
+            True if collection was created successfully
+        """
+        try:
+            # Create underlying table for document storage
+            table_name = f"docs_{collection_name}"
+            schema = DataSchema(
+                table_name=table_name,
+                columns={
+                    'document_id': 'STRING',
+                    'document_data': 'JSON',
+                    'document_version': 'INTEGER',
+                    'document_tags': 'JSON',
+                    'schema_version': 'STRING'
+                }
+            )
+            
+            success = await self.create_table(table_name, schema, tenant_id)
+            if success:
+                self._document_collections[collection_name] = self.get_tenant_table_name(table_name, tenant_id)
+                
+                # Store schema validation if provided
+                if schema_validation:
+                    await self.set_config(
+                        f"collection_schema_{collection_name}",
+                        schema_validation,
+                        tenant_id
+                    )
+                
+                self.logger.info(f"Created document collection: {collection_name}")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Failed to create document collection {collection_name}: {e}")
+            return False
+    
+    async def insert_document(
+        self,
+        collection_name: str,
+        document_id: str,
+        document_data: Dict[str, Any],
+        tenant_id: str,
+        user_id: Optional[str] = None,
+        tags: Optional[List[str]] = None
+    ) -> bool:
+        """
+        Insert a document into a collection.
+        
+        Args:
+            collection_name: Collection name
+            document_id: Unique document identifier
+            document_data: Document data
+            tenant_id: Tenant ID
+            user_id: User ID
+            tags: Optional tags for the document
+            
+        Returns:
+            True if document was inserted successfully
+        """
+        try:
+            # Validate document against schema if available
+            schema = await self.get_config(f"collection_schema_{collection_name}", tenant_id)
+            if schema:
+                # Basic schema validation (can be enhanced with jsonschema library)
+                if not self._validate_document_schema(document_data, schema):
+                    self.logger.warning(f"Document {document_id} failed schema validation")
+                    return False
+            
+            # Insert document
+            table_name = f"docs_{collection_name}"
+            record_id = await self.insert(
+                table_name,
+                {
+                    'document_id': document_id,
+                    'document_data': document_data,
+                    'document_version': 1,
+                    'document_tags': tags or [],
+                    'schema_version': '1.0'
+                },
+                tenant_id,
+                user_id
+            )
+            
+            return record_id is not None
+            
+        except Exception as e:
+            self.logger.error(f"Failed to insert document {document_id}: {e}")
+            return False
+    
+    async def find_documents(
+        self,
+        collection_name: str,
+        tenant_id: str,
+        query: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        limit: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Find documents in a collection.
+        
+        Args:
+            collection_name: Collection name
+            tenant_id: Tenant ID
+            query: Query filters (applied to document_data)
+            user_id: User ID for filtering
+            tags: Tags to filter by
+            limit: Maximum number of documents to return
+            
+        Returns:
+            List of matching documents
+        """
+        try:
+            table_name = f"docs_{collection_name}"
+            filters = []
+            
+            # Add tag filtering
+            if tags:
+                # This is a simplified implementation - in production, use proper JSON querying
+                for tag in tags:
+                    filters.append(QueryFilter('document_tags', 'LIKE', f'%"{tag}"%'))
+            
+            # Query documents
+            results = await self.query(
+                table_name,
+                filters,
+                tenant_id,
+                user_id,
+                limit=limit
+            )
+            
+            # Apply document-level query filtering
+            if query:
+                filtered_results = []
+                for result in results:
+                    document_data = result.get('document_data', {})
+                    if self._matches_document_query(document_data, query):
+                        filtered_results.append({
+                            'document_id': result.get('document_id'),
+                            'document_data': document_data,
+                            'document_version': result.get('document_version'),
+                            'document_tags': result.get('document_tags', []),
+                            'created_at': result.get('created_at'),
+                            'updated_at': result.get('updated_at')
+                        })
+                return filtered_results
+            else:
+                return [{
+                    'document_id': result.get('document_id'),
+                    'document_data': result.get('document_data', {}),
+                    'document_version': result.get('document_version'),
+                    'document_tags': result.get('document_tags', []),
+                    'created_at': result.get('created_at'),
+                    'updated_at': result.get('updated_at')
+                } for result in results]
+            
+        except Exception as e:
+            self.logger.error(f"Failed to find documents in {collection_name}: {e}")
+            return []
+    
+    def _validate_document_schema(self, document: Dict[str, Any], schema: Dict[str, Any]) -> bool:
+        """Basic document schema validation."""
+        # This is a simplified implementation
+        # In production, use jsonschema library for proper validation
+        required_fields = schema.get('required', [])
+        for field in required_fields:
+            if field not in document:
+                return False
+        return True
+    
+    def _matches_document_query(self, document: Dict[str, Any], query: Dict[str, Any]) -> bool:
+        """Check if document matches query criteria."""
+        for key, value in query.items():
+            if key not in document:
+                return False
+            if isinstance(value, dict) and '$eq' in value:
+                if document[key] != value['$eq']:
+                    return False
+            elif isinstance(value, dict) and '$in' in value:
+                if document[key] not in value['$in']:
+                    return False
+            elif document[key] != value:
+                return False
+        return True
+    
+    async def set_data_retention_policy(
+        self,
+        table_name: str,
+        tenant_id: str,
+        retention_days: int,
+        auto_delete: bool = True
+    ) -> bool:
+        """
+        Set data retention policy for privacy compliance.
+        
+        Args:
+            table_name: Table name
+            tenant_id: Tenant ID
+            retention_days: Number of days to retain data
+            auto_delete: Whether to automatically delete expired data
+            
+        Returns:
+            True if policy was set successfully
+        """
+        try:
+            policy_key = f"{table_name}_{tenant_id}"
+            self._data_retention_policies[policy_key] = {
+                'retention_days': retention_days,
+                'auto_delete': auto_delete,
+                'created_at': time.time()
+            }
+            
+            # Store policy in configuration
+            await self.set_config(
+                f"retention_policy_{table_name}",
+                self._data_retention_policies[policy_key],
+                tenant_id
+            )
+            
+            self.logger.info(f"Set retention policy for {table_name}: {retention_days} days")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to set retention policy: {e}")
+            return False
+    
+    async def cleanup_expired_data(self, tenant_id: str) -> Dict[str, int]:
+        """
+        Clean up expired data based on retention policies.
+        
+        Args:
+            tenant_id: Tenant ID
+            
+        Returns:
+            Dictionary with cleanup statistics
+        """
+        cleanup_stats = {}
+        
+        try:
+            # Get all retention policies for this tenant
+            for policy_key, policy in self._data_retention_policies.items():
+                if not policy_key.endswith(f"_{tenant_id}"):
+                    continue
+                
+                table_name = policy_key.replace(f"_{tenant_id}", "")
+                retention_days = policy['retention_days']
+                auto_delete = policy.get('auto_delete', True)
+                
+                if not auto_delete:
+                    continue
+                
+                # Calculate cutoff date
+                cutoff_timestamp = time.time() - (retention_days * 24 * 60 * 60)
+                
+                # Find expired records
+                if not SQLALCHEMY_AVAILABLE:
+                    # In-memory cleanup
+                    full_table_name = self.get_tenant_table_name(table_name, tenant_id)
+                    records = self._memory_storage.get(full_table_name, [])
+                    original_count = len(records)
+                    
+                    # Filter out expired records
+                    self._memory_storage[full_table_name] = [
+                        r for r in records 
+                        if r.get('created_at', time.time()) > cutoff_timestamp
+                    ]
+                    
+                    deleted_count = original_count - len(self._memory_storage[full_table_name])
+                    cleanup_stats[table_name] = deleted_count
+                else:
+                    # Database cleanup
+                    full_table_name = self.get_tenant_table_name(table_name, tenant_id)
+                    if full_table_name in self.tables:
+                        table = self.tables[full_table_name]
+                        
+                        with self.engine.connect() as conn:
+                            # Count records to be deleted
+                            count_query = select(func.count()).select_from(table).where(
+                                and_(
+                                    table.c.tenant_id == tenant_id,
+                                    table.c.created_at < func.datetime('now', f'-{retention_days} days')
+                                )
+                            )
+                            result = conn.execute(count_query)
+                            delete_count = result.scalar()
+                            
+                            # Delete expired records
+                            if delete_count > 0:
+                                delete_query = delete(table).where(
+                                    and_(
+                                        table.c.tenant_id == tenant_id,
+                                        table.c.created_at < func.datetime('now', f'-{retention_days} days')
+                                    )
+                                )
+                                conn.execute(delete_query)
+                                conn.commit()
+                            
+                            cleanup_stats[table_name] = delete_count
+            
+            if cleanup_stats:
+                self.logger.info(f"Cleaned up expired data: {cleanup_stats}")
+            
+            return cleanup_stats
+            
+        except Exception as e:
+            self.logger.error(f"Failed to cleanup expired data: {e}")
+            return {}
+    
+    async def encrypt_sensitive_field(
+        self,
+        table_name: str,
+        field_name: str,
+        tenant_id: str,
+        encryption_key: Optional[str] = None
+    ) -> bool:
+        """
+        Mark a field for encryption (placeholder for encryption implementation).
+        
+        Args:
+            table_name: Table name
+            field_name: Field to encrypt
+            tenant_id: Tenant ID
+            encryption_key: Optional encryption key
+            
+        Returns:
+            True if field was marked for encryption
+        """
+        try:
+            # Store encryption metadata
+            encryption_config = {
+                'field_name': field_name,
+                'encryption_enabled': True,
+                'key_id': encryption_key or f"key_{tenant_id}_{field_name}",
+                'algorithm': 'AES-256-GCM'
+            }
+            
+            await self.set_config(
+                f"encryption_{table_name}_{field_name}",
+                encryption_config,
+                tenant_id
+            )
+            
+            self.logger.info(f"Enabled encryption for {table_name}.{field_name}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to enable encryption: {e}")
+            return False
+    
     def get_table_info(self, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Get information about tables for this extension.
@@ -717,7 +1103,9 @@ class ExtensionDataManager:
             'extension_name': self.extension_name,
             'table_prefix': self.table_prefix,
             'storage_type': self.storage_type.value,
-            'tables': []
+            'tables': [],
+            'document_collections': list(self._document_collections.keys()),
+            'retention_policies': len(self._data_retention_policies)
         }
         
         if not SQLALCHEMY_AVAILABLE:
@@ -727,7 +1115,8 @@ class ExtensionDataManager:
                     record_count = len(self._memory_storage[table_name])
                     info['tables'].append({
                         'name': table_name,
-                        'record_count': record_count
+                        'record_count': record_count,
+                        'type': 'document' if any(table_name.endswith(f"docs_{col}_{tenant_id or 'unknown'}") for col in self._document_collections.keys()) else 'relational'
                     })
         else:
             # Database table info
@@ -755,7 +1144,8 @@ class ExtensionDataManager:
                 
                 info['tables'].append({
                     'name': table_name,
-                    'record_count': record_count
+                    'record_count': record_count,
+                    'type': 'document' if 'docs_' in table_name else 'relational'
                 })
         
         return info

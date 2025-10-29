@@ -1,56 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-import { makeBackendRequest } from '@/app/api/_utils/backend';
+/**
+ * Development-only login bypass
+ * This route provides a simple authentication mechanism for development
+ */
 
 export async function POST(request: NextRequest) {
-  // Only allow dev login in development environment
-  if (process.env.NODE_ENV === 'production') {
+  // Only allow in development
+  if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json(
-      { error: 'Dev login is not available in production' },
-      { status: 403 }
+      { error: 'Development login not available in production' },
+      { status: 404 }
     );
   }
 
   try {
     const body = await request.json();
-    
-    // Forward the request to the backend dev login endpoint
-    const result = await makeBackendRequest('/api/auth/dev-login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    const { email, password } = body;
 
-    const data = result.data;
-    
-    // Create the response
-    const nextResponse = NextResponse.json(data);
-    
-    // Set auth token cookie
-    const token = data?.access_token;
-    if (typeof token === 'string' && token.length > 0) {
-      try {
-        nextResponse.cookies.set('auth_token', token, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: false, // dev
-          path: '/',
-          maxAge: data?.expires_in ? Number(data.expires_in) : 24 * 60 * 60,
-        });
-      } catch {
-        // ignore cookie errors in dev
-      }
+    // Simple development authentication
+    if (email && password) {
+      const response = NextResponse.json({
+        access_token: 'dev-token-' + Date.now(),
+        token_type: 'Bearer',
+        expires_in: 3600,
+        user_data: {
+          id: 'dev-user-1',
+          email: email,
+          name: 'Development User',
+          roles: ['user', 'admin'],
+        },
+        databaseConnectivity: {
+          isConnected: true,
+          responseTime: 10,
+          timestamp: new Date(),
+        },
+        responseTime: 50,
+      });
+
+      // Set development auth cookie
+      response.cookies.set('auth_token', 'dev-token-' + Date.now(), {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: false,
+        path: '/',
+        maxAge: 3600,
+      });
+
+      return response;
     }
-    
-    return nextResponse;
-    
-  } catch (error) {
-    console.error('Dev login proxy error:', error);
+
     return NextResponse.json(
-      { error: 'Dev login failed' },
+      { error: 'Email and password required' },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('Dev login error:', error);
+    return NextResponse.json(
+      { error: 'Development login failed' },
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    message: 'Development login endpoint',
+    available: process.env.NODE_ENV === 'development',
+  });
 }

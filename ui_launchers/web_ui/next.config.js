@@ -11,6 +11,9 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Remove asset prefix that's causing MIME type issues
+  // assetPrefix: process.env.NODE_ENV === 'development' ? 'http://localhost:8010' : '',
+  
   // Explicitly set the root directory to prevent Next.js from looking at parent directories
   experimental: {
     // Other experimental features can go here
@@ -31,8 +34,20 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
 
+  // Font optimization is enabled by default in Next.js 15
+
   // Suppress hydration warnings in development
   reactStrictMode: false,
+  
+  // Force development mode settings
+  ...(process.env.NODE_ENV === 'development' && {
+    // Disable minification in development
+    swcMinify: false,
+    // Enable source maps
+    productionBrowserSourceMaps: false,
+    // Disable optimization
+    optimizeFonts: false,
+  }),
 
   // ESLint configuration
   eslint: {
@@ -74,6 +89,15 @@ const nextConfig = {
   },
   
   webpack: (config, { isServer, dev }) => {
+    // Fix chunk loading issues in development
+    if (dev && !isServer) {
+      config.output = {
+        ...config.output,
+        chunkFilename: 'static/chunks/[name].js',
+        hotUpdateChunkFilename: 'static/webpack/[id].[fullhash].hot-update.js',
+      };
+    }
+    
     if (isServer) {
       // Node's runtime expects server chunks to live alongside webpack-runtime.js
       // so we force id-based filenames to keep them flat (e.g. "5611.js").
@@ -93,7 +117,15 @@ const nextConfig = {
         tls: false,
         path: false,
         crypto: false,
+        dns: false,
+        pg: false,
       };
+    }
+
+    // Exclude server-only modules from client bundle
+    if (!isServer) {
+      config.externals = config.externals || [];
+      config.externals.push('pg');
     }
 
     // Fix lodash module resolution for slate-react (used by CopilotKit)

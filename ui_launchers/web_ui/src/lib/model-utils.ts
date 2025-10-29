@@ -18,6 +18,37 @@ export interface Model {
   disk_usage?: number;
   last_used?: string;
   download_date?: string;
+  // Enhanced multi-modal support
+  type?: 'text' | 'image' | 'embedding' | 'multimodal';
+  subtype?: 'llama-cpp' | 'transformers' | 'stable-diffusion' | 'flux';
+  format?: 'gguf' | 'safetensors' | 'pytorch' | 'diffusers';
+  health?: ModelHealth;
+  last_scanned?: string;
+}
+
+export interface ModelHealth {
+  is_healthy: boolean;
+  last_check: string;
+  issues: string[];
+  performance_metrics?: Record<string, number>;
+  memory_requirement?: number;
+}
+
+export interface ModelScanResult {
+  models: Model[];
+  scan_metadata: {
+    last_scan: string;
+    scan_version: string;
+    directories_scanned: string[];
+    total_models_found: number;
+    scan_duration_ms: number;
+  };
+}
+
+export interface DirectoryScanOptions {
+  includeHealth?: boolean;
+  forceRefresh?: boolean;
+  directories?: string[];
 }
 
 export interface ModelLibraryResponse {
@@ -97,6 +128,10 @@ export function getStatusBadgeVariant(status: string): 'default' | 'secondary' |
       return 'secondary';
     case 'downloading':
       return 'outline';
+    case 'incompatible':
+      return 'outline';
+    case 'error':
+      return 'destructive';
     default:
       return 'outline';
   }
@@ -157,6 +192,27 @@ export function getModelDisplayName(model: Model, maxLength: number = 30): strin
  * Check if model has specific capability
  */
 export function hasCapability(model: Model, capability: string): boolean {
+  if (!model.capabilities || model.capabilities.length === 0) {
+    // If no capabilities are set, infer from model name and provider
+    const name = model.name?.toLowerCase() || '';
+    const provider = model.provider?.toLowerCase() || '';
+    
+    switch (capability) {
+      case 'chat':
+        return name.includes('chat') || name.includes('instruct') || name.includes('dialog') || 
+               provider.includes('llama') || name.endsWith('.gguf');
+      case 'text-generation':
+        return provider.includes('llama') || provider === 'transformers' || name.endsWith('.gguf') ||
+               name.includes('gpt') || name.includes('llama') || name.includes('phi');
+      case 'code':
+        return name.includes('code') || name.includes('codellama');
+      case 'analysis':
+      case 'classification':
+        return name.includes('bert') || provider === 'transformers';
+      default:
+        return true; // Be permissive for unknown capabilities
+    }
+  }
   return model.capabilities.includes(capability);
 }
 
@@ -179,11 +235,14 @@ export function getRecommendedModels(models: Model[], useCase: 'chat' | 'code' |
   const filtered = models.filter(model => {
     switch (useCase) {
       case 'chat':
-        return hasCapability(model, 'chat') || hasCapability(model, 'text-generation');
+        return hasCapability(model, 'chat') || hasCapability(model, 'text-generation') || 
+               model.name.toLowerCase().includes('chat') || model.name.toLowerCase().includes('instruct') ||
+               model.name.endsWith('.gguf') || model.provider?.includes('llama');
       case 'code':
         return hasCapability(model, 'code') || model.name.toLowerCase().includes('code');
       case 'analysis':
-        return hasCapability(model, 'analysis') || hasCapability(model, 'classification');
+        return hasCapability(model, 'analysis') || hasCapability(model, 'classification') ||
+               model.name.toLowerCase().includes('bert');
       default:
         return true;
     }

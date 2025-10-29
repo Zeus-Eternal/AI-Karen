@@ -13,6 +13,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "baseUrl": ".",
   // "types": ["vitest/globals"], // Commented out to resolve type resolution issues
     "plugins": [
       {
@@ -33,6 +34,14 @@
     "**/src.bak/**",
     "**/*-Bak.*",
     "**/*-bak.*",
-    "Theme sample/**"
+    "Theme sample/**",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/test-utils/**",
+    "**/test/**",
+    "e2e/**"
   ]
 }

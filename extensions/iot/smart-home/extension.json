@@ -1,0 +1,105 @@
+{
+  "name": "iot-smart-home",
+  "version": "1.0.0",
+  "display_name": "IoT Smart Home Management",
+  "description": "Comprehensive IoT device management with scene automation and intelligent monitoring",
+  "author": "Kari AI Team",
+  "license": "MIT",
+  "category": "iot",
+  "tags": ["iot", "smart-home", "devices", "automation", "monitoring"],
+  
+  "api_version": "1.0",
+  "kari_min_version": "0.4.0",
+  
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "provides_background_tasks": true,
+    "provides_webhooks": true
+  },
+  
+  "dependencies": {
+    "plugins": ["time_query"],
+    "extensions": [],
+    "system_services": ["postgres", "redis"]
+  },
+  
+  "permissions": {
+    "data_access": ["read", "write"],
+    "plugin_access": ["execute"],
+    "system_access": ["scheduler", "webhooks"],
+    "network_access": ["outbound_http", "local_network"]
+  },
+  
+  "resources": {
+    "max_memory_mb": 256,
+    "max_cpu_percent": 15,
+    "max_disk_mb": 512
+  },
+  
+  "ui": {
+    "control_room_pages": [
+      {
+        "name": "Smart Home Dashboard",
+        "path": "/iot",
+        "icon": "🏠",
+        "permissions": ["user", "admin"]
+      }
+    ],
+    "streamlit_pages": [
+      {
+        "name": "Device Analytics",
+        "module": "ui.device_analytics",
+        "permissions": ["admin"]
+      }
+    ]
+  },
+  
+  "api": {
+    "endpoints": [
+      {
+        "path": "/iot/devices",
+        "methods": ["GET", "POST"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/iot/scenes",
+        "methods": ["GET", "POST"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/iot/control/{device_id}",
+        "methods": ["POST"],
+        "permissions": ["user"]
+      }
+    ]
+  },
+  
+  "background_tasks": [
+    {
+      "name": "device_health_monitor",
+      "schedule": "*/2 * * * *",
+      "function": "tasks.monitor_device_health"
+    },
+    {
+      "name": "scene_automation",
+      "schedule": "*/1 * * * *",
+      "function": "tasks.execute_automated_scenes"
+    }
+  ],
+  
+  "webhooks": [
+    {
+      "path": "/iot/webhook/device/{device_id}",
+      "methods": ["POST"],
+      "description": "Receive device status updates"
+    }
+  ],
+  
+  "marketplace": {
+    "price": "free",
+    "support_url": "https://github.com/kari-ai/extensions",
+    "documentation_url": "https://docs.kari.ai/extensions/iot-smart-home",
+    "screenshots": ["smart-home-dashboard.png", "device-control.png"]
+  }
+}

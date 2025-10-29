@@ -1,0 +1,84 @@
+{
+  "name": "speech-interface",
+  "version": "1.0.0",
+  "display_name": "Speech Interface & Voice Control",
+  "description": "Comprehensive speech-to-text, text-to-speech, and voice control capabilities with AI-powered voice understanding",
+  "author": "Kari AI Team",
+  "license": "MIT",
+  "category": "voice",
+  "tags": ["speech", "voice", "tts", "stt", "voice-control", "audio"],
+  
+  "api_version": "1.0",
+  "kari_min_version": "0.4.0",
+  
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "provides_background_tasks": false,
+    "provides_webhooks": false
+  },
+  
+  "dependencies": {
+    "plugins": ["hf_llm"],
+    "extensions": [],
+    "system_services": ["postgres"]
+  },
+  
+  "permissions": {
+    "data_access": ["read", "write"],
+    "plugin_access": ["execute"],
+    "system_access": ["audio", "microphone"],
+    "network_access": ["outbound_http"]
+  },
+  
+  "resources": {
+    "max_memory_mb": 512,
+    "max_cpu_percent": 25,
+    "max_disk_mb": 1024
+  },
+  
+  "ui": {
+    "control_room_pages": [
+      {
+        "name": "Voice Control Center",
+        "path": "/voice",
+        "icon": "🎤",
+        "permissions": ["user", "admin"]
+      }
+    ],
+    "streamlit_pages": [
+      {
+        "name": "Voice Analytics",
+        "module": "ui.voice_analytics",
+        "permissions": ["admin"]
+      }
+    ]
+  },
+  
+  "api": {
+    "endpoints": [
+      {
+        "path": "/voice/synthesize",
+        "methods": ["POST"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/voice/recognize",
+        "methods": ["POST"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/voice/providers",
+        "methods": ["GET"],
+        "permissions": ["user"]
+      }
+    ]
+  },
+  
+  "marketplace": {
+    "price": "free",
+    "support_url": "https://github.com/kari-ai/extensions",
+    "documentation_url": "https://docs.kari.ai/extensions/speech-interface",
+    "screenshots": ["voice-control-center.png", "speech-synthesis.png"]
+  }
+}

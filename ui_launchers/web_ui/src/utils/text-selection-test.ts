@@ -86,38 +86,23 @@ export async function testTextSelection(): Promise<TextSelectionTestResult> {
       document.body.removeChild(testElement);
     }
 
-    // Test 3: Copy functionality
+    // Test 3: Copy functionality (check API availability, not actual functionality)
     try {
       if (navigator.clipboard && window.isSecureContext) {
-        // Test modern clipboard API
-        await navigator.clipboard.writeText('test copy');
-        const clipboardText = await navigator.clipboard.readText();
-        if (clipboardText === 'test copy') {
-          result.canCopy = true;
-        } else {
-          result.errors.push('Clipboard write/read test failed');
+        // Check if clipboard API is available (don't test actual copy due to focus requirements)
+        result.canCopy = typeof navigator.clipboard.writeText === 'function';
+        if (!result.canCopy) {
+          result.errors.push('Clipboard API writeText method not available');
         }
+      } else if (typeof document.execCommand === 'function') {
+        // Check if legacy copy method is available
+        result.canCopy = true;
       } else {
-        // Test legacy copy method
-        const testInput = document.createElement('textarea');
-        testInput.value = 'test copy legacy';
-        testInput.style.position = 'absolute';
-        testInput.style.left = '-9999px';
-        document.body.appendChild(testInput);
-        
-        testInput.select();
-        const copySuccess = document.execCommand('copy');
-        
-        if (copySuccess) {
-          result.canCopy = true;
-        } else {
-          result.errors.push('Legacy copy method failed');
-        }
-        
-        document.body.removeChild(testInput);
+        result.canCopy = false;
+        result.errors.push('No clipboard functionality available');
       }
     } catch (error) {
-      result.errors.push(`Copy test failed: ${error}`);
+      result.errors.push(`Copy capability check failed: ${error}`);
     }
 
     // Test 4: Paste functionality (if supported)
@@ -210,6 +195,46 @@ export function getTextSelectionInfo() {
 }
 
 /**
+ * Test clipboard functionality with user interaction
+ * This should be called from a user event handler (click, etc.)
+ */
+export async function testClipboardWithUserInteraction(): Promise<{success: boolean, error?: string}> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText('test copy with user interaction');
+      const clipboardText = await navigator.clipboard.readText();
+      return {
+        success: clipboardText === 'test copy with user interaction',
+        error: clipboardText !== 'test copy with user interaction' ? 'Clipboard content mismatch' : undefined
+      };
+    } else {
+      // Test legacy copy method
+      const testInput = document.createElement('textarea');
+      testInput.value = 'test copy legacy';
+      testInput.style.position = 'absolute';
+      testInput.style.left = '-9999px';
+      document.body.appendChild(testInput);
+      
+      testInput.select();
+      testInput.focus();
+      const copySuccess = document.execCommand('copy');
+      
+      document.body.removeChild(testInput);
+      
+      return {
+        success: copySuccess,
+        error: !copySuccess ? 'Legacy copy command failed' : undefined
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: `Clipboard test failed: ${error}`
+    };
+  }
+}
+
+/**
  * Log text selection test results to console
  */
 export async function logTextSelectionTest() {
@@ -227,8 +252,13 @@ export async function logTextSelectionTest() {
     console.groupEnd();
   }
   
-  if (testResult.isSupported && testResult.canSelect && testResult.canCopy) {
-    console.log('🎉 Text selection is working properly!');
+  if (testResult.isSupported && testResult.canSelect) {
+    if (testResult.canCopy) {
+      console.log('🎉 Text selection and clipboard API are available!');
+      console.log('💡 Note: Actual clipboard operations require user interaction');
+    } else {
+      console.log('✅ Text selection is working, but clipboard functionality is limited');
+    }
   } else {
     console.warn('⚠️ Text selection may have issues');
   }
@@ -236,10 +266,11 @@ export async function logTextSelectionTest() {
   console.groupEnd();
 }
 
-// Auto-run test in development
+/**
+ * Manual test function for development
+ * Call this from browser console: window.testTextSelection()
+ */
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  // Run test after a short delay to ensure DOM is ready
-  setTimeout(() => {
-    logTextSelectionTest();
-  }, 1000);
+  (window as any).testTextSelection = logTextSelectionTest;
+  (window as any).testClipboard = testClipboardWithUserInteraction;
 }

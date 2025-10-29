@@ -113,3 +113,7 @@ export const safeInfo = (message: string, data?: any) =>
 
 export const safeDebug = (message: string, data?: any) => 
   safeConsole.safeDebug(message, data);
+
+// Alias for safeInfo for convenience
+export const safeLog = (message: string, data?: any) => 
+  safeConsole.safeInfo(message, data);

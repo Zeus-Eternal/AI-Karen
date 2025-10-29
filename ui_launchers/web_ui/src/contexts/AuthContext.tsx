@@ -348,7 +348,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       // Use ConnectionManager for reliable authentication request
-      const loginUrl = "/api/auth/login";
+      // In development, try dev-login first, then fallback to regular login
+      const loginUrl = process.env.NODE_ENV === 'development' 
+        ? "/api/auth/dev-login" 
+        : "/api/auth/login";
       const timeout = timeoutManager.getTimeout(OperationType.AUTHENTICATION);
 
       const requestBody = {

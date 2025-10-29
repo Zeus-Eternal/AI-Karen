@@ -1,0 +1,58 @@
+# Extension Authentication Configuration - Test Environment
+# This file contains test-specific settings for extension authentication
+
+# Authentication settings (permissive for testing)
+auth_enabled: true
+jwt_algorithm: "HS256"
+access_token_expire_minutes: 240  # 4 hours for long test runs
+service_token_expire_minutes: 120  # 2 hours for service tokens
+
+# Security settings (relaxed for testing)
+auth_mode: "development"  # Allow test bypasses
+dev_bypass_enabled: true  # Enable test authentication bypass
+require_https: false  # Allow HTTP in tests
+token_blacklist_enabled: false  # Disable for test simplicity
+max_failed_attempts: 100  # Very high threshold for tests
+lockout_duration_minutes: 0  # No lockout in tests
+audit_logging_enabled: true
+
+# Rate limiting (very permissive for testing)
+rate_limit_per_minute: 10000
+burst_limit: 1000
+enable_rate_limiting: false  # Disable rate limiting in tests
+
+# Permissions (full access for testing)
+default_permissions:
+  - "extension:*"
+admin_permissions:
+  - "extension:*"
+service_permissions:
+  - "extension:*"
+
+# Health monitoring (frequent for test validation)
+health_check_enabled: true
+health_check_interval_seconds: 120  # Check every 2 minutes
+health_check_timeout_seconds: 30  # Longer timeout for test environments
+
+# Logging (verbose for test debugging)
+log_level: "DEBUG"
+enable_debug_logging: true
+log_sensitive_data: true  # Allow sensitive data logging in tests
+
+# Test-specific features
+test_features:
+  mock_services: true
+  test_data_generation: true
+  performance_profiling: true
+  coverage_tracking: true
+  integration_testing: true
+  load_testing: true
+  
+# Test utilities
+test_utilities:
+  auto_cleanup: true
+  test_isolation: true
+  parallel_execution: true
+  
+# Note: Test environment uses predictable credentials for consistency
+# These are automatically generated and managed by the credential system

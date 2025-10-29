@@ -11,6 +11,8 @@ __all__ = [
     "DeepseekProvider",
     "CopilotKitProvider",
     "FallbackProvider",
+    "StableDiffusionProvider",
+    "FluxProvider",
 ]
 
 
@@ -28,6 +30,8 @@ def __getattr__(name: str) -> Any:
         "DeepseekProvider": "ai_karen_engine.integrations.providers.deepseek_provider",
         "CopilotKitProvider": "ai_karen_engine.integrations.providers.copilotkit_provider",
         "FallbackProvider": "ai_karen_engine.integrations.providers.fallback_provider",
+        "StableDiffusionProvider": "ai_karen_engine.integrations.providers.stable_diffusion_provider",
+        "FluxProvider": "ai_karen_engine.integrations.providers.flux_provider",
     }[name]
 
     module = import_module(module_name)

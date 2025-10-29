@@ -10,11 +10,11 @@ export type {
   QueryResult
 } from './client';
 export { 
-  MockDatabaseClient, 
   PostgreSQLClient, 
   DatabaseClientFactory,
   getDatabaseClient,
-  setDatabaseClient
+  setDatabaseClient,
+  closeDatabaseClient
 } from './client';
 
 // Re-export types that are commonly used with database utilities

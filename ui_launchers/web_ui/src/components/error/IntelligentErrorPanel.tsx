@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getApiClient } from '@/lib/api-client';
+import { errorAnalysisRateLimiter } from '@/lib/rate-limiter';
 import { cn } from '@/lib/utils';
 
 // Types based on the backend API
@@ -144,12 +145,15 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
         use_ai_analysis: useAiAnalysis,
       };
 
-      const response = await apiClient.post<ErrorAnalysisResponse>(
-        '/api/error-response/analyze',
-        request
+      // Use rate limiter to prevent 429 errors
+      const response = await errorAnalysisRateLimiter.execute(() =>
+        apiClient.post<ErrorAnalysisResponse>(
+          '/api/error-response/analyze',
+          request
+        )
       );
 
-      setAnalysis(response.data);
+      setAnalysis(response);
     } catch (err: any) {
       console.error('Failed to fetch error analysis:', err);
       setFetchError(err.message || 'Failed to analyze error');

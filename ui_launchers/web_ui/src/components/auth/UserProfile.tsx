@@ -342,7 +342,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">User ID</Label>
-              <p className="font-mono text-sm">{user.user_id}</p>
+              <p className="font-mono text-sm">{user.userId}</p>
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Roles</Label>
@@ -356,7 +356,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Tenant ID</Label>
-              <p className="font-mono text-sm">{user.tenant_id}</p>
+              <p className="font-mono text-sm">{user.tenantId}</p>
             </div>
           </div>
         </div>

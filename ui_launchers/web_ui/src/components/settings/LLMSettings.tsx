@@ -295,8 +295,10 @@ export default function LLMSettings() {
       }
       
       const fallbackProfiles = getFallbackProfiles();
-      setProfiles(profilesResponse || fallbackProfiles);
-      setActiveProfile(activeProfileResponse || fallbackProfiles[0]);
+      // Ensure profilesResponse is an array before setting
+      const validProfiles = Array.isArray(profilesResponse) ? profilesResponse : fallbackProfiles;
+      setProfiles(validProfiles);
+      setActiveProfile(activeProfileResponse || validProfiles[0]);
     } catch (error) {
       console.warn('Provider profiles endpoints not available, using fallback data:', error);
       const fallbackProfiles = getFallbackProfiles();

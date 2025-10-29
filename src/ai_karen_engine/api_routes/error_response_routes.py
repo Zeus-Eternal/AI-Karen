@@ -166,8 +166,8 @@ def _cache_response(cache_key: str, response: Dict[str, Any]) -> None:
 @router.post("/analyze", response_model=ErrorAnalysisResponse)
 @limiter.limit("30/minute")  # Rate limit: 30 requests per minute per IP
 async def analyze_error(
-    request: ErrorAnalysisRequest,
-    http_request: Request,
+    error_request: ErrorAnalysisRequest,
+    request: Request,
     user_context: Optional[Dict[str, Any]] = Depends(get_current_user_context)
 ) -> ErrorAnalysisResponse:
     """
@@ -195,7 +195,7 @@ async def analyze_error(
     
     try:
         # Generate cache key for this request
-        cache_key = _generate_cache_key(request)
+        cache_key = _generate_cache_key(error_request)
         
         # Check cache first
         cached_response = _get_cached_response(cache_key)
@@ -210,25 +210,25 @@ async def analyze_error(
         additional_context = {
             "user_id": user_context.get("user_id") if user_context else None,
             "tenant_id": user_context.get("tenant_id") if user_context else None,
-            "request_path": request.request_path,
-            "user_agent": http_request.headers.get("user-agent"),
+            "request_path": error_request.request_path,
+            "user_agent": request.headers.get("user-agent"),
             "timestamp": datetime.utcnow().isoformat()
         }
         
         # Add user-provided context
-        if request.user_context:
-            additional_context.update(request.user_context)
+        if error_request.user_context:
+            additional_context.update(error_request.user_context)
         
         # Analyze the error
-        logger.info(f"Analyzing error: {request.error_message[:100]}...")
+        logger.info(f"Analyzing error: {error_request.error_message[:100]}...")
         
         intelligent_response = service.analyze_error(
-            error_message=request.error_message,
-            error_type=request.error_type,
-            status_code=request.status_code,
-            provider_name=request.provider_name,
+            error_message=error_request.error_message,
+            error_type=error_request.error_type,
+            status_code=error_request.status_code,
+            provider_name=error_request.provider_name,
             additional_context=additional_context,
-            use_ai_analysis=request.use_ai_analysis
+            use_ai_analysis=error_request.use_ai_analysis
         )
         
         # Calculate response time

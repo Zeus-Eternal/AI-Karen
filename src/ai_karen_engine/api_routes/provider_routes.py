@@ -1764,4 +1764,149 @@ async def refresh_provider_models(
         raise
     except Exception as ex:
         logger.error(f"Failed to refresh models for provider {provider_id}: {ex}")
-        raise handle_api_exception(ex, f"Failed to refresh models for provider {provider_id}")
+
+
+# ----------------- Provider Notification Endpoints -----------------
+
+class NotificationSettings(BaseModel):
+    """Provider notification settings model."""
+    enabled: bool = True
+    email_notifications: bool = False
+    push_notifications: bool = True
+    model_updates: bool = True
+    health_alerts: bool = True
+    performance_alerts: bool = False
+
+
+class ProviderNotification(BaseModel):
+    """Provider notification model."""
+    id: str
+    type: str  # info, warning, error, success
+    title: str
+    message: str
+    provider_id: Optional[str] = None
+    timestamp: float
+    read: bool = False
+    action_url: Optional[str] = None
+
+
+@router.get("/notifications", response_model=List[ProviderNotification])
+async def get_provider_notifications():
+    """
+    Get provider notifications.
+    
+    Returns:
+        List of provider notifications
+    """
+    try:
+        # For now, return mock notifications
+        # In a real implementation, this would fetch from a database or notification service
+        notifications = [
+            ProviderNotification(
+                id="1",
+                type="info",
+                title="OpenAI Models Updated",
+                message="New GPT-4 models are now available",
+                provider_id="openai",
+                timestamp=time.time() - 3600,  # 1 hour ago
+                read=False
+            ),
+            ProviderNotification(
+                id="2",
+                type="warning",
+                title="Local Model Performance",
+                message="Llama.cpp models are running slower than expected",
+                provider_id="llama-cpp",
+                timestamp=time.time() - 7200,  # 2 hours ago
+                read=False
+            )
+        ]
+        
+        return notifications
+        
+    except Exception as ex:
+        logger.error(f"Failed to get provider notifications: {ex}")
+        raise handle_api_exception(ex, "Failed to get provider notifications")
+
+
+@router.get("/notifications/settings", response_model=NotificationSettings)
+async def get_notification_settings():
+    """
+    Get provider notification settings.
+    
+    Returns:
+        Current notification settings
+    """
+    try:
+        # For now, return default settings
+        # In a real implementation, this would fetch from user preferences
+        return NotificationSettings(
+            enabled=True,
+            email_notifications=False,
+            push_notifications=True,
+            model_updates=True,
+            health_alerts=True,
+            performance_alerts=False
+        )
+        
+    except Exception as ex:
+        logger.error(f"Failed to get notification settings: {ex}")
+        raise handle_api_exception(ex, "Failed to get notification settings")
+
+
+@router.put("/notifications/settings", response_model=NotificationSettings)
+async def update_notification_settings(settings: NotificationSettings):
+    """
+    Update provider notification settings.
+    
+    Args:
+        settings: New notification settings
+        
+    Returns:
+        Updated notification settings
+    """
+    try:
+        # For now, just return the provided settings
+        # In a real implementation, this would save to user preferences
+        logger.info(f"Updated notification settings: {settings}")
+        return settings
+        
+    except Exception as ex:
+        logger.error(f"Failed to update notification settings: {ex}")
+        raise handle_api_exception(ex, "Failed to update notification settings")
+
+
+@router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str):
+    """
+    Mark a notification as read.
+    
+    Args:
+        notification_id: ID of the notification to mark as read
+        
+    Returns:
+        Success message
+    """
+    try:
+        # For now, just log the action
+        # In a real implementation, this would update the notification in the database
+        logger.info(f"Marked notification {notification_id} as read")
+        return {"success": True, "message": f"Notification {notification_id} marked as read"}
+        
+    except Exception as ex:
+        logger.error(f"Failed to mark notification as read: {ex}")
+        raise handle_api_exception(ex, "Failed to mark notification as read")
+
+
+@router.get("/notifications/stream")
+async def get_notification_stream():
+    """
+    Get real-time notification stream (Server-Sent Events).
+    
+    This endpoint would typically return an EventSource stream for real-time notifications.
+    For now, it returns a 404 to indicate the feature is not implemented.
+    """
+    raise HTTPException(
+        status_code=404, 
+        detail="Real-time notification stream not implemented yet"
+    )

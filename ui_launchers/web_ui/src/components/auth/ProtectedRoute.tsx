@@ -33,7 +33,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Reset redirect flag when authentication state changes
   useEffect(() => {
     setHasRedirected(false);
-  }, [isAuthenticated, user?.user_id]);
+  }, [isAuthenticated, user?.userId]);
 
   // Initialize after first render to avoid hydration issues
   useEffect(() => {

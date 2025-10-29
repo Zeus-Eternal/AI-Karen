@@ -5,10 +5,24 @@
  * with different database drivers (pg, mysql, etc.)
  */
 
+// Only import pg on server-side
+let Pool: any, PoolClient: any, PoolConfig: any;
+if (typeof window === 'undefined') {
+  try {
+    const pg = require('pg');
+    Pool = pg.Pool;
+    PoolClient = pg.PoolClient;
+    PoolConfig = pg.PoolConfig;
+  } catch (error) {
+    console.warn('pg library not available:', error);
+  }
+}
+
 // Database client interface
 export interface DatabaseClient {
   query(sql: string, params?: any[]): Promise<QueryResult>;
   transaction<T>(callback: (client: DatabaseClient) => Promise<T>): Promise<T>;
+  close?(): Promise<void>;
 }
 
 // Query result interface
@@ -18,129 +32,96 @@ export interface QueryResult {
   fields?: any[];
 }
 
-// Mock database client for development/testing
-export class MockDatabaseClient implements DatabaseClient {
-  async query(sql: string, params?: any[]): Promise<QueryResult> {
-    console.log('Mock DB Query:', sql, params);
-    
-    // Handle specific queries for testing
-    if (sql.includes('log_audit_event')) {
-      return {
-        rows: [{ audit_id: 'mock-audit-id-123' }],
-        rowCount: 1
-      };
+// PostgreSQL client implementation
+export class PostgreSQLClient implements DatabaseClient {
+  private pool: any;
+
+  constructor(connectionConfig: string | any) {
+    if (typeof window !== 'undefined') {
+      throw new Error('PostgreSQL client can only be used on the server side');
     }
-    
-    if (sql.includes('user_has_permission')) {
-      return {
-        rows: [{ has_permission: false }],
-        rowCount: 1
-      };
+
+    if (!Pool) {
+      throw new Error('pg library is not available');
     }
-    
-    if (sql.includes('get_user_permissions')) {
-      return {
-        rows: [],
-        rowCount: 0
-      };
-    }
-    
-    // Return mock data based on query patterns and parameters
-    if (sql.includes('auth_users')) {
-      // Check if this is a query for a non-existent user
-      if (params && params[0] === 'non-existent') {
-        return {
-          rows: [],
-          rowCount: 0
-        };
-      }
-      
-      return {
-        rows: [{
-          user_id: '123e4567-e89b-12d3-a456-426614174000',
-          email: 'admin@ai-karen.local',
-          full_name: 'System Administrator',
-          role: 'super_admin',
-          roles: ['admin', 'user'],
-          tenant_id: 'default',
-          preferences: {},
-          is_verified: true,
-          is_active: true,
-          created_at: new Date(),
-          updated_at: new Date(),
-          two_factor_enabled: false
-        }],
-        rowCount: 1
-      };
-    }
-    
-    if (sql.includes('audit_logs')) {
-      return {
-        rows: [],
-        rowCount: 0
-      };
-    }
-    
-    if (sql.includes('system_config')) {
-      return {
-        rows: [],
-        rowCount: 0
-      };
-    }
-    
-    if (sql.includes('COUNT(*)')) {
-      return {
-        rows: [{ total: 0, count: 0 }],
-        rowCount: 1
-      };
-    }
-    
-    return {
-      rows: [],
-      rowCount: 0
-    };
+
+    const config = typeof connectionConfig === 'string' 
+      ? { connectionString: connectionConfig }
+      : connectionConfig;
+
+    // Set reasonable defaults for connection pooling
+    this.pool = new Pool({
+      ...config,
+      max: config.max || 20,
+      idleTimeoutMillis: config.idleTimeoutMillis || 30000,
+      connectionTimeoutMillis: config.connectionTimeoutMillis || 2000,
+    });
+
+    // Handle pool errors
+    this.pool.on('error', (err: any) => {
+      console.error('Unexpected error on idle client', err);
+    });
   }
 
-  async transaction<T>(callback: (client: DatabaseClient) => Promise<T>): Promise<T> {
-    console.log('Mock DB Transaction started');
+  async query(sql: string, params?: any[]): Promise<QueryResult> {
     try {
-      const result = await callback(this);
-      console.log('Mock DB Transaction committed');
-      return result;
+      const result = await this.pool.query(sql, params);
+      return {
+        rows: result.rows,
+        rowCount: result.rowCount || 0,
+        fields: result.fields
+      };
     } catch (error) {
-      console.log('Mock DB Transaction rolled back');
+      console.error('Database query error:', error);
       throw error;
     }
   }
-}
-
-// PostgreSQL client implementation (to be implemented when needed)
-export class PostgreSQLClient implements DatabaseClient {
-  private pool: any; // pg.Pool instance
-
-  constructor(connectionConfig: any) {
-    // Initialize PostgreSQL connection pool
-    // This would use the 'pg' library when implemented
-    console.log('PostgreSQL client initialized with config:', connectionConfig);
-  }
-
-  async query(sql: string, params?: any[]): Promise<QueryResult> {
-    // Implementation would use this.pool.query()
-    throw new Error('PostgreSQL client not yet implemented');
-  }
 
   async transaction<T>(callback: (client: DatabaseClient) => Promise<T>): Promise<T> {
-    // Implementation would use this.pool.connect() and client.query('BEGIN')
-    throw new Error('PostgreSQL client not yet implemented');
+    const poolClient = await this.pool.connect();
+    
+    try {
+      await poolClient.query('BEGIN');
+      
+      // Create a transaction client wrapper
+      const transactionClient: DatabaseClient = {
+        query: async (sql: string, params?: any[]) => {
+          const result = await poolClient.query(sql, params);
+          return {
+            rows: result.rows,
+            rowCount: result.rowCount || 0,
+            fields: result.fields
+          };
+        },
+        transaction: async () => {
+          throw new Error('Nested transactions are not supported');
+        }
+      };
+
+      const result = await callback(transactionClient);
+      await poolClient.query('COMMIT');
+      return result;
+    } catch (error) {
+      await poolClient.query('ROLLBACK');
+      throw error;
+    } finally {
+      poolClient.release();
+    }
+  }
+
+  async close(): Promise<void> {
+    await this.pool.end();
   }
 }
 
 // Database client factory
 export class DatabaseClientFactory {
-  static create(type: 'mock' | 'postgresql', config?: any): DatabaseClient {
+  static create(type: 'postgresql', config: string | any): DatabaseClient {
+    if (typeof window !== 'undefined') {
+      throw new Error('Database client can only be created on the server side');
+    }
+
     switch (type) {
-      case 'mock':
-        return new MockDatabaseClient();
       case 'postgresql':
         return new PostgreSQLClient(config);
       default:
@@ -153,11 +134,35 @@ export class DatabaseClientFactory {
 let dbClient: DatabaseClient | null = null;
 
 export function getDatabaseClient(): DatabaseClient {
+  if (typeof window !== 'undefined') {
+    throw new Error('Database client can only be accessed on the server side');
+  }
+
   if (!dbClient) {
-    // For now, use mock client. This can be configured based on environment
-    dbClient = DatabaseClientFactory.create('mock');
+    // Get database URL from environment
+    const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL or POSTGRES_URL environment variable is required');
+    }
+
+    try {
+      console.log('Initializing PostgreSQL database client');
+      dbClient = DatabaseClientFactory.create('postgresql', databaseUrl);
+    } catch (error) {
+      console.error('Failed to create PostgreSQL client:', error);
+      throw new Error(`Database connection failed: ${error}`);
+    }
   }
   return dbClient;
+}
+
+// Function to safely close the database connection
+export async function closeDatabaseClient(): Promise<void> {
+  if (dbClient && 'close' in dbClient && typeof dbClient.close === 'function') {
+    await dbClient.close();
+    dbClient = null;
+  }
 }
 
 export function setDatabaseClient(client: DatabaseClient): void {

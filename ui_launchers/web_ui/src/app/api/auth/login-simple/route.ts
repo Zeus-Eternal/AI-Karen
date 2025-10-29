@@ -112,9 +112,15 @@ export async function POST(request: NextRequest) {
     const nextResponse = NextResponse.json(data);
     
     // Forward any Set-Cookie headers from the backend
-    const setCookieHeader = result.headers.get('set-cookie');
-    if (setCookieHeader) {
-      nextResponse.headers.set('Set-Cookie', setCookieHeader);
+    try {
+      if (result.headers && typeof result.headers === 'object') {
+        const setCookieHeader = result.headers['set-cookie'] || result.headers['Set-Cookie'];
+        if (setCookieHeader) {
+          nextResponse.headers.set('Set-Cookie', setCookieHeader);
+        }
+      }
+    } catch (error) {
+      // Ignore header forwarding errors
     }
 
     // Also set our own auth_token cookie for downstream proxying

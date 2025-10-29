@@ -16,6 +16,21 @@ import { getPerformanceMonitor } from './performance-monitor';
 import { getStoredApiKey } from './secure-api-key';
 import { ErrorHandler, errorHandler, type ErrorInfo } from './error-handler';
 import type { ApiError } from './api-client';
+import { getExtensionAuthManager } from './auth/extension-auth-manager';
+import { 
+  ExtensionAuthErrorFactory,
+  extensionAuthErrorHandler,
+  type ExtensionAuthError
+} from './auth/extension-auth-errors';
+import { 
+  extensionAuthRecoveryManager,
+  type RecoveryAttemptResult
+} from './auth/extension-auth-recovery';
+import { 
+  extensionAuthDegradationManager,
+  isExtensionFeatureAvailable,
+  getExtensionFallbackData
+} from './auth/extension-auth-degradation';
 
 export const SESSION_ID_KEY = 'auth_session_id';
 
@@ -171,6 +186,50 @@ export interface CurrentUser {
   roles: string[]
 }
 
+// --- Extension Types ---
+export interface ExtensionInfo {
+  name: string;
+  version: string;
+  display_name: string;
+  description: string;
+  status: string;
+  capabilities: Record<string, any>;
+  loaded_at: string | null;
+}
+
+export interface BackgroundTaskInfo {
+  task_id: string;
+  name: string;
+  extension_name: string;
+  status: string;
+  created_at: string;
+  last_run: string | null;
+  next_run: string | null;
+}
+
+export interface ExtensionListResponse {
+  extensions: Record<string, ExtensionInfo> | ExtensionInfo[];
+  total: number;
+  user_context?: {
+    user_id: string;
+    tenant_id: string;
+  };
+  message?: string;
+}
+
+export interface BackgroundTaskListResponse {
+  tasks: BackgroundTaskInfo[];
+  total: number;
+  extension_name?: string;
+  message?: string;
+}
+
+export interface BackgroundTaskRegistrationResponse {
+  task_id: string;
+  message: string;
+  status: string;
+}
+
 class KarenBackendService {
   private config: BackendConfig;
   private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
@@ -215,6 +274,285 @@ class KarenBackendService {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.replayOfflineQueue);
     }
+  }
+
+  /**
+   * Check if endpoint is an extension API endpoint that requires special authentication
+   */
+  private isExtensionEndpoint(endpoint: string): boolean {
+    return endpoint.startsWith('/api/extensions') || 
+           endpoint.includes('/background-tasks') ||
+           endpoint.includes('extension');
+  }
+
+  /**
+   * Get authentication headers with extension-specific handling
+   */
+  private async getAuthHeaders(endpoint: string): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {};
+
+    // For extension endpoints, try to use extension auth manager
+    if (this.isExtensionEndpoint(endpoint)) {
+      try {
+        const extensionAuthManager = getExtensionAuthManager();
+        const extensionHeaders = await extensionAuthManager.getAuthHeaders();
+        Object.assign(headers, extensionHeaders);
+        
+        if (this.debugLogging) {
+          console.log('Added extension authentication headers for:', endpoint);
+        }
+        return headers;
+      } catch (error) {
+        logger.warn('Failed to get extension auth headers, falling back to standard auth:', error);
+      }
+    }
+
+    // Standard authentication fallback
+    const sessionToken = this.getStoredSessionToken();
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+      if (this.debugLogging) {
+        console.log('Added standard Authorization header with Bearer token');
+      }
+    } else if (this.config.apiKey) {
+      headers['X-API-KEY'] = this.config.apiKey;
+      if (this.debugLogging) {
+        console.log('Added X-API-KEY header');
+      }
+    } else {
+      if (this.debugLogging) {
+        console.log('No authentication token or API key available');
+      }
+    }
+
+    return headers;
+  }
+
+  /**
+   * Handle authentication failures with comprehensive extension error handling
+   */
+  private async handleAuthFailure(
+    endpoint: string, 
+    response: Response, 
+    attempt: number, 
+    maxRetries: number
+  ): Promise<boolean> {
+    // Handle extension endpoint authentication failures with comprehensive error handling
+    if (this.isExtensionEndpoint(endpoint) && (response.status === 401 || response.status === 403)) {
+      try {
+        // Create appropriate extension auth error
+        let authError: ExtensionAuthError;
+        
+        if (response.status === 401) {
+          authError = ExtensionAuthErrorFactory.createTokenExpiredError({
+            endpoint,
+            attempt: attempt + 1,
+            maxRetries,
+            httpStatus: response.status
+          });
+        } else {
+          authError = ExtensionAuthErrorFactory.createPermissionDeniedError({
+            endpoint,
+            attempt: attempt + 1,
+            maxRetries,
+            httpStatus: response.status
+          });
+        }
+
+        // Attempt recovery using the recovery manager
+        const recoveryResult = await extensionAuthRecoveryManager.attemptRecovery(
+          authError,
+          endpoint,
+          this.getOperationFromEndpoint(endpoint)
+        );
+
+        // Return true if recovery was successful and we should retry
+        return recoveryResult.success && attempt < maxRetries;
+
+      } catch (recoveryError) {
+        logger.error('Extension auth recovery failed:', recoveryError);
+        
+        // Create a recovery failure error
+        const recoveryFailureError = ExtensionAuthErrorFactory.createRefreshFailedError({
+          endpoint,
+          attempt: attempt + 1,
+          maxRetries,
+          originalError: recoveryError
+        });
+
+        // Handle the recovery failure
+        extensionAuthErrorHandler.handleError(recoveryFailureError);
+      }
+    }
+
+    // Standard authentication failure handling
+    if (response.status === 401) {
+      try {
+        const meResp = await fetch(`${this.config.baseUrl}/api/auth/me`, {
+          headers: await this.getAuthHeaders('/api/auth/me'),
+        });
+        if (meResp.status === 401 && typeof window !== 'undefined') {
+          window.location.assign('/login');
+        }
+      } catch {
+        // ignore secondary auth errors
+      }
+    }
+
+    return false; // No retry
+  }
+
+  /**
+   * Extract operation name from endpoint for error context
+   */
+  private getOperationFromEndpoint(endpoint: string): string {
+    if (endpoint.includes('/extensions/')) {
+      if (endpoint.includes('/background-tasks')) {
+        return 'background_tasks';
+      }
+      return 'extension_list';
+    }
+    
+    if (endpoint.includes('/extension')) {
+      return 'extension_status';
+    }
+    
+    return 'extension_operation';
+  }
+
+  /**
+   * Handle extension-specific errors with fallback data
+   */
+  private async handleExtensionError(
+    endpoint: string,
+    response: Response,
+    errorDetails?: WebUIErrorResponse
+  ): Promise<any | null> {
+    try {
+      const operation = this.getOperationFromEndpoint(endpoint);
+      
+      // Check if the feature is still available in degraded mode
+      if (!isExtensionFeatureAvailable(operation)) {
+        logger.info(`Extension feature ${operation} not available in current degradation state`);
+        return getExtensionFallbackData(operation);
+      }
+
+      // Create appropriate extension auth error based on status
+      let authError: ExtensionAuthError;
+      
+      switch (response.status) {
+        case 401:
+          authError = ExtensionAuthErrorFactory.createTokenExpiredError({
+            endpoint,
+            httpStatus: response.status,
+            errorDetails
+          });
+          break;
+        case 403:
+          authError = ExtensionAuthErrorFactory.createPermissionDeniedError({
+            endpoint,
+            httpStatus: response.status,
+            errorDetails
+          });
+          break;
+        case 503:
+          authError = ExtensionAuthErrorFactory.createServiceUnavailableError({
+            endpoint,
+            httpStatus: response.status,
+            errorDetails
+          });
+          break;
+        default:
+          authError = ExtensionAuthErrorFactory.createFromHttpStatus(
+            response.status,
+            errorDetails?.message,
+            { endpoint, errorDetails }
+          );
+      }
+
+      // Attempt recovery
+      const recoveryResult = await extensionAuthRecoveryManager.attemptRecovery(
+        authError,
+        endpoint,
+        operation
+      );
+
+      // Return fallback data if available
+      if (recoveryResult.fallbackData) {
+        logger.info(`Using fallback data for ${endpoint}:`, {
+          strategy: recoveryResult.strategy,
+          message: recoveryResult.message
+        });
+        return recoveryResult.fallbackData;
+      }
+
+      // If no fallback data but recovery was successful, return null to allow retry
+      if (recoveryResult.success) {
+        return null;
+      }
+
+      // Try to get cached or static fallback data
+      const fallbackData = getExtensionFallbackData(operation);
+      if (fallbackData) {
+        logger.info(`Using static fallback data for ${endpoint}`);
+        return fallbackData;
+      }
+
+      return null;
+    } catch (error) {
+      logger.error('Error in extension error handling:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Request interceptor for automatic token injection and preprocessing
+   */
+  private async interceptRequest(
+    endpoint: string,
+    options: RequestInit
+  ): Promise<RequestInit> {
+    const interceptedOptions = { ...options };
+    
+    // Ensure headers object exists
+    if (!interceptedOptions.headers) {
+      interceptedOptions.headers = {};
+    }
+
+    // Add authentication headers
+    const authHeaders = await this.getAuthHeaders(endpoint);
+    interceptedOptions.headers = {
+      ...interceptedOptions.headers,
+      ...authHeaders,
+    };
+
+    // Add correlation ID if not present
+    const headers = interceptedOptions.headers as Record<string, string>;
+    if (!headers['X-Correlation-ID']) {
+      headers['X-Correlation-ID'] = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+    }
+
+    // Add client identification for extension endpoints
+    if (this.isExtensionEndpoint(endpoint)) {
+      headers['X-Client-Type'] = 'karen-backend-service';
+      headers['X-Extension-Request'] = 'true';
+    }
+
+    // Ensure credentials are included for same-origin requests
+    if (!interceptedOptions.credentials && typeof window !== 'undefined') {
+      interceptedOptions.credentials = 'include';
+    }
+
+    if (this.debugLogging) {
+      logger.debug('Request intercepted:', {
+        endpoint,
+        method: interceptedOptions.method || 'GET',
+        hasAuth: !!headers['Authorization'],
+        correlationId: headers['X-Correlation-ID'],
+      });
+    }
+
+    return interceptedOptions;
   }
 
   private async makeRequest<T>(
@@ -275,31 +613,10 @@ class KarenBackendService {
       this.cache.delete(cacheKey);
     }
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...((options.headers as Record<string, string>) || {}),
-    };
-
-    const correlationId = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
-    headers['X-Correlation-ID'] = correlationId;
-
-    // Try to get stored session token first
-    const sessionToken = this.getStoredSessionToken();
-    if (sessionToken) {
-      headers['Authorization'] = `Bearer ${sessionToken}`;
-      if (this.debugLogging) {
-        console.log('Added Authorization header with Bearer token');
-      }
-    } else if (this.config.apiKey) {
-      headers['X-API-KEY'] = this.config.apiKey;
-      if (this.debugLogging) {
-        console.log('Added X-API-KEY header');
-      }
-    } else {
-      if (this.debugLogging) {
-        console.log('No authentication token or API key available');
-      }
-    }
+    // Use request interceptor for automatic token injection and preprocessing
+    const interceptedOptions = await this.interceptRequest(endpoint, options);
+    const headers = interceptedOptions.headers as Record<string, string>;
+    const correlationId = headers['X-Correlation-ID'];
 
     let lastError: Error | null = null;
 
@@ -363,10 +680,8 @@ class KarenBackendService {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), perRequestTimeout);
             response = await fetch(primaryUrl, {
-              ...options,
-              headers,
+              ...interceptedOptions,
               signal: controller.signal,
-              ...(useCookies ? { credentials: 'include' as RequestCredentials } : {}),
             });
             clearTimeout(timeoutId);
           } catch (fetchErr) {
@@ -382,10 +697,8 @@ class KarenBackendService {
               const controller = new AbortController();
               const timeoutId = setTimeout(() => controller.abort(), perRequestTimeout);
               response = await fetch(url, {
-                ...options,
-                headers,
+                ...interceptedOptions,
                 signal: controller.signal,
-                ...(useCookies ? { credentials: 'include' as RequestCredentials } : {}),
               });
               clearTimeout(timeoutId);
 
@@ -461,6 +774,14 @@ class KarenBackendService {
 
           const apiError = APIError.fromResponse(response, errorDetails);
 
+          // Handle extension endpoint errors with comprehensive error handling
+          if (this.isExtensionEndpoint(endpoint) && (response.status === 401 || response.status === 403 || response.status === 503)) {
+            const fallbackData = await this.handleExtensionError(endpoint, response, errorDetails);
+            if (fallbackData !== null) {
+              return fallbackData as T;
+            }
+          }
+
           // Public fallback for read-only model endpoints when unauthorized/forbidden
           if ((response.status === 401 || response.status === 403) && endpoint.startsWith('/api/models/')) {
             try {
@@ -472,8 +793,7 @@ class KarenBackendService {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), perRequestTimeout);
                 const publicResp = await fetch(`${this.config.baseUrl}${publicEndpoint}`, {
-                  ...options,
-                  headers,
+                  ...interceptedOptions,
                   signal: controller.signal,
                 });
                 clearTimeout(timeoutId);
@@ -488,17 +808,12 @@ class KarenBackendService {
             }
           }
 
-          if (response.status === 401) {
-            try {
-              const meResp = await fetch(`${this.config.baseUrl}/api/auth/me`, {
-                headers,
-              });
-              if (meResp.status === 401 && typeof window !== 'undefined') {
-                window.location.assign('/login');
-              }
-            } catch {
-              // ignore secondary auth errors
-            }
+          // Handle authentication failures with extension-specific retry logic
+          const shouldRetryAuth = await this.handleAuthFailure(endpoint, response, attempt, maxRetries);
+          if (shouldRetryAuth) {
+            // Wait a bit before retrying with fresh auth
+            await this.sleep(500);
+            continue;
           }
 
           // Don't retry non-retryable errors
@@ -511,9 +826,23 @@ class KarenBackendService {
           console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, apiError.message);
 
           // Wait before retrying with exponential backoff
-          // Use longer delays for rate limiting (429) errors
-          const baseDelay = response.status === 429 ? retryDelay * 3 : retryDelay;
-          await this.sleep(baseDelay * Math.pow(2, attempt));
+          // Use longer delays for rate limiting (429) and service unavailable (503) errors
+          let baseDelay = retryDelay;
+          if (response.status === 429) {
+            baseDelay = retryDelay * 3; // Rate limiting
+          } else if (response.status === 503) {
+            baseDelay = retryDelay * 2; // Service unavailable
+          }
+          
+          // Apply exponential backoff for extension endpoints
+          const backoffMultiplier = this.isExtensionEndpoint(endpoint) ? Math.pow(2, attempt) : Math.pow(1.5, attempt);
+          const delay = baseDelay * backoffMultiplier;
+          
+          if (this.debugLogging) {
+            console.log(`Retrying ${endpoint} in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+          }
+          
+          await this.sleep(delay);
           continue;
         }
 
@@ -1424,6 +1753,283 @@ class KarenBackendService {
       if (this.requestLogging) {
     logger.info('🔄 KarenBackendService: Forced browser configuration (empty baseUrl)');
       }
+    }
+  }
+
+  // --- Extension API Methods ---
+
+  /**
+   * Get list of available extensions with authentication
+   */
+  async getExtensions(): Promise<ExtensionInfo[]> {
+    try {
+      const response = await this.makeRequest<{ extensions: ExtensionInfo[] }>('/api/extensions/');
+      return response.extensions || [];
+    } catch (error) {
+      logger.error('Failed to get extensions:', error);
+      if (error instanceof APIError && error.status === 403) {
+        logger.warn('Extension access forbidden - check authentication');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get background tasks for extensions with authentication
+   */
+  async getExtensionBackgroundTasks(extensionName?: string): Promise<BackgroundTaskInfo[]> {
+    try {
+      const params = extensionName ? `?extension_name=${encodeURIComponent(extensionName)}` : '';
+      const response = await this.makeRequest<{ tasks: BackgroundTaskInfo[] }>(`/api/extensions/background-tasks/${params}`);
+      return response.tasks || [];
+    } catch (error) {
+      logger.error('Failed to get extension background tasks:', error);
+      if (error instanceof APIError && error.status === 403) {
+        logger.warn('Extension background task access forbidden - check authentication');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Register a background task for an extension with authentication
+   */
+  async registerExtensionBackgroundTask(taskData: {
+    name: string;
+    extension_name: string;
+    schedule?: string;
+    enabled?: boolean;
+    metadata?: Record<string, any>;
+  }): Promise<{ task_id: string; message: string; status: string }> {
+    try {
+      return await this.makeRequest('/api/extensions/background-tasks/', {
+        method: 'POST',
+        body: JSON.stringify(taskData),
+      });
+    } catch (error) {
+      logger.error('Failed to register extension background task:', error);
+      if (error instanceof APIError && error.status === 403) {
+        logger.warn('Extension background task registration forbidden - check authentication');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Load an extension with authentication
+   */
+  async loadExtension(extensionName: string): Promise<{ message: string; status: string }> {
+    try {
+      return await this.makeRequest(`/api/extensions/${encodeURIComponent(extensionName)}/load`, {
+        method: 'POST',
+      });
+    } catch (error) {
+      logger.error(`Failed to load extension ${extensionName}:`, error);
+      if (error instanceof APIError && error.status === 403) {
+        logger.warn(`Extension load forbidden for ${extensionName} - check authentication`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Unload an extension with authentication
+   */
+  async unloadExtension(extensionName: string): Promise<{ message: string; status: string }> {
+    try {
+      return await this.makeRequest(`/api/extensions/${encodeURIComponent(extensionName)}/unload`, {
+        method: 'POST',
+      });
+    } catch (error) {
+      logger.error(`Failed to unload extension ${extensionName}:`, error);
+      if (error instanceof APIError && error.status === 403) {
+        logger.warn(`Extension unload forbidden for ${extensionName} - check authentication`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get extension health status
+   */
+  async getExtensionHealth(): Promise<{
+    status: string;
+    services: Record<string, any>;
+    overall_health: string;
+    monitoring_active: boolean;
+  }> {
+    try {
+      return await this.makeRequest('/api/extensions/health', {}, false, 5000, 1); // Shorter cache and fewer retries for health checks
+    } catch (error) {
+      logger.warn('Extension health check failed:', error);
+      return {
+        status: 'unhealthy',
+        services: {},
+        overall_health: 'unknown',
+        monitoring_active: false,
+      };
+    }
+  }
+
+  /**
+   * Check extension authentication status
+   */
+  async checkExtensionAuthStatus(): Promise<boolean> {
+    try {
+      const extensionAuthManager = getExtensionAuthManager();
+      return extensionAuthManager.isAuthenticated();
+    } catch (error) {
+      logger.warn('Failed to check extension auth status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear extension authentication state
+   */
+  clearExtensionAuth(): void {
+    try {
+      const extensionAuthManager = getExtensionAuthManager();
+      extensionAuthManager.clearAuth();
+      logger.info('Extension authentication state cleared');
+    } catch (error) {
+      logger.warn('Failed to clear extension auth:', error);
+    }
+  }
+
+  // --- Extension API Methods ---
+
+  /**
+   * List all available extensions
+   */
+  async listExtensions(): Promise<ExtensionListResponse> {
+    try {
+      const response = await this.makeRequest<ExtensionListResponse>(
+        '/api/extensions/',
+        {
+          method: 'GET',
+        },
+        false, // useCache
+        webUIConfig.cacheTtl,
+        webUIConfig.maxRetries,
+        webUIConfig.retryDelay,
+        {
+          extensions: [],
+          total: 0,
+          message: 'Extension list temporarily unavailable'
+        }
+      );
+
+      return response;
+    } catch (error) {
+      logger.error('Failed to list extensions:', error);
+      return {
+        extensions: [],
+        total: 0,
+        message: 'Extension list temporarily unavailable'
+      };
+    }
+  }
+
+  /**
+   * List background tasks for extensions
+   */
+  async listBackgroundTasks(extensionName?: string): Promise<BackgroundTaskListResponse> {
+    try {
+      const queryParams = extensionName ? `?extension_name=${encodeURIComponent(extensionName)}` : '';
+      const response = await this.makeRequest<BackgroundTaskListResponse>(
+        `/api/extensions/background-tasks/${queryParams}`,
+        {
+          method: 'GET',
+        },
+        false, // useCache
+        webUIConfig.cacheTtl,
+        webUIConfig.maxRetries,
+        webUIConfig.retryDelay,
+        {
+          tasks: [],
+          total: 0,
+          extension_name: extensionName,
+          message: 'Background tasks temporarily unavailable'
+        }
+      );
+
+      return response;
+    } catch (error) {
+      logger.error('Failed to list background tasks:', error);
+      return {
+        tasks: [],
+        total: 0,
+        extension_name: extensionName,
+        message: 'Background tasks temporarily unavailable'
+      };
+    }
+  }
+
+  /**
+   * Register a new background task
+   */
+  async registerBackgroundTask(taskData: Record<string, any>): Promise<BackgroundTaskRegistrationResponse> {
+    try {
+      const response = await this.makeRequest<BackgroundTaskRegistrationResponse>(
+        '/api/extensions/background-tasks/',
+        {
+          method: 'POST',
+          body: JSON.stringify(taskData),
+        },
+        false, // useCache
+        webUIConfig.cacheTtl,
+        webUIConfig.maxRetries,
+        webUIConfig.retryDelay,
+        {
+          task_id: 'fallback-task-id',
+          message: 'Background task registration temporarily unavailable',
+          status: 'unavailable'
+        }
+      );
+
+      return response;
+    } catch (error) {
+      logger.error('Failed to register background task:', error);
+      return {
+        task_id: 'fallback-task-id',
+        message: 'Background task registration temporarily unavailable',
+        status: 'unavailable'
+      };
+    }
+  }
+
+  /**
+   * Get extension status and health information
+   */
+  async getExtensionStatus(extensionName?: string): Promise<Record<string, any>> {
+    try {
+      const endpoint = extensionName 
+        ? `/api/extensions/${encodeURIComponent(extensionName)}/status`
+        : '/api/extensions/status';
+        
+      const response = await this.makeRequest<Record<string, any>>(
+        endpoint,
+        {
+          method: 'GET',
+        },
+        true, // useCache for status checks
+        30000, // 30 second cache
+        2, // fewer retries for status checks
+        1000,
+        {
+          status: 'unknown',
+          message: 'Extension status temporarily unavailable'
+        }
+      );
+
+      return response;
+    } catch (error) {
+      logger.error('Failed to get extension status:', error);
+      return {
+        status: 'unknown',
+        message: 'Extension status temporarily unavailable'
+      };
     }
   }
 }

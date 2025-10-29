@@ -2,11 +2,11 @@
   "name": "hello-extension",
   "version": "1.0.0",
   "display_name": "Hello Extension",
-  "description": "A simple example extension that demonstrates the extension system",
-  "author": "Kari AI Team",
+  "description": "A simple example extension demonstrating the extension system capabilities",
+  "author": "AI Karen Team",
   "license": "MIT",
-  "category": "example",
-  "tags": ["example", "demo", "hello"],
+  "category": "examples",
+  "tags": ["example", "demo", "hello-world"],
   
   "api_version": "1.0",
   "kari_min_version": "0.4.0",
@@ -19,14 +19,14 @@
   },
   
   "dependencies": {
-    "plugins": ["hello_world"],
+    "plugins": [],
     "extensions": [],
     "system_services": []
   },
   
   "permissions": {
     "data_access": ["read"],
-    "plugin_access": ["execute"],
+    "plugin_access": [],
     "system_access": [],
     "network_access": []
   },
@@ -34,7 +34,7 @@
   "resources": {
     "max_memory_mb": 64,
     "max_cpu_percent": 5,
-    "max_disk_mb": 10
+    "max_disk_mb": 128
   },
   
   "ui": {
@@ -54,17 +54,30 @@
       {
         "path": "/hello",
         "methods": ["GET"],
-        "permissions": ["user"]
+        "permissions": ["user"],
+        "description": "Get a hello message",
+        "tags": ["greeting"]
+      },
+      {
+        "path": "/hello/{name}",
+        "methods": ["GET"],
+        "permissions": ["user"],
+        "description": "Get a personalized hello message",
+        "tags": ["greeting"]
       }
-    ]
+    ],
+    "prefix": "/api/extensions/hello-extension",
+    "tags": ["hello-extension"]
   },
   
   "background_tasks": [],
   
   "marketplace": {
     "price": "free",
-    "support_url": "https://github.com/kari-ai/extensions",
-    "documentation_url": "https://docs.kari.ai/extensions/hello",
-    "screenshots": []
+    "support_url": "https://github.com/ai-karen/extensions/hello-extension",
+    "documentation_url": "https://docs.ai-karen.com/extensions/hello-extension",
+    "screenshots": [],
+    "categories": ["examples"],
+    "keywords": ["hello", "example", "demo"]
   }
 }

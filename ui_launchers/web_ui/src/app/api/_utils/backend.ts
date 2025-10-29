@@ -366,7 +366,8 @@ export async function apiDelete<T = any>(
  */
 export async function checkBackendHealth(): Promise<boolean> {
   const connectionManager = getConnectionManager();
-  return connectionManager.healthCheck();
+  const status = await connectionManager.healthCheck();
+  return status.healthy;
 }
 
 /**

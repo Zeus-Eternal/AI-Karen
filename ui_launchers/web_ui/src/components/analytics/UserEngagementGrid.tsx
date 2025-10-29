@@ -378,8 +378,8 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
       rowCount: filteredData.length,
       filterType,
       timeRange
-    }, { userId: user?.user_id });
-  }, [triggerHooks, filteredData.length, filterType, timeRange, user?.user_id]);
+    }, { userId: user?.userId });
+  }, [triggerHooks, filteredData.length, filterType, timeRange, user?.userId]);
 
   const onSelectionChanged = useCallback(async (event: any) => {
     const selectedNodes = event.api.getSelectedNodes();
@@ -395,9 +395,9 @@ export const UserEngagementGrid: React.FC<UserEngagementGridProps> = ({
         gridId: 'userEngagement',
         data: row,
         api: event.api
-      }, { userId: user?.user_id });
+      }, { userId: user?.userId });
     }
-  }, [triggerHooks, onRowSelect, user?.user_id]);
+  }, [triggerHooks, onRowSelect, user?.userId]);
 
   // Handle export
   const handleExport = useCallback(async () => {

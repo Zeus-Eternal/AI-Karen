@@ -116,9 +116,9 @@ export const CopilotTextarea: React.FC<CopilotTextareaProps> = ({
             suggestionCount: formattedSuggestions.length,
             context: context.substring(0, 50) + "...",
             language,
-            userId: user?.user_id,
+            userId: user?.userId,
           },
-          { userId: user?.user_id }
+          { userId: user?.userId }
         );
       } catch (error) {
         safeError("Failed to fetch suggestions:", error);
@@ -132,7 +132,7 @@ export const CopilotTextarea: React.FC<CopilotTextareaProps> = ({
       getSuggestions,
       language,
       triggerHooks,
-      user?.user_id,
+      user?.userId,
     ]
   );
 
@@ -178,9 +178,9 @@ export const CopilotTextarea: React.FC<CopilotTextareaProps> = ({
           suggestionType: suggestion.type,
           confidence: suggestion.confidence,
           language,
-          userId: user?.user_id,
+          userId: user?.userId,
         },
-        { userId: user?.user_id }
+        { userId: user?.userId }
       );
 
       toast({
@@ -189,7 +189,7 @@ export const CopilotTextarea: React.FC<CopilotTextareaProps> = ({
         duration: 2000,
       });
     },
-    [value, onChange, triggerHooks, language, user?.user_id, toast]
+    [value, onChange, triggerHooks, language, user?.userId, toast]
   );
 
   // Analyze current code

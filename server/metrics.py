@@ -15,6 +15,7 @@ try:
         REGISTRY,
         Counter,
         Histogram,
+        Gauge,
         generate_latest,
     )
     PROMETHEUS_ENABLED = True
@@ -47,6 +48,38 @@ def initialize_metrics() -> Dict[str, Any]:
             "Total HTTP errors",
             ["method", "path", "error_type"]
         )
+        
+        # Extension-specific metrics
+        metrics['EXTENSION_HEALTH_STATUS'] = manager.register_gauge(
+            "kari_extension_health_status",
+            "Extension health status (1=healthy, 0.5=degraded, 0=unhealthy)",
+            ["extension_name", "extension_category"]
+        )
+        metrics['EXTENSION_RESPONSE_TIME'] = manager.register_histogram(
+            "kari_extension_response_time_seconds",
+            "Extension response time in seconds",
+            ["extension_name", "operation"]
+        )
+        metrics['EXTENSION_BACKGROUND_TASKS'] = manager.register_gauge(
+            "kari_extension_background_tasks_total",
+            "Number of active background tasks per extension",
+            ["extension_name", "task_status"]
+        )
+        metrics['EXTENSION_API_CALLS'] = manager.register_counter(
+            "kari_extension_api_calls_total",
+            "Total extension API calls",
+            ["extension_name", "endpoint", "status_code"]
+        )
+        metrics['EXTENSION_ERRORS'] = manager.register_counter(
+            "kari_extension_errors_total",
+            "Total extension errors",
+            ["extension_name", "error_type"]
+        )
+        metrics['EXTENSION_UPTIME'] = manager.register_gauge(
+            "kari_extension_uptime_seconds",
+            "Extension uptime in seconds",
+            ["extension_name"]
+        )
     
     return metrics
 
@@ -56,3 +89,11 @@ _http_metrics = initialize_metrics()
 REQUEST_COUNT = _http_metrics['REQUEST_COUNT']
 REQUEST_LATENCY = _http_metrics['REQUEST_LATENCY']
 ERROR_COUNT = _http_metrics['ERROR_COUNT']
+
+# Extension metrics
+EXTENSION_HEALTH_STATUS = _http_metrics['EXTENSION_HEALTH_STATUS']
+EXTENSION_RESPONSE_TIME = _http_metrics['EXTENSION_RESPONSE_TIME']
+EXTENSION_BACKGROUND_TASKS = _http_metrics['EXTENSION_BACKGROUND_TASKS']
+EXTENSION_API_CALLS = _http_metrics['EXTENSION_API_CALLS']
+EXTENSION_ERRORS = _http_metrics['EXTENSION_ERRORS']
+EXTENSION_UPTIME = _http_metrics['EXTENSION_UPTIME']

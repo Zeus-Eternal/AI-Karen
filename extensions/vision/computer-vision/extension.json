@@ -1,0 +1,84 @@
+{
+  "name": "computer-vision",
+  "version": "1.0.0",
+  "display_name": "Computer Vision & OCR",
+  "description": "Advanced computer vision capabilities including OCR, image analysis, and AI-powered visual understanding",
+  "author": "Kari AI Team",
+  "license": "MIT",
+  "category": "vision",
+  "tags": ["computer-vision", "ocr", "image-analysis", "ai-vision", "multimodal"],
+  
+  "api_version": "1.0",
+  "kari_min_version": "0.4.0",
+  
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "provides_background_tasks": false,
+    "provides_webhooks": false
+  },
+  
+  "dependencies": {
+    "plugins": ["hf_llm"],
+    "extensions": [],
+    "system_services": ["postgres"]
+  },
+  
+  "permissions": {
+    "data_access": ["read", "write"],
+    "plugin_access": ["execute"],
+    "system_access": ["files"],
+    "network_access": ["outbound_http"]
+  },
+  
+  "resources": {
+    "max_memory_mb": 1024,
+    "max_cpu_percent": 40,
+    "max_disk_mb": 2048
+  },
+  
+  "ui": {
+    "control_room_pages": [
+      {
+        "name": "Vision Studio",
+        "path": "/vision",
+        "icon": "👁️",
+        "permissions": ["user", "admin"]
+      }
+    ],
+    "streamlit_pages": [
+      {
+        "name": "Image Analytics",
+        "module": "ui.image_analytics",
+        "permissions": ["admin"]
+      }
+    ]
+  },
+  
+  "api": {
+    "endpoints": [
+      {
+        "path": "/vision/analyze",
+        "methods": ["POST"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/vision/ocr",
+        "methods": ["POST"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/vision/describe",
+        "methods": ["POST"],
+        "permissions": ["user"]
+      }
+    ]
+  },
+  
+  "marketplace": {
+    "price": "free",
+    "support_url": "https://github.com/kari-ai/extensions",
+    "documentation_url": "https://docs.kari.ai/extensions/computer-vision",
+    "screenshots": ["vision-studio.png", "ocr-results.png", "image-analysis.png"]
+  }
+}

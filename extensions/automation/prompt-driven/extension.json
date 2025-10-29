@@ -1,0 +1,105 @@
+{
+  "name": "prompt-driven-automation",
+  "version": "1.0.0",
+  "display_name": "Prompt-Driven Automation",
+  "description": "AI-native automation platform that understands natural language workflows and self-configures integrations",
+  "author": "Kari AI Team",
+  "license": "MIT",
+  "category": "automation",
+  "tags": ["automation", "workflows", "ai-native", "natural-language", "orchestration"],
+  
+  "api_version": "1.0",
+  "kari_min_version": "0.4.0",
+  
+  "capabilities": {
+    "provides_ui": true,
+    "provides_api": true,
+    "provides_background_tasks": true,
+    "provides_webhooks": true
+  },
+  
+  "dependencies": {
+    "plugins": ["time_query", "hf_llm", "classify_text"],
+    "extensions": [],
+    "system_services": ["postgres", "redis", "scheduler"]
+  },
+  
+  "permissions": {
+    "data_access": ["read", "write"],
+    "plugin_access": ["execute", "discover"],
+    "system_access": ["scheduler", "webhooks", "metrics"],
+    "network_access": ["outbound_http", "webhooks"]
+  },
+  
+  "resources": {
+    "max_memory_mb": 1024,
+    "max_cpu_percent": 30,
+    "max_disk_mb": 2048
+  },
+  
+  "ui": {
+    "control_room_pages": [
+      {
+        "name": "Automation Studio",
+        "path": "/automation",
+        "icon": "⚡",
+        "permissions": ["user", "admin"]
+      }
+    ],
+    "streamlit_pages": [
+      {
+        "name": "Workflow Analytics",
+        "module": "ui.workflow_analytics",
+        "permissions": ["admin"]
+      }
+    ]
+  },
+  
+  "api": {
+    "endpoints": [
+      {
+        "path": "/automation/workflows",
+        "methods": ["GET", "POST"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/automation/execute",
+        "methods": ["POST"],
+        "permissions": ["user"]
+      },
+      {
+        "path": "/automation/discover",
+        "methods": ["POST"],
+        "permissions": ["user"]
+      }
+    ]
+  },
+  
+  "background_tasks": [
+    {
+      "name": "workflow_executor",
+      "schedule": "*/1 * * * *",
+      "function": "tasks.execute_scheduled_workflows"
+    },
+    {
+      "name": "plugin_discovery",
+      "schedule": "0 */12 * * *",
+      "function": "tasks.discover_new_plugins"
+    }
+  ],
+  
+  "webhooks": [
+    {
+      "path": "/automation/webhook/{workflow_id}",
+      "methods": ["POST"],
+      "description": "Trigger workflows via webhooks"
+    }
+  ],
+  
+  "marketplace": {
+    "price": "free",
+    "support_url": "https://github.com/kari-ai/extensions",
+    "documentation_url": "https://docs.kari.ai/extensions/prompt-driven-automation",
+    "screenshots": ["automation-studio.png", "workflow-builder.png", "analytics.png"]
+  }
+}

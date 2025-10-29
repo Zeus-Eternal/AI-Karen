@@ -35,7 +35,7 @@
   },
   "llm": {
     "provider": "llamacpp",
-    "model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+    "model": "Phi-3-mini-4k-instruct-q4.gguf",
     "api_key": null,
     "base_url": null,
     "temperature": 0.7,
@@ -95,7 +95,7 @@
   "spacy_model": "en_core_web_sm",
   "active_user": "default",
   "theme": "dark",
-  "llm_model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+  "llm_model": "Phi-3-mini-4k-instruct-q4.gguf",
   "memory": {
     "enabled": true,
     "provider": "local",
@@ -129,7 +129,7 @@
           },
           "summarization": {
             "provider": "llamacpp",
-            "model": "tinyllama-1.1b-chat-v2.0.Q4_K_M.gguf",
+            "model": "Phi-3-mini-4k-instruct-q4.gguf",
             "parameters": {}
           }
         },

@@ -209,8 +209,8 @@ export const ChatAnalyticsChart: React.FC<ChatAnalyticsChartProps> = ({
       dataPoints: chartData.length,
       metric: selectedMetric,
       timeframe
-    }, { userId: user?.user_id });
-  }, [triggerHooks, chartData.length, selectedMetric, timeframe, user?.user_id]);
+    }, { userId: user?.userId });
+  }, [triggerHooks, chartData.length, selectedMetric, timeframe, user?.userId]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {

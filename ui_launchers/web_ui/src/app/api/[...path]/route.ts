@@ -31,15 +31,16 @@ async function handleRequest(request: NextRequest, { params }: { params: Promise
     // Skip Next.js static files and other assets that should be handled by Next.js
     // Return early with proper 404 to let Next.js handle these
     if (path.startsWith('_next/') || path.startsWith('static/') || path.includes('.css') || path.includes('.js') || path.includes('.map') || path.includes('.woff') || path.includes('.woff2') || path.includes('.ttf') || path.includes('.eot') || path.includes('.svg') || path.includes('.png') || path.includes('.jpg') || path.includes('.jpeg') || path.includes('.gif') || path.includes('.ico')) {
-      // Don't handle these requests at all - let Next.js serve them
-      return NextResponse.next();
+      // Return 404 for static assets that should be handled by Next.js
+      return NextResponse.json({ error: 'Not Found' }, { status: 404 });
     }
 
     // Skip page routes that should be handled by Next.js (not API calls)
     // These are requests for actual pages, not API endpoints
-    const pageRoutes = ['login', 'signup', 'profile', 'admin', 'chat', 'models', 'setup', 'reset-password', 'verify-email', 'unauthorized', 'setup-2fa'];
+    // Note: 'models' is removed from here since /api/models/* are API endpoints, not pages
+    const pageRoutes = ['login', 'signup', 'profile', 'admin', 'chat', 'setup', 'reset-password', 'verify-email', 'unauthorized', 'setup-2fa'];
     if (pageRoutes.includes(path) || pageRoutes.some(route => path.startsWith(route + '/'))) {
-      return NextResponse.next();
+      return NextResponse.json({ error: 'Not Found' }, { status: 404 });
     }
     const url = new URL(request.url);
     const searchParams = url.searchParams.toString();

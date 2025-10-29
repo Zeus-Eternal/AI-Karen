@@ -20,7 +20,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TypedDict
 
-from ai_karen_engine.integrations.registry import get_registry, ModelMetadata
+from ai_karen_engine.integrations.registry import get_registry, ModelMetadata, ProviderSpec
 from ai_karen_engine.core.degraded_mode import get_degraded_mode_manager, DegradedModeReason
 
 try:

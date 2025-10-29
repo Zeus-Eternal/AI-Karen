@@ -169,18 +169,18 @@ export function useTextSelection(options: UseTextSelectionOptions = {}) {
   // Utility to make an element's text easily selectable
   const makeSelectable = useCallback((element: HTMLElement) => {
     element.style.userSelect = 'auto';
-    element.style.webkitUserSelect = 'auto';
-    element.style.mozUserSelect = 'auto';
-    element.style.msUserSelect = 'auto';
+    (element.style as any).webkitUserSelect = 'auto';
+    (element.style as any).mozUserSelect = 'auto';
+    (element.style as any).msUserSelect = 'auto';
     element.style.cursor = 'text';
   }, []);
 
   // Utility to make an element's text unselectable
   const makeUnselectable = useCallback((element: HTMLElement) => {
     element.style.userSelect = 'none';
-    element.style.webkitUserSelect = 'none';
-    element.style.mozUserSelect = 'none';
-    element.style.msUserSelect = 'none';
+    (element.style as any).webkitUserSelect = 'none';
+    (element.style as any).mozUserSelect = 'none';
+    (element.style as any).msUserSelect = 'none';
     element.style.cursor = 'default';
   }, []);
 
@@ -210,18 +210,18 @@ export function ensureTextSelectable(element: HTMLElement | null) {
   if (!element) return;
   
   element.style.userSelect = 'auto';
-  element.style.webkitUserSelect = 'auto';
-  element.style.mozUserSelect = 'auto';
-  element.style.msUserSelect = 'auto';
+  (element.style as any).webkitUserSelect = 'auto';
+  (element.style as any).mozUserSelect = 'auto';
+  (element.style as any).msUserSelect = 'auto';
   
   // Also ensure child elements are selectable
   const children = element.querySelectorAll('*');
   children.forEach((child) => {
     if (child instanceof HTMLElement) {
       child.style.userSelect = 'auto';
-      child.style.webkitUserSelect = 'auto';
-      child.style.mozUserSelect = 'auto';
-      child.style.msUserSelect = 'auto';
+      (child.style as any).webkitUserSelect = 'auto';
+      (child.style as any).mozUserSelect = 'auto';
+      (child.style as any).msUserSelect = 'auto';
     }
   });
 }
@@ -260,4 +260,35 @@ export function highlightSelection(className: string = 'highlighted-selection') 
     // we could implement a more complex highlighting solution
     console.warn('Could not highlight selection:', error);
   }
+}
+
+// Debug function to test text selection
+export function debugTextSelection() {
+  console.log('=== Text Selection Debug ===');
+  console.log('Selection API supported:', isTextSelectionSupported());
+  console.log('Current selection:', getDocumentSelection());
+  
+  // Test selection on body
+  const selection = window.getSelection();
+  console.log('Selection object:', selection);
+  console.log('Range count:', selection?.rangeCount || 0);
+  
+  // Check for conflicting CSS
+  const testElement = document.createElement('div');
+  testElement.textContent = 'Test selection';
+  testElement.style.position = 'absolute';
+  testElement.style.top = '-1000px';
+  document.body.appendChild(testElement);
+  
+  const computedStyle = window.getComputedStyle(testElement);
+  console.log('Test element user-select:', computedStyle.userSelect);
+  console.log('Test element -webkit-user-select:', computedStyle.webkitUserSelect);
+  
+  document.body.removeChild(testElement);
+  console.log('=== End Debug ===');
+}
+
+// Make debug function available in development
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  (window as any).debugTextSelection = debugTextSelection;
 }

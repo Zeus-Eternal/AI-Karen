@@ -1,0 +1,51 @@
+# Extension Authentication Configuration - Staging Environment
+# This file contains staging-specific settings for extension authentication
+
+# Authentication settings
+auth_enabled: true
+jwt_algorithm: "HS256"
+access_token_expire_minutes: 60  # 1 hour
+service_token_expire_minutes: 30  # 30 minutes
+
+# Security settings (production-like but with some debugging)
+auth_mode: "hybrid"  # Strict auth with some development features
+dev_bypass_enabled: false  # No development bypasses in staging
+require_https: true  # Require HTTPS in staging
+token_blacklist_enabled: true
+max_failed_attempts: 5  # Moderate security
+lockout_duration_minutes: 10  # 10 minute lockout
+audit_logging_enabled: true
+
+# Rate limiting (moderate for staging)
+rate_limit_per_minute: 200
+burst_limit: 30
+enable_rate_limiting: true
+
+# Permissions
+default_permissions:
+  - "extension:read"
+  - "extension:write"
+admin_permissions:
+  - "extension:*"
+service_permissions:
+  - "extension:background_tasks"
+  - "extension:health"
+
+# Health monitoring
+health_check_enabled: true
+health_check_interval_seconds: 30  # Check every 30 seconds
+health_check_timeout_seconds: 5
+
+# Logging (informational with some debug)
+log_level: "INFO"
+enable_debug_logging: true  # Keep debug logging for staging testing
+log_sensitive_data: false  # No sensitive data logging in staging
+
+# Staging-specific features
+staging_features:
+  performance_monitoring: true
+  load_testing: true
+  integration_testing: true
+  
+# Note: Sensitive credentials (secret_key, api_key) are stored securely
+# and loaded automatically from the credential manager

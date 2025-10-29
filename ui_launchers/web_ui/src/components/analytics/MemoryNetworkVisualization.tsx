@@ -263,8 +263,8 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
       edgeCount: processedData.edges.length,
       layoutType,
       filterType
-    }, { userId: user?.user_id });
-  }, [triggerHooks, processedData, layoutType, filterType, user?.user_id]);
+    }, { userId: user?.userId });
+  }, [triggerHooks, processedData, layoutType, filterType, user?.userId]);
 
   const handleNodeClick = useCallback(async (event: any) => {
     const datum = event.datum;
@@ -281,9 +281,9 @@ export const MemoryNetworkVisualization: React.FC<MemoryNetworkVisualizationProp
       await triggerHooks('chart_memoryNetwork_nodeClick', {
         chartId: 'memoryNetwork',
         node: datum
-      }, { userId: user?.user_id });
+      }, { userId: user?.userId });
     }
-  }, [onNodeClick, triggerHooks, user?.user_id]);
+  }, [onNodeClick, triggerHooks, user?.userId]);
 
   const handleRefresh = useCallback(async () => {
     if (!onRefresh) return;

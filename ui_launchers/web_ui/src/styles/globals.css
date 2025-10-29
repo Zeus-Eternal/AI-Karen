@@ -917,3 +917,63 @@
     border-width: 2px;
   }
 }
+
+
+/* ============================================================================ */
+/* TEXT SELECTION FIXES - Added by fix_text_selection.py */
+/* ============================================================================ */
+
+/* Ensure text selection is enabled globally - override any conflicting styles */
+*, *::before, *::after {
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+  -moz-user-select: auto !important;
+  -ms-user-select: auto !important;
+}
+
+/* Specific fixes for common UI components */
+.card, .card-content, .card-header, .card-title, .card-description {
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+}
+
+/* Fix for buttons and interactive elements */
+button, [role="button"], a, [role="link"] {
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+}
+
+/* Fix for text content areas */
+p, span, div, h1, h2, h3, h4, h5, h6, li, td, th {
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+}
+
+/* Enhanced selection styling */
+::selection {
+  background: rgba(59, 130, 246, 0.3) !important;
+  color: inherit !important;
+}
+
+::-moz-selection {
+  background: rgba(59, 130, 246, 0.3) !important;
+  color: inherit !important;
+}
+
+/* Debug class to test text selection */
+.debug-text-selection {
+  background: rgba(255, 255, 0, 0.1);
+  border: 1px dashed #fbbf24;
+  padding: 4px;
+  margin: 2px;
+}
+
+.debug-text-selection::before {
+  content: "TEXT SELECTABLE";
+  font-size: 10px;
+  color: #f59e0b;
+  background: #fef3c7;
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-right: 8px;
+}

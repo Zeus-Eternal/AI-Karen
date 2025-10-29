@@ -51,7 +51,7 @@ export function UserEditModal({ user, onClose, onUserUpdated }: UserEditModalPro
   // Check if current user can edit this user
   const canEdit = () => {
     // Users cannot edit themselves through this interface
-    if (currentUser?.user_id === user.user_id) return false;
+    if (currentUser?.userId === user.user_id) return false;
     
     // Super admins can edit anyone except other super admins (unless they are super admin themselves)
     if (hasRole('super_admin')) return true;

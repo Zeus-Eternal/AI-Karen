@@ -7,7 +7,7 @@
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTextSelection } from '@/hooks/useTextSelection';
-import { Copy, SelectAll, Trash2 } from 'lucide-react';
+import { Copy, MousePointer, Trash2 } from 'lucide-react';
 
 export function TextSelectionDemo() {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -87,7 +87,7 @@ export function TextSelectionDemo() {
             size="sm"
             className="text-selectable"
           >
-            <SelectAll className="h-4 w-4 mr-2" />
+            <MousePointer className="h-4 w-4 mr-2" />
             Select All Content
           </Button>
           

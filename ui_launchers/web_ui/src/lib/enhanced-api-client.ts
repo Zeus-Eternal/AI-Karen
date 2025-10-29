@@ -390,7 +390,7 @@ export class EnhancedApiClient {
     isCorsError: boolean = false,
     isTimeoutError: boolean = false
   ): ApiError {
-    const error = new Error(message) as ApiError;
+    const error = new Error(message) as unknown as ApiError;
     error.name = 'EnhancedApiError';
     error.status = status;
     error.statusText = statusText;

@@ -58,10 +58,11 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { TextSelectionProvider } from "@/components/ui/text-selection-provider";
 
-// Import text selection test in development
-if (process.env.NODE_ENV === 'development') {
-  import('@/utils/text-selection-test');
-}
+// Development components
+const ClipboardTest = dynamic(
+  () => import("@/components/ui/clipboard-test"),
+  { ssr: false }
+);
 
 const ExtensionSidebar = dynamic(
   () => import("@/components/extensions/ExtensionSidebar")
@@ -331,7 +332,24 @@ function AuthenticatedHomePage() {
 
           <SidebarInset className="app-main">
             <FlexContainer direction="column" className="space-y-fluid">
-              {activeMainView === "dashboard" && <Dashboard />}
+              {activeMainView === "dashboard" && (
+                <>
+                  <Dashboard />
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="modern-card">
+                      <div className="modern-card-header">
+                        <h3 className="text-lg font-semibold">Development Tools</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Tools for testing and debugging (development only)
+                        </p>
+                      </div>
+                      <div className="modern-card-content">
+                        <ClipboardTest />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
               {activeMainView === "settings" && <SettingsDialogComponent />}
               {activeMainView === "pluginDatabaseConnector" && (
                 <DatabaseConnectorPluginPage />

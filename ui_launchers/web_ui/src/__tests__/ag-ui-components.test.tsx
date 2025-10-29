@@ -175,7 +175,7 @@ describe('AG-UI Components', () => {
             gridId: 'conversations',
             data: mockConversations[0]
           }),
-          expect.objectContaining({ userId: mockUser.user_id })
+          expect.objectContaining({ userId: mockUser.userId })
         );
       });
     });
@@ -512,7 +512,7 @@ describe('AG-UI Components', () => {
           expect.objectContaining({
             gridId: 'conversations'
           }),
-          expect.objectContaining({ userId: mockUser.user_id })
+          expect.objectContaining({ userId: mockUser.userId })
         );
       });
     });
@@ -530,7 +530,7 @@ describe('AG-UI Components', () => {
           expect.objectContaining({
             chartId: 'chatAnalytics'
           }),
-          expect.objectContaining({ userId: mockUser.user_id })
+          expect.objectContaining({ userId: mockUser.userId })
         );
       });
     });

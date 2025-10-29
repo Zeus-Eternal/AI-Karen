@@ -1,561 +1,267 @@
 /**
- * Centralized API Client
- * Provides consistent API communication with automatic endpoint fallback and error handling
+ * API Client
+ * 
+ * A simple HTTP client for making API requests to the Kari backend.
  */
-
-import { getConfigManager } from './endpoint-config';
-import { getEndpointFallbackService } from './endpoint-fallback';
-import { getNetworkDetectionService } from './network-detector';
-import { getDiagnosticLogger, logEndpointAttempt, logCORSIssue } from './diagnostics';
-
-const DEFAULT_BASE_URLS = [
-  'http://127.0.0.1:8000',
-  'http://localhost:8000',
-].filter(Boolean) as string[];
-
-export interface ApiClientConfig {
-  timeout: number;
-  retries: number;
-  retryDelay: number;
-  enableFallback: boolean;
-  enableNetworkDetection: boolean;
-  defaultHeaders: Record<string, string>;
-}
 
 export interface ApiRequest {
   endpoint: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: any;
   headers?: Record<string, string>;
-  timeout?: number;
-  retries?: number;
-  skipFallback?: boolean;
+  params?: Record<string, any>;
 }
 
 export interface ApiResponse<T = any> {
-  data: T;
+  data?: T;
+  error?: string;
   status: number;
-  statusText: string;
-  headers: Headers;
-  endpoint: string;
-  responseTime: number;
-  wasFailover: boolean;
 }
 
 export interface ApiError extends Error {
+  message: string;
   status?: number;
+  code?: string;
+  details?: any;
   statusText?: string;
   endpoint?: string;
   responseTime?: number;
-  isNetworkError: boolean;
-  isCorsError: boolean;
-  isTimeoutError: boolean;
-  originalError?: Error;
+  isNetworkError?: boolean;
+  isCorsError?: boolean;
+  isTimeoutError?: boolean;
 }
 
-/**
- * Centralized API client with automatic endpoint management
- */
 export class ApiClient {
-  private config: ApiClientConfig;
-  private configManager = getConfigManager();
-  private fallbackService = getEndpointFallbackService();
-  private networkDetector = getNetworkDetectionService();
+  private baseUrl: string;
+  private defaultHeaders: Record<string, string>;
 
-  constructor(config?: Partial<ApiClientConfig>) {
-    this.config = {
-      timeout: 30000,
-      retries: 3,
-      retryDelay: 1000,
-      enableFallback: true,
-      enableNetworkDetection: false, // Disable automatic network detection to prevent override
-      defaultHeaders: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Cache-Control': 'no-cache',
-      },
-      ...config,
+  constructor(baseUrl: string = '', defaultHeaders: Record<string, string> = {}) {
+    this.baseUrl = baseUrl;
+    this.defaultHeaders = {
+      'Content-Type': 'application/json',
+      ...defaultHeaders
     };
-
-    // Initialize network detection if enabled
-    if (this.config.enableNetworkDetection) {
-      this.initializeNetworkDetection();
-    }
   }
 
-  /**
-   * Initialize network detection and apply configuration
-   */
-  private async initializeNetworkDetection(): Promise<void> {
+  private async makeRequest<T = any>(
+    method: string,
+    url: string,
+    data?: any,
+    headers?: Record<string, string>
+  ): Promise<T> {
+    const fullUrl = `${this.baseUrl}${url}`;
+    const requestHeaders = { ...this.defaultHeaders, ...headers };
+
+    const config: RequestInit = {
+      method,
+      headers: requestHeaders,
+    };
+
+    if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+      config.body = JSON.stringify(data);
+    }
+
     try {
-      await this.networkDetector.applyDetectedConfiguration();
+      const response = await fetch(fullUrl, config);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        
+        // Handle rate limiting with exponential backoff
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 5000;
+          
+          console.warn(`Rate limited. Retrying after ${waitTime}ms`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          
+          // Retry the request once
+          const retryResponse = await fetch(fullUrl, config);
+          if (retryResponse.ok) {
+            const contentType = retryResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              return await retryResponse.json();
+            } else {
+              return await retryResponse.text() as any;
+            }
+          }
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      } else {
+        return await response.text() as any;
+      }
     } catch (error) {
-      console.warn('ApiClient: Failed to apply network detection:', error);
+      console.error(`API request failed: ${method} ${fullUrl}`, error);
+      throw error;
     }
   }
 
-  /**
-   * Make an API request with automatic fallback
-   */
-  public async request<T = any>(request: ApiRequest): Promise<ApiResponse<T>> {
-    // Prepare request function
-    const makeRequest = async (baseUrl: string): Promise<ApiResponse<T>> => {
-      const url = `${baseUrl}${request.endpoint}`;
-      const timeout = request.timeout || this.config.timeout;
-      const method = request.method || 'GET';
-      const requestStartTime = Date.now();
+  async get<T = any>(url: string, headers?: Record<string, string>): Promise<T> {
+    return this.makeRequest<T>('GET', url, undefined, headers);
+  }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+  async post<T = any>(url: string, data?: any, headers?: Record<string, string>): Promise<T> {
+    return this.makeRequest<T>('POST', url, data, headers);
+  }
 
-      try {
-        // Simple headers - no token management needed (cookies handle auth)
-        const headers = {
-          ...this.config.defaultHeaders,
-          ...request.headers,
-        };
+  async put<T = any>(url: string, data?: any, headers?: Record<string, string>): Promise<T> {
+    return this.makeRequest<T>('PUT', url, data, headers);
+  }
 
-        const response = await fetch(url, {
-          method,
-          headers,
-          body: request.body instanceof FormData ? request.body : (request.body ? JSON.stringify(request.body) : undefined),
-          signal: controller.signal,
-          credentials: 'include', // Include cookies for authentication
-        });
+  async patch<T = any>(url: string, data?: any, headers?: Record<string, string>): Promise<T> {
+    return this.makeRequest<T>('PATCH', url, data, headers);
+  }
 
-        clearTimeout(timeoutId);
-        const responseTime = Date.now() - requestStartTime;
+  async delete<T = any>(url: string, headers?: Record<string, string>): Promise<T> {
+    return this.makeRequest<T>('DELETE', url, undefined, headers);
+  }
 
-        // Extract response headers for logging
-        const responseHeaders: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          responseHeaders[key] = value;
-        });
-
-        // Parse response body
-        let data: T;
-        const contentType = response.headers.get('content-type');
-
-        if (contentType?.includes('application/json')) {
-          data = await response.json();
-        } else {
-          data = (await response.text()) as unknown as T;
+  // Generic request method that matches ApiRequest interface
+  async request<T = any>(apiRequest: ApiRequest): Promise<ApiResponse<T>> {
+    const { endpoint, method, body, headers, params } = apiRequest;
+    
+    // Build URL with query parameters if provided
+    let url = endpoint;
+    if (params) {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
         }
-
-        // Determine if this is a connectivity success vs application error
-        const isAuthEndpoint = url.includes('/api/auth/');
-        const isConnectivitySuccess = response.ok ||
-          (isAuthEndpoint && (response.status === 401 || response.status === 403));
-
-        // Log endpoint attempt with appropriate success status
-        logEndpointAttempt(
-          url,
-          method,
-          requestStartTime,
-          isConnectivitySuccess,
-          response.status,
-          response.ok ? undefined : `HTTP ${response.status}: ${response.statusText}`,
-          responseHeaders
-        );
-
-        if (!response.ok) {
-          // Simple 401 error handling - redirect to login immediately
-          if (response.status === 401 && typeof window !== 'undefined') {
-            window.location.href = '/login';
-          }
-
-          const apiError = this.createApiError(
-            `HTTP ${response.status}: ${response.statusText}`,
-            response.status,
-            response.statusText,
-            url,
-            responseTime,
-            false,
-            false,
-            false
-          );
-
-          throw apiError;
-        }
-
-        return {
-          data,
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-          endpoint: url,
-          responseTime,
-          wasFailover: false,
-        };
-
-      } catch (error) {
-        clearTimeout(timeoutId);
-        const responseTime = Date.now() - requestStartTime;
-
-        let apiError: ApiError;
-
-        if (error instanceof Error) {
-          if (error.name === 'AbortError') {
-            apiError = this.createApiError(
-              'Request timeout',
-              0,
-              'Timeout',
-              url,
-              responseTime,
-              false,
-              false,
-              true,
-              error
-            );
-          } else if (error.message.includes('CORS')) {
-            apiError = this.createApiError(
-              'CORS error - cross-origin requests blocked',
-              0,
-              'CORS Error',
-              url,
-              responseTime,
-              false,
-              true,
-              false,
-              error
-            );
-
-            // Log CORS issue with additional details
-            const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
-            logCORSIssue(url, origin, error);
-
-          } else if (error.message.includes('fetch')) {
-            apiError = this.createApiError(
-              'Network error - unable to connect',
-              0,
-              'Network Error',
-              url,
-              responseTime,
-              true,
-              false,
-              false,
-              error
-            );
-          } else {
-            apiError = this.createApiError(
-              error.message,
-              0,
-              'Unknown Error',
-              url,
-              responseTime,
-              true,
-              false,
-              false,
-              error
-            );
-          }
-        } else if (this.isApiError(error)) {
-          apiError = error;
-        } else {
-          apiError = this.createApiError(
-            'Unknown error',
-            0,
-            'Unknown Error',
-            url,
-            responseTime,
-            true,
-            false,
-            false,
-            error instanceof Error ? error : undefined
-          );
-        }
-
-        // Log failed endpoint attempt
-        logEndpointAttempt(
-          url,
-          method,
-          requestStartTime,
-          false,
-          apiError.status,
-          apiError,
-        );
-
-        throw apiError;
-      }
-    };
-
-    // In the browser, route via Next proxy only if enabled by env
-    if (typeof window !== 'undefined') {
-      const useProxy = (process as any)?.env?.NEXT_PUBLIC_USE_PROXY === 'true' ||
-                       (process as any)?.env?.USE_PROXY === 'true' ||
-                       (process as any)?.env?.KAREN_USE_PROXY === 'true';
-      if (useProxy) {
-        return makeRequest('');
+      });
+      const queryString = searchParams.toString();
+      if (queryString) {
+        url += (url.includes('?') ? '&' : '?') + queryString;
       }
     }
 
-    // Use fallback service on the server (or when explicitly desired)
-    if (this.config.enableFallback && !request.skipFallback) {
-      try {
-        const result = await this.fallbackService.requestWithFallback(
-          makeRequest,
-          this.getRequestType(request.endpoint)
-        );
-
-        return {
-          ...result.data,
-          wasFailover: result.fallbackResult.wasFailover,
-        };
-      } catch (error) {
-        throw error;
-      }
-    } else {
-      // Direct request without fallback
-      const baseUrl = this.configManager.getBackendUrl();
-      return makeRequest(baseUrl);
+    try {
+      const data = await this.makeRequest<T>(method, url, body, headers);
+      return {
+        data,
+        status: 200 // We don't have access to the actual status in this simplified version
+      };
+    } catch (error: any) {
+      throw {
+        message: error.message || 'Request failed',
+        status: error.status || 500,
+        code: error.code,
+        details: error
+      } as ApiError;
     }
   }
 
-  /**
-   * GET request helper
-   */
-  public async get<T = any>(
-    endpoint: string,
-    options?: Omit<ApiRequest, 'endpoint' | 'method'>
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>({
-      endpoint,
-      method: 'GET',
-      ...options,
-    });
+  // Health check method
+  async healthCheck(): Promise<ApiResponse<any>> {
+    try {
+      const data = await this.get('/health');
+      return {
+        data,
+        status: 200
+      };
+    } catch (error: any) {
+      throw {
+        message: error.message || 'Health check failed',
+        status: error.status || 500,
+        code: error.code,
+        details: error
+      } as ApiError;
+    }
   }
 
-  /**
-   * POST request helper
-   */
-  public async post<T = any>(
-    endpoint: string,
-    body?: any,
-    options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>({
-      endpoint,
-      method: 'POST',
-      body,
-      ...options,
-    });
+  // Get backend URL
+  getBackendUrl(): string {
+    return this.baseUrl;
   }
 
-  /**
-   * PUT request helper
-   */
-  public async put<T = any>(
-    endpoint: string,
-    body?: any,
-    options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>({
-      endpoint,
-      method: 'PUT',
-      body,
-      ...options,
-    });
+  // Get endpoints (placeholder)
+  getEndpoints() {
+    return {};
   }
 
-  /**
-   * DELETE request helper
-   */
-  public async delete<T = any>(
-    endpoint: string,
-    options?: Omit<ApiRequest, 'endpoint' | 'method'>
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>({
-      endpoint,
-      method: 'DELETE',
-      ...options,
-    });
+  // Get endpoint statistics (placeholder)
+  getEndpointStats() {
+    return {};
   }
 
-  /**
-   * PATCH request helper
-   */
-  public async patch<T = any>(
-    endpoint: string,
-    body?: any,
-    options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body'>
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>({
-      endpoint,
-      method: 'PATCH',
-      body,
-      ...options,
-    });
+  // Reset endpoint statistics (placeholder)
+  resetEndpointStats(endpoint?: string): void {
+    // Implementation would go here
   }
 
-  /**
-   * Upload file helper with automatic cookie handling
-   */
-  public async uploadFile<T = any>(
-    endpoint: string,
-    file: File,
-    fieldName: string = 'file',
-    additionalFields?: Record<string, string>,
-    options?: Omit<ApiRequest, 'endpoint' | 'method' | 'body' | 'headers'>
-  ): Promise<ApiResponse<T>> {
+  // Clear caches (placeholder)
+  clearCaches(): void {
+    // Implementation would go here
+  }
+
+  // Upload file method
+  async uploadFile<T = any>(url: string, file: File, fieldName: string = 'file'): Promise<T> {
     const formData = new FormData();
     formData.append(fieldName, file);
-
-    if (additionalFields) {
-      Object.entries(additionalFields).forEach(([key, value]) => {
-        formData.append(key, value);
+    
+    const headers = { ...this.defaultHeaders };
+    // Remove Content-Type header to let browser set it with boundary
+    delete headers['Content-Type'];
+    
+    const fullUrl = `${this.baseUrl}${url}`;
+    
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers,
+        body: formData,
       });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      } else {
+        return await response.text() as any;
+      }
+    } catch (error) {
+      console.error(`File upload failed: POST ${fullUrl}`, error);
+      throw error;
     }
-
-    // Don't set Content-Type header to let browser set it with boundary
-    // Cookies are automatically included via credentials: 'include'
-    return this.request<T>({
-      endpoint,
-      method: 'POST',
-      body: formData,
-      ...options,
-    });
   }
 
-  /**
-   * Health check helper
-   */
-  public async healthCheck(): Promise<ApiResponse<any>> {
-    return this.get('/health', { skipFallback: false });
+  setAuthToken(token: string) {
+    this.defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
 
-  /**
-   * Get current backend URL
-   */
-  public getBackendUrl(): string {
-    return this.configManager.getBackendUrl();
+  removeAuthToken() {
+    delete this.defaultHeaders['Authorization'];
   }
 
-  /**
-   * Get endpoint URLs for different services
-   */
-  public getEndpoints() {
-    return {
-      auth: this.configManager.getAuthEndpoint(),
-      chat: this.configManager.getChatEndpoint(),
-      memory: this.configManager.getMemoryEndpoint(),
-      plugins: this.configManager.getPluginsEndpoint(),
-      health: this.configManager.getHealthEndpoint(),
-    };
-  }
-
-  /**
-   * Update configuration
-   */
-  public updateConfig(config: Partial<ApiClientConfig>): void {
-    this.config = { ...this.config, ...config };
-  }
-
-  /**
-   * Get current configuration
-   */
-  public getConfig(): ApiClientConfig {
-    return { ...this.config };
-  }
-
-  /**
-   * Determine request type based on endpoint
-   */
-  private getRequestType(endpoint: string): 'api' | 'auth' | 'chat' | 'health' {
-    if (endpoint.startsWith('/api/auth')) return 'auth';
-    if (endpoint.startsWith('/api/chat')) return 'chat';
-    if (endpoint.startsWith('/health')) return 'health';
-    return 'api';
-  }
-
-  /**
-   * Create standardized API error
-   */
-  private createApiError(
-    message: string,
-    status?: number,
-    statusText?: string,
-    endpoint?: string,
-    responseTime?: number,
-    isNetworkError: boolean = false,
-    isCorsError: boolean = false,
-    isTimeoutError: boolean = false,
-    originalError?: Error
-  ): ApiError {
-    const error = new Error(message) as ApiError;
-    error.name = 'ApiError';
-    error.status = status;
-    error.statusText = statusText;
-    error.endpoint = endpoint;
-    error.responseTime = responseTime;
-    error.isNetworkError = isNetworkError;
-    error.isCorsError = isCorsError;
-    error.isTimeoutError = isTimeoutError;
-    error.originalError = originalError;
-    return error;
-  }
-
-  /**
-   * Check if error is an ApiError
-   */
-  private isApiError(error: any): error is ApiError {
-    return error && error.name === 'ApiError';
-  }
-
-  /**
-   * Get endpoint statistics from fallback service
-   */
-  public getEndpointStats() {
-    return this.fallbackService.getEndpointStatsArray();
-  }
-
-  /**
-   * Reset endpoint statistics
-   */
-  public resetEndpointStats(endpoint?: string): void {
-    this.fallbackService.resetEndpointStats(endpoint);
-  }
-
-  /**
-   * Clear all caches
-   */
-  public clearCaches(): void {
-    this.fallbackService.clearCache();
-    this.networkDetector.clearCache();
+  setBaseUrl(baseUrl: string) {
+    this.baseUrl = baseUrl;
   }
 }
 
-// Singleton instance
-let apiClient: ApiClient | null = null;
+// Default API client instance
+const defaultApiClient = new ApiClient(
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  {
+    'Content-Type': 'application/json',
+  }
+);
 
 /**
- * Get the global API client instance
+ * Get the default API client instance
  */
 export function getApiClient(): ApiClient {
-  if (!apiClient) {
-    apiClient = new ApiClient();
-    const [primary, ...fallbacks] = DEFAULT_BASE_URLS;
-    if (primary) {
-      getConfigManager().updateConfiguration({
-        backendUrl: primary,
-        fallbackUrls: fallbacks,
-      });
-    }
-  }
-  return apiClient;
+  return defaultApiClient;
 }
 
-/**
- * Initialize API client with custom configuration
- */
-export function initializeApiClient(config?: Partial<ApiClientConfig>): ApiClient {
-  apiClient = new ApiClient(config);
-  return apiClient;
-}
-
-// Export types
-export type {
-  ApiClientConfig as ApiClientConfigType,
-  ApiRequest as ApiRequestType,
-  ApiResponse as ApiResponseType,
-  ApiError as ApiErrorType,
-};
+// Export the default instance as well
+export default defaultApiClient;

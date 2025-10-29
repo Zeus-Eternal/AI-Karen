@@ -6,7 +6,7 @@ export default function AuthHeader() {
   const { user } = useAuth()
   return (
     <Link href={user ? '/profile' : '/login'} className="text-sm font-medium underline">
-      {user ? user.user_id : 'Login'}
+      {user ? user.userId : 'Login'}
     </Link>
   )
 }

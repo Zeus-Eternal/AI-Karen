@@ -1,4 +1,3 @@
-from src.auth.auth_middleware import require_auth
 """
 Dependency Injection for AI Karen Engine Integration.
 
@@ -7,9 +6,7 @@ and other components that need access to the integrated services.
 """
 
 import logging
-import os
-import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 try:
     from fastapi import Depends, HTTPException, Request
@@ -30,50 +27,19 @@ from ai_karen_engine.core.service_registry import (
     WebUIMemoryService,
     get_service_registry,
 )
-# REMOVED: Complex auth service
 
 logger = logging.getLogger(__name__)
 
 
-def _env_truthy(name: str) -> bool:
-    """Return True when an environment flag is enabled."""
-
-    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _dev_auth_enabled() -> bool:
-    """Determine whether development authentication fallbacks are allowed."""
-
-    if _env_truthy("AUTH_DEV_MODE") or _env_truthy("AUTH_ALLOW_DEV_LOGIN"):
-        return True
-
-    auth_mode = os.getenv("AUTH_MODE", "").strip().lower()
-    return auth_mode in {"development", "bypass"}
-
-
-def _build_dev_user_context(request: Request) -> Dict[str, Any]:
-    """Create a synthetic user context for development mode."""
-
-    anon_id = os.getenv("AUTH_DEV_USER_ID", "dev-user")
-    roles = os.getenv("AUTH_DEV_USER_ROLES", "admin,user").split(",")
-    roles = [role.strip() for role in roles if role.strip()]
-    if not roles:
-        roles = ["admin", "user"]
-
+def _get_default_user_context() -> Dict[str, Any]:
+    """Return default user context (no authentication required)."""
     return {
-        "user_id": anon_id,
-        "email": f"{anon_id}@example.com",
-        "full_name": os.getenv("AUTH_DEV_USER_NAME", "Development User"),
-        "roles": roles,
+        "user_id": "default_user",
+        "email": "user@example.com",
+        "full_name": "Default User",
+        "roles": ["user", "admin"],
         "tenant_id": "default",
-        "token_payload": {
-            "sub": anon_id,
-            "roles": roles,
-            "type": "development",
-        },
-        "auth_mode": os.getenv("AUTH_MODE", "development"),
-        "is_development_fallback": True,
-        "request_path": getattr(getattr(request, "url", None), "path", ""),
+        "is_active": True,
     }
 
 
@@ -87,51 +53,10 @@ async def get_current_config() -> AIKarenConfig:
         raise HTTPException(status_code=500, detail="Configuration unavailable")
 
 
-# Authentication dependencies
-async def get_current_user_context(request: Request) -> Dict[str, Any]:
-    """Get authenticated user context using simple JWT auth."""
-
-    allow_dev_fallback = _dev_auth_enabled()
-
-    try:
-        # Use simple auth middleware to get user
-        from src.auth.auth_middleware import get_auth_middleware
-
-        auth_middleware = get_auth_middleware()
-        user_data = await auth_middleware.authenticate_request(request)
-        if user_data:
-            # Ensure tenant_id exists for compatibility
-            if "tenant_id" not in user_data:
-                user_data["tenant_id"] = "default"
-            return user_data
-
-        if allow_dev_fallback:
-            logger.info(
-                "Authentication skipped: dev fallback user applied for %s",
-                getattr(getattr(request, "url", None), "path", "unknown"),
-            )
-            return _build_dev_user_context(request)
-
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    except HTTPException as exc:
-        if allow_dev_fallback and exc.status_code == 401:
-            logger.info(
-                "Authentication failed with %s. Using dev fallback user for %s",
-                exc.detail,
-                getattr(getattr(request, "url", None), "path", "unknown"),
-            )
-            return _build_dev_user_context(request)
-        raise
-    except Exception as e:
-        logger.error(f"Authentication failed: {e}")
-        if allow_dev_fallback:
-            logger.info(
-                "Recovering from auth error with dev fallback user for %s",
-                getattr(getattr(request, "url", None), "path", "unknown"),
-            )
-            return _build_dev_user_context(request)
-        raise HTTPException(status_code=401, detail="Authentication required")
+# Authentication dependencies (no authentication required)
+async def get_current_user_context(request: Request = None) -> Dict[str, Any]:
+    """Get user context (always returns default user - no authentication required)."""
+    return _get_default_user_context()
 
 
 async def get_current_user_id(

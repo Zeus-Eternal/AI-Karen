@@ -112,6 +112,17 @@ export default function ModelManagementPage() {
     owner: '',
     tags: []
   });
+  const [browserFilters, setBrowserFilters] = useState<{
+    category: string;
+    provider: string;
+    status: string;
+    modality: string;
+  }>({
+    category: 'all',
+    provider: 'all',
+    status: 'all',
+    modality: 'all'
+  });
   const [operations, setOperations] = useState<Record<string, any>>({});
   const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [showMigrationWizard, setShowMigrationWizard] = useState(false);
@@ -125,6 +136,24 @@ export default function ModelManagementPage() {
     loadModels();
     loadStats();
   }, []);
+
+  // Sync browser filters with main filters
+  useEffect(() => {
+    setBrowserFilters(prev => ({
+      ...prev,
+      provider: filters.library || 'all',
+      status: filters.status || 'all'
+    }));
+  }, [filters.library, filters.status]);
+
+  // Sync main filters with browser filters
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      library: browserFilters.provider === 'all' ? '' : browserFilters.provider,
+      status: browserFilters.status === 'all' ? '' : browserFilters.status
+    }));
+  }, [browserFilters.provider, browserFilters.status]);
 
   const loadModels = async () => {
     try {
@@ -484,10 +513,30 @@ export default function ModelManagementPage() {
             </CardHeader>
             <CardContent>
               <ModelBrowser
-                models={models.filter(m => m.status === 'available' || m.status === 'downloading')}
+                models={models.filter(m => m.status === 'available' || m.status === 'downloading').map(model => ({
+                  ...model,
+                  display_name: model.name,
+                  provider: model.library || 'unknown',
+                  type: 'text',
+                  category: model.tags?.[0] || 'general',
+                  size: model.total_size || 0,
+                  description: model.description || '',
+                  modalities: [{
+                    type: 'text',
+                    input_supported: true,
+                    output_supported: true,
+                    formats: ['text']
+                  }],
+                  download_progress: model.downloadProgress,
+                  metadata: {
+                    ...model.metadata,
+                    memory_requirement: model.metadata.memoryRequirement,
+                    context_length: model.metadata.contextLength
+                  }
+                }))}
                 onAction={handleModelAction}
-                filters={filters}
-                onFiltersChange={setFilters}
+                filters={browserFilters}
+                onFiltersChange={setBrowserFilters}
               />
             </CardContent>
           </Card>

@@ -75,12 +75,23 @@ export class ConfigManager {
    * Load configuration from environment variables with defaults
    */
   private loadConfiguration(): EndpointConfig {
+    // Check if we should use the proxy
+    const useProxy = this.getBooleanEnv('NEXT_PUBLIC_USE_PROXY', true);
+    
     // Allow explicit environment configuration with sensible defaults
     // Force correct default port to prevent connection issues
-    const backendUrl = this.getEnvVar(
-      'API_BASE_URL',
-      this.getEnvVar('KAREN_BACKEND_URL', 'http://localhost:8000')
-    );
+    let backendUrl: string;
+    
+    if (useProxy && typeof window !== 'undefined') {
+      // Client-side with proxy enabled - use relative URLs
+      backendUrl = '';
+    } else {
+      // Server-side or proxy disabled - use direct backend URL
+      backendUrl = this.getEnvVar(
+        'API_BASE_URL',
+        this.getEnvVar('KAREN_BACKEND_URL', 'http://localhost:8000')
+      );
+    }
     const environment = this.getEnvVar('KAREN_ENVIRONMENT', 'local') as Environment;
     const networkMode = this.getEnvVar('KAREN_NETWORK_MODE', 'localhost') as NetworkMode;
     
@@ -113,7 +124,13 @@ export class ConfigManager {
     if (typeof process !== 'undefined' && process.env) {
       // Check for Next.js public environment variable first (client-side)
       const nextPublicKey = `NEXT_PUBLIC_${key}`;
-      const value = process.env[nextPublicKey] || process.env[key] || defaultValue;
+      const nextPublicValue = process.env[nextPublicKey];
+      const regularValue = process.env[key];
+      
+      // Handle empty strings properly - treat them as undefined
+      const value = (nextPublicValue && nextPublicValue.trim()) || 
+                   (regularValue && regularValue.trim()) || 
+                   defaultValue;
       
       // Debug logging for environment variable resolution
       if (
@@ -371,35 +388,40 @@ export class ConfigManager {
    * Get the authentication endpoint URL
    */
   public getAuthEndpoint(): string {
-    return `${this.config.backendUrl}/api/auth`;
+    const baseUrl = this.getBackendUrl();
+    return baseUrl ? `${baseUrl}/api/auth` : '/api/auth';
   }
 
   /**
    * Get the chat endpoint URL
    */
   public getChatEndpoint(): string {
-    return `${this.config.backendUrl}/api/chat`;
+    const baseUrl = this.getBackendUrl();
+    return baseUrl ? `${baseUrl}/api/chat` : '/api/chat';
   }
 
   /**
    * Get the memory endpoint URL
    */
   public getMemoryEndpoint(): string {
-    return `${this.config.backendUrl}/api/memory`;
+    const baseUrl = this.getBackendUrl();
+    return baseUrl ? `${baseUrl}/api/memory` : '/api/memory';
   }
 
   /**
    * Get the plugins endpoint URL
    */
   public getPluginsEndpoint(): string {
-    return `${this.config.backendUrl}/api/plugins`;
+    const baseUrl = this.getBackendUrl();
+    return baseUrl ? `${baseUrl}/api/plugins` : '/api/plugins';
   }
 
   /**
    * Get the health check endpoint URL
    */
   public getHealthEndpoint(): string {
-    return `${this.config.backendUrl}/health`;
+    const baseUrl = this.getBackendUrl();
+    return baseUrl ? `${baseUrl}/health` : '/api/health';
   }
 
   /**

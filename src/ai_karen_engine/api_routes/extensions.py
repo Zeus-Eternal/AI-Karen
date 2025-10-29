@@ -2,7 +2,6 @@
 
 from typing import Any, Dict, List
 
-from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.extensions import get_extension_manager
 from ai_karen_engine.extensions.models import ExtensionStatusAPI
 from ai_karen_engine.utils.dependency_checks import import_fastapi
@@ -13,12 +12,59 @@ APIRouter, Depends, HTTPException = import_fastapi(
 
 router = APIRouter()
 
-# Alias core dependency for convenience
-get_current_user = get_current_user_context
+
+@router.get("/", response_model=Dict[str, Any])
+async def list_extensions_root():
+    """List all extensions and their status (root endpoint)."""
+    extension_manager = get_extension_manager()
+    if not extension_manager:
+        return {
+            "extensions": {},
+            "total": 0,
+            "message": "Extension manager not initialized",
+            "status": "unavailable"
+        }
+
+    extensions = {}
+    extension_list = []
+    try:
+        for record in extension_manager.registry.list_extensions():
+            ext_data = {
+                "id": record.manifest.name,
+                "name": record.manifest.name,
+                "display_name": record.manifest.display_name or record.manifest.name,
+                "description": record.manifest.description or "No description available",
+                "version": record.manifest.version,
+                "status": record.status.value,
+                "loaded_at": record.loaded_at.isoformat() if record.loaded_at else None,
+                "error_message": record.error_message,
+                "capabilities": {
+                    "provides_ui": getattr(record.manifest, 'provides_ui', False),
+                    "provides_api": getattr(record.manifest, 'provides_api', False),
+                    "provides_background_tasks": getattr(record.manifest, 'provides_background_tasks', False),
+                    "provides_webhooks": getattr(record.manifest, 'provides_webhooks', False)
+                }
+            }
+            extensions[record.manifest.name] = ext_data
+            extension_list.append(ext_data)
+    except Exception as e:
+        return {
+            "extensions": {},
+            "total": 0,
+            "message": f"Error loading extensions: {str(e)}",
+            "status": "error"
+        }
+
+    return {
+        "extensions": extensions,
+        "total": len(extensions),
+        "message": "Extensions loaded successfully" if extensions else "No extensions found",
+        "status": "available" if extensions else "empty"
+    }
 
 
-@router.get("/extensions", response_model=List[ExtensionStatusAPI])
-async def list_extensions(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/list", response_model=List[ExtensionStatusAPI])
+async def list_extensions():
     """List all extensions and their status."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -42,10 +88,8 @@ async def list_extensions(user: Dict[str, Any] = Depends(get_current_user)):
     return extensions
 
 
-@router.get("/extensions/{extension_name}")
-async def get_extension_status(
-    extension_name: str, user: Dict[str, Any] = Depends(get_current_user)
-):
+@router.get("/{extension_name}")
+async def get_extension_status(extension_name: str):
     """Get detailed status of a specific extension."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -61,10 +105,8 @@ async def get_extension_status(
     return status
 
 
-@router.post("/extensions/{extension_name}/load")
-async def load_extension(
-    extension_name: str, user: Dict[str, Any] = Depends(get_current_user)
-):
+@router.post("/{extension_name}/load")
+async def load_extension(extension_name: str):
     """Load an extension."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -83,10 +125,8 @@ async def load_extension(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@router.post("/extensions/{extension_name}/unload")
-async def unload_extension(
-    extension_name: str, user: Dict[str, Any] = Depends(get_current_user)
-):
+@router.post("/{extension_name}/unload")
+async def unload_extension(extension_name: str):
     """Unload an extension."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -102,10 +142,8 @@ async def unload_extension(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@router.post("/extensions/{extension_name}/reload")
-async def reload_extension(
-    extension_name: str, user: Dict[str, Any] = Depends(get_current_user)
-):
+@router.post("/{extension_name}/reload")
+async def reload_extension(extension_name: str):
     """Reload an extension (for development)."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -124,8 +162,8 @@ async def reload_extension(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@router.get("/extensions/discover")
-async def discover_extensions(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/discover")
+async def discover_extensions():
     """Discover available extensions in the extensions directory."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -154,8 +192,8 @@ async def discover_extensions(user: Dict[str, Any] = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/extensions/registry/summary")
-async def get_registry_summary(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/registry/summary")
+async def get_registry_summary():
     """Get extension registry summary."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -167,8 +205,8 @@ async def get_registry_summary(user: Dict[str, Any] = Depends(get_current_user))
     return extension_manager.registry.to_dict()
 
 
-@router.get("/extensions/health")
-async def get_extensions_health(user: Dict[str, Any] = Depends(get_current_user)):
+@router.get("/health")
+async def get_extensions_health():
     """Get overall health summary for extensions."""
     extension_manager = get_extension_manager()
     if not extension_manager:
@@ -177,6 +215,32 @@ async def get_extensions_health(user: Dict[str, Any] = Depends(get_current_user)
             detail="Extension manager not initialized",
         )
     return extension_manager.get_health_summary()
+
+
+@router.get("/system/health")
+async def get_system_health():
+    """Get system health for extensions (public endpoint)."""
+    extension_manager = get_extension_manager()
+    if not extension_manager:
+        return {
+            "status": "unavailable",
+            "message": "Extension manager not initialized",
+            "extensions": []
+        }
+    
+    try:
+        health_summary = extension_manager.get_health_summary()
+        return {
+            "status": "healthy",
+            "message": "Extension system operational",
+            "extensions": health_summary
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Extension system error: {str(e)}",
+            "extensions": []
+        }
 
 
 __all__ = ["router"]

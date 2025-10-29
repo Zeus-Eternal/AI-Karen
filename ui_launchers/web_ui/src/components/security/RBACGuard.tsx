@@ -115,7 +115,7 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
     track('rbac_access_denied', { 
       reason: 'feature_disabled', 
       featureFlag,
-      userId: user?.user_id 
+      userId: user?.userId 
     });
     onAccessDenied?.('Feature is currently disabled');
     return <>{fallback}</>;
@@ -145,7 +145,7 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
         reason: 'insufficient_role',
         userRole,
         requiredRole,
-        userId: user.user_id
+        userId: user.userId
       });
       onAccessDenied?.(`Role '${requiredRole}' required, but user has '${userRole}'`);
       return <>{fallback}</>;
@@ -162,7 +162,7 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
         userRole,
         requiredPermission,
         userPermissions,
-        userId: user.user_id
+        userId: user.userId
       });
       onAccessDenied?.(`Permission '${requiredPermission}' required`);
       return <>{fallback}</>;
@@ -175,7 +175,7 @@ export const RBACGuard: React.FC<RBACGuardProps> = ({
     requiredRole,
     requiredPermission,
     featureFlag,
-    userId: user.user_id
+    userId: user.userId
   });
 
   return (

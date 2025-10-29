@@ -1,0 +1,54 @@
+# Extension Authentication Configuration - Development Environment
+# This file contains development-specific settings for extension authentication
+
+# Authentication settings
+auth_enabled: true
+jwt_algorithm: "HS256"
+access_token_expire_minutes: 120  # 2 hours for development convenience
+service_token_expire_minutes: 60  # 1 hour for service tokens
+
+# Security settings (relaxed for development)
+auth_mode: "development"  # Allows development bypasses
+dev_bypass_enabled: true  # Enable development authentication bypass
+require_https: false  # Allow HTTP in development
+token_blacklist_enabled: true
+max_failed_attempts: 10  # Higher threshold for development
+lockout_duration_minutes: 1  # Short lockout for development
+audit_logging_enabled: true
+
+# Rate limiting (generous for development)
+rate_limit_per_minute: 1000
+burst_limit: 100
+enable_rate_limiting: true
+
+# Permissions
+default_permissions:
+  - "extension:read"
+  - "extension:write"
+  - "extension:debug"
+admin_permissions:
+  - "extension:*"
+service_permissions:
+  - "extension:background_tasks"
+  - "extension:health"
+  - "extension:debug"
+
+# Health monitoring
+health_check_enabled: true
+health_check_interval_seconds: 60  # Check every minute
+health_check_timeout_seconds: 10
+
+# Logging (verbose for development)
+log_level: "DEBUG"
+enable_debug_logging: true
+log_sensitive_data: true  # Allow sensitive data logging in development
+
+# Development-specific features
+development_features:
+  hot_reload: true
+  mock_auth: true
+  debug_endpoints: true
+  verbose_errors: true
+  
+# Note: Sensitive credentials (secret_key, api_key) are stored securely
+# and loaded automatically from the credential manager

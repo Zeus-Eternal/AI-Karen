@@ -83,7 +83,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
       if (user && !sessionId && !conversationId) {
         try {
           const { conversationId: newConversationId, sessionId: newSessionId } = 
-            await chatService.createConversationSession(user.user_id);
+            await chatService.createConversationSession(user.userId);
           setSessionId(newSessionId);
           setConversationId(newConversationId);
         } catch (error) {
@@ -111,7 +111,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
     const loadConversations = async () => {
       if (user && activeView === 'conversations') {
         try {
-          const userConversations = await chatService.getUserConversations(user.user_id);
+          const userConversations = await chatService.getUserConversations(user.userId);
           const conversationData: ConversationData[] = userConversations.map(conv => ({
             id: conv.sessionId,
             title: `Conversation ${conv.sessionId.slice(0, 8)}`,
@@ -153,7 +153,7 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
         message,
         messages,
         {} as any, // Preferences not available in simplified mode
-        { userId: user.user_id, sessionId: sessionId || undefined }
+        { userId: user.userId, sessionId: sessionId || undefined }
       );
 
       const assistantMessage: ChatMessage = {

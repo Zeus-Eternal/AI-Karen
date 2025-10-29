@@ -147,7 +147,7 @@ async function testDatabaseConnectivity(): Promise<DatabaseConnectivityResult> {
         timestamp: new Date(),
       };
     } else {
-      const connectionStatus = getConnectionStatus();
+      const connectionStatus = await getConnectionStatus();
       return {
         isConnected: false,
         responseTime,
@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
       let retryable = true;
       
       if (error instanceof ConnectionError) {
-        retryCount = error.retryCount;
+        retryCount = error.retryCount || 0;
         statusCode = error.statusCode || 502;
         retryable = error.retryable;
         
@@ -262,7 +262,7 @@ export async function GET(request: NextRequest) {
     }
 
     const totalResponseTime = Date.now() - startTime;
-    retryCount = result.retryCount;
+    retryCount = result.retryCount || 0;
     const data = result.data;
     
     // Log successful session validation attempt

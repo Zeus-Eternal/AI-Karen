@@ -22,13 +22,13 @@ export default function ProfilePage() {
   }, [])
 
   useEffect(() => {
-    if (!isClient || !user?.user_id) return
+    if (!isClient || !user?.userId) return
     
     getMemoryService()
-      .getMemoryStats(user.user_id)
+      .getMemoryStats(user.userId)
       .then(stats => setMemoryCount(stats.totalMemories))
       .catch(() => setMemoryCount(null))
-  }, [isClient, user?.user_id])
+  }, [isClient, user?.userId])
 
   if (!isClient) {
     return <div>Loading...</div>
@@ -55,7 +55,7 @@ export default function ProfilePage() {
           <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>Logged in as <span className="font-semibold">{user?.user_id}</span></div>
+          <div>Logged in as <span className="font-semibold">{user?.userId}</span></div>
           <div>Email: <span className="font-semibold">{user?.email}</span></div>
           <div>Roles: <span className="font-semibold">{user?.roles.join(', ')}</span></div>
           {memoryCount !== null && <div>Total memories: {memoryCount}</div>}

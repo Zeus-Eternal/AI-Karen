@@ -277,8 +277,8 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({
       metric: selectedMetric,
       timeframe,
       viewMode
-    }, { userId: user?.user_id });
-  }, [triggerHooks, processedData.length, selectedMetric, timeframe, viewMode, user?.user_id]);
+    }, { userId: user?.userId });
+  }, [triggerHooks, processedData.length, selectedMetric, timeframe, viewMode, user?.userId]);
 
   const handleRefresh = useCallback(async () => {
     if (!onRefresh) return;

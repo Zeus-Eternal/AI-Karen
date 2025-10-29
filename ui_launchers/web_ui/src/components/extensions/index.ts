@@ -8,6 +8,12 @@ export { default as ExtensionSettingsPanel } from './ExtensionSettingsPanel';
 export { default as ExtensionControls } from './ExtensionControls';
 export { default as SidebarNavigation } from './SidebarNavigation';
 
+// New extension components
+export { default as ExtensionDashboard, CompactExtensionDashboard } from './ExtensionDashboard';
+export { ExtensionNavigation, ExtensionNavigationBreadcrumbs } from './ExtensionNavigation';
+export { BackgroundTaskMonitor } from './BackgroundTaskMonitor';
+export { ExtensionPageFallback } from './ExtensionPageFallback';
+
 // Core components
 export * from './core';
 
@@ -26,4 +32,16 @@ export { default as SystemExtensionsList } from './system/SystemExtensionsList';
 export * from './shared';
 
 // Marketplace components
-// export * from './marketplace'; // TODO: Enable when marketplace components are implemented
+export * from './marketplace';
+
+// Management components
+export * from './management';
+
+// Settings components
+export * from './settings';
+
+// Debugging components
+export * from './debugging';
+
+// Monitoring components
+export * from './monitoring';

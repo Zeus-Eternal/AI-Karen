@@ -1,62 +1,41 @@
 /**
- * Connection Module
+ * Connection Library Index
  * 
- * Exports connection manager, timeout manager, and related utilities
- * for reliable HTTP communication with retry logic and timeout management.
+ * Exports all connection-related utilities, managers, and types
+ * for extension authentication and API communication.
  */
 
-// Connection Manager
+// Connection Manager exports
 export {
   ConnectionManager,
   getConnectionManager,
   initializeConnectionManager,
-  CircuitBreakerState,
-  ErrorCategory,
   ConnectionError,
+  ErrorCategory,
+  CircuitBreakerState,
+  type RequestConfig,
+  type ConnectionOptions,
+  type ConnectionResponse,
+  type RequestResult,
+  type ConnectionStatus,
+  type ConnectionOptionsType,
+  type RequestResultType,
+  type ConnectionStatusType,
+  type ConnectionErrorType,
 } from './connection-manager';
 
-export type {
-  ConnectionOptions,
-  RequestResult,
-  ConnectionStatus,
-  ConnectionOptionsType,
-  RequestResultType,
-  ConnectionStatusType,
-  ConnectionErrorType,
-} from './connection-manager';
-
-// Timeout Manager
+// Timeout Manager exports
 export {
   TimeoutManager,
   getTimeoutManager,
   initializeTimeoutManager,
   OperationType,
+  type TimeoutConfig,
+  type TimeoutSettings,
+  type OperationTimeouts,
+  type TimeoutSettingsType,
+  type OperationTimeoutsType,
 } from './timeout-manager';
 
-export type {
-  TimeoutSettings,
-  OperationTimeouts,
-  TimeoutSettingsType,
-  OperationTimeoutsType,
-} from './timeout-manager';
-
-// Health Monitor
-export {
-  HealthMonitor,
-  getHealthMonitor,
-  initializeHealthMonitor,
-  HealthEventType,
-} from './health-monitor';
-
-export type {
-  HealthStatus,
-  BackendEndpoint,
-  HealthCheckResult,
-  MonitoringConfig,
-  HealthEvent,
-  HealthStatusType,
-  BackendEndpointType,
-  HealthCheckResultType,
-  MonitoringConfigType,
-  HealthEventType as HealthEventTypeAlias,
-} from './health-monitor';
+// Health Monitor exports (if exists)
+export * from './health-monitor';

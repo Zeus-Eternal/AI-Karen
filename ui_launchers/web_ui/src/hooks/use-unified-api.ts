@@ -183,7 +183,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
   const copilotAssist = useCallback(async (
     request: Omit<CopilotAssistRequest, 'user_id'>
   ): Promise<CopilotAssistResponse> => {
-    if (!user?.user_id) {
+    if (!user?.userId) {
       throw new Error('User authentication required');
     }
 
@@ -191,8 +191,8 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       'copilot_assist',
       () => apiClient.copilotAssist({
         ...request,
-        user_id: user.user_id,
-        org_id: user.tenant_id
+        user_id: user.userId,
+        org_id: user.tenantId
       }),
       request
     );
@@ -202,7 +202,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
   const memorySearch = useCallback(async (
     request: Omit<MemorySearchRequest, 'user_id'>
   ): Promise<MemorySearchResponse> => {
-    if (!user?.user_id) {
+    if (!user?.userId) {
       throw new Error('User authentication required');
     }
 
@@ -210,8 +210,8 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       'memory_search',
       () => apiClient.memorySearch({
         ...request,
-        user_id: user.user_id,
-        org_id: user.tenant_id
+        user_id: user.userId,
+        org_id: user.tenantId
       }),
       request
     );
@@ -221,7 +221,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
   const memoryCommit = useCallback(async (
     request: Omit<MemoryCommitRequest, 'user_id'>
   ): Promise<MemoryCommitResponse> => {
-    if (!user?.user_id) {
+    if (!user?.userId) {
       throw new Error('User authentication required');
     }
 
@@ -229,8 +229,8 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       'memory_commit',
       () => apiClient.memoryCommit({
         ...request,
-        user_id: user.user_id,
-        org_id: user.tenant_id
+        user_id: user.userId,
+        org_id: user.tenantId
       }),
       request
     );
@@ -241,7 +241,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
     memoryId: string,
     updates: Partial<MemoryCommitRequest>
   ): Promise<MemoryCommitResponse> => {
-    if (!user?.user_id) {
+    if (!user?.userId) {
       throw new Error('User authentication required');
     }
 
@@ -249,8 +249,8 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       'memory_update',
       () => apiClient.memoryUpdate(memoryId, {
         ...updates,
-        user_id: user.user_id,
-        org_id: user.tenant_id
+        user_id: user.userId,
+        org_id: user.tenantId
       }),
       { memoryId, updates }
     );
@@ -261,15 +261,15 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
     memoryId: string,
     options: { hard_delete?: boolean } = {}
   ): Promise<{ success: boolean; correlation_id: string }> => {
-    if (!user?.user_id) {
+    if (!user?.userId) {
       throw new Error('User authentication required');
     }
 
     return handleApiRequest(
       'memory_delete',
       () => apiClient.memoryDelete(memoryId, {
-        user_id: user.user_id,
-        org_id: user.tenant_id,
+        user_id: user.userId,
+        org_id: user.tenantId,
         ...options
       }),
       { memoryId, options }
@@ -280,7 +280,7 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
   const batchMemoryOperations = useCallback(async (
     operations: Array<{ type: string; data: any }>
   ): Promise<Array<{ success: boolean; result?: any; error?: string }>> => {
-    if (!user?.user_id) {
+    if (!user?.userId) {
       throw new Error('User authentication required');
     }
 
@@ -289,8 +289,8 @@ export function useUnifiedApi(options: UseUnifiedApiOptions = {}): UseUnifiedApi
       ...op,
       data: {
         ...op.data,
-        user_id: user.user_id,
-        org_id: user.tenant_id
+        user_id: user.userId,
+        org_id: user.tenantId
       }
     }));
 

@@ -155,6 +155,48 @@ async def _check_system_resources() -> Dict[str, Any]:
         }
 
 
+async def _check_extension_system_health() -> Dict[str, Any]:
+    """Check extension system health with integration to existing monitoring patterns."""
+    try:
+        from .extension_health_monitor import get_extension_health_monitor
+        
+        extension_monitor = get_extension_health_monitor()
+        if not extension_monitor:
+            return {
+                "status": "unknown",
+                "error": "Extension health monitor not initialized",
+                "total_extensions": 0,
+                "healthy_extensions": 0,
+                "degraded_extensions": 0,
+                "unhealthy_extensions": 0,
+            }
+        
+        # Get comprehensive extension health
+        health_data = await extension_monitor.get_extension_health_for_api()
+        
+        return {
+            "status": health_data["status"],
+            "total_extensions": health_data["extensions"]["total"],
+            "healthy_extensions": health_data["extensions"]["healthy"],
+            "degraded_extensions": health_data["extensions"]["degraded"],
+            "unhealthy_extensions": health_data["extensions"]["unhealthy"],
+            "uptime_seconds": health_data["uptime_seconds"],
+            "supporting_services": health_data["supporting_services"],
+            "extension_details": health_data["extensions"]["details"],
+        }
+        
+    except Exception as e:
+        logger.warning(f"Extension system health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "total_extensions": 0,
+            "healthy_extensions": 0,
+            "degraded_extensions": 0,
+            "unhealthy_extensions": 0,
+        }
+
+
 def register_health_endpoints(app: FastAPI) -> None:
     """Register all health and status endpoints"""
     
@@ -175,15 +217,16 @@ def register_health_endpoints(app: FastAPI) -> None:
 
     @app.get("/api/health", tags=["system"])
     async def comprehensive_health():
-        """Comprehensive health check with detailed service status."""
+        """Comprehensive health check with detailed service status including extensions."""
         start_time = time.time()
         timestamp = datetime.now(timezone.utc)
         
-        # Check all services
+        # Check all services including extensions
         database_health = await _check_database_health()
         redis_health = await _check_redis_health()
         ai_providers_health = await _check_ai_providers_health()
         system_resources = await _check_system_resources()
+        extension_system_health = await _check_extension_system_health()
         
         # Determine overall status
         service_statuses = [
@@ -191,6 +234,7 @@ def register_health_endpoints(app: FastAPI) -> None:
             redis_health["status"],
             ai_providers_health["status"],
             system_resources["status"],
+            extension_system_health["status"],
         ]
         
         if any(status == "unhealthy" for status in service_statuses):
@@ -211,6 +255,7 @@ def register_health_endpoints(app: FastAPI) -> None:
                 "redis": redis_health,
                 "ai_providers": ai_providers_health,
                 "system_resources": system_resources,
+                "extension_system": extension_system_health,
             },
             "summary": {
                 "healthy_services": sum(1 for status in service_statuses if status == "healthy"),
@@ -251,6 +296,147 @@ def register_health_endpoints(app: FastAPI) -> None:
         if health["status"] == "unhealthy":
             raise HTTPException(status_code=503, detail=health)
         return health
+
+    @app.get("/api/health/extensions", tags=["system"])
+    async def extension_system_health():
+        """Extension system health check."""
+        health = await _check_extension_system_health()
+        if health["status"] == "unhealthy":
+            raise HTTPException(status_code=503, detail=health)
+        return health
+
+    @app.get("/api/health/extensions/{extension_name}", tags=["system"])
+    async def specific_extension_health(extension_name: str):
+        """Health check for a specific extension."""
+        try:
+            from .extension_health_monitor import get_extension_health_monitor
+            
+            extension_monitor = get_extension_health_monitor()
+            if not extension_monitor:
+                raise HTTPException(
+                    status_code=503, 
+                    detail="Extension health monitor not available"
+                )
+            
+            health = await extension_monitor.check_specific_extension_health(extension_name)
+            
+            if health["status"] == "not_found":
+                raise HTTPException(status_code=404, detail=f"Extension {extension_name} not found")
+            elif health["status"] in ["unhealthy", "error"]:
+                raise HTTPException(status_code=503, detail=health)
+            
+            return health
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error checking health for extension {extension_name}: {e}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to check extension health: {str(e)}"
+            )
+
+    @app.get("/api/health/extensions/recovery/status", tags=["system"])
+    async def extension_recovery_status():
+        """Get extension service recovery system status."""
+        try:
+            from .extension_service_recovery import get_extension_service_recovery_manager
+            
+            recovery_manager = get_extension_service_recovery_manager()
+            if not recovery_manager:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Extension service recovery manager not available"
+                )
+            
+            status = recovery_manager.get_recovery_status()
+            return status
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error getting extension recovery status: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to get recovery status: {str(e)}"
+            )
+
+    @app.get("/api/health/extensions/recovery/history", tags=["system"])
+    async def extension_recovery_history(hours: int = 24):
+        """Get extension service recovery history."""
+        try:
+            from .extension_service_recovery import get_extension_service_recovery_manager
+            
+            recovery_manager = get_extension_service_recovery_manager()
+            if not recovery_manager:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Extension service recovery manager not available"
+                )
+            
+            history = recovery_manager.get_recovery_history(hours)
+            return {
+                "history": history,
+                "hours": hours,
+                "total_recoveries": len(history)
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error getting extension recovery history: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to get recovery history: {str(e)}"
+            )
+
+    @app.post("/api/health/extensions/recovery/force/{service_name}", tags=["system"])
+    async def force_extension_recovery(service_name: str, strategy: str = None):
+        """Force a recovery attempt for a specific extension service."""
+        try:
+            from .extension_service_recovery import get_extension_service_recovery_manager, RecoveryStrategy
+            
+            recovery_manager = get_extension_service_recovery_manager()
+            if not recovery_manager:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Extension service recovery manager not available"
+                )
+            
+            # Parse strategy if provided
+            recovery_strategy = None
+            if strategy:
+                try:
+                    recovery_strategy = RecoveryStrategy(strategy)
+                except ValueError:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid recovery strategy: {strategy}. Valid strategies: {[s.value for s in RecoveryStrategy]}"
+                    )
+            
+            success = await recovery_manager.force_recovery(service_name, recovery_strategy)
+            
+            if success:
+                return {
+                    "message": f"Recovery queued for {service_name}",
+                    "service": service_name,
+                    "strategy": recovery_strategy.value if recovery_strategy else "auto",
+                    "status": "queued"
+                }
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Service {service_name} not found or cannot be recovered"
+                )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error forcing recovery for {service_name}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to force recovery: {str(e)}"
+            )
 
     @app.get("/api/status", tags=["system"])
     async def api_status():

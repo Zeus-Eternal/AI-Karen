@@ -254,6 +254,164 @@ class ModelMetadataService:
                     "checksum": "sha256:placeholder_checksum_for_validation",
                     "mirrors": []
                 }
+            },
+            # Additional popular models
+            "llama-2-7b-chat-q4": {
+                "id": "llama-2-7b-chat-q4",
+                "name": "Llama 2 7B Chat Q4_K_M",
+                "provider": "llama-cpp",
+                "size": 4000000000,
+                "description": "Meta's Llama 2 7B model fine-tuned for chat applications with Q4_K_M quantization.",
+                "capabilities": ["text-generation", "chat", "instruction-following", "local-inference"],
+                "metadata": ModelMetadata(
+                    parameters="7B",
+                    quantization="Q4_K_M",
+                    memory_requirement="~4GB",
+                    context_length=4096,
+                    license="Custom (Llama 2)",
+                    tags=["chat", "large", "high-quality", "quantized"],
+                    architecture="Llama",
+                    training_data="Custom mix of publicly available online data",
+                    performance_metrics={
+                        "inference_speed": "medium",
+                        "memory_efficiency": "medium",
+                        "quality_score": 0.85,
+                        "tokens_per_second": 15.0,
+                        "memory_usage_mb": 4096
+                    }
+                ),
+                "download_info": {
+                    "url": "https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q4_K_M.gguf",
+                    "filename": "llama-2-7b-chat.Q4_K_M.gguf",
+                    "checksum": "sha256:placeholder_checksum_for_validation",
+                    "mirrors": []
+                }
+            },
+            "mistral-7b-instruct-q4": {
+                "id": "mistral-7b-instruct-q4",
+                "name": "Mistral 7B Instruct Q4_K_M",
+                "provider": "llama-cpp",
+                "size": 4100000000,
+                "description": "Mistral AI's 7B parameter model optimized for instruction following.",
+                "capabilities": ["text-generation", "instruction-following", "chat", "local-inference"],
+                "metadata": ModelMetadata(
+                    parameters="7B",
+                    quantization="Q4_K_M",
+                    memory_requirement="~4GB",
+                    context_length=8192,
+                    license="Apache 2.0",
+                    tags=["instruct", "large", "efficient", "quantized"],
+                    architecture="Mistral",
+                    training_data="High-quality web data",
+                    performance_metrics={
+                        "inference_speed": "fast",
+                        "memory_efficiency": "high",
+                        "quality_score": 0.87,
+                        "tokens_per_second": 18.0,
+                        "memory_usage_mb": 4096
+                    }
+                ),
+                "download_info": {
+                    "url": "https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF/resolve/main/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+                    "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+                    "checksum": "sha256:placeholder_checksum_for_validation",
+                    "mirrors": []
+                }
+            },
+            "codellama-7b-instruct-q4": {
+                "id": "codellama-7b-instruct-q4",
+                "name": "Code Llama 7B Instruct Q4_K_M",
+                "provider": "llama-cpp",
+                "size": 4000000000,
+                "description": "Meta's Code Llama 7B model fine-tuned for code generation and instruction following.",
+                "capabilities": ["code-generation", "text-generation", "instruction-following", "local-inference"],
+                "metadata": ModelMetadata(
+                    parameters="7B",
+                    quantization="Q4_K_M",
+                    memory_requirement="~4GB",
+                    context_length=16384,
+                    license="Custom (Llama 2)",
+                    tags=["code", "instruct", "large", "quantized"],
+                    architecture="Llama",
+                    training_data="Code datasets + instruction tuning",
+                    performance_metrics={
+                        "inference_speed": "medium",
+                        "memory_efficiency": "medium",
+                        "code_quality": "high",
+                        "quality_score": 0.83,
+                        "tokens_per_second": 14.0,
+                        "memory_usage_mb": 4096
+                    }
+                ),
+                "download_info": {
+                    "url": "https://huggingface.co/TheBloke/CodeLlama-7B-Instruct-GGUF/resolve/main/codellama-7b-instruct.Q4_K_M.gguf",
+                    "filename": "codellama-7b-instruct.Q4_K_M.gguf",
+                    "checksum": "sha256:placeholder_checksum_for_validation",
+                    "mirrors": []
+                }
+            },
+            # Transformers models
+            "bert-base-uncased": {
+                "id": "bert-base-uncased",
+                "name": "BERT Base Uncased",
+                "provider": "transformers",
+                "size": 440000000,
+                "description": "Google's BERT model for text understanding and classification tasks.",
+                "capabilities": ["text-classification", "token-classification", "question-answering", "feature-extraction"],
+                "metadata": ModelMetadata(
+                    parameters="110M",
+                    quantization="None",
+                    memory_requirement="~1GB",
+                    context_length=512,
+                    license="Apache 2.0",
+                    tags=["bert", "classification", "understanding"],
+                    architecture="BERT",
+                    training_data="BooksCorpus + English Wikipedia",
+                    performance_metrics={
+                        "inference_speed": "fast",
+                        "memory_efficiency": "high",
+                        "quality_score": 0.80,
+                        "tokens_per_second": 100.0,
+                        "memory_usage_mb": 1024
+                    }
+                ),
+                "download_info": {
+                    "url": "https://huggingface.co/bert-base-uncased",
+                    "filename": "pytorch_model.bin",
+                    "checksum": "sha256:placeholder_checksum_for_validation",
+                    "mirrors": []
+                }
+            },
+            "distilbert-base-uncased": {
+                "id": "distilbert-base-uncased",
+                "name": "DistilBERT Base Uncased",
+                "provider": "transformers",
+                "size": 260000000,
+                "description": "A distilled version of BERT that is smaller, faster, and lighter while retaining 97% of BERT's performance.",
+                "capabilities": ["text-classification", "token-classification", "question-answering", "feature-extraction"],
+                "metadata": ModelMetadata(
+                    parameters="66M",
+                    quantization="None",
+                    memory_requirement="~512MB",
+                    context_length=512,
+                    license="Apache 2.0",
+                    tags=["distilbert", "classification", "efficient"],
+                    architecture="DistilBERT",
+                    training_data="Same as BERT (distilled)",
+                    performance_metrics={
+                        "inference_speed": "very_fast",
+                        "memory_efficiency": "very_high",
+                        "quality_score": 0.77,
+                        "tokens_per_second": 200.0,
+                        "memory_usage_mb": 512
+                    }
+                ),
+                "download_info": {
+                    "url": "https://huggingface.co/distilbert-base-uncased",
+                    "filename": "pytorch_model.bin",
+                    "checksum": "sha256:placeholder_checksum_for_validation",
+                    "mirrors": []
+                }
             }
         }
     

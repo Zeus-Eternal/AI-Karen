@@ -381,19 +381,19 @@ export default function ModelDetailsDialog({
                   </div>
                   <div>
                     <span className="text-sm text-muted-foreground">Parameters:</span>
-                    <span className="ml-2 font-medium">{model.metadata.parameters}</span>
+                    <span className="ml-2 font-medium">{model.metadata.parameters || 'N/A'}</span>
                   </div>
                   <div>
                     <span className="text-sm text-muted-foreground">Context Length:</span>
-                    <span className="ml-2 font-medium">{model.metadata.contextLength.toLocaleString()}</span>
+                    <span className="ml-2 font-medium">{model.metadata.contextLength?.toLocaleString() || 'N/A'}</span>
                   </div>
                   <div>
                     <span className="text-sm text-muted-foreground">Quantization:</span>
-                    <span className="ml-2 font-medium">{model.metadata.quantization}</span>
+                    <span className="ml-2 font-medium">{model.metadata.quantization || 'N/A'}</span>
                   </div>
                   <div>
                     <span className="text-sm text-muted-foreground">Memory Requirement:</span>
-                    <span className="ml-2 font-medium">{model.metadata.memoryRequirement}</span>
+                    <span className="ml-2 font-medium">{model.metadata.memoryRequirement || 'N/A'}</span>
                   </div>
                 </div>
 
@@ -404,28 +404,36 @@ export default function ModelDetailsDialog({
 
                 <div>
                   <span className="text-sm text-muted-foreground">License:</span>
-                  <Badge variant="outline" className="ml-2">{model.metadata.license}</Badge>
+                  <Badge variant="outline" className="ml-2">{model.metadata.license || 'N/A'}</Badge>
                 </div>
 
                 <div>
                   <span className="text-sm text-muted-foreground">Capabilities:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {model.capabilities.map(capability => (
-                      <Badge key={capability} variant="secondary" className="text-xs">
-                        {capability}
-                      </Badge>
-                    ))}
+                    {model.capabilities?.length > 0 ? (
+                      model.capabilities.map(capability => (
+                        <Badge key={capability} variant="secondary" className="text-xs">
+                          {capability}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No capabilities listed</span>
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <span className="text-sm text-muted-foreground">Tags:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {model.metadata.tags.map(tag => (
-                      <Badge key={tag} variant="outline" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
+                    {model.metadata?.tags?.length > 0 ? (
+                      model.metadata.tags.map(tag => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No tags available</span>
+                    )}
                   </div>
                 </div>
 
@@ -660,8 +668,8 @@ export default function ModelDetailsDialog({
                       <span className="font-medium capitalize">
                         {securityScan.overall_status} 
                         {securityScan.overall_status === 'passed' && ' - All Checks Passed'}
-                        {securityScan.overall_status === 'warning' && ` - ${securityScan.warnings.length} Warnings`}
-                        {securityScan.overall_status === 'failed' && ` - ${securityScan.errors.length} Errors`}
+                        {securityScan.overall_status === 'warning' && ` - ${securityScan.warnings?.length || 0} Warnings`}
+                        {securityScan.overall_status === 'failed' && ` - ${securityScan.errors?.length || 0} Errors`}
                       </span>
                     </div>
 
@@ -760,7 +768,7 @@ export default function ModelDetailsDialog({
                     </div>
 
                     {/* Warnings */}
-                    {securityScan.warnings.length > 0 && (
+                    {securityScan.warnings?.length > 0 && (
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-yellow-600">Warnings</h4>
                         {securityScan.warnings.map((warning, index) => (
@@ -773,7 +781,7 @@ export default function ModelDetailsDialog({
                     )}
 
                     {/* Errors */}
-                    {securityScan.errors.length > 0 && (
+                    {securityScan.errors?.length > 0 && (
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-red-600">Errors</h4>
                         {securityScan.errors.map((error, index) => (

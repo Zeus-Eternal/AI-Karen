@@ -106,18 +106,43 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
 
   // Runtime URL configuration with multi-endpoint support
   const runtimeUrl = useMemo(() => {
-    const baseUrl = configManager.getBackendUrl();
-    const assistEndpoint = config.endpoints.assist;
-    const fullUrl = `${baseUrl.replace(/\/+$/, "")}${assistEndpoint}`;
+    // Use the Next.js proxy instead of direct backend calls
+    const useProxy = (process.env.NEXT_PUBLIC_USE_PROXY ?? "true").toLowerCase() !== "false";
     
-    safeDebug('CopilotKit: Runtime URL configured:', {
-      baseUrl,
-      assistEndpoint,
-      fullUrl,
-      fallbackUrls: configManager.getFallbackUrls()
-    });
-    
-    return fullUrl;
+    if (useProxy) {
+      // Use the Next.js proxy route which forwards to the backend
+      const assistEndpoint = config.endpoints.assist;
+      
+      // Handle both client-side and server-side rendering
+      const origin = typeof window !== 'undefined' 
+        ? window.location.origin 
+        : ''; // Use relative URL for SSR
+      
+      const fullUrl = `${origin}${assistEndpoint}`;
+      
+      safeDebug('CopilotKit: Using proxy URL:', {
+        proxyUrl: fullUrl,
+        assistEndpoint,
+        origin,
+        isClient: typeof window !== 'undefined'
+      });
+      
+      return fullUrl;
+    } else {
+      // Direct backend URL (fallback)
+      const baseUrl = configManager.getBackendUrl();
+      const assistEndpoint = config.endpoints.assist;
+      const fullUrl = `${baseUrl.replace(/\/+$/, "")}${assistEndpoint}`;
+      
+      safeDebug('CopilotKit: Using direct backend URL:', {
+        baseUrl,
+        assistEndpoint,
+        fullUrl,
+        fallbackUrls: configManager.getFallbackUrls()
+      });
+      
+      return fullUrl;
+    }
   }, [configManager, config.endpoints.assist]);
 
   // Update config with current backend URLs
@@ -189,9 +214,9 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
       await triggerHooks('copilot_suggestion_request', {
         context,
         type,
-        userId: user?.user_id,
+        userId: user?.userId,
         timestamp: new Date().toISOString()
-      }, { userId: user?.user_id });
+      }, { userId: user?.userId });
 
       // Use unified API client with fallback support
       const response = await apiClient.post(config.endpoints.suggestions, {
@@ -199,7 +224,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         type,
         model: config.models.completion,
         features: config.features,
-        user_id: user?.user_id
+        user_id: user?.userId
       });
 
       return response.data.suggestions || [];
@@ -232,9 +257,9 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         code: code.substring(0, 100) + '...', // Truncate for logging
         language,
         type: 'analysis',
-        userId: user?.user_id,
+        userId: user?.userId,
         timestamp: new Date().toISOString()
-      }, { userId: user?.user_id });
+      }, { userId: user?.userId });
 
       // Use unified API client with fallback support
       const response = await apiClient.post(config.endpoints.analyze, {
@@ -242,7 +267,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         language,
         model: config.models.completion,
         analysisType: 'comprehensive',
-        user_id: user?.user_id
+        user_id: user?.userId
       });
 
       return response.data.analysis || response.data;
@@ -275,9 +300,9 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         code: code.substring(0, 100) + '...', // Truncate for logging
         language,
         type: 'documentation',
-        userId: user?.user_id,
+        userId: user?.userId,
         timestamp: new Date().toISOString()
-      }, { userId: user?.user_id });
+      }, { userId: user?.userId });
 
       // Use unified API client with fallback support
       const response = await apiClient.post(config.endpoints.docs, {
@@ -285,7 +310,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
         language,
         model: config.models.completion,
         style: 'comprehensive',
-        user_id: user?.user_id
+        user_id: user?.userId
       });
 
       return response.data.documentation || response.data;
@@ -320,7 +345,7 @@ export const CopilotKitProvider: React.FC<CopilotKitProviderProps> = ({
     runtimeUrl: runtimeUrl,
     headers: {
       'Content-Type': 'application/json',
-      ...(user?.user_id && { 'X-User-ID': user.user_id }),
+      ...(user?.userId && { 'X-User-ID': user.userId }),
       ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` })
     },
     // Add other CopilotKit configuration as needed

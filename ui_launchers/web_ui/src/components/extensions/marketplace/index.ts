@@ -1,1 +1,2 @@
-// Extension marketplace components will be added in future revisions.
+// Extension marketplace components
+export { default as ExtensionMarketplace } from './ExtensionMarketplace';

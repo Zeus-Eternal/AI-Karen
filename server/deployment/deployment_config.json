@@ -1,0 +1,64 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "user": "postgres",
+    "password": "",
+    "database": "kari"
+  },
+  "config_dir": "config",
+  "deployment": {
+    "max_update_time_minutes": 30,
+    "health_check_interval_seconds": 10,
+    "rollback_threshold_failures": 3,
+    "grace_period_seconds": 30,
+    "log_file": "deployment_logs/update_log.json"
+  },
+  "monitoring": {
+    "enabled": true,
+    "success_rate_threshold": 0.95,
+    "response_time_threshold_ms": 1000,
+    "error_rate_threshold": 0.05,
+    "check_interval_seconds": 60,
+    "alerts_file": "deployment_logs/auth_alerts.json",
+    "email_alerts": {
+      "enabled": false,
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "use_tls": true,
+      "from_address": "alerts@example.com",
+      "to_addresses": ["admin@example.com"],
+      "username": "alerts@example.com",
+      "password": "app_password"
+    },
+    "webhook_alerts": {
+      "enabled": false,
+      "url": "https://hooks.example.com/webhook"
+    },
+    "slack_alerts": {
+      "enabled": false,
+      "webhook_url": "https://hooks.slack.com/services/..."
+    }
+  },
+  "jwt_secret_key": "your-secret-key-change-in-production-minimum-32-characters",
+  "environments": {
+    "development": {
+      "jwt_secret_key": "dev-secret-key-for-testing-only",
+      "token_expiry_minutes": 1440,
+      "rate_limiting_enabled": false,
+      "audit_logging": false
+    },
+    "staging": {
+      "jwt_secret_key": "staging-secret-key-change-me",
+      "token_expiry_minutes": 120,
+      "rate_limiting_enabled": true,
+      "audit_logging": true
+    },
+    "production": {
+      "jwt_secret_key": "production-secret-key-must-be-secure",
+      "token_expiry_minutes": 60,
+      "rate_limiting_enabled": true,
+      "audit_logging": true
+    }
+  }
+}

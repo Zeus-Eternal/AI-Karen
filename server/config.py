@@ -42,7 +42,10 @@ required_env_vars = {
     "AUTH_DATABASE_URL": "postgresql+asyncpg://karen_user:karen_secure_pass_change_me@localhost:5432/ai_karen",
     # Provide a dev-friendly default with password to avoid AUTH warnings.
     # Override in your environment for real deployments.
-    "REDIS_URL": "redis://:dev-redis-pass@localhost:6379/0"
+    "REDIS_URL": "redis://:dev-redis-pass@localhost:6379/0",
+    # Extension authentication defaults for development
+    "EXTENSION_SECRET_KEY": "dev-extension-secret-key-change-in-production",
+    "EXTENSION_API_KEY": "dev-extension-api-key-change-in-production"
 }
 
 if RUNTIME_ENV in {"development", "dev", "local", "test", "testing"}:
@@ -138,6 +141,184 @@ class Settings(BaseSettings):
     # Graceful Shutdown Configuration
     shutdown_timeout: int = Field(default=30, env="SHUTDOWN_TIMEOUT")  # seconds
     enable_graceful_shutdown: bool = Field(default=True, env="ENABLE_GRACEFUL_SHUTDOWN")
+    
+    # Extension Authentication Configuration (Requirements 8.1, 8.2, 8.3, 8.4, 8.5)
+    extension_auth_enabled: bool = Field(default=True, env="EXTENSION_AUTH_ENABLED")
+    extension_secret_key: str = Field(
+        default="dev-extension-secret-key-change-in-production",
+        env="EXTENSION_SECRET_KEY"
+    )
+    extension_jwt_algorithm: str = Field(default="HS256", env="EXTENSION_JWT_ALGORITHM")
+    extension_access_token_expire_minutes: int = Field(
+        default=60, 
+        env="EXTENSION_ACCESS_TOKEN_EXPIRE_MINUTES"
+    )  # 1 hour for extension tokens
+    extension_service_token_expire_minutes: int = Field(
+        default=30,
+        env="EXTENSION_SERVICE_TOKEN_EXPIRE_MINUTES"
+    )  # 30 minutes for service-to-service tokens
+    extension_api_key: str = Field(
+        default="dev-extension-api-key-change-in-production",
+        env="EXTENSION_API_KEY"
+    )
+    
+    # Extension Authentication Mode (development/hybrid/strict)
+    extension_auth_mode: str = Field(default="hybrid", env="EXTENSION_AUTH_MODE")
+    extension_dev_bypass_enabled: bool = Field(default=True, env="EXTENSION_DEV_BYPASS_ENABLED")
+    extension_require_https: bool = Field(default=False, env="EXTENSION_REQUIRE_HTTPS")
+    
+    # Extension Permission Configuration
+    extension_default_permissions: str = Field(
+        default="extension:read,extension:write",
+        env="EXTENSION_DEFAULT_PERMISSIONS"
+    )
+    extension_admin_permissions: str = Field(
+        default="extension:*",
+        env="EXTENSION_ADMIN_PERMISSIONS"
+    )
+    extension_service_permissions: str = Field(
+        default="extension:background_tasks,extension:health",
+        env="EXTENSION_SERVICE_PERMISSIONS"
+    )
+    
+    # Extension Rate Limiting
+    extension_rate_limit_per_minute: int = Field(default=100, env="EXTENSION_RATE_LIMIT_PER_MINUTE")
+    extension_burst_limit: int = Field(default=20, env="EXTENSION_BURST_LIMIT")
+    extension_enable_rate_limiting: bool = Field(default=True, env="EXTENSION_ENABLE_RATE_LIMITING")
+    
+    # Extension Security Settings
+    extension_token_blacklist_enabled: bool = Field(default=True, env="EXTENSION_TOKEN_BLACKLIST_ENABLED")
+    extension_max_failed_attempts: int = Field(default=5, env="EXTENSION_MAX_FAILED_ATTEMPTS")
+    extension_lockout_duration_minutes: int = Field(default=15, env="EXTENSION_LOCKOUT_DURATION_MINUTES")
+    extension_audit_logging_enabled: bool = Field(default=True, env="EXTENSION_AUDIT_LOGGING_ENABLED")
+    
+    # Extension Environment-Specific Settings
+    extension_development_mode: bool = Field(
+        default=RUNTIME_ENV in {"development", "dev", "local", "test", "testing"},
+        env="EXTENSION_DEVELOPMENT_MODE"
+    )
+    extension_staging_mode: bool = Field(
+        default=RUNTIME_ENV in {"staging", "stage"},
+        env="EXTENSION_STAGING_MODE"
+    )
+    extension_production_mode: bool = Field(
+        default=RUNTIME_ENV in {"production", "prod"},
+        env="EXTENSION_PRODUCTION_MODE"
+    )
+
+    def validate_extension_auth_config(self) -> bool:
+        """Validate extension authentication configuration."""
+        errors = []
+        
+        # Validate secret keys in production
+        if self.extension_production_mode:
+            if self.extension_secret_key == "dev-extension-secret-key-change-in-production":
+                errors.append("EXTENSION_SECRET_KEY must be changed in production")
+            
+            if self.extension_api_key == "dev-extension-api-key-change-in-production":
+                errors.append("EXTENSION_API_KEY must be changed in production")
+            
+            if not self.extension_require_https:
+                errors.append("EXTENSION_REQUIRE_HTTPS should be enabled in production")
+        
+        # Validate auth mode
+        valid_auth_modes = ["development", "hybrid", "strict"]
+        if self.extension_auth_mode not in valid_auth_modes:
+            errors.append(f"EXTENSION_AUTH_MODE must be one of: {valid_auth_modes}")
+        
+        # Validate JWT algorithm
+        valid_algorithms = ["HS256", "HS384", "HS512", "RS256", "RS384", "RS512"]
+        if self.extension_jwt_algorithm not in valid_algorithms:
+            errors.append(f"EXTENSION_JWT_ALGORITHM must be one of: {valid_algorithms}")
+        
+        # Validate token expiration times
+        if self.extension_access_token_expire_minutes <= 0:
+            errors.append("EXTENSION_ACCESS_TOKEN_EXPIRE_MINUTES must be positive")
+        
+        if self.extension_service_token_expire_minutes <= 0:
+            errors.append("EXTENSION_SERVICE_TOKEN_EXPIRE_MINUTES must be positive")
+        
+        # Validate rate limiting settings
+        if self.extension_rate_limit_per_minute <= 0:
+            errors.append("EXTENSION_RATE_LIMIT_PER_MINUTE must be positive")
+        
+        if self.extension_burst_limit <= 0:
+            errors.append("EXTENSION_BURST_LIMIT must be positive")
+        
+        # Log validation results
+        if errors:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error("Extension authentication configuration validation failed:")
+            for error in errors:
+                logger.error(f"  - {error}")
+            return False
+        
+        return True
+    
+    def get_extension_auth_config(self) -> dict:
+        """Get extension authentication configuration as a dictionary."""
+        return {
+            "enabled": self.extension_auth_enabled,
+            "secret_key": self.extension_secret_key,
+            "algorithm": self.extension_jwt_algorithm,
+            "access_token_expire_minutes": self.extension_access_token_expire_minutes,
+            "service_token_expire_minutes": self.extension_service_token_expire_minutes,
+            "api_key": self.extension_api_key,
+            "auth_mode": self.extension_auth_mode,
+            "dev_bypass_enabled": self.extension_dev_bypass_enabled,
+            "require_https": self.extension_require_https,
+            "default_permissions": self.extension_default_permissions.split(","),
+            "admin_permissions": self.extension_admin_permissions.split(","),
+            "service_permissions": self.extension_service_permissions.split(","),
+            "rate_limit_per_minute": self.extension_rate_limit_per_minute,
+            "burst_limit": self.extension_burst_limit,
+            "enable_rate_limiting": self.extension_enable_rate_limiting,
+            "token_blacklist_enabled": self.extension_token_blacklist_enabled,
+            "max_failed_attempts": self.extension_max_failed_attempts,
+            "lockout_duration_minutes": self.extension_lockout_duration_minutes,
+            "audit_logging_enabled": self.extension_audit_logging_enabled,
+            "development_mode": self.extension_development_mode,
+            "staging_mode": self.extension_staging_mode,
+            "production_mode": self.extension_production_mode,
+        }
+    
+    def get_environment_specific_extension_config(self) -> dict:
+        """Get environment-specific extension configuration."""
+        base_config = self.get_extension_auth_config()
+        
+        if self.extension_development_mode:
+            # Development-specific overrides
+            base_config.update({
+                "dev_bypass_enabled": True,
+                "require_https": False,
+                "rate_limit_per_minute": 1000,  # Higher limits for development
+                "burst_limit": 100,
+                "max_failed_attempts": 10,
+                "lockout_duration_minutes": 1,  # Shorter lockout for development
+            })
+        elif self.extension_staging_mode:
+            # Staging-specific overrides
+            base_config.update({
+                "dev_bypass_enabled": False,
+                "require_https": True,
+                "rate_limit_per_minute": 200,
+                "burst_limit": 30,
+                "max_failed_attempts": 5,
+                "lockout_duration_minutes": 10,
+            })
+        elif self.extension_production_mode:
+            # Production-specific overrides
+            base_config.update({
+                "dev_bypass_enabled": False,
+                "require_https": True,
+                "rate_limit_per_minute": 100,
+                "burst_limit": 20,
+                "max_failed_attempts": 3,
+                "lockout_duration_minutes": 30,
+            })
+        
+        return base_config
 
     if isinstance(SettingsConfigDict, type):
         model_config = SettingsConfigDict(

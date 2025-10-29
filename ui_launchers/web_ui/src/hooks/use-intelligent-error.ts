@@ -118,10 +118,7 @@ export function useIntelligentError(options: UseIntelligentErrorOptions = {}): U
         '/api/error-response/analyze',
         request,
         {
-          // Add abort signal if the API client supports it
-          headers: {
-            'X-Request-ID': `error-analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          },
+          'X-Request-ID': `error-analysis-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         }
       );
 
@@ -130,9 +127,9 @@ export function useIntelligentError(options: UseIntelligentErrorOptions = {}): U
         return;
       }
 
-      setAnalysis(response.data);
+      setAnalysis(response);
       setRetryCount(0);
-      onAnalysisComplete?.(response.data);
+      onAnalysisComplete?.(response);
 
     } catch (err: any) {
       // Check if request was aborted

@@ -3,10 +3,13 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ModelSelector, EnhancedModelSelector } from "@/components/chat";
+import { ModelSelector, EnhancedModelSelector as ChatEnhancedModelSelector } from "@/components/chat";
+import EnhancedModelSelector from "@/components/models/EnhancedModelSelector";
+import { Model } from "@/lib/model-utils";
 
 export default function ModelSelectorTestPage() {
   const [selectedModel, setSelectedModel] = useState<string>("");
+  const [intelligentSelectedModel, setIntelligentSelectedModel] = useState<Model | null>(null);
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -83,7 +86,7 @@ export default function ModelSelectorTestPage() {
               <CardTitle className="text-lg">Enhanced Model Selector</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <EnhancedModelSelector
+              <ChatEnhancedModelSelector
                 value={selectedModel}
                 onValueChange={setSelectedModel}
                 placeholder="Choose a model..."
@@ -99,6 +102,38 @@ export default function ModelSelectorTestPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Intelligent Model Selector */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">🧠 Intelligent Model Selector</CardTitle>
+            <p className="text-muted-foreground">
+              Priority-based model selection: Last selected → Default → First available
+            </p>
+          </CardHeader>
+          <CardContent>
+            <EnhancedModelSelector
+              preferLocal={true}
+              showStats={true}
+              showActions={true}
+              onModelChange={(model) => {
+                setIntelligentSelectedModel(model);
+                console.log('Intelligent selector chose:', model);
+              }}
+              className="w-full"
+            />
+            
+            {intelligentSelectedModel && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-medium text-blue-900">Currently Selected Model</h4>
+                <p className="text-blue-800">{intelligentSelectedModel.name}</p>
+                <p className="text-sm text-blue-600 mt-1">
+                  ID: {intelligentSelectedModel.id} | Provider: {intelligentSelectedModel.provider}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Features List */}
         <Card>
@@ -128,6 +163,20 @@ export default function ModelSelectorTestPage() {
                   <li>• Model metadata display (size, params, etc.)</li>
                   <li>• Keyboard navigation support</li>
                   <li>• Accessible with screen readers</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">🧠 Intelligent Selection Features</h4>
+                <ul className="text-sm space-y-1 text-muted-foreground">
+                  <li>• Priority-based model selection logic</li>
+                  <li>• Remembers last selected model</li>
+                  <li>• Respects user-defined default model</li>
+                  <li>• Smart fallback to first available model</li>
+                  <li>• Preference for local models</li>
+                  <li>• Real-time model readiness checking</li>
+                  <li>• Automatic preference persistence</li>
+                  <li>• Model selection statistics</li>
                 </ul>
               </div>
             </div>

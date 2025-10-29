@@ -1,109 +1,176 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Model, ModelLibraryResponse } from '@/lib/model-utils';
+import { Model } from '@/lib/model-utils';
+import { modelSelectionService, ModelSelectionResult } from '@/lib/model-selection-service';
 import { getKarenBackend } from '@/lib/karen-backend';
-import { safeError } from '@/lib/safe-console';
+import { safeError, safeLog } from '@/lib/safe-console';
 
 interface UseModelSelectionOptions {
-  autoSelectFirst?: boolean;
+  autoSelect?: boolean;
   preferLocal?: boolean;
   filterByCapability?: string;
+  onModelSelected?: (model: Model | null, reason: string) => void;
 }
 
 interface UseModelSelectionReturn {
   models: Model[];
   selectedModel: string | null;
+  selectedModelInfo: Model | null;
   setSelectedModel: (modelId: string | null) => void;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
   getSelectedModelInfo: () => Model | null;
+  selectionReason: string | null;
+  isModelReady: boolean;
+  setAsDefault: () => Promise<void>;
 }
 
 /**
- * Hook for managing model selection state and data fetching
+ * Enhanced hook for managing model selection with intelligent priority-based selection
+ * 
+ * Priority order:
+ * 1. Last selected model (from user preferences)
+ * 2. Default model (from configuration) 
+ * 3. First available model (with preference logic)
  */
 export function useModelSelection(options: UseModelSelectionOptions = {}): UseModelSelectionReturn {
-  const { autoSelectFirst = false, preferLocal = true, filterByCapability } = options;
+  const { 
+    autoSelect = true, 
+    preferLocal = true, 
+    filterByCapability,
+    onModelSelected 
+  } = options;
   
   const [models, setModels] = useState<Model[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [selectedModel, setSelectedModelState] = useState<string | null>(null);
+  const [selectedModelInfo, setSelectedModelInfo] = useState<Model | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectionReason, setSelectionReason] = useState<string | null>(null);
+  const [isModelReady, setIsModelReady] = useState(false);
 
-  const fetchModels = useCallback(async () => {
+  const performModelSelection = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       setError(null);
       
-      const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic<ModelLibraryResponse>('/api/models/library');
+      const result: ModelSelectionResult = await modelSelectionService.selectOptimalModel({
+        filterByCapability,
+        preferLocal,
+        forceRefresh
+      });
       
-      let filteredModels = response.models || [];
+      setModels(result.availableModels);
       
-      // Filter by capability if specified
-      if (filterByCapability) {
-        filteredModels = filteredModels.filter(model => 
-          model.capabilities.includes(filterByCapability)
-        );
-      }
-      
-      setModels(filteredModels);
-      
-      // Auto-select first model if requested and no model is currently selected
-      if (autoSelectFirst && !selectedModel && filteredModels.length > 0) {
-        let modelToSelect = filteredModels[0];
+      if (result.selectedModel) {
+        setSelectedModelState(result.selectedModel.id);
+        setSelectedModelInfo(result.selectedModel);
+        setSelectionReason(result.selectionReason);
+        setIsModelReady(await modelSelectionService.isModelReady(result.selectedModel.id));
         
-        // Prefer local models if available
-        if (preferLocal) {
-          const localModel = filteredModels.find(m => m.status === 'local');
-          if (localModel) {
-            modelToSelect = localModel;
-          }
-        }
+        // Update last selected model in preferences
+        await modelSelectionService.updateLastSelectedModel(result.selectedModel.id);
         
-        setSelectedModel(modelToSelect.id);
+        // Notify callback
+        onModelSelected?.(result.selectedModel, result.selectionReason);
+        
+        safeLog('Model selected:', {
+          id: result.selectedModel.id,
+          name: result.selectedModel.name,
+          reason: result.selectionReason,
+          ready: isModelReady
+        });
+      } else {
+        setSelectedModelState(null);
+        setSelectedModelInfo(null);
+        setSelectionReason('none_available');
+        setIsModelReady(false);
+        
+        onModelSelected?.(null, 'none_available');
       }
       
     } catch (err) {
-      safeError('Failed to fetch models:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch models');
+      safeError('Failed to perform model selection:', err);
+      setError(err instanceof Error ? err.message : 'Failed to select model');
     } finally {
       setLoading(false);
     }
-  }, [autoSelectFirst, selectedModel, preferLocal, filterByCapability]);
+  }, [filterByCapability, preferLocal, onModelSelected]);
+
+  const setSelectedModel = useCallback(async (modelId: string | null) => {
+    if (modelId) {
+      const model = await modelSelectionService.getModelById(modelId);
+      if (model) {
+        setSelectedModelState(modelId);
+        setSelectedModelInfo(model);
+        setSelectionReason('user_selected');
+        setIsModelReady(await modelSelectionService.isModelReady(modelId));
+        
+        // Update last selected model in preferences
+        await modelSelectionService.updateLastSelectedModel(modelId);
+        
+        onModelSelected?.(model, 'user_selected');
+        
+        safeLog('User selected model:', modelId);
+      } else {
+        safeError('Model not found:', modelId);
+      }
+    } else {
+      setSelectedModelState(null);
+      setSelectedModelInfo(null);
+      setSelectionReason(null);
+      setIsModelReady(false);
+      
+      onModelSelected?.(null, 'user_deselected');
+    }
+  }, [onModelSelected]);
 
   const refresh = useCallback(async () => {
-    await fetchModels();
-  }, [fetchModels]);
+    modelSelectionService.clearCache();
+    await performModelSelection(true);
+  }, [performModelSelection]);
 
   const getSelectedModelInfo = useCallback((): Model | null => {
-    if (!selectedModel) return null;
-    return models.find(model => model.id === selectedModel) || null;
-  }, [selectedModel, models]);
+    return selectedModelInfo;
+  }, [selectedModelInfo]);
 
-  // Initial fetch
+  const setAsDefault = useCallback(async () => {
+    if (selectedModel) {
+      await modelSelectionService.setDefaultModel(selectedModel);
+      safeLog('Set as default model:', selectedModel);
+    }
+  }, [selectedModel]);
+
+  // Initial model selection
   useEffect(() => {
-    fetchModels();
-  }, [fetchModels]);
+    if (autoSelect) {
+      performModelSelection();
+    }
+  }, [autoSelect, performModelSelection]);
 
   // Validate selected model still exists after model list updates
   useEffect(() => {
     if (selectedModel && models.length > 0) {
       const modelExists = models.some(model => model.id === selectedModel);
       if (!modelExists) {
-        setSelectedModel(null);
+        safeLog('Selected model no longer available, reselecting...');
+        performModelSelection();
       }
     }
-  }, [selectedModel, models]);
+  }, [selectedModel, models, performModelSelection]);
 
   return {
     models,
     selectedModel,
+    selectedModelInfo,
     setSelectedModel,
     loading,
     error,
     refresh,
     getSelectedModelInfo,
+    selectionReason,
+    isModelReady,
+    setAsDefault,
   };
 }
 
@@ -113,12 +180,12 @@ export function useModelSelection(options: UseModelSelectionOptions = {}): UseMo
 export function useModelActions() {
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   
-  const downloadModel = useCallback(async (modelId: string) => {
+  const downloadModel = useCallback(async (modelId: string): Promise<void> => {
     try {
       setActionLoading(prev => ({ ...prev, [modelId]: true }));
       
       const backend = getKarenBackend();
-      await backend.makeRequestPublic(`/api/models/${modelId}/download`, {
+      await backend.makeRequestPublic<void>(`/api/models/${modelId}/download`, {
         method: 'POST',
       });
       
@@ -132,12 +199,12 @@ export function useModelActions() {
     }
   }, []);
 
-  const removeModel = useCallback(async (modelId: string) => {
+  const removeModel = useCallback(async (modelId: string): Promise<void> => {
     try {
       setActionLoading(prev => ({ ...prev, [modelId]: true }));
       
       const backend = getKarenBackend();
-      await backend.makeRequestPublic(`/api/models/${modelId}`, {
+      await backend.makeRequestPublic<void>(`/api/models/${modelId}`, {
         method: 'DELETE',
       });
       
@@ -149,10 +216,10 @@ export function useModelActions() {
     }
   }, []);
 
-  const getModelInfo = useCallback(async (modelId: string) => {
+  const getModelInfo = useCallback(async (modelId: string): Promise<Model> => {
     try {
       const backend = getKarenBackend();
-      const response = await backend.makeRequestPublic(`/api/models/${modelId}`);
+      const response = await backend.makeRequestPublic<Model>(`/api/models/${modelId}`);
       return response;
     } catch (err) {
       safeError('Failed to get model info:', err);

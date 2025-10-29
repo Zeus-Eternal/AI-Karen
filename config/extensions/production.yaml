@@ -1,0 +1,65 @@
+# Extension Authentication Configuration - Production Environment
+# This file contains production-specific settings for extension authentication
+
+# Authentication settings
+auth_enabled: true
+jwt_algorithm: "HS256"
+access_token_expire_minutes: 60  # 1 hour
+service_token_expire_minutes: 30  # 30 minutes
+
+# Security settings (strict for production)
+auth_mode: "strict"  # Strict authentication mode
+dev_bypass_enabled: false  # No development bypasses
+require_https: true  # Require HTTPS
+token_blacklist_enabled: true
+max_failed_attempts: 3  # Strict security
+lockout_duration_minutes: 30  # 30 minute lockout
+audit_logging_enabled: true
+
+# Rate limiting (conservative for production)
+rate_limit_per_minute: 100
+burst_limit: 20
+enable_rate_limiting: true
+
+# Permissions (minimal by default)
+default_permissions:
+  - "extension:read"
+admin_permissions:
+  - "extension:*"
+service_permissions:
+  - "extension:background_tasks"
+  - "extension:health"
+
+# Health monitoring
+health_check_enabled: true
+health_check_interval_seconds: 30  # Check every 30 seconds
+health_check_timeout_seconds: 5
+
+# Logging (minimal for production)
+log_level: "INFO"
+enable_debug_logging: false  # No debug logging in production
+log_sensitive_data: false  # Never log sensitive data in production
+
+# Production-specific features
+production_features:
+  monitoring: true
+  alerting: true
+  backup: true
+  high_availability: true
+  
+# Security hardening
+security_hardening:
+  strict_cors: true
+  security_headers: true
+  request_validation: true
+  ip_whitelisting: false  # Configure as needed
+  
+# Performance optimization
+performance:
+  connection_pooling: true
+  caching: true
+  compression: true
+  
+# Note: Sensitive credentials (secret_key, api_key) are stored securely
+# and loaded automatically from the credential manager
+# In production, ensure these are rotated regularly

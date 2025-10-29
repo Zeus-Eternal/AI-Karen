@@ -121,6 +121,7 @@ torchaudio = "^2.4.0"
 [tool.poetry.scripts]
 # Adjust these to the real entrypoints if you want CLI commands
 karen-server = "ai_karen_engine.core.gateway.app:main"
+kari-ext = "src.extensions.cli.main:main"
 
 [tool.poetry.group.dev.dependencies]
 

@@ -327,8 +327,8 @@ services:
       # Bind-mount project into the container so the runtime sees the source files
       # NOTE: must be writable so Docker can create mountpoints under /app (for example /app/backups)
       - "./:/app:rw"
-      # Model storage volume
-      - models_data:/app/models
+      # Model storage - bind mount to access all local models
+      - "./models:/app/models:rw"
       # Configuration volume
       - ./config:/app/config:ro
       # Logs volume
@@ -358,7 +358,7 @@ services:
       - ai-karen-net
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Web UI (Next.js dev server on :8020, exposed on :8010)
+  # Web UI (Next.js dev server on :8010, exposed on :8010)
   # ────────────────────────────────────────────────────────────────────────────
   web:
     container_name: ai-karen-web
@@ -370,20 +370,26 @@ services:
       NODE_ENV: development
       # Avoid Tailwind JIT timing logs (console.time/console.timeEnd label warnings)
       DEBUG: -tailwindcss
-      # Suppress Node.js warnings
-      NODE_OPTIONS: --no-warnings
+      # Increase Node.js heap size and suppress warnings
+      NODE_OPTIONS: --max-old-space-size=4096 --no-warnings
       # Server-side (inside container) should call the API service directly
       KAREN_BACKEND_URL: http://api:8000
       # Client-side (browser) should call the backend directly
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
       NEXT_PUBLIC_KAREN_BACKEND_URL: http://localhost:8000
     ports:
-      - "8010:8000"
+      - "8010:8010"
     volumes:
       - ./ui_launchers/web_ui:/app
       - ./.env.local:/app/.env.local:ro
       - node_modules_cache:/app/node_modules
-    command: sh -c "rm -rf /app/node_modules/.cache && npm install && npm run dev"
+    command: sh -c "rm -rf /app/node_modules/.cache && npm install && npx next dev -p 8010"
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 2G
     depends_on:
       api:
         condition: service_healthy

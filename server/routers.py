@@ -30,6 +30,7 @@ from ai_karen_engine.api_routes.code_execution_routes import router as code_exec
 from ai_karen_engine.api_routes.conversation_routes import router as conversation_router
 from ai_karen_engine.api_routes.copilot_routes import router as copilot_router
 from ai_karen_engine.api_routes.events import router as events_router
+from ai_karen_engine.api_routes.extensions import router as extensions_router
 from ai_karen_engine.api_routes.file_attachment_routes import router as file_attachment_router
 from ai_karen_engine.api_routes.memory_routes import router as memory_router
 from ai_karen_engine.api_routes.plugin_routes import router as plugin_router
@@ -57,6 +58,29 @@ from ai_karen_engine.api_routes.provider_compatibility_routes import router as p
 from ai_karen_engine.api_routes.model_orchestrator_routes import router as model_orchestrator_router
 from ai_karen_engine.api_routes.validation_metrics_routes import router as validation_metrics_router
 from ai_karen_engine.api_routes.performance_routes import router as performance_routes
+from ai_karen_engine.api_routes.model_organization_routes import router as model_organization_router
+
+# Multi-modal and AI enhancement routes
+try:
+    from ai_karen_engine.api_routes.multimodal_routes import router as multimodal_router
+    from ai_karen_engine.api_routes.ai_routes import router as ai_enhancement_router
+    MULTIMODAL_AVAILABLE = True
+    logger.info("✅ Multi-modal and AI enhancement routers imported successfully")
+except ImportError as e:
+    multimodal_router = None
+    ai_enhancement_router = None
+    MULTIMODAL_AVAILABLE = False
+    logger.warning(f"🚫 Multi-modal routes not available: {e}")
+
+# Extension monitoring system
+try:
+    from .extension_monitoring_api import monitoring_router
+    EXTENSION_MONITORING_AVAILABLE = True
+    logger.info("✅ Extension monitoring router imported successfully")
+except ImportError as e:
+    monitoring_router = None
+    EXTENSION_MONITORING_AVAILABLE = False
+    logger.warning(f"🚫 Extension monitoring not available: {e}")
 
 
 def wire_routers(app: FastAPI, settings: Settings) -> None:
@@ -120,8 +144,10 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(plugin_router, prefix="/api/plugins", tags=["plugins"])
     app.include_router(plugin_public_router, tags=["plugins-public"])
     app.include_router(tool_router, prefix="/api/tools", tags=["tools"])
-    # Temporarily disable audit router to prevent infinite loop
-    # app.include_router(audit_router, prefix="/api/audit", tags=["audit"])
+    # Audit router enabled
+    app.include_router(audit_router, prefix="/api/audit", tags=["audit"])
+    # Extensions router
+    app.include_router(extensions_router, prefix="/api/extensions", tags=["extensions"])
     app.include_router(file_attachment_router, prefix="/api/files", tags=["files"])
     app.include_router(code_execution_router, prefix="/api/code", tags=["code"])
     app.include_router(chat_runtime_router, prefix="/api", tags=["chat-runtime"])
@@ -153,4 +179,23 @@ def wire_routers(app: FastAPI, settings: Settings) -> None:
     app.include_router(model_orchestrator_router, tags=["model-orchestrator"])
     app.include_router(validation_metrics_router, tags=["validation-metrics"])
     app.include_router(performance_routes, prefix="/api/performance", tags=["performance"])
+    app.include_router(model_organization_router, tags=["model-organization"])
     app.include_router(settings_router)
+    
+    # Multi-modal and AI enhancement routes
+    if MULTIMODAL_AVAILABLE:
+        if multimodal_router:
+            app.include_router(multimodal_router, tags=["multimodal"])
+            logger.info("🎨 Multi-modal router loaded successfully")
+        if ai_enhancement_router:
+            app.include_router(ai_enhancement_router, tags=["ai-enhancement"])
+            logger.info("🧠 AI enhancement router loaded successfully")
+    else:
+        logger.warning("🚫 Multi-modal and AI enhancement routes not available")
+    
+    # Extension monitoring system
+    if EXTENSION_MONITORING_AVAILABLE and monitoring_router:
+        app.include_router(monitoring_router, tags=["extension-monitoring"])
+        logger.info("📊 Extension monitoring router loaded successfully")
+    else:
+        logger.warning("🚫 Extension monitoring router not available")

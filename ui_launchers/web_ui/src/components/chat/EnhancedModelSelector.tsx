@@ -27,7 +27,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Brain,
@@ -40,11 +39,8 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
-  Settings,
   MoreVertical,
   Trash2,
-  Play,
-  Pause,
   Info,
   ExternalLink,
 } from "lucide-react";
@@ -112,7 +108,7 @@ const getProviderIcon = (provider: string) => {
   }
 };
 
-const getStatusIcon = (status: string, downloadProgress?: number) => {
+const getStatusIcon = (status: string) => {
   switch (status) {
     case "local":
       return <CheckCircle className="h-3 w-3 text-green-500" />;
@@ -264,21 +260,59 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
     }
   };
 
-  // Group models by status and provider
+  // Filter and group models - only show usable chat models
   const groupedModels = React.useMemo(() => {
     const groups: Record<string, ModelInfo[]> = {
       local: [],
-      available: [],
       downloading: [],
     };
 
-    models.forEach((model) => {
+    // Filter to only include usable models for chat
+    const usableModels = models.filter((model) => {
+      // Only show local and downloading models (not "available" which aren't downloaded yet)
+      if (!['local', 'downloading'].includes(model.status)) {
+        return false;
+      }
+      
+      // Filter out directory entries and invalid models
+      const name = model.name || '';
+      const provider = model.provider || '';
+      
+      // Skip empty names, directory-like entries, or cache directories
+      if (!name.trim() || 
+          name === 'metadata_cache' || 
+          name === 'downloads' || 
+          name === 'llama-cpp' ||
+          name === 'TinyLlama' ||
+          name === 'TinyLlama-1.1B-Chat-v1.0' ||
+          // Skip transformers models that are just directories without actual model files
+          (provider === 'transformers' && !name.includes('chat') && !name.includes('instruct') && !name.includes('conversation'))) {
+        return false;
+      }
+      
+      // Only include models that are likely to be chat-capable
+      const isLikelyChatModel = 
+        name.toLowerCase().includes('chat') ||
+        name.toLowerCase().includes('instruct') ||
+        name.toLowerCase().includes('conversation') ||
+        name.toLowerCase().includes('assistant') ||
+        // GGUF files from llama-cpp are typically chat models
+        (provider === 'llama-cpp' && name.endsWith('.gguf')) ||
+        // Check capabilities if available
+        (model.capabilities && model.capabilities.some(cap => 
+          cap.includes('chat') || cap.includes('text-generation') || cap.includes('conversation')
+        ));
+      
+      return isLikelyChatModel;
+    });
+
+    usableModels.forEach((model) => {
       if (groups[model.status]) {
         groups[model.status].push(model);
       }
     });
 
-    // Sort within each group
+    // Sort within each group by relevance
     Object.keys(groups).forEach((key) => {
       groups[key].sort((a, b) => {
         // Sort by provider first, then by name
@@ -306,7 +340,7 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
           <div className="flex items-center space-x-3 flex-1 min-w-0">
             <div className="flex items-center space-x-1">
               {getProviderIcon(model.provider)}
-              {getStatusIcon(model.status, model.download_progress)}
+              {getStatusIcon(model.status)}
             </div>
             
             <div className="flex-1 min-w-0">
@@ -479,13 +513,13 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
             )}
           </Tooltip>
 
-          <SelectContent className="max-h-96">
+          <SelectContent className="max-h-96 bg-popover border border-border shadow-md">
             {/* Local Models */}
             {groupedModels.local.length > 0 && (
               <SelectGroup>
                 <SelectLabel className="flex items-center space-x-2">
                   <CheckCircle className="h-3 w-3 text-green-500" />
-                  <span>Local Models ({groupedModels.local.length})</span>
+                  <span>Available Models ({groupedModels.local.length})</span>
                 </SelectLabel>
                 {groupedModels.local.map(renderModelItem)}
               </SelectGroup>
@@ -505,25 +539,9 @@ export const EnhancedModelSelector: React.FC<EnhancedModelSelectorProps> = ({
               </>
             )}
 
-            {/* Available Models */}
-            {groupedModels.available.length > 0 && (
-              <>
-                {(groupedModels.local.length > 0 || groupedModels.downloading.length > 0) && (
-                  <SelectSeparator />
-                )}
-                <SelectGroup>
-                  <SelectLabel className="flex items-center space-x-2">
-                    <Download className="h-3 w-3 text-gray-500" />
-                    <span>Available Models ({groupedModels.available.length})</span>
-                  </SelectLabel>
-                  {groupedModels.available.map(renderModelItem)}
-                </SelectGroup>
-              </>
-            )}
-
-            {models.length === 0 && (
+            {(groupedModels.local.length === 0 && groupedModels.downloading.length === 0) && (
               <div className="p-4 text-center text-sm text-muted-foreground">
-                No models available
+                No chat models available. Download models from the settings page.
               </div>
             )}
           </SelectContent>

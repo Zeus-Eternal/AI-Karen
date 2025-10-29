@@ -150,15 +150,11 @@ export class UnifiedApiClient {
           top_k: request.top_k || 6,
           context: request.context || {},
           stream: request.stream || false
-        },
-        {
-          timeout: this.config.timeout,
-          retries: this.config.maxRetries
         }
       );
 
-      this.logSuccess('copilot_assist', response.responseTime);
-      return response.data;
+      this.logSuccess('copilot_assist', 0);
+      return response;
     } catch (error) {
       this.logError('copilot_assist', error);
       throw this.createUserFriendlyError(error, 'Failed to get AI assistance');
@@ -178,15 +174,11 @@ export class UnifiedApiClient {
           ...request,
           top_k: request.top_k || 12,
           similarity_threshold: request.similarity_threshold || 0.6
-        },
-        {
-          timeout: this.config.timeout,
-          retries: this.config.maxRetries
         }
       );
 
-      this.logSuccess('memory_search', response.responseTime);
-      return response.data;
+      this.logSuccess('memory_search', 0);
+      return response;
     } catch (error) {
       this.logError('memory_search', error);
       throw this.createUserFriendlyError(error, 'Failed to search memories');
@@ -208,15 +200,11 @@ export class UnifiedApiClient {
           decay: request.decay || 'short',
           tags: request.tags || [],
           metadata: request.metadata || {}
-        },
-        {
-          timeout: this.config.timeout,
-          retries: this.config.maxRetries
         }
       );
 
-      this.logSuccess('memory_commit', response.responseTime);
-      return response.data;
+      this.logSuccess('memory_commit', 0);
+      return response;
     } catch (error) {
       this.logError('memory_commit', error);
       throw this.createUserFriendlyError(error, 'Failed to store memory');
@@ -237,15 +225,11 @@ export class UnifiedApiClient {
     try {
       const response = await this.apiClient.put<MemoryCommitResponse>(
         `${this.endpoints.memoryUpdate}/${memoryId}`,
-        updates,
-        {
-          timeout: this.config.timeout,
-          retries: this.config.maxRetries
-        }
+        updates
       );
 
-      this.logSuccess('memory_update', response.responseTime);
-      return response.data;
+      this.logSuccess('memory_update', 0);
+      return response;
     } catch (error) {
       this.logError('memory_update', error);
       throw this.createUserFriendlyError(error, 'Failed to update memory');
@@ -271,16 +255,11 @@ export class UnifiedApiClient {
 
     try {
       const response = await this.apiClient.delete<{ success: boolean; correlation_id: string }>(
-        `${this.endpoints.memoryDelete}/${memoryId}`,
-        {
-          body: options,
-          timeout: this.config.timeout,
-          retries: this.config.maxRetries
-        }
+        `${this.endpoints.memoryDelete}/${memoryId}`
       );
 
-      this.logSuccess('memory_delete', response.responseTime);
-      return response.data;
+      this.logSuccess('memory_delete', 0);
+      return response;
     } catch (error) {
       this.logError('memory_delete', error);
       throw this.createUserFriendlyError(error, 'Failed to delete memory');
@@ -339,7 +318,7 @@ export class UnifiedApiClient {
     const endpointTests = Object.entries(this.endpoints).map(async ([name, endpoint]) => {
       try {
         const startTime = Date.now();
-        await this.apiClient.get(`${endpoint}/health`, { timeout: 5000 });
+        await this.apiClient.get(`${endpoint}/health`);
         const responseTime = Date.now() - startTime;
         
         return {

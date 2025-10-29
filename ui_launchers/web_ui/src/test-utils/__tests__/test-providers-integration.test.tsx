@@ -103,7 +103,7 @@ const ComplexAuthComponent: React.FC = () => {
         <h1>Welcome, {user?.email}</h1>
         <div data-testid="user-info">
           <span data-testid="user-role">Role: {role}</span>
-          <span data-testid="user-id">ID: {user?.user_id}</span>
+          <span data-testid="user-id">ID: {user?.userId}</span>
         </div>
         <button onClick={handleLogout} data-testid="logout-button">
           Logout

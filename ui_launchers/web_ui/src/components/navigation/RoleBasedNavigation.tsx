@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ExtensionNavigation } from '@/components/extensions/ExtensionNavigation';
+import { useExtensionsAvailable } from '@/lib/extensions/extension-initializer';
 import { 
   Users, 
   Shield, 
@@ -16,7 +18,8 @@ import {
   UserCog,
   Database,
   BarChart3,
-  Lock
+  Lock,
+  Puzzle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +44,7 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
 }) => {
   const { user, hasRole, hasPermission } = useAuth();
   const pathname = usePathname();
+  const extensionsAvailable = useExtensionsAvailable();
 
   const navigationItems: NavigationItem[] = [
     // Regular user items
@@ -56,6 +60,14 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
       icon: UserCog,
       description: 'Manage your account settings',
     },
+    
+    // Extensions (available to all authenticated users)
+    ...(extensionsAvailable ? [{
+      href: '/extensions',
+      label: 'Extensions',
+      icon: Puzzle,
+      description: 'Manage and monitor extensions',
+    }] : []),
     
     // Admin items
     {
@@ -195,14 +207,22 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
   return (
     <nav className={cn('space-y-1', className)}>
       {variant === 'sidebar' && (
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight flex items-center gap-2">
-            <Home className="h-5 w-5 text-primary" />
-            Navigation
-          </h2>
-          <div className="space-y-1">
-            {visibleItems.map(renderNavigationItem)}
+        <div className="space-y-4">
+          {/* Main Navigation */}
+          <div className="px-3 py-2">
+            <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight flex items-center gap-2">
+              <Home className="h-5 w-5 text-primary" />
+              Navigation
+            </h2>
+            <div className="space-y-1">
+              {visibleItems.map(renderNavigationItem)}
+            </div>
           </div>
+          
+          {/* Extension Navigation */}
+          {extensionsAvailable && (
+            <ExtensionNavigation className="px-3 py-2" />
+          )}
         </div>
       )}
       
@@ -215,6 +235,9 @@ export const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({
       {variant === 'mobile' && (
         <div className="space-y-1">
           {visibleItems.map(renderNavigationItem)}
+          {extensionsAvailable && (
+            <ExtensionNavigation compact />
+          )}
         </div>
       )}
     </nav>

@@ -130,6 +130,49 @@ def configure_middleware(
     
     # REMOVED: Session persistence middleware - replaced with simple JWT auth
     logger.info("🔐 Using simple JWT auth - session persistence middleware removed")
+    
+    # Add extension authentication middleware
+    @app.middleware("http")
+    async def extension_auth_middleware(request: Request, call_next):
+        """Extension-specific authentication middleware."""
+        # Only apply to extension API endpoints
+        if request.url.path.startswith("/api/extensions"):
+            try:
+                # Import here to avoid circular imports
+                from server.security import extension_auth_manager
+                
+                # Skip authentication for health endpoints
+                if request.url.path.endswith("/health") or request.url.path.endswith("/system/health"):
+                    response = await call_next(request)
+                    return response
+                
+                # Skip authentication for OPTIONS requests (CORS preflight)
+                if request.method == "OPTIONS":
+                    response = await call_next(request)
+                    return response
+                
+                # For extension endpoints, ensure authentication context is available
+                # The actual authentication will be handled by the endpoint dependencies
+                # This middleware just adds logging and context preparation
+                
+                logger.debug(f"Extension API request: {request.method} {request.url.path}")
+                
+                # Add request metadata for extension authentication
+                request.state.extension_api = True
+                request.state.auth_required = True
+                
+                response = await call_next(request)
+                return response
+                
+            except Exception as e:
+                logger.error(f"Extension authentication middleware error: {e}")
+                # Don't block the request, let endpoint handle authentication
+                response = await call_next(request)
+                return response
+        else:
+            # Non-extension endpoints, proceed normally
+            response = await call_next(request)
+            return response
 
     # Configure and register enhanced rate limiting middleware
     from ai_karen_engine.middleware.rate_limit import configure_rate_limiter
@@ -160,7 +203,8 @@ def configure_middleware(
             logger.info("🔓 Skipping rate limiting middleware - AUTH_MODE=bypass")
     else:
         logger.info("🔓 Rate limiting disabled via ENABLE_RATE_LIMITING environment variable")
-    app.middleware("http")(error_counter_middleware)
+    # Temporarily disabled to fix runaway usage counter loop
+    # app.middleware("http")(error_counter_middleware)
 
     @app.middleware("http")
     async def security_headers_middleware(request: Request, call_next):

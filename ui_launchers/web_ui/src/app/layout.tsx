@@ -1,6 +1,6 @@
 
 import type { Metadata, Viewport } from 'next';
-import { Inter, Roboto_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import '../styles/globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from './providers';
@@ -8,16 +8,18 @@ import { ThemeBridge } from "@/components/theme/ThemeBridge";
 import Script from 'next/script';
 import { HealthStatusBadge } from '@/components/ui/health-status-badge';
 
+// Import early extension fix first
+import '@/lib/early-extension-fix';
+
+// Import extension error recovery system early
+import '@/lib/init-extension-error-recovery';
+
 const inter = Inter({
   variable: '--font-sans',
   subsets: ['latin'],
   display: 'swap',
-});
-
-const robotoMono = Roboto_Mono({
-  variable: '--font-mono',
-  subsets: ['latin'],
-  display: 'swap',
+  preload: true,
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
 });
 
 export const metadata: Metadata = {
@@ -62,8 +64,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="color-scheme" content="light dark" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${inter.variable} ${robotoMono.variable} font-sans antialiased scroll-smooth`}>
+      <body className={`${inter.variable} font-sans antialiased scroll-smooth`}>
         {/* Console error fix script - load early to prevent interceptor issues */}
         <Script
           id="console-error-fix"

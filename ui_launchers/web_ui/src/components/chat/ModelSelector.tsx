@@ -31,14 +31,9 @@ import { getKarenBackend } from "@/lib/karen-backend";
 import { safeError, safeWarn, safeDebug } from "@/lib/safe-console";
 import { 
   Model, 
-  ModelLibraryResponse, 
   formatFileSize, 
-  getProviderIcon as getProviderEmoji, 
-  getStatusColor, 
   getStatusBadgeVariant,
-  groupModelsByProvider,
-  sortModelsByRelevance,
-  getModelDisplayName
+  getRecommendedModels
 } from "@/lib/model-utils";
 
 interface ModelInfo {
@@ -94,7 +89,7 @@ const getProviderIcon = (provider: string) => {
   }
 };
 
-const getStatusIcon = (status: string, downloadProgress?: number) => {
+const getStatusIcon = (status: string) => {
   switch (status) {
     case "local":
       return <CheckCircle className="h-3 w-3 text-green-500" />;
@@ -102,6 +97,8 @@ const getStatusIcon = (status: string, downloadProgress?: number) => {
       return <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />;
     case "available":
       return <Download className="h-3 w-3 text-gray-500" />;
+    case "incompatible":
+      return <AlertCircle className="h-3 w-3 text-yellow-500" />;
     case "error":
       return <AlertCircle className="h-3 w-3 text-red-500" />;
     default:
@@ -204,6 +201,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     } finally {
       setLoading(false);
       safeDebug('🔍 ModelSelector: Model loading completed, final models count:', models.length);
+      safeDebug('🔍 ModelSelector: All models received:', models.map(m => ({ name: m.name, provider: m.provider, status: m.status })));
     }
   };
 
@@ -211,34 +209,100 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     loadModels();
   }, []);
 
-  // Group models by status and provider
+  // Filter and group models - only show usable chat models
   const groupedModels = React.useMemo(() => {
     const groups: Record<string, ModelInfo[]> = {
       local: [],
-      available: [],
       downloading: [],
+      available: [],
+      incompatible: [],
     };
 
-    models.forEach((model) => {
-      if (groups[model.status]) {
-        groups[model.status].push(model);
+    // Filter to only include usable models for chat
+    const usableModels = models.filter((model) => {
+      // Show local, downloading, available, and even incompatible models (user can try them)
+      if (!['local', 'downloading', 'available', 'incompatible'].includes(model.status)) {
+        return false;
       }
+      
+      // Filter out directory entries and invalid models
+      const name = model.name || '';
+      const provider = model.provider || '';
+      
+      // Skip empty names, directory-like entries, or cache directories
+      if (!name.trim() || 
+          name === 'metadata_cache' || 
+          name === 'downloads' || 
+          name === 'llama-cpp' ||
+          name === 'transformers' ||
+          name === 'stable-diffusion' ||
+          name === '' ||
+          // Skip parent directory entries without specific model names
+          (name === 'TinyLlama' && !name.includes('chat') && !name.includes('instruct')) ||
+          (name === 'TinyLlama-1.1B-Chat-v1.0' && provider === 'transformers')) {
+        return false;
+      }
+      
+      // Include all compatible model types and providers
+      const compatibleProviders = ['llama-cpp', 'llama-gguf', 'transformers', 'huggingface', 'local', 'stable-diffusion', 'hf_hub'];
+      const isCompatibleProvider = compatibleProviders.includes(provider.toLowerCase());
+      
+      // Include models that are likely to be usable for chat/text generation
+      const isUsableModel = 
+        // Chat and instruction models
+        name.toLowerCase().includes('chat') ||
+        name.toLowerCase().includes('instruct') ||
+        name.toLowerCase().includes('conversation') ||
+        name.toLowerCase().includes('assistant') ||
+        name.toLowerCase().includes('dialog') ||
+        // Common model formats
+        name.endsWith('.gguf') ||
+        name.endsWith('.bin') ||
+        name.endsWith('.safetensors') ||
+        // Popular model names/patterns
+        name.toLowerCase().includes('llama') ||
+        name.toLowerCase().includes('phi') ||
+        name.toLowerCase().includes('mistral') ||
+        name.toLowerCase().includes('qwen') ||
+        name.toLowerCase().includes('deepseek') ||
+        name.toLowerCase().includes('gemma') ||
+        name.toLowerCase().includes('codellama') ||
+        name.toLowerCase().includes('vicuna') ||
+        name.toLowerCase().includes('alpaca') ||
+        name.toLowerCase().includes('gpt') ||
+        name.toLowerCase().includes('bert') ||
+        name.toLowerCase().includes('distilbert') ||
+        name.toLowerCase().includes('t5') ||
+        name.toLowerCase().includes('sentence-transformers') ||
+        // Check capabilities if available
+        (model.capabilities && model.capabilities.some(cap => 
+          cap.includes('chat') || 
+          cap.includes('text-generation') || 
+          cap.includes('conversation') ||
+          cap.includes('instruction-following') ||
+          cap.includes('code-generation') ||
+          cap.includes('text-classification') ||
+          cap.includes('feature-extraction')
+        ));
+      
+      return isCompatibleProvider && isUsableModel;
     });
 
-    // Sort within each group
-    Object.keys(groups).forEach((key) => {
-      groups[key].sort((a, b) => {
-        // Sort by provider first, then by name
-        const providerA = a.provider || '';
-        const providerB = b.provider || '';
-        const nameA = a.name || '';
-        const nameB = b.name || '';
-        
-        if (providerA !== providerB) {
-          return providerA.localeCompare(providerB);
-        }
-        return nameA.localeCompare(nameB);
-      });
+    safeDebug('🔍 ModelSelector: Usable models after filtering:', usableModels.map(m => ({ name: m.name, provider: m.provider, status: m.status })));
+
+    // Use the utility function to get recommended chat models, but also include all usable models
+    const recommendedModels = getRecommendedModels(usableModels as Model[], 'chat');
+    
+    // Include all usable models, not just recommended ones
+    const allUsableModels = usableModels.length > recommendedModels.length ? usableModels : recommendedModels;
+
+    safeDebug('🔍 ModelSelector: Recommended models:', recommendedModels.map(m => ({ name: m.name, provider: m.provider, status: m.status })));
+    safeDebug('🔍 ModelSelector: All usable models:', allUsableModels.map(m => ({ name: m.name, provider: m.provider, status: m.status })));
+
+    allUsableModels.forEach((model) => {
+      if (groups[model.status]) {
+        groups[model.status].push(model as ModelInfo);
+      }
     });
 
     return groups;
@@ -270,7 +334,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           <div className="flex items-center space-x-3 flex-1 min-w-0">
             <div className="flex items-center space-x-1">
               {getProviderIcon(provider)}
-              {getStatusIcon(model.status, model.download_progress)}
+              {getStatusIcon(model.status)}
             </div>
             
             <div className="flex-1 min-w-0">
@@ -394,7 +458,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           )}
         </Tooltip>
 
-        <SelectContent className="max-h-96">
+        <SelectContent className="max-h-96 bg-popover border border-border shadow-md">
           {/* Local Models */}
           {groupedModels.local.length > 0 && (
             <SelectGroup>
@@ -423,9 +487,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           {/* Available Models */}
           {groupedModels.available.length > 0 && (
             <>
-              {(groupedModels.local.length > 0 || groupedModels.downloading.length > 0) && (
-                <SelectSeparator />
-              )}
+              {(groupedModels.local.length > 0 || groupedModels.downloading.length > 0) && <SelectSeparator />}
               <SelectGroup>
                 <SelectLabel className="flex items-center space-x-2">
                   <Download className="h-3 w-3 text-gray-500" />
@@ -436,9 +498,23 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             </>
           )}
 
-          {models.length === 0 && (
+          {/* Incompatible Models (shown with warning) */}
+          {groupedModels.incompatible && groupedModels.incompatible.length > 0 && (
+            <>
+              {(groupedModels.local.length > 0 || groupedModels.downloading.length > 0 || groupedModels.available.length > 0) && <SelectSeparator />}
+              <SelectGroup>
+                <SelectLabel className="flex items-center space-x-2">
+                  <AlertCircle className="h-3 w-3 text-yellow-500" />
+                  <span>Experimental Models ({groupedModels.incompatible.length})</span>
+                </SelectLabel>
+                {groupedModels.incompatible.map(renderModelItem)}
+              </SelectGroup>
+            </>
+          )}
+
+          {(groupedModels.local.length === 0 && groupedModels.downloading.length === 0 && groupedModels.available.length === 0 && (!groupedModels.incompatible || groupedModels.incompatible.length === 0)) && (
             <div className="p-4 text-center text-sm text-muted-foreground">
-              No models available
+              No compatible models found. Available model types: llama-cpp (.gguf), transformers, and stable-diffusion models.
             </div>
           )}
         </SelectContent>

@@ -330,8 +330,8 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
       gridId: 'memories',
       api: params.api,
       memoryCount: memoryData.length
-    }, { userId: user?.user_id });
-  }, [triggerHooks, memoryData.length, user?.user_id]);
+    }, { userId: user?.userId });
+  }, [triggerHooks, memoryData.length, user?.userId]);
 
   const onSelectionChanged = useCallback(async (event: any) => {
     const selectedNodes = event.api.getSelectedNodes();
@@ -343,9 +343,9 @@ export const MemoryGrid: React.FC<MemoryGridProps> = ({
         gridId: 'memories',
         data: memory,
         api: event.api
-      }, { userId: user?.user_id });
+      }, { userId: user?.userId });
     }
-  }, [triggerHooks, user?.user_id]);
+  }, [triggerHooks, user?.userId]);
 
   // Memory management functions
   async function handleDeleteMemory(memoryId: string) {

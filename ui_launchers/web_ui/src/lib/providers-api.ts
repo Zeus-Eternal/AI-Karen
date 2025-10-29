@@ -114,3 +114,67 @@ export async function listOpenaiModels(): Promise<ContractModelInfo[]> {
     return [];
   }
 }
+
+
+// Filter providers to only show those with available models
+export async function getProvidersWithModels(): Promise<ProviderDiscoveryItem[]> {
+  try {
+    const allProviders = await fetchProviderDiscovery();
+    const providersWithModels: ProviderDiscoveryItem[] = [];
+    
+    for (const provider of allProviders) {
+      try {
+        let hasModels = false;
+        
+        // Check for models based on provider type
+        if (provider.id.includes('llama') || provider.id.includes('local')) {
+          const models = await listLlamaModels();
+          hasModels = models.length > 0;
+        } else if (provider.id.includes('transformers')) {
+          const models = await listTransformersModels();
+          hasModels = models.length > 0;
+        } else if (provider.id.includes('openai')) {
+          const models = await listOpenaiModels();
+          hasModels = models.length > 0;
+        }
+        
+        if (hasModels) {
+          providersWithModels.push(provider);
+        }
+      } catch (error) {
+        console.warn(`Failed to check models for provider ${provider.id}:`, error);
+      }
+    }
+    
+    return providersWithModels;
+  } catch (error) {
+    console.error('Failed to get providers with models:', error);
+    return [];
+  }
+}
+
+// Enhanced model listing with provider validation
+export async function listAllAvailableModels(): Promise<ContractModelInfo[]> {
+  const allModels: ContractModelInfo[] = [];
+  
+  try {
+    // Get local models
+    const llamaModels = await listLlamaModels();
+    const transformersModels = await listTransformersModels();
+    
+    allModels.push(...llamaModels, ...transformersModels);
+    
+    // Try to get cloud models if configured
+    try {
+      const openaiModels = await listOpenaiModels();
+      allModels.push(...openaiModels);
+    } catch (error) {
+      console.debug('OpenAI models not available:', error);
+    }
+    
+    return allModels;
+  } catch (error) {
+    console.error('Failed to list all models:', error);
+    return [];
+  }
+}

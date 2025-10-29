@@ -101,9 +101,49 @@ async def overall_health(request: Request) -> Dict[str, Any]:
             pass
 
     services = _collect_health(manager)
+    
+    # Check extension system health
+    extension_health = {}
+    extension_status = "healthy"
+    try:
+        from server.extension_health_monitor import get_extension_health_monitor
+        extension_monitor = get_extension_health_monitor()
+        if extension_monitor:
+            ext_health = await extension_monitor.get_extension_health_for_api()
+            extension_health = {
+                "status": ext_health["status"],
+                "total_extensions": ext_health["extensions"]["total"],
+                "healthy_extensions": ext_health["extensions"]["healthy"],
+                "degraded_extensions": ext_health["extensions"]["degraded"],
+                "unhealthy_extensions": ext_health["extensions"]["unhealthy"],
+                "uptime_seconds": ext_health["uptime_seconds"],
+                "supporting_services": ext_health["supporting_services"]
+            }
+            extension_status = ext_health["status"]
+            
+            # Update extension metrics
+            extension_monitor.update_extension_metrics(await extension_monitor.check_extension_system_health())
+        else:
+            extension_health = {"status": "unknown", "error": "Extension monitor not available"}
+            extension_status = "degraded"
+    except Exception as e:
+        logger.warning(f"Failed to get extension health for overall health endpoint: {e}")
+        extension_health = {"status": "error", "error": str(e)}
+        extension_status = "degraded"
+    
+    # Add extension status to services
+    services["extensions"] = {
+        "status": extension_status,
+        "last_check": datetime.now(timezone.utc).isoformat(),
+        "response_time_ms": (time.time() - start) * 1000,
+        "degraded_features": [] if extension_status == "healthy" else ["extension_system"]
+    }
+    
+    # Determine overall status including extensions
+    all_statuses = [s["status"] for s in services.values()]
     overall = (
         "healthy"
-        if all(s["status"] == "healthy" for s in services.values())
+        if all(status == "healthy" for status in all_statuses)
         else "degraded"
     )
 
@@ -121,6 +161,7 @@ async def overall_health(request: Request) -> Dict[str, Any]:
     return {
         "status": overall,
         "services": services,
+        "extension_system": extension_health,
         "timestamp": time.time(),
         "correlation_id": correlation_id,
     }
@@ -250,6 +291,42 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
             degraded_components.append("database")
     except Exception:
         degraded_components.append("database")
+
+    # Extension system check
+    extension_system_status = {}
+    extension_degraded = False
+    try:
+        from server.extension_health_monitor import get_extension_health_monitor
+        extension_monitor = get_extension_health_monitor()
+        if extension_monitor:
+            extension_health = await extension_monitor.get_extension_health_for_api()
+            extension_system_status = {
+                "status": extension_health["status"],
+                "total_extensions": extension_health["extensions"]["total"],
+                "healthy_extensions": extension_health["extensions"]["healthy"],
+                "degraded_extensions": extension_health["extensions"]["degraded"],
+                "unhealthy_extensions": extension_health["extensions"]["unhealthy"],
+                "authentication_healthy": extension_health["supporting_services"]["authentication"]["healthy"],
+                "background_tasks_healthy": extension_health["supporting_services"]["background_tasks"]["healthy"],
+                "uptime_seconds": extension_health["uptime_seconds"]
+            }
+            
+            # Check if extension system is degraded
+            if (extension_health["status"] in ["degraded", "unhealthy"] or
+                extension_health["extensions"]["unhealthy"] > 0 or
+                not extension_health["supporting_services"]["authentication"]["healthy"] or
+                not extension_health["supporting_services"]["background_tasks"]["healthy"]):
+                extension_degraded = True
+                degraded_components.append("extensions")
+        else:
+            extension_system_status = {"status": "unknown", "error": "Extension monitor not available"}
+            extension_degraded = True
+            degraded_components.append("extensions")
+    except Exception as e:
+        logger.warning(f"Failed to check extension system health for degraded mode: {e}")
+        extension_system_status = {"status": "error", "error": str(e)}
+        extension_degraded = True
+        degraded_components.append("extensions")
 
     # Redis check
     try:
@@ -431,6 +508,8 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
             "remote_provider_outages": remote_provider_outages,
         }
 
+    # Update degraded status to include extension system
+    is_degraded = is_degraded or extension_degraded
     ai_status = "degraded" if (is_degraded or remote_provider_outages) else "healthy"
 
     return {
@@ -444,6 +523,8 @@ async def _build_degraded_mode_status() -> Dict[str, Any]:
         "core_helpers_available": core_helpers_available,
         "infrastructure_issues": infrastructure_issues,
         "ai_status": ai_status,
+        "extension_system": extension_system_status,
+        "extension_degraded": extension_degraded,
     }
 
 
@@ -459,6 +540,12 @@ def _build_compatibility_response(status: Dict[str, Any]) -> Dict[str, Any]:
     if ai_status == "degraded":
         degraded_components.append("ai_providers")
     degraded_components.extend(infrastructure)
+    
+    # Include extension system in degraded components if applicable
+    extension_system = status.get("extension_system", {})
+    if status.get("extension_degraded", False):
+        if "extensions" not in degraded_components:
+            degraded_components.append("extensions")
 
     timestamp = status.get("activated_at") or datetime.now(timezone.utc).isoformat()
     core_helpers = status.get("core_helpers_available", {})
@@ -475,6 +562,8 @@ def _build_compatibility_response(status: Dict[str, Any]) -> Dict[str, Any]:
         "core_helpers_available": core_helpers,
         "fallback_systems_active": bool(core_helpers.get("fallback_responses", True)),
         "timestamp": timestamp,
+        "extension_system": extension_system,
+        "extension_degraded": status.get("extension_degraded", False),
         "payload": status,
     }
 
@@ -554,6 +643,159 @@ async def service_health(service_name: str, request: Request) -> Dict[str, Any]:
     )
 
     return {"service": service_name, "result": status, "correlation_id": correlation_id}
+
+
+@router.get("/extensions")
+async def extension_system_health(request: Request) -> Dict[str, Any]:
+    """Return comprehensive extension system health status."""
+    start = time.time()
+    correlation_id = request.headers.get("X-Correlation-Id") or get_request_id()
+    
+    try:
+        from server.extension_health_monitor import get_extension_health_monitor
+        extension_monitor = get_extension_health_monitor()
+        
+        if not extension_monitor:
+            return {
+                "status": "unavailable",
+                "error": "Extension health monitor not initialized",
+                "correlation_id": correlation_id,
+                "timestamp": time.time()
+            }
+        
+        # Get comprehensive extension health
+        health_data = await extension_monitor.get_extension_health_for_api()
+        
+        # Update metrics
+        system_health = await extension_monitor.check_extension_system_health()
+        extension_monitor.update_extension_metrics(system_health)
+        
+        # Get database performance metrics
+        db_performance = await extension_monitor.get_database_performance_metrics()
+        
+        duration_ms = (time.time() - start) * 1000
+        _record_metrics("extensions", duration_ms)
+        
+        get_structured_logging_service().log_api_request(
+            method="GET",
+            endpoint="/api/health/extensions",
+            status_code=200,
+            duration_ms=duration_ms,
+            correlation_id=correlation_id,
+        )
+        
+        return {
+            **health_data,
+            "database_performance": db_performance,
+            "correlation_id": correlation_id,
+            "timestamp": time.time(),
+            "response_time_ms": duration_ms
+        }
+        
+    except Exception as e:
+        logger.error(f"Extension health endpoint failed: {e}")
+        duration_ms = (time.time() - start) * 1000
+        
+        get_structured_logging_service().log_api_request(
+            method="GET",
+            endpoint="/api/health/extensions",
+            status_code=500,
+            duration_ms=duration_ms,
+            correlation_id=correlation_id,
+        )
+        
+        return {
+            "status": "error",
+            "error": str(e),
+            "correlation_id": correlation_id,
+            "timestamp": time.time(),
+            "response_time_ms": duration_ms
+        }
+
+
+@router.get("/extensions/{extension_name}")
+async def individual_extension_health(extension_name: str, request: Request) -> Dict[str, Any]:
+    """Return health status for a specific extension."""
+    start = time.time()
+    correlation_id = request.headers.get("X-Correlation-Id") or get_request_id()
+    
+    try:
+        from server.extension_health_monitor import get_extension_health_monitor
+        extension_monitor = get_extension_health_monitor()
+        
+        if not extension_monitor:
+            return {
+                "extension": extension_name,
+                "status": "unavailable",
+                "error": "Extension health monitor not initialized",
+                "correlation_id": correlation_id,
+                "timestamp": time.time()
+            }
+        
+        # Get system health to access individual extension metrics
+        system_health = await extension_monitor.check_extension_system_health()
+        
+        if extension_name not in system_health.extension_metrics:
+            return {
+                "extension": extension_name,
+                "status": "not_found",
+                "error": f"Extension '{extension_name}' not found",
+                "correlation_id": correlation_id,
+                "timestamp": time.time()
+            }
+        
+        metrics = system_health.extension_metrics[extension_name]
+        
+        duration_ms = (time.time() - start) * 1000
+        _record_metrics(f"extension_{extension_name}", duration_ms)
+        
+        get_structured_logging_service().log_api_request(
+            method="GET",
+            endpoint=f"/api/health/extensions/{extension_name}",
+            status_code=200,
+            duration_ms=duration_ms,
+            correlation_id=correlation_id,
+        )
+        
+        return {
+            "extension": extension_name,
+            "status": metrics.status.value,
+            "response_time_ms": metrics.response_time_ms,
+            "uptime_seconds": metrics.uptime_seconds,
+            "error_count": metrics.error_count,
+            "success_count": metrics.success_count,
+            "background_tasks_active": metrics.background_tasks_active,
+            "background_tasks_failed": metrics.background_tasks_failed,
+            "api_calls_per_minute": metrics.api_calls_per_minute,
+            "memory_usage_mb": metrics.memory_usage_mb,
+            "cpu_usage_percent": metrics.cpu_usage_percent,
+            "last_check": metrics.last_check.isoformat(),
+            "error": metrics.error,
+            "correlation_id": correlation_id,
+            "timestamp": time.time(),
+            "check_duration_ms": duration_ms
+        }
+        
+    except Exception as e:
+        logger.error(f"Individual extension health endpoint failed for {extension_name}: {e}")
+        duration_ms = (time.time() - start) * 1000
+        
+        get_structured_logging_service().log_api_request(
+            method="GET",
+            endpoint=f"/api/health/extensions/{extension_name}",
+            status_code=500,
+            duration_ms=duration_ms,
+            correlation_id=correlation_id,
+        )
+        
+        return {
+            "extension": extension_name,
+            "status": "error",
+            "error": str(e),
+            "correlation_id": correlation_id,
+            "timestamp": time.time(),
+            "check_duration_ms": duration_ms
+        }
 
 
 __all__ = ["router"]

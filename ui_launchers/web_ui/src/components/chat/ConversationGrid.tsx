@@ -204,8 +204,8 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
       gridId: 'conversations',
       api: params.api,
       rowCount: conversations.length
-    }, { userId: user?.user_id });
-  }, [triggerHooks, conversations.length, user?.user_id]);
+    }, { userId: user?.userId });
+  }, [triggerHooks, conversations.length, user?.userId]);
 
   // Handle row selection
   const onSelectionChanged = useCallback(async (event: any) => {
@@ -219,9 +219,9 @@ export const ConversationGrid: React.FC<ConversationGridProps> = ({
         gridId: 'conversations',
         data: rowData,
         api: event.api
-      }, { userId: user?.user_id });
+      }, { userId: user?.userId });
     }
-  }, [triggerHooks, user?.user_id]);
+  }, [triggerHooks, user?.userId]);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {

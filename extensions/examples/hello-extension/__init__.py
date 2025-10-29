@@ -1,180 +1,202 @@
 """
-Hello Extension - A simple example extension with MCP integration.
+Hello Extension - A simple example extension for the AI Karen Extensions System.
 
-This extension demonstrates the basic structure and capabilities
-of the Kari extension system, including MCP tool exposure and consumption.
+This extension demonstrates the basic capabilities of the extension system,
+including API endpoints, UI components, and health monitoring.
 """
 
-from ai_karen_engine.extensions.base import BaseExtension
-
-try:
-    from fastapi import APIRouter
-    FASTAPI_AVAILABLE = True
-except ImportError:
-    FASTAPI_AVAILABLE = False
-    APIRouter = object
+from src.extensions.base import BaseExtension
+from fastapi import APIRouter, HTTPException
+from typing import Dict, Any, Optional
+import asyncio
+from datetime import datetime, timezone
 
 
 class HelloExtension(BaseExtension):
     """
-    A simple example extension that demonstrates basic functionality.
+    Hello Extension - A simple demonstration extension.
+    
+    This extension provides basic greeting functionality and serves as an
+    example of how to build extensions for the AI Karen platform.
     """
     
     async def _initialize(self) -> None:
-        """Initialize the Hello Extension with MCP capabilities."""
+        """Initialize the Hello Extension."""
         self.logger.info("Hello Extension initializing...")
         
-        # Extension-specific initialization logic goes here
+        # Initialize extension-specific resources
         self.greeting_count = 0
+        self.start_time = datetime.now(timezone.utc)
         
-        # Initialize MCP server and register tools
-        await self._setup_mcp_tools()
+        # Simulate some initialization work
+        await asyncio.sleep(0.1)
         
         self.logger.info("Hello Extension initialized successfully")
-    
-    async def _setup_mcp_tools(self) -> None:
-        """Set up MCP tools for this extension."""
-        # Create MCP server to expose our tools
-        mcp_server = self.create_mcp_server()
-        if mcp_server:
-            # Register a simple greeting tool
-            await self.register_mcp_tool(
-                name="generate_greeting",
-                handler=self._generate_greeting_tool,
-                schema={
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "Name to greet"},
-                        "style": {"type": "string", "enum": ["formal", "casual", "enthusiastic"], "default": "casual"}
-                    },
-                    "required": ["name"]
-                },
-                description="Generate a personalized greeting message"
-            )
-            
-            # Register a counter tool
-            await self.register_mcp_tool(
-                name="get_greeting_stats",
-                handler=self._get_greeting_stats_tool,
-                schema={
-                    "type": "object",
-                    "properties": {}
-                },
-                description="Get statistics about greetings generated"
-            )
-            
-            self.logger.info("MCP tools registered successfully")
-    
-    async def _generate_greeting_tool(self, name: str, style: str = "casual") -> dict:
-        """MCP tool to generate personalized greetings."""
-        self.greeting_count += 1
-        
-        greetings = {
-            "formal": f"Good day, {name}. It is a pleasure to make your acquaintance.",
-            "casual": f"Hey {name}! Nice to meet you!",
-            "enthusiastic": f"WOW! Hi there {name}! This is AMAZING! 🎉"
-        }
-        
-        greeting = greetings.get(style, greetings["casual"])
-        
-        return {
-            "greeting": greeting,
-            "style": style,
-            "recipient": name,
-            "count": self.greeting_count,
-            "timestamp": "2024-01-01T00:00:00Z"  # Would use real timestamp
-        }
-    
-    async def _get_greeting_stats_tool(self) -> dict:
-        """MCP tool to get greeting statistics."""
-        return {
-            "total_greetings": self.greeting_count,
-            "extension_name": self.manifest.name,
-            "extension_version": self.manifest.version,
-            "status": "active"
-        }
     
     async def _shutdown(self) -> None:
         """Cleanup the Hello Extension."""
         self.logger.info("Hello Extension shutting down...")
         
-        # Extension-specific cleanup logic goes here
+        # Log final statistics
+        self.logger.info(f"Hello Extension served {self.greeting_count} greetings")
         
         self.logger.info("Hello Extension shut down successfully")
     
-    def create_api_router(self):
+    def create_api_router(self) -> Optional[APIRouter]:
         """Create API routes for the Hello Extension."""
-        if not FASTAPI_AVAILABLE:
-            return None
-        
-        router = APIRouter(prefix=f"/api/extensions/{self.manifest.name}")
+        router = APIRouter()
         
         @router.get("/hello")
         async def get_hello():
-            """Simple hello endpoint."""
+            """Get a simple hello message."""
             self.greeting_count += 1
-            
-            # Demonstrate plugin orchestration
-            try:
-                # Use the hello_world plugin through orchestration
-                result = await self.plugin_orchestrator.execute_plugin(
-                    intent="hello_world",
-                    params={"message": "Hello from extension!"},
-                    user_context={"roles": ["user"]}
-                )
-                
-                return {
-                    "message": "Hello from Hello Extension!",
-                    "greeting_count": self.greeting_count,
-                    "plugin_result": result,
-                    "extension_info": {
-                        "name": self.manifest.name,
-                        "version": self.manifest.version
-                    }
-                }
-            except Exception as e:
-                self.logger.error(f"Plugin orchestration failed: {e}")
-                return {
-                    "message": "Hello from Hello Extension!",
-                    "greeting_count": self.greeting_count,
-                    "plugin_error": str(e),
-                    "extension_info": {
-                        "name": self.manifest.name,
-                        "version": self.manifest.version
-                    }
-                }
+            return {
+                "message": "Hello from the AI Karen Extension System!",
+                "extension": self.manifest.name,
+                "version": self.manifest.version,
+                "greeting_number": self.greeting_count,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
         
-        @router.get("/status")
-        async def get_status():
-            """Get extension status."""
-            return self.get_status()
+        @router.get("/hello/{name}")
+        async def get_hello_name(name: str):
+            """Get a personalized hello message."""
+            if not name or len(name.strip()) == 0:
+                raise HTTPException(status_code=400, detail="Name cannot be empty")
+            
+            if len(name) > 50:
+                raise HTTPException(status_code=400, detail="Name too long")
+            
+            self.greeting_count += 1
+            return {
+                "message": f"Hello, {name}! Welcome to the AI Karen Extension System!",
+                "extension": self.manifest.name,
+                "version": self.manifest.version,
+                "greeting_number": self.greeting_count,
+                "personalized": True,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        
+        @router.get("/stats")
+        async def get_stats():
+            """Get extension statistics."""
+            uptime = datetime.now(timezone.utc) - self.start_time
+            
+            return {
+                "extension": self.manifest.name,
+                "version": self.manifest.version,
+                "uptime_seconds": uptime.total_seconds(),
+                "greeting_count": self.greeting_count,
+                "start_time": self.start_time.isoformat(),
+                "status": self._status.value,
+                "healthy": self.is_healthy()
+            }
+        
+        @router.get("/info")
+        async def get_info():
+            """Get extension information."""
+            return {
+                "name": self.manifest.name,
+                "display_name": self.manifest.display_name,
+                "description": self.manifest.description,
+                "version": self.manifest.version,
+                "author": self.manifest.author,
+                "category": self.manifest.category,
+                "capabilities": {
+                    "provides_ui": self.manifest.capabilities.provides_ui,
+                    "provides_api": self.manifest.capabilities.provides_api,
+                    "provides_background_tasks": self.manifest.capabilities.provides_background_tasks,
+                    "provides_webhooks": self.manifest.capabilities.provides_webhooks
+                },
+                "resource_limits": {
+                    "max_memory_mb": self.manifest.resources.max_memory_mb,
+                    "max_cpu_percent": self.manifest.resources.max_cpu_percent,
+                    "max_disk_mb": self.manifest.resources.max_disk_mb
+                }
+            }
         
         return router
     
-    def create_ui_components(self):
+    def create_ui_components(self) -> Dict[str, Any]:
         """Create UI components for the Hello Extension."""
         components = super().create_ui_components()
         
-        # Add custom UI components
-        components["custom_dashboard"] = {
+        # Add custom dashboard data
+        uptime = datetime.now(timezone.utc) - self.start_time
+        
+        components["hello_dashboard"] = {
             "title": "Hello Extension Dashboard",
-            "description": "A simple dashboard showing extension status",
+            "description": "Simple greeting extension with statistics",
             "data": {
-                "greeting_count": getattr(self, 'greeting_count', 0),
-                "status": "active"
-            }
+                "greeting_count": self.greeting_count,
+                "uptime_hours": round(uptime.total_seconds() / 3600, 2),
+                "status": self._status.value,
+                "healthy": self.is_healthy(),
+                "start_time": self.start_time.isoformat()
+            },
+            "widgets": [
+                {
+                    "type": "metric",
+                    "title": "Total Greetings",
+                    "value": self.greeting_count,
+                    "icon": "👋"
+                },
+                {
+                    "type": "metric", 
+                    "title": "Uptime (hours)",
+                    "value": round(uptime.total_seconds() / 3600, 2),
+                    "icon": "⏰"
+                },
+                {
+                    "type": "status",
+                    "title": "Extension Status",
+                    "value": self._status.value,
+                    "healthy": self.is_healthy(),
+                    "icon": "✅" if self.is_healthy() else "❌"
+                }
+            ]
         }
         
         return components
     
-    def get_status(self):
-        """Get detailed status information."""
-        status = super().get_status()
-        status.update({
-            "greeting_count": getattr(self, 'greeting_count', 0),
-            "custom_status": "Hello Extension is running!"
+    async def health_check(self) -> Dict[str, Any]:
+        """Perform extension health check."""
+        base_health = await super().health_check()
+        
+        # Add extension-specific health metrics
+        uptime = datetime.now(timezone.utc) - self.start_time
+        
+        base_health.update({
+            "greeting_count": self.greeting_count,
+            "uptime_seconds": uptime.total_seconds(),
+            "start_time": self.start_time.isoformat(),
+            "memory_usage": "unknown",  # Would be calculated by resource monitor
+            "cpu_usage": "unknown",     # Would be calculated by resource monitor
+            "custom_checks": {
+                "greeting_service": "healthy",
+                "api_endpoints": "healthy",
+                "ui_components": "healthy"
+            }
         })
-        return status
+        
+        return base_health
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Get detailed extension status."""
+        base_status = super().get_status()
+        
+        # Add extension-specific status information
+        uptime = datetime.now(timezone.utc) - self.start_time
+        
+        base_status.update({
+            "greeting_count": self.greeting_count,
+            "uptime_seconds": uptime.total_seconds(),
+            "start_time": self.start_time.isoformat(),
+            "api_endpoints": len(self.manifest.api.endpoints),
+            "ui_pages": len(self.manifest.ui.control_room_pages)
+        })
+        
+        return base_status
 
 
 # Export the extension class

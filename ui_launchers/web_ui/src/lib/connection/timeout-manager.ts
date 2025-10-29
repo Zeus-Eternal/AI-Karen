@@ -1,303 +1,264 @@
 /**
- * Timeout Configuration Manager
+ * Timeout Manager for Extension Authentication
  * 
- * Manages configurable timeout settings for different operation types
- * including connection, authentication, and health checks.
- * 
- * Requirements: 2.1, 2.2
+ * Manages timeout configurations for different types of operations
+ * to optimize performance and user experience.
  */
 
-export interface TimeoutSettings {
-  connection: number;
-  authentication: number;
-  sessionValidation: number;
-  healthCheck: number;
-  database: number;
-}
+import { logger } from '@/lib/logger';
 
-export interface OperationTimeouts {
-  [key: string]: number;
-}
-
+// Operation types for timeout configuration
 export enum OperationType {
-  CONNECTION = 'connection',
+  API_REQUEST = 'api_request',
   AUTHENTICATION = 'authentication',
-  SESSION_VALIDATION = 'sessionValidation',
-  HEALTH_CHECK = 'healthCheck',
-  DATABASE = 'database',
+  SESSION_VALIDATION = 'session_validation',
+  BACKGROUND_TASK = 'background_task',
+  HEALTH_CHECK = 'health_check',
+  FILE_UPLOAD = 'file_upload',
+  STREAMING = 'streaming',
+  CONNECTION = 'connection',
 }
+
+// Timeout configuration interface
+export interface TimeoutConfig {
+  default: number;
+  fast: number;
+  slow: number;
+  critical: number;
+}
+
+// Timeout settings interface (alias for compatibility)
+export interface TimeoutSettings extends TimeoutConfig {}
+
+// Operation timeout mappings
+export interface OperationTimeouts {
+  [OperationType.API_REQUEST]: number;
+  [OperationType.AUTHENTICATION]: number;
+  [OperationType.SESSION_VALIDATION]: number;
+  [OperationType.BACKGROUND_TASK]: number;
+  [OperationType.HEALTH_CHECK]: number;
+  [OperationType.FILE_UPLOAD]: number;
+  [OperationType.STREAMING]: number;
+  [OperationType.CONNECTION]: number;
+}
+
+// Type aliases for compatibility
+export type TimeoutSettingsType = TimeoutSettings;
+export type OperationTimeoutsType = OperationTimeouts;
 
 /**
- * Timeout Configuration Manager
- * 
- * Provides centralized timeout management with configurable settings
- * for different types of operations and automatic environment detection.
+ * Timeout Manager for handling operation-specific timeouts
  */
 export class TimeoutManager {
-  private timeouts: TimeoutSettings;
-  private customTimeouts: Map<string, number> = new Map();
+  private timeoutConfig: TimeoutConfig;
+  private operationTimeouts: OperationTimeouts;
+  private dynamicAdjustments: Map<OperationType, number> = new Map();
 
   constructor() {
-    this.timeouts = this.loadTimeoutConfiguration();
-  }
-
-  /**
-   * Load timeout configuration from environment variables
-   */
-  private loadTimeoutConfiguration(): TimeoutSettings {
-    return {
-      connection: this.getTimeoutFromEnv('CONNECTION_TIMEOUT_MS', 45000), // Increased for better reliability
-      authentication: this.getTimeoutFromEnv('AUTH_TIMEOUT_MS', 60000), // Increased to 60s for better reliability
-      sessionValidation: this.getTimeoutFromEnv('SESSION_VALIDATION_TIMEOUT_MS', 30000),
-      healthCheck: this.getTimeoutFromEnv('HEALTH_CHECK_TIMEOUT_MS', 10000),
-      database: this.getTimeoutFromEnv('DATABASE_TIMEOUT_MS', 30000),
+    this.timeoutConfig = {
+      default: 30000,   // 30 seconds
+      fast: 5000,       // 5 seconds
+      slow: 60000,      // 60 seconds
+      critical: 10000,  // 10 seconds
     };
+
+    this.operationTimeouts = {
+      [OperationType.API_REQUEST]: this.timeoutConfig.default,
+      [OperationType.AUTHENTICATION]: this.timeoutConfig.critical,
+      [OperationType.SESSION_VALIDATION]: this.timeoutConfig.fast,
+      [OperationType.BACKGROUND_TASK]: this.timeoutConfig.slow,
+      [OperationType.HEALTH_CHECK]: this.timeoutConfig.fast,
+      [OperationType.FILE_UPLOAD]: this.timeoutConfig.slow,
+      [OperationType.STREAMING]: this.timeoutConfig.slow,
+      [OperationType.CONNECTION]: this.timeoutConfig.default,
+    };
+
+    logger.debug('Timeout manager initialized with config:', this.operationTimeouts);
   }
 
   /**
-   * Get timeout value from environment variable with fallback
-   */
-  private getTimeoutFromEnv(envVar: string, defaultValue: number): number {
-    if (typeof process !== 'undefined' && process.env) {
-      const value = process.env[envVar];
-      if (value) {
-        const parsed = parseInt(value, 10);
-        if (!isNaN(parsed) && parsed > 0) {
-          return parsed;
-        }
-      }
-    }
-    return defaultValue;
-  }
-
-  /**
-   * Get timeout for a specific operation type
+   * Get timeout for specific operation type
    */
   getTimeout(operationType: OperationType): number {
-    return this.timeouts[operationType];
-  }
-
-  /**
-   * Get timeout for a custom operation
-   */
-  getCustomTimeout(operationName: string, defaultTimeout?: number): number {
-    const customTimeout = this.customTimeouts.get(operationName);
-    if (customTimeout !== undefined) {
-      return customTimeout;
+    // Check for dynamic adjustments first
+    const dynamicTimeout = this.dynamicAdjustments.get(operationType);
+    if (dynamicTimeout !== undefined) {
+      return dynamicTimeout;
     }
-    return defaultTimeout || this.timeouts.connection;
+
+    // Return configured timeout
+    return this.operationTimeouts[operationType] || this.timeoutConfig.default;
   }
 
   /**
-   * Set timeout for a specific operation type
+   * Set timeout for specific operation type
    */
   setTimeout(operationType: OperationType, timeout: number): void {
     if (timeout <= 0) {
-      throw new Error(`Timeout must be positive, got: ${timeout}`);
+      logger.warn(`Invalid timeout value ${timeout} for operation ${operationType}`);
+      return;
     }
-    this.timeouts[operationType] = timeout;
+
+    this.operationTimeouts[operationType] = timeout;
+    logger.debug(`Timeout updated for ${operationType}: ${timeout}ms`);
   }
 
   /**
-   * Set timeout for a custom operation
+   * Temporarily adjust timeout for specific operation
    */
-  setCustomTimeout(operationName: string, timeout: number): void {
+  adjustTimeout(operationType: OperationType, timeout: number, durationMs: number = 60000): void {
     if (timeout <= 0) {
-      throw new Error(`Timeout must be positive, got: ${timeout}`);
+      logger.warn(`Invalid timeout adjustment ${timeout} for operation ${operationType}`);
+      return;
     }
-    this.customTimeouts.set(operationName, timeout);
+
+    this.dynamicAdjustments.set(operationType, timeout);
+    logger.debug(`Timeout temporarily adjusted for ${operationType}: ${timeout}ms for ${durationMs}ms`);
+
+    // Clear adjustment after duration
+    setTimeout(() => {
+      this.dynamicAdjustments.delete(operationType);
+      logger.debug(`Timeout adjustment cleared for ${operationType}`);
+    }, durationMs);
   }
 
   /**
-   * Get all timeout settings
+   * Get timeout based on network conditions
    */
-  getAllTimeouts(): TimeoutSettings {
-    return { ...this.timeouts };
+  getAdaptiveTimeout(operationType: OperationType, networkLatency?: number): number {
+    const baseTimeout = this.getTimeout(operationType);
+
+    if (!networkLatency) {
+      return baseTimeout;
+    }
+
+    // Adjust timeout based on network latency
+    let multiplier = 1;
+    
+    if (networkLatency > 1000) {
+      // High latency - increase timeout significantly
+      multiplier = 2;
+    } else if (networkLatency > 500) {
+      // Medium latency - increase timeout moderately
+      multiplier = 1.5;
+    } else if (networkLatency < 100) {
+      // Low latency - can use shorter timeout
+      multiplier = 0.8;
+    }
+
+    const adaptiveTimeout = Math.round(baseTimeout * multiplier);
+    logger.debug(`Adaptive timeout for ${operationType}: ${adaptiveTimeout}ms (latency: ${networkLatency}ms)`);
+    
+    return adaptiveTimeout;
   }
 
   /**
-   * Get all custom timeouts
+   * Get timeout configuration for development mode
    */
-  getAllCustomTimeouts(): OperationTimeouts {
-    return Object.fromEntries(this.customTimeouts);
+  getDevelopmentTimeout(operationType: OperationType): number {
+    // In development, use longer timeouts to account for debugging
+    const baseTimeout = this.getTimeout(operationType);
+    const devMultiplier = 2;
+    
+    return baseTimeout * devMultiplier;
   }
 
   /**
-   * Update multiple timeout settings at once
+   * Get all current timeout configurations
    */
-  updateTimeouts(updates: Partial<TimeoutSettings>): void {
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value !== undefined && value > 0) {
-        this.timeouts[key as keyof TimeoutSettings] = value;
-      }
-    });
+  getAllTimeouts(): Record<string, number> {
+    const timeouts: Record<string, number> = {};
+    
+    for (const [operation, timeout] of Object.entries(this.operationTimeouts)) {
+      const dynamicTimeout = this.dynamicAdjustments.get(operation as OperationType);
+      timeouts[operation] = dynamicTimeout !== undefined ? dynamicTimeout : timeout;
+    }
+    
+    return timeouts;
   }
 
   /**
-   * Reset timeouts to default values
+   * Reset all timeouts to default values
    */
   resetToDefaults(): void {
-    this.timeouts = this.loadTimeoutConfiguration();
-    this.customTimeouts.clear();
-  }
-
-  /**
-   * Get timeout with automatic scaling based on operation complexity
-   */
-  getScaledTimeout(operationType: OperationType, complexityFactor: number = 1): number {
-    const baseTimeout = this.getTimeout(operationType);
+    this.dynamicAdjustments.clear();
     
-    // Handle edge cases for very small or negative factors
-    if (complexityFactor <= 0) {
-      return 1000; // Return minimum timeout for invalid factors
-    }
-    
-    const scaledTimeout = Math.round(baseTimeout * complexityFactor);
-    
-    // Ensure minimum timeout of 1 second
-    return Math.max(scaledTimeout, 1000);
-  }
-
-  /**
-   * Get timeout for database operations with connection pooling considerations
-   */
-  getDatabaseTimeout(operationType: 'query' | 'connection' | 'transaction' = 'query'): number {
-    const baseTimeout = this.timeouts.database;
-    
-    switch (operationType) {
-      case 'connection':
-        return Math.round(baseTimeout * 0.5); // Connection should be faster
-      case 'transaction':
-        return Math.round(baseTimeout * 2); // Transactions may take longer
-      case 'query':
-      default:
-        return baseTimeout;
-    }
-  }
-
-  /**
-   * Get timeout for authentication operations with different phases
-   */
-  getAuthTimeout(phase: 'login' | 'validation' | 'refresh' = 'login'): number {
-    const baseTimeout = this.timeouts.authentication;
-    
-    switch (phase) {
-      case 'login':
-        return baseTimeout; // Full timeout for login
-      case 'validation':
-        return this.timeouts.sessionValidation; // Use session validation timeout
-      case 'refresh':
-        return Math.round(baseTimeout * 0.7); // Refresh should be faster
-      default:
-        return baseTimeout;
-    }
-  }
-
-  /**
-   * Validate timeout configuration
-   */
-  validateConfiguration(): { isValid: boolean; errors: string[]; warnings: string[] } {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    // Check for reasonable timeout values
-    Object.entries(this.timeouts).forEach(([key, value]) => {
-      if (value <= 0) {
-        errors.push(`${key} timeout must be positive, got: ${value}`);
-      } else if (value < 1000) {
-        warnings.push(`${key} timeout is very low (${value}ms), consider increasing it`);
-      } else if (value > 300000) { // 5 minutes
-        warnings.push(`${key} timeout is very high (${value}ms), consider reducing it`);
-      }
-    });
-
-    // Check for logical relationships
-    if (this.timeouts.healthCheck > this.timeouts.connection) {
-      warnings.push('Health check timeout is higher than connection timeout, this may cause issues');
-    }
-
-    if (this.timeouts.sessionValidation > this.timeouts.authentication) {
-      warnings.push('Session validation timeout is higher than authentication timeout');
-    }
-
-    // Check custom timeouts
-    this.customTimeouts.forEach((value, key) => {
-      if (value <= 0) {
-        errors.push(`Custom timeout '${key}' must be positive, got: ${value}`);
-      }
-    });
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
+    this.operationTimeouts = {
+      [OperationType.API_REQUEST]: this.timeoutConfig.default,
+      [OperationType.AUTHENTICATION]: this.timeoutConfig.critical,
+      [OperationType.SESSION_VALIDATION]: this.timeoutConfig.fast,
+      [OperationType.BACKGROUND_TASK]: this.timeoutConfig.slow,
+      [OperationType.HEALTH_CHECK]: this.timeoutConfig.fast,
+      [OperationType.FILE_UPLOAD]: this.timeoutConfig.slow,
+      [OperationType.STREAMING]: this.timeoutConfig.slow,
+      [OperationType.CONNECTION]: this.timeoutConfig.default,
     };
+
+    logger.debug('Timeout manager reset to defaults');
   }
 
   /**
-   * Get timeout configuration summary for debugging
+   * Update base timeout configuration
    */
-  getConfigurationSummary(): {
-    timeouts: TimeoutSettings;
-    customTimeouts: OperationTimeouts;
-    validation: ReturnType<TimeoutManager['validateConfiguration']>;
-  } {
-    return {
-      timeouts: this.getAllTimeouts(),
-      customTimeouts: this.getAllCustomTimeouts(),
-      validation: this.validateConfiguration(),
-    };
+  updateConfig(config: Partial<TimeoutConfig>): void {
+    this.timeoutConfig = { ...this.timeoutConfig, ...config };
+    logger.debug('Timeout configuration updated:', this.timeoutConfig);
   }
 
   /**
-   * Create AbortController with timeout
+   * Get timeout recommendation based on operation characteristics
    */
-  createAbortController(operationType: OperationType, customTimeout?: number): {
-    controller: AbortController;
-    timeoutId: ReturnType<typeof setTimeout>;
-    timeout: number;
-  } {
-    const controller = new AbortController();
-    const timeout = customTimeout || this.getTimeout(operationType);
-    
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, timeout);
-
-    return {
-      controller,
-      timeoutId,
-      timeout,
-    };
-  }
-
-  /**
-   * Create AbortController with scaled timeout
-   */
-  createScaledAbortController(
+  getRecommendedTimeout(
     operationType: OperationType,
-    complexityFactor: number = 1
-  ): {
-    controller: AbortController;
-    timeoutId: ReturnType<typeof setTimeout>;
-    timeout: number;
-  } {
-    const controller = new AbortController();
-    const timeout = this.getScaledTimeout(operationType, complexityFactor);
+    options: {
+      payloadSize?: number;
+      complexity?: 'low' | 'medium' | 'high';
+      priority?: 'low' | 'medium' | 'high';
+    } = {}
+  ): number {
+    let baseTimeout = this.getTimeout(operationType);
     
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, timeout);
-
-    return {
-      controller,
-      timeoutId,
-      timeout,
-    };
+    // Adjust based on payload size
+    if (options.payloadSize) {
+      if (options.payloadSize > 1024 * 1024) { // > 1MB
+        baseTimeout *= 1.5;
+      } else if (options.payloadSize > 100 * 1024) { // > 100KB
+        baseTimeout *= 1.2;
+      }
+    }
+    
+    // Adjust based on complexity
+    if (options.complexity) {
+      switch (options.complexity) {
+        case 'high':
+          baseTimeout *= 1.5;
+          break;
+        case 'medium':
+          baseTimeout *= 1.2;
+          break;
+        case 'low':
+          baseTimeout *= 0.8;
+          break;
+      }
+    }
+    
+    // Adjust based on priority
+    if (options.priority) {
+      switch (options.priority) {
+        case 'high':
+          baseTimeout *= 0.8; // Shorter timeout for high priority
+          break;
+        case 'low':
+          baseTimeout *= 1.5; // Longer timeout for low priority
+          break;
+      }
+    }
+    
+    return Math.round(baseTimeout);
   }
 }
 
-// Singleton instance
+// Global instance
 let timeoutManager: TimeoutManager | null = null;
 
 /**
@@ -311,15 +272,12 @@ export function getTimeoutManager(): TimeoutManager {
 }
 
 /**
- * Initialize timeout manager
+ * Initialize a new timeout manager instance
  */
-export function initializeTimeoutManager(): TimeoutManager {
+export function initializeTimeoutManager(config?: Partial<TimeoutConfig>): TimeoutManager {
   timeoutManager = new TimeoutManager();
+  if (config) {
+    timeoutManager.updateConfig(config);
+  }
   return timeoutManager;
 }
-
-// Export types
-export type {
-  TimeoutSettings as TimeoutSettingsType,
-  OperationTimeouts as OperationTimeoutsType,
-};

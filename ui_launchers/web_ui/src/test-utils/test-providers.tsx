@@ -12,10 +12,10 @@ import { AuthContext, AuthContextType, User, LoginCredentials } from '@/contexts
 
 // Enhanced mock user data for testing with complete and realistic data
 export const mockSuperAdminUser: User = {
-  user_id: 'super-admin-001',
+  userId: 'super-admin-001',
   email: 'superadmin@example.com',
   roles: ['super_admin'],
-  tenant_id: 'test-tenant-001',
+  tenantId: 'test-tenant-001',
   role: 'super_admin',
   permissions: [
     'user_management',
@@ -33,10 +33,10 @@ export const mockSuperAdminUser: User = {
 };
 
 export const mockAdminUser: User = {
-  user_id: 'admin-002',
+  userId: 'admin-002',
   email: 'admin@example.com',
   roles: ['admin'],
-  tenant_id: 'test-tenant-001',
+  tenantId: 'test-tenant-001',
   role: 'admin',
   permissions: [
     'user_management',
@@ -47,10 +47,10 @@ export const mockAdminUser: User = {
 };
 
 export const mockRegularUser: User = {
-  user_id: 'user-003',
+  userId: 'user-003',
   email: 'user@example.com',
   roles: ['user'],
-  tenant_id: 'test-tenant-001',
+  tenantId: 'test-tenant-001',
   role: 'user',
   permissions: []
 };
@@ -59,10 +59,10 @@ export const mockRegularUser: User = {
 export const mockUnauthenticatedUser: User | null = null;
 
 export const mockUserWithMultipleRoles: User = {
-  user_id: 'multi-role-004',
+  userId: 'multi-role-004',
   email: 'multirole@example.com',
   roles: ['user', 'admin'],
-  tenant_id: 'test-tenant-001',
+  tenantId: 'test-tenant-001',
   role: 'admin', // Primary role
   permissions: [
     'user_management',
@@ -73,19 +73,19 @@ export const mockUserWithMultipleRoles: User = {
 };
 
 export const mockInactiveUser: User = {
-  user_id: 'inactive-005',
+  userId: 'inactive-005',
   email: 'inactive@example.com',
   roles: ['user'],
-  tenant_id: 'test-tenant-001',
+  tenantId: 'test-tenant-001',
   role: 'user',
   permissions: []
 };
 
 export const mockUserWithCustomPermissions: User = {
-  user_id: 'custom-006',
+  userId: 'custom-006',
   email: 'custom@example.com',
   roles: ['user'],
-  tenant_id: 'test-tenant-001',
+  tenantId: 'test-tenant-001',
   role: 'user',
   permissions: ['custom_permission', 'special_access']
 };
@@ -756,10 +756,10 @@ export const createTestAuthContext = (overrides: Partial<AuthContextType> = {}):
 // Test data factories for creating realistic user data
 export const createTestUser = (overrides: Partial<User> = {}): User => {
   const baseUser: User = {
-    user_id: `test-user-${Date.now()}`,
+    userId: `test-user-${Date.now()}`,
     email: 'test@example.com',
     roles: ['user'],
-    tenant_id: 'test-tenant',
+    tenantId: 'test-tenant',
     role: 'user',
     permissions: []
   };
@@ -769,7 +769,7 @@ export const createTestUser = (overrides: Partial<User> = {}): User => {
 
 export const createTestSuperAdmin = (overrides: Partial<User> = {}): User => {
   return createTestUser({
-    user_id: `test-super-admin-${Date.now()}`,
+    userId: `test-super-admin-${Date.now()}`,
     email: 'superadmin@example.com',
     roles: ['super_admin'],
     role: 'super_admin',
@@ -792,7 +792,7 @@ export const createTestSuperAdmin = (overrides: Partial<User> = {}): User => {
 
 export const createTestAdmin = (overrides: Partial<User> = {}): User => {
   return createTestUser({
-    user_id: `test-admin-${Date.now()}`,
+    userId: `test-admin-${Date.now()}`,
     email: 'admin@example.com',
     roles: ['admin'],
     role: 'admin',
@@ -821,7 +821,7 @@ export const validateAuthContext = (context: AuthContextType): boolean => {
 };
 
 export const validateUser = (user: User): boolean => {
-  const requiredFields = ['user_id', 'email', 'roles', 'tenant_id'];
+  const requiredFields = ['userId', 'email', 'roles', 'tenantId'];
   return requiredFields.every(field => 
     user[field as keyof User] !== undefined && user[field as keyof User] !== null
   );
