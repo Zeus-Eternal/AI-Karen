@@ -133,11 +133,19 @@ class FullTemplate(BaseTemplate):
 A full-featured extension for the Kari AI platform.
 """
 
+from pathlib import Path
+from typing import Optional, Dict, Any, List
+import inspect
+import logging
+
 from src.extensions.base import BaseExtension
 from src.extensions.models import ExtensionManifest, ExtensionContext
-from typing import Optional, Dict, Any, List
 from fastapi import APIRouter
-import logging
+
+from ai_karen_engine.extensions.data_manager import DataSchema
+
+from .config.settings import ExtensionSettings
+from .data.models import ExtensionConfig
 
 
 class {class_name}Extension(BaseExtension):
@@ -146,7 +154,9 @@ class {class_name}Extension(BaseExtension):
     def __init__(self, manifest: ExtensionManifest, context: ExtensionContext):
         super().__init__(manifest, context)
         self.logger = logging.getLogger(f"extension.{extension_name}")
-        self.config = {{}}
+        self.extension_path = Path(__file__).resolve().parent
+        self.settings = ExtensionSettings(self.extension_path)
+        self.config = ExtensionConfig(**self.settings.all())
     
     async def initialize(self) -> None:
         """Initialize the extension."""
@@ -185,23 +195,84 @@ class {class_name}Extension(BaseExtension):
     
     async def _initialize_data_storage(self) -> None:
         """Initialize data storage."""
-        # Create tables if needed
-        pass
-    
+        tenant_id = self.context.tenant_id or "global"
+
+        if self.data_manager:
+            schema = DataSchema(
+                table_name="records",
+                columns={{
+                    "name": "STRING",
+                    "value": "JSON",
+                    "metadata": "JSON"
+                }},
+            )
+
+            created = await self.data_manager.create_table("records", schema, tenant_id)
+            if not created:
+                raise RuntimeError("Failed to initialize persistent data storage for records table")
+            return
+
+        # Fall back to local JSON storage to ensure the extension remains functional
+        data_path = self.extension_path / "data" / "records.json"
+        data_path.parent.mkdir(parents=True, exist_ok=True)
+        if not data_path.exists():
+            data_path.write_text("[]", encoding="utf-8")
+
     async def _load_configuration(self) -> None:
         """Load extension configuration."""
-        # Load from data manager or config files
-        pass
-    
+        self.settings.reload()
+        self.config = ExtensionConfig(**self.settings.all())
+
+        # Persist configuration snapshot when a data manager is available
+        if self.data_manager:
+            await self.store_data("configuration", self.config.model_dump())
+
     async def _initialize_plugins(self) -> None:
         """Initialize plugin orchestration."""
-        # Set up plugin connections
-        pass
-    
+        if not self.plugin_orchestrator:
+            self.logger.info("Plugin orchestrator not configured; skipping plugin initialization")
+            return
+
+        register_hook = None
+        for candidate in ("register_extension", "initialize_extension", "initialize_for_extension"):
+            if hasattr(self.plugin_orchestrator, candidate):
+                register_hook = getattr(self.plugin_orchestrator, candidate)
+                break
+
+        if register_hook is None:
+            self.logger.debug("Plugin orchestrator does not expose an initialization hook")
+            return
+
+        try:
+            signature = inspect.signature(register_hook)
+            if "context" in signature.parameters:
+                result = register_hook(self.manifest, context=self.context)
+            elif signature.parameters:
+                result = register_hook(self.manifest)
+            else:
+                result = register_hook()
+
+            if inspect.isawaitable(result):
+                await result
+
+            self.logger.info("Plugin orchestrator initialized for extension")
+        except Exception as exc:
+            self.logger.error("Failed to initialize plugin orchestrator", exc_info=exc)
+            raise
+
     async def _cleanup_resources(self) -> None:
         """Cleanup extension resources."""
-        # Close connections, cleanup temp files, etc.
-        pass
+        if self.plugin_orchestrator and hasattr(self.plugin_orchestrator, "shutdown_extension"):
+            shutdown_result = self.plugin_orchestrator.shutdown_extension(self.manifest.name)
+            if inspect.isawaitable(shutdown_result):
+                await shutdown_result
+
+        if self.data_manager and hasattr(self.data_manager, "close"):
+            close_result = self.data_manager.close()
+            if inspect.isawaitable(close_result):
+                await close_result
+
+        await self.store_data("lifecycle_events", {{"event": "shutdown"}})
 
 
 def create_extension(manifest: ExtensionManifest, context: ExtensionContext) -> {class_name}Extension:
@@ -214,12 +285,66 @@ def create_extension(manifest: ExtensionManifest, context: ExtensionContext) -> 
 API routes for {extension_name} extension.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import asyncio
+import json
+from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List
+from uuid import uuid4
+
+from fastapi import APIRouter, HTTPException, status
 import logging
+from pydantic import ValidationError
+
+from ..config.settings import ExtensionSettings
+from ..data.models import ExtensionConfig
+from .models import ConfigResponse, DataResponse, DataItem
 
 router = APIRouter()
 logger = logging.getLogger(f"extension.{extension_name}.api")
+
+_EXTENSION_ROOT = Path(__file__).resolve().parents[1]
+_SETTINGS = ExtensionSettings(_EXTENSION_ROOT)
+_DATA_FILE = _EXTENSION_ROOT / "data" / "records.json"
+_DATA_LOCK = asyncio.Lock()
+
+
+async def _ensure_data_file() -> None:
+    """Ensure the data file exists and is valid."""
+    if not _DATA_FILE.exists():
+        _DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+        await asyncio.to_thread(_DATA_FILE.write_text, "[]", encoding="utf-8")
+
+
+async def _read_records() -> List[DataItem]:
+    """Read persisted data records."""
+    await _ensure_data_file()
+
+    async with _DATA_LOCK:
+        raw = await asyncio.to_thread(_DATA_FILE.read_text, encoding="utf-8")
+
+    try:
+        payload = json.loads(raw) if raw.strip() else []
+    except json.JSONDecodeError:
+        logger.warning("Data store for {extension_name} is corrupt; resetting state")
+        payload = []
+
+    items: List[DataItem] = []
+    for entry in payload:
+        try:
+            items.append(DataItem(**entry))
+        except ValidationError as exc:
+            logger.warning("Skipping invalid record in {extension_name} data store: %s", exc)
+
+    return items
+
+
+async def _write_records(items: List[DataItem]) -> None:
+    """Persist data records to disk."""
+    payload = [item.model_dump(mode="json") for item in items]
+
+    async with _DATA_LOCK:
+        await asyncio.to_thread(_DATA_FILE.write_text, json.dumps(payload, indent=2), encoding="utf-8")
 
 
 @router.get("/status")
@@ -230,51 +355,95 @@ async def get_status() -> Dict[str, Any]:
         "extension": "{extension_name}",
         "version": "1.0.0",
         "type": "full-featured",
-        "capabilities": ["api", "ui", "background-tasks"]
+        "capabilities": ["api", "ui", "background-tasks"],
+        "timestamp": datetime.utcnow().isoformat(),
     }}
 
 
-@router.get("/config")
-async def get_config() -> Dict[str, Any]:
+@router.get("/config", response_model=ConfigResponse)
+async def get_config() -> ConfigResponse:
     """Get extension configuration."""
-    # TODO: Implement configuration retrieval
-    return {{"config": "placeholder"}}
+    config = ExtensionConfig(**_SETTINGS.all())
+    return ConfigResponse(config=config.model_dump())
 
 
-@router.post("/config")
-async def update_config(config: Dict[str, Any]) -> Dict[str, str]:
+@router.post("/config", response_model=ConfigResponse)
+async def update_config(config: Dict[str, Any]) -> ConfigResponse:
     """Update extension configuration."""
-    # TODO: Implement configuration update
-    return {{"message": "Configuration updated"}}
+    merged = {{**_SETTINGS.all(), **config}}
+    try:
+        validated = ExtensionConfig(**merged)
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    _SETTINGS.update(validated.model_dump())
+    return ConfigResponse(config=validated.model_dump())
 
 
-@router.get("/data")
-async def get_data() -> List[Dict[str, Any]]:
+@router.get("/data", response_model=DataResponse)
+async def get_data() -> DataResponse:
     """Get extension data."""
-    # TODO: Implement data retrieval
-    return []
+    items = await _read_records()
+    return DataResponse(items=items, total=len(items))
 
 
-@router.post("/data")
-async def create_data(data: Dict[str, Any]) -> Dict[str, Any]:
+@router.post("/data", response_model=DataItem, status_code=status.HTTP_201_CREATED)
+async def create_data(data: Dict[str, Any]) -> DataItem:
     """Create new data entry."""
-    # TODO: Implement data creation
-    return {{"id": "placeholder", "message": "Data created"}}
+    payload = {{**data}}
+    now = datetime.utcnow()
+    payload.setdefault("id", str(uuid4()))
+    payload.setdefault("created_at", now)
+    payload.setdefault("updated_at", now)
+
+    try:
+        item = DataItem(**payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    items = await _read_records()
+    items.append(item)
+    await _write_records(items)
+    return item
 
 
-@router.put("/data/{{item_id}}")
-async def update_data(item_id: str, data: Dict[str, Any]) -> Dict[str, str]:
+@router.put("/data/{{item_id}}", response_model=DataItem)
+async def update_data(item_id: str, data: Dict[str, Any]) -> DataItem:
     """Update data entry."""
-    # TODO: Implement data update
-    return {{"message": f"Data {{item_id}} updated"}}
+    items = await _read_records()
+
+    for index, existing in enumerate(items):
+        if existing.id == item_id:
+            updated_payload = existing.model_dump()
+            updated_payload.update(data)
+            updated_payload["id"] = item_id
+            updated_payload["updated_at"] = datetime.utcnow()
+
+            try:
+                updated_item = DataItem(**updated_payload)
+            except ValidationError as exc:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+            items[index] = updated_item
+            await _write_records(items)
+            return updated_item
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Item {{item_id}} not found")
 
 
 @router.delete("/data/{{item_id}}")
 async def delete_data(item_id: str) -> Dict[str, str]:
     """Delete data entry."""
-    # TODO: Implement data deletion
+    items = await _read_records()
+    filtered = [item for item in items if item.id != item_id]
+
+    if len(filtered) == len(items):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Item {{item_id}} not found")
+
+    await _write_records(filtered)
     return {{"message": f"Data {{item_id}} deleted"}}
-''',
+'''
+,
             "api/models.py": '''"""
 Pydantic models for API requests and responses.
 """
@@ -615,12 +784,12 @@ from pathlib import Path
 
 class ExtensionSettings:
     """Manage extension settings."""
-    
+
     def __init__(self, extension_path: Path):
         self.extension_path = extension_path
         self.settings_file = extension_path / "config" / "settings.json"
         self._settings = self._load_settings()
-    
+
     def _load_settings(self) -> Dict[str, Any]:
         """Load settings from file."""
         if self.settings_file.exists():
@@ -629,9 +798,9 @@ class ExtensionSettings:
                     return json.load(f)
             except (json.JSONDecodeError, IOError):
                 pass
-        
+
         return self._get_default_settings()
-    
+
     def _get_default_settings(self) -> Dict[str, Any]:
         """Get default settings."""
         return {{
@@ -639,23 +808,39 @@ class ExtensionSettings:
             "sync_interval_hours": 4,
             "max_data_age_days": 30,
             "notification_enabled": True,
-            "debug_mode": False
+            "debug_mode": False,
         }}
-    
+
+    def reload(self) -> Dict[str, Any]:
+        """Reload settings from disk and return the latest values."""
+        self._settings = self._load_settings()
+        return self.all()
+
+    def all(self) -> Dict[str, Any]:
+        """Return a copy of all settings."""
+        return dict(self._settings)
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get setting value."""
         return self._settings.get(key, default)
-    
+
     def set(self, key: str, value: Any) -> None:
         """Set setting value."""
         self._settings[key] = value
         self._save_settings()
-    
+
+    def update(self, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Update multiple settings at once."""
+        self._settings.update(values)
+        self._save_settings()
+        return self.all()
+
     def _save_settings(self) -> None:
         """Save settings to file."""
         self.settings_file.parent.mkdir(parents=True, exist_ok=True)
         with open(self.settings_file, "w") as f:
             json.dump(self._settings, f, indent=2)
+
 ''',
             "config/defaults.json": '''{{
   "auto_sync": true,
