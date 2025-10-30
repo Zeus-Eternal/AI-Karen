@@ -12,6 +12,10 @@ import logging
 import asyncio
 import aiohttp
 import psutil
+import asyncpg
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
+from cryptography import x509
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple, Union
 from pathlib import Path
@@ -839,18 +843,15 @@ class ExtensionConfigHealthChecker:
     async def _check_database_connectivity(self) -> HealthCheckResult:
         """Check database connectivity."""
         try:
-            # This would typically test the actual database connection
-            # For now, we'll check if the database URL is configured
             database_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
-            
+
             if not database_url:
                 return HealthCheckResult(
                     name="database_connectivity",
                     status=HealthStatus.UNHEALTHY,
                     message="Database URL not configured"
                 )
-            
-            # Parse database URL to check format
+
             try:
                 parsed = urlparse(database_url)
                 if not parsed.scheme or not parsed.hostname:
@@ -865,12 +866,17 @@ class ExtensionConfigHealthChecker:
                     status=HealthStatus.UNHEALTHY,
                     message=f"Failed to parse database URL: {e}"
                 )
-            
-            # TODO: Add actual database connection test
+
+            connection = await asyncpg.connect(dsn=database_url, timeout=5)
+            try:
+                await connection.execute("SELECT 1")
+            finally:
+                await connection.close()
+
             return HealthCheckResult(
                 name="database_connectivity",
                 status=HealthStatus.HEALTHY,
-                message="Database configuration appears valid",
+                message="Database connection successful",
                 details={'url_configured': True}
             )
             
@@ -909,11 +915,26 @@ class ExtensionConfigHealthChecker:
                     message=f"Failed to parse Redis URL: {e}"
                 )
             
-            # TODO: Add actual Redis connection test
+            client: Redis = Redis.from_url(
+                redis_url,
+                socket_connect_timeout=5,
+                socket_timeout=5
+            )
+            try:
+                await client.ping()
+            except RedisError as exc:
+                return HealthCheckResult(
+                    name="redis_connectivity",
+                    status=HealthStatus.UNHEALTHY,
+                    message=f"Failed to connect to Redis: {exc}"
+                )
+            finally:
+                await client.close()
+
             return HealthCheckResult(
                 name="redis_connectivity",
                 status=HealthStatus.HEALTHY,
-                message="Redis configuration appears valid",
+                message="Redis connection successful",
                 details={'url_configured': True}
             )
             
@@ -1057,12 +1078,52 @@ class ExtensionConfigHealthChecker:
                     details={'searched_paths': cert_paths}
                 )
             
-            # TODO: Add actual certificate validation
+            with open(cert_file, "rb") as cert_handle:
+                cert_data = cert_handle.read()
+
+            certificate = x509.load_pem_x509_certificate(cert_data)
+            now = datetime.utcnow()
+            not_valid_before = certificate.not_valid_before.replace(tzinfo=None)
+            not_valid_after = certificate.not_valid_after.replace(tzinfo=None)
+
+            if not_valid_before > now:
+                return HealthCheckResult(
+                    name="certificate_validity",
+                    status=HealthStatus.UNHEALTHY,
+                    message="TLS certificate is not yet valid",
+                    details={
+                        'certificate_path': cert_file,
+                        'not_valid_before': not_valid_before.isoformat(),
+                        'not_valid_after': not_valid_after.isoformat(),
+                    }
+                )
+
+            if not_valid_after <= now:
+                return HealthCheckResult(
+                    name="certificate_validity",
+                    status=HealthStatus.UNHEALTHY,
+                    message="TLS certificate has expired",
+                    details={
+                        'certificate_path': cert_file,
+                        'not_valid_before': not_valid_before.isoformat(),
+                        'not_valid_after': not_valid_after.isoformat(),
+                    }
+                )
+
+            remaining = not_valid_after - now
+            status = HealthStatus.HEALTHY if remaining.days >= 30 else HealthStatus.DEGRADED
+            message = "Certificate is valid" if status == HealthStatus.HEALTHY else "Certificate nearing expiration"
+
             return HealthCheckResult(
                 name="certificate_validity",
-                status=HealthStatus.HEALTHY,
-                message=f"Certificate file found: {cert_file}",
-                details={'certificate_path': cert_file}
+                status=status,
+                message=message,
+                details={
+                    'certificate_path': cert_file,
+                    'not_valid_before': not_valid_before.isoformat(),
+                    'not_valid_after': not_valid_after.isoformat(),
+                    'days_remaining': remaining.days
+                }
             )
             
         except Exception as e:
