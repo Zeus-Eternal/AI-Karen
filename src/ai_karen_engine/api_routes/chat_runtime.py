@@ -3,6 +3,7 @@ Chat Runtime API Routes
 Unified chat endpoint for all platforms (Web UI, Streamlit, Desktop)
 """
 
+import asyncio
 import json
 import time
 import uuid
@@ -392,6 +393,18 @@ async def chat_runtime(
 
     except HTTPException:
         raise
+    except asyncio.CancelledError:
+        logger.info(
+            "Chat runtime request cancelled",
+            extra={
+                "user_id": user_context.get("user_id"),
+                "correlation_id": request_metadata.get("correlation_id"),
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Generation cancelled",
+        )
     except Exception as e:
         logger.error(
             "Chat runtime error",
@@ -549,6 +562,15 @@ async def chat_runtime_stream(
                 },
             )
 
+        except asyncio.CancelledError:
+            logger.info(
+                "Chat runtime stream cancelled",
+                extra={
+                    "user_id": user_context.get("user_id"),
+                    "correlation_id": correlation_id,
+                },
+            )
+            yield "data: {\"type\": \"error\", \"data\": {\"message\": \"Generation cancelled\"}}\n\n"
         except Exception as e:
             logger.error(
                 "Chat runtime stream error",
@@ -576,27 +598,56 @@ async def chat_runtime_stream(
 @router.post("/chat/runtime/stop")
 async def stop_chat_generation(
     conversation_id: str,
+    correlation_id: Optional[str] = None,
     user_context: Dict[str, Any] = Depends(get_current_user_context),
     request_metadata: Dict[str, Any] = Depends(get_request_metadata),
-) -> Dict[str, str]:
+    chat_orchestrator: ChatOrchestrator = Depends(get_chat_orchestrator),
+) -> Dict[str, Any]:
     """
     Stop ongoing chat generation
     """
     try:
+        correlation = correlation_id or request_metadata.get("correlation_id")
+
         logger.info(
             "Chat generation stop requested",
             extra={
                 "user_id": user_context.get("user_id"),
                 "conversation_id": conversation_id,
-                "correlation_id": request_metadata.get("correlation_id"),
+                "correlation_id": correlation,
             },
         )
 
-        # TODO: Implement actual stop logic
-        # This would involve cancelling ongoing LLM requests and tool executions
+        cancelled = await chat_orchestrator.cancel_processing(
+            conversation_id=conversation_id,
+            correlation_id=correlation_id,
+        )
 
-        return {"status": "stopped", "conversation_id": conversation_id}
+        if not cancelled:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active generation found for conversation",
+            )
 
+        return {
+            "status": "stopped",
+            "conversation_id": conversation_id,
+            "correlation_ids": cancelled,
+        }
+
+    except ValueError as exc:
+        logger.warning(
+            "Invalid stop request",
+            extra={
+                "user_id": user_context.get("user_id"),
+                "conversation_id": conversation_id,
+                "error": str(exc),
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
     except Exception as e:
         logger.error(
             "Failed to stop chat generation",

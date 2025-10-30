@@ -11,10 +11,11 @@ import asyncio
 import logging
 import time
 import uuid
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union, AsyncGenerator
 from enum import Enum
+from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import json
 
 try:
@@ -40,21 +41,25 @@ logger = logging.getLogger(__name__)
 
 class ProcessingStatus(str, Enum):
     """Status of message processing."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
     RETRYING = "retrying"
+    CANCELLED = "cancelled"
 
 
 class ErrorType(str, Enum):
     """Types of processing errors."""
+
     NLP_PARSING_ERROR = "nlp_parsing_error"
     EMBEDDING_ERROR = "embedding_error"
     CONTEXT_RETRIEVAL_ERROR = "context_retrieval_error"
     AI_MODEL_ERROR = "ai_model_error"
     TIMEOUT_ERROR = "timeout_error"
     NETWORK_ERROR = "network_error"
+    REQUEST_CANCELLED = "request_cancelled"
     UNKNOWN_ERROR = "unknown_error"
 
 
@@ -81,6 +86,8 @@ class ProcessingContext:
     retry_count: int = 0
     status: ProcessingStatus = ProcessingStatus.PENDING
     metadata: Dict[str, Any] = field(default_factory=dict)
+    cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
+    cancelled: bool = False
 
 
 @dataclass
@@ -174,6 +181,9 @@ class ChatOrchestrator:
         
         # Active processing contexts
         self._active_contexts: Dict[str, ProcessingContext] = {}
+        self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._contexts_lock = asyncio.Lock()
+        self._tasks_lock = asyncio.Lock()
         
         logger.info("ChatOrchestrator initialized with enhanced instruction processing and context integration")
     
@@ -197,19 +207,51 @@ class ChatOrchestrator:
             session_id=request.session_id,
             metadata=request.metadata
         )
-        
-        self._active_contexts[context.correlation_id] = context
+
+        await self._register_context(context)
         self._total_requests += 1
-        
+
+        if request.stream:
+
+            async def streaming_wrapper() -> AsyncGenerator[ChatStreamChunk, None]:
+                task = asyncio.current_task()
+                if task:
+                    await self._register_task(context.correlation_id, task)
+                try:
+                    async for chunk in self._process_streaming(request, context):
+                        if context.cancel_event.is_set():
+                            context.status = ProcessingStatus.CANCELLED
+                            context.cancelled = True
+                            yield ChatStreamChunk(
+                                type="error",
+                                content="Generation cancelled",
+                                correlation_id=context.correlation_id,
+                                metadata={"error_type": ErrorType.REQUEST_CANCELLED.value}
+                            )
+                            break
+                        yield chunk
+                except asyncio.CancelledError:
+                    context.status = ProcessingStatus.CANCELLED
+                    context.cancelled = True
+                    yield ChatStreamChunk(
+                        type="error",
+                        content="Generation cancelled",
+                        correlation_id=context.correlation_id,
+                        metadata={"error_type": ErrorType.REQUEST_CANCELLED.value}
+                    )
+                finally:
+                    await self._cleanup_context(context.correlation_id)
+
+            return streaming_wrapper()
+
+        task = asyncio.current_task()
+        if task:
+            await self._register_task(context.correlation_id, task)
+
         try:
-            if request.stream:
-                return self._process_streaming(request, context)
-            else:
-                return await self._process_traditional(request, context)
+            return await self._process_traditional(request, context)
         finally:
-            # Clean up context
-            if context.correlation_id in self._active_contexts:
-                del self._active_contexts[context.correlation_id]
+            await self._cleanup_context(context.correlation_id)
     
     async def _process_traditional(
         self,
@@ -438,13 +480,20 @@ class ChatOrchestrator:
                     }
                 )
                 
+        except asyncio.CancelledError:
+            context.status = ProcessingStatus.CANCELLED
+            context.cancelled = True
+            logger.info(
+                "Chat processing cancelled", extra={"correlation_id": context.correlation_id}
+            )
+            raise
         except Exception as e:
             processing_time = time.time() - start_time
             self._failed_requests += 1
             context.status = ProcessingStatus.FAILED
-            
+
             logger.error(f"Unexpected error in chat processing: {e}", exc_info=True)
-            
+
             return ChatResponse(
                 response="I apologize, but I encountered an unexpected error. Please try again.",
                 correlation_id=context.correlation_id,
@@ -494,6 +543,9 @@ class ChatOrchestrator:
         logger.debug(f"Pre-message hooks executed (streaming): {pre_hook_summary.successful_hooks}/{pre_hook_summary.total_hooks}")
         
         try:
+            if context.cancel_event.is_set():
+                raise asyncio.CancelledError()
+
             # Send initial metadata chunk
             yield ChatStreamChunk(
                 type="metadata",
@@ -510,11 +562,16 @@ class ChatOrchestrator:
             # Process with retry logic
             result = await self._process_with_retry(request, context)
             
+            if context.cancel_event.is_set():
+                raise asyncio.CancelledError()
+
             if result.success and result.response:
                 # Stream the response content
                 words = result.response.split()
                 for i, word in enumerate(words):
                     content = word + (" " if i < len(words) - 1 else "")
+                    if context.cancel_event.is_set():
+                        raise asyncio.CancelledError()
                     yield ChatStreamChunk(
                         type="content",
                         content=content,
@@ -554,9 +611,19 @@ class ChatOrchestrator:
                 self._failed_requests += 1
                 context.status = ProcessingStatus.FAILED
                 
+        except asyncio.CancelledError:
+            logger.info("Streaming cancelled", extra={"correlation_id": context.correlation_id})
+            context.status = ProcessingStatus.CANCELLED
+            context.cancelled = True
+            yield ChatStreamChunk(
+                type="error",
+                content="Generation cancelled",
+                correlation_id=context.correlation_id,
+                metadata={"error_type": ErrorType.REQUEST_CANCELLED.value}
+            )
         except Exception as e:
             logger.error(f"Streaming error: {e}", exc_info=True)
-            
+
             yield ChatStreamChunk(
                 type="error",
                 content=f"Streaming error: {str(e)}",
@@ -580,7 +647,10 @@ class ChatOrchestrator:
         
         for attempt in range(self.retry_config.max_attempts):
             context.retry_count = attempt
-            
+
+            if context.cancel_event.is_set():
+                raise asyncio.CancelledError()
+
             if attempt > 0:
                 context.status = ProcessingStatus.RETRYING
                 self._retry_attempts += 1
@@ -607,6 +677,13 @@ class ChatOrchestrator:
                     last_error = result.error
                     last_error_type = result.error_type or ErrorType.UNKNOWN_ERROR
                     
+            except asyncio.CancelledError:
+                logger.info(
+                    "Processing cancelled", extra={"correlation_id": context.correlation_id}
+                )
+                context.status = ProcessingStatus.CANCELLED
+                context.cancelled = True
+                raise
             except asyncio.TimeoutError:
                 last_error = f"Processing timeout after {self.timeout_seconds}s"
                 last_error_type = ErrorType.TIMEOUT_ERROR
@@ -639,6 +716,14 @@ class ChatOrchestrator:
                 self._process_message_internal(request, context),
                 timeout=self.timeout_seconds
             )
+        except asyncio.CancelledError:
+            return ProcessingResult(
+                success=False,
+                error="Processing cancelled",
+                error_type=ErrorType.REQUEST_CANCELLED,
+                processing_time=time.time() - start_time,
+                correlation_id=context.correlation_id
+            )
         except asyncio.TimeoutError:
             return ProcessingResult(
                 success=False,
@@ -660,6 +745,9 @@ class ChatOrchestrator:
         retrieved_context = None
         used_fallback = False
         extracted_instructions = []
+
+        if context.cancel_event.is_set():
+            raise asyncio.CancelledError()
         
         try:
             # Step 1: Parse message with spaCy
@@ -696,6 +784,9 @@ class ChatOrchestrator:
                 extracted_instructions = await self.instruction_processor.extract_instructions(
                     request.message, instruction_context
                 )
+
+                if context.cancel_event.is_set():
+                    raise asyncio.CancelledError()
                 
                 # Store instructions for persistence
                 if extracted_instructions:
@@ -708,6 +799,9 @@ class ChatOrchestrator:
                 active_instructions = await self.instruction_processor.get_active_instructions(
                     instruction_context
                 )
+
+                if context.cancel_event.is_set():
+                    raise asyncio.CancelledError()
                 
                 logger.debug(f"Found {len(active_instructions)} active instructions")
                 
@@ -720,6 +814,8 @@ class ChatOrchestrator:
             # Step 3: Generate embeddings with DistilBERT
             try:
                 embeddings = await nlp_service_manager.get_embeddings(request.message)
+                if context.cancel_event.is_set():
+                    raise asyncio.CancelledError()
                 logger.debug(f"Generated embeddings: {len(embeddings)} dimensions")
                 
             except Exception as e:
@@ -776,6 +872,9 @@ class ChatOrchestrator:
                         request.user_id,
                         request.conversation_id
                     )
+
+                    if context.cancel_event.is_set():
+                        raise asyncio.CancelledError()
                     
                     # Merge attachment context into raw context
                     if attachment_context:
@@ -801,6 +900,9 @@ class ChatOrchestrator:
                         request.user_id,
                         request.conversation_id
                     )
+
+                    if context.cancel_event.is_set():
+                        raise asyncio.CancelledError()
                     
                     logger.debug(f"Integrated context: {integrated_context.context_summary}")
                     
@@ -819,6 +921,9 @@ class ChatOrchestrator:
                     active_instructions,
                     context
                 )
+
+                if context.cancel_event.is_set():
+                    raise asyncio.CancelledError()
                 
                 return ProcessingResult(
                     success=True,
@@ -841,6 +946,13 @@ class ChatOrchestrator:
                     correlation_id=context.correlation_id
                 )
                 
+        except asyncio.CancelledError:
+            logger.info(
+                "Message processing cancelled", extra={"correlation_id": context.correlation_id}
+            )
+            context.status = ProcessingStatus.CANCELLED
+            context.cancelled = True
+            raise
         except Exception as e:
             logger.error(f"Unexpected error in message processing: {e}", exc_info=True)
             return ProcessingResult(
@@ -850,6 +962,67 @@ class ChatOrchestrator:
                 processing_time=time.time() - start_time,
                 correlation_id=context.correlation_id
             )
+
+    async def cancel_processing(
+        self,
+        *,
+        conversation_id: Optional[str] = None,
+        correlation_id: Optional[str] = None
+    ) -> List[str]:
+        """Cancel active processing contexts and associated asyncio tasks."""
+
+        if not conversation_id and not correlation_id:
+            raise ValueError("Either conversation_id or correlation_id must be provided")
+
+        async with self._contexts_lock:
+            snapshot = list(self._active_contexts.items())
+
+        target_ids: List[str] = []
+        for cid, ctx in snapshot:
+            if correlation_id and cid == correlation_id:
+                target_ids.append(cid)
+            elif conversation_id and ctx.conversation_id == conversation_id:
+                target_ids.append(cid)
+
+        cancelled: List[str] = []
+        for cid in target_ids:
+            async with self._contexts_lock:
+                ctx = self._active_contexts.get(cid)
+
+            if not ctx:
+                continue
+
+            if not ctx.cancel_event.is_set():
+                ctx.cancel_event.set()
+                ctx.cancelled = True
+                ctx.status = ProcessingStatus.CANCELLED
+
+            async with self._tasks_lock:
+                task = self._active_tasks.get(cid)
+
+            if task and not task.done():
+                task.cancel()
+
+            cancelled.append(cid)
+
+        return cancelled
+
+    async def _register_context(self, context: ProcessingContext) -> None:
+        async with self._contexts_lock:
+            self._active_contexts[context.correlation_id] = context
+
+    async def _register_task(self, correlation_id: str, task: asyncio.Task) -> None:
+        async with self._tasks_lock:
+            self._active_tasks[correlation_id] = task
+
+    async def _cleanup_context(self, correlation_id: str) -> None:
+        async with self._tasks_lock:
+            task = self._active_tasks.pop(correlation_id, None)
+        if task and not task.done():
+            with suppress(asyncio.CancelledError):
+                task.cancel()
+        async with self._contexts_lock:
+            self._active_contexts.pop(correlation_id, None)
     
     async def _retrieve_context(
         self,
