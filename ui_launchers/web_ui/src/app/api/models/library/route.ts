@@ -1,4 +1,8 @@
+import { randomUUID } from 'crypto';
+
 import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
 
 // Use the correct backend URL from environment variables
 const BACKEND_URL = process.env.KAREN_BACKEND_URL || process.env.NEXT_PUBLIC_KAREN_BACKEND_URL || 'http://127.0.0.1:8000';
@@ -59,11 +63,11 @@ async function getModelHealthStatus(modelId: string): Promise<ModelHealthStatus>
 }
 
 export async function GET(request: NextRequest) {
-  console.log('🔍 ModelsLibrary API: Request received', {
-    url: request.url,
+  const requestId = randomUUID();
+  logger.info('Models library request received', {
+    requestId,
     method: request.method,
-    headers: Object.fromEntries(request.headers.entries()),
-    searchParams: Object.fromEntries(request.nextUrl.searchParams.entries())
+    searchParams: Object.fromEntries(request.nextUrl.searchParams.entries()),
   });
 
   try {
@@ -76,11 +80,12 @@ export async function GET(request: NextRequest) {
     
     // Enhanced scanning with health monitoring
     if (scan) {
-      console.log('🔍 ModelsLibrary API: Enhanced dynamic scanning requested', {
+      logger.info('Models library dynamic scan requested', {
+        requestId,
         includeHealth,
         modelType,
         provider,
-        forceRefresh
+        forceRefresh,
       });
       
       try {
@@ -116,7 +121,10 @@ export async function GET(request: NextRequest) {
                 const healthStatus = await getModelHealthStatus(model.id);
                 enhancedModel.health = healthStatus;
               } catch (healthError) {
-                console.warn(`Failed to get health status for model ${model.id}:`, healthError);
+                logger.warn(`Failed to get health status for model ${model.id}`, {
+                  requestId,
+                  error: healthError instanceof Error ? healthError.message : String(healthError),
+                });
                 enhancedModel.health = {
                   is_healthy: false,
                   last_check: new Date().toISOString(),
@@ -153,15 +161,12 @@ export async function GET(request: NextRequest) {
           source: 'enhanced_dynamic_scan'
         };
         
-        console.log('🔍 ModelsLibrary API: Enhanced dynamic scan completed', {
+        logger.info('Models library dynamic scan completed', {
+          requestId,
           totalModels: enhancedModels.length,
           localModels: response.local_count,
           healthyModels: response.healthy_count,
           scanDuration: stats.scanStats?.scanDuration,
-          categories: Object.keys(categorizedModels).map(key => ({
-            type: key,
-            count: categorizedModels[key as keyof typeof categorizedModels].length
-          }))
         });
         
         return NextResponse.json(response, {
@@ -173,7 +178,7 @@ export async function GET(request: NextRequest) {
         });
         
       } catch (scanError) {
-        console.error('🔍 ModelsLibrary API: Enhanced dynamic scan failed', scanError);
+        logger.error('Models library dynamic scan failed', scanError instanceof Error ? scanError : { message: String(scanError) });
         
         // Return error response with fallback
         return NextResponse.json({
@@ -190,10 +195,10 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString();
     const url = `${base}/api/models/library${queryString ? `?${queryString}` : ''}`;
     
-    console.log('🔍 ModelsLibrary API: Backend URL constructed', {
-      backendUrl: url,
+    logger.debug('Models library backend URL prepared', {
+      requestId,
       baseUrl: base,
-      queryString: queryString
+      hasQuery: Boolean(queryString),
     });
     
     // Get Authorization header from the request
@@ -205,22 +210,23 @@ export async function GET(request: NextRequest) {
     
     if (authHeader) {
       headers['Authorization'] = authHeader;
-      console.log('🔍 ModelsLibrary API: Authorization header found', {
-        hasAuth: true,
-        authPrefix: authHeader.substring(0, 20) + '...'
+      logger.debug('Models library forwarding authorization header', {
+        requestId,
       });
     } else {
-      console.log('🔍 ModelsLibrary API: No authorization header');
+      logger.debug('Models library request without authorization header', {
+        requestId,
+      });
     }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => {
-      console.log('🔍 ModelsLibrary API: Request timeout after', TIMEOUT_MS, 'ms');
+      logger.warn('Models library request timed out', { requestId, timeoutMs: TIMEOUT_MS });
       controller.abort();
     }, TIMEOUT_MS);
     
     try {
-      console.log('🔍 ModelsLibrary API: Attempting backend fetch', { url, timeout: TIMEOUT_MS, backendUrl: BACKEND_URL });
+      logger.info('Models library proxying to backend', { requestId, url });
       
       const response = await fetch(url, {
         method: 'GET',
@@ -232,12 +238,11 @@ export async function GET(request: NextRequest) {
       
       clearTimeout(timeout);
       
-      console.log('🔍 ModelsLibrary API: Backend response received', {
+      logger.info('Models library backend response received', {
+        requestId,
         status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
         ok: response.ok,
-        url: response.url
+        url: response.url,
       });
       
       const contentType = response.headers.get('content-type') || '';
@@ -246,49 +251,45 @@ export async function GET(request: NextRequest) {
       if (contentType.includes('application/json')) {
         try {
           data = await response.json();
-          console.log('🔍 ModelsLibrary API: JSON response parsed successfully', {
-            dataKeys: Object.keys(data),
-            hasModels: Array.isArray(data.models),
-            modelsCount: Array.isArray(data.models) ? data.models.length : 'N/A',
-            responseStructure: data
+          logger.debug('Models library JSON payload processed', {
+            requestId,
+            keys: Object.keys(data),
+            modelCount: Array.isArray(data.models) ? data.models.length : undefined,
           });
         } catch (parseError) {
-          console.error('🔍 ModelsLibrary API: JSON parse error', { error: parseError });
+          logger.error('Models library JSON parse error', parseError instanceof Error ? parseError : { message: String(parseError) });
           data = { models: [] };
         }
       } else {
         try {
           const text = await response.text();
-          console.log('🔍 ModelsLibrary API: Non-JSON response', {
-            contentType: contentType,
-            textPreview: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
-            textLength: text.length
+          logger.warn('Models library received non-JSON payload', {
+            requestId,
+            contentType,
+            length: text.length,
           });
           data = { models: [], message: text };
         } catch (textError) {
-          console.error('🔍 ModelsLibrary API: Text read error', { error: textError });
+          logger.error('Models library text read error', textError instanceof Error ? textError : { message: String(textError) });
           data = { models: [] };
         }
       }
 
-      console.log('🔍 ModelsLibrary API: Returning response to frontend', {
+      logger.info('Models library response delivered to frontend', {
+        requestId,
         status: response.status,
-        dataStructure: data
+        modelCount: Array.isArray((data as any).models) ? (data as any).models.length : undefined,
       });
 
       return NextResponse.json(data, { status: response.status });
       
     } catch (err: any) {
       clearTimeout(timeout);
-      console.error('🔍 ModelsLibrary API: Backend fetch error', {
-        error: err.message,
-        errorType: err.name,
-        stack: err.stack
-      });
+      logger.error('Models library backend fetch error', err instanceof Error ? err : { message: String(err) });
       
       // Try to use enhanced scanning as fallback
       try {
-        console.log('🔍 ModelsLibrary API: Attempting fallback to dynamic scanning');
+        logger.warn('Models library attempting fallback scan', { requestId });
         const { modelSelectionService } = await import('@/lib/model-selection-service');
         
         const models = await modelSelectionService.scanLocalDirectories({
@@ -305,64 +306,47 @@ export async function GET(request: NextRequest) {
           message: 'Backend unavailable, using local directory scanning'
         };
         
-        console.log('🔍 ModelsLibrary API: Fallback scan successful', {
-          modelsFound: models.length
+        logger.warn('Models library fallback scan succeeded', {
+          requestId,
+          modelsFound: models.length,
         });
         
         return NextResponse.json(fallbackResponse, { status: 200 });
         
       } catch (fallbackError) {
-        console.error('🔍 ModelsLibrary API: Fallback scan failed', fallbackError);
-        
+        logger.error('Models library fallback scan failed', fallbackError instanceof Error ? fallbackError : { message: String(fallbackError) });
+
         // Return minimal fallback response
         const minimalFallback = {
-          models: [
-            {
-              id: 'local:tinyllama-1.1b',
-              name: 'TinyLlama 1.1B',
-              provider: 'llama-cpp',
-              type: 'text',
-              status: 'available',
-              description: 'Local TinyLlama model for development',
-              capabilities: ['chat', 'text-generation'],
-              size: 669000000,
-              metadata: {}
-            }
-          ],
-          total_count: 1,
-          local_count: 1,
+          models: [],
+          total_count: 0,
+          local_count: 0,
           available_count: 0,
-          source: 'minimal_fallback'
+          source: 'minimal_fallback',
+          message: 'No models available. Please check backend connectivity.',
         };
-        
-        console.log('🔍 ModelsLibrary API: Returning minimal fallback response');
+
+        logger.error('Models library returning minimal fallback response', {
+          requestId,
+        });
         return NextResponse.json(minimalFallback, { status: 200 });
       }
     }
     
   } catch (error) {
-    console.error('🔍 ModelsLibrary API: Proxy error', error);
+    logger.error('Models library proxy error', error instanceof Error ? error : { message: String(error) });
     const fallbackResponse = {
-      models: [
-        {
-          id: 'local:tinyllama-1.1b',
-          name: 'TinyLlama 1.1B',
-          provider: 'llama-cpp',
-          type: 'text',
-          status: 'available',
-          description: 'Local TinyLlama model for development',
-          capabilities: ['chat', 'text-generation'],
-          size: 669000000,
-          metadata: {}
-        }
-      ],
-      total_count: 1,
-      local_count: 1,
+      models: [],
+      total_count: 0,
+      local_count: 0,
       available_count: 0,
-      source: 'error_fallback'
+      source: 'error_fallback',
+      message: 'Unable to retrieve models from backend.',
     };
-    
-    console.log('🔍 ModelsLibrary API: Returning error fallback', fallbackResponse);
+
+    logger.error('Models library returning error fallback', {
+      requestId,
+    });
     return NextResponse.json(fallbackResponse, { status: 200 });
   }
 }

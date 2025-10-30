@@ -17,13 +17,6 @@ export const LazyModelsPage = createLazyRoute(
   }
 );
 
-export const LazyDeveloperPage = createLazyRoute(
-  () => import('./developer/page'),
-  {
-    preload: false,
-  }
-);
-
 export const LazyProfilePage = createLazyRoute(
   () => import('./profile/page'),
   {
@@ -39,27 +32,3 @@ export const LazyProfilePage = createLazyRoute(
 //     preload: false,
 //   }
 // );
-
-// Test components for lazy loading
-export const LazyTestPage = createLazyRoute(
-  () => import('./test/page'),
-  {
-    preload: false,
-  }
-);
-
-// Model selector test (likely heavy with charts/visualizations)
-export const LazyModelSelectorTest = createLazyRoute(
-  () => import('./model-selector-test/page'),
-  {
-    preload: false,
-  }
-);
-
-// Chat test page
-export const LazyChatTest = createLazyRoute(
-  () => import('./chat-test/page'),
-  {
-    preload: false,
-  }
-);
