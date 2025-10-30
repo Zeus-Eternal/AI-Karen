@@ -13,8 +13,9 @@ Requirements addressed:
 import asyncio
 import logging
 import json
+import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Callable, Set
+from typing import Dict, Any, List, Optional, Callable, Set, Union
 from enum import Enum
 from dataclasses import dataclass, asdict
 from collections import defaultdict
@@ -71,6 +72,7 @@ class ExtensionAlertManager:
 
     def __init__(self):
         self.alert_rules: Dict[str, AlertRule] = {}
+        self.alert_rules_by_type: Dict[str, AlertRule] = {}
         self.notification_channels: Dict[str, NotificationChannel] = {}
         self.active_alerts: Dict[str, Alert] = {}
         self.alert_history: List[Alert] = []
@@ -151,6 +153,7 @@ class ExtensionAlertManager:
         """Add or update an alert rule."""
         with self.lock:
             self.alert_rules[rule.rule_id] = rule
+            self.alert_rules_by_type[rule.alert_type.value] = rule
             logger.info(f"Added alert rule: {rule.rule_id}")
 
     def add_notification_channel(self, channel: NotificationChannel):
@@ -427,21 +430,92 @@ class ExtensionAlertManager:
         with self.lock:
             self.active_alerts[alert.alert_id] = alert
             self.alert_history.append(alert)
-        
-        logger.warning(f"Alert generated: {alert.alert_type} - {alert.message}")
-        
+
+        logger.warning(
+            "Alert generated",
+            extra={
+                "alert_id": alert.alert_id,
+                "alert_type": alert.alert_type,
+                "severity": alert.severity.value,
+                "message": alert.message,
+            },
+        )
+
         # Send notifications
         await self._send_notifications(alert)
+
+    async def create_manual_alert(
+        self,
+        *,
+        alert_type: Union[AlertType, str],
+        severity: ErrorSeverity,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        escalation_level: Optional[Union[EscalationLevel, str]] = None,
+    ) -> Alert:
+        """Create and dispatch an alert outside of rule evaluation.
+
+        This enables subsystems (such as service recovery) to escalate incidents
+        immediately with full context, while still leveraging the centralised
+        notification pipeline.
+        """
+
+        if isinstance(alert_type, AlertType):
+            alert_type_value = alert_type.value
+        else:
+            alert_type_value = str(alert_type)
+
+        alert_context = dict(context or {})
+
+        if escalation_level is not None:
+            if isinstance(escalation_level, EscalationLevel):
+                escalation_value = escalation_level.value
+            else:
+                escalation_value = str(escalation_level)
+            alert_context.setdefault("escalation_level_override", escalation_value)
+
+        alert = Alert(
+            alert_id=f"manual_{alert_type_value}_{uuid.uuid4().hex}",
+            correlation_id=extension_error_logger.get_correlation_id(),
+            alert_type=alert_type_value,
+            severity=severity,
+            message=message,
+            context=alert_context,
+            created_at=datetime.utcnow(),
+        )
+
+        await self._process_alert(alert)
+        return alert
 
     async def _send_notifications(self, alert: Alert):
         """Send alert notifications through configured channels."""
         # Find the escalation level for this alert
-        rule = self.alert_rules.get(alert.alert_type)
-        if not rule:
+        rule = self.alert_rules_by_type.get(alert.alert_type)
+        escalation_level: Optional[EscalationLevel] = None
+
+        if rule:
+            escalation_level = rule.escalation_level
+
+        override_level = alert.context.get("escalation_level_override")
+        if override_level:
+            try:
+                escalation_level = EscalationLevel(override_level)
+            except ValueError:
+                logger.error(
+                    "Invalid escalation level override",
+                    extra={
+                        "alert_id": alert.alert_id,
+                        "override": override_level,
+                    },
+                )
+
+        if escalation_level is None:
+            logger.warning(
+                "No escalation level configured for alert",
+                extra={"alert_id": alert.alert_id, "alert_type": alert.alert_type},
+            )
             return
-        
-        escalation_level = rule.escalation_level
-        
+
         # Send to all channels that handle this escalation level
         for channel_id, channel in self.notification_channels.items():
             if not channel.enabled:
