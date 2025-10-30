@@ -15,7 +15,7 @@
 import { logger } from '@/lib/logger';
 import { getConnectionManager, ConnectionError, ErrorCategory } from '@/lib/connection/connection-manager';
 import { getTimeoutManager, OperationType } from '@/lib/connection/timeout-manager';
-import { getDevelopmentAuthManager } from './development-auth';
+import { getDevelopmentAuthManager, isDevelopmentFeaturesEnabled } from './development-auth';
 import { getHotReloadAuthManager } from './hot-reload-auth';
 
 // Token storage interface for secure token management
@@ -238,21 +238,23 @@ export class ExtensionAuthManager {
    * Initialize development and hot reload support
    */
   private initializeDevelopmentSupport(): void {
-    if (this.isDevelopmentMode()) {
-      // Initialize development auth manager
-      const devAuthManager = getDevelopmentAuthManager();
-      if (devAuthManager.isEnabled()) {
-        logger.debug('Development authentication support enabled');
-      }
-
-      // Initialize hot reload support
-      const hotReloadManager = getHotReloadAuthManager();
-      hotReloadManager.addHotReloadListener((event) => {
-        logger.debug('Hot reload detected in extension auth manager', event);
-        // Preserve current authentication state
-        this.preserveAuthForHotReload();
-      });
+    if (!this.isDevelopmentMode()) {
+      return;
     }
+
+    // Initialize development auth manager
+    const devAuthManager = getDevelopmentAuthManager();
+    if (devAuthManager.isEnabled()) {
+      logger.debug('Development authentication support enabled');
+    }
+
+    // Initialize hot reload support
+    const hotReloadManager = getHotReloadAuthManager();
+    hotReloadManager.addHotReloadListener((event) => {
+      logger.debug('Hot reload detected in extension auth manager', event);
+      // Preserve current authentication state
+      this.preserveAuthForHotReload();
+    });
   }
 
   /**
@@ -555,8 +557,14 @@ export class ExtensionAuthManager {
    * Check if running in development mode
    */
   private isDevelopmentMode(): boolean {
-    if (typeof window === 'undefined') return false;
-    
+    if (!isDevelopmentFeaturesEnabled()) {
+      return false;
+    }
+
+    if (typeof window === 'undefined') {
+      return process.env.NODE_ENV === 'development';
+    }
+
     return (
       process.env.NODE_ENV === 'development' ||
       window.location.hostname === 'localhost' ||

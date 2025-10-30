@@ -10,7 +10,7 @@
  */
 
 import { logger } from '@/lib/logger';
-import { getDevelopmentAuthManager } from './development-auth';
+import { getDevelopmentAuthManager, isDevelopmentFeaturesEnabled } from './development-auth';
 
 // Hot reload state interface
 interface HotReloadAuthState {
@@ -45,12 +45,18 @@ export class HotReloadAuthManager {
 
   constructor() {
     this.sessionId = this.getOrCreateSessionId();
-    this.setupHotReloadDetection();
-    this.restoreStateIfNeeded();
-    
+
+    const devFeaturesEnabled = isDevelopmentFeaturesEnabled();
+
+    if (devFeaturesEnabled) {
+      this.setupHotReloadDetection();
+      this.restoreStateIfNeeded();
+    }
+
     logger.debug('Hot reload auth manager initialized', {
       sessionId: this.sessionId,
       hasPreservedState: !!this.preservedState,
+      devFeaturesEnabled,
     });
   }
 
@@ -77,7 +83,7 @@ export class HotReloadAuthManager {
    * Setup hot reload detection for various development servers
    */
   private setupHotReloadDetection(): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isDevelopmentFeaturesEnabled()) return;
 
     // Webpack Hot Module Replacement
     if ((window as any).module?.hot) {
@@ -137,7 +143,7 @@ export class HotReloadAuthManager {
    * Check if current scenario is a hot reload
    */
   private isHotReloadScenario(): boolean {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined' || !isDevelopmentFeaturesEnabled()) return false;
 
     const indicators = [
       // Webpack dev server
@@ -161,6 +167,10 @@ export class HotReloadAuthManager {
    * Handle hot reload event
    */
   private handleHotReload(event: HotReloadEvent): void {
+    if (!isDevelopmentFeaturesEnabled()) {
+      return;
+    }
+
     this._isHotReloadActive = true;
     
     logger.debug('Hot reload detected', event);
@@ -189,7 +199,7 @@ export class HotReloadAuthManager {
    * Preserve authentication state for hot reload
    */
   private preserveAuthState(): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isDevelopmentFeaturesEnabled()) return;
 
     try {
       const devAuthManager = getDevelopmentAuthManager();
@@ -226,6 +236,10 @@ export class HotReloadAuthManager {
    */
   private collectCurrentTokens(): Record<string, string> {
     const tokens: Record<string, string> = {};
+
+    if (!isDevelopmentFeaturesEnabled()) {
+      return tokens;
+    }
 
     try {
       // Extension auth tokens
@@ -270,6 +284,10 @@ export class HotReloadAuthManager {
    * Get current user identifier
    */
   private getCurrentUser(): string {
+    if (!isDevelopmentFeaturesEnabled()) {
+      return 'unknown-user';
+    }
+
     try {
       // Try to get user from various sources
       const sources = [
@@ -304,7 +322,7 @@ export class HotReloadAuthManager {
    * Restore authentication state after hot reload
    */
   private restoreStateIfNeeded(): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isDevelopmentFeaturesEnabled()) return;
 
     try {
       // Check if hot reload restoration is pending

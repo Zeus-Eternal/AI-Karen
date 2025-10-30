@@ -74,7 +74,8 @@ export {
   DevelopmentAuthManager,
   getDevelopmentAuthManager,
   initializeDevelopmentAuthManager,
-  resetDevelopmentAuthManager
+  resetDevelopmentAuthManager,
+  isDevelopmentFeaturesEnabled
 } from './development-auth';
 
 // Hot reload authentication
