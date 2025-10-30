@@ -7,6 +7,7 @@ import asyncio
 import json
 import signal
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional, Set
@@ -14,6 +15,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from .base import BaseCommand
+from ...manager import ExtensionManager
 
 
 class ExtensionFileHandler(FileSystemEventHandler):
@@ -89,6 +91,9 @@ class DevServerCommand(BaseCommand):
         self.running = False
         self.extension_instance = None
         self.reload_count = 0
+        self.extension_manager: Optional[ExtensionManager] = None
+        self._event_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._loop_thread: Optional[threading.Thread] = None
     
     @staticmethod
     def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -182,26 +187,50 @@ class DevServerCommand(BaseCommand):
         """Load or reload the extension."""
         try:
             self.print_info(f"Loading extension from {self.extension_path}")
-            
+
             # Validate extension if requested
             if validate:
                 if not self._validate_extension():
                     return False
-            
+
             # Load manifest
             manifest = self._load_manifest()
             if not manifest:
                 return False
-            
-            # TODO: Actually load and initialize the extension
-            # This would integrate with the extension manager
-            self.print_success(f"Extension '{manifest.get('name')}' loaded successfully")
-            
+
+            manager = self._get_extension_manager()
+            if not manager:
+                self.print_error("Extension manager not available")
+                return False
+
+            extension_name = manifest.get("name")
+            if not extension_name:
+                self.print_error("Extension manifest is missing a name")
+                return False
+
+            if self.reload_count > 0:
+                record = self._run_async(manager.reload_extension(extension_name))
+            else:
+                record = self._run_async(manager.load_extension(extension_name))
+
+            if not record or not record.instance:
+                self.print_error(
+                    f"Failed to load extension runtime for '{extension_name}'"
+                )
+                return False
+
+            self.extension_instance = record.instance
+            self.print_success(
+                f"Extension '{extension_name}' loaded successfully"
+            )
+            manifest_data: Dict[str, Any] = record.manifest.model_dump()
+            self._print_development_info(manifest_data)
+
             if self.reload_count > 0:
                 self.print_info(f"Reload #{self.reload_count} completed")
-            
+
             return True
-            
+
         except Exception as e:
             self.print_error(f"Failed to load extension: {e}")
             return False
@@ -246,7 +275,7 @@ class DevServerCommand(BaseCommand):
     def _setup_file_watcher(self, args: argparse.Namespace) -> None:
         """Set up file system watcher for hot reload."""
         self.print_info("Setting up file watcher for hot reload...")
-        
+
         def on_file_change(file_path: Path):
             self.print_info(f"File changed: {file_path.relative_to(self.extension_path)}")
             self.reload_count += 1
@@ -281,7 +310,67 @@ class DevServerCommand(BaseCommand):
                 time.sleep(1)
         except KeyboardInterrupt:
             pass
-    
+
+    def _get_extension_manager(self) -> Optional[ExtensionManager]:
+        """Create (or retrieve) the extension manager for the dev session."""
+        if not self.extension_path:
+            return None
+
+        if not self.extension_manager:
+            extension_root = self.extension_path.parent
+            manager = ExtensionManager(extension_root=extension_root)
+
+            try:
+                self._run_async(manager.initialize())
+            except Exception as exc:
+                self.print_error(f"Failed to initialize extension manager: {exc}")
+                return None
+
+            self.extension_manager = manager
+
+        return self.extension_manager
+
+    def _ensure_event_loop(self) -> asyncio.AbstractEventLoop:
+        """Ensure there is a background event loop for async extension ops."""
+        if not self._event_loop:
+            self._event_loop = asyncio.new_event_loop()
+            self._loop_thread = threading.Thread(
+                target=self._event_loop_runner,
+                name="kari-extension-dev-loop",
+                daemon=True,
+            )
+            self._loop_thread.start()
+
+        return self._event_loop
+
+    def _event_loop_runner(self) -> None:
+        """Run the event loop in a dedicated background thread."""
+        assert self._event_loop is not None
+        asyncio.set_event_loop(self._event_loop)
+        try:
+            self._event_loop.run_forever()
+        finally:
+            self._event_loop.close()
+
+    def _run_async(self, coroutine):
+        """Synchronously execute an async coroutine on the background loop."""
+        loop = self._ensure_event_loop()
+        future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+        return future.result()
+
+    def _stop_event_loop(self) -> None:
+        """Stop and clean up the background event loop."""
+        if not self._event_loop:
+            return
+
+        self._event_loop.call_soon_threadsafe(self._event_loop.stop)
+
+        if self._loop_thread and self._loop_thread.is_alive():
+            self._loop_thread.join()
+
+        self._event_loop = None
+        self._loop_thread = None
+
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals."""
         self.print_info(f"Received signal {signum}, shutting down...")
@@ -292,11 +381,19 @@ class DevServerCommand(BaseCommand):
         if self.observer:
             self.observer.stop()
             self.observer.join()
-        
-        if self.extension_instance:
-            # TODO: Properly shutdown extension instance
-            pass
-        
+
+        if self.extension_manager:
+            try:
+                self._run_async(self.extension_manager.shutdown())
+            except Exception as exc:
+                self.print_warning(f"Error shutting down extension manager: {exc}")
+            finally:
+                self.extension_manager = None
+                self.extension_instance = None
+
+        if self._event_loop:
+            self._stop_event_loop()
+
         self.print_info("Development server stopped")
     
     def _print_development_info(self, manifest: Dict[str, Any]) -> None:
