@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Select,
   SelectContent,
@@ -13,7 +19,12 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Brain,
   Cpu,
@@ -27,7 +38,7 @@ import {
   RefreshCw,
   Image,
   MessageSquare,
-  Waveform,
+  AudioWaveform,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -113,27 +124,34 @@ const TASK_NAME_KEYWORDS: Record<ModelSelectorTask, string[]> = {
     "kandinsky",
   ],
   code: ["code", "coder", "codellama", "wizardcoder", "codeqwen", "codestral"],
-  embedding: ["embed", "embedding", "text-embedding", "all-minilm", "sentence-transformers", "bge", "e5"],
+  embedding: [
+    "embed",
+    "embedding",
+    "text-embedding",
+    "all-minilm",
+    "sentence-transformers",
+    "bge",
+    "e5",
+  ],
   any: [],
 };
 
 const TASK_PROVIDER_KEYWORDS: Record<ModelSelectorTask, string[]> = {
-  chat: ["llama", "transformers", "huggingface", "openai", "anthropic", "local"],
+  chat: [
+    "llama",
+    "transformers",
+    "huggingface",
+    "openai",
+    "anthropic",
+    "local",
+  ],
   image: ["stable-diffusion", "diffusion", "flux", "image"],
   code: ["code", "codellama", "codestral"],
   embedding: ["embedding", "sentence-transformers", "semantic"],
   any: [],
 };
 
-const STATUS_PRIORITY: Record<string, number> = {
-  local: 0,
-  downloading: 1,
-  available: 2,
-  incompatible: 3,
-  error: 4,
-};
-
-const DEFAULT_STATUS_PRIORITY = 5;
+const DEFAULT_STATUS_PRIORITY = 99;
 
 const TASK_FRIENDLY_NAME: Record<ModelSelectorTask, string> = {
   chat: "chat",
@@ -185,7 +203,10 @@ const isBlockedName = (name: string | undefined) => {
   return false;
 };
 
-const isModelCompatibleWithTask = (model: ModelInfo, task: ModelSelectorTask): boolean => {
+const isModelCompatibleWithTask = (
+  model: ModelInfo,
+  task: ModelSelectorTask
+): boolean => {
   if (task === "any") {
     return true;
   }
@@ -193,7 +214,9 @@ const isModelCompatibleWithTask = (model: ModelInfo, task: ModelSelectorTask): b
   const type = model.type?.toLowerCase();
   const provider = model.provider?.toLowerCase();
   const name = model.name?.toLowerCase();
-  const capabilities = (model.capabilities || []).map((cap) => cap.toLowerCase());
+  const capabilities = (model.capabilities || []).map((cap) =>
+    cap.toLowerCase()
+  );
 
   if (task === "chat" && (type === "text" || type === "multimodal")) {
     return true;
@@ -211,7 +234,9 @@ const isModelCompatibleWithTask = (model: ModelInfo, task: ModelSelectorTask): b
     return true;
   }
 
-  if (capabilities.some((cap) => hasKeyword(cap, TASK_CAPABILITY_KEYWORDS[task]))) {
+  if (
+    capabilities.some((cap) => hasKeyword(cap, TASK_CAPABILITY_KEYWORDS[task]))
+  ) {
     return true;
   }
 
@@ -247,9 +272,18 @@ interface ModelSelectorProps {
 
 type TaskGroupKey = "chat" | "image" | "audio" | "embedding" | "other";
 
-const TASK_GROUP_ORDER: TaskGroupKey[] = ["chat", "image", "audio", "embedding", "other"];
+const TASK_GROUP_ORDER: TaskGroupKey[] = [
+  "chat",
+  "image",
+  "audio",
+  "embedding",
+  "other",
+];
 
-const TASK_GROUP_METADATA: Record<TaskGroupKey, { label: string; icon: React.ReactElement }> = {
+const TASK_GROUP_METADATA: Record<
+  TaskGroupKey,
+  { label: string; icon: React.ReactElement }
+> = {
   chat: {
     label: "Chat & Text",
     icon: <MessageSquare className="h-3 w-3" />,
@@ -260,7 +294,7 @@ const TASK_GROUP_METADATA: Record<TaskGroupKey, { label: string; icon: React.Rea
   },
   audio: {
     label: "Audio & Speech",
-    icon: <Waveform className="h-3 w-3" />,
+    icon: <AudioWaveform className="h-3 w-3" />,
   },
   embedding: {
     label: "Embeddings & Search",
@@ -298,7 +332,9 @@ const sortByStatusThenName = (a: ModelInfo, b: ModelInfo) => {
     return statusOrderA - statusOrderB;
   }
 
-  return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+  return (a.name || "").localeCompare(b.name || "", undefined, {
+    sensitivity: "base",
+  });
 };
 
 const sortByRecommendation = (models: ModelInfo[], recommended: Set<string>) =>
@@ -320,7 +356,9 @@ const sortByRecommendation = (models: ModelInfo[], recommended: Set<string>) =>
 const inferPrimaryCapability = (model: ModelInfo): TaskGroupKey => {
   const name = (model.name || "").toLowerCase();
   const provider = (model.provider || "").toLowerCase();
-  const capabilities = (model.capabilities || []).map((cap) => cap.toLowerCase());
+  const capabilities = (model.capabilities || []).map((cap) =>
+    cap.toLowerCase()
+  );
 
   const hasCapability = (...needles: string[]) =>
     capabilities.some((cap) => needles.some((needle) => cap.includes(needle)));
@@ -335,11 +373,19 @@ const inferPrimaryCapability = (model: ModelInfo): TaskGroupKey => {
     return "image";
   }
 
-  if (hasCapability("audio", "speech", "voice") || name.includes("audio") || name.includes("speech")) {
+  if (
+    hasCapability("audio", "speech", "voice") ||
+    name.includes("audio") ||
+    name.includes("speech")
+  ) {
     return "audio";
   }
 
-  if (hasCapability("embedding", "vector", "retrieval") || name.includes("embed") || name.includes("vector")) {
+  if (
+    hasCapability("embedding", "vector", "retrieval") ||
+    name.includes("embed") ||
+    name.includes("vector")
+  ) {
     return "embedding";
   }
 
@@ -425,23 +471,25 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
-      safeDebug('🔍 ModelSelector: Starting model loading from /api/models/library?quick=true');
-      
+
+      safeDebug(
+        "🔍 ModelSelector: Starting model loading from /api/models/library?quick=true"
+      );
+
       // First, quick list for fast paint
       const quick = await backend.makeRequestPublic<{
         models: ModelInfo[];
         total_count: number;
         local_count: number;
         available_count: number;
-      }>('/api/models/library?quick=true');
+      }>("/api/models/library?quick=true");
 
-      safeDebug('🔍 ModelSelector: Quick response received:', {
+      safeDebug("🔍 ModelSelector: Quick response received:", {
         hasModels: !!quick?.models,
         modelsCount: quick?.models?.length || 0,
         modelsType: typeof quick?.models,
         isArray: Array.isArray(quick?.models),
-        fullResponse: quick
+        fullResponse: quick,
       });
 
       setModels(quick?.models || []);
@@ -449,66 +497,84 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       // Then, schedule a full refresh in background (non-blocking)
       setTimeout(async () => {
         try {
-          safeDebug('🔍 ModelSelector: Starting full model refresh from /api/models/library');
+          safeDebug(
+            "🔍 ModelSelector: Starting full model refresh from /api/models/library"
+          );
           const full = await backend.makeRequestPublic<{
             models: ModelInfo[];
             total_count: number;
             local_count: number;
             available_count: number;
-          }>('/api/models/library');
-          
-          safeDebug('🔍 ModelSelector: Full response received:', {
+          }>("/api/models/library");
+
+          safeDebug("🔍 ModelSelector: Full response received:", {
             hasModels: !!full?.models,
             modelsCount: full?.models?.length || 0,
             modelsType: typeof full?.models,
             isArray: Array.isArray(full?.models),
-            fullResponse: full
+            fullResponse: full,
           });
 
-          if (full?.models && full.models.length >= (quick?.models?.length || 0)) {
+          if (
+            full?.models &&
+            full.models.length >= (quick?.models?.length || 0)
+          ) {
             setModels(full.models);
-            safeDebug('🔍 ModelSelector: Updated models with full response, count:', full.models.length);
+            safeDebug(
+              "🔍 ModelSelector: Updated models with full response, count:",
+              full.models.length
+            );
           }
         } catch (e) {
-          safeWarn('🔍 ModelSelector: Background full refresh failed:', e);
+          safeWarn("🔍 ModelSelector: Background full refresh failed:", e);
           // ignore background errors
         }
       }, 2000);
     } catch (err) {
-      safeError('🔍 ModelSelector: Failed to load models:', err);
+      safeError("🔍 ModelSelector: Failed to load models:", err);
       // Retry with quick mode and longer TTL if initial failed completely
       try {
-        safeDebug('🔍 ModelSelector: Retrying with fallback mode');
+        safeDebug("🔍 ModelSelector: Retrying with fallback mode");
         const fallback = await backend.makeRequestPublic<{
           models: ModelInfo[];
           total_count: number;
           local_count: number;
           available_count: number;
-        }>('/api/models/library?quick=true&ttl=60');
+        }>("/api/models/library?quick=true&ttl=60");
 
-        safeDebug('🔍 ModelSelector: Fallback response received:', {
+        safeDebug("🔍 ModelSelector: Fallback response received:", {
           hasModels: !!fallback?.models,
           modelsCount: fallback?.models?.length || 0,
           modelsType: typeof fallback?.models,
-          isArray: Array.isArray(fallback?.models)
+          isArray: Array.isArray(fallback?.models),
         });
 
         setModels(fallback?.models || []);
       } catch (e2) {
-        safeError('🔍 ModelSelector: Fallback also failed:', e2);
-        setError('Failed to load models');
+        safeError("🔍 ModelSelector: Fallback also failed:", e2);
+        setError("Failed to load models");
       }
     } finally {
       setLoading(false);
-      safeDebug('🔍 ModelSelector: Model loading completed, final models count:', models.length);
-      safeDebug('🔍 ModelSelector: All models received:', models.map(m => ({ name: m.name, provider: m.provider, status: m.status })));
+      safeDebug(
+        "🔍 ModelSelector: Model loading completed, final models count:",
+        models.length
+      );
+      safeDebug(
+        "🔍 ModelSelector: All models received:",
+        models.map((m) => ({
+          name: m.name,
+          provider: m.provider,
+          status: m.status,
+        }))
+      );
     }
   };
 
   useEffect(() => {
     loadModels();
   }, []);
-  
+
   const controlledValue = value ?? "";
 
   const filteredModels = useMemo(() => {
@@ -523,15 +589,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         return;
       }
 
-      if (!['local', 'downloading', 'available', 'incompatible'].includes(model.status)) {
+      if (
+        !["local", "downloading", "available", "incompatible"].includes(
+          model.status
+        )
+      ) {
         return;
       }
 
-      if (!includeDownloadable && model.status === 'available') {
+      if (!includeDownloadable && model.status === "available") {
         return;
       }
 
-      if (!includeDownloading && model.status === 'downloading') {
+      if (!includeDownloading && model.status === "downloading") {
         return;
       }
 
@@ -550,8 +620,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
       const existing = preferred.get(selectorValue);
       if (existing) {
-        const existingPriority = STATUS_PRIORITY[existing.status] ?? DEFAULT_STATUS_PRIORITY;
-        const candidatePriority = STATUS_PRIORITY[model.status] ?? DEFAULT_STATUS_PRIORITY;
+        const existingPriority =
+          STATUS_PRIORITY[existing.status] ?? STATUS_PRIORITY.default;
+        const candidatePriority =
+          STATUS_PRIORITY[model.status] ?? STATUS_PRIORITY.default;
 
         if (candidatePriority < existingPriority) {
           preferred.set(selectorValue, model);
@@ -575,8 +647,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
     result.sort((a, b) => {
       const statusDiff =
-        (STATUS_PRIORITY[a.status] ?? DEFAULT_STATUS_PRIORITY) -
-        (STATUS_PRIORITY[b.status] ?? DEFAULT_STATUS_PRIORITY);
+        (STATUS_PRIORITY[a.status] ?? STATUS_PRIORITY.default) -
+        (STATUS_PRIORITY[b.status] ?? STATUS_PRIORITY.default);
 
       if (statusDiff !== 0) {
         return statusDiff;
@@ -588,15 +660,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         return sizeA - sizeB;
       }
 
-      return (a.name || '').localeCompare(b.name || '');
+      return (a.name || "").localeCompare(b.name || "");
     });
 
-    safeDebug('🔍 ModelSelector: Filtered models for task', {
+    safeDebug("🔍 ModelSelector: Filtered models for task", {
       task,
       count: result.length,
       includeDownloadable,
       includeDownloading,
-      models: result.map((m) => ({ name: m.name, provider: m.provider, status: m.status })),
+      models: result.map((m) => ({
+        name: m.name,
+        provider: m.provider,
+        status: m.status,
+      })),
     });
 
     return result;
@@ -611,16 +687,16 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     };
 
     filteredModels.forEach((model) => {
-      if (model.status === 'available' && !includeDownloadable) {
+      if (model.status === "available" && !includeDownloadable) {
         return;
       }
-      if (model.status === 'downloading' && !includeDownloading) {
+      if (model.status === "downloading" && !includeDownloading) {
         return;
       }
 
       if (groups[model.status]) {
         groups[model.status].push(model);
-      } else if (model.status === 'error') {
+      } else if (model.status === "error") {
         groups.incompatible.push(model);
       }
     });
@@ -629,9 +705,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   }, [filteredModels, includeDownloadable, includeDownloading]);
 
   const recommendationUseCase = useMemo(() => {
-    if (task === 'chat') return 'chat' as const;
-    if (task === 'code') return 'code' as const;
-    if (task === 'embedding') return 'analysis' as const;
+    if (task === "chat") return "chat" as const;
+    if (task === "code") return "code" as const;
+    if (task === "embedding") return "analysis" as const;
     return null;
   }, [task]);
 
@@ -639,7 +715,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     if (!recommendationUseCase) {
       return filteredModels;
     }
-    return getRecommendedModels(filteredModels as unknown as Model[], recommendationUseCase) as unknown as ModelInfo[];
+    return getRecommendedModels(
+      filteredModels as unknown as Model[],
+      recommendationUseCase
+    ) as unknown as ModelInfo[];
   }, [filteredModels, recommendationUseCase]);
 
   const prioritizedModels = useMemo(() => {
@@ -648,11 +727,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
 
     const recommendedSet = new Set(
-      recommendedModels.map((model) => getModelSelectorValue(model as unknown as Model))
+      recommendedModels.map((model) =>
+        getModelSelectorValue(model as unknown as Model)
+      )
     );
 
     const remainder = filteredModels.filter(
-      (model) => !recommendedSet.has(getModelSelectorValue(model as unknown as Model))
+      (model) =>
+        !recommendedSet.has(getModelSelectorValue(model as unknown as Model))
     );
 
     return [...recommendedModels, ...remainder];
@@ -663,7 +745,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       if (!needle) {
         return undefined;
       }
-      
+
       const inFiltered = filteredModels.find((model) =>
         doesModelMatchValue(model as unknown as Model, needle)
       );
@@ -671,7 +753,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         return inFiltered;
       }
 
-      return models.find((model) => doesModelMatchValue(model as unknown as Model, needle));
+      return models.find((model) =>
+        doesModelMatchValue(model as unknown as Model, needle)
+      );
     },
     [filteredModels, models]
   );
@@ -695,9 +779,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
       const matched = findModelByValue(newValue);
       if (matched?.id) {
-        modelSelectionService.updateLastSelectedModel(matched.id).catch((err) => {
-          safeWarn('🔍 ModelSelector: Failed to persist last selected model', err);
-        });
+        modelSelectionService
+          .updateLastSelectedModel(matched.id)
+          .catch((err) => {
+            safeWarn(
+              "🔍 ModelSelector: Failed to persist last selected model",
+              err
+            );
+          });
       }
     },
     [findModelByValue, onValueChange]
@@ -721,15 +810,21 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       return;
     }
 
-    const localModels = filteredModels.filter((model) => model.status === 'local');
-    const candidatePool = localModels.length > 0 ? localModels : prioritizedModels;
-    const fallbackPool = candidatePool.length > 0 ? candidatePool : filteredModels;
+    const localModels = filteredModels.filter(
+      (model) => model.status === "local"
+    );
+    const candidatePool =
+      localModels.length > 0 ? localModels : prioritizedModels;
+    const fallbackPool =
+      candidatePool.length > 0 ? candidatePool : filteredModels;
     const defaultModel = fallbackPool[0];
 
     if (defaultModel) {
       autoSelectRef.current = true;
-      const defaultValue = getModelSelectorValue(defaultModel as unknown as Model);
-      safeDebug('🔍 ModelSelector: Auto-selecting model', {
+      const defaultValue = getModelSelectorValue(
+        defaultModel as unknown as Model
+      );
+      safeDebug("🔍 ModelSelector: Auto-selecting model", {
         model: defaultModel.name,
         provider: defaultModel.provider,
         status: defaultModel.status,
@@ -739,28 +834,87 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         handleModelValueChange(defaultValue);
       }
     }
-  }, [autoSelect, controlledValue, filteredModels, handleModelValueChange, prioritizedModels, disabled, task]);
+  }, [
+    autoSelect,
+    controlledValue,
+    filteredModels,
+    handleModelValueChange,
+    prioritizedModels,
+    disabled,
+    task,
+  ]);
 
-  const renderModelItem = (model: ModelInfo) => {
-    const provider = model.provider || '';
-    const name = model.name || '';
+  // Compute task groups for organizing models
+  const taskGroups = useMemo(() => {
+    const groups: Record<TaskGroupKey, ModelInfo[]> = {
+      chat: [],
+      image: [],
+      audio: [],
+      embedding: [],
+      other: [],
+    };
+
+    filteredModels.forEach((model) => {
+      if (["local", "downloading"].includes(model.status)) {
+        const capability = inferPrimaryCapability(model);
+        groups[capability].push(model);
+      }
+    });
+
+    return TASK_GROUP_ORDER.map((key) => ({
+      key,
+      models: groups[key],
+    })).filter((group) => group.models.length > 0);
+  }, [filteredModels]);
+
+  // Compute downloadable models
+  const downloadableModels = useMemo(() => {
+    return filteredModels.filter((model) => model.status === "available");
+  }, [filteredModels]);
+
+  // Compute experimental models
+  const experimentalModels = useMemo(() => {
+    return filteredModels.filter((model) => model.status === "error");
+  }, [filteredModels]);
+
+  const renderModelItem = (
+    model: ModelInfo,
+    options?: {
+      disabled?: boolean;
+      disabledReason?: string;
+      isRecommended?: boolean;
+    }
+  ) => {
+    const provider = model.provider || "";
+    const name = model.name || "";
     const modelValue = getModelSelectorValue(model as unknown as Model);
     if (!modelValue) {
       return null;
     }
 
+    const {
+      disabled: itemDisabled = false,
+      disabledReason,
+      isRecommended = false,
+    } = options || {};
+
     // Build a stable, unique key across potential duplicates coming from the library
     const uniqueKey = [
       modelValue,
-      model.id || '',
+      model.id || "",
       provider,
       name,
-      model.local_path || '',
-      model.download_url || ''
-    ].join('|');
+      model.local_path || "",
+      model.download_url || "",
+    ].join("|");
 
     return (
-      <SelectItem key={uniqueKey} value={modelValue} className="py-3" disabled={disabled}>
+      <SelectItem
+        key={uniqueKey}
+        value={modelValue}
+        className="py-3"
+        disabled={disabled || itemDisabled}
+      >
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center space-x-3 flex-1 min-w-0">
             <div className="flex items-center space-x-1">
@@ -772,16 +926,25 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               <div className="flex items-center space-x-2">
                 <span className="font-medium truncate">{name}</span>
                 <div className="flex items-center space-x-2">
-                  <Badge variant={getStatusBadgeVariant(model.status)} className="text-xs">
+                  <Badge
+                    variant={getStatusBadgeVariant(model.status)}
+                    className="text-xs"
+                  >
                     {model.status}
                   </Badge>
                   {isRecommended && (
-                    <Badge variant="outline" className="text-xs text-purple-600 border-purple-200 bg-purple-50">
+                    <Badge
+                      variant="outline"
+                      className="text-xs text-purple-600 border-purple-200 bg-purple-50"
+                    >
                       Recommended
                     </Badge>
                   )}
-                  {disabled && disabledReason && (
-                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                  {(disabled || itemDisabled) && disabledReason && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs text-muted-foreground"
+                    >
                       {disabledReason}
                     </Badge>
                   )}
@@ -814,11 +977,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             </div>
           </div>
 
-          {model.download_progress !== undefined && model.status === "downloading" && (
-            <div className="text-xs text-blue-600 ml-2">
-              {Math.round(model.download_progress)}%
-            </div>
-          )}
+          {model.download_progress !== undefined &&
+            model.status === "downloading" && (
+              <div className="text-xs text-blue-600 ml-2">
+                {Math.round(model.download_progress)}%
+              </div>
+            )}
         </div>
       </SelectItem>
     );
@@ -861,7 +1025,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   return (
     <TooltipProvider>
-      <Select value={controlledValue} onValueChange={handleModelValueChange} disabled={disabled}>
+      <Select
+        value={controlledValue}
+        onValueChange={handleModelValueChange}
+        disabled={disabled}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <SelectTrigger className={cn("w-full", className)}>
@@ -869,11 +1037,16 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 {selectedModel && (
                   <div className="flex items-center space-x-2">
                     <div className="flex items-center space-x-1">
-                      {getProviderIcon(selectedModel.provider || '')}
+                      {getProviderIcon(selectedModel.provider || "")}
                       {getStatusIcon(selectedModel.status)}
                     </div>
-                    <span className="truncate">{selectedModel.name || 'Unknown Model'}</span>
-                    <Badge variant={getStatusBadgeVariant(selectedModel.status)} className="text-xs">
+                    <span className="truncate">
+                      {selectedModel.name || "Unknown Model"}
+                    </span>
+                    <Badge
+                      variant={getStatusBadgeVariant(selectedModel.status)}
+                      className="text-xs"
+                    >
                       {selectedModel.status}
                     </Badge>
                   </div>
@@ -881,28 +1054,30 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               </SelectValue>
             </SelectTrigger>
           </TooltipTrigger>
-          
+
           {selectedModel && (
             <TooltipContent side="bottom" className="max-w-sm">
               <div className="space-y-1">
                 <div className="font-medium">{selectedModel.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  {selectedModel.description || `${selectedModel.provider || 'Unknown'} model`}
+                  {selectedModel.description ||
+                    `${selectedModel.provider || "Unknown"} model`}
                 </div>
                 {selectedModel.metadata?.memory_requirement && (
                   <div className="text-xs">
                     Memory: {selectedModel.metadata.memory_requirement}
                   </div>
                 )}
-                {selectedModel.capabilities && selectedModel.capabilities.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedModel.capabilities.slice(0, 3).map((cap) => (
-                      <Badge key={cap} variant="outline" className="text-xs">
-                        {cap}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                {selectedModel.capabilities &&
+                  selectedModel.capabilities.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedModel.capabilities.slice(0, 3).map((cap) => (
+                        <Badge key={cap} variant="outline" className="text-xs">
+                          {cap}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
               </div>
             </TooltipContent>
           )}
@@ -916,7 +1091,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 <SelectLabel className="flex items-center space-x-2">
                   {TASK_GROUP_METADATA[group.key].icon}
                   <span>
-                    {TASK_GROUP_METADATA[group.key].label} ({group.models.length})
+                    {TASK_GROUP_METADATA[group.key].label} (
+                    {group.models.length})
                   </span>
                 </SelectLabel>
                 {group.models.map((model) =>
@@ -934,17 +1110,21 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           {/* Available Models */}
           {includeDownloadable && groupedModels.available.length > 0 && (
             <>
-              {(taskGroups.length > 0) && <SelectSeparator />}
+              {taskGroups.length > 0 && <SelectSeparator />}
               <SelectGroup>
                 <SelectLabel className="flex items-center space-x-2">
                   <Download className="h-3 w-3 text-gray-500" />
                   <span>Downloadable Models ({downloadableModels.length})</span>
                 </SelectLabel>
                 <div className="px-3 pb-1 text-xs text-muted-foreground">
-                  Download these models from the Model Library before selecting them for chat or other tasks.
+                  Download these models from the Model Library before selecting
+                  them for chat or other tasks.
                 </div>
                 {downloadableModels.map((model) =>
-                  renderModelItem(model, { disabled: true, disabledReason: "Download required" })
+                  renderModelItem(model, {
+                    disabled: true,
+                    disabledReason: "Download required",
+                  })
                 )}
               </SelectGroup>
             </>
@@ -952,29 +1132,36 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
           {experimentalModels.length > 0 && (
             <>
-              {(taskGroups.length > 0 || downloadableModels.length > 0) && <SelectSeparator />}
+              {(taskGroups.length > 0 || downloadableModels.length > 0) && (
+                <SelectSeparator />
+              )}
               <SelectGroup>
                 <SelectLabel className="flex items-center space-x-2">
                   <AlertCircle className="h-3 w-3 text-yellow-500" />
                   <span>Experimental Models ({experimentalModels.length})</span>
                 </SelectLabel>
                 <div className="px-3 pb-1 text-xs text-muted-foreground">
-                  These models were detected but may be incompatible with the current runtime.
+                  These models were detected but may be incompatible with the
+                  current runtime.
                 </div>
                 {experimentalModels.map((model) =>
-                  renderModelItem(model, { disabled: true, disabledReason: "Not compatible" })
+                  renderModelItem(model, {
+                    disabled: true,
+                    disabledReason: "Not compatible",
+                  })
                 )}
               </SelectGroup>
             </>
           )}
 
-          {taskGroups.length === 0 && downloadableModels.length === 0 && experimentalModels.length === 0 && (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              
-              No {TASK_FRIENDLY_NAME[task]} models are ready to use yet. Install or enable a compatible model to continue.
-        
-            </div>
-          )}
+          {taskGroups.length === 0 &&
+            downloadableModels.length === 0 &&
+            experimentalModels.length === 0 && (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No {TASK_FRIENDLY_NAME[task]} models are ready to use yet.
+                Install or enable a compatible model to continue.
+              </div>
+            )}
         </SelectContent>
       </Select>
     </TooltipProvider>

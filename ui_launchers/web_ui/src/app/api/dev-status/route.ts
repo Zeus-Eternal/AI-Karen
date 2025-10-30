@@ -6,8 +6,11 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 
 export async function GET(request: NextRequest) {
+  const nodeEnv = process.env.NODE_ENV;
+  const isProduction = nodeEnv === 'production';
+
   // Only available in development
-  if (process.env.NODE_ENV !== 'development') {
+  if (nodeEnv !== 'development') {
     return NextResponse.json(
       { error: 'Development status not available in production' },
       { status: 404 }
@@ -48,7 +51,7 @@ export async function GET(request: NextRequest) {
       react: {
         version: '18.3.1', // From package.json
         strict_mode: false, // From next.config.js
-        minified: process.env.NODE_ENV === 'production',
+        minified: isProduction,
       },
     };
 
