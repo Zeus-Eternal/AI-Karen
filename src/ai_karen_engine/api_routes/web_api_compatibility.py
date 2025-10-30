@@ -46,8 +46,10 @@ from ai_karen_engine.core.dependencies import (
     get_ai_orchestrator_service,
     get_memory_service,
     get_plugin_service,
+    get_analytics_service,
 )
 from ai_karen_engine.models.shared_types import ToolType
+from ai_karen_engine.services.analytics_service import AnalyticsService
 
 # Ensure both `ai_karen_engine` and `src.ai_karen_engine` module paths reference the same module
 sys.modules.setdefault(
@@ -1111,7 +1113,10 @@ async def get_system_metrics_alias(http_request: Request):
 
 
 @router.get("/analytics/usage", response_model=WebUIUsageAnalytics)
-async def get_usage_analytics_compatibility(http_request: Request):
+async def get_usage_analytics_compatibility(
+    http_request: Request,
+    analytics_service: AnalyticsService = Depends(get_analytics_service),
+):
     """
     Compatibility endpoint for usage analytics.
     """
@@ -1120,20 +1125,22 @@ async def get_usage_analytics_compatibility(http_request: Request):
     try:
         logger.info(f"[{request_id}] Getting usage analytics")
 
-        # Mock usage analytics for now - replace with actual analytics service
+        range_param = http_request.query_params.get("range", "24h")
+        hours = AnalyticsService.parse_time_range(range_param)
+        usage_report = analytics_service.get_usage_report(hours)
+
         backend_analytics = {
-            "total_conversations": 234,
-            "total_messages": 1876,
-            "average_session_duration": 15.7,
-            "most_used_features": [
-                {"name": "Chat", "usage_count": 1234},
-                {"name": "Memory Query", "usage_count": 567},
-                {"name": "Plugin Execution", "usage_count": 234},
-            ],
+            "total_conversations": usage_report["total_sessions"],
+            "total_messages": usage_report["total_interactions"],
+            "average_session_duration": usage_report["average_session_minutes"],
+            "most_used_features": usage_report["popular_features"],
             "user_activity": {
-                "daily_active_users": 45,
-                "weekly_active_users": 123,
-                "monthly_active_users": 456,
+                "active_users": usage_report["unique_users"],
+                "total_sessions": usage_report["total_sessions"],
+                "events_per_user": usage_report["user_activity"].get("events_per_user", {}),
+                "session_counts": usage_report["user_activity"].get("session_counts", {}),
+                "peak_hours": usage_report["peak_hours"],
+                "per_user": usage_report["user_activity"].get("per_user", {}),
             },
         }
 
@@ -1145,6 +1152,9 @@ async def get_usage_analytics_compatibility(http_request: Request):
         return response
 
     except Exception as e:
+        if isinstance(e, ValueError):
+            raise HTTPException(status_code=400, detail=str(e))
+
         raise handle_service_error(
             e,
             WebUIErrorCode.INTERNAL_ERROR,
