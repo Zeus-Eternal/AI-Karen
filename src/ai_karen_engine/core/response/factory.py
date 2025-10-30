@@ -196,10 +196,26 @@ def get_global_orchestrator(
         Global ResponseOrchestrator instance
     """
     global _global_orchestrator
-    
+
     if _global_orchestrator is None or force_recreate:
         _global_orchestrator = create_response_orchestrator(user_id, tenant_id)
-    
+
+    return _global_orchestrator
+
+
+def rebuild_global_orchestrator(
+    config: PipelineConfig,
+    user_id: str = "default",
+    tenant_id: Optional[str] = None,
+) -> ResponseOrchestrator:
+    """Rebuild the global orchestrator with a new configuration."""
+
+    global _global_orchestrator
+    _global_orchestrator = create_response_orchestrator(
+        user_id=user_id,
+        tenant_id=tenant_id,
+        config=config
+    )
     return _global_orchestrator
 
 
