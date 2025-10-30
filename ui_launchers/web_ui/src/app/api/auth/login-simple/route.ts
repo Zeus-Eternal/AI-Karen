@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { 
-  makeBackendRequest, 
-  getTimeoutConfig, 
-  getRetryPolicy 
+import {
+  makeBackendRequest,
+  getTimeoutConfig,
+  getRetryPolicy
 } from '@/app/api/_utils/backend';
 import { isSimpleAuthEnabled } from '@/lib/auth/env';
 import { ConnectionError } from '@/lib/connection/connection-manager';
+import { logger } from '@/lib/logger';
 
 interface ErrorResponse {
   error: string;
@@ -73,8 +74,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Forward the request to the backend using enhanced backend utilities
+    const requestId = `simple-auth-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const headers: Record<string, string> = {
-      'X-Request-ID': `simple-auth-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      'X-Request-ID': requestId,
     };
 
     const connectionOptions = {
@@ -85,28 +87,19 @@ export async function POST(request: NextRequest) {
       headers,
     };
 
-    let result;
-    try {
-      // Try primary authentication endpoint
-      result = await makeBackendRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      }, connectionOptions);
-      
-    } catch (error) {
-      // Try legacy bypass endpoints as fallback
-      try {
-        result = await makeBackendRequest('/api/auth/login-bypass', {
-          method: 'POST',
-          body: JSON.stringify({ email: 'dev@local', password: 'dev' }),
-        }, connectionOptions);
-      } catch (fallbackError) {
-        throw error; // Throw original error if fallback also fails
-      }
-    }
+    const result = await makeBackendRequest('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }, connectionOptions);
 
     const totalResponseTime = Date.now() - startTime;
     const data = result.data;
+
+    logger.info('Simple auth proxy success', {
+      requestId,
+      backendStatus: result.status,
+      responseTime: totalResponseTime,
+    });
     
     // Create the response with the data
     const nextResponse = NextResponse.json(data);
@@ -125,24 +118,25 @@ export async function POST(request: NextRequest) {
 
     // Also set our own auth_token cookie for downstream proxying
     const token = data?.access_token;
+    const shouldUseSecureCookies = process.env.NODE_ENV === 'production';
     if (typeof token === 'string' && token.length > 0) {
       try {
         nextResponse.cookies.set('auth_token', token, {
           httpOnly: true,
           sameSite: 'lax',
-          secure: false, // dev
+          secure: shouldUseSecureCookies,
           path: '/',
           maxAge: data?.expires_in ? Number(data.expires_in) : 24 * 60 * 60,
         });
       } catch {
-        // ignore cookie errors in dev
+        // ignore cookie errors when running outside production to keep local development flexible
       }
     }
     
     return nextResponse;
-    
+
   } catch (error) {
-    console.error('Login-simple proxy error:', error);
+    logger.error('Login-simple proxy error', error instanceof Error ? error : { message: String(error) });
     const totalResponseTime = Date.now() - startTime;
     
     // Extract error information from ConnectionError if available

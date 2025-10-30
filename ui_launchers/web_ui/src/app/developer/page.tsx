@@ -1,11 +1,11 @@
 import { Metadata } from "next";
-import KariDevStudio from "@/components/developer/KariDevStudio";
+import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Kari Dev Studio",
-  description: "AI-powered development environment for Kari components",
+  title: "Page not available",
+  description: "The legacy developer console is disabled in production.",
 };
 
 export default function DeveloperPage() {
-  return <KariDevStudio />;
+  notFound();
 }

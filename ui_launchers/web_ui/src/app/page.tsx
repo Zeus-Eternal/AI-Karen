@@ -18,7 +18,6 @@ import {
   CloudSun,
   PlugZap,
 } from "lucide-react";
-import dynamic from "next/dynamic";
 import SettingsDialogComponent from "@/components/settings/SettingsDialog";
 import DatabaseConnectorPluginPage from "@/components/plugins/DatabaseConnectorPluginPage";
 import FacebookPluginPage from "@/components/plugins/FacebookPluginPage";
@@ -56,13 +55,8 @@ import Dashboard from "@/components/dashboard/Dashboard";
 import { webUIConfig } from "@/lib/config";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
+import dynamic from "next/dynamic";
 import { TextSelectionProvider } from "@/components/ui/text-selection-provider";
-
-// Development components
-const ClipboardTest = dynamic(
-  () => import("@/components/ui/clipboard-test"),
-  { ssr: false }
-);
 
 const ExtensionSidebar = dynamic(
   () => import("@/components/extensions/ExtensionSidebar")
@@ -332,24 +326,7 @@ function AuthenticatedHomePage() {
 
           <SidebarInset className="app-main">
             <FlexContainer direction="column" className="space-y-fluid">
-              {activeMainView === "dashboard" && (
-                <>
-                  <Dashboard />
-                  {process.env.NODE_ENV === 'development' && (
-                    <div className="modern-card">
-                      <div className="modern-card-header">
-                        <h3 className="text-lg font-semibold">Development Tools</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Tools for testing and debugging (development only)
-                        </p>
-                      </div>
-                      <div className="modern-card-content">
-                        <ClipboardTest />
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
+              {activeMainView === "dashboard" && <Dashboard />}
               {activeMainView === "settings" && <SettingsDialogComponent />}
               {activeMainView === "pluginDatabaseConnector" && (
                 <DatabaseConnectorPluginPage />
