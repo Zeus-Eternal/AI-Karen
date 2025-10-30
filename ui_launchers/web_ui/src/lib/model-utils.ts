@@ -51,6 +51,11 @@ export interface DirectoryScanOptions {
   includeHealth?: boolean;
   forceRefresh?: boolean;
   directories?: string[];
+  /**
+   * Explicitly enable or disable local mock fallbacks when scans return no results.
+   * Defaults to `true` outside of production builds and `false` in production.
+   */
+  allowFallbacks?: boolean;
 }
 
 export interface ModelLibraryResponse {

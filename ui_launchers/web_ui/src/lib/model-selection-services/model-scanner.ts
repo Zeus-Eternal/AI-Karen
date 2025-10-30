@@ -44,6 +44,7 @@ export class ModelScanner extends BaseModelService {
     
     const directoriesToScan = options.directories || defaultDirectories;
     const allModels: Model[] = [];
+    const fallbackEnabled = this.shouldUseFallbacks(options);
 
     try {
       // Scan each directory type
@@ -67,17 +68,21 @@ export class ModelScanner extends BaseModelService {
         }
       }
 
-      // If no models found from scanning, use fallback models for testing
+      // If no models found from scanning, optionally use fallback models
       if (allModels.length === 0) {
-        this.log("No models found from scanning, using fallback models for testing");
-        
-        // Add fallback models from each scanner
-        const llamaCppFallback = this.getLlamaCppFallbackModels(options);
-        const transformersFallback = this.getTransformersFallbackModels(options);
-        const sdFallback = this.getStableDiffusionFallbackModels(options);
-        const fluxFallback = this.getFluxFallbackModels(options);
-        
-        allModels.push(...llamaCppFallback, ...transformersFallback, ...sdFallback, ...fluxFallback);
+        if (fallbackEnabled) {
+          this.log("No models found from scanning, using fallback models (non-production)");
+
+          // Add fallback models from each scanner
+          const llamaCppFallback = this.getLlamaCppFallbackModels(options);
+          const transformersFallback = this.getTransformersFallbackModels(options);
+          const sdFallback = this.getStableDiffusionFallbackModels(options);
+          const fluxFallback = this.getFluxFallbackModels(options);
+
+          allModels.push(...llamaCppFallback, ...transformersFallback, ...sdFallback, ...fluxFallback);
+        } else {
+          this.log("No models found from scanning and fallbacks disabled; returning empty result");
+        }
       }
 
       // Create scan result
@@ -102,12 +107,15 @@ export class ModelScanner extends BaseModelService {
     } catch (error) {
       this.logError("Directory scanning failed:", error);
       
-      // Return fallback models even on error for testing
-      const llamaCppFallback = this.getLlamaCppFallbackModels(options);
-      const transformersFallback = this.getTransformersFallbackModels(options);
-      const sdFallback = this.getStableDiffusionFallbackModels(options);
-      
-      return [...llamaCppFallback, ...transformersFallback, ...sdFallback];
+      if (fallbackEnabled) {
+        const llamaCppFallback = this.getLlamaCppFallbackModels(options);
+        const transformersFallback = this.getTransformersFallbackModels(options);
+        const sdFallback = this.getStableDiffusionFallbackModels(options);
+
+        return [...llamaCppFallback, ...transformersFallback, ...sdFallback];
+      }
+
+      return [];
     }
   }
 
@@ -182,9 +190,12 @@ export class ModelScanner extends BaseModelService {
       return models;
     } catch (error) {
       this.logError(`Failed to scan llama-cpp models in ${directory}:`, error);
-      
-      // Fallback to mock data for development
-      return this.getLlamaCppFallbackModels(options);
+
+      if (this.shouldUseFallbacks(options)) {
+        return this.getLlamaCppFallbackModels(options);
+      }
+
+      return [];
     }
   }
 
@@ -263,9 +274,12 @@ export class ModelScanner extends BaseModelService {
       return models;
     } catch (error) {
       this.logError(`Failed to scan transformers models in ${directory}:`, error);
-      
-      // Fallback to mock data for development
-      return this.getTransformersFallbackModels(options);
+
+      if (this.shouldUseFallbacks(options)) {
+        return this.getTransformersFallbackModels(options);
+      }
+
+      return [];
     }
   }
 
@@ -341,9 +355,12 @@ export class ModelScanner extends BaseModelService {
       return models;
     } catch (error) {
       this.logError(`Failed to scan stable-diffusion models in ${directory}:`, error);
-      
-      // Fallback to mock data for development
-      return this.getStableDiffusionFallbackModels(options);
+
+      if (this.shouldUseFallbacks(options)) {
+        return this.getStableDiffusionFallbackModels(options);
+      }
+
+      return [];
     }
   }
 
@@ -419,9 +436,12 @@ export class ModelScanner extends BaseModelService {
       return models;
     } catch (error) {
       this.logError(`Failed to scan flux models in ${directory}:`, error);
-      
-      // Fallback to mock data for development (empty for now)
-      return this.getFluxFallbackModels(options);
+
+      if (this.shouldUseFallbacks(options)) {
+        return this.getFluxFallbackModels(options);
+      }
+
+      return [];
     }
   }
 
@@ -852,6 +872,27 @@ export class ModelScanner extends BaseModelService {
     }
     
     return name.trim();
+  }
+
+  private shouldUseFallbacks(options: DirectoryScanOptions = {}): boolean {
+    if (typeof options.allowFallbacks === 'boolean') {
+      return options.allowFallbacks;
+    }
+
+    if (typeof process !== 'undefined' && process.env) {
+      if (process.env.KAREN_DISABLE_MODEL_FALLBACKS === 'true') {
+        return false;
+      }
+
+      if (process.env.KAREN_ENABLE_MODEL_FALLBACKS === 'true') {
+        return true;
+      }
+
+      const nodeEnv = process.env.NODE_ENV || 'development';
+      return nodeEnv !== 'production';
+    }
+
+    return false;
   }
 
   // Fallback model methods (simplified for brevity)
