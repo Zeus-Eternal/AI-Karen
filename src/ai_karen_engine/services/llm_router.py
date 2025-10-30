@@ -6,15 +6,21 @@ import asyncio
 import contextlib
 import inspect
 import logging
+import os
 import random
 import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, AsyncIterator, Dict, Iterable, List, Optional, Sequence, Union
+from typing import Any, AsyncIterator, Dict, Iterable, List, Optional, Sequence, Set, Union
 
 from ai_karen_engine.integrations.llm_registry import get_registry, LLMRegistry
 from ai_karen_engine.integrations.llm_utils import LLMProviderBase
+
+try:  # pragma: no cover - SecretManager may require optional deps
+    from ai_karen_engine.services.secret_manager import SecretManager
+except Exception:  # pragma: no cover - gracefully handle missing optional dependency
+    SecretManager = None  # type: ignore[assignment]
 
 
 class _DummyMetric:  # type: ignore[too-few-public-methods]
@@ -129,6 +135,17 @@ class ProviderHealth:
     total_requests: int = 0
 
 
+PROVIDER_API_KEY_ENV_MAPPING: Dict[str, str] = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+    "huggingface": "HUGGINGFACE_API_KEY",
+    "cohere": "COHERE_API_KEY",
+    "copilotkit": "COPILOT_API_KEY",
+}
+
+
 @dataclass
 class ChatRequest:
     """Chat request model for LLM Router"""
@@ -170,6 +187,8 @@ class LLMRouter:
         ]
         self._round_robin_offset: int = 0
         self._hybrid_state: Dict[ProviderPriority, int] = {}
+        self._secret_manager: Optional[SecretManager] = None
+        self._secret_manager_unavailable: bool = False
 
         # Background health monitoring
         self._health_monitor_task: Optional[asyncio.Task[None]] = None
@@ -404,17 +423,90 @@ class LLMRouter:
         provider_info = self.registry.get_provider_info(provider_name)
         if not provider_info:
             return False
-        
+
         # Check streaming requirement
         if request.stream and not provider_info.get("supports_streaming", False):
             return False
-        
+
         # Check if API key is required and available
         if provider_info.get("requires_api_key", False):
-            # TODO: Check if API key is configured
-            pass
-        
+            if not self._is_api_key_configured(provider_name, provider_info):
+                self._structured_log(
+                    logging.WARNING,
+                    "Provider missing required API key",
+                    provider=provider_name,
+                    requires_api_key=True,
+                    conversation_id=request.conversation_id,
+                    platform=request.platform,
+                )
+                return False
+
         return True
+
+    def _get_secret_manager(self) -> Optional[SecretManager]:
+        """Return a cached SecretManager instance when available."""
+
+        if self._secret_manager_unavailable or SecretManager is None:
+            return None
+
+        if self._secret_manager is not None:
+            return self._secret_manager
+
+        try:
+            self._secret_manager = SecretManager()
+        except Exception as exc:  # pragma: no cover - defensive runtime guard
+            self._secret_manager_unavailable = True
+            logger.debug("SecretManager unavailable: %s", exc)
+            return None
+
+        return self._secret_manager
+
+    def _is_api_key_configured(
+        self, provider_name: str, provider_info: Optional[Dict[str, Any]]
+    ) -> bool:
+        """Determine whether a provider has the required API credentials."""
+
+        normalized_name = provider_name.lower()
+
+        if provider_info:
+            has_key = provider_info.get("has_api_key")
+            if isinstance(has_key, bool):
+                if not has_key:
+                    return False
+                if provider_info.get("api_key_valid") is False:
+                    return False
+                return True
+
+        env_var_candidates: List[str] = []
+        if provider_info:
+            for key in ("api_key_env_var", "api_key_env"):
+                env_var = provider_info.get(key)
+                if isinstance(env_var, str) and env_var:
+                    env_var_candidates.append(env_var)
+
+        mapped_env = PROVIDER_API_KEY_ENV_MAPPING.get(normalized_name)
+        if mapped_env:
+            env_var_candidates.append(mapped_env)
+
+        # Remove duplicates while preserving order
+        seen: Set[str] = set()
+        unique_env_vars: List[str] = []
+        for candidate in env_var_candidates:
+            if candidate not in seen:
+                seen.add(candidate)
+                unique_env_vars.append(candidate)
+
+        secret_manager = self._get_secret_manager()
+
+        for env_var in unique_env_vars:
+            env_value = os.getenv(env_var)
+            if env_value and env_value.strip():
+                return True
+            if secret_manager and secret_manager.has_secret(env_var):
+                return True
+
+        # As a final fallback honour provider_info flags if present without explicit env var
+        return False
 
     async def _collect_available_providers(self) -> Dict[ProviderPriority, List[str]]:
         """Group healthy providers by priority bucket."""
