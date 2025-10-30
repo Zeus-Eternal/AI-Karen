@@ -10,11 +10,12 @@ import asyncio
 import time
 import psutil
 import logging
-from datetime import datetime, timedelta
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import defaultdict, deque
+from collections import defaultdict, deque, Counter
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -598,12 +599,19 @@ async def ai_orchestrator_health_check() -> HealthCheck:
 class AnalyticsService:
     """
     Main Analytics and Monitoring Service
-    
+
     Provides comprehensive analytics, monitoring, and health checking capabilities
     for the AI Karen system. Integrates all monitoring components and provides
     a unified interface for metrics collection, health checks, and alerting.
     """
-    
+
+    TIME_RANGE_MULTIPLIERS = {
+        "h": 1,
+        "d": 24,
+        "w": 24 * 7,
+        "m": 24 * 30,
+    }
+
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
         self.logger = logging.getLogger(__name__)
@@ -636,7 +644,152 @@ class AnalyticsService:
         self.system_monitor.start_monitoring()
         
         self.logger.info("Analytics Service initialized")
-    
+
+    @staticmethod
+    def parse_time_range(range_value: str) -> int:
+        """Convert a human-friendly time range string (e.g. "24h", "7d") to hours."""
+        if not range_value:
+            raise ValueError("Time range value cannot be empty")
+
+        normalized = range_value.strip().lower()
+        match = re.fullmatch(r"(\d+)([hdwm])", normalized)
+        if not match:
+            raise ValueError(
+                "Invalid time range format. Use values like 24h, 7d, 4w, or 1m"
+            )
+
+        value = int(match.group(1))
+        if value <= 0:
+            raise ValueError("Time range value must be greater than zero")
+
+        unit = match.group(2)
+        multiplier = AnalyticsService.TIME_RANGE_MULTIPLIERS[unit]
+        return value * multiplier
+
+    @staticmethod
+    def _normalize_timestamp(timestamp: Optional[datetime]) -> Optional[datetime]:
+        """Ensure timestamps are timezone-aware and normalized to UTC."""
+        if timestamp is None:
+            return None
+        if timestamp.tzinfo is None:
+            return timestamp.replace(tzinfo=timezone.utc)
+        return timestamp.astimezone(timezone.utc)
+
+    def get_usage_report(self, hours: int) -> Dict[str, Any]:
+        """Aggregate usage information for the requested time window."""
+        if hours <= 0:
+            raise ValueError("Hours must be greater than zero")
+
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        with self.user_tracker._lock:
+            events_snapshot = list(self.user_tracker.events)
+            sessions_snapshot = {
+                session_id: session.copy()
+                for session_id, session in self.user_tracker.user_sessions.items()
+            }
+
+        filtered_events: List[tuple[UserInteractionEvent, datetime]] = []
+        event_counts: Counter[str] = Counter()
+        hour_counts: Counter[int] = Counter()
+        user_activity_map: Dict[str, Dict[str, Any]] = {}
+
+        for event in events_snapshot:
+            event_ts = self._normalize_timestamp(event.timestamp)
+            if event_ts is None or event_ts < cutoff:
+                continue
+
+            filtered_events.append((event, event_ts))
+            event_counts[event.event_type] += 1
+            hour_counts[event_ts.hour] += 1
+
+            if event.user_id:
+                activity = user_activity_map.setdefault(
+                    event.user_id,
+                    {"events": 0, "last_seen": event_ts},
+                )
+                activity["events"] += 1
+                if event_ts > activity["last_seen"]:
+                    activity["last_seen"] = event_ts
+
+        unique_users = {event.user_id for event, _ in filtered_events if event.user_id}
+
+        session_durations: List[float] = []
+        session_count_by_user: Counter[str] = Counter()
+        for session in sessions_snapshot.values():
+            user_id = session.get("user_id")
+            start_time = self._normalize_timestamp(session.get("start_time"))
+            last_activity = self._normalize_timestamp(session.get("last_activity"))
+
+            if not start_time or not last_activity or last_activity < cutoff:
+                continue
+
+            duration = (last_activity - start_time).total_seconds() / 60.0
+            session_durations.append(max(duration, 0.0))
+
+            if user_id:
+                session_count_by_user[user_id] += 1
+
+        average_session_minutes = (
+            sum(session_durations) / len(session_durations)
+            if session_durations
+            else 0.0
+        )
+
+        with self.performance_tracker._lock:
+            performance_snapshot = list(self.performance_tracker.metrics)
+
+        relevant_performance = []
+        for metric in performance_snapshot:
+            metric_timestamp = self._normalize_timestamp(metric.timestamp)
+            if metric_timestamp and metric_timestamp >= cutoff:
+                relevant_performance.append(metric)
+
+        if relevant_performance:
+            success_rate = sum(1 for metric in relevant_performance if metric.success) / len(
+                relevant_performance
+            )
+            user_satisfaction = round(success_rate * 100, 2)
+        else:
+            user_satisfaction = 100.0
+
+        total_sessions = sum(session_count_by_user.values())
+
+        user_activity_breakdown = {}
+        for user_id, activity in user_activity_map.items():
+            if not user_id:
+                continue
+            user_activity_breakdown[user_id] = {
+                "events": activity["events"],
+                "session_count": session_count_by_user.get(user_id, 0),
+                "last_seen": activity["last_seen"].isoformat(),
+            }
+
+        return {
+            "total_interactions": len(filtered_events),
+            "unique_users": len(unique_users),
+            "popular_features": [
+                {"name": name, "usage_count": count}
+                for name, count in event_counts.most_common(10)
+            ],
+            "peak_hours": [hour for hour, _ in hour_counts.most_common(8)],
+            "user_satisfaction": user_satisfaction,
+            "average_session_minutes": round(average_session_minutes, 2),
+            "total_sessions": total_sessions,
+            "user_activity": {
+                "active_users": len(unique_users),
+                "total_sessions": total_sessions,
+                "events_per_user": {
+                    user_id: activity["events"]
+                    for user_id, activity in user_activity_map.items()
+                    if user_id
+                },
+                "session_counts": dict(session_count_by_user),
+                "per_user": user_activity_breakdown,
+            },
+            "event_counts": dict(event_counts),
+        }
+
     def _register_default_health_checks(self):
         """Register default health check functions"""
         self.health_checker.register_health_check("database", database_health_check)
