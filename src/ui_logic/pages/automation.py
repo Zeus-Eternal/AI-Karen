@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import time
-from datetime import datetime
 from typing import Dict, Iterable, List, Tuple
 
 import pandas as pd
@@ -55,17 +53,6 @@ def _snapshot_jobs(manager) -> List[Tuple[str, Dict]]:
     return jobs
 
 
-def _bootstrap_demo_job(manager) -> None:
-    if getattr(manager, "_schedule", {}):
-        return
-
-    def _demo_job() -> str:
-        time.sleep(0.2)
-        return json.dumps({"status": "ok", "checked_at": datetime.utcnow().isoformat()})
-
-    manager.register_job("Telemetry heartbeat", _demo_job, "*/15 * * * *")
-
-
 def render_page(user_ctx: Dict | None = None) -> None:
     """Render the automation dashboard."""
 
@@ -77,7 +64,6 @@ def render_page(user_ctx: Dict | None = None) -> None:
     )
 
     manager = get_automation_manager()
-    _bootstrap_demo_job(manager)
 
     st.title("⚙️ Automation Control Tower")
     st.caption("Monitor and manually trigger secure background jobs.")
