@@ -289,7 +289,10 @@ class KariDevCLI:
 {name} plugin for Kari with AG-UI and CopilotKit integration.
 """
 
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+import logging
+from typing import Any, Dict, List
+
 from ai_karen_engine.plugins.base import BasePlugin
 from ai_karen_engine.hooks.hook_mixin import HookMixin
 from ai_karen_engine.hooks.hook_types import HookTypes
@@ -298,82 +301,143 @@ from ai_karen_engine.hooks.hook_types import HookTypes
 class {class_name}Plugin(BasePlugin, HookMixin):
     """
     {name.replace("_", " ").title()} plugin with enhanced capabilities.
-    
+
     Features: {", ".join(features) if features else "Basic functionality"}
     """
-    
+
     def __init__(self):
         super().__init__()
         self.name = "{name}"
         self.version = "1.0.0"
         self.description = "{name.replace('_', ' ').title()} plugin"
-        
-        # Register hooks
-        self._register_hooks()
-    
-    async def _register_hooks(self):
-        """Register plugin hooks."""
+        self._features: List[str] = {repr(features or [])}
+        self._logger = logging.getLogger(f"plugin.{name}")
+        self._hooks_registered = False
+
+    async def _ensure_hooks(self) -> None:
+        """Register lifecycle hooks when the plugin is first used."""
+        if self._hooks_registered:
+            return
+
         await self.register_hook(
             HookTypes.PLUGIN_EXECUTION_START,
             self._on_execution_start,
-            source_name=self.name
+            source_name=self.name,
         )
-        
+
         await self.register_hook(
             HookTypes.PLUGIN_EXECUTION_END,
             self._on_execution_end,
-            source_name=self.name
+            source_name=self.name,
         )
-    
+
+        self._hooks_registered = True
+
     async def execute(self, params: Dict[str, Any], context: Dict[str, Any]) -> Any:
         """Execute the plugin."""
-        # Trigger pre-execution hooks
-        await self.trigger_hooks(
-            HookTypes.PLUGIN_EXECUTION_START,
-            {{"plugin_name": self.name, "params": params}},
-            context
-        )
-        
+        await self._ensure_hooks()
+
+        payload = {{"plugin_name": self.name, "params": params}}
+        await self.trigger_hooks(HookTypes.PLUGIN_EXECUTION_START, payload, context)
+
         try:
-            # Main plugin logic here
             result = await self._process_request(params, context)
-            
-            # Trigger post-execution hooks
+
             await self.trigger_hooks(
                 HookTypes.PLUGIN_EXECUTION_END,
                 {{"plugin_name": self.name, "result": result}},
-                context
+                context,
             )
-            
+
             return result
-            
-        except Exception as e:
-            # Trigger error hooks
+
+        except Exception as exc:
             await self.trigger_hooks(
                 HookTypes.PLUGIN_ERROR,
-                {{"plugin_name": self.name, "error": str(e)}},
-                context
+                {{"plugin_name": self.name, "error": str(exc)}},
+                context,
+            )
+            self._logger.exception(
+                "Plugin execution failed",
+                extra={{"plugin": self.name, "params": params}},
             )
             raise
-    
+
     async def _process_request(self, params: Dict[str, Any], context: Dict[str, Any]) -> Any:
         """Process the main plugin request."""
-        # TODO: Implement your plugin logic here
-        return {{"message": "Hello from {name}!", "params": params}}
-    
+        action = (params.get("action") or "capabilities").lower()
+        timestamp = datetime.utcnow().isoformat() + "Z"
+
+        if action == "ping":
+            response = {{"status": "ok", "timestamp": timestamp, "plugin": self.name}}
+            self._logger.info("Ping processed", extra=response)
+            return response
+
+        if action == "capabilities":
+            response = {{
+                "status": "ok",
+                "timestamp": timestamp,
+                "plugin": self.name,
+                "features": self._features or ["introspection"],
+            }}
+            self._logger.info("Capability report generated", extra=response)
+            return response
+
+        if action == "run":
+            feature_name = params.get("feature")
+            if not feature_name:
+                raise ValueError("Missing 'feature' parameter for run action")
+
+            if self._features and feature_name not in self._features:
+                raise ValueError(f"Unsupported feature: {{feature_name}}")
+
+            payload = params.get("payload")
+            result = {{
+                "status": "executed",
+                "timestamp": timestamp,
+                "plugin": self.name,
+                "feature": feature_name,
+                "payload": payload,
+                "context_summary": self._summarize_context(context),
+            }}
+            self._logger.info("Feature executed", extra=result)
+            return result
+
+        raise ValueError(f"Unsupported action: {{action}}")
+
+    def _summarize_context(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a safe summary of the execution context for logging."""
+        summary: Dict[str, Any] = {}
+        for key, value in context.items():
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                summary[key] = value
+            elif isinstance(value, dict):
+                summary[key] = sorted(value.keys())
+            elif isinstance(value, list):
+                summary[key] = len(value)
+            else:
+                summary[key] = value.__class__.__name__
+        return summary
+
     async def _on_execution_start(self, data: Dict[str, Any], user_context: Dict[str, Any]) -> None:
         """Handle execution start hook."""
-        print(f"Starting execution of {{data.get('plugin_name')}}")
-    
+        self._logger.info(
+            "Plugin execution started",
+            extra={{"plugin": self.name, "params": data.get("params", {{}})}},
+        )
+
     async def _on_execution_end(self, data: Dict[str, Any], user_context: Dict[str, Any]) -> None:
         """Handle execution end hook."""
-        print(f"Completed execution of {{data.get('plugin_name')}}")
+        self._logger.info(
+            "Plugin execution completed",
+            extra={{"plugin": self.name, "result": data.get("result")}},
+        )
 
 
-# Plugin registration
 plugin_instance = {class_name}Plugin()
 
-def get_plugin():
+
+def get_plugin() -> {class_name}Plugin:
     """Get plugin instance."""
     return plugin_instance
 '''
@@ -413,24 +477,23 @@ def plugin():
 @pytest.mark.asyncio
 async def test_plugin_execution(plugin):
     """Test basic plugin execution."""
-    params = {{"test": "value"}}
+    params = {{"action": "ping"}}
     context = {{"user_id": "test_user"}}
-    
+
     result = await plugin.execute(params, context)
-    
+
     assert result is not None
-    assert "message" in result
-    assert result["params"] == params
+    assert result["status"] == "ok"
+    assert result["plugin"] == plugin.name
+    assert "timestamp" in result
 
 
 @pytest.mark.asyncio
 async def test_hook_registration(plugin):
     """Test that hooks are properly registered."""
-    hooks = plugin.get_registered_hooks()
-    
-    assert len(hooks) > 0
-    assert any(h.hook_type == "plugin_execution_start" for h in hooks)
-    assert any(h.hook_type == "plugin_execution_end" for h in hooks)
+    await plugin.execute({{"action": "capabilities"}}, {{}})
+
+    assert plugin._hooks_registered is True
 '''
         
         files = {
@@ -449,66 +512,138 @@ async def test_hook_registration(plugin):
 {name} extension for Kari with AG-UI and CopilotKit integration.
 """
 
+from __future__ import annotations
+
+from datetime import datetime
+import logging
 from typing import Any, Dict, List, Optional
+
+try:
+    from fastapi import APIRouter
+except ImportError:  # pragma: no cover - FastAPI optional in some environments
+    APIRouter = None  # type: ignore[assignment]
+
 from ai_karen_engine.extensions.base import BaseExtension
 from ai_karen_engine.extensions.models import ExtensionManifest, ExtensionContext
+from ai_karen_engine.hooks.hook_types import HookTypes
 
 
 class {class_name}(BaseExtension):
     """
     {name.replace("_", " ").title()} extension with enhanced capabilities.
-    
+
     Features: {", ".join(features) if features else "Basic functionality"}
     """
-    
+
     def __init__(self, manifest: ExtensionManifest, context: ExtensionContext):
         super().__init__(manifest, context)
         self.name = "{name}"
-    
-    async def initialize(self) -> None:
-        """Initialize the extension."""
-        self.logger.info(f"Initializing {{self.name}} extension")
-        
-        # Register hooks if needed
-        await self._register_hooks()
-        
-        # Setup API routes if needed
-        await self._setup_api_routes()
-        
-        self.logger.info(f"{{self.name}} extension initialized successfully")
-    
-    async def shutdown(self) -> None:
-        """Shutdown the extension."""
-        self.logger.info(f"Shutting down {{self.name}} extension")
-        
-        # Cleanup resources
-        await self._cleanup_resources()
-        
-        self.logger.info(f"{{self.name}} extension shutdown complete")
-    
-    async def _register_hooks(self) -> None:
-        """Register extension hooks."""
-        # TODO: Register your hooks here
-        pass
-    
-    async def _setup_api_routes(self) -> None:
-        """Setup API routes for the extension."""
-        # TODO: Setup your API routes here
-        pass
-    
-    async def _cleanup_resources(self) -> None:
-        """Cleanup extension resources."""
-        # TODO: Cleanup your resources here
-        pass
-    
-    def get_status(self) -> Dict[str, Any]:
-        """Get extension status."""
+        self._features: List[str] = {repr(features or [])}
+        self._last_health_check: Optional[datetime] = None
+        self._runtime_logger = logging.getLogger(f"extension.{name}.runtime")
+
+    async def _initialize(self) -> None:
+        """Extension-specific initialization logic."""
+        await self.register_hook(
+            HookTypes.EXTENSION_ACTIVATED,
+            self._handle_activation,
+            source_name=self.name,
+        )
+
+        await self.register_hook(
+            HookTypes.EXTENSION_ERROR,
+            self._handle_error,
+            source_name=self.name,
+        )
+
+        self._runtime_logger.info(
+            "Extension ready",
+            extra={{"extension": self.name, "features": self._features}},
+        )
+
+    async def _shutdown(self) -> None:
+        """Extension-specific cleanup."""
+        self._runtime_logger.info(
+            "Extension shutdown requested", extra={{"extension": self.name}}
+        )
+        self._last_health_check = None
+
+    def create_api_router(self) -> Optional[APIRouter]:
+        """Expose operational endpoints for monitoring."""
+        router = super().create_api_router()
+        if router is None:
+            return None
+
+        router.add_api_route(
+            "/status",
+            self._status_endpoint,
+            methods=["GET"],
+            name=f"{name}_status",
+        )
+
+        router.add_api_route(
+            "/features",
+            self._features_endpoint,
+            methods=["GET"],
+            name=f"{name}_features",
+        )
+
+        return router
+
+    async def _status_endpoint(self) -> Dict[str, Any]:
+        """Return current health information for API consumers."""
+        self._last_health_check = datetime.utcnow()
+        return self.get_status()
+
+    async def _features_endpoint(self) -> Dict[str, Any]:
+        """Expose supported feature metadata via API."""
         return {{
             "name": self.name,
+            "features": self._features,
+            "manifest_version": self.manifest.version,
+        }}
+
+    async def _handle_activation(
+        self, data: Dict[str, Any], user_context: Dict[str, Any]
+    ) -> None:
+        """Hook callback when the extension is activated."""
+        self._runtime_logger.info(
+            "Extension activated",
+            extra={{
+                "extension": self.name,
+                "payload": data,
+                "user": user_context.get("user_id") if user_context else None,
+            }},
+        )
+
+    async def _handle_error(
+        self, data: Dict[str, Any], user_context: Dict[str, Any]
+    ) -> None:
+        """Hook callback for extension errors."""
+        self._runtime_logger.error(
+            "Extension reported error",
+            extra={{
+                "extension": self.name,
+                "payload": data,
+                "user": user_context.get("user_id") if user_context else None,
+            }},
+        )
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get extension status."""
+        status = {{
+            "name": self.name,
             "status": "active",
-            "features": {json.dumps(features)},
+            "features": self._features,
             "initialized": True,
         }}
+
+        if self._last_health_check is not None:
+            status["last_health_check"] = (
+                self._last_health_check.isoformat(timespec="seconds") + "Z"
+            )
+
+        return status
 '''
         
         manifest_code = f'''{{
@@ -540,6 +675,7 @@ class {class_name}(BaseExtension):
 {name} hook for Kari system.
 """
 
+import logging
 from typing import Any, Dict
 from ai_karen_engine.hooks.hook_manager import get_hook_manager
 from ai_karen_engine.hooks.hook_types import HookTypes
@@ -548,37 +684,70 @@ from ai_karen_engine.hooks.hook_types import HookTypes
 async def {name}_handler(data: Dict[str, Any], user_context: Dict[str, Any]) -> Any:
     """
     Handle {name.replace('_', ' ')} hook.
-    
+
     Args:
         data: Hook data
         user_context: User context
-        
+
     Returns:
         Hook result
     """
-    # TODO: Implement your hook logic here
-    print(f"Executing {name} hook with data: {{data}}")
-    
-    return {{"status": "success", "hook": "{name}"}}
+    logger = logging.getLogger(f"hooks.{name}")
+    hook_type_name = "{name.upper()}"
+    resolved_hook_type = getattr(HookTypes, hook_type_name, "{name}")
+
+    logger.info(
+        "Hook execution started",
+        extra={{
+            "hook_type": resolved_hook_type,
+            "payload": data,
+            "user": user_context.get("user_id") if user_context else None,
+        }},
+    )
+
+    result = {{
+        "hook": resolved_hook_type,
+        "processed": True,
+        "data": data,
+        "context": {{
+            "user_id": user_context.get("user_id") if user_context else None,
+            "source": user_context.get("source") if user_context else None,
+        }},
+    }}
+
+    logger.info("Hook execution completed", extra=result)
+    return result
 
 
 async def register_{name}_hook():
     """Register the {name} hook."""
     hook_manager = get_hook_manager()
     
-    await hook_manager.register_hook(
-        hook_type="{name.upper()}",
+    hook_type_name = "{name.upper()}"
+    resolved_hook_type = getattr(HookTypes, hook_type_name, "{name}")
+    hook_identifier = await hook_manager.register_hook(
+        hook_type=resolved_hook_type,
         handler={name}_handler,
         source_type="custom",
-        source_name="{name}"
+        source_name="{name}",
     )
-    
-    print(f"Registered {name} hook")
+
+    logging.getLogger(f"hooks.{name}").info(
+        "Hook registered",
+        extra={{"hook_type": resolved_hook_type, "hook_id": hook_identifier}},
+    )
 
 
-# Auto-register when imported
+# Auto-register when imported when an event loop is available
 import asyncio
-asyncio.create_task(register_{name}_hook())
+
+try:
+    loop = asyncio.get_running_loop()
+except RuntimeError:
+    loop = None
+
+if loop and not loop.is_closed():
+    loop.create_task(register_{name}_hook())
 '''
         
         files = {
