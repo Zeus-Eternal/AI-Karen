@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ChatSettings } from "../types";
 import { safeDebug } from "@/lib/safe-console";
 
@@ -19,14 +19,51 @@ const defaultSettings: ChatSettings = {
   enableNotifications: true,
 };
 
+const LAST_SELECTED_CHAT_MODEL_KEY = "karen:last-selected-chat-model";
+
 export const useChatSettings = (
   initialSettings: Partial<ChatSettings> = {},
   onSettingsChange?: (settings: ChatSettings) => void
 ) => {
-  const [settings, setSettings] = useState<ChatSettings>({
-    ...defaultSettings,
-    ...initialSettings,
+  const getPersistedModel = () => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    try {
+      return localStorage.getItem(LAST_SELECTED_CHAT_MODEL_KEY);
+    } catch (error) {
+      safeDebug("🔍 useChatSettings: Unable to read last selected model from localStorage", {
+        error,
+      });
+      return null;
+    }
+  };
+
+  const [settings, setSettings] = useState<ChatSettings>(() => {
+    const persistedModel = initialSettings.model ?? getPersistedModel() ?? defaultSettings.model;
+
+    return {
+      ...defaultSettings,
+      ...initialSettings,
+      model: persistedModel,
+    };
   });
+
+  const persistLastSelectedModel = useCallback((model?: string) => {
+    if (typeof window === "undefined" || !model) {
+      return;
+    }
+
+    try {
+      localStorage.setItem(LAST_SELECTED_CHAT_MODEL_KEY, model);
+    } catch (error) {
+      safeDebug("🔍 useChatSettings: Unable to persist last selected model", {
+        error,
+        model,
+      });
+    }
+  }, []);
 
   const updateSettings = useCallback(
     (newSettings: Partial<ChatSettings>) => {
@@ -50,21 +87,28 @@ export const useChatSettings = (
           modelComponents: newSettings.model.split(':'),
           timestamp: new Date().toISOString()
         });
+
+        persistLastSelectedModel(newSettings.model);
       }
 
       if (onSettingsChange) {
         onSettingsChange(updatedSettings);
       }
     },
-    [settings, onSettingsChange]
+    [settings, onSettingsChange, persistLastSelectedModel]
   );
 
   const resetSettings = useCallback(() => {
     setSettings(defaultSettings);
+    persistLastSelectedModel(defaultSettings.model);
     if (onSettingsChange) {
       onSettingsChange(defaultSettings);
     }
-  }, [onSettingsChange]);
+  }, [onSettingsChange, persistLastSelectedModel]);
+
+  useEffect(() => {
+    persistLastSelectedModel(settings.model);
+  }, [settings.model, persistLastSelectedModel]);
 
   return {
     settings,
