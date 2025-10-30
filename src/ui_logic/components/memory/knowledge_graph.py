@@ -7,8 +7,9 @@ Kari Knowledge Graph Panel Logic (Production)
 
 from typing import Any, Dict
 import logging
-import streamlit as st
+
 import pandas as pd
+import streamlit as st
 
 from ui_logic.hooks.rbac import require_roles
 from ui_logic.utils.api import fetch_audit_logs
@@ -16,12 +17,18 @@ from ui_logic.utils.api import fetch_audit_logs
 # Logger for permission denials and diagnostics
 logger = logging.getLogger("kari.ui.knowledge_graph")
 
-# --- RBAC User Context (stub—replace with actual session/user context retrieval) ---
-def get_user_ctx():
-    return {
-        "user_id": st.session_state.get("user_id", "demo_user"),
-        "roles": st.session_state.get("roles", ["user"])
-    }
+
+def get_user_ctx() -> Dict[str, Any]:
+    """Return the authenticated user context for the knowledge graph."""
+
+    user_id = st.session_state.get("user_id")
+    roles = st.session_state.get("roles")
+
+    if not user_id or not roles:
+        logger.error("Knowledge graph requested without an authenticated session")
+        raise PermissionError("You must be signed in to access the knowledge graph.")
+
+    return {"user_id": user_id, "roles": roles}
 
 def render_knowledge_graph_panel(user_ctx: Dict[str, Any]):
     st.subheader("🔗 Knowledge Graph Panel")
@@ -83,5 +90,10 @@ render_knowledge_graph = render_knowledge_graph_panel
 
 # **Streamlit page entrypoint**
 def main():
-    user_ctx = get_user_ctx()
+    try:
+        user_ctx = get_user_ctx()
+    except PermissionError as err:
+        st.error(str(err))
+        return
+
     render_knowledge_graph_panel(user_ctx)
