@@ -25,6 +25,10 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
+  Image,
+  MessageSquare,
+  Waveform,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getKarenBackend } from "@/lib/karen-backend";
@@ -241,6 +245,128 @@ interface ModelSelectorProps {
 
 // formatFileSize is now imported from model-utils
 
+type TaskGroupKey = "chat" | "image" | "audio" | "embedding" | "other";
+
+const TASK_GROUP_ORDER: TaskGroupKey[] = ["chat", "image", "audio", "embedding", "other"];
+
+const TASK_GROUP_METADATA: Record<TaskGroupKey, { label: string; icon: React.ReactElement }> = {
+  chat: {
+    label: "Chat & Text",
+    icon: <MessageSquare className="h-3 w-3" />,
+  },
+  image: {
+    label: "Image Generation",
+    icon: <Image className="h-3 w-3" />,
+  },
+  audio: {
+    label: "Audio & Speech",
+    icon: <Waveform className="h-3 w-3" />,
+  },
+  embedding: {
+    label: "Embeddings & Search",
+    icon: <Brain className="h-3 w-3" />,
+  },
+  other: {
+    label: "Other Models",
+    icon: <Sparkles className="h-3 w-3" />,
+  },
+};
+
+const STATUS_PRIORITY: Record<string, number> = {
+  local: 0,
+  downloading: 1,
+  available: 2,
+  incompatible: 3,
+  error: 4,
+  default: 99,
+};
+
+const buildModelIdentifier = (model: ModelInfo) =>
+  `${(model.provider || "").toLowerCase()}|${(model.name || "").toLowerCase()}`;
+
+const createModelValue = (model: ModelInfo) => {
+  const provider = model.provider || "";
+  const name = model.name || "";
+  return provider === "local" ? `local:${name}` : `${provider}:${name}`;
+};
+
+const sortByStatusThenName = (a: ModelInfo, b: ModelInfo) => {
+  const statusOrderA = STATUS_PRIORITY[a.status] ?? STATUS_PRIORITY.default;
+  const statusOrderB = STATUS_PRIORITY[b.status] ?? STATUS_PRIORITY.default;
+
+  if (statusOrderA !== statusOrderB) {
+    return statusOrderA - statusOrderB;
+  }
+
+  return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+};
+
+const sortByRecommendation = (models: ModelInfo[], recommended: Set<string>) =>
+  [...models].sort((a, b) => {
+    const aRecommended = recommended.has(buildModelIdentifier(a));
+    const bRecommended = recommended.has(buildModelIdentifier(b));
+
+    if (aRecommended && !bRecommended) {
+      return -1;
+    }
+
+    if (!aRecommended && bRecommended) {
+      return 1;
+    }
+
+    return sortByStatusThenName(a, b);
+  });
+
+const inferPrimaryCapability = (model: ModelInfo): TaskGroupKey => {
+  const name = (model.name || "").toLowerCase();
+  const provider = (model.provider || "").toLowerCase();
+  const capabilities = (model.capabilities || []).map((cap) => cap.toLowerCase());
+
+  const hasCapability = (...needles: string[]) =>
+    capabilities.some((cap) => needles.some((needle) => cap.includes(needle)));
+
+  if (
+    hasCapability("image", "vision", "diffusion", "image-generation") ||
+    name.includes("diffusion") ||
+    name.includes("flux") ||
+    name.includes("sd") ||
+    provider.includes("diffusion")
+  ) {
+    return "image";
+  }
+
+  if (hasCapability("audio", "speech", "voice") || name.includes("audio") || name.includes("speech")) {
+    return "audio";
+  }
+
+  if (hasCapability("embedding", "vector", "retrieval") || name.includes("embed") || name.includes("vector")) {
+    return "embedding";
+  }
+
+  if (
+    hasCapability(
+      "chat",
+      "text",
+      "text-generation",
+      "conversation",
+      "assistant",
+      "instruction",
+      "code"
+    ) ||
+    name.includes("chat") ||
+    name.includes("instruct") ||
+    name.includes("llama") ||
+    name.includes("mistral") ||
+    name.includes("qwen") ||
+    name.includes("phi") ||
+    provider.includes("llama")
+  ) {
+    return "chat";
+  }
+
+  return "other";
+};
+
 const getProviderIcon = (provider: string) => {
   if (!provider) {
     return <Cpu className="h-3 w-3" />; // Default icon for undefined provider
@@ -382,7 +508,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   useEffect(() => {
     loadModels();
   }, []);
-
+  
   const controlledValue = value ?? "";
 
   const filteredModels = useMemo(() => {
@@ -537,7 +663,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       if (!needle) {
         return undefined;
       }
-
+      
       const inFiltered = filteredModels.find((model) =>
         doesModelMatchValue(model as unknown as Model, needle)
       );
@@ -634,25 +760,37 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     ].join('|');
 
     return (
-      <SelectItem key={uniqueKey} value={modelValue} className="py-3">
+      <SelectItem key={uniqueKey} value={modelValue} className="py-3" disabled={disabled}>
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center space-x-3 flex-1 min-w-0">
             <div className="flex items-center space-x-1">
               {getProviderIcon(provider)}
               {getStatusIcon(model.status)}
             </div>
-            
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
                 <span className="font-medium truncate">{name}</span>
-                <Badge variant={getStatusBadgeVariant(model.status)} className="text-xs">
-                  {model.status}
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge variant={getStatusBadgeVariant(model.status)} className="text-xs">
+                    {model.status}
+                  </Badge>
+                  {isRecommended && (
+                    <Badge variant="outline" className="text-xs text-purple-600 border-purple-200 bg-purple-50">
+                      Recommended
+                    </Badge>
+                  )}
+                  {disabled && disabledReason && (
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                      {disabledReason}
+                    </Badge>
+                  )}
+                </div>
               </div>
-              
+
               {showDetails && (
                 <div className="flex items-center space-x-2 mt-1 text-xs text-muted-foreground">
-                  <span className="capitalize">{provider}</span>
+                  <span className="capitalize">{provider || "unknown"}</span>
                   {model.size && (
                     <>
                       <span>•</span>
@@ -675,7 +813,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               )}
             </div>
           </div>
-          
+
           {model.download_progress !== undefined && model.status === "downloading" && (
             <div className="text-xs text-blue-600 ml-2">
               {Math.round(model.download_progress)}%
@@ -685,6 +823,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       </SelectItem>
     );
   };
+
+  const handleValueChange = React.useCallback(
+    (nextValue: string) => {
+      if (onValueChange) {
+        onValueChange(nextValue);
+      }
+    },
+    [onValueChange]
+  );
 
   if (loading) {
     return (
@@ -762,62 +909,70 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         </Tooltip>
 
         <SelectContent className="max-h-96 bg-popover border border-border shadow-md">
-          {/* Local Models */}
-          {groupedModels.local.length > 0 && (
-            <SelectGroup>
-              <SelectLabel className="flex items-center space-x-2">
-                <CheckCircle className="h-3 w-3 text-green-500" />
-                <span>Local Models ({groupedModels.local.length})</span>
-              </SelectLabel>
-              {groupedModels.local.map(renderModelItem)}
-            </SelectGroup>
-          )}
-
-          {/* Downloading Models */}
-          {groupedModels.downloading.length > 0 && (
-            <>
-              {groupedModels.local.length > 0 && <SelectSeparator />}
+          {taskGroups.map((group, index) => (
+            <React.Fragment key={group.key}>
+              {index > 0 && <SelectSeparator />}
               <SelectGroup>
                 <SelectLabel className="flex items-center space-x-2">
-                  <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />
-                  <span>Downloading ({groupedModels.downloading.length})</span>
+                  {TASK_GROUP_METADATA[group.key].icon}
+                  <span>
+                    {TASK_GROUP_METADATA[group.key].label} ({group.models.length})
+                  </span>
                 </SelectLabel>
-                {groupedModels.downloading.map(renderModelItem)}
+                {group.models.map((model) =>
+                  renderModelItem(model, {
+                    disabled: !["local", "downloading"].includes(model.status),
+                    disabledReason:
+                      model.status === "local" || model.status === "downloading"
+                        ? undefined
+                        : "Unavailable",
+                  })
+                )}
               </SelectGroup>
-            </>
-          )}
-
+            </React.Fragment>
+          ))}
           {/* Available Models */}
           {includeDownloadable && groupedModels.available.length > 0 && (
             <>
-              {(groupedModels.local.length > 0 || groupedModels.downloading.length > 0) && <SelectSeparator />}
+              {(taskGroups.length > 0) && <SelectSeparator />}
               <SelectGroup>
                 <SelectLabel className="flex items-center space-x-2">
                   <Download className="h-3 w-3 text-gray-500" />
-                  <span>Available Models ({groupedModels.available.length})</span>
+                  <span>Downloadable Models ({downloadableModels.length})</span>
                 </SelectLabel>
-                {groupedModels.available.map(renderModelItem)}
+                <div className="px-3 pb-1 text-xs text-muted-foreground">
+                  Download these models from the Model Library before selecting them for chat or other tasks.
+                </div>
+                {downloadableModels.map((model) =>
+                  renderModelItem(model, { disabled: true, disabledReason: "Download required" })
+                )}
               </SelectGroup>
             </>
           )}
 
-          {/* Incompatible Models (shown with warning) */}
-          {groupedModels.incompatible && groupedModels.incompatible.length > 0 && (
+          {experimentalModels.length > 0 && (
             <>
-              {(groupedModels.local.length > 0 || groupedModels.downloading.length > 0 || groupedModels.available.length > 0) && <SelectSeparator />}
+              {(taskGroups.length > 0 || downloadableModels.length > 0) && <SelectSeparator />}
               <SelectGroup>
                 <SelectLabel className="flex items-center space-x-2">
                   <AlertCircle className="h-3 w-3 text-yellow-500" />
-                  <span>Experimental Models ({groupedModels.incompatible.length})</span>
+                  <span>Experimental Models ({experimentalModels.length})</span>
                 </SelectLabel>
-                {groupedModels.incompatible.map(renderModelItem)}
+                <div className="px-3 pb-1 text-xs text-muted-foreground">
+                  These models were detected but may be incompatible with the current runtime.
+                </div>
+                {experimentalModels.map((model) =>
+                  renderModelItem(model, { disabled: true, disabledReason: "Not compatible" })
+                )}
               </SelectGroup>
             </>
           )}
 
-          {(groupedModels.local.length === 0 && groupedModels.downloading.length === 0 && groupedModels.available.length === 0 && (!groupedModels.incompatible || groupedModels.incompatible.length === 0)) && (
+          {taskGroups.length === 0 && downloadableModels.length === 0 && experimentalModels.length === 0 && (
             <div className="p-4 text-center text-sm text-muted-foreground">
+              
               No {TASK_FRIENDLY_NAME[task]} models are ready to use yet. Install or enable a compatible model to continue.
+        
             </div>
           )}
         </SelectContent>
