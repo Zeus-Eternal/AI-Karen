@@ -1,3 +1,5 @@
+import type React from 'react';
+
 /**
  * Utility functions for model management and display
  */
@@ -186,6 +188,56 @@ export function filterModels(models: Model[], query: string): Model[] {
 export function getModelDisplayName(model: Model, maxLength: number = 30): string {
   if (model.name.length <= maxLength) return model.name;
   return model.name.substring(0, maxLength - 3) + '...';
+}
+
+/**
+ * Build the canonical selector value for a model.
+ *
+ * We prefer stable identifiers provided by the backend (`id`) but fall back to
+ * a provider-prefixed slug when necessary so that selectors and stored
+ * preferences remain compatible with legacy formats.
+ */
+export function getModelSelectorValue(model: Pick<Model, 'id' | 'name' | 'provider'>): string {
+  const candidates = getModelValueCandidates(model);
+  return candidates.length > 0 ? candidates[0] : '';
+}
+
+/**
+ * Return all reasonable value candidates for matching a model selection.
+ */
+export function getModelValueCandidates(model: Pick<Model, 'id' | 'name' | 'provider'>): string[] {
+  const values = new Set<string>();
+
+  if (model.id) {
+    values.add(model.id);
+  }
+
+  const provider = (model.provider || '').toLowerCase();
+  const name = model.name || '';
+
+  if (provider && name) {
+    values.add(`${provider}:${name}`);
+    if (provider === 'local') {
+      values.add(`local:${name}`);
+    }
+  }
+
+  if (name) {
+    values.add(name);
+  }
+
+  return Array.from(values).filter(Boolean);
+}
+
+/**
+ * Check whether a string value maps to a given model.
+ */
+export function doesModelMatchValue(
+  model: Pick<Model, 'id' | 'name' | 'provider'>,
+  value: string
+): boolean {
+  if (!value) return false;
+  return getModelValueCandidates(model).some((candidate) => candidate === value);
 }
 
 /**

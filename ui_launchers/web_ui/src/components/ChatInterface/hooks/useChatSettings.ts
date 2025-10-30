@@ -1,8 +1,9 @@
 "use client";
-
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { ChatSettings } from "../types";
-import { safeDebug } from "@/lib/safe-console";
+import { safeDebug, safeError, safeWarn } from "@/lib/safe-console";
+import { modelSelectionService } from "@/lib/model-selection-service";
+import { getModelSelectorValue } from "@/lib/model-utils";
 
 const defaultSettings: ChatSettings = {
   model: "local:tinyllama-1.1b",
@@ -49,6 +50,8 @@ export const useChatSettings = (
       model: persistedModel,
     };
   });
+  const hasInitializedModel = useRef(false);
+  const initialModelRef = useRef(initialSettings.model);
 
   const persistLastSelectedModel = useCallback((model?: string) => {
     if (typeof window === "undefined" || !model) {
@@ -109,6 +112,74 @@ export const useChatSettings = (
   useEffect(() => {
     persistLastSelectedModel(settings.model);
   }, [settings.model, persistLastSelectedModel]);
+
+  useEffect(() => {
+    if (hasInitializedModel.current) {
+      return;
+    }
+
+    if (initialModelRef.current) {
+      hasInitializedModel.current = true;
+      return;
+    }
+
+    let cancelled = false;
+
+    const initializeModelSelection = async () => {
+      try {
+        const result = await modelSelectionService.selectOptimalModel({
+          filterByCapability: "chat",
+          filterByType: "text",
+          preferLocal: true,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!result.selectedModel) {
+          hasInitializedModel.current = true;
+          return;
+        }
+
+        const selectedValue = getModelSelectorValue(result.selectedModel);
+        if (!selectedValue || selectedValue === settings.model) {
+          hasInitializedModel.current = true;
+          return;
+        }
+
+        safeDebug("🔍 useChatSettings: Auto-selected initial chat model", {
+          model: selectedValue,
+          reason: result.selectionReason,
+        });
+
+        hasInitializedModel.current = true;
+
+        const updatedSettings = { ...settings, model: selectedValue };
+        setSettings(updatedSettings);
+        if (onSettingsChange) {
+          onSettingsChange(updatedSettings);
+        }
+
+        if (result.selectedModel.id) {
+          modelSelectionService.updateLastSelectedModel(result.selectedModel.id).catch((error) => {
+            safeWarn("🔍 useChatSettings: Unable to persist last selected model", error);
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          safeError("🔍 useChatSettings: Failed to auto-select default model", error);
+        }
+        hasInitializedModel.current = true;
+      }
+    };
+
+    initializeModelSelection();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onSettingsChange, settings]);
 
   return {
     settings,

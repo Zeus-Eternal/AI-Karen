@@ -82,6 +82,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             className="w-48"
             placeholder="Select model..."
             showDetails={true}
+            task="chat"
           />
 
           {/* Routing History */}

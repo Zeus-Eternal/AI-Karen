@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Select,
   SelectContent,
@@ -33,12 +33,115 @@ import {
 import { cn } from "@/lib/utils";
 import { getKarenBackend } from "@/lib/karen-backend";
 import { safeError, safeWarn, safeDebug } from "@/lib/safe-console";
-import { 
-  Model, 
-  formatFileSize, 
+import {
+  Model,
+  formatFileSize,
   getStatusBadgeVariant,
-  getRecommendedModels
+  getRecommendedModels,
+  getModelSelectorValue,
+  doesModelMatchValue,
 } from "@/lib/model-utils";
+import { modelSelectionService } from "@/lib/model-selection-service";
+
+type ModelSelectorTask = "chat" | "image" | "code" | "embedding" | "any";
+
+const BLOCKED_MODEL_NAMES = new Set([
+  "",
+  "metadata_cache",
+  "downloads",
+  "download",
+  "configs",
+  "config",
+  "llama-cpp",
+  "transformers",
+  "stable-diffusion",
+  "stable_diffusion",
+  "models",
+  "hf_cache",
+  "cache",
+  "tmp",
+  "temp",
+  "basic_cls",
+]);
+
+const TASK_CAPABILITY_KEYWORDS: Record<ModelSelectorTask, string[]> = {
+  chat: [
+    "chat",
+    "text-generation",
+    "instruction",
+    "conversation",
+    "assistant",
+    "completions",
+  ],
+  image: [
+    "image",
+    "image-generation",
+    "text-to-image",
+    "img2img",
+    "inpainting",
+    "outpainting",
+  ],
+  code: ["code", "code-generation", "programming", "assistant-code"],
+  embedding: ["embedding", "feature-extraction", "semantic-search"],
+  any: [],
+};
+
+const TASK_NAME_KEYWORDS: Record<ModelSelectorTask, string[]> = {
+  chat: [
+    "chat",
+    "instruct",
+    "assistant",
+    "llama",
+    "mistral",
+    "qwen",
+    "phi",
+    "deepseek",
+    "vicuna",
+    "alpaca",
+    "gemma",
+    "gpt",
+    "hermes",
+    "orca",
+  ],
+  image: [
+    "image",
+    "sdxl",
+    "stable-diffusion",
+    "stablediffusion",
+    "flux",
+    "dreamshaper",
+    "kandinsky",
+  ],
+  code: ["code", "coder", "codellama", "wizardcoder", "codeqwen", "codestral"],
+  embedding: ["embed", "embedding", "text-embedding", "all-minilm", "sentence-transformers", "bge", "e5"],
+  any: [],
+};
+
+const TASK_PROVIDER_KEYWORDS: Record<ModelSelectorTask, string[]> = {
+  chat: ["llama", "transformers", "huggingface", "openai", "anthropic", "local"],
+  image: ["stable-diffusion", "diffusion", "flux", "image"],
+  code: ["code", "codellama", "codestral"],
+  embedding: ["embedding", "sentence-transformers", "semantic"],
+  any: [],
+};
+
+const STATUS_PRIORITY: Record<string, number> = {
+  local: 0,
+  downloading: 1,
+  available: 2,
+  incompatible: 3,
+  error: 4,
+};
+
+const DEFAULT_STATUS_PRIORITY = 5;
+
+const TASK_FRIENDLY_NAME: Record<ModelSelectorTask, string> = {
+  chat: "chat",
+  image: "image generation",
+  code: "code",
+  embedding: "embedding",
+  any: "AI",
+};
 
 interface ModelInfo {
   id: string;
@@ -63,7 +166,69 @@ interface ModelInfo {
   };
   local_path?: string;
   download_url?: string;
+  type?: string;
 }
+
+const hasKeyword = (value: string | undefined, keywords: string[]) => {
+  if (!value) return false;
+  const lower = value.toLowerCase();
+  return keywords.some((keyword) => lower.includes(keyword));
+};
+
+const isBlockedName = (name: string | undefined) => {
+  if (!name) return true;
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) return true;
+  if (BLOCKED_MODEL_NAMES.has(normalized)) return true;
+  if (normalized.startsWith(".")) return true;
+  if (normalized.startsWith("__")) return true;
+  return false;
+};
+
+const isModelCompatibleWithTask = (model: ModelInfo, task: ModelSelectorTask): boolean => {
+  if (task === "any") {
+    return true;
+  }
+
+  const type = model.type?.toLowerCase();
+  const provider = model.provider?.toLowerCase();
+  const name = model.name?.toLowerCase();
+  const capabilities = (model.capabilities || []).map((cap) => cap.toLowerCase());
+
+  if (task === "chat" && (type === "text" || type === "multimodal")) {
+    return true;
+  }
+
+  if (task === "image" && (type === "image" || type === "multimodal")) {
+    return true;
+  }
+
+  if (task === "code" && type === "code") {
+    return true;
+  }
+
+  if (task === "embedding" && type === "embedding") {
+    return true;
+  }
+
+  if (capabilities.some((cap) => hasKeyword(cap, TASK_CAPABILITY_KEYWORDS[task]))) {
+    return true;
+  }
+
+  if (provider && hasKeyword(provider, TASK_PROVIDER_KEYWORDS[task])) {
+    return true;
+  }
+
+  if (name && hasKeyword(name, TASK_NAME_KEYWORDS[task])) {
+    return true;
+  }
+
+  if (task === "chat" && name && name.endsWith(".gguf")) {
+    return true;
+  }
+
+  return false;
+};
 
 interface ModelSelectorProps {
   value?: string;
@@ -72,6 +237,10 @@ interface ModelSelectorProps {
   placeholder?: string;
   disabled?: boolean;
   showDetails?: boolean;
+  task?: ModelSelectorTask;
+  includeDownloadable?: boolean;
+  includeDownloading?: boolean;
+  autoSelect?: boolean;
 }
 
 // formatFileSize is now imported from model-utils
@@ -241,10 +410,15 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   placeholder = "Select a model...",
   disabled = false,
   showDetails = true,
+  task = "chat",
+  includeDownloadable = false,
+  includeDownloading = true,
+  autoSelect = true,
 }) => {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const autoSelectRef = useRef(false);
   const backend = getKarenBackend();
 
   const loadModels = async () => {
@@ -334,253 +508,256 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   useEffect(() => {
     loadModels();
   }, []);
+  
+  const controlledValue = value ?? "";
 
-  // Filter models into installed/downloadable/experimental buckets and surface task-based groupings
-  const {
-    installedModels,
-    downloadableModels,
-    experimentalModels,
-    recommendedIdentifiers,
-  } = React.useMemo(() => {
-    const compatibleStatuses = new Set(["local", "downloading", "available", "incompatible"]);
-    const compatibleProviders = new Set([
-      "llama-cpp",
-      "llama-gguf",
-      "transformers",
-      "huggingface",
-      "local",
-      "stable-diffusion",
-      "hf_hub",
-      "diffusers",
-    ]);
+  const filteredModels = useMemo(() => {
+    if (!models || models.length === 0) {
+      return [] as ModelInfo[];
+    }
 
-    const filteredModels = models.filter((model) => {
-      if (!compatibleStatuses.has(model.status)) {
-        return false;
+    const preferred = new Map<string, ModelInfo>();
+
+    models.forEach((model) => {
+      if (!model) {
+        return;
       }
 
-      const rawName = model.name || "";
-      const name = rawName.trim();
-      const normalizedName = name.toLowerCase();
-      const provider = (model.provider || "").toLowerCase();
-
-      if (!name) {
-        return false;
+      if (!['local', 'downloading', 'available', 'incompatible'].includes(model.status)) {
+        return;
       }
 
-      const directoryLikeEntries = new Set(["metadata_cache", "downloads", "llama-cpp", "transformers", "stable-diffusion"]);
-      if (directoryLikeEntries.has(normalizedName) && !(model.capabilities && model.capabilities.length)) {
-        return false;
+      if (!includeDownloadable && model.status === 'available') {
+        return;
       }
 
-      if (normalizedName === "tinyllama" && !normalizedName.includes("chat") && !normalizedName.includes("instruct")) {
-        return false;
+      if (!includeDownloading && model.status === 'downloading') {
+        return;
       }
 
-      if (normalizedName === "tinyllama-1.1b-chat-v1.0" && provider === "transformers") {
-        return false;
+      if (isBlockedName(model.name)) {
+        return;
       }
 
-      const isCompatibleProvider = compatibleProviders.has(provider);
+      if (!isModelCompatibleWithTask(model, task)) {
+        return;
+      }
 
-      const hasKnownExtension = [".gguf", ".bin", ".safetensors", ".onnx", ".pt", ".ckpt"].some((ext) =>
-        normalizedName.endsWith(ext)
-      );
+      const selectorValue = getModelSelectorValue(model as unknown as Model);
+      if (!selectorValue) {
+        return;
+      }
 
-      const capabilityList = (model.capabilities || []).map((cap) => cap.toLowerCase());
+      const existing = preferred.get(selectorValue);
+      if (existing) {
+        const existingPriority = STATUS_PRIORITY[existing.status] ?? DEFAULT_STATUS_PRIORITY;
+        const candidatePriority = STATUS_PRIORITY[model.status] ?? DEFAULT_STATUS_PRIORITY;
 
-      const capabilityMatches = capabilityList.some((capability) =>
-        [
-          "chat",
-          "text",
-          "text-generation",
-          "conversation",
-          "assistant",
-          "instruction",
-          "code",
-          "image",
-          "vision",
-          "diffusion",
-          "image-generation",
-          "audio",
-          "speech",
-          "voice",
-          "embedding",
-          "vector",
-          "retrieval",
-          "multimodal",
-        ].some((needle) => capability.includes(needle))
-      );
+        if (candidatePriority < existingPriority) {
+          preferred.set(selectorValue, model);
+          return;
+        }
 
-      const nameMatches =
-        normalizedName.includes("chat") ||
-        normalizedName.includes("instruct") ||
-        normalizedName.includes("assistant") ||
-        normalizedName.includes("dialog") ||
-        normalizedName.includes("llama") ||
-        normalizedName.includes("phi") ||
-        normalizedName.includes("mistral") ||
-        normalizedName.includes("qwen") ||
-        normalizedName.includes("deepseek") ||
-        normalizedName.includes("gemma") ||
-        normalizedName.includes("codellama") ||
-        normalizedName.includes("vicuna") ||
-        normalizedName.includes("alpaca") ||
-        normalizedName.includes("gpt") ||
-        normalizedName.includes("bert") ||
-        normalizedName.includes("distilbert") ||
-        normalizedName.includes("t5") ||
-        normalizedName.includes("sentence-transformers") ||
-        normalizedName.includes("stable-diffusion") ||
-        normalizedName.includes("flux") ||
-        normalizedName.includes("image") ||
-        normalizedName.includes("vision") ||
-        normalizedName.includes("audio") ||
-        normalizedName.includes("speech") ||
-        normalizedName.includes("embed") ||
-        normalizedName.includes("vector");
+        if (candidatePriority === existingPriority) {
+          const candidateProgress = model.download_progress ?? 0;
+          const existingProgress = existing.download_progress ?? 0;
+          if (candidateProgress > existingProgress) {
+            preferred.set(selectorValue, model);
+          }
+        }
+        return;
+      }
 
-      return isCompatibleProvider && (capabilityMatches || nameMatches || hasKnownExtension);
+      preferred.set(selectorValue, model);
     });
 
-    safeDebug(
-      "🔍 ModelSelector: Usable models after filtering:",
-      filteredModels.map((m) => ({ name: m.name, provider: m.provider, status: m.status, capabilities: m.capabilities }))
-    );
+    const result = Array.from(preferred.values());
 
-    const recommendedModels = getRecommendedModels(filteredModels as Model[], "chat");
-    const recommendedIdentifiers = new Set(recommendedModels.map((model) => buildModelIdentifier(model as ModelInfo)));
+    result.sort((a, b) => {
+      const statusDiff =
+        (STATUS_PRIORITY[a.status] ?? DEFAULT_STATUS_PRIORITY) -
+        (STATUS_PRIORITY[b.status] ?? DEFAULT_STATUS_PRIORITY);
 
-    const installed: ModelInfo[] = [];
-    const downloadable: ModelInfo[] = [];
-    const experimental: ModelInfo[] = [];
+      if (statusDiff !== 0) {
+        return statusDiff;
+      }
+
+      const sizeA = a.size ?? Number.MAX_SAFE_INTEGER;
+      const sizeB = b.size ?? Number.MAX_SAFE_INTEGER;
+      if (sizeA !== sizeB) {
+        return sizeA - sizeB;
+      }
+
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    safeDebug('🔍 ModelSelector: Filtered models for task', {
+      task,
+      count: result.length,
+      includeDownloadable,
+      includeDownloading,
+      models: result.map((m) => ({ name: m.name, provider: m.provider, status: m.status })),
+    });
+
+    return result;
+  }, [models, task, includeDownloadable, includeDownloading]);
+
+  const groupedModels = useMemo(() => {
+    const groups: Record<string, ModelInfo[]> = {
+      local: [],
+      downloading: [],
+      available: [],
+      incompatible: [],
+    };
 
     filteredModels.forEach((model) => {
-      if (model.status === "available") {
-        downloadable.push(model);
+      if (model.status === 'available' && !includeDownloadable) {
+        return;
+      }
+      if (model.status === 'downloading' && !includeDownloading) {
         return;
       }
 
-      if (model.status === "local" || model.status === "downloading") {
-        installed.push(model);
-        return;
-      }
-
-      if (model.status === "incompatible" || model.status === "error") {
-        experimental.push(model);
+      if (groups[model.status]) {
+        groups[model.status].push(model);
+      } else if (model.status === 'error') {
+        groups.incompatible.push(model);
       }
     });
 
-    const sortedInstalled = sortByRecommendation(installed, recommendedIdentifiers);
-    const sortedDownloadable = [...downloadable].sort(sortByStatusThenName);
-    const sortedExperimental = [...experimental].sort(sortByStatusThenName);
+    return groups;
+  }, [filteredModels, includeDownloadable, includeDownloading]);
 
-    safeDebug(
-      "🔍 ModelSelector: Installed models after grouping:",
-      sortedInstalled.map((m) => ({ name: m.name, provider: m.provider, status: m.status, capabilities: m.capabilities }))
-    );
-    safeDebug(
-      "🔍 ModelSelector: Downloadable models after grouping:",
-      sortedDownloadable.map((m) => ({ name: m.name, provider: m.provider, status: m.status }))
-    );
-    safeDebug(
-      "🔍 ModelSelector: Experimental models after grouping:",
-      sortedExperimental.map((m) => ({ name: m.name, provider: m.provider, status: m.status }))
-    );
-
-    return {
-      installedModels: sortedInstalled,
-      downloadableModels: sortedDownloadable,
-      experimentalModels: sortedExperimental,
-      recommendedIdentifiers,
-    };
-  }, [models]);
-
-  const taskGroups = React.useMemo(() => {
-    const grouped = new Map<TaskGroupKey, ModelInfo[]>();
-
-    installedModels.forEach((model) => {
-      const groupKey = inferPrimaryCapability(model);
-      if (!grouped.has(groupKey)) {
-        grouped.set(groupKey, []);
-      }
-      grouped.get(groupKey)!.push(model);
-    });
-
-    return TASK_GROUP_ORDER
-      .map((key) => ({ key, models: grouped.get(key) || [] }))
-      .filter((group) => group.models.length > 0);
-  }, [installedModels]);
-
-  const localModels = React.useMemo(
-    () => installedModels.filter((model) => model.status === "local"),
-    [installedModels]
-  );
-
-  const selectableModels = React.useMemo(
-    () => installedModels.filter((model) => model.status === "local" || model.status === "downloading"),
-    [installedModels]
-  );
-
-  const defaultModel = React.useMemo(() => {
-    if (localModels.length > 0) {
-      return localModels[0];
-    }
-    if (selectableModels.length > 0) {
-      return selectableModels[0];
-    }
+  const recommendationUseCase = useMemo(() => {
+    if (task === 'chat') return 'chat' as const;
+    if (task === 'code') return 'code' as const;
+    if (task === 'embedding') return 'analysis' as const;
     return null;
-  }, [localModels, selectableModels]);
+  }, [task]);
 
-  const selectableValueSet = React.useMemo(() => new Set(selectableModels.map(createModelValue)), [selectableModels]);
-
-  const fallbackValue = React.useMemo(() => (defaultModel ? createModelValue(defaultModel) : ""), [defaultModel]);
-
-  const controlledValue = React.useMemo(() => {
-    if (value && selectableValueSet.has(value)) {
-      return value;
+  const recommendedModels = useMemo(() => {
+    if (!recommendationUseCase) {
+      return filteredModels;
     }
-    if (fallbackValue) {
-      return fallbackValue;
+    return getRecommendedModels(filteredModels as unknown as Model[], recommendationUseCase) as unknown as ModelInfo[];
+  }, [filteredModels, recommendationUseCase]);
+
+  const prioritizedModels = useMemo(() => {
+    if (recommendedModels.length === 0) {
+      return filteredModels;
     }
-    return "";
-  }, [value, selectableValueSet, fallbackValue]);
+
+    const recommendedSet = new Set(
+      recommendedModels.map((model) => getModelSelectorValue(model as unknown as Model))
+    );
+
+    const remainder = filteredModels.filter(
+      (model) => !recommendedSet.has(getModelSelectorValue(model as unknown as Model))
+    );
+
+    return [...recommendedModels, ...remainder];
+  }, [filteredModels, recommendedModels]);
+
+  const findModelByValue = useCallback(
+    (needle: string) => {
+      if (!needle) {
+        return undefined;
+      }
+      
+      const inFiltered = filteredModels.find((model) =>
+        doesModelMatchValue(model as unknown as Model, needle)
+      );
+      if (inFiltered) {
+        return inFiltered;
+      }
+
+      return models.find((model) => doesModelMatchValue(model as unknown as Model, needle));
+    },
+    [filteredModels, models]
+  );
+
+  const selectedModel = useMemo(() => {
+    if (!controlledValue) {
+      return undefined;
+    }
+    return findModelByValue(controlledValue);
+  }, [controlledValue, findModelByValue]);
+
+  const handleModelValueChange = useCallback(
+    (newValue: string) => {
+      if (onValueChange) {
+        onValueChange(newValue);
+      }
+
+      if (!newValue) {
+        return;
+      }
+
+      const matched = findModelByValue(newValue);
+      if (matched?.id) {
+        modelSelectionService.updateLastSelectedModel(matched.id).catch((err) => {
+          safeWarn('🔍 ModelSelector: Failed to persist last selected model', err);
+        });
+      }
+    },
+    [findModelByValue, onValueChange]
+  );
 
   useEffect(() => {
-    if (!onValueChange || !fallbackValue) {
+    if (!autoSelect || disabled) {
       return;
     }
 
-    const hasValidSelection = value ? selectableValueSet.has(value) : false;
-
-    if (!hasValidSelection && fallbackValue) {
-      onValueChange(fallbackValue);
+    if (autoSelectRef.current) {
+      return;
     }
-  }, [fallbackValue, onValueChange, selectableValueSet, value]);
 
-  const selectedModel = React.useMemo(
-    () => models.find((model) => createModelValue(model) === controlledValue),
-    [models, controlledValue]
-  );
+    if (controlledValue) {
+      autoSelectRef.current = true;
+      return;
+    }
 
-  const renderModelItem = (
-    model: ModelInfo,
-    options: { disabled?: boolean; disabledReason?: string } = {}
-  ) => {
-    const provider = model.provider || "";
-    const name = model.name || "";
-    const modelValue = createModelValue(model);
-    const { disabled = false, disabledReason } = options;
-    const isRecommended = recommendedIdentifiers.has(buildModelIdentifier(model));
+    if (filteredModels.length === 0) {
+      return;
+    }
+
+    const localModels = filteredModels.filter((model) => model.status === 'local');
+    const candidatePool = localModels.length > 0 ? localModels : prioritizedModels;
+    const fallbackPool = candidatePool.length > 0 ? candidatePool : filteredModels;
+    const defaultModel = fallbackPool[0];
+
+    if (defaultModel) {
+      autoSelectRef.current = true;
+      const defaultValue = getModelSelectorValue(defaultModel as unknown as Model);
+      safeDebug('🔍 ModelSelector: Auto-selecting model', {
+        model: defaultModel.name,
+        provider: defaultModel.provider,
+        status: defaultModel.status,
+        task,
+      });
+      if (defaultValue) {
+        handleModelValueChange(defaultValue);
+      }
+    }
+  }, [autoSelect, controlledValue, filteredModels, handleModelValueChange, prioritizedModels, disabled, task]);
+
+  const renderModelItem = (model: ModelInfo) => {
+    const provider = model.provider || '';
+    const name = model.name || '';
+    const modelValue = getModelSelectorValue(model as unknown as Model);
+    if (!modelValue) {
+      return null;
+    }
 
     // Build a stable, unique key across potential duplicates coming from the library
     const uniqueKey = [
+      modelValue,
+      model.id || '',
       provider,
-      model.id || "",
       name,
-      model.local_path || "",
-      model.download_url || "",
-    ].join("|");
+      model.local_path || '',
+      model.download_url || ''
+    ].join('|');
 
     return (
       <SelectItem key={uniqueKey} value={modelValue} className="py-3" disabled={disabled}>
@@ -684,7 +861,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   return (
     <TooltipProvider>
-      <Select value={controlledValue} onValueChange={handleValueChange} disabled={disabled}>
+      <Select value={controlledValue} onValueChange={handleModelValueChange} disabled={disabled}>
         <Tooltip>
           <TooltipTrigger asChild>
             <SelectTrigger className={cn("w-full", className)}>
@@ -754,8 +931,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               </SelectGroup>
             </React.Fragment>
           ))}
-
-          {downloadableModels.length > 0 && (
+          {/* Available Models */}
+          {includeDownloadable && groupedModels.available.length > 0 && (
             <>
               {(taskGroups.length > 0) && <SelectSeparator />}
               <SelectGroup>
@@ -793,7 +970,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
           {taskGroups.length === 0 && downloadableModels.length === 0 && experimentalModels.length === 0 && (
             <div className="p-4 text-center text-sm text-muted-foreground">
-              No compatible models found. Install a chat or multi-modal model from the Model Library to get started.
+              
+              No {TASK_FRIENDLY_NAME[task]} models are ready to use yet. Install or enable a compatible model to continue.
+        
             </div>
           )}
         </SelectContent>
