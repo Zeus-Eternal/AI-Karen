@@ -16,6 +16,13 @@ from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .extension_alerting_system import (
+    AlertType,
+    EscalationLevel,
+    extension_alert_manager,
+)
+from .extension_error_logging import ErrorSeverity
+
 logger = logging.getLogger(__name__)
 
 
@@ -555,25 +562,50 @@ class ExtensionServiceRecoveryManager:
     async def _escalate_to_admin_recovery(self, service_name: str):
         """Recovery function to escalate to admin"""
         logger.error(f"Escalating {service_name} failure to admin")
-        
+
         try:
             # Mark as escalated
             if service_name in self.service_states:
                 self.service_states[service_name].escalated = True
-            
-            # Log critical alert
+
+            state = self.service_states.get(service_name)
+            failure_count = state.failure_count if state else None
+            recovery_attempts = state.recovery_attempts if state else None
+            last_health_check = state.last_health_check.isoformat() if state else None
+            last_recovery_attempt = (
+                state.last_recovery_attempt.isoformat() if state and state.last_recovery_attempt else None
+            )
+
             logger.critical(
-                f"CRITICAL: Service {service_name} has failed multiple recovery attempts and requires admin intervention",
+                "Service recovery escalation required",
                 extra={
                     "service": service_name,
-                    "failure_count": self.service_states.get(service_name, {}).failure_count,
-                    "recovery_attempts": self.service_states.get(service_name, {}).recovery_attempts,
-                    "escalated": True
+                    "failure_count": failure_count,
+                    "recovery_attempts": recovery_attempts,
+                    "escalated": True,
                 }
             )
-            
-            # TODO: Implement admin notification system (email, Slack, etc.)
-            
+
+            recovery_context = {
+                "service": service_name,
+                "failure_count": failure_count,
+                "recovery_attempts": recovery_attempts,
+                "last_health_check": last_health_check,
+                "last_recovery_attempt": last_recovery_attempt,
+            }
+
+            # Dispatch structured alert through central alert manager
+            await extension_alert_manager.create_manual_alert(
+                alert_type=AlertType.RECOVERY_FAILURE,
+                severity=ErrorSeverity.CRITICAL,
+                message=(
+                    f"Service {service_name} has exhausted automated recovery options and requires"
+                    " administrator intervention."
+                ),
+                context=recovery_context,
+                escalation_level=EscalationLevel.LEVEL_3,
+            )
+
         except Exception as e:
             logger.error(f"Failed to escalate {service_name}: {e}")
             raise
