@@ -14,6 +14,19 @@
 
 import { logger } from '@/lib/logger';
 
+const getEnvVar = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env && key in process.env) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
+const NODE_ENV = getEnvVar('NODE_ENV') ?? 'production';
+const DEV_FEATURE_FLAG = (getEnvVar('NEXT_PUBLIC_ENABLE_DEVELOPMENT_FEATURES') || '').toLowerCase();
+const GLOBAL_DEVELOPMENT_FEATURES_ENABLED = DEV_FEATURE_FLAG === 'true' && NODE_ENV !== 'production';
+
+export const isDevelopmentFeaturesEnabled = (): boolean => GLOBAL_DEVELOPMENT_FEATURES_ENABLED;
+
 // Development user interface
 interface DevelopmentUser {
   user_id: string;
@@ -65,16 +78,19 @@ export class DevelopmentAuthManager {
   private hotReloadListeners: Set<() => void>;
 
   constructor(config?: Partial<DevelopmentAuthConfig>) {
+    const overrides = config ?? {};
+    const featuresEnabled = isDevelopmentFeaturesEnabled();
+    const environmentEnabled = featuresEnabled && this.isDevelopmentEnvironment();
+
     this.config = {
-      enabled: this.isDevelopmentEnvironment(),
-      bypassAuth: true,
-      mockAuthEnabled: true,
-      hotReloadSupport: true,
-      debugLogging: true,
-      autoTokenRefresh: true,
-      tokenExpiryHours: 24,
-      defaultUser: 'dev-user',
-      ...config,
+      enabled: environmentEnabled,
+      bypassAuth: environmentEnabled && (overrides.bypassAuth ?? true),
+      mockAuthEnabled: environmentEnabled && (overrides.mockAuthEnabled ?? true),
+      hotReloadSupport: environmentEnabled && (overrides.hotReloadSupport ?? true),
+      debugLogging: environmentEnabled && (overrides.debugLogging ?? true),
+      autoTokenRefresh: environmentEnabled && (overrides.autoTokenRefresh ?? true),
+      tokenExpiryHours: overrides.tokenExpiryHours ?? 24,
+      defaultUser: overrides.defaultUser ?? 'dev-user',
     };
 
     this.mockUsers = new Map();
@@ -89,6 +105,8 @@ export class DevelopmentAuthManager {
         config: this.config,
         mockUsers: Array.from(this.mockUsers.keys()),
       });
+    } else if (!featuresEnabled) {
+      logger.info('Development authentication disabled for production environment');
     }
   }
 
@@ -121,6 +139,11 @@ export class DevelopmentAuthManager {
    * Initialize mock users for development testing
    */
   private initializeMockUsers(): void {
+    if (!this.config.enabled) {
+      logger.debug('Development auth disabled - mock users not registered');
+      return;
+    }
+
     const mockUsers: DevelopmentUser[] = [
       {
         user_id: 'dev-user',
@@ -190,7 +213,7 @@ export class DevelopmentAuthManager {
    * Setup hot reload support
    */
   private setupHotReloadSupport(): void {
-    if (!this.config.hotReloadSupport || typeof window === 'undefined') {
+    if (!this.config.enabled || !this.config.hotReloadSupport || typeof window === 'undefined') {
       return;
     }
 
@@ -297,10 +320,18 @@ export class DevelopmentAuthManager {
     }
   }
 
+  private assertEnabled(action: string): void {
+    if (!this.config.enabled) {
+      throw new Error(`Development authentication is disabled (attempted to ${action}).`);
+    }
+  }
+
   /**
    * Get development authentication headers
    */
   async getDevelopmentAuthHeaders(userId?: string): Promise<Record<string, string>> {
+    this.assertEnabled('get development auth headers');
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -343,6 +374,8 @@ export class DevelopmentAuthManager {
    * Get development token for user
    */
   async getDevelopmentToken(userId: string): Promise<string | null> {
+    this.assertEnabled('get development token');
+
     // Check if we have a cached token
     const cachedToken = this.developmentTokens.get(userId);
     if (cachedToken && this.isTokenValid(cachedToken)) {
@@ -369,6 +402,8 @@ export class DevelopmentAuthManager {
    * Create development token
    */
   private async createDevelopmentToken(userId: string): Promise<string | null> {
+    this.assertEnabled('create development token');
+
     const user = this.mockUsers.get(userId);
     if (!user) {
       logger.warn('Unknown development user:', userId);
@@ -454,6 +489,8 @@ export class DevelopmentAuthManager {
    * Mock authentication for testing
    */
   async mockAuthenticate(userId: string): Promise<MockAuthResponse | null> {
+    this.assertEnabled('perform mock authentication');
+
     if (!this.config.mockAuthEnabled) {
       throw new Error('Mock authentication is disabled');
     }
@@ -493,6 +530,8 @@ export class DevelopmentAuthManager {
    * Switch to different mock user
    */
   async switchMockUser(userId: string): Promise<MockAuthResponse | null> {
+    this.assertEnabled('switch mock user');
+
     if (!this.mockUsers.has(userId)) {
       throw new Error(`Unknown mock user: ${userId}`);
     }
@@ -508,8 +547,12 @@ export class DevelopmentAuthManager {
    * Add hot reload listener
    */
   addHotReloadListener(listener: () => void): () => void {
+    if (!this.config.enabled) {
+      return () => undefined;
+    }
+
     this.hotReloadListeners.add(listener);
-    
+
     // Return cleanup function
     return () => {
       this.hotReloadListeners.delete(listener);
@@ -558,8 +601,13 @@ export class DevelopmentAuthManager {
    * Update development configuration
    */
   updateConfig(updates: Partial<DevelopmentAuthConfig>): void {
+    if (!isDevelopmentFeaturesEnabled()) {
+      logger.warn('Attempted to update development auth configuration while features are disabled');
+      return;
+    }
+
     this.config = { ...this.config, ...updates };
-    
+
     if (this.config.debugLogging) {
       logger.debug('Development auth configuration updated', { updates });
     }
