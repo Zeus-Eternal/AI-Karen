@@ -19,8 +19,7 @@ const nextConfig = {
     // Other experimental features can go here
   },
   
-  // Allow cross-origin requests from Docker container network
-  allowedDevOrigins: ['172.21.0.12'],
+  // Cross-origin configuration handled in headers
   
   // Force Next.js to use this directory as the workspace root
   distDir: '.next',
@@ -152,55 +151,70 @@ const nextConfig = {
       topLevelAwait: true,
     };
 
+    // Let Next.js handle minification automatically
+
     // Bundle optimization for production
     if (!dev && !isServer) {
-      // Optimize chunk splitting
+      // Optimize chunk splitting for better caching and loading performance
       config.optimization = {
         ...config.optimization,
         splitChunks: {
           chunks: 'all',
+          minSize: 20000,
+          maxSize: 244000,
           cacheGroups: {
-            // Vendor libraries
+            // Framework chunk (React, Next.js)
+            framework: {
+              test: /[\\/]node_modules[\\/](react|react-dom|next)[\\/]/,
+              name: 'framework',
+              chunks: 'all',
+              priority: 40,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
+            // Large UI libraries
+            ui: {
+              test: /[\\/]node_modules[\\/](@radix-ui|framer-motion|lucide-react)[\\/]/,
+              name: 'ui-libs',
+              chunks: 'all',
+              priority: 30,
+              reuseExistingChunk: true,
+              minSize: 10000,
+            },
+            // Charts and data visualization (lazy loaded)
+            charts: {
+              test: /[\\/]node_modules[\\/](ag-charts|ag-grid|recharts)[\\/]/,
+              name: 'charts',
+              chunks: 'async',
+              priority: 25,
+              reuseExistingChunk: true,
+            },
+            // Utilities and smaller libraries
+            utils: {
+              test: /[\\/]node_modules[\\/](date-fns|clsx|class-variance-authority|tailwind-merge|zod)[\\/]/,
+              name: 'utils',
+              chunks: 'all',
+              priority: 20,
+              reuseExistingChunk: true,
+            },
+            // Lodash utilities (tree-shakeable)
+            lodash: {
+              test: /[\\/]node_modules[\\/]lodash[\\/]/,
+              name: 'lodash',
+              chunks: 'all',
+              priority: 15,
+              reuseExistingChunk: true,
+            },
+            // Other vendor libraries
             vendor: {
               test: /[\\/]node_modules[\\/]/,
               name: 'vendors',
               chunks: 'all',
               priority: 10,
               reuseExistingChunk: true,
+              minSize: 30000,
             },
-            // React and React DOM
-            react: {
-              test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
-              name: 'react',
-              chunks: 'all',
-              priority: 20,
-              reuseExistingChunk: true,
-            },
-            // UI libraries (Radix, Framer Motion, etc.)
-            ui: {
-              test: /[\\/]node_modules[\\/](@radix-ui|framer-motion|lucide-react)[\\/]/,
-              name: 'ui-libs',
-              chunks: 'all',
-              priority: 15,
-              reuseExistingChunk: true,
-            },
-            // Charts and data visualization
-            charts: {
-              test: /[\\/]node_modules[\\/](ag-charts|ag-grid|recharts)[\\/]/,
-              name: 'charts',
-              chunks: 'all',
-              priority: 15,
-              reuseExistingChunk: true,
-            },
-            // Utilities and smaller libraries
-            utils: {
-              test: /[\\/]node_modules[\\/](date-fns|clsx|class-variance-authority|tailwind-merge)[\\/]/,
-              name: 'utils',
-              chunks: 'all',
-              priority: 12,
-              reuseExistingChunk: true,
-            },
-            // Common chunks for frequently used modules
+            // Common application code
             common: {
               name: 'common',
               minChunks: 2,
@@ -213,17 +227,21 @@ const nextConfig = {
         },
         // Enable module concatenation for better tree shaking
         concatenateModules: true,
+        // Optimize module IDs for better caching
+        moduleIds: 'deterministic',
+        chunkIds: 'deterministic',
         // Enable side effects optimization
         sideEffects: false,
+        // Let Next.js handle minification automatically
+        minimize: true,
       };
 
-      // Tree shaking optimization
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        // Optimize lodash imports
-        'lodash': 'lodash-es',
-        // Remove date-fns alias as it's causing issues
-      };
+      // Tree shaking optimization - removed problematic aliases
+
+      // Enable advanced optimizations
+      config.optimization.usedExports = true;
+      config.optimization.providedExports = true;
+      config.optimization.innerGraph = true;
 
       // Add webpack plugins for optimization
       const webpack = require('webpack');

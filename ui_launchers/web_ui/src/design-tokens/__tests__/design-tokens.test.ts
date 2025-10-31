@@ -1,9 +1,184 @@
-import { describe, it, expect } from 'vitest';
-import { designTokens, getColorValue, getSpacing, getTypography } from '../index';
+/**
+ * Design Tokens Unit Tests
+ * 
+ * Tests for design token system and CSS generation.
+ * Based on requirements: 1.1, 1.2, 1.3, 11.4
+ */
 
-describe('Design Tokens System', () => {
-  describe('Token Structure', () => {
-    it('should have all required token categories', () => {
+import {
+  designTokens,
+  primaryColors,
+  secondaryColors,
+  neutralColors,
+  semanticColors,
+  spacingScale,
+  typographyScale,
+  fontWeights,
+  lineHeights,
+  letterSpacing,
+  shadowScale,
+  radiusScale,
+  animationDurations,
+  easingCurves,
+  getColorValue,
+  getSpacing,
+  getTypography,
+  getShadow,
+  getDuration,
+  getEasing,
+} from '../index';
+
+import {
+  generateColorProperties,
+  generateSpacingProperties,
+  generateTypographyProperties,
+  generateShadowProperties,
+  generateRadiusProperties,
+  generateAnimationProperties,
+  generateAllCSSProperties,
+  propertiesToCSS,
+  generateCSSTokens,
+  generateDarkThemeProperties,
+  generateDarkThemeCSS,
+  generateCompleteCSS,
+} from '../css-tokens';
+
+describe('Design Tokens', () => {
+  describe('Color System', () => {
+    it('should have complete primary color scale', () => {
+      expect(primaryColors).toHaveProperty('50');
+      expect(primaryColors).toHaveProperty('500');
+      expect(primaryColors).toHaveProperty('950');
+      expect(primaryColors['500']).toBe('#a855f7');
+    });
+
+    it('should have complete secondary color scale', () => {
+      expect(secondaryColors).toHaveProperty('50');
+      expect(secondaryColors).toHaveProperty('500');
+      expect(secondaryColors).toHaveProperty('950');
+      expect(secondaryColors['500']).toBe('#d946ef');
+    });
+
+    it('should have complete neutral color scale', () => {
+      expect(neutralColors).toHaveProperty('50');
+      expect(neutralColors).toHaveProperty('500');
+      expect(neutralColors).toHaveProperty('950');
+      expect(neutralColors['500']).toBe('#737373');
+    });
+
+    it('should have semantic colors', () => {
+      expect(semanticColors).toHaveProperty('success');
+      expect(semanticColors).toHaveProperty('warning');
+      expect(semanticColors).toHaveProperty('error');
+      expect(semanticColors).toHaveProperty('info');
+      
+      expect(semanticColors.success['500']).toBe('#22c55e');
+      expect(semanticColors.error['500']).toBe('#ef4444');
+    });
+
+    it('should get color values correctly', () => {
+      expect(getColorValue(primaryColors, '500')).toBe('#a855f7');
+      expect(getColorValue(neutralColors, '100')).toBe('#f5f5f5');
+    });
+  });
+
+  describe('Spacing System', () => {
+    it('should have complete spacing scale', () => {
+      expect(spacingScale).toHaveProperty('3xs');
+      expect(spacingScale).toHaveProperty('md');
+      expect(spacingScale).toHaveProperty('6xl');
+      
+      expect(spacingScale['md']).toBe('1rem');
+      expect(spacingScale['3xs']).toBe('0.125rem');
+    });
+
+    it('should get spacing values correctly', () => {
+      expect(getSpacing('md')).toBe('1rem');
+      expect(getSpacing('lg')).toBe('1.5rem');
+    });
+  });
+
+  describe('Typography System', () => {
+    it('should have fluid typography scale', () => {
+      expect(typographyScale).toHaveProperty('xs');
+      expect(typographyScale).toHaveProperty('base');
+      expect(typographyScale).toHaveProperty('9xl');
+      
+      expect(typographyScale['base']).toContain('clamp');
+    });
+
+    it('should have font weights', () => {
+      expect(fontWeights.normal).toBe(400);
+      expect(fontWeights.bold).toBe(700);
+      expect(fontWeights.black).toBe(900);
+    });
+
+    it('should have line heights', () => {
+      expect(lineHeights.normal).toBe(1.5);
+      expect(lineHeights.tight).toBe(1.25);
+    });
+
+    it('should have letter spacing', () => {
+      expect(letterSpacing.normal).toBe('0em');
+      expect(letterSpacing.tight).toBe('-0.025em');
+    });
+
+    it('should get typography values correctly', () => {
+      expect(getTypography('base')).toContain('clamp');
+      expect(getTypography('lg')).toContain('clamp');
+    });
+  });
+
+  describe('Shadow System', () => {
+    it('should have complete shadow scale', () => {
+      expect(shadowScale).toHaveProperty('xs');
+      expect(shadowScale).toHaveProperty('md');
+      expect(shadowScale).toHaveProperty('2xl');
+      expect(shadowScale).toHaveProperty('inner');
+    });
+
+    it('should get shadow values correctly', () => {
+      expect(getShadow('md')).toContain('rgb(0 0 0');
+      expect(getShadow('xs')).toContain('0 1px 2px');
+    });
+  });
+
+  describe('Border Radius System', () => {
+    it('should have complete radius scale', () => {
+      expect(radiusScale).toHaveProperty('none');
+      expect(radiusScale).toHaveProperty('md');
+      expect(radiusScale).toHaveProperty('full');
+      
+      expect(radiusScale.none).toBe('0px');
+      expect(radiusScale.full).toBe('9999px');
+    });
+  });
+
+  describe('Animation System', () => {
+    it('should have animation durations', () => {
+      expect(animationDurations).toHaveProperty('fast');
+      expect(animationDurations).toHaveProperty('normal');
+      expect(animationDurations).toHaveProperty('slow');
+      
+      expect(animationDurations.fast).toBe('150ms');
+    });
+
+    it('should have easing curves', () => {
+      expect(easingCurves).toHaveProperty('linear');
+      expect(easingCurves).toHaveProperty('standard');
+      expect(easingCurves).toHaveProperty('emphasized');
+      
+      expect(easingCurves.linear).toBe('linear');
+    });
+
+    it('should get animation values correctly', () => {
+      expect(getDuration('fast')).toBe('150ms');
+      expect(getEasing('standard')).toBe('cubic-bezier(0.4, 0, 0.2, 1)');
+    });
+  });
+
+  describe('Complete Design Token System', () => {
+    it('should have all token categories', () => {
       expect(designTokens).toHaveProperty('colors');
       expect(designTokens).toHaveProperty('spacing');
       expect(designTokens).toHaveProperty('typography');
@@ -12,146 +187,254 @@ describe('Design Tokens System', () => {
       expect(designTokens).toHaveProperty('animations');
     });
 
-    it('should have complete color scales', () => {
-      const { colors } = designTokens;
+    it('should have nested typography properties', () => {
+      expect(designTokens.typography).toHaveProperty('fontSize');
+      expect(designTokens.typography).toHaveProperty('fontWeight');
+      expect(designTokens.typography).toHaveProperty('lineHeight');
+      expect(designTokens.typography).toHaveProperty('letterSpacing');
+    });
+
+    it('should have nested animation properties', () => {
+      expect(designTokens.animations).toHaveProperty('duration');
+      expect(designTokens.animations).toHaveProperty('easing');
+    });
+  });
+});
+
+describe('CSS Token Generation', () => {
+  describe('Color Properties', () => {
+    it('should generate color CSS properties', () => {
+      const properties = generateColorProperties();
+      
+      expect(properties).toHaveProperty('--color-primary-500');
+      expect(properties).toHaveProperty('--color-neutral-100');
+      expect(properties).toHaveProperty('--color-success-500');
+      
+      expect(properties['--color-primary-500']).toBe('#a855f7');
+    });
+
+    it('should generate all color scale steps', () => {
+      const properties = generateColorProperties();
       
       // Check primary color scale
-      expect(colors.primary).toHaveProperty('50');
-      expect(colors.primary).toHaveProperty('100');
-      expect(colors.primary).toHaveProperty('500');
-      expect(colors.primary).toHaveProperty('900');
-      expect(colors.primary).toHaveProperty('950');
-
+      for (const step of ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950']) {
+        expect(properties).toHaveProperty(`--color-primary-${step}`);
+      }
+      
       // Check semantic colors
-      expect(colors.semantic).toHaveProperty('success');
-      expect(colors.semantic).toHaveProperty('warning');
-      expect(colors.semantic).toHaveProperty('error');
-      expect(colors.semantic).toHaveProperty('info');
-    });
-
-    it('should have mathematical spacing progression', () => {
-      const { spacing } = designTokens;
-      
-      expect(spacing['3xs']).toBe('0.125rem'); // 2px
-      expect(spacing['2xs']).toBe('0.25rem');  // 4px
-      expect(spacing.xs).toBe('0.5rem');       // 8px
-      expect(spacing.sm).toBe('0.75rem');      // 12px
-      expect(spacing.md).toBe('1rem');         // 16px
-      expect(spacing.lg).toBe('1.5rem');       // 24px
-      expect(spacing.xl).toBe('2rem');         // 32px
-      expect(spacing['2xl']).toBe('3rem');     // 48px
-      expect(spacing['3xl']).toBe('4rem');     // 64px
-    });
-
-    it('should have fluid typography scale', () => {
-      const { typography } = designTokens;
-      
-      expect(typography.fontSize.xs).toContain('clamp(');
-      expect(typography.fontSize.sm).toContain('clamp(');
-      expect(typography.fontSize.base).toContain('clamp(');
-      expect(typography.fontSize.lg).toContain('clamp(');
-      expect(typography.fontSize.xl).toContain('clamp(');
-    });
-
-    it('should have layered shadow system', () => {
-      const { shadows } = designTokens;
-      
-      expect(shadows.xs).toBeDefined();
-      expect(shadows.sm).toBeDefined();
-      expect(shadows.md).toBeDefined();
-      expect(shadows.lg).toBeDefined();
-      expect(shadows.xl).toBeDefined();
-      
-      // Check shadow format
-      expect(shadows.xs).toMatch(/^0 \d+px \d+px/);
-    });
-
-    it('should have consistent animation tokens', () => {
-      const { animations } = designTokens;
-      
-      expect(animations.duration).toHaveProperty('instant');
-      expect(animations.duration).toHaveProperty('fast');
-      expect(animations.duration).toHaveProperty('normal');
-      expect(animations.duration).toHaveProperty('slow');
-      expect(animations.duration).toHaveProperty('slower');
-
-      expect(animations.easing).toHaveProperty('linear');
-      expect(animations.easing).toHaveProperty('in');
-      expect(animations.easing).toHaveProperty('out');
-      expect(animations.easing).toHaveProperty('in-out');
-      expect(animations.easing).toHaveProperty('spring');
+      for (const category of ['success', 'warning', 'error', 'info']) {
+        for (const step of ['50', '500', '950']) {
+          expect(properties).toHaveProperty(`--color-${category}-${step}`);
+        }
+      }
     });
   });
 
-  describe('Token Utilities', () => {
-    it('should get color values correctly', () => {
-      expect(getColorValue(designTokens.colors.primary, '500')).toBeDefined();
-      expect(getColorValue(designTokens.colors.primary, '500')).toBe('#a855f7');
-    });
-
-    it('should get spacing values correctly', () => {
-      expect(getSpacing('md')).toBe('1rem');
-      expect(getSpacing('lg')).toBe('1.5rem');
-    });
-
-    it('should get typography values correctly', () => {
-      expect(getTypography('base')).toContain('clamp(');
-      expect(getTypography('lg')).toContain('clamp(');
+  describe('Spacing Properties', () => {
+    it('should generate spacing CSS properties', () => {
+      const properties = generateSpacingProperties();
+      
+      expect(properties).toHaveProperty('--space-md');
+      expect(properties).toHaveProperty('--space-lg');
+      
+      expect(properties['--space-md']).toBe('1rem');
     });
   });
 
-  describe('CSS Custom Properties', () => {
-    it('should generate valid CSS custom property names', () => {
-      const { colors } = designTokens;
+  describe('Typography Properties', () => {
+    it('should generate typography CSS properties', () => {
+      const properties = generateTypographyProperties();
       
-      // Check that color values can be used as CSS custom properties
-      expect(colors.primary['500']).toMatch(/^(#|rgb|hsl|var\()/);
-    });
-
-    it('should support theme variants', () => {
-      // Test that tokens support light/dark theme variants
-      expect(designTokens.colors).toHaveProperty('neutral');
-      expect(designTokens.colors.neutral).toHaveProperty('50'); // Light variant
-      expect(designTokens.colors.neutral).toHaveProperty('950'); // Dark variant
+      expect(properties).toHaveProperty('--text-base');
+      expect(properties).toHaveProperty('--font-weight-bold');
+      expect(properties).toHaveProperty('--line-height-normal');
+      expect(properties).toHaveProperty('--letter-spacing-tight');
+      
+      expect(properties['--font-weight-bold']).toBe('700');
     });
   });
 
-  describe('Accessibility Compliance', () => {
-    it('should have sufficient color contrast ratios', () => {
-      // This would typically use a color contrast library
-      // For now, we'll check that we have appropriate light/dark variants
-      const { colors } = designTokens;
+  describe('Shadow Properties', () => {
+    it('should generate shadow CSS properties', () => {
+      const properties = generateShadowProperties();
       
-      expect(colors.neutral['50']).toBeDefined(); // Light text on dark bg
-      expect(colors.neutral['900']).toBeDefined(); // Dark text on light bg
-    });
-
-    it('should have appropriate focus ring colors', () => {
-      const { colors } = designTokens;
+      expect(properties).toHaveProperty('--shadow-md');
+      expect(properties).toHaveProperty('--shadow-xs');
       
-      expect(colors.primary['500']).toBeDefined(); // Focus ring color
-      expect(colors.primary['600']).toBeDefined(); // Focus ring hover
+      expect(properties['--shadow-md']).toContain('rgb(0 0 0');
     });
   });
 
-  describe('Responsive Design Support', () => {
-    it('should support container query tokens', () => {
-      const { spacing } = designTokens;
+  describe('Radius Properties', () => {
+    it('should generate radius CSS properties', () => {
+      const properties = generateRadiusProperties();
       
-      // Check that spacing tokens work with container queries
-      expect(spacing.md).toBe('1rem');
-      expect(spacing.lg).toBe('1.5rem');
+      expect(properties).toHaveProperty('--radius-md');
+      expect(properties).toHaveProperty('--radius-full');
+      
+      expect(properties['--radius-full']).toBe('9999px');
+    });
+  });
+
+  describe('Animation Properties', () => {
+    it('should generate animation CSS properties', () => {
+      const properties = generateAnimationProperties();
+      
+      expect(properties).toHaveProperty('--duration-fast');
+      expect(properties).toHaveProperty('--ease-standard');
+      
+      expect(properties['--duration-fast']).toBe('150ms');
+    });
+  });
+
+  describe('Complete CSS Generation', () => {
+    it('should generate all CSS properties', () => {
+      const properties = generateAllCSSProperties();
+      
+      expect(properties).toHaveProperty('--color-primary-500');
+      expect(properties).toHaveProperty('--space-md');
+      expect(properties).toHaveProperty('--text-base');
+      expect(properties).toHaveProperty('--shadow-md');
+      expect(properties).toHaveProperty('--radius-md');
+      expect(properties).toHaveProperty('--duration-fast');
     });
 
-    it('should have fluid typography that scales', () => {
-      const { typography } = designTokens;
+    it('should convert properties to CSS string', () => {
+      const properties = { '--test-prop': 'test-value' };
+      const css = propertiesToCSS(properties);
       
-      // Check that typography uses clamp() for fluid scaling
-      Object.values(typography.fontSize).forEach(value => {
-        if (typeof value === 'string') {
-          expect(value).toMatch(/clamp\(/);
+      expect(css).toBe('  --test-prop: test-value;');
+    });
+
+    it('should generate complete CSS tokens', () => {
+      const css = generateCSSTokens();
+      
+      expect(css).toContain(':root {');
+      expect(css).toContain('--color-primary-500');
+      expect(css).toContain('}');
+    });
+
+    it('should generate dark theme properties', () => {
+      const properties = generateDarkThemeProperties();
+      
+      expect(properties).toHaveProperty('--color-primary-50');
+      expect(properties).toHaveProperty('--color-neutral-50');
+      expect(properties).toHaveProperty('--shadow-xs');
+      
+      // Dark theme should have inverted neutral colors
+      expect(properties['--color-neutral-50']).toBe('#0a0a0a');
+    });
+
+    it('should generate dark theme CSS', () => {
+      const css = generateDarkThemeCSS();
+      
+      expect(css).toContain('.dark {');
+      expect(css).toContain('--color-primary-50');
+      expect(css).toContain('}');
+    });
+
+    it('should generate complete CSS with light and dark themes', () => {
+      const css = generateCompleteCSS();
+      
+      expect(css).toContain(':root {');
+      expect(css).toContain('.dark {');
+      expect(css).toContain('--color-primary-500');
+    });
+  });
+
+  describe('Theme Integration', () => {
+    it('should provide consistent token structure across themes', () => {
+      const lightProperties = generateAllCSSProperties();
+      const darkProperties = generateDarkThemeProperties();
+      
+      // Both themes should have the same token structure
+      expect(Object.keys(lightProperties).filter(key => key.startsWith('--color-primary')).length)
+        .toBeGreaterThan(0);
+      expect(Object.keys(darkProperties).filter(key => key.startsWith('--color-primary')).length)
+        .toBeGreaterThan(0);
+    });
+
+    it('should have different values for light and dark themes', () => {
+      const lightProperties = generateAllCSSProperties();
+      const darkProperties = generateDarkThemeProperties();
+      
+      // Neutral colors should be inverted
+      expect(lightProperties['--color-neutral-50']).not.toBe(darkProperties['--color-neutral-50']);
+      expect(lightProperties['--color-neutral-950']).not.toBe(darkProperties['--color-neutral-950']);
+    });
+
+    it('should maintain semantic meaning across themes', () => {
+      const lightProperties = generateAllCSSProperties();
+      const darkProperties = generateDarkThemeProperties();
+      
+      // Light theme should have all semantic colors
+      const semanticColors = ['success', 'warning', 'error', 'info'];
+      semanticColors.forEach(color => {
+        expect(lightProperties).toHaveProperty(`--color-${color}-500`);
+      });
+      
+      // Dark theme should at least have primary and neutral color overrides
+      expect(darkProperties).toHaveProperty('--color-primary-500');
+      expect(darkProperties).toHaveProperty('--color-neutral-50');
+      expect(darkProperties).toHaveProperty('--shadow-xs');
+    });
+  });
+
+  describe('Design Token Validation', () => {
+    it('should have valid CSS color values', () => {
+      const properties = generateColorProperties();
+      
+      Object.entries(properties).forEach(([key, value]) => {
+        if (key.includes('color')) {
+          expect(value).toMatch(/^#[0-9a-fA-F]{6}$/);
         }
       });
+    });
+
+    it('should have valid CSS size values', () => {
+      const properties = generateSpacingProperties();
+      
+      Object.entries(properties).forEach(([key, value]) => {
+        expect(value).toMatch(/^\d+(\.\d+)?(rem|px|em)$/);
+      });
+    });
+
+    it('should have valid CSS duration values', () => {
+      const properties = generateAnimationProperties();
+      
+      Object.entries(properties).forEach(([key, value]) => {
+        if (key.includes('duration')) {
+          expect(value).toMatch(/^\d+ms$/);
+        }
+      });
+    });
+
+    it('should have valid CSS easing values', () => {
+      const properties = generateAnimationProperties();
+      
+      Object.entries(properties).forEach(([key, value]) => {
+        if (key.includes('ease')) {
+          expect(value).toMatch(/^(linear|cubic-bezier\([^)]+\))$/);
+        }
+      });
+    });
+  });
+
+  describe('CSS Generation Performance', () => {
+    it('should generate CSS tokens efficiently', () => {
+      const startTime = performance.now();
+      generateCompleteCSS();
+      const endTime = performance.now();
+      
+      // Should complete within reasonable time (100ms)
+      expect(endTime - startTime).toBeLessThan(100);
+    });
+
+    it('should generate consistent output', () => {
+      const css1 = generateCompleteCSS();
+      const css2 = generateCompleteCSS();
+      
+      expect(css1).toBe(css2);
     });
   });
 });

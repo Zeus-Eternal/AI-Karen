@@ -47,3 +47,9 @@ export * from './models';
 
 // File management types
 export * from './files';
+
+// Dashboard system types
+export * from './dashboard';
+
+// Memory management types
+export * from './memory';

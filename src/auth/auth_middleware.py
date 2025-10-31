@@ -14,6 +14,11 @@ class NoAuthMiddleware:
         # Always allow access
         pass
     
+    def is_public_endpoint(self, path: str) -> bool:
+        """Check if endpoint is public (all endpoints are public in no-auth mode)"""
+        # In no-auth mode, all endpoints are considered public
+        return True
+    
     async def authenticate_request(self, request: Request) -> Optional[dict]:
         """Return default user context for all requests"""
         # Return a simple default user for all requests

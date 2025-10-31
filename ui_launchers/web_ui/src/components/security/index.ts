@@ -1,3 +1,10 @@
-export { SanitizedMarkdown, sanitizeText, sanitizeUrl } from './SanitizedMarkdown';
-export { RBACGuard, usePermissions, type UserRole, type Permission } from './RBACGuard';
-export { SecureLink, validateUrl, secureExistingLinks, useSecureLinks } from './SecureLink';
+/**
+ * Security Components Export
+ * 
+ * This module exports all security-related components including
+ * Evil Mode controls, audit logging, and security monitoring.
+ */
+
+export { EvilModeToggle, EvilModeActivityLog } from './EvilModeToggle';
+export { EvilModeAnalytics } from './EvilModeAnalytics';
+export { SecurityDashboard } from './SecurityDashboard';

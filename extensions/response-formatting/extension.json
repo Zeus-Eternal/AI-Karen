@@ -1,0 +1,153 @@
+{
+  "name": "response-formatting",
+  "version": "1.0.0",
+  "display_name": "Intelligent Response Formatting",
+  "description": "Intelligent response formatting plugin system that formats AI responses based on content type and context",
+  "author": "Kari AI Team",
+  "license": "MIT",
+  "category": "ui-enhancement",
+  "tags": ["formatting", "ui", "themes", "content-detection", "nlp"],
+  "main": "integration.py",
+  "entry_point": "ResponseFormattingIntegration",
+  "dependencies": {
+    "python": ">=3.8",
+    "extensions_sdk": ">=1.0.0"
+  },
+  "requirements": [
+    "dataclasses",
+    "typing",
+    "logging",
+    "asyncio",
+    "threading",
+    "re",
+    "importlib",
+    "inspect"
+  ],
+  "integrations": {
+    "theme_manager": {
+      "required": true,
+      "module": "ui_logic.themes.theme_manager",
+      "description": "Integration with existing theme system"
+    },
+    "nlp_services": {
+      "required": false,
+      "module": "ai_karen_engine.services.nlp_service_manager",
+      "description": "Integration with NLP services for content detection"
+    },
+    "extensions_sdk": {
+      "required": true,
+      "module": "src.core.extensions.sdk",
+      "description": "Integration with extensions SDK"
+    }
+  },
+  "api": {
+    "format_response": {
+      "description": "Format a response using intelligent content detection",
+      "parameters": {
+        "user_query": "string",
+        "response_content": "string",
+        "user_preferences": "object",
+        "theme_context": "object",
+        "session_data": "object"
+      },
+      "returns": "FormattedResponse"
+    },
+    "register_formatter": {
+      "description": "Register a new response formatter",
+      "parameters": {
+        "formatter": "ResponseFormatter"
+      }
+    },
+    "detect_content_type": {
+      "description": "Detect content type without formatting",
+      "parameters": {
+        "user_query": "string",
+        "response_content": "string"
+      },
+      "returns": "ContentDetectionResult"
+    }
+  },
+  "content_types": [
+    "movie",
+    "recipe", 
+    "weather",
+    "news",
+    "product",
+    "travel",
+    "code",
+    "default"
+  ],
+  "theme_requirements": [
+    "typography",
+    "spacing", 
+    "colors",
+    "movie-card",
+    "recipe-card",
+    "weather-card",
+    "news-card",
+    "product-card",
+    "travel-card",
+    "code-block"
+  ],
+  "configuration": {
+    "enable_nlp_detection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable NLP-based content type detection"
+    },
+    "fallback_to_default": {
+      "type": "boolean", 
+      "default": true,
+      "description": "Fall back to default formatter on errors"
+    },
+    "confidence_threshold": {
+      "type": "number",
+      "default": 0.3,
+      "min": 0.0,
+      "max": 1.0,
+      "description": "Minimum confidence threshold for content type detection"
+    }
+  },
+  "permissions": [
+    "read:user_preferences",
+    "read:theme_context",
+    "read:session_data",
+    "write:formatted_response"
+  ],
+  "hooks": {
+    "before_response": {
+      "description": "Hook called before formatting response",
+      "parameters": ["user_query", "response_content", "context"]
+    },
+    "after_response": {
+      "description": "Hook called after formatting response", 
+      "parameters": ["formatted_response", "context"]
+    },
+    "on_formatter_error": {
+      "description": "Hook called when formatting fails",
+      "parameters": ["error", "formatter_name", "context"]
+    }
+  },
+  "metrics": {
+    "total_requests": "counter",
+    "successful_formats": "counter", 
+    "failed_formats": "counter",
+    "fallback_uses": "counter",
+    "content_type_detections": "histogram",
+    "formatting_latency": "histogram"
+  },
+  "health_checks": {
+    "registry_health": {
+      "description": "Check if formatter registry is healthy",
+      "endpoint": "/health/registry"
+    },
+    "detector_health": {
+      "description": "Check if content detector is working",
+      "endpoint": "/health/detector"
+    },
+    "integration_health": {
+      "description": "Check overall integration health",
+      "endpoint": "/health/integration"
+    }
+  }
+}

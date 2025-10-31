@@ -7,6 +7,7 @@ import { Providers } from './providers';
 import { ThemeBridge } from "@/components/theme/ThemeBridge";
 import Script from 'next/script';
 import { HealthStatusBadge } from '@/components/ui/health-status-badge';
+import { SkipLinks, ColorBlindnessFilters } from '@/components/accessibility';
 
 // Import early extension fix first
 import '@/lib/early-extension-fix';
@@ -119,10 +120,12 @@ export default function RootLayout({
             `,
           }}
         />
+        <SkipLinks />
+        <ColorBlindnessFilters />
         <ThemeBridge>
           <Providers>
             <HealthStatusBadge />
-            <main id="main-content" role="main" className="min-h-dvh focus:outline-none smooth-transition">
+            <main id="main-content" role="main" className="min-h-dvh focus:outline-none smooth-transition" tabIndex={-1}>
               <div className="modern-layout-root">
                 {children}
               </div>

@@ -1,494 +1,470 @@
 """
 Cache Management API Routes
 
-This module provides API endpoints for monitoring and managing the various
-caches used throughout the system for performance optimization.
+Provides API endpoints for managing production caches, including
+statistics, invalidation, and configuration.
 """
 
 import logging
+from typing import Dict, List, Any, Optional
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, Field
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from fastapi import APIRouter, HTTPException, Depends, Query, Body
+from pydantic import BaseModel, Field
 
-from ai_karen_engine.core.dependencies import get_current_user_context
-from ai_karen_engine.core.logging import get_logger
-from ai_karen_engine.core.cache import (
-    get_token_cache,
-    get_response_cache,
-    get_provider_cache,
-    get_request_deduplicator,
-    cleanup_all_caches,
-    get_all_cache_stats
+from ai_karen_engine.services.production_cache_service import get_cache_service
+from ai_karen_engine.services.model_library_cache_service import get_model_cache_service
+from ai_karen_engine.services.database_query_cache_service import get_db_cache_service
+from ai_karen_engine.services.cache_invalidation_service import (
+    get_invalidation_service,
+    InvalidationTrigger
 )
 
-logger = get_logger(__name__)
-router = APIRouter(tags=["cache-management"], prefix="/cache")
+logger = logging.getLogger(__name__)
 
-# Rate limiting setup
-limiter = Limiter(key_func=get_remote_address)
+router = APIRouter(prefix="/api/cache", tags=["cache"])
 
 
+# Pydantic models for request/response
 class CacheStatsResponse(BaseModel):
-    """Response model for cache statistics"""
-    cache_name: str = Field(..., description="Name of the cache")
-    size: int = Field(..., description="Current number of entries")
-    max_size: int = Field(..., description="Maximum cache size")
-    hit_rate: float = Field(..., description="Cache hit rate (0.0 to 1.0)")
-    total_requests: int = Field(..., description="Total number of requests")
-    hits: int = Field(..., description="Number of cache hits")
-    misses: int = Field(..., description="Number of cache misses")
-    evictions: int = Field(..., description="Number of evicted entries")
-    expired_removals: int = Field(..., description="Number of expired entries removed")
+    """Response model for cache statistics."""
+    cache_type: str
+    stats: Dict[str, Any]
+    timestamp: datetime = Field(default_factory=datetime.now)
 
 
-class AllCacheStatsResponse(BaseModel):
-    """Response model for all cache statistics"""
-    timestamp: str = Field(..., description="Timestamp when stats were collected")
-    caches: Dict[str, Dict[str, Any]] = Field(..., description="Statistics for all caches")
-    total_memory_usage: Optional[int] = Field(None, description="Estimated total memory usage in bytes")
+class InvalidationRequest(BaseModel):
+    """Request model for cache invalidation."""
+    namespaces: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    trigger_type: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
-class CacheCleanupResponse(BaseModel):
-    """Response model for cache cleanup operations"""
-    timestamp: str = Field(..., description="Timestamp when cleanup was performed")
-    cleaned_caches: Dict[str, int] = Field(..., description="Number of entries cleaned per cache")
-    total_cleaned: int = Field(..., description="Total number of entries cleaned")
+class InvalidationResponse(BaseModel):
+    """Response model for cache invalidation."""
+    invalidated_count: int
+    trigger: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+    affected_namespaces: List[str] = []
+    affected_tags: List[str] = []
 
 
-class CacheClearResponse(BaseModel):
-    """Response model for cache clear operations"""
-    timestamp: str = Field(..., description="Timestamp when clear was performed")
-    cache_name: str = Field(..., description="Name of the cleared cache")
-    entries_cleared: int = Field(..., description="Number of entries that were cleared")
-    success: bool = Field(..., description="Whether the operation was successful")
+class CacheConfigRequest(BaseModel):
+    """Request model for cache configuration updates."""
+    default_ttl: Optional[int] = None
+    max_local_entries: Optional[int] = None
+    max_local_size_mb: Optional[int] = None
 
 
-@router.get("/stats", response_model=AllCacheStatsResponse)
-@limiter.limit("60/minute")  # Rate limit: 60 requests per minute per IP
-async def get_cache_statistics(
-    request: Request,
-    user_context: Optional[Dict[str, Any]] = Depends(get_current_user_context)
-) -> AllCacheStatsResponse:
+@router.get("/stats", response_model=List[CacheStatsResponse])
+async def get_cache_stats():
     """
-    Get comprehensive statistics for all caches
+    Get statistics for all cache services.
     
-    This endpoint returns detailed statistics for all caching systems
-    including hit rates, sizes, and performance metrics.
-    
-    **Rate Limiting**: 60 requests per minute per IP address
-    
-    Args:
-        request: FastAPI request object for rate limiting
-        user_context: Current user context from authentication
-        
-    Returns:
-        AllCacheStatsResponse with statistics for all caches
+    Returns comprehensive cache performance metrics including hit rates,
+    entry counts, and memory usage.
     """
     try:
-        all_stats = get_all_cache_stats()
+        cache_service = get_cache_service()
+        model_cache_service = get_model_cache_service()
+        db_cache_service = get_db_cache_service()
+        invalidation_service = get_invalidation_service()
         
-        # Calculate estimated memory usage (rough approximation)
-        total_memory_usage = 0
-        for cache_name, stats in all_stats.items():
-            if "size" in stats:
-                # Rough estimate: 1KB per cache entry
-                total_memory_usage += stats["size"] * 1024
+        stats = [
+            CacheStatsResponse(
+                cache_type="production_cache",
+                stats=cache_service.get_stats()
+            ),
+            CacheStatsResponse(
+                cache_type="model_library_cache",
+                stats=model_cache_service.get_cache_stats()
+            ),
+            CacheStatsResponse(
+                cache_type="database_query_cache",
+                stats=db_cache_service.get_cache_stats()
+            ),
+            CacheStatsResponse(
+                cache_type="cache_invalidation",
+                stats=invalidation_service.get_invalidation_stats()
+            )
+        ]
         
-        return AllCacheStatsResponse(
-            timestamp=datetime.utcnow().isoformat(),
-            caches=all_stats,
-            total_memory_usage=total_memory_usage
-        )
+        return stats
         
     except Exception as e:
-        logger.error(f"Failed to get cache statistics: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve cache statistics"
-        )
+        logger.error(f"Error getting cache stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get cache stats: {str(e)}")
 
 
-@router.get("/stats/{cache_name}")
-@limiter.limit("60/minute")  # Rate limit: 60 requests per minute per IP
-async def get_specific_cache_stats(
-    cache_name: str,
-    request: Request,
-    user_context: Optional[Dict[str, Any]] = Depends(get_current_user_context)
-) -> Dict[str, Any]:
+@router.get("/stats/{cache_type}", response_model=CacheStatsResponse)
+async def get_specific_cache_stats(cache_type: str):
     """
-    Get statistics for a specific cache
-    
-    **Available caches**: token_cache, response_cache, provider_cache, request_deduplicator
+    Get statistics for a specific cache service.
     
     Args:
-        cache_name: Name of the cache to get statistics for
-        request: FastAPI request object for rate limiting
-        user_context: Current user context from authentication
-        
-    Returns:
-        Dictionary with cache statistics
+        cache_type: Type of cache (production_cache, model_library_cache, database_query_cache)
     """
     try:
-        cache_instances = {
-            "token_cache": get_token_cache(),
-            "response_cache": get_response_cache(),
-            "provider_cache": get_provider_cache(),
-            "request_deduplicator": get_request_deduplicator()
-        }
+        if cache_type == "production_cache":
+            service = get_cache_service()
+            stats = service.get_stats()
+        elif cache_type == "model_library_cache":
+            service = get_model_cache_service()
+            stats = service.get_cache_stats()
+        elif cache_type == "database_query_cache":
+            service = get_db_cache_service()
+            stats = service.get_cache_stats()
+        elif cache_type == "cache_invalidation":
+            service = get_invalidation_service()
+            stats = service.get_invalidation_stats()
+        else:
+            raise HTTPException(status_code=404, detail=f"Unknown cache type: {cache_type}")
         
-        if cache_name not in cache_instances:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Cache '{cache_name}' not found. Available caches: {list(cache_instances.keys())}"
-            )
-        
-        cache_instance = cache_instances[cache_name]
-        stats = cache_instance.get_stats()
-        
-        return {
-            "cache_name": cache_name,
-            "timestamp": datetime.utcnow().isoformat(),
-            "statistics": stats
-        }
+        return CacheStatsResponse(cache_type=cache_type, stats=stats)
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get statistics for cache '{cache_name}': {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve statistics for cache '{cache_name}'"
-        )
+        logger.error(f"Error getting {cache_type} stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get {cache_type} stats: {str(e)}")
 
 
-@router.post("/cleanup", response_model=CacheCleanupResponse)
-@limiter.limit("10/minute")  # Rate limit: 10 requests per minute per IP
-async def cleanup_expired_entries(
-    request: Request,
-    user_context: Optional[Dict[str, Any]] = Depends(get_current_user_context)
-) -> CacheCleanupResponse:
+@router.post("/invalidate", response_model=InvalidationResponse)
+async def invalidate_cache(request: InvalidationRequest):
     """
-    Clean up expired entries from all caches
+    Manually invalidate cache entries.
     
-    This endpoint removes expired entries from all caches to free up memory
-    and improve performance. This operation is safe and non-destructive.
-    
-    **Rate Limiting**: 10 requests per minute per IP address
-    **Authentication**: Requires valid user session
-    
-    Args:
-        request: FastAPI request object for rate limiting
-        user_context: Current user context from authentication
-        
-    Returns:
-        CacheCleanupResponse with cleanup results
+    Supports invalidation by namespaces, tags, or specific trigger types.
     """
     try:
-        cleaned_caches = await cleanup_all_caches()
-        total_cleaned = sum(cleaned_caches.values())
+        invalidation_service = get_invalidation_service()
         
-        logger.info(
-            f"Cache cleanup completed by user: {user_context.get('user_id', 'unknown')}. "
-            f"Total entries cleaned: {total_cleaned}"
-        )
+        if request.trigger_type:
+            # Trigger-based invalidation
+            try:
+                trigger = InvalidationTrigger(request.trigger_type)
+                invalidated_count = await invalidation_service.trigger_invalidation(
+                    trigger, request.metadata or {}
+                )
+                
+                return InvalidationResponse(
+                    invalidated_count=invalidated_count,
+                    trigger=request.trigger_type,
+                    affected_namespaces=request.namespaces or [],
+                    affected_tags=request.tags or []
+                )
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid trigger type: {request.trigger_type}")
         
-        return CacheCleanupResponse(
-            timestamp=datetime.utcnow().isoformat(),
-            cleaned_caches=cleaned_caches,
-            total_cleaned=total_cleaned
+        else:
+            # Manual invalidation
+            invalidated_count = await invalidation_service.manual_cache_clear(
+                namespaces=request.namespaces,
+                tags=request.tags
+            )
+            
+            return InvalidationResponse(
+                invalidated_count=invalidated_count,
+                trigger="manual",
+                affected_namespaces=request.namespaces or [],
+                affected_tags=request.tags or []
+            )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error invalidating cache: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to invalidate cache: {str(e)}")
+
+
+@router.post("/invalidate/model/{model_id}")
+async def invalidate_model_cache(model_id: str):
+    """
+    Invalidate cache entries for a specific model.
+    
+    Args:
+        model_id: ID of the model to invalidate cache for
+    """
+    try:
+        model_cache_service = get_model_cache_service()
+        invalidated_count = await model_cache_service.invalidate_model(model_id)
+        
+        return InvalidationResponse(
+            invalidated_count=invalidated_count,
+            trigger="model_specific",
+            affected_tags=[f"model:{model_id}"]
         )
         
     except Exception as e:
-        logger.error(f"Failed to cleanup caches: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to cleanup expired cache entries"
-        )
+        logger.error(f"Error invalidating model cache for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to invalidate model cache: {str(e)}")
 
 
-@router.post("/clear/{cache_name}", response_model=CacheClearResponse)
-@limiter.limit("5/minute")  # Rate limit: 5 requests per minute per IP
-async def clear_specific_cache(
-    cache_name: str,
-    request: Request,
-    user_context: Optional[Dict[str, Any]] = Depends(get_current_user_context)
-) -> CacheClearResponse:
+@router.post("/invalidate/provider/{provider}")
+async def invalidate_provider_cache(provider: str):
     """
-    Clear all entries from a specific cache
-    
-    **Warning**: This operation will clear ALL entries from the specified cache,
-    which may temporarily impact performance until the cache is repopulated.
-    
-    **Available caches**: token_cache, response_cache, provider_cache
-    
-    **Rate Limiting**: 5 requests per minute per IP address
-    **Authentication**: Requires valid user session
+    Invalidate cache entries for a specific provider.
     
     Args:
-        cache_name: Name of the cache to clear
-        request: FastAPI request object for rate limiting
-        user_context: Current user context from authentication
-        
-    Returns:
-        CacheClearResponse with clear operation results
+        provider: Name of the provider to invalidate cache for
     """
     try:
-        cache_instances = {
-            "token_cache": get_token_cache(),
-            "response_cache": get_response_cache(),
-            "provider_cache": get_provider_cache()
-        }
+        model_cache_service = get_model_cache_service()
+        invalidation_service = get_invalidation_service()
         
-        if cache_name not in cache_instances:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Cache '{cache_name}' not found or not clearable. Available caches: {list(cache_instances.keys())}"
-            )
+        # Invalidate model library cache for provider
+        model_invalidated = await model_cache_service.invalidate_provider(provider)
         
-        cache_instance = cache_instances[cache_name]
-        
-        # Get current size before clearing
-        current_stats = cache_instance.get_stats()
-        entries_before = current_stats.get("size", 0)
-        
-        # Clear the cache
-        cache_instance.cache.clear()
-        
-        logger.warning(
-            f"Cache '{cache_name}' cleared by user: {user_context.get('user_id', 'unknown')}. "
-            f"Entries cleared: {entries_before}"
+        # Trigger provider config change invalidation
+        config_invalidated = await invalidation_service.invalidate_provider_config_change(
+            provider, "manual_invalidation"
         )
         
-        return CacheClearResponse(
-            timestamp=datetime.utcnow().isoformat(),
-            cache_name=cache_name,
-            entries_cleared=entries_before,
-            success=True
+        total_invalidated = model_invalidated + config_invalidated
+        
+        return InvalidationResponse(
+            invalidated_count=total_invalidated,
+            trigger="provider_specific",
+            affected_tags=[f"provider:{provider}"]
+        )
+        
+    except Exception as e:
+        logger.error(f"Error invalidating provider cache for {provider}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to invalidate provider cache: {str(e)}")
+
+
+@router.post("/invalidate/user/{user_id}")
+async def invalidate_user_cache(user_id: str):
+    """
+    Invalidate cache entries for a specific user.
+    
+    Args:
+        user_id: ID of the user to invalidate cache for
+    """
+    try:
+        invalidation_service = get_invalidation_service()
+        invalidated_count = await invalidation_service.invalidate_user_data_change(
+            user_id, "manual_invalidation"
+        )
+        
+        return InvalidationResponse(
+            invalidated_count=invalidated_count,
+            trigger="user_specific",
+            affected_tags=[f"user:{user_id}"]
+        )
+        
+    except Exception as e:
+        logger.error(f"Error invalidating user cache for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to invalidate user cache: {str(e)}")
+
+
+@router.post("/invalidate/table/{table_name}")
+async def invalidate_table_cache(table_name: str):
+    """
+    Invalidate cache entries for a specific database table.
+    
+    Args:
+        table_name: Name of the table to invalidate cache for
+    """
+    try:
+        db_cache_service = get_db_cache_service()
+        invalidated_count = await db_cache_service.invalidate_table_cache(table_name)
+        
+        return InvalidationResponse(
+            invalidated_count=invalidated_count,
+            trigger="table_specific",
+            affected_tags=[f"table:{table_name}"]
+        )
+        
+    except Exception as e:
+        logger.error(f"Error invalidating table cache for {table_name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to invalidate table cache: {str(e)}")
+
+
+@router.delete("/clear/{cache_type}")
+async def clear_cache_type(cache_type: str):
+    """
+    Clear all entries for a specific cache type.
+    
+    Args:
+        cache_type: Type of cache to clear (production_cache, model_library_cache, database_query_cache)
+    """
+    try:
+        if cache_type == "model_library_cache":
+            service = get_model_cache_service()
+            cleared_count = await service.invalidate_all_model_cache()
+        elif cache_type == "database_query_cache":
+            service = get_db_cache_service()
+            cleared_count = await service.invalidate_all_query_cache()
+        elif cache_type == "production_cache":
+            # Clear all namespaces in production cache
+            service = get_cache_service()
+            cleared_count = 0
+            for namespace in service.namespaces.keys():
+                cleared_count += await service.clear_namespace(namespace)
+        else:
+            raise HTTPException(status_code=404, detail=f"Unknown cache type: {cache_type}")
+        
+        return InvalidationResponse(
+            invalidated_count=cleared_count,
+            trigger="clear_all",
+            affected_namespaces=[cache_type]
         )
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to clear cache '{cache_name}': {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear cache '{cache_name}'"
-        )
-
-
-@router.post("/clear-all")
-@limiter.limit("2/minute")  # Rate limit: 2 requests per minute per IP
-async def clear_all_caches(
-    request: Request,
-    user_context: Optional[Dict[str, Any]] = Depends(get_current_user_context)
-) -> Dict[str, Any]:
-    """
-    Clear all cache entries from all caches
-    
-    **Warning**: This operation will clear ALL entries from ALL caches,
-    which will significantly impact performance until caches are repopulated.
-    Use this operation with caution and only when necessary.
-    
-    **Rate Limiting**: 2 requests per minute per IP address
-    **Authentication**: Requires valid user session
-    
-    Args:
-        request: FastAPI request object for rate limiting
-        user_context: Current user context from authentication
-        
-    Returns:
-        Dictionary with clear operation results for all caches
-    """
-    try:
-        cache_instances = {
-            "token_cache": get_token_cache(),
-            "response_cache": get_response_cache(),
-            "provider_cache": get_provider_cache()
-        }
-        
-        clear_results = {}
-        total_cleared = 0
-        
-        for cache_name, cache_instance in cache_instances.items():
-            # Get current size before clearing
-            current_stats = cache_instance.get_stats()
-            entries_before = current_stats.get("size", 0)
-            
-            # Clear the cache
-            cache_instance.cache.clear()
-            
-            clear_results[cache_name] = {
-                "entries_cleared": entries_before,
-                "success": True
-            }
-            total_cleared += entries_before
-        
-        logger.critical(
-            f"ALL CACHES cleared by user: {user_context.get('user_id', 'unknown')}. "
-            f"Total entries cleared: {total_cleared}"
-        )
-        
-        return {
-            "timestamp": datetime.utcnow().isoformat(),
-            "message": "All caches cleared successfully",
-            "total_entries_cleared": total_cleared,
-            "cache_results": clear_results,
-            "warning": "Performance may be temporarily impacted until caches are repopulated"
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to clear all caches: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to clear all caches"
-        )
+        logger.error(f"Error clearing {cache_type}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear {cache_type}: {str(e)}")
 
 
 @router.get("/health")
-@limiter.limit("120/minute")  # Rate limit: 120 requests per minute per IP
-async def get_cache_health(
-    request: Request,
-    user_context: Optional[Dict[str, Any]] = Depends(get_current_user_context)
-) -> Dict[str, Any]:
+async def get_cache_health():
     """
-    Get health status of all caches
+    Get health status of all cache services.
     
-    This endpoint provides a quick health check for all caching systems,
-    including hit rates, memory usage, and performance indicators.
-    
-    **Rate Limiting**: 120 requests per minute per IP address
-    
-    Args:
-        request: FastAPI request object for rate limiting
-        user_context: Current user context from authentication
-        
-    Returns:
-        Dictionary with health status for all caches
+    Returns health information including Redis connectivity and service status.
     """
     try:
-        all_stats = get_all_cache_stats()
+        cache_service = get_cache_service()
         
         health_status = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "overall_status": "healthy",
-            "cache_health": {}
+            "redis_connected": cache_service.redis.health() if cache_service.redis else False,
+            "services": {
+                "production_cache": "healthy",
+                "model_library_cache": "healthy",
+                "database_query_cache": "healthy",
+                "cache_invalidation": "healthy"
+            },
+            "timestamp": datetime.now().isoformat()
         }
         
-        for cache_name, stats in all_stats.items():
-            cache_health = {
-                "status": "healthy",
-                "issues": []
-            }
-            
-            # Check for potential issues
-            if "hit_rate" in stats:
-                hit_rate = stats["hit_rate"]
-                if hit_rate < 0.3:  # Less than 30% hit rate
-                    cache_health["status"] = "degraded"
-                    cache_health["issues"].append(f"Low hit rate: {hit_rate:.2%}")
-                elif hit_rate < 0.1:  # Less than 10% hit rate
-                    cache_health["status"] = "unhealthy"
-            
-            if "size" in stats and "max_size" in stats:
-                utilization = stats["size"] / stats["max_size"]
-                if utilization > 0.9:  # More than 90% full
-                    cache_health["status"] = "degraded"
-                    cache_health["issues"].append(f"High utilization: {utilization:.1%}")
-            
-            if "evictions" in stats and stats["evictions"] > 100:
-                cache_health["issues"].append(f"High eviction count: {stats['evictions']}")
-            
-            # Update overall status
-            if cache_health["status"] == "unhealthy":
-                health_status["overall_status"] = "unhealthy"
-            elif cache_health["status"] == "degraded" and health_status["overall_status"] == "healthy":
-                health_status["overall_status"] = "degraded"
-            
-            health_status["cache_health"][cache_name] = cache_health
+        # Check if any service has issues
+        overall_healthy = health_status["redis_connected"]
         
-        return health_status
+        return {
+            "status": "healthy" if overall_healthy else "degraded",
+            "details": health_status
+        }
         
     except Exception as e:
-        logger.error(f"Failed to get cache health: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve cache health status"
-        )
+        logger.error(f"Error checking cache health: {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 
-@router.get("/performance-metrics")
-@limiter.limit("30/minute")  # Rate limit: 30 requests per minute per IP
-async def get_performance_metrics(
-    request: Request,
-    user_context: Optional[Dict[str, Any]] = Depends(get_current_user_context)
-) -> Dict[str, Any]:
+@router.post("/config", response_model=Dict[str, Any])
+async def update_cache_config(request: CacheConfigRequest):
     """
-    Get performance metrics for all caches
+    Update cache configuration settings.
     
-    This endpoint provides detailed performance metrics including
-    hit rates, response times, and efficiency indicators.
-    
-    **Rate Limiting**: 30 requests per minute per IP address
-    
-    Args:
-        request: FastAPI request object for rate limiting
-        user_context: Current user context from authentication
-        
-    Returns:
-        Dictionary with performance metrics for all caches
+    Allows runtime configuration of cache parameters like TTL and size limits.
     """
     try:
-        all_stats = get_all_cache_stats()
+        cache_service = get_cache_service()
         
-        performance_metrics = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "metrics": {}
+        updated_config = {}
+        
+        if request.default_ttl is not None:
+            cache_service.default_ttl = request.default_ttl
+            updated_config["default_ttl"] = request.default_ttl
+        
+        if request.max_local_entries is not None:
+            cache_service.max_local_entries = request.max_local_entries
+            updated_config["max_local_entries"] = request.max_local_entries
+        
+        if request.max_local_size_mb is not None:
+            cache_service.max_local_size_mb = request.max_local_size_mb
+            updated_config["max_local_size_mb"] = request.max_local_size_mb
+        
+        logger.info(f"Updated cache configuration: {updated_config}")
+        
+        return {
+            "status": "success",
+            "updated_config": updated_config,
+            "timestamp": datetime.now().isoformat()
         }
         
-        for cache_name, stats in all_stats.items():
-            metrics = {
-                "cache_name": cache_name,
-                "efficiency_score": 0.0,
-                "performance_indicators": {}
-            }
-            
-            # Calculate efficiency score
-            if "hit_rate" in stats:
-                hit_rate = stats["hit_rate"]
-                metrics["performance_indicators"]["hit_rate"] = hit_rate
-                metrics["efficiency_score"] += hit_rate * 0.6  # 60% weight for hit rate
-            
-            if "size" in stats and "max_size" in stats:
-                utilization = stats["size"] / stats["max_size"]
-                metrics["performance_indicators"]["utilization"] = utilization
-                # Optimal utilization is around 70-80%
-                utilization_score = 1.0 - abs(utilization - 0.75) / 0.75
-                metrics["efficiency_score"] += max(0, utilization_score) * 0.2  # 20% weight
-            
-            if "evictions" in stats and "total_requests" in stats:
-                eviction_rate = stats["evictions"] / max(stats["total_requests"], 1)
-                metrics["performance_indicators"]["eviction_rate"] = eviction_rate
-                # Lower eviction rate is better
-                eviction_score = max(0, 1.0 - eviction_rate * 10)
-                metrics["efficiency_score"] += eviction_score * 0.2  # 20% weight
-            
-            # Add deduplication metrics for request deduplicator
-            if cache_name == "request_deduplicator" and "deduplication_rate" in stats:
-                dedup_rate = stats["deduplication_rate"]
-                metrics["performance_indicators"]["deduplication_rate"] = dedup_rate
-                metrics["efficiency_score"] = dedup_rate  # Simple score for deduplicator
-            
-            performance_metrics["metrics"][cache_name] = metrics
+    except Exception as e:
+        logger.error(f"Error updating cache config: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update cache config: {str(e)}")
+
+
+@router.get("/config")
+async def get_cache_config():
+    """
+    Get current cache configuration settings.
+    
+    Returns current configuration for all cache services.
+    """
+    try:
+        cache_service = get_cache_service()
+        model_cache_service = get_model_cache_service()
+        db_cache_service = get_db_cache_service()
         
-        return performance_metrics
+        config = {
+            "production_cache": {
+                "default_ttl": cache_service.default_ttl,
+                "max_local_entries": cache_service.max_local_entries,
+                "max_local_size_mb": cache_service.max_local_size_mb,
+                "namespaces": cache_service.namespaces
+            },
+            "model_library_cache": {
+                "quick_list_ttl": model_cache_service.quick_list_ttl,
+                "full_list_ttl": model_cache_service.full_list_ttl,
+                "model_details_ttl": model_cache_service.model_details_ttl,
+                "provider_list_ttl": model_cache_service.provider_list_ttl
+            },
+            "database_query_cache": {
+                "default_configs": {
+                    name: {
+                        "ttl": config.ttl,
+                        "tags": config.tags,
+                        "invalidate_on_write": config.invalidate_on_write
+                    }
+                    for name, config in db_cache_service.default_configs.items()
+                },
+                "dynamic_tables": db_cache_service.dynamic_tables,
+                "static_tables": db_cache_service.static_tables
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        return config
         
     except Exception as e:
-        logger.error(f"Failed to get performance metrics: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve performance metrics"
-        )
+        logger.error(f"Error getting cache config: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get cache config: {str(e)}")
+
+
+@router.post("/reset-stats")
+async def reset_cache_stats():
+    """
+    Reset cache statistics for all services.
+    
+    Useful for monitoring and performance analysis.
+    """
+    try:
+        cache_service = get_cache_service()
+        cache_service.reset_stats()
+        
+        return {
+            "status": "success",
+            "message": "Cache statistics reset",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error resetting cache stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset cache stats: {str(e)}")
+
+
+# Add the router to the main application
+def setup_cache_routes(app):
+    """Setup cache management routes."""
+    app.include_router(router)
+    logger.info("Cache management routes registered")

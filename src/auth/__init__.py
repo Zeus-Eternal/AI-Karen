@@ -5,7 +5,7 @@ Minimal, production-ready JWT authentication system.
 
 from .auth_service import (
     get_auth_service,
-    SimpleAuthService,
+    NoAuthService,
     UserModel,
     LoginRequest,
     LoginResponse
@@ -16,7 +16,7 @@ from .auth_middleware import (
     get_current_user,
     require_auth,
     require_admin,
-    SimpleAuthMiddleware
+    NoAuthMiddleware
 )
 
 from .auth_routes import router as auth_router
@@ -24,7 +24,7 @@ from .auth_routes import router as auth_router
 __all__ = [
     # Services
     "get_auth_service",
-    "SimpleAuthService",
+    "NoAuthService",
     
     # Models
     "UserModel",
@@ -33,7 +33,7 @@ __all__ = [
     
     # Middleware
     "get_auth_middleware",
-    "SimpleAuthMiddleware",
+    "NoAuthMiddleware",
     "get_current_user",
     "require_auth",
     "require_admin",

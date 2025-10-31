@@ -101,3 +101,26 @@ async def auth_status() -> Dict[str, Any]:
             "authorization": False,
         },
     }
+
+
+@router.get("/validate-session")
+async def validate_session() -> Dict[str, Any]:
+    """Validate current session (always valid in no-auth mode)."""
+    auth_service = get_auth_service()
+    user = auth_service.default_user
+    user_payload = auth_service.serialize_user(user)
+    
+    return {
+        "valid": True,
+        "user": user_payload,
+        "authenticated": True,
+        "session_id": "no-auth-session",
+        "expires_at": None,  # Never expires in no-auth mode
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.post("/dev-login")
+async def dev_login() -> JSONResponse:
+    """Development login endpoint (same as regular login in no-auth mode)."""
+    return _create_default_response()

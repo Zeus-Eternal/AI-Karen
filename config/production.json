@@ -1,0 +1,262 @@
+{
+  "$schema": "./config-schema.json",
+  "environment": "production",
+  "active_user": "admin",
+  "theme": "light",
+  "llm_model": "production-model",
+  "default_embedding_model": "sentence-transformers/all-MPNet-base-v2",
+  "spacy_model": "en_core_web_sm",
+  
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "workers": 4,
+    "max_connections": 1000,
+    "keepalive_timeout": 65,
+    "graceful_timeout": 30,
+    "ssl_enabled": true,
+    "ssl_cert_path": "/etc/ssl/certs/your-domain.crt",
+    "ssl_key_path": "/etc/ssl/private/your-domain.key"
+  },
+  
+  "security": {
+    "enable_security_headers": true,
+    "content_security_policy": {
+      "default_src": ["'self'"],
+      "script_src": ["'self'", "'unsafe-inline'"],
+      "style_src": ["'self'", "'unsafe-inline'"],
+      "img_src": ["'self'", "data:", "https:"],
+      "connect_src": ["'self'", "https://api.your-domain.com"],
+      "font_src": ["'self'"],
+      "object_src": ["'none'"],
+      "media_src": ["'self'"],
+      "frame_src": ["'none'"]
+    },
+    "hsts": {
+      "max_age": 31536000,
+      "include_subdomains": true,
+      "preload": true
+    },
+    "frame_options": "DENY",
+    "content_type_options": "nosniff",
+    "xss_protection": "1; mode=block",
+    "referrer_policy": "strict-origin-when-cross-origin"
+  },
+  
+  "authentication": {
+    "session_timeout_hours": 8,
+    "max_login_attempts": 5,
+    "lockout_duration_minutes": 30,
+    "password_policy": {
+      "min_length": 12,
+      "require_uppercase": true,
+      "require_lowercase": true,
+      "require_numbers": true,
+      "require_special_chars": true,
+      "max_age_days": 90
+    },
+    "two_factor_auth": {
+      "enabled": true,
+      "required_for_admin": true,
+      "backup_codes": 10
+    }
+  },
+  
+  "database": {
+    "pool_size": 20,
+    "max_overflow": 40,
+    "pool_timeout": 30,
+    "pool_recycle": 3600,
+    "pool_pre_ping": true,
+    "query_timeout": 30,
+    "connection_timeout": 45,
+    "enable_query_logging": false,
+    "slow_query_threshold_ms": 1000
+  },
+  
+  "memory": {
+    "enabled": true,
+    "provider": "milvus",
+    "embedding_dim": 768,
+    "decay_lambda": 0.1,
+    "query_limit": 100,
+    "cache_size": 10000,
+    "batch_size": 1000,
+    "index_type": "IVF_FLAT",
+    "metric_type": "L2"
+  },
+  
+  "cache": {
+    "enabled": true,
+    "provider": "redis",
+    "default_ttl": 3600,
+    "max_memory": "256mb",
+    "eviction_policy": "allkeys-lru",
+    "compression": true,
+    "serialization": "json"
+  },
+  
+  "logging": {
+    "level": "INFO",
+    "format": "json",
+    "structured": true,
+    "correlation_id": true,
+    "file_logging": {
+      "enabled": true,
+      "path": "/var/log/ai-karen/app.log",
+      "max_size": "100MB",
+      "backup_count": 10,
+      "rotation": "daily"
+    },
+    "console_logging": {
+      "enabled": true,
+      "colorize": false
+    },
+    "audit_logging": {
+      "enabled": true,
+      "path": "/var/log/ai-karen/audit.log",
+      "events": ["login", "logout", "admin_action", "config_change", "data_access"]
+    }
+  },
+  
+  "monitoring": {
+    "metrics": {
+      "enabled": true,
+      "port": 9090,
+      "path": "/metrics",
+      "include_default_metrics": true,
+      "custom_metrics": true
+    },
+    "health_checks": {
+      "enabled": true,
+      "interval_seconds": 30,
+      "timeout_seconds": 5,
+      "endpoints": [
+        "/api/health",
+        "/api/health/database",
+        "/api/health/cache",
+        "/api/health/memory"
+      ]
+    },
+    "tracing": {
+      "enabled": true,
+      "sample_rate": 0.1,
+      "endpoint": "https://your-tracing-service.com/api/traces"
+    }
+  },
+  
+  "rate_limiting": {
+    "enabled": true,
+    "global": {
+      "window_ms": 900000,
+      "max_requests": 1000
+    },
+    "per_endpoint": {
+      "/api/auth/login": {
+        "window_ms": 900000,
+        "max_requests": 10
+      },
+      "/api/chat": {
+        "window_ms": 60000,
+        "max_requests": 30
+      },
+      "/api/admin": {
+        "window_ms": 60000,
+        "max_requests": 100
+      }
+    }
+  },
+  
+  "cors": {
+    "enabled": true,
+    "origins": ["https://your-domain.com"],
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allowed_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+    "credentials": true,
+    "max_age": 86400
+  },
+  
+  "performance": {
+    "compression": {
+      "enabled": true,
+      "level": 6,
+      "threshold": 1024
+    },
+    "static_files": {
+      "cache_control": "public, max-age=31536000",
+      "etag": true,
+      "last_modified": true
+    },
+    "request_timeout": 30000,
+    "keep_alive_timeout": 65000,
+    "max_request_size": "50MB"
+  },
+  
+  "backup": {
+    "enabled": true,
+    "schedule": "0 2 * * *",
+    "retention_days": 30,
+    "storage_path": "/var/backups/ai-karen",
+    "encryption": {
+      "enabled": true,
+      "algorithm": "AES-256-GCM"
+    },
+    "compression": true,
+    "verify_integrity": true
+  },
+  
+  "ui": {
+    "show_debug_info": false,
+    "enable_dev_tools": false,
+    "theme_switching": true,
+    "default_theme": "light",
+    "branding": {
+      "company_name": "Your Company",
+      "logo_url": "/assets/logo.png",
+      "favicon_url": "/assets/favicon.ico",
+      "primary_color": "#007bff",
+      "secondary_color": "#6c757d"
+    },
+    "features": {
+      "analytics": true,
+      "user_feedback": true,
+      "help_system": true,
+      "keyboard_shortcuts": true
+    }
+  },
+  
+  "integrations": {
+    "email": {
+      "enabled": true,
+      "provider": "smtp",
+      "templates_path": "/opt/ai-karen/templates/email"
+    },
+    "analytics": {
+      "enabled": true,
+      "provider": "google_analytics",
+      "tracking_id": "GA_TRACKING_ID"
+    },
+    "error_tracking": {
+      "enabled": true,
+      "provider": "sentry",
+      "dsn": "SENTRY_DSN"
+    }
+  },
+  
+  "feature_flags": {
+    "experimental_features": false,
+    "beta_features": false,
+    "analytics": true,
+    "telemetry": false,
+    "advanced_auth": true,
+    "multi_tenant": false
+  },
+  
+  "resource_limits": {
+    "max_memory_mb": 2048,
+    "max_cpu_percent": 80,
+    "max_disk_usage_percent": 85,
+    "max_concurrent_requests": 100,
+    "max_file_upload_mb": 100
+  }
+}

@@ -15,6 +15,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import accessibility styles */
+@import './accessibility.css';
+
 @layer base {
   :root {
     /* Advertise dual color schemes to the UA */

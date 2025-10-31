@@ -4,7 +4,7 @@
  */
 
 import { getKarenBackend } from '@/lib/karen-backend';
-import { getEnhancedApiClient } from '@/lib/enhanced-api-client';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
 import { generateUUID } from '@/lib/uuid';
 import type {
@@ -36,7 +36,7 @@ export interface ProcessMessageOptions {
 
 export class ChatService {
   private backend = getKarenBackend();
-  private apiClient = getEnhancedApiClient();
+  private apiClient = enhancedApiClient;
   private errorHandler = getServiceErrorHandler();
   private cache = new Map<string, ConversationSession>();
 

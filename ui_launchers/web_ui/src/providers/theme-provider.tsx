@@ -1,15 +1,21 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useUIStore, selectThemeState } from '../store';
+import { generateCompleteCSS } from '../design-tokens/css-tokens';
 
 type Theme = 'light' | 'dark' | 'system';
+type Density = 'compact' | 'comfortable' | 'spacious';
 
 interface ThemeContextValue {
   theme: Theme;
   resolvedTheme: 'light' | 'dark';
   setTheme: (theme: Theme) => void;
   systemTheme: 'light' | 'dark';
+  density: Density;
+  setDensity: (density: Density) => void;
+  toggleTheme: () => void;
+  isSystemTheme: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -17,23 +23,45 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 interface ThemeProviderProps {
   children: React.ReactNode;
   defaultTheme?: Theme;
+  defaultDensity?: Density;
   storageKey?: string;
   attribute?: string;
   enableSystem?: boolean;
   disableTransitionOnChange?: boolean;
+  enableCSSInjection?: boolean;
 }
 
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
+  defaultDensity = 'comfortable',
   storageKey = 'ui-theme',
   attribute = 'data-theme',
   enableSystem = true,
   disableTransitionOnChange = false,
+  enableCSSInjection = true,
 }: ThemeProviderProps) {
   const { theme, setTheme: setStoreTheme } = useUIStore(selectThemeState);
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('light');
+  const [density, setDensityState] = useState<Density>(defaultDensity);
   const [mounted, setMounted] = useState(false);
+  const [cssInjected, setCssInjected] = useState(false);
+
+  // Inject CSS tokens if enabled
+  useEffect(() => {
+    if (!enableCSSInjection || cssInjected || typeof document === 'undefined') return;
+
+    const styleId = 'design-tokens-css';
+    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+    
+    if (!styleElement) {
+      styleElement = document.createElement('style');
+      styleElement.id = styleId;
+      styleElement.textContent = generateCompleteCSS();
+      document.head.appendChild(styleElement);
+      setCssInjected(true);
+    }
+  }, [enableCSSInjection, cssInjected]);
 
   // Detect system theme
   useEffect(() => {
@@ -54,56 +82,100 @@ export function ThemeProvider({
     return () => mediaQuery?.removeEventListener('change', handleChange);
   }, []);
 
-  // Handle theme changes
+  // Load density from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const stored = localStorage.getItem(`${storageKey}-density`);
+    if (stored && ['compact', 'comfortable', 'spacious'].includes(stored)) {
+      setDensityState(stored as Density);
+    }
+  }, [storageKey]);
+
+  // Handle theme and density changes
   useEffect(() => {
     if (!mounted) return;
 
     const resolvedTheme = theme === 'system' ? systemTheme : theme;
     
-    // Apply theme to document
+    // Apply theme and density to document
     const applyTheme = () => {
       const root = document.documentElement;
       
       if (disableTransitionOnChange) {
-        const css = document.createElement('style');
-        css.appendChild(
-          document.createTextNode(
-            '*,*::before,*::after{-webkit-transition:none!important;-moz-transition:none!important;-o-transition:none!important;-ms-transition:none!important;transition:none!important}'
-          )
-        );
-        document.head.appendChild(css);
+        // Add disable-transitions class temporarily
+        root.classList.add('disable-transitions');
         
         requestAnimationFrame(() => {
+          // Apply theme
           root.setAttribute(attribute, resolvedTheme);
           root.classList.remove('light', 'dark');
           root.classList.add(resolvedTheme);
           
+          // Apply density
+          root.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
+          root.classList.add(`density-${density}`);
+          
+          // Set color-scheme for better browser integration
+          root.style.colorScheme = resolvedTheme;
+          
           requestAnimationFrame(() => {
-            document.head.removeChild(css);
+            root.classList.remove('disable-transitions');
           });
         });
       } else {
+        // Apply theme
         root.setAttribute(attribute, resolvedTheme);
         root.classList.remove('light', 'dark');
         root.classList.add(resolvedTheme);
+        
+        // Apply density
+        root.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
+        root.classList.add(`density-${density}`);
+        
+        // Set color-scheme for better browser integration
+        root.style.colorScheme = resolvedTheme;
       }
     };
 
     applyTheme();
-  }, [theme, systemTheme, mounted, attribute, disableTransitionOnChange]);
+  }, [theme, systemTheme, density, mounted, attribute, disableTransitionOnChange]);
 
   // Set mounted state
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Utility functions
+  const setDensity = useCallback((newDensity: Density) => {
+    setDensityState(newDensity);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${storageKey}-density`, newDensity);
+    }
+  }, [storageKey]);
+
+  const toggleTheme = useCallback(() => {
+    if (theme === 'system') {
+      setStoreTheme('light');
+    } else if (theme === 'light') {
+      setStoreTheme('dark');
+    } else {
+      setStoreTheme('system');
+    }
+  }, [theme, setStoreTheme]);
+
   const resolvedTheme = theme === 'system' ? systemTheme : theme;
+  const isSystemTheme = theme === 'system';
 
   const contextValue: ThemeContextValue = {
     theme,
     resolvedTheme,
     setTheme: setStoreTheme,
     systemTheme,
+    density,
+    setDensity,
+    toggleTheme,
+    isSystemTheme,
   };
 
   // Prevent hydration mismatch

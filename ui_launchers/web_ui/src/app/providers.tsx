@@ -9,6 +9,9 @@ import { CopilotKitProvider } from '@/components/chat/copilot';
 import { GlobalErrorBoundary } from '@/components/error/GlobalErrorBoundary';
 import { SimpleErrorFallback } from '@/components/error/SimpleErrorFallback';
 import { ExtensionIntegrationProvider } from '@/lib/extensions/extension-initializer';
+import { AccessibilityProvider } from '@/providers/accessibility-provider';
+import { AccessibilityEnhancementsProvider } from '@/components/accessibility';
+import { I18nProvider } from '@/providers/i18n-provider';
 import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { webUIConfig } from '@/lib/config';
@@ -72,11 +75,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         <AuthProvider>
           <HookProvider>
-            <ExtensionIntegrationProvider>
-              <CopilotKitProvider>
-                {children}
-              </CopilotKitProvider>
-            </ExtensionIntegrationProvider>
+            <I18nProvider>
+              <AccessibilityProvider>
+                <AccessibilityEnhancementsProvider>
+                  <ExtensionIntegrationProvider>
+                    <CopilotKitProvider>
+                      {children}
+                    </CopilotKitProvider>
+                  </ExtensionIntegrationProvider>
+                </AccessibilityEnhancementsProvider>
+              </AccessibilityProvider>
+            </I18nProvider>
           </HookProvider>
         </AuthProvider>
       </ErrorProvider>

@@ -1,0 +1,352 @@
+# AI Karen - Production Logging Configuration
+# This file configures structured logging for production deployment
+
+version: 1
+disable_existing_loggers: false
+
+# Formatters
+formatters:
+  json:
+    class: pythonjsonlogger.jsonlogger.JsonFormatter
+    format: '%(asctime)s %(name)s %(levelname)s %(message)s %(pathname)s %(lineno)d %(funcName)s %(created)f %(msecs)d %(relativeCreated)d %(thread)d %(threadName)s %(processName)s %(process)d'
+    
+  structured:
+    class: logging.Formatter
+    format: '%(asctime)s - %(name)s - %(levelname)s - [%(correlation_id)s] - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+    
+  console:
+    class: logging.Formatter
+    format: '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+# Filters
+filters:
+  correlation_filter:
+    class: src.core.logging.CorrelationFilter
+    
+  sensitive_data_filter:
+    class: src.core.logging.SensitiveDataFilter
+    patterns:
+      - 'password'
+      - 'token'
+      - 'secret'
+      - 'key'
+      - 'authorization'
+
+# Handlers
+handlers:
+  # Console handler for development/debugging
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: console
+    stream: ext://sys.stdout
+    filters: [correlation_filter, sensitive_data_filter]
+    
+  # Main application log file
+  app_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /var/log/ai-karen/app.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 10
+    encoding: utf8
+    filters: [correlation_filter, sensitive_data_filter]
+    
+  # Error log file
+  error_file:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: json
+    filename: /var/log/ai-karen/error.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 10
+    encoding: utf8
+    filters: [correlation_filter, sensitive_data_filter]
+    
+  # Security audit log
+  security_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /var/log/ai-karen/security.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 20  # Keep more security logs
+    encoding: utf8
+    filters: [correlation_filter]
+    
+  # Performance log
+  performance_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /var/log/ai-karen/performance.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 5
+    encoding: utf8
+    filters: [correlation_filter]
+    
+  # Database operations log
+  database_file:
+    class: logging.handlers.RotatingFileHandler
+    level: WARNING
+    formatter: json
+    filename: /var/log/ai-karen/database.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 5
+    encoding: utf8
+    filters: [correlation_filter, sensitive_data_filter]
+    
+  # API access log
+  api_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /var/log/ai-karen/api.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 10
+    encoding: utf8
+    filters: [correlation_filter, sensitive_data_filter]
+    
+  # System monitoring log
+  monitoring_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: /var/log/ai-karen/monitoring.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 5
+    encoding: utf8
+    filters: [correlation_filter]
+
+# Loggers
+loggers:
+  # Root logger
+  root:
+    level: INFO
+    handlers: [console, app_file, error_file]
+    propagate: false
+    
+  # Application loggers
+  ai_karen_engine:
+    level: INFO
+    handlers: [app_file, error_file]
+    propagate: false
+    qualname: ai_karen_engine
+    
+  # Security logger
+  security:
+    level: INFO
+    handlers: [security_file, error_file]
+    propagate: false
+    qualname: security
+    
+  # Authentication logger
+  auth:
+    level: INFO
+    handlers: [security_file, app_file]
+    propagate: false
+    qualname: auth
+    
+  # Database logger
+  database:
+    level: WARNING
+    handlers: [database_file, error_file]
+    propagate: false
+    qualname: database
+    
+  # API logger
+  api:
+    level: INFO
+    handlers: [api_file, app_file]
+    propagate: false
+    qualname: api
+    
+  # Performance logger
+  performance:
+    level: INFO
+    handlers: [performance_file]
+    propagate: false
+    qualname: performance
+    
+  # Monitoring logger
+  monitoring:
+    level: INFO
+    handlers: [monitoring_file]
+    propagate: false
+    qualname: monitoring
+    
+  # Third-party library loggers
+  uvicorn:
+    level: WARNING
+    handlers: [app_file]
+    propagate: false
+    
+  fastapi:
+    level: WARNING
+    handlers: [app_file]
+    propagate: false
+    
+  sqlalchemy:
+    level: WARNING
+    handlers: [database_file]
+    propagate: false
+    
+  redis:
+    level: WARNING
+    handlers: [app_file]
+    propagate: false
+    
+  milvus:
+    level: WARNING
+    handlers: [app_file]
+    propagate: false
+    
+  # Suppress noisy loggers
+  urllib3:
+    level: ERROR
+    handlers: [error_file]
+    propagate: false
+    
+  requests:
+    level: ERROR
+    handlers: [error_file]
+    propagate: false
+    
+  asyncio:
+    level: ERROR
+    handlers: [error_file]
+    propagate: false
+
+# Custom configuration for structured logging
+structured_logging:
+  # Correlation ID configuration
+  correlation_id:
+    enabled: true
+    header_name: "X-Correlation-ID"
+    generate_if_missing: true
+    
+  # Request logging
+  request_logging:
+    enabled: true
+    include_headers: false  # Don't log headers in production
+    include_body: false     # Don't log request body in production
+    include_response: false # Don't log response body in production
+    max_body_size: 1024     # If enabled, limit body size
+    
+  # User context
+  user_context:
+    enabled: true
+    include_user_id: true
+    include_session_id: true
+    include_ip_address: true
+    anonymize_ip: true      # Anonymize last octet for privacy
+    
+  # Performance metrics
+  performance_metrics:
+    enabled: true
+    include_execution_time: true
+    include_memory_usage: true
+    include_cpu_usage: false  # Can be expensive
+    slow_query_threshold: 1000  # Log queries slower than 1 second
+    
+  # Error context
+  error_context:
+    enabled: true
+    include_stack_trace: true
+    include_local_variables: false  # Security risk in production
+    max_stack_depth: 10
+    
+  # Audit trail
+  audit_trail:
+    enabled: true
+    events:
+      - "user_login"
+      - "user_logout"
+      - "admin_action"
+      - "data_access"
+      - "configuration_change"
+      - "security_event"
+      - "error_event"
+    include_before_after: true
+    
+  # Log sampling
+  sampling:
+    enabled: true
+    sample_rate: 1.0        # Log 100% in production
+    debug_sample_rate: 0.1  # Sample debug logs at 10%
+    
+  # Log aggregation
+  aggregation:
+    enabled: true
+    batch_size: 100
+    flush_interval: 30      # Flush every 30 seconds
+    max_queue_size: 10000
+    
+  # External log shipping
+  external_shipping:
+    enabled: false  # Enable if using external log aggregation
+    endpoint: "https://your-log-service.com/api/logs"
+    api_key: "YOUR_LOG_SERVICE_API_KEY"
+    batch_size: 100
+    timeout: 30
+    retry_attempts: 3
+
+# Log retention policy
+retention:
+  # Application logs
+  app_logs:
+    retention_days: 365
+    compression: true
+    archive_location: "/var/log/ai-karen/archive"
+    
+  # Security logs
+  security_logs:
+    retention_days: 2555  # 7 years for compliance
+    compression: true
+    archive_location: "/var/log/ai-karen/security/archive"
+    
+  # Performance logs
+  performance_logs:
+    retention_days: 90
+    compression: true
+    archive_location: "/var/log/ai-karen/performance/archive"
+    
+  # Database logs
+  database_logs:
+    retention_days: 180
+    compression: true
+    archive_location: "/var/log/ai-karen/database/archive"
+
+# Monitoring and alerting
+monitoring:
+  # Log monitoring
+  log_monitoring:
+    enabled: true
+    error_threshold: 10     # Alert if more than 10 errors per minute
+    warning_threshold: 50   # Alert if more than 50 warnings per minute
+    
+  # Disk space monitoring
+  disk_monitoring:
+    enabled: true
+    warning_threshold: 80   # Warn at 80% disk usage
+    critical_threshold: 90  # Critical at 90% disk usage
+    
+  # Log file monitoring
+  file_monitoring:
+    enabled: true
+    max_file_size: 104857600  # 100MB
+    rotation_check_interval: 300  # Check every 5 minutes
+    
+  # Alerting
+  alerting:
+    enabled: true
+    channels:
+      - email
+      - slack
+    email_recipients:
+      - "ops@your-domain.com"
+      - "security@your-domain.com"
+    slack_webhook: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"

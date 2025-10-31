@@ -22,4 +22,4 @@ echo "   Auth Mode: $AUTH_MODE"
 echo ""
 
 echo "🔄 Starting backend..."
-python start.py
+python3 start.py

@@ -3,7 +3,7 @@
  * Provides consistent error handling, retry logic, and user-friendly error messages
  */
 
-import { getEnhancedApiClient } from '@/lib/enhanced-api-client';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 
 export interface ServiceError extends Error {
   code: string;
@@ -37,7 +37,7 @@ export interface RetryOptions {
  */
 export class ServiceErrorHandler {
   private config: ErrorHandlerConfig;
-  private enhancedApiClient = getEnhancedApiClient();
+  private enhancedApiClient = enhancedApiClient;
   private errorLog: ServiceError[] = [];
 
   constructor(config?: Partial<ErrorHandlerConfig>) {
