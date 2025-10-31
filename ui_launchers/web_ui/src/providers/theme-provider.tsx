@@ -1,11 +1,18 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useUIStore, selectThemeState } from '../store';
 import { generateCompleteCSS } from '../design-tokens/css-tokens';
 
-type Theme = 'light' | 'dark' | 'system';
-type Density = 'compact' | 'comfortable' | 'spacious';
+export type Theme = 'light' | 'dark' | 'system';
+export type Density = 'compact' | 'comfortable' | 'spacious';
 
 interface ThemeContextValue {
   theme: Theme;
@@ -20,7 +27,16 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-interface ThemeProviderProps {
+const VALID_THEMES: Theme[] = ['light', 'dark', 'system'];
+const VALID_DENSITIES: Density[] = ['compact', 'comfortable', 'spacious'];
+
+const isValidTheme = (value: string | null): value is Theme =>
+  !!value && VALID_THEMES.includes(value as Theme);
+
+const isValidDensity = (value: string | null): value is Density =>
+  !!value && VALID_DENSITIES.includes(value as Density);
+
+export interface ThemeProviderProps {
   children: React.ReactNode;
   defaultTheme?: Theme;
   defaultDensity?: Density;
@@ -46,107 +62,125 @@ export function ThemeProvider({
   const [density, setDensityState] = useState<Density>(defaultDensity);
   const [mounted, setMounted] = useState(false);
   const [cssInjected, setCssInjected] = useState(false);
+  const initializationRef = useRef(false);
 
   // Inject CSS tokens if enabled
   useEffect(() => {
-    if (!enableCSSInjection || cssInjected || typeof document === 'undefined') return;
+    if (!enableCSSInjection || cssInjected || typeof document === 'undefined') {
+      return;
+    }
 
     const styleId = 'design-tokens-css';
-    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
-    
+    let styleElement = document.getElementById(styleId) as HTMLStyleElement | null;
+
     if (!styleElement) {
       styleElement = document.createElement('style');
       styleElement.id = styleId;
       styleElement.textContent = generateCompleteCSS();
       document.head.appendChild(styleElement);
-      setCssInjected(true);
     }
-  }, [enableCSSInjection, cssInjected]);
 
-  // Detect system theme
+    setCssInjected(true);
+  }, [cssInjected, enableCSSInjection]);
+
+  // Detect system theme preference
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    
+    if (!enableSystem) {
+      setSystemTheme('light');
+      return;
+    }
+
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return;
+    }
+
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleChange = (e: MediaQueryListEvent) => {
-      setSystemTheme(e.matches ? 'dark' : 'light');
+    const handleChange = (event: MediaQueryListEvent) => {
+      setSystemTheme(event.matches ? 'dark' : 'light');
     };
 
-    // Set initial system theme
-    setSystemTheme(mediaQuery?.matches ? 'dark' : 'light');
-    
-    // Listen for changes
-    mediaQuery?.addEventListener('change', handleChange);
-    
-    return () => mediaQuery?.removeEventListener('change', handleChange);
-  }, []);
+    setSystemTheme(mediaQuery.matches ? 'dark' : 'light');
+    mediaQuery.addEventListener('change', handleChange);
 
-  // Load density from localStorage
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [enableSystem]);
+
+  // Load persisted preferences or fall back to defaults once on mount
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const stored = localStorage.getItem(`${storageKey}-density`);
-    if (stored && ['compact', 'comfortable', 'spacious'].includes(stored)) {
-      setDensityState(stored as Density);
+    if (initializationRef.current) {
+      return;
     }
-  }, [storageKey]);
+    initializationRef.current = true;
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const storedTheme = localStorage.getItem(storageKey);
+    const storedDensity = localStorage.getItem(`${storageKey}-density`);
+
+    if (isValidTheme(storedTheme)) {
+      setStoreTheme(storedTheme);
+    } else if (defaultTheme !== theme) {
+      setStoreTheme(defaultTheme);
+    }
+
+    if (isValidDensity(storedDensity)) {
+      setDensityState(storedDensity);
+    } else {
+      setDensityState(defaultDensity);
+    }
+  }, [defaultDensity, defaultTheme, setStoreTheme, storageKey, theme]);
+
+  // Persist theme preference for backwards compatibility consumers
+  useEffect(() => {
+    if (!mounted || typeof window === 'undefined') {
+      return;
+    }
+
+    localStorage.setItem(storageKey, theme);
+  }, [mounted, storageKey, theme]);
 
   // Handle theme and density changes
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || typeof document === 'undefined') {
+      return;
+    }
 
-    const resolvedTheme = theme === 'system' ? systemTheme : theme;
-    
-    // Apply theme and density to document
+    const resolvedTheme = theme === 'system'
+      ? (enableSystem ? systemTheme : 'light')
+      : theme;
+    const root = document.documentElement;
+
     const applyTheme = () => {
-      const root = document.documentElement;
-      
       if (disableTransitionOnChange) {
-        // Add disable-transitions class temporarily
         root.classList.add('disable-transitions');
-        
+      }
+
+      root.setAttribute(attribute, resolvedTheme);
+      root.classList.remove('light', 'dark');
+      root.classList.add(resolvedTheme);
+
+      root.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
+      root.classList.add(`density-${density}`);
+
+      root.style.colorScheme = resolvedTheme;
+
+      if (disableTransitionOnChange) {
         requestAnimationFrame(() => {
-          // Apply theme
-          root.setAttribute(attribute, resolvedTheme);
-          root.classList.remove('light', 'dark');
-          root.classList.add(resolvedTheme);
-          
-          // Apply density
-          root.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
-          root.classList.add(`density-${density}`);
-          
-          // Set color-scheme for better browser integration
-          root.style.colorScheme = resolvedTheme;
-          
-          requestAnimationFrame(() => {
-            root.classList.remove('disable-transitions');
-          });
+          root.classList.remove('disable-transitions');
         });
-      } else {
-        // Apply theme
-        root.setAttribute(attribute, resolvedTheme);
-        root.classList.remove('light', 'dark');
-        root.classList.add(resolvedTheme);
-        
-        // Apply density
-        root.classList.remove('density-compact', 'density-comfortable', 'density-spacious');
-        root.classList.add(`density-${density}`);
-        
-        // Set color-scheme for better browser integration
-        root.style.colorScheme = resolvedTheme;
       }
     };
 
     applyTheme();
-  }, [theme, systemTheme, density, mounted, attribute, disableTransitionOnChange]);
+  }, [attribute, density, disableTransitionOnChange, enableSystem, mounted, systemTheme, theme]);
 
-  // Set mounted state
+  // Mark as mounted after first render to avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Utility functions
   const setDensity = useCallback((newDensity: Density) => {
     setDensityState(newDensity);
     if (typeof window !== 'undefined') {
@@ -157,14 +191,20 @@ export function ThemeProvider({
   const toggleTheme = useCallback(() => {
     if (theme === 'system') {
       setStoreTheme('light');
-    } else if (theme === 'light') {
-      setStoreTheme('dark');
-    } else {
-      setStoreTheme('system');
+      return;
     }
-  }, [theme, setStoreTheme]);
 
-  const resolvedTheme = theme === 'system' ? systemTheme : theme;
+    if (theme === 'light') {
+      setStoreTheme('dark');
+      return;
+    }
+
+    setStoreTheme('system');
+  }, [setStoreTheme, theme]);
+
+  const resolvedTheme = theme === 'system'
+    ? (enableSystem ? systemTheme : 'light')
+    : theme;
   const isSystemTheme = theme === 'system';
 
   const contextValue: ThemeContextValue = {
@@ -177,15 +217,6 @@ export function ThemeProvider({
     toggleTheme,
     isSystemTheme,
   };
-
-  // Prevent hydration mismatch
-  if (!mounted) {
-    return (
-      <ThemeContext.Provider value={contextValue}>
-        {children}
-      </ThemeContext.Provider>
-    );
-  }
 
   return (
     <ThemeContext.Provider value={contextValue}>

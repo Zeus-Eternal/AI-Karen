@@ -9,6 +9,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { act } from '@testing-library/react';
 import { ThemeProvider, useTheme } from '../ThemeProvider';
+import { useUIStore } from '@/store';
 
 import { vi } from 'vitest';
 
@@ -74,6 +75,7 @@ describe('ThemeProvider', () => {
     localStorageMock.getItem.mockReturnValue(null);
     document.documentElement.className = '';
     document.documentElement.style.colorScheme = '';
+    useUIStore.getState().resetUIState();
   });
 
   it('should render children when mounted', async () => {
@@ -118,8 +120,8 @@ describe('ThemeProvider', () => {
 
   it('should load theme from localStorage', async () => {
     localStorageMock.getItem.mockImplementation((key) => {
-      if (key === 'kari-theme') return 'dark';
-      if (key === 'kari-theme-density') return 'spacious';
+      if (key === 'ui-theme') return 'dark';
+      if (key === 'ui-theme-density') return 'spacious';
       return null;
     });
 
@@ -154,7 +156,7 @@ describe('ThemeProvider', () => {
     await waitFor(() => {
       expect(screen.getByTestId('theme')).toHaveTextContent('light');
       expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('kari-theme', 'light');
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('ui-theme', 'light');
     });
   });
 
@@ -175,7 +177,7 @@ describe('ThemeProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('density')).toHaveTextContent('compact');
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('kari-theme-density', 'compact');
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('ui-theme-density', 'compact');
     });
   });
 

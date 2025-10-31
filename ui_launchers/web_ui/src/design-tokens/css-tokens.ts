@@ -9,6 +9,9 @@
 
 import { designTokens } from './index';
 
+const toKebabCase = (value: string) =>
+  value.replace(/([a-z0-9])([A-Z])/g, '$1-$2').replace(/_/g, '-').toLowerCase();
+
 /**
  * Generate CSS custom properties for colors
  */
@@ -113,17 +116,44 @@ export function generateRadiusProperties(): Record<string, string> {
  */
 export function generateAnimationProperties(): Record<string, string> {
   const properties: Record<string, string> = {};
-  
+
   // Durations
   Object.entries(designTokens.animations.duration).forEach(([speed, value]) => {
     properties[`--duration-${speed}`] = value;
   });
-  
+
   // Easing curves
   Object.entries(designTokens.animations.easing).forEach(([curve, value]) => {
     properties[`--ease-${curve}`] = value;
   });
-  
+
+  return properties;
+}
+
+/**
+ * Generate CSS custom properties for component tokens
+ */
+export function generateComponentProperties(): Record<string, string> {
+  const properties: Record<string, string> = {};
+
+  const assignTokens = (prefix: string, tokens: Record<string, string | undefined>) => {
+    Object.entries(tokens).forEach(([key, value]) => {
+      if (typeof value === 'string' && value.length > 0) {
+        properties[`--component-${prefix}-${toKebabCase(key)}`] = value;
+      }
+    });
+  };
+
+  Object.entries(designTokens.components.button).forEach(([variant, tokens]) => {
+    assignTokens(`button-${variant}`, tokens);
+  });
+
+  Object.entries(designTokens.components.badge).forEach(([variant, tokens]) => {
+    assignTokens(`badge-${variant}`, tokens);
+  });
+
+  assignTokens('card', designTokens.components.card);
+
   return properties;
 }
 
@@ -138,6 +168,7 @@ export function generateAllCSSProperties(): Record<string, string> {
     ...generateShadowProperties(),
     ...generateRadiusProperties(),
     ...generateAnimationProperties(),
+    ...generateComponentProperties(),
   };
 }
 
@@ -199,6 +230,52 @@ export function generateDarkThemeProperties(): Record<string, string> {
     '--shadow-lg': '0 10px 15px -3px rgb(0 0 0 / 0.7), 0 4px 6px -4px rgb(0 0 0 / 0.7)',
     '--shadow-xl': '0 20px 25px -5px rgb(0 0 0 / 0.8), 0 8px 10px -6px rgb(0 0 0 / 0.8)',
     '--shadow-2xl': '0 25px 50px -12px rgb(0 0 0 / 0.9)',
+
+    // Component overrides
+    '--component-button-default-background': 'var(--color-primary-500)',
+    '--component-button-default-hover': 'var(--color-primary-400)',
+    '--component-button-default-ring': 'color-mix(in srgb, var(--color-primary-300) 55%, transparent)',
+    '--component-button-default-ring-offset': 'var(--color-neutral-900)',
+    '--component-button-secondary-background': 'color-mix(in srgb, var(--color-neutral-900) 75%, transparent)',
+    '--component-button-secondary-hover': 'color-mix(in srgb, var(--color-neutral-800) 85%, transparent)',
+    '--component-button-secondary-foreground': 'var(--color-neutral-200)',
+    '--component-button-secondary-border': 'color-mix(in srgb, var(--color-neutral-700) 70%, transparent)',
+    '--component-button-secondary-ring': 'color-mix(in srgb, var(--color-primary-400) 45%, transparent)',
+    '--component-button-secondary-ring-offset': 'var(--color-neutral-900)',
+    '--component-button-destructive-background': 'var(--color-error-500)',
+    '--component-button-destructive-hover': 'var(--color-error-400)',
+    '--component-button-destructive-ring': 'color-mix(in srgb, var(--color-error-300) 60%, transparent)',
+    '--component-button-destructive-ring-offset': 'var(--color-neutral-900)',
+    '--component-button-outline-border': 'color-mix(in srgb, var(--color-neutral-700) 65%, transparent)',
+    '--component-button-outline-hover': 'color-mix(in srgb, var(--color-neutral-800) 80%, transparent)',
+    '--component-button-outline-foreground': 'var(--color-neutral-100)',
+    '--component-button-outline-ring': 'color-mix(in srgb, var(--color-primary-400) 45%, transparent)',
+    '--component-button-outline-ring-offset': 'var(--color-neutral-900)',
+    '--component-button-ghost-foreground': 'var(--color-neutral-100)',
+    '--component-button-ghost-hover': 'color-mix(in srgb, var(--color-neutral-800) 70%, transparent)',
+    '--component-button-ghost-ring': 'color-mix(in srgb, var(--color-neutral-500) 45%, transparent)',
+    '--component-button-ghost-ring-offset': 'var(--color-neutral-900)',
+    '--component-button-link-foreground': 'var(--color-primary-300)',
+    '--component-button-link-hover': 'var(--color-primary-200)',
+    '--component-button-link-ring': 'color-mix(in srgb, var(--color-primary-200) 60%, transparent)',
+    '--component-button-link-ring-offset': 'var(--color-neutral-900)',
+
+    '--component-card-background': 'color-mix(in srgb, var(--color-neutral-950) 92%, transparent)',
+    '--component-card-foreground': 'var(--color-neutral-100)',
+    '--component-card-border': 'color-mix(in srgb, var(--color-neutral-700) 70%, transparent)',
+    '--component-card-muted-foreground': 'var(--color-neutral-400)',
+    '--component-card-shadow': 'var(--shadow-lg)',
+    '--component-card-ring': 'color-mix(in srgb, var(--color-primary-300) 35%, transparent)',
+    '--component-card-ring-offset': 'var(--color-neutral-900)',
+
+    '--component-badge-default-background': 'color-mix(in srgb, var(--color-primary-500) 35%, transparent)',
+    '--component-badge-default-foreground': 'var(--color-primary-100)',
+    '--component-badge-secondary-background': 'color-mix(in srgb, var(--color-neutral-800) 75%, transparent)',
+    '--component-badge-secondary-foreground': 'var(--color-neutral-200)',
+    '--component-badge-outline-border': 'color-mix(in srgb, var(--color-neutral-600) 60%, transparent)',
+    '--component-badge-outline-foreground': 'var(--color-neutral-300)',
+    '--component-badge-destructive-background': 'color-mix(in srgb, var(--color-error-600) 40%, transparent)',
+    '--component-badge-destructive-foreground': 'var(--color-error-200)',
   };
 }
 

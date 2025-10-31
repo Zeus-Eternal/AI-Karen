@@ -298,6 +298,9 @@ describe('WidgetBase', () => {
     );
 
     const widget = screen.getByText('Test Widget').closest('[data-widget-id]');
-    expect(widget).toHaveClass('ring-2', 'ring-primary/20');
+    expect(widget).toHaveClass(
+      'ring-2',
+      'ring-[var(--component-button-default-ring)]'
+    );
   });
 });

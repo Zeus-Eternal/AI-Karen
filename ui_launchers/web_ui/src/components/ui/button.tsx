@@ -9,24 +9,81 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-// Export buttonVariants for use in other components
+const baseButtonClasses = [
+  'inline-flex items-center justify-center gap-[var(--space-xs)] rounded-[var(--radius-md)] border font-medium',
+  'transition-[color,background-color,border-color,box-shadow,transform] duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+  'disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed',
+  'active:scale-95 sm:active:scale-100',
+];
+
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
+  baseButtonClasses.join(' '),
   {
     variants: {
       variant: {
-        default: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-        destructive: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-        outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500',
-        secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500',
-        ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
-        link: 'bg-transparent text-blue-600 hover:text-blue-700 underline-offset-4 hover:underline focus:ring-blue-500',
+        default: [
+          'bg-[var(--component-button-default-background)]',
+          'text-[var(--component-button-default-foreground)]',
+          'border-[var(--component-button-default-border,transparent)]',
+          'shadow-[var(--component-button-default-shadow,var(--shadow-sm))]',
+          'hover:bg-[var(--component-button-default-hover)]',
+          'focus-visible:ring-[var(--component-button-default-ring)]',
+          'focus-visible:ring-offset-[var(--component-button-default-ring-offset,var(--color-neutral-50))]',
+        ].join(' '),
+        secondary: [
+          'bg-[var(--component-button-secondary-background)]',
+          'text-[var(--component-button-secondary-foreground)]',
+          'border-[var(--component-button-secondary-border,transparent)]',
+          'shadow-[var(--component-button-secondary-shadow,var(--shadow-xs))]',
+          'hover:bg-[var(--component-button-secondary-hover)]',
+          'focus-visible:ring-[var(--component-button-secondary-ring,var(--component-button-default-ring))]',
+          'focus-visible:ring-offset-[var(--component-button-secondary-ring-offset,var(--color-neutral-50))]',
+        ].join(' '),
+        destructive: [
+          'bg-[var(--component-button-destructive-background)]',
+          'text-[var(--component-button-destructive-foreground,var(--color-neutral-50))]',
+          'border-[var(--component-button-destructive-border,transparent)]',
+          'shadow-[var(--component-button-destructive-shadow,var(--shadow-sm))]',
+          'hover:bg-[var(--component-button-destructive-hover)]',
+          'focus-visible:ring-[var(--component-button-destructive-ring,var(--component-button-default-ring))]',
+          'focus-visible:ring-offset-[var(--component-button-destructive-ring-offset,var(--color-neutral-50))]',
+        ].join(' '),
+        outline: [
+          'bg-[var(--component-button-outline-background,transparent)]',
+          'text-[var(--component-button-outline-foreground,var(--color-neutral-900))]',
+          'border-[var(--component-button-outline-border,var(--color-neutral-300))]',
+          'shadow-[var(--component-button-outline-shadow,var(--shadow-xs))]',
+          'hover:bg-[var(--component-button-outline-hover,var(--color-neutral-200))]',
+          'focus-visible:ring-[var(--component-button-outline-ring,var(--component-button-default-ring))]',
+          'focus-visible:ring-offset-[var(--component-button-outline-ring-offset,var(--color-neutral-50))]',
+        ].join(' '),
+        ghost: [
+          'bg-[var(--component-button-ghost-background,transparent)]',
+          'text-[var(--component-button-ghost-foreground,var(--color-neutral-900))]',
+          'border-[var(--component-button-ghost-border,transparent)]',
+          'shadow-[var(--component-button-ghost-shadow,var(--shadow-xs))]',
+          'hover:bg-[var(--component-button-ghost-hover,var(--color-neutral-100))]',
+          'focus-visible:ring-[var(--component-button-ghost-ring,var(--component-button-default-ring))]',
+          'focus-visible:ring-offset-[var(--component-button-ghost-ring-offset,var(--color-neutral-50))]',
+        ].join(' '),
+        link: [
+          'bg-[var(--component-button-link-background,transparent)]',
+          'text-[var(--component-button-link-foreground,var(--color-primary-600))]',
+          'border-[var(--component-button-link-border,transparent)]',
+          'hover:text-[var(--component-button-link-hover,var(--color-primary-500))]',
+          'focus-visible:ring-[var(--component-button-link-ring,var(--component-button-default-ring))]',
+          'focus-visible:ring-offset-[var(--component-button-link-ring-offset,var(--color-neutral-50))]',
+          'underline-offset-[var(--space-2xs)] hover:underline',
+        ].join(' '),
       },
       size: {
-        sm: 'px-3 py-1.5 text-sm',
-        md: 'px-4 py-2 text-sm',
-        lg: 'px-6 py-3 text-base',
+        sm: 'h-8 px-3 py-1.5 text-sm',
+        md: 'h-10 px-4 py-2 text-sm',
+        lg: 'h-11 px-6 py-3 text-base',
         icon: 'h-8 w-8 p-0',
+        'icon-sm': 'h-8 w-8 p-0',
+        'icon-lg': 'h-12 w-12 p-0',
       },
     },
     defaultVariants: {

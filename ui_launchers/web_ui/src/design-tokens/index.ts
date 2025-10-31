@@ -178,6 +178,35 @@ export interface EasingCurves {
 }
 
 // ============================================================================
+// COMPONENT TOKEN SYSTEM
+// ============================================================================
+
+export type ButtonVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'ghost' | 'link';
+export type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive';
+
+export interface ComponentStateTokens {
+  background: string;
+  foreground: string;
+  border?: string;
+  hover?: string;
+  active?: string;
+  ring?: string;
+  ringOffset?: string;
+  shadow?: string;
+  mutedForeground?: string;
+}
+
+export type CardComponentTokens = ComponentStateTokens & {
+  borderRadius?: string;
+};
+
+export interface ComponentTokens {
+  button: Record<ButtonVariant, ComponentStateTokens>;
+  card: CardComponentTokens;
+  badge: Record<BadgeVariant, ComponentStateTokens>;
+}
+
+// ============================================================================
 // BORDER RADIUS SYSTEM
 // ============================================================================
 
@@ -218,6 +247,7 @@ export interface DesignTokens {
     duration: AnimationDurations;
     easing: EasingCurves;
   };
+  components: ComponentTokens;
 }
 
 // ============================================================================
@@ -235,7 +265,7 @@ export const primaryColors: ColorScale = {
   400: '#bc95ff',
   500: '#a855f7', // Base primary
   600: '#9333ea',
-  700: '#7c2d12',
+  700: '#7e22ce',
   800: '#6b21a8',
   900: '#581c87',
   950: '#3b0764',
@@ -461,6 +491,100 @@ export const easingCurves: EasingCurves = {
   standard: 'cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
+/**
+ * Component token definitions linking design decisions to UI primitives
+ */
+export const componentTokens: ComponentTokens = {
+  button: {
+    default: {
+      background: 'var(--color-primary-600)',
+      foreground: 'var(--color-neutral-50)',
+      border: 'transparent',
+      hover: 'var(--color-primary-500)',
+      ring: 'color-mix(in srgb, var(--color-primary-500) 60%, transparent)',
+      ringOffset: 'var(--color-neutral-50)',
+      shadow: 'var(--shadow-sm)',
+    },
+    secondary: {
+      background: 'var(--color-neutral-100)',
+      foreground: 'var(--color-neutral-900)',
+      border: 'var(--color-neutral-200)',
+      hover: 'var(--color-neutral-200)',
+      ring: 'color-mix(in srgb, var(--color-primary-500) 40%, transparent)',
+      ringOffset: 'var(--color-neutral-50)',
+      shadow: 'var(--shadow-xs)',
+    },
+    destructive: {
+      background: 'var(--color-error-600)',
+      foreground: 'var(--color-neutral-50)',
+      border: 'transparent',
+      hover: 'var(--color-error-500)',
+      ring: 'color-mix(in srgb, var(--color-error-400) 55%, transparent)',
+      ringOffset: 'var(--color-neutral-50)',
+      shadow: 'var(--shadow-sm)',
+    },
+    outline: {
+      background: 'transparent',
+      foreground: 'var(--color-neutral-900)',
+      border: 'var(--color-neutral-300)',
+      hover: 'var(--color-neutral-200)',
+      ring: 'color-mix(in srgb, var(--color-primary-500) 45%, transparent)',
+      ringOffset: 'var(--color-neutral-50)',
+      shadow: 'var(--shadow-xs)',
+    },
+    ghost: {
+      background: 'transparent',
+      foreground: 'var(--color-neutral-900)',
+      hover: 'var(--color-neutral-100)',
+      border: 'transparent',
+      ring: 'color-mix(in srgb, var(--color-neutral-500) 45%, transparent)',
+      ringOffset: 'var(--color-neutral-50)',
+      shadow: 'var(--shadow-xs)',
+    },
+    link: {
+      background: 'transparent',
+      foreground: 'var(--color-primary-600)',
+      border: 'transparent',
+      hover: 'var(--color-primary-500)',
+      ring: 'color-mix(in srgb, var(--color-primary-400) 55%, transparent)',
+      ringOffset: 'var(--color-neutral-50)',
+    },
+  },
+  card: {
+    background: 'var(--color-neutral-50)',
+    foreground: 'var(--color-neutral-900)',
+    border: 'var(--color-neutral-200)',
+    hover: 'var(--color-neutral-100)',
+    shadow: 'var(--shadow-md)',
+    ring: 'color-mix(in srgb, var(--color-primary-500) 25%, transparent)',
+    ringOffset: 'var(--color-neutral-50)',
+    borderRadius: 'var(--radius-lg)',
+    mutedForeground: 'var(--color-neutral-600)',
+  },
+  badge: {
+    default: {
+      background: 'var(--color-primary-100)',
+      foreground: 'var(--color-primary-700)',
+      border: 'transparent',
+    },
+    secondary: {
+      background: 'var(--color-neutral-200)',
+      foreground: 'var(--color-neutral-800)',
+      border: 'transparent',
+    },
+    outline: {
+      background: 'transparent',
+      foreground: 'var(--color-neutral-700)',
+      border: 'var(--color-neutral-400)',
+    },
+    destructive: {
+      background: 'var(--color-error-100)',
+      foreground: 'var(--color-error-700)',
+      border: 'transparent',
+    },
+  },
+};
+
 // ============================================================================
 // COMPLETE DESIGN TOKEN SYSTEM
 // ============================================================================
@@ -488,6 +612,7 @@ export const designTokens: DesignTokens = {
     duration: animationDurations,
     easing: easingCurves,
   },
+  components: componentTokens,
 };
 
 // ============================================================================
@@ -534,4 +659,33 @@ export function getDuration(speed: keyof AnimationDurations): string {
  */
 export function getEasing(curve: keyof EasingCurves): string {
   return easingCurves[curve];
+}
+
+/**
+ * Get button component token value
+ */
+export function getButtonToken(
+  variant: ButtonVariant,
+  property: keyof ComponentStateTokens,
+): string | undefined {
+  return componentTokens.button[variant][property];
+}
+
+/**
+ * Get badge component token value
+ */
+export function getBadgeToken(
+  variant: BadgeVariant,
+  property: keyof ComponentStateTokens,
+): string | undefined {
+  return componentTokens.badge[variant][property];
+}
+
+/**
+ * Get card component token value
+ */
+export function getCardToken(
+  property: keyof CardComponentTokens,
+): string | undefined {
+  return componentTokens.card[property];
 }

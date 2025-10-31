@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { ThemeProvider } from './ThemeProvider';
+import { ThemeProvider } from '@/providers/theme-provider';
 
 /**
  * ThemeBridge injects legacy CSS variable mappings so older components

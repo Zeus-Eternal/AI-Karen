@@ -59,7 +59,7 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
       {/* Widget Content */}
       <div className={cn(
         'transition-all duration-200',
-        isDragging && 'shadow-lg ring-2 ring-primary/20'
+        isDragging && 'shadow-lg ring-2 ring-[var(--component-button-default-ring)] ring-offset-2 ring-offset-[var(--component-button-default-ring-offset,var(--color-neutral-50))]'
       )}>
         {children}
       </div>

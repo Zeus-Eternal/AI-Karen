@@ -26,6 +26,10 @@ import {
   getShadow,
   getDuration,
   getEasing,
+  componentTokens,
+  getButtonToken,
+  getBadgeToken,
+  getCardToken,
 } from '../index';
 
 import {
@@ -185,6 +189,7 @@ describe('Design Tokens', () => {
       expect(designTokens).toHaveProperty('shadows');
       expect(designTokens).toHaveProperty('radius');
       expect(designTokens).toHaveProperty('animations');
+      expect(designTokens).toHaveProperty('components');
     });
 
     it('should have nested typography properties', () => {
@@ -197,6 +202,23 @@ describe('Design Tokens', () => {
     it('should have nested animation properties', () => {
       expect(designTokens.animations).toHaveProperty('duration');
       expect(designTokens.animations).toHaveProperty('easing');
+    });
+  });
+
+  describe('Component Token System', () => {
+    it('should expose button tokens', () => {
+      expect(componentTokens.button.default.background).toBe('var(--color-primary-600)');
+      expect(getButtonToken('default', 'hover')).toBe('var(--color-primary-500)');
+    });
+
+    it('should expose badge tokens', () => {
+      expect(componentTokens.badge.default.background).toBe('var(--color-primary-100)');
+      expect(getBadgeToken('outline', 'border')).toBe('var(--color-neutral-400)');
+    });
+
+    it('should expose card tokens', () => {
+      expect(componentTokens.card.background).toBe('var(--color-neutral-50)');
+      expect(getCardToken('borderRadius')).toBe('var(--radius-lg)');
     });
   });
 });
@@ -290,13 +312,14 @@ describe('CSS Token Generation', () => {
   describe('Complete CSS Generation', () => {
     it('should generate all CSS properties', () => {
       const properties = generateAllCSSProperties();
-      
+
       expect(properties).toHaveProperty('--color-primary-500');
       expect(properties).toHaveProperty('--space-md');
       expect(properties).toHaveProperty('--text-base');
       expect(properties).toHaveProperty('--shadow-md');
       expect(properties).toHaveProperty('--radius-md');
       expect(properties).toHaveProperty('--duration-fast');
+      expect(properties).toHaveProperty('--component-button-default-background');
     });
 
     it('should convert properties to CSS string', () => {

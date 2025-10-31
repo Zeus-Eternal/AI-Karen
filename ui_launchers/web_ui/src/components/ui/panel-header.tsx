@@ -162,7 +162,7 @@ export const PanelHeader = forwardRef<HTMLElement, PanelHeaderProps>(
                   onClick={onClose}
                   className={cn(
                     "shrink-0",
-                    "focus-visible:ring-2 focus-visible:ring-primary/20",
+                    "focus-visible:ring-2 focus-visible:ring-[var(--component-button-default-ring)] focus-visible:ring-offset-[var(--component-button-default-ring-offset,var(--color-neutral-50))]",
                     "transition-all duration-200",
                     // Touch-optimized sizing
                     "min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px]",

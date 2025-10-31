@@ -121,7 +121,7 @@ export const WidgetBase: React.FC<WidgetBaseProps> = ({
       className={cn(
         'relative transition-all duration-200 hover:shadow-md',
         getWidgetSizeClasses(config.size),
-        isEditing && 'ring-2 ring-primary/20',
+        isEditing && 'ring-2 ring-[var(--component-button-default-ring)] ring-offset-2 ring-offset-[var(--component-button-default-ring-offset,var(--color-neutral-50))]',
         className
       )}
       data-widget-id={config.id}
