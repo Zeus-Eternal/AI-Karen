@@ -174,7 +174,10 @@ describe('Panel Spacing and Alignment Fixes', () => {
       const closeButton = screen.getByRole('button', { name: /close panel/i });
       
       // Check that close button has proper focus styles
-      expect(closeButton).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-primary/20');
+      expect(closeButton).toHaveClass(
+        'focus-visible:ring-2',
+        'focus-visible:ring-[var(--component-button-default-ring)]'
+      );
       
       // Check that close button has proper transition
       expect(closeButton).toHaveClass('transition-all', 'duration-200');
@@ -288,7 +291,10 @@ describe('Panel Spacing and Alignment Fixes', () => {
         expect(button).toHaveClass('flex', 'items-center', 'justify-center');
         
         // Check that buttons have proper focus styles
-        expect(button).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-primary/20');
+        expect(button).toHaveClass(
+          'focus-visible:ring-2',
+          'focus-visible:ring-[var(--component-button-default-ring)]'
+        );
       });
     });
   });

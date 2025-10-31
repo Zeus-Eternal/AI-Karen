@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 export interface BadgeProps {
   children: React.ReactNode;
@@ -21,20 +22,40 @@ export const Badge: React.FC<BadgeProps> = ({
   onClick,
   title 
 }) => {
-  const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
-  
-  const variantClasses = {
-    default: 'bg-blue-100 text-blue-800',
-    outline: 'border border-gray-300 text-gray-700 bg-white',
-    secondary: 'bg-gray-100 text-gray-800',
-    destructive: 'bg-red-100 text-red-800',
+  const baseClasses = [
+    'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
+    'transition-colors duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+    'tracking-[var(--letter-spacing-tight)]',
+  ].join(' ');
+
+  const variantClasses: Record<Required<BadgeProps>['variant'], string> = {
+    default: [
+      'bg-[var(--component-badge-default-background)]',
+      'text-[var(--component-badge-default-foreground)]',
+      'border-[var(--component-badge-default-border,transparent)]',
+    ].join(' '),
+    outline: [
+      'bg-[var(--component-badge-outline-background,transparent)]',
+      'text-[var(--component-badge-outline-foreground)]',
+      'border-[var(--component-badge-outline-border,var(--color-neutral-400))]',
+    ].join(' '),
+    secondary: [
+      'bg-[var(--component-badge-secondary-background)]',
+      'text-[var(--component-badge-secondary-foreground)]',
+      'border-[var(--component-badge-secondary-border,transparent)]',
+    ].join(' '),
+    destructive: [
+      'bg-[var(--component-badge-destructive-background)]',
+      'text-[var(--component-badge-destructive-foreground)]',
+      'border-[var(--component-badge-destructive-border,transparent)]',
+    ].join(' '),
   };
 
   const Component = onClick ? 'button' : 'span';
 
   return (
-    <Component 
-      className={`${baseClasses} ${variantClasses[variant]} ${className}`}
+    <Component
+      className={cn(baseClasses, variantClasses[variant], className)}
       onClick={onClick}
       title={title}
     >

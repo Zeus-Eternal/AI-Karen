@@ -17,6 +17,7 @@ import {
 import {
   generateColorProperties,
   generateCompleteCSS,
+  generateAllCSSProperties,
 } from '../css-tokens';
 
 describe('Task 1.1 Simple Verification', () => {
@@ -52,5 +53,10 @@ describe('Task 1.1 Simple Verification', () => {
     const css = generateCompleteCSS();
     expect(css).toContain(':root {');
     expect(css).toContain('.dark {');
+  });
+
+  it('should include component tokens in CSS properties', () => {
+    const properties = generateAllCSSProperties();
+    expect(properties['--component-button-default-background']).toBe('var(--color-primary-600)');
   });
 });

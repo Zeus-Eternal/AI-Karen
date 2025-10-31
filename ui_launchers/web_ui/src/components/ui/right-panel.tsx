@@ -308,7 +308,7 @@ export const RightPanelNavigation = forwardRef<HTMLElement, RightPanelNavigation
                       // Touch-optimized sizing on mobile
                       "min-h-[44px] sm:min-h-[32px]", // 44px is iOS recommended touch target
                       // Proper focus and hover states
-                      "focus-visible:ring-2 focus-visible:ring-primary/20",
+                      "focus-visible:ring-2 focus-visible:ring-[var(--component-button-default-ring)] focus-visible:ring-offset-[var(--component-button-default-ring-offset,var(--color-neutral-50))]",
                       "transition-all duration-200",
                       // Enhanced touch feedback
                       "active:scale-95 sm:active:scale-100"

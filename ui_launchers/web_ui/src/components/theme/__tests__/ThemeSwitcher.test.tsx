@@ -11,6 +11,7 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { ThemeProvider } from '../ThemeProvider';
 import { ThemeSwitcher, ThemeToggle } from '../ThemeSwitcher';
+import { useUIStore } from '@/store';
 
 // Mock localStorage
 const localStorageMock = {
@@ -47,6 +48,7 @@ describe('ThemeSwitcher', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.getItem.mockReturnValue(null);
+    useUIStore.getState().resetUIState();
   });
 
   describe('buttons variant', () => {
@@ -80,7 +82,7 @@ describe('ThemeSwitcher', () => {
       fireEvent.click(lightButton);
 
       await waitFor(() => {
-        expect(localStorageMock.setItem).toHaveBeenCalledWith('kari-theme', 'light');
+        expect(localStorageMock.setItem).toHaveBeenCalledWith('ui-theme', 'light');
       });
     });
 
