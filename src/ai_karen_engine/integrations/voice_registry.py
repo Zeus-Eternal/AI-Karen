@@ -5,6 +5,7 @@ from __future__ import annotations
 from ai_karen_engine.integrations.provider_registry import ModelInfo, ProviderRegistry
 from ai_karen_engine.integrations.voice_providers import (
     DummyVoiceProvider,
+    OpenAIVoiceProvider,
     VoiceProviderBase,
 )
 
@@ -31,6 +32,29 @@ class VoiceRegistry(ProviderRegistry):
             category="VOICE",
         )
 
+        self.register_provider(
+            "openai",
+            OpenAIVoiceProvider,
+            description="OpenAI neural text-to-speech and speech-to-text",
+            models=[
+                ModelInfo(
+                    name="gpt-4o-mini-tts",
+                    description="Low-latency neural text-to-speech",
+                    capabilities=["text-to-speech"],
+                    default_settings={"voice": "alloy"},
+                ),
+                ModelInfo(
+                    name="gpt-4o-mini-transcribe",
+                    description="Streaming transcription model",
+                    capabilities=["speech-to-text"],
+                    default_settings={"response_format": "text"},
+                ),
+            ],
+            requires_api_key=True,
+            default_model="gpt-4o-mini-tts",
+            category="VOICE",
+        )
+
 
 # Global registry instance
 _voice_registry: VoiceRegistry | None = None
@@ -49,6 +73,7 @@ __all__ = [
     "ModelInfo",
     "VoiceProviderBase",
     "DummyVoiceProvider",
+    "OpenAIVoiceProvider",
     "VoiceRegistry",
     "get_voice_registry",
 ]
