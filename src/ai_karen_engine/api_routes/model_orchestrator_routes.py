@@ -59,6 +59,7 @@ try:
         MigrationResult,
         EnsureResult,
         GCResult,
+        RemoveResult,
         E_NET, E_DISK, E_PERM, E_LICENSE, E_VERIFY, E_SCHEMA, E_COMPAT, E_QUOTA, E_NOT_FOUND, E_INVALID
     )
 except ImportError as e:
@@ -67,14 +68,21 @@ except ImportError as e:
     class ModelOrchestratorService:
         def __init__(self, *args, **kwargs):
             pass
-    
+
     class ModelOrchestratorError(Exception):
         def __init__(self, code, message, details=None):
             self.code = code
             self.message = message
             self.details = details or {}
             super().__init__(f"{code}: {message}")
-    
+
+    class RemoveResult:
+        def __init__(self, model_id: str, deleted_artifacts=None, warnings=None, metadata=None):
+            self.model_id = model_id
+            self.deleted_artifacts = deleted_artifacts or []
+            self.warnings = warnings or []
+            self.metadata = metadata or {}
+
     # Error codes
     E_NET = "E_NET"
     E_DISK = "E_DISK"
@@ -97,7 +105,7 @@ def get_orchestrator_service() -> ModelOrchestratorService:
         # Load configuration from plugin config or defaults
         config = {
             "models_root": "models",
-            "registry_path": "models/llm_registry.json",
+            "registry_path": "models/orchestrator_registry.json",
             "max_concurrent_downloads": 3,
             "enable_metrics": True,
             "enable_rbac": True,
@@ -188,6 +196,17 @@ class DownloadResultResponse(BaseModel):
     duration_seconds: float
     status: str
     error_message: Optional[str] = None
+
+
+class ModelRemoveResponse(BaseModel):
+    """Response payload describing a model removal."""
+
+    model_id: str
+    delete_files: bool
+    deleted_artifacts: List[str]
+    warnings: List[str]
+    metadata: Dict[str, Any]
+    message: str
 
 # Security and authentication dependencies
 # Simple auth - removed security manager
@@ -410,7 +429,7 @@ async def download_model(
         logger.error(f"Failed to start model download: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/remove/{model_id:path}")
+@router.delete("/remove/{model_id:path}", response_model=ModelRemoveResponse)
 async def remove_model(
     model_id: str,
     request: Request,
@@ -440,11 +459,20 @@ async def remove_model(
         )
         
         service = get_orchestrator_service()
-        
-        # For now, this is a placeholder - would need to implement in service
-        # TODO: Implement model removal in ModelOrchestratorService
-        
-        return {"message": f"Model {model_id} removal requested", "delete_files": delete_files}
+
+        removal_result: RemoveResult = await service.remove_model(
+            model_id=model_id,
+            delete_files=delete_files,
+        )
+
+        return ModelRemoveResponse(
+            model_id=removal_result.model_id,
+            delete_files=delete_files,
+            deleted_artifacts=removal_result.deleted_artifacts,
+            warnings=removal_result.warnings,
+            metadata=removal_result.metadata,
+            message=f"Model {model_id} removed successfully",
+        )
         
     except ModelOrchestratorError as e:
         raise handle_orchestrator_error(e)
