@@ -1,9 +1,9 @@
 import { LoginCredentials, LoginResponse, User, DeepPartial } from '@/types/auth';
-import { getApiClient } from '@/lib/api-client';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { getServiceErrorHandler, createUserFriendlyError } from './errorHandler';
 
 export class AuthService {
-  private apiClient = getApiClient();
+  private apiClient = enhancedApiClient;
   private errorHandler = getServiceErrorHandler();
 
   constructor() {
