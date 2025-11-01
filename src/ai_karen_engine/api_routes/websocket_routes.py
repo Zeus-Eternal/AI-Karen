@@ -204,28 +204,19 @@ async def get_current_user_websocket(websocket: WebSocket) -> Dict[str, Any]:
         websocket.cookies.get(configured_cookie)
         or websocket.cookies.get("kari_session")
     )
-    # Use simple auth service for JWT validation
+    # Use production auth service for JWT validation
     auth_header = websocket.headers.get("authorization")
     if auth_header and auth_header.startswith("Bearer "):
         access_token = auth_header.split(" ", 1)[1]
         try:
-            from src.auth.auth_service import get_auth_service
-            service = get_auth_service()
-            token_payload = service.validate_token(access_token)
-            if token_payload:
-                return {
-                    "user_id": token_payload.get("sub"),
-                    "email": token_payload.get("email"),
-                    "full_name": token_payload.get("full_name"),
-                    "roles": token_payload.get("roles", []),
-                    "tenant_id": token_payload.get("tenant_id", "default"),
-                    "preferences": token_payload.get("preferences", {}),
-                    "two_factor_enabled": token_payload.get("two_factor_enabled", False),
-                    "is_verified": token_payload.get("is_verified", False),
-                    "is_active": token_payload.get("is_active", True),
-                }
+            from src.auth.auth_service import get_auth_service, user_account_to_dict
+
+            service = await get_auth_service()
+            user = await service.validate_token(access_token)
+            if user:
+                return user_account_to_dict(user)
         except Exception:
-            pass
+            logger.exception("Failed to validate websocket token")
 
     raise HTTPException(status_code=401, detail="Authentication required")
 
