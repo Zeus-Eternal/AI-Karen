@@ -16,10 +16,16 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ai_karen_engine.chat.chat_orchestrator import ChatOrchestrator, ChatRequest
+from ai_karen_engine.core.config_manager import get_config
 from ai_karen_engine.core.dependencies import get_current_user_context
 from ai_karen_engine.core.logging import get_logger
 from ai_karen_engine.core.response.factory import get_global_orchestrator
+from ai_karen_engine.core.service_registry import get_service_registry
 from ai_karen_engine.integrations.llm_registry import get_registry
+from ai_karen_engine.services.tool_service import (
+    ToolStatus,
+    get_tool_service as get_global_tool_service,
+)
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["chat-runtime"])
@@ -802,18 +808,214 @@ async def get_chat_config(
     Get chat configuration for the current user
     """
     try:
-        # TODO: Implement actual config retrieval based on user context
-        config = {
-            "user_id": user_context.get("user_id"),
-            "available_tools": [],  # Will be populated by ToolRegistry
-            "memory_enabled": True,
-            "streaming_enabled": True,
-            "max_message_length": 10000,
-            "supported_platforms": ["web", "streamlit", "desktop"],
-            "default_model": "local",  # Local-first approach
+        config = get_config()
+        llm_registry = get_registry()
+        service_registry = get_service_registry()
+
+        # Resolve available tools from the global tool service
+        tools_section: Dict[str, Any] = {"available": [], "metrics": {}}
+        try:
+            tool_service = get_global_tool_service()
+            available_tools = tool_service.list_tools(status=ToolStatus.AVAILABLE)
+
+            for tool_name in available_tools:
+                metadata = tool_service.get_tool_metadata(tool_name)
+                if metadata:
+                    tools_section["available"].append(
+                        {
+                            "name": metadata.name,
+                            "description": metadata.description,
+                            "category": metadata.category.value,
+                            "status": metadata.status.value,
+                            "tags": list(metadata.tags),
+                            "requires_auth": metadata.requires_auth,
+                            "timeout": metadata.timeout,
+                        }
+                    )
+                else:
+                    tools_section["available"].append(
+                        {
+                            "name": tool_name,
+                            "description": "",
+                            "category": "unknown",
+                            "status": "unknown",
+                            "tags": [],
+                            "requires_auth": False,
+                            "timeout": None,
+                        }
+                    )
+
+            tools_section["metrics"] = tool_service.get_service_stats()
+        except Exception as tool_error:  # pragma: no cover - defensive
+            logger.warning(
+                "Tool service unavailable during chat config retrieval: %s",
+                tool_error,
+            )
+            tools_section["error"] = str(tool_error)
+
+        # Gather provider information from the LLM registry
+        provider_details: List[Dict[str, Any]] = []
+        registry_chain: List[str] = []
+        try:
+            registry_chain = llm_registry.default_chain()
+            for provider_name in llm_registry.list_providers():
+                provider_info = llm_registry.get_provider_info(provider_name) or {}
+                provider_details.append(
+                    {
+                        "name": provider_name,
+                        "description": provider_info.get("description", ""),
+                        "default_model": provider_info.get("default_model")
+                        or provider_info.get("model"),
+                        "supports_streaming": bool(
+                            provider_info.get("supports_streaming", False)
+                        ),
+                        "supports_embeddings": bool(
+                            provider_info.get("supports_embeddings", False)
+                        ),
+                        "requires_api_key": bool(
+                            provider_info.get("requires_api_key", False)
+                        ),
+                        "status": provider_info.get("health_status", "unknown"),
+                        "last_health_check": provider_info.get("last_health_check"),
+                    }
+                )
+        except Exception as registry_error:  # pragma: no cover - defensive
+            logger.warning(
+                "LLM registry unavailable during chat config retrieval: %s",
+                registry_error,
+            )
+
+        # Determine routing preferences from user profiles and config defaults
+        profile_data = config.user_profiles or {}
+        active_profile_id = config.active_profile or profile_data.get(
+            "active_profile"
+        )
+        profile_summaries: List[Dict[str, Any]] = []
+        fallback_chain: List[str] = []
+        default_provider = config.llm.provider
+        default_model = config.llm.model
+
+        for profile in profile_data.get("profiles", []):
+            assignments = profile.get("assignments", {})
+            profile_summary = {
+                "id": profile.get("id"),
+                "name": profile.get("name"),
+                "is_active": profile.get("is_active", False),
+                "fallback_chain": profile.get("fallback_chain", []),
+                "assignments": assignments,
+                "updated_at": profile.get("updated_at"),
+            }
+            profile_summaries.append(profile_summary)
+
+            if profile.get("id") == active_profile_id or profile.get("is_active"):
+                fallback_chain = profile.get("fallback_chain", fallback_chain)
+                chat_assignment = assignments.get("chat", {})
+                if isinstance(chat_assignment, dict):
+                    default_provider = chat_assignment.get("provider", default_provider)
+                    default_model = chat_assignment.get("model", default_model)
+
+        routing_chain = fallback_chain or registry_chain
+
+        # Derive service health information for observability in the UI
+        services_summary: List[Dict[str, Any]] = []
+        ready_states = {"ready", "degraded"}
+        try:
+            registered_services = service_registry.list_services()
+            for service_name in registered_services.keys():
+                info = service_registry.get_service_info(service_name)
+                if not info:
+                    continue
+
+                services_summary.append(
+                    {
+                        "name": service_name,
+                        "type": info.service_type.__name__,
+                        "status": info.status.value,
+                        "dependencies": [
+                            {
+                                "name": dependency.name,
+                                "required": dependency.required,
+                                "status": dependency.status.value,
+                            }
+                            for dependency in info.dependencies
+                        ],
+                        "error": info.error_message,
+                        "initialization_time": info.initialization_time,
+                    }
+                )
+        except Exception as service_error:  # pragma: no cover - defensive
+            logger.warning(
+                "Service registry introspection failed during chat config retrieval: %s",
+                service_error,
+            )
+
+        ready_services = sum(
+            1 for service in services_summary if service["status"] in ready_states
+        )
+
+        monitoring_config = config.monitoring
+        web_ui_config = config.web_ui
+        memory_config = config.memory or {}
+
+        response_payload = {
+            "user": {
+                "id": user_context.get("user_id"),
+                "tenant_id": user_context.get("tenant_id"),
+                "roles": user_context.get("roles", []),
+            },
+            "environment": {
+                "name": config.environment.value,
+                "debug": bool(config.debug),
+            },
+            "llm": {
+                "default_provider": default_provider,
+                "default_model": default_model,
+                "fallback_chain": routing_chain,
+                "providers": provider_details,
+                "streaming_enabled": any(
+                    provider.get("supports_streaming") for provider in provider_details
+                ),
+                "profiles": profile_summaries,
+                "active_profile": active_profile_id,
+            },
+            "tools": tools_section,
+            "memory": {
+                "enabled": bool(memory_config.get("enabled", True)),
+                "provider": memory_config.get("provider", "local"),
+                "embedding_dim": memory_config.get("embedding_dim"),
+                "decay_lambda": memory_config.get("decay_lambda"),
+                "ui_enabled": bool(web_ui_config.enable_memory_integration),
+            },
+            "services": {
+                "registered": len(services_summary),
+                "ready": ready_services,
+                "items": services_summary,
+            },
+            "ui": {
+                "platforms": list(web_ui_config.ui_sources),
+                "session_timeout": web_ui_config.session_timeout,
+                "max_history": web_ui_config.max_conversation_history,
+                "theme": config.theme,
+                "proactive_suggestions": bool(
+                    web_ui_config.enable_proactive_suggestions
+                ),
+            },
+            "limits": {
+                "max_message_length": 10000,
+                "max_tokens": config.llm.max_tokens,
+                "temperature": config.llm.temperature,
+            },
+            "observability": {
+                "metrics_enabled": monitoring_config.enable_metrics,
+                "prometheus_port": monitoring_config.metrics_port,
+                "prometheus_enabled": monitoring_config.prometheus_enabled,
+                "tracing_enabled": monitoring_config.enable_tracing,
+                "log_level": monitoring_config.log_level,
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        return config
+        return response_payload
 
     except Exception as e:
         logger.error(
