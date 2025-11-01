@@ -1,43 +1,29 @@
-"""
-Simple Authentication Package for AI-Karen
-Minimal, production-ready JWT authentication system.
-"""
+"""Production authentication utilities for Kari AI."""
 
 from .auth_service import (
+    AuthService,
     get_auth_service,
-    NoAuthService,
-    UserModel,
-    LoginRequest,
-    LoginResponse
+    get_auth_service_sync,
+    user_account_to_dict,
 )
-
 from .auth_middleware import (
+    ProductionAuthMiddleware,
     get_auth_middleware,
     get_current_user,
     require_auth,
     require_admin,
-    NoAuthMiddleware
 )
-
 from .auth_routes import router as auth_router
 
 __all__ = [
-    # Services
+    "AuthService",
+    "ProductionAuthMiddleware",
     "get_auth_service",
-    "NoAuthService",
-    
-    # Models
-    "UserModel",
-    "LoginRequest", 
-    "LoginResponse",
-    
-    # Middleware
+    "get_auth_service_sync",
+    "user_account_to_dict",
     "get_auth_middleware",
-    "NoAuthMiddleware",
     "get_current_user",
     "require_auth",
     "require_admin",
-    
-    # Routes
-    "auth_router"
+    "auth_router",
 ]

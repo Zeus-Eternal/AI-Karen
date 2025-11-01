@@ -36,14 +36,17 @@ def test_auth_service():
     print("\n🔍 Testing auth service initialization...")
     
     try:
-        from src.auth.auth_service import get_auth_service
-        auth_service = get_auth_service()
+        from src.auth.auth_service import get_auth_service_sync
+
+        auth_service = get_auth_service_sync()
         print("✅ Auth service initialized successfully")
-        print(f"   Storage type: {auth_service.storage_type}")
-        
-        # Test loading users
-        users = auth_service._load_users()
-        print(f"   Users loaded: {len(users)}")
+
+        storage = getattr(auth_service, "users_file", None)
+        if storage:
+            print(f"   Storage: {storage}")
+
+        users_loaded = len(getattr(auth_service, "users", {}))
+        print(f"   Users loaded: {users_loaded}")
         
         return True
     except Exception as e:

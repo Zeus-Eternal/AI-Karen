@@ -1,130 +1,165 @@
-"""
-No Authentication Service for AI-Karen
-Minimal service that provides default user data without authentication.
-"""
+"""Production authentication service adapter for Kari AI."""
 
-import os
-from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, EmailStr, Field
+from __future__ import annotations
 
-DEFAULT_USER_PREFERENCES: Dict[str, Any] = {
-    "personalityTone": "balanced",
-    "personalityVerbosity": "medium",
-    "memoryDepth": "standard",
-    "customPersonaInstructions": "",
-    "preferredLLMProvider": "llama-cpp",
-    "preferredModel": "llama3.2:latest",
-    "temperature": 0.7,
-    "maxTokens": 2048,
-    "notifications": {
-        "email": True,
-        "push": False,
-    },
-    "ui": {
-        "theme": "system",
-        "language": "en",
-        "avatarUrl": None,
-    },
-}
+import asyncio
+from dataclasses import asdict
+from typing import Any, Dict, Optional
+
+from ai_karen_engine.services.production_auth_service import (
+    ProductionAuthService,
+    UserAccount,
+)
 
 
-class UserModel(BaseModel):
-    """Simple user model - no authentication required."""
-
-    user_id: str = "default_user"
-    email: EmailStr = "user@example.com"
-    full_name: Optional[str] = "Default User"
-    roles: List[str] = Field(default_factory=lambda: ["user", "admin"])
-    is_active: bool = True
-    tenant_id: str = "default"
-    preferences: Dict[str, Any] = Field(default_factory=lambda: DEFAULT_USER_PREFERENCES.copy())
+__all__ = [
+    "AuthService",
+    "get_auth_service",
+    "get_auth_service_sync",
+    "user_account_to_dict",
+]
 
 
-class LoginRequest(BaseModel):
-    """Login request model (not used in no-auth mode)"""
-    email: EmailStr = "user@example.com"
-    password: str = "password"
+_service_lock = asyncio.Lock()
+_auth_service: Optional[ProductionAuthService] = None
+_service_started = False
 
 
-class LoginResponse(BaseModel):
-    """Login response model - returns default user."""
-    access_token: str = "no-auth-token"
-    token_type: str = "bearer"
-    expires_in: int = 86400
-    user: Dict[str, Any]
-    token: Optional[str] = "no-auth-token"
-    refresh_token: Optional[str] = "no-auth-token"
-    user_id: Optional[str] = "default_user"
-    email: Optional[EmailStr] = "user@example.com"
-    roles: Optional[List[str]] = Field(default_factory=lambda: ["user", "admin"])
-    tenant_id: Optional[str] = "default"
-    user_data: Optional[Dict[str, Any]] = None
+def user_account_to_dict(user: UserAccount) -> Dict[str, Any]:
+    """Convert a :class:`UserAccount` into a JSON serialisable dict."""
+
+    payload = asdict(user)
+    # Ensure datetimes are ISO8601 strings for transport safety
+    for field in ("created_at", "last_login", "locked_until"):
+        value = payload.get(field)
+        if value is None:
+            continue
+        payload[field] = value.isoformat()
+
+    # Normalise naming used by existing API consumers
+    payload.pop("password_hash", None)
+    payload.setdefault("preferences", {})
+    payload.setdefault("tenant_id", "default")
+    payload.setdefault("roles", ["user"])
+    payload.setdefault("is_active", True)
+    payload.setdefault("two_factor_enabled", False)
+    payload.setdefault("is_verified", True)
+    return payload
 
 
-class NoAuthService:
-    """No authentication service - returns default user for all requests"""
+async def _ensure_service_started() -> ProductionAuthService:
+    """Initialise and return the shared production auth service."""
+
+    global _auth_service, _service_started
+
+    if _auth_service is None:
+        _auth_service = ProductionAuthService()
+
+    if not _service_started:
+        async with _service_lock:
+            if not _service_started:
+                await _auth_service.initialize()
+                await _auth_service.start()
+                _service_started = True
+
+    return _auth_service
+
+
+async def get_auth_service() -> ProductionAuthService:
+    """Return the lazily initialised production authentication service."""
+
+    return await _ensure_service_started()
+
+
+def get_auth_service_sync() -> ProductionAuthService:
+    """Blocking helper used by CLI tools and scripts."""
+
+    if _auth_service is not None and _service_started:
+        return _auth_service
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():  # pragma: no cover - defensive guard
+        raise RuntimeError("Use 'await get_auth_service()' inside an event loop")
+
+    return asyncio.run(get_auth_service())
+
+
+class AuthService:
+    """Compatibility façade used by legacy integration points."""
 
     def __init__(self) -> None:
-        # Create default user
-        self.default_user = UserModel()
+        self._service: Optional[ProductionAuthService] = None
 
-    def authenticate_user(self, email: str, password: str) -> UserModel:
-        """Always return default user (no authentication required)"""
-        return self.default_user
+    async def _get_service(self) -> ProductionAuthService:
+        if self._service is None:
+            self._service = await get_auth_service()
+        return self._service
 
-    def create_access_token(self, user: UserModel, *, expiration_hours: Optional[int] = None) -> tuple[str, int]:
-        """Return dummy token"""
-        return "no-auth-token", 86400
+    async def authenticate(
+        self,
+        email: str,
+        password: str,
+        *,
+        ip_address: str = "unknown",
+        user_agent: str = "",
+    ) -> Dict[str, Any]:
+        service = await self._get_service()
+        user, access_token, refresh_token = await service.authenticate_user(
+            email=email,
+            password=password,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        if not user:
+            raise ValueError("Invalid credentials")
 
-    def create_long_lived_token(self, user: UserModel) -> tuple[str, int]:
-        """Return dummy token"""
-        return "no-auth-token", 86400
+        payload = user_account_to_dict(user)
+        payload.update(
+            {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer",
+            }
+        )
+        return payload
 
-    def validate_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Always return valid payload"""
-        return {
-            "sub": "default_user",
-            "email": "user@example.com",
-            "roles": ["user", "admin"],
-            "type": "access",
-        }
+    async def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+        service = await self._get_service()
+        user = await service.validate_token(token)
+        if not user:
+            return None
+        return user_account_to_dict(user)
 
-    def validate_and_get_user_from_token(self, token: str) -> UserModel:
-        """Always return default user"""
-        return self.default_user
+    async def create_user(
+        self,
+        email: str,
+        password: str,
+        *,
+        full_name: Optional[str] = None,
+        roles: Optional[list[str]] = None,
+    ) -> Dict[str, Any]:
+        service = await self._get_service()
+        user, error = await service.create_user(
+            email=email,
+            password=password,
+            full_name=full_name or email.split("@")[0],
+            roles=roles or ["user"],
+        )
+        if error:
+            raise ValueError(error)
+        return user_account_to_dict(user)
 
-    def get_user_by_id(self, user_id: str) -> UserModel:
-        """Always return default user"""
-        return self.default_user
+    async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
+        service = await self._get_service()
+        token, error = await service.refresh_access_token(refresh_token)
+        if error:
+            raise ValueError(error)
+        return {"access_token": token, "token_type": "bearer"}
 
-    def get_user_by_email(self, email: str) -> UserModel:
-        """Always return default user"""
-        return self.default_user
-
-    def serialize_user(self, user: UserModel) -> Dict[str, Any]:
-        """Serialize user data"""
-        return {
-            "user_id": user.user_id,
-            "email": user.email,
-            "full_name": user.full_name,
-            "roles": user.roles,
-            "is_active": user.is_active,
-            "tenant_id": user.tenant_id,
-            "preferences": user.preferences,
-        }
-
-    def create_user(self, email: str, password: str, full_name: str = None, roles: Optional[List[str]] = None) -> UserModel:
-        """Always return default user"""
-        return self.default_user
-
-
-# Global service instance
-_auth_service: Optional[NoAuthService] = None
-
-
-def get_auth_service() -> NoAuthService:
-    """Get auth service singleton"""
-    global _auth_service
-    if _auth_service is None:
-        _auth_service = NoAuthService()
-    return _auth_service
+    async def logout(self, refresh_token: str) -> None:
+        service = await self._get_service()
+        await service.logout(refresh_token)
