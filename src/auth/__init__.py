@@ -4,11 +4,13 @@ Minimal, production-ready JWT authentication system.
 """
 
 from .auth_service import (
+    AuthService,
     get_auth_service,
-    NoAuthService,
-    UserModel,
+    ensure_production_auth_service_ready,
+    shutdown_production_auth_service,
+    get_production_auth_backend,
     LoginRequest,
-    LoginResponse
+    LoginResponse,
 )
 
 from .auth_middleware import (
@@ -16,24 +18,26 @@ from .auth_middleware import (
     get_current_user,
     require_auth,
     require_admin,
-    NoAuthMiddleware
+    AuthMiddleware,
 )
 
 from .auth_routes import router as auth_router
 
 __all__ = [
     # Services
+    "AuthService",
     "get_auth_service",
-    "NoAuthService",
-    
+    "ensure_production_auth_service_ready",
+    "shutdown_production_auth_service",
+    "get_production_auth_backend",
+
     # Models
-    "UserModel",
-    "LoginRequest", 
+    "LoginRequest",
     "LoginResponse",
-    
+
     # Middleware
     "get_auth_middleware",
-    "NoAuthMiddleware",
+    "AuthMiddleware",
     "get_current_user",
     "require_auth",
     "require_admin",

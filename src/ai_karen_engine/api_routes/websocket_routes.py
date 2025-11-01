@@ -210,18 +210,18 @@ async def get_current_user_websocket(websocket: WebSocket) -> Dict[str, Any]:
         access_token = auth_header.split(" ", 1)[1]
         try:
             from src.auth.auth_service import get_auth_service
-            service = get_auth_service()
-            token_payload = service.validate_token(access_token)
+            service = await get_auth_service()
+            token_payload = await service.verify_token(access_token)
             if token_payload:
                 return {
-                    "user_id": token_payload.get("sub"),
+                    "user_id": token_payload.get("user_id"),
                     "email": token_payload.get("email"),
                     "full_name": token_payload.get("full_name"),
                     "roles": token_payload.get("roles", []),
                     "tenant_id": token_payload.get("tenant_id", "default"),
                     "preferences": token_payload.get("preferences", {}),
                     "two_factor_enabled": token_payload.get("two_factor_enabled", False),
-                    "is_verified": token_payload.get("is_verified", False),
+                    "is_verified": token_payload.get("is_verified", True),
                     "is_active": token_payload.get("is_active", True),
                 }
         except Exception:

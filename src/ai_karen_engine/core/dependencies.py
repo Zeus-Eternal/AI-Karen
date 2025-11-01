@@ -6,12 +6,13 @@ and other components that need access to the integrated services.
 """
 
 import logging
+import os
 from typing import Any, Dict
 
 try:
-    from fastapi import Depends, HTTPException, Request
+    from fastapi import Depends, HTTPException, Request, status
 except Exception:  # pragma: no cover
-    from ai_karen_engine.fastapi_stub import HTTPException
+    from ai_karen_engine.fastapi_stub import HTTPException, status
 
     def Depends(func):
         return func
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_default_user_context() -> Dict[str, Any]:
-    """Return default user context (no authentication required)."""
+    """Return legacy default user context."""
     return {
         "user_id": "default_user",
         "email": "user@example.com",
@@ -41,6 +42,28 @@ def _get_default_user_context() -> Dict[str, Any]:
         "tenant_id": "default",
         "is_active": True,
     }
+
+
+def _is_dev_auth_enabled() -> bool:
+    """Check if development authentication fallback is permitted."""
+    dev_mode = os.getenv("AUTH_DEV_MODE", "false").lower() in {"1", "true", "yes"}
+    allow_login = os.getenv("AUTH_ALLOW_DEV_LOGIN", "false").lower() in {"1", "true", "yes"}
+    return dev_mode or allow_login
+
+
+def _get_dev_fallback_context() -> Dict[str, Any]:
+    """Return a development fallback user context."""
+    context = _get_default_user_context()
+    context.update(
+        {
+            "user_id": "dev-user",
+            "email": "dev@example.com",
+            "full_name": "Development User",
+            "roles": ["admin", "user"],
+            "is_development_fallback": True,
+        }
+    )
+    return context
 
 
 # Configuration dependency
@@ -55,8 +78,44 @@ async def get_current_config() -> AIKarenConfig:
 
 # Authentication dependencies (no authentication required)
 async def get_current_user_context(request: Request = None) -> Dict[str, Any]:
-    """Get user context (always returns default user - no authentication required)."""
-    return _get_default_user_context()
+    """Resolve the current authenticated user context."""
+    if request is None:
+        raise HTTPException(status_code=500, detail="Request context unavailable")
+
+    # Use cached user if middleware has already run
+    cached_user = getattr(request.state, "user", None)
+    if cached_user:
+        return cached_user
+
+    try:
+        from src.auth.auth_middleware import get_auth_middleware
+    except Exception as exc:
+        logger.error("Failed to import authentication middleware: %s", exc)
+        if _is_dev_auth_enabled():
+            fallback = _get_dev_fallback_context()
+            request.state.user = fallback
+            return fallback
+        raise HTTPException(status_code=503, detail="Authentication middleware unavailable")
+
+    middleware = get_auth_middleware()
+
+    try:
+        user_context = await middleware.authenticate_request(request)
+        request.state.user = user_context
+        return user_context
+    except HTTPException as exc:
+        if _is_dev_auth_enabled() and exc.status_code in {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}:
+            fallback = _get_dev_fallback_context()
+            request.state.user = fallback
+            return fallback
+        raise
+    except Exception as exc:
+        logger.error("Authentication processing error: %s", exc)
+        if _is_dev_auth_enabled():
+            fallback = _get_dev_fallback_context()
+            request.state.user = fallback
+            return fallback
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
 
 async def get_current_user_id(

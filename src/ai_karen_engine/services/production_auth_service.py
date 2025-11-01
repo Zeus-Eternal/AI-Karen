@@ -33,6 +33,7 @@ class AuthAttempt:
 @dataclass
 class UserAccount:
     """Production user account model."""
+
     user_id: str
     email: str
     password_hash: str
@@ -40,10 +41,12 @@ class UserAccount:
     roles: List[str]
     is_active: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_login: Optional[datetime] = None
     failed_login_attempts: int = 0
     locked_until: Optional[datetime] = None
     tenant_id: str = "default"
+    is_verified: bool = True
     two_factor_enabled: bool = False
     preferences: Dict[str, Any] = field(default_factory=dict)
 
@@ -171,11 +174,20 @@ class ProductionAuthService(BaseService):
                     full_name=user_data.get("full_name", ""),
                     roles=user_data.get("roles", ["user"]),
                     is_active=user_data.get("is_active", True),
-                    created_at=datetime.fromisoformat(user_data.get("created_at", datetime.now(timezone.utc).isoformat())),
+                    created_at=datetime.fromisoformat(
+                        user_data.get("created_at", datetime.now(timezone.utc).isoformat())
+                    ),
+                    updated_at=datetime.fromisoformat(
+                        user_data.get(
+                            "updated_at",
+                            user_data.get("created_at", datetime.now(timezone.utc).isoformat())
+                        )
+                    ),
                     last_login=datetime.fromisoformat(user_data["last_login"]) if user_data.get("last_login") else None,
                     failed_login_attempts=user_data.get("failed_login_attempts", 0),
                     locked_until=datetime.fromisoformat(user_data["locked_until"]) if user_data.get("locked_until") else None,
                     tenant_id=user_data.get("tenant_id", "default"),
+                    is_verified=user_data.get("is_verified", True),
                     two_factor_enabled=user_data.get("two_factor_enabled", False),
                     preferences=user_data.get("preferences", {})
                 )
@@ -200,10 +212,12 @@ class ProductionAuthService(BaseService):
                     "roles": user.roles,
                     "is_active": user.is_active,
                     "created_at": user.created_at.isoformat(),
+                    "updated_at": user.updated_at.isoformat(),
                     "last_login": user.last_login.isoformat() if user.last_login else None,
                     "failed_login_attempts": user.failed_login_attempts,
                     "locked_until": user.locked_until.isoformat() if user.locked_until else None,
                     "tenant_id": user.tenant_id,
+                    "is_verified": user.is_verified,
                     "two_factor_enabled": user.two_factor_enabled,
                     "preferences": user.preferences
                 }
@@ -397,7 +411,9 @@ class ProductionAuthService(BaseService):
             roles=["super_admin", "admin", "user"],
             is_active=True,
             created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
             tenant_id="default",
+            is_verified=True,
             preferences={
                 "personalityTone": "balanced",
                 "personalityVerbosity": "medium",
@@ -450,7 +466,9 @@ class ProductionAuthService(BaseService):
         # Successful authentication
         user.failed_login_attempts = 0
         user.locked_until = None
-        user.last_login = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        user.last_login = now
+        user.updated_at = now
         await self._save_users()
         
         # Create tokens
@@ -511,7 +529,15 @@ class ProductionAuthService(BaseService):
         if refresh_token in self.refresh_tokens:
             del self.refresh_tokens[refresh_token]
     
-    async def create_user(self, email: str, password: str, full_name: str, roles: List[str] = None) -> Tuple[Optional[UserAccount], Optional[str]]:
+    async def create_user(
+        self,
+        email: str,
+        password: str,
+        full_name: str,
+        roles: List[str] = None,
+        tenant_id: str = "default",
+        is_verified: bool = True
+    ) -> Tuple[Optional[UserAccount], Optional[str]]:
         """
         Create a new user account.
         
@@ -527,6 +553,8 @@ class ProductionAuthService(BaseService):
             return None, f"Password validation failed: {', '.join(issues)}"
         
         # Create user
+        now = datetime.now(timezone.utc)
+
         user = UserAccount(
             user_id=email.split("@")[0],
             email=email,
@@ -534,8 +562,10 @@ class ProductionAuthService(BaseService):
             full_name=full_name,
             roles=roles or ["user"],
             is_active=True,
-            created_at=datetime.now(timezone.utc),
-            tenant_id="default",
+            created_at=now,
+            updated_at=now,
+            tenant_id=tenant_id,
+            is_verified=is_verified,
             preferences={
                 "personalityTone": "balanced",
                 "personalityVerbosity": "medium",
@@ -551,10 +581,94 @@ class ProductionAuthService(BaseService):
         
         self.users[email] = user
         await self._save_users()
-        
+
         self.logger.info(f"Created new user: {email}")
         return user, None
-    
+
+    async def get_user_by_id(self, user_id: str) -> Optional[UserAccount]:
+        """Retrieve a user by identifier."""
+        for user in self.users.values():
+            if user.user_id == user_id:
+                return user
+        return None
+
+    async def get_user_by_email(self, email: str) -> Optional[UserAccount]:
+        """Retrieve a user by email address."""
+        return self.users.get(email)
+
+    async def list_users(
+        self,
+        tenant_id: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[UserAccount]:
+        """List users with optional tenant filtering and pagination."""
+        users = [
+            user
+            for user in self.users.values()
+            if tenant_id is None or user.tenant_id == tenant_id
+        ]
+
+        users.sort(key=lambda item: item.created_at)
+        return users[offset: offset + limit]
+
+    async def update_user(
+        self,
+        user_id: str,
+        *,
+        full_name: Optional[str] = None,
+        roles: Optional[List[str]] = None,
+        preferences: Optional[Dict[str, Any]] = None,
+        is_active: Optional[bool] = None,
+        tenant_id: Optional[str] = None,
+        is_verified: Optional[bool] = None
+    ) -> Tuple[Optional[UserAccount], Optional[str]]:
+        """Update an existing user."""
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            return None, "User not found"
+
+        if full_name is not None:
+            user.full_name = full_name
+        if roles is not None and roles:
+            user.roles = roles
+        if preferences is not None:
+            user.preferences = preferences
+        if is_active is not None:
+            user.is_active = is_active
+        if tenant_id is not None:
+            user.tenant_id = tenant_id
+        if is_verified is not None:
+            user.is_verified = is_verified
+
+        user.updated_at = datetime.now(timezone.utc)
+        await self._save_users()
+        return user, None
+
+    async def delete_user(self, user_id: str) -> bool:
+        """Delete a user and invalidate their refresh tokens."""
+        email_to_remove: Optional[str] = None
+        for email, user in self.users.items():
+            if user.user_id == user_id:
+                email_to_remove = email
+                break
+
+        if not email_to_remove:
+            return False
+
+        del self.users[email_to_remove]
+        await self._save_users()
+
+        tokens_to_remove = [
+            token
+            for token, metadata in self.refresh_tokens.items()
+            if metadata.get("user_email") == email_to_remove
+        ]
+        for token in tokens_to_remove:
+            del self.refresh_tokens[token]
+
+        return True
+
     async def get_auth_stats(self) -> Dict[str, Any]:
         """Get authentication statistics."""
         now = datetime.now(timezone.utc)

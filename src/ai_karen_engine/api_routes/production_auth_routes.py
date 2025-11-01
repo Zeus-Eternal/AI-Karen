@@ -15,6 +15,11 @@ from pydantic import BaseModel, EmailStr, Field
 
 from ..services.production_auth_service import ProductionAuthService
 from ..core.services.base import ServiceConfig
+from src.auth.auth_service import (
+    ensure_production_auth_service_ready,
+    shutdown_production_auth_service,
+    get_production_auth_backend,
+)
 
 
 # Request/Response Models
@@ -67,9 +72,6 @@ class UserResponse(BaseModel):
     preferences: Dict[str, Any]
 
 
-# Initialize service
-auth_service = ProductionAuthService()
-
 # Security scheme
 security = HTTPBearer()
 
@@ -77,9 +79,15 @@ security = HTTPBearer()
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
+async def _get_auth_service() -> ProductionAuthService:
+    """Retrieve the shared production auth service instance."""
+    return await get_production_auth_backend()
+
+
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Get current authenticated user."""
-    user = await auth_service.validate_token(credentials.credentials)
+    service = await _get_auth_service()
+    user = await service.validate_token(credentials.credentials)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -110,20 +118,20 @@ def get_user_agent(request: Request) -> str:
 @router.on_event("startup")
 async def startup_auth_service():
     """Initialize authentication service on startup."""
-    await auth_service.initialize()
-    await auth_service.start()
+    await ensure_production_auth_service_ready()
 
 
 @router.on_event("shutdown")
 async def shutdown_auth_service():
     """Shutdown authentication service."""
-    await auth_service.stop()
+    await shutdown_production_auth_service()
 
 
 @router.get("/status")
 async def auth_status() -> Dict[str, Any]:
     """Get authentication service status."""
-    stats = await auth_service.get_auth_stats()
+    service = await _get_auth_service()
+    stats = await service.get_auth_stats()
     
     return {
         "status": "healthy",
@@ -145,7 +153,8 @@ async def auth_status() -> Dict[str, Any]:
 @router.get("/health")
 async def auth_health() -> Dict[str, Any]:
     """Authentication service health check."""
-    is_healthy = await auth_service.health_check()
+    service = await _get_auth_service()
+    is_healthy = await service.health_check()
     
     return {
         "status": "healthy" if is_healthy else "unhealthy",
@@ -157,7 +166,8 @@ async def auth_health() -> Dict[str, Any]:
 @router.get("/first-run")
 async def check_first_run() -> Dict[str, Any]:
     """Check if first-run setup is required."""
-    is_first_run = await auth_service.is_first_run()
+    service = await _get_auth_service()
+    is_first_run = await service.is_first_run()
     
     return {
         "first_run_required": is_first_run,
@@ -169,7 +179,9 @@ async def check_first_run() -> Dict[str, Any]:
 async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) -> JSONResponse:
     """Set up the first admin user."""
     # Check if first-run setup is actually needed
-    if not await auth_service.is_first_run():
+    service = await _get_auth_service()
+
+    if not await service.is_first_run():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="First-run setup already completed"
@@ -184,7 +196,7 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
     
     try:
         # Create first admin user
-        user = await auth_service.create_first_admin(
+        user = await service.create_first_admin(
             email=request.email,
             password=request.password,
             full_name=request.full_name
@@ -194,7 +206,7 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
         ip_address = get_client_ip(http_request)
         user_agent = get_user_agent(http_request)
         
-        auth_user, access_token, refresh_token = await auth_service.authenticate_user(
+        auth_user, access_token, refresh_token = await service.authenticate_user(
             email=request.email,
             password=request.password,
             ip_address=ip_address,
@@ -222,7 +234,7 @@ async def first_run_setup(request: FirstRunSetupRequest, http_request: Request) 
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
-            "expires_in": auth_service.access_token_expire_minutes * 60,
+            "expires_in": service.access_token_expire_minutes * 60,
             "user": user_data,
             "message": "First admin user created and authenticated successfully"
         }
@@ -247,7 +259,9 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
     ip_address = get_client_ip(http_request)
     user_agent = get_user_agent(http_request)
     
-    user, access_token, refresh_token_or_error = await auth_service.authenticate_user(
+    service = await _get_auth_service()
+
+    user, access_token, refresh_token_or_error = await service.authenticate_user(
         email=request.email,
         password=request.password,
         ip_address=ip_address,
@@ -278,7 +292,7 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
         "access_token": access_token,
         "refresh_token": refresh_token_or_error,  # This is refresh_token on success
         "token_type": "bearer",
-        "expires_in": auth_service.access_token_expire_minutes * 60,
+        "expires_in": service.access_token_expire_minutes * 60,
         "user": user_data
     }
     
@@ -288,7 +302,8 @@ async def login(request: LoginRequest, http_request: Request) -> JSONResponse:
 @router.post("/refresh")
 async def refresh_token(request: RefreshTokenRequest) -> JSONResponse:
     """Refresh access token using refresh token."""
-    access_token, error = await auth_service.refresh_access_token(request.refresh_token)
+    service = await _get_auth_service()
+    access_token, error = await service.refresh_access_token(request.refresh_token)
     
     if not access_token:
         raise HTTPException(
@@ -300,7 +315,7 @@ async def refresh_token(request: RefreshTokenRequest) -> JSONResponse:
     response_data = {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": auth_service.access_token_expire_minutes * 60
+        "expires_in": service.access_token_expire_minutes * 60
     }
     
     return JSONResponse(content=response_data)
@@ -309,7 +324,8 @@ async def refresh_token(request: RefreshTokenRequest) -> JSONResponse:
 @router.post("/logout")
 async def logout(request: RefreshTokenRequest, current_user=Depends(get_current_user)) -> JSONResponse:
     """Logout user by invalidating refresh token."""
-    await auth_service.logout(request.refresh_token)
+    service = await _get_auth_service()
+    await service.logout(request.refresh_token)
     
     return JSONResponse(content={"detail": "Successfully logged out"})
 
@@ -345,7 +361,8 @@ async def create_user(
             detail="Insufficient privileges to create users"
         )
     
-    user, error = await auth_service.create_user(
+    service = await _get_auth_service()
+    user, error = await service.create_user(
         email=request.email,
         password=request.password,
         full_name=request.full_name,
@@ -383,5 +400,6 @@ async def get_auth_stats(current_user=Depends(get_current_user)) -> Dict[str, An
             detail="Insufficient privileges to view authentication statistics"
         )
     
-    stats = await auth_service.get_auth_stats()
+    service = await _get_auth_service()
+    stats = await service.get_auth_stats()
     return stats
