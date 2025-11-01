@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Brain, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { enhancedApiClient, ApiResponse } from '@/lib/enhanced-api-client';
 
 // Step components
 import { WelcomeStep } from './steps/WelcomeStep';
@@ -17,7 +18,7 @@ import { AdminDetailsStep } from './steps/AdminDetailsStep';
 import { EmailVerificationStep } from './steps/EmailVerificationStep';
 import { SetupCompleteStep } from './steps/SetupCompleteStep';
 
-import type { CreateSuperAdminRequest, AdminApiResponse } from '@/types/admin';
+import type { CreateSuperAdminRequest } from '@/types/admin';
 
 export interface SetupWizardProps {
   className?: string;
@@ -123,18 +124,10 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
         confirm_password: formData.confirm_password
       };
 
-      const response = await fetch('/api/admin/setup/create-super-admin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request)
-      });
+      const response = await enhancedApiClient.post<ApiResponse<any>>('/api/admin/setup/create-super-admin', request);
 
-      const result: AdminApiResponse<any> = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error?.message || 'Failed to create super admin account');
+      if (response.status !== 'success') {
+        throw new Error(response.message || 'Failed to create super admin account');
       }
 
       // Move to email verification step
@@ -153,7 +146,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ className }) => {
       setIsLoading(true);
       setError(null);
 
-      // For now, we'll skip actual email verification and mark as verified
+      // To DO: Implement actual email verification 
       // In a real implementation, this would verify the email token
       setFormData(prev => ({ ...prev, email_verified: true }));
       

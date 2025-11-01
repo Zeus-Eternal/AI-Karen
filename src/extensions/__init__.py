@@ -3,7 +3,9 @@ AI Karen Extensions System - Core Infrastructure
 
 This module provides the foundation for the modular extensions system,
 enabling developers to build feature-rich extensions that integrate
-seamlessly with the core AI Karen platform.
+seamlessly with the core AI Karen platform. Runtime primitives live in
+`ai_karen_engine.extensions`; this package orchestrates them for CLI and
+FastAPI integrations.
 """
 
 from .manager import ExtensionManager

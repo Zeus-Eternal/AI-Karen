@@ -2,6 +2,10 @@
 
 This document describes the FastAPI integration implementation for the AI Karen Extensions System, covering task 5 from the modular extensions system specification.
 
+> **Relationship to other extension modules**
+>
+> The production runtime for extensions lives in `src/ai_karen_engine/extensions/`. The modules in this package provide the developer-facing façade (CLI, FastAPI glue, test harnesses) that orchestrate that runtime and load the asset bundles located at the repository root in `extensions/`. When wiring new features, prefer adding core behaviours to `ai_karen_engine.extensions` and importing them here to keep the logic DRY.
+
 ## Overview
 
 The FastAPI integration provides comprehensive support for extension API endpoints, including:

@@ -2,6 +2,10 @@
 
 The AI Karen Extensions System provides a powerful, modular architecture for building feature-rich extensions that integrate seamlessly with the core AI Karen platform. Extensions can provide APIs, UIs, background tasks, and integrate with the plugin ecosystem through sophisticated orchestration capabilities.
 
+> **Where this directory fits**
+>
+> This top-level `extensions/` tree contains *installed or example extension payloads* that ship with the product (manifests, tasks, UI assets, etc.). The extension *runtime and developer tooling* lives under `src/ai_karen_engine/extensions/` (production engine) and `src/extensions/` (CLI/dev automation). Those packages load from this directory via the configured `extension_root` so the runtime stays decoupled from the assets themselves. Keeping the assets at repository root allows packaging teams to mount or replace them without touching the Python source tree.
+
 ## 🏗️ Architecture Overview
 
 ### Extension System Components
