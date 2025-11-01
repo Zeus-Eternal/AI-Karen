@@ -163,3 +163,12 @@ class AuthService:
     async def logout(self, refresh_token: str) -> None:
         service = await self._get_service()
         await service.logout(refresh_token)
+
+    async def get_user(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Fetch a user record by email or internal identifier."""
+
+        service = await self._get_service()
+        user = await service.get_user(identifier)
+        if not user:
+            return None
+        return user_account_to_dict(user)

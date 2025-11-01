@@ -9,12 +9,23 @@ auth_gate → safety_gate → memory_fetch → intent_detect → planner →
 router_select → tool_exec → response_synth → approval_gate → memory_write
 """
 
-from typing import Dict, Any, List, Optional, TypedDict, Annotated, Literal, Deque
-from dataclasses import dataclass, field, replace
+from typing import Dict, Any, List, Optional, TypedDict, Annotated, Literal, Deque, Tuple
+from dataclasses import dataclass, field, replace, asdict
 import asyncio
 from collections import deque
 import logging
 from datetime import datetime, timezone
+import uuid
+
+from auth.auth_service import AuthService, get_auth_service, user_account_to_dict
+from ai_karen_engine.services.ai_orchestrator.context_manager import ContextManager
+from ai_karen_engine.services.ai_orchestrator.decision_engine import DecisionEngine
+from ai_karen_engine.services.distilbert_service import DistilBertService, SafetyResult
+from ai_karen_engine.services.llm_router import ChatRequest, LLMRouter
+from ai_karen_engine.services.profile_manager import Guardrails, ProfileManager
+from ai_karen_engine.services.tool_service import ToolInput, ToolOutput, ToolService
+from ai_karen_engine.models.shared_types import ToolType
+from ai_karen_engine.services.memory_service import MemoryType, UISource
 
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
@@ -31,15 +42,19 @@ class OrchestrationState(TypedDict):
     messages: List[BaseMessage]
     user_id: str
     session_id: str
-    
+    tenant_id: Optional[str]
+
     # Authentication & Authorization
     auth_status: Optional[str]  # "authenticated", "failed", "pending"
     user_permissions: Optional[Dict[str, Any]]
-    
+    auth_context: Optional[Dict[str, Any]]
+    user_profile: Optional[Dict[str, Any]]
+
     # Safety & Guardrails
     safety_status: Optional[str]  # "safe", "unsafe", "review_required"
     safety_flags: Optional[List[str]]
-    
+    safety_evaluation: Optional[Dict[str, Any]]
+
     # Memory & Context
     memory_context: Optional[Dict[str, Any]]
     conversation_history: Optional[List[Dict[str, Any]]]
@@ -48,6 +63,7 @@ class OrchestrationState(TypedDict):
     detected_intent: Optional[str]
     intent_confidence: Optional[float]
     execution_plan: Optional[Dict[str, Any]]
+    intent_analysis: Optional[Dict[str, Any]]
     
     # Routing & Execution
     selected_provider: Optional[str]
@@ -55,7 +71,8 @@ class OrchestrationState(TypedDict):
     routing_reason: Optional[str]
     tool_calls: Optional[List[Dict[str, Any]]]
     tool_results: Optional[List[Dict[str, Any]]]
-    
+    tool_execution_metadata: Optional[Dict[str, Any]]
+
     # Response Generation
     response: Optional[str]
     response_metadata: Optional[Dict[str, Any]]
@@ -88,11 +105,21 @@ class OrchestrationConfig:
 
 
 class LangGraphOrchestrator:
-    """
-    Main orchestration class using LangGraph for workflow management
-    """
-    
-    def __init__(self, config: OrchestrationConfig = None):
+    """Main orchestration class using LangGraph for workflow management."""
+
+    def __init__(
+        self,
+        config: OrchestrationConfig = None,
+        *,
+        auth_service: Optional[Any] = None,
+        safety_service: Optional[DistilBertService] = None,
+        memory_service: Optional[Any] = None,
+        decision_engine: Optional[DecisionEngine] = None,
+        tool_service: Optional[ToolService] = None,
+        llm_router: Optional[LLMRouter] = None,
+        profile_manager: Optional[ProfileManager] = None,
+        context_manager: Optional[ContextManager] = None,
+    ):
         self.config = config or OrchestrationConfig()
         self.checkpointer = MemorySaver() if self.config.checkpoint_enabled else None
         self.graph = None
@@ -107,6 +134,146 @@ class LangGraphOrchestrator:
         self._total_failed: int = 0
         self._latency_samples: Deque[float] = deque(maxlen=1000)
         self._last_error: Optional[Dict[str, Any]] = None
+
+        # Dependency handles (lazily resolved when not provided)
+        self._auth_service: Optional[Any] = auth_service
+        self._auth_service_lock = asyncio.Lock()
+        self._auth_service_failed = False
+        self._safety_service: Optional[DistilBertService] = safety_service
+        self._memory_service: Optional[Any] = memory_service
+        self._context_manager: Optional[ContextManager] = context_manager
+        self._decision_engine: DecisionEngine = decision_engine or DecisionEngine()
+        self._tool_service: Optional[ToolService] = tool_service
+        self._llm_router: LLMRouter = llm_router or LLMRouter()
+        self._profile_manager: ProfileManager = profile_manager or ProfileManager()
+
+        # Track fallback resolutions so we only warn once per dependency.
+        self._memory_resolution_failed = False
+        self._tool_resolution_failed = False
+
+    async def _ensure_auth_service(self) -> Optional[Any]:
+        """Resolve the authentication service on first use."""
+
+        if self._auth_service_failed:
+            return None
+
+        if self._auth_service is not None:
+            return self._auth_service
+
+        async with self._auth_service_lock:
+            if self._auth_service is None and not self._auth_service_failed:
+                try:
+                    self._auth_service = await get_auth_service()
+                except Exception as exc:  # pragma: no cover - depends on environment
+                    logger.warning("Auth service unavailable: %s", exc)
+                    self._auth_service_failed = True
+                    return None
+
+        return self._auth_service
+
+    @staticmethod
+    def _serialize_user_account(user: Any) -> Optional[Dict[str, Any]]:
+        """Normalise user objects (dataclasses or dicts) into dictionaries."""
+
+        if user is None:
+            return None
+
+        if isinstance(user, dict):
+            return user
+
+        try:
+            return user_account_to_dict(user)
+        except Exception:
+            if hasattr(user, "__dict__"):
+                return {k: getattr(user, k) for k in dir(user) if not k.startswith("_")}
+        return None
+
+    @staticmethod
+    def _derive_permissions(user_profile: Dict[str, Any]) -> Dict[str, bool]:
+        """Map user roles to orchestrator permissions."""
+
+        roles = {role.lower() for role in user_profile.get("roles", [])}
+        is_active = user_profile.get("is_active", True)
+
+        return {
+            "chat": is_active,
+            "tools": bool(roles.intersection({"admin", "developer", "power_user"})),
+            "model_management": "admin" in roles,
+            "analytics": bool(roles.intersection({"admin", "analyst"})),
+        }
+
+    def _ensure_safety_service(self) -> DistilBertService:
+        """Lazy instantiate the safety service."""
+
+        if self._safety_service is None:
+            self._safety_service = DistilBertService()
+        return self._safety_service
+
+    async def _ensure_context_manager(self) -> ContextManager:
+        """Return a context manager bound to the configured memory service."""
+
+        if self._context_manager is not None:
+            return self._context_manager
+
+        memory_service = await self._resolve_memory_service()
+        self._context_manager = ContextManager(memory_service)
+        return self._context_manager
+
+    async def _resolve_memory_service(self) -> Optional[Any]:
+        """Resolve the shared memory service via the service registry if possible."""
+
+        if self._memory_service is not None or self._memory_resolution_failed:
+            return self._memory_service
+
+        try:
+            from ai_karen_engine.core.service_registry import get_memory_service  # Lazy import
+
+            self._memory_service = await get_memory_service()
+        except Exception as exc:  # pragma: no cover - optional dependency
+            if not self._memory_resolution_failed:
+                logger.warning("Memory service unavailable: %s", exc)
+            self._memory_resolution_failed = True
+            self._memory_service = None
+
+        return self._memory_service
+
+    async def _ensure_tool_service(self) -> Optional[ToolService]:
+        """Resolve tool execution service lazily."""
+
+        if self._tool_service is not None or self._tool_resolution_failed:
+            return self._tool_service
+
+        try:
+            if self._tool_service is None:
+                from ai_karen_engine.core.service_registry import get_tool_service
+
+                self._tool_service = await get_tool_service()
+        except Exception as exc:  # pragma: no cover - optional dependency
+            if not self._tool_resolution_failed:
+                logger.warning("Tool service unavailable: %s", exc)
+            self._tool_resolution_failed = True
+            self._tool_service = ToolService()
+
+        if self._tool_service is None:
+            self._tool_service = ToolService()
+
+        return self._tool_service
+
+    @staticmethod
+    def _message_to_history_entry(message: BaseMessage) -> Dict[str, Any]:
+        """Convert LangChain messages into serialisable history entries."""
+
+        role = "system"
+        if isinstance(message, HumanMessage):
+            role = "user"
+        elif isinstance(message, AIMessage):
+            role = "assistant"
+
+        return {
+            "role": role,
+            "content": getattr(message, "content", str(message)),
+            "type": message.__class__.__name__,
+        }
         
     def _build_graph(self):
         """Build the orchestration graph with all nodes and edges"""
@@ -188,50 +355,117 @@ class LangGraphOrchestrator:
     async def _auth_gate(self, state: OrchestrationState) -> OrchestrationState:
         """Authentication and authorization gate"""
         logger.info(f"Auth gate processing for user: {state.get('user_id')}")
-        
+
         try:
-            # TODO: Integrate with existing auth system
-            # For now, assume authenticated if user_id is provided
-            if state.get("user_id"):
-                state["auth_status"] = "authenticated"
-                state["user_permissions"] = {"chat": True, "tools": True}
+            errors = state.setdefault("errors", [])
+            warnings = state.setdefault("warnings", [])
+            service = await self._ensure_auth_service()
+            auth_context = state.get("auth_context") or {}
+            token = (
+                auth_context.get("access_token")
+                or auth_context.get("token")
+                or state.get("access_token")
+            )
+
+            user: Optional[Any] = None
+
+            if service and token:
+                if hasattr(service, "validate_token"):
+                    user = await service.validate_token(token)
+                elif hasattr(service, "verify_token"):
+                    user = await service.verify_token(token)
+
+            if user is None and service and state.get("user_id"):
+                if hasattr(service, "get_user"):
+                    user = await service.get_user(state["user_id"])
+
+            user_profile = self._serialize_user_account(user)
+
+            # Fall back to legacy behaviour when auth service is unavailable
+            if user_profile is None and state.get("user_id") and not service:
+                warnings.append(
+                    "Auth service unavailable; granting limited chat access"
+                )
+                user_profile = {
+                    "user_id": state["user_id"],
+                    "email": state.get("user_id"),
+                    "roles": ["user"],
+                    "is_active": True,
+                }
+
+            if user_profile:
+                state["user_profile"] = user_profile
+                state["auth_status"] = (
+                    "authenticated" if user_profile.get("is_active", True) else "failed"
+                )
+                state["user_permissions"] = self._derive_permissions(user_profile)
+                tenant_id = (
+                    user_profile.get("tenant_id")
+                    or state.get("tenant_id")
+                    or "default"
+                )
+                state["tenant_id"] = tenant_id
+                auth_context["last_validated_at"] = datetime.now(timezone.utc).isoformat()
+                if token:
+                    auth_context["token_present"] = True
+                state["auth_context"] = auth_context
+
+                if state["auth_status"] != "authenticated":
+                    errors.append("Account is inactive")
             else:
                 state["auth_status"] = "failed"
-                state["errors"].append("Authentication required")
-                
+                errors.append("Authentication required")
+
         except Exception as e:
             logger.error(f"Auth gate error: {e}")
             state["auth_status"] = "failed"
-            state["errors"].append(f"Authentication error: {str(e)}")
+            state.setdefault("errors", []).append(f"Authentication error: {str(e)}")
             
         return state
     
     async def _safety_gate(self, state: OrchestrationState) -> OrchestrationState:
         """Safety and guardrails gate"""
         logger.info("Safety gate processing")
-        
+
         try:
-            # TODO: Integrate with existing guardrails system
+            errors = state.setdefault("errors", [])
+            warnings = state.setdefault("warnings", [])
             messages = state.get("messages", [])
-            if messages:
-                last_message = messages[-1].content if messages else ""
-                
-                # Basic safety checks (placeholder)
-                unsafe_patterns = ["hack", "exploit", "malicious"]
-                safety_flags = []
-                
-                for pattern in unsafe_patterns:
-                    if pattern.lower() in last_message.lower():
-                        safety_flags.append(f"Detected: {pattern}")
-                
-                if safety_flags:
-                    state["safety_status"] = "review_required"
-                    state["safety_flags"] = safety_flags
-                else:
-                    state["safety_status"] = "safe"
-            else:
+
+            if not messages:
                 state["safety_status"] = "safe"
-                
+                state["safety_evaluation"] = {"reason": "no_messages"}
+                return state
+
+            last_message = messages[-1].content if hasattr(messages[-1], "content") else str(messages[-1])
+
+            profile = self._profile_manager.get_active_profile()
+            guardrails: Optional[Guardrails] = getattr(profile, "guardrails", None)
+
+            if guardrails and not guardrails.content_filtering:
+                state["safety_status"] = "safe"
+                state["safety_evaluation"] = {"reason": "guardrails_disabled"}
+                return state
+
+            safety_service = self._ensure_safety_service()
+            evaluation: SafetyResult = await safety_service.filter_safety(last_message)
+            state["safety_evaluation"] = asdict(evaluation)
+
+            if not evaluation.is_safe and evaluation.flagged_categories:
+                state["safety_status"] = "review_required"
+                state["safety_flags"] = evaluation.flagged_categories
+                state["requires_approval"] = True
+                warnings.append(
+                    "Safety service flagged content for review: "
+                    + ", ".join(evaluation.flagged_categories)
+                )
+            elif evaluation.is_safe:
+                state["safety_status"] = "safe"
+                state["safety_flags"] = []
+            else:
+                state["safety_status"] = "unsafe"
+                errors.append("Content failed safety evaluation")
+
         except Exception as e:
             logger.error(f"Safety gate error: {e}")
             state["safety_status"] = "unsafe"
@@ -242,148 +476,286 @@ class LangGraphOrchestrator:
     async def _memory_fetch(self, state: OrchestrationState) -> OrchestrationState:
         """Memory and context fetching"""
         logger.info("Memory fetch processing")
-        
+
         try:
-            # TODO: Integrate with existing memory system
-            user_id = state.get("user_id")
-            session_id = state.get("session_id")
-            
-            # Placeholder memory context
-            state["memory_context"] = {
-                "user_preferences": {},
-                "conversation_summary": "",
-                "relevant_history": []
-            }
-            state["conversation_history"] = []
-            
+            errors = state.setdefault("errors", [])
+            warnings = state.setdefault("warnings", [])
+            messages = state.get("messages", [])
+            conversation_history = [
+                self._message_to_history_entry(message) for message in messages
+            ]
+
+            state["conversation_history"] = conversation_history
+
+            if not messages:
+                state["memory_context"] = {
+                    "conversation_history": [],
+                    "context_summary": "No prior context",
+                    "memories": [],
+                }
+                return state
+
+            context_manager = await self._ensure_context_manager()
+
+            user_profile = state.get("user_profile") or {}
+            user_settings = user_profile.get("preferences", {})
+            prompt = conversation_history[-1]["content"]
+
+            context = await context_manager.build_context(
+                user_id=state.get("user_id"),
+                session_id=state.get("session_id"),
+                prompt=prompt,
+                conversation_history=conversation_history,
+                user_settings=user_settings,
+                memories=None,
+            )
+
+            state["memory_context"] = context
+            if isinstance(context, dict) and context.get("memories"):
+                state.setdefault("warnings", []).append(
+                    f"Loaded {len(context['memories'])} contextual memories"
+                )
+
         except Exception as e:
             logger.error(f"Memory fetch error: {e}")
-            state["errors"].append(f"Memory fetch error: {str(e)}")
-            
+            errors = state.setdefault("errors", [])
+            errors.append(f"Memory fetch error: {str(e)}")
+
         return state
     
     async def _intent_detect(self, state: OrchestrationState) -> OrchestrationState:
         """Intent detection and classification"""
         logger.info("Intent detection processing")
-        
+
         try:
             messages = state.get("messages", [])
-            if messages:
-                last_message = messages[-1].content if messages else ""
-                
-                # TODO: Integrate with existing intent engine
-                # Basic intent detection (placeholder)
-                if any(word in last_message.lower() for word in ["code", "program", "function"]):
-                    state["detected_intent"] = "code_generation"
-                    state["intent_confidence"] = 0.8
-                elif any(word in last_message.lower() for word in ["search", "find", "lookup"]):
-                    state["detected_intent"] = "information_retrieval"
-                    state["intent_confidence"] = 0.7
-                else:
-                    state["detected_intent"] = "general_chat"
-                    state["intent_confidence"] = 0.6
-            else:
+            if not messages:
                 state["detected_intent"] = "unknown"
                 state["intent_confidence"] = 0.0
-                
+                state["intent_analysis"] = {"reason": "no_messages"}
+                return state
+
+            prompt = messages[-1].content if hasattr(messages[-1], "content") else str(messages[-1])
+            context = state.get("memory_context") or {}
+
+            analysis = await self._decision_engine.analyze_intent(prompt, context)
+            state["intent_analysis"] = analysis
+            state["detected_intent"] = analysis.get("primary_intent", analysis.get("intent", "unknown"))
+            state["intent_confidence"] = analysis.get("confidence", 0.0)
+
+            suggested_tools = analysis.get("suggested_tools", []) or []
+            entities = analysis.get("entities", []) or []
+            tool_calls: List[Dict[str, Any]] = []
+
+            for tool_name in suggested_tools:
+                parameters: Dict[str, Any] = {}
+                for entity in entities:
+                    entity_type = (entity.get("type") or "").lower()
+                    value = entity.get("value")
+                    if not value:
+                        continue
+                    if entity_type == "location":
+                        parameters.setdefault("location", value)
+                    elif entity_type == "book":
+                        parameters.setdefault("book_title", value)
+                    elif entity_type == "time":
+                        parameters.setdefault("time_reference", value)
+
+                tool_calls.append({"tool": tool_name, "parameters": parameters})
+
+            state["tool_calls"] = tool_calls or None
+
+            if analysis.get("requires_clarification"):
+                state.setdefault("warnings", []).append(
+                    "Intent engine suggests clarifying the user request"
+                )
+
         except Exception as e:
             logger.error(f"Intent detection error: {e}")
             state["errors"].append(f"Intent detection error: {str(e)}")
-            
+
         return state
     
     async def _planner(self, state: OrchestrationState) -> OrchestrationState:
         """Execution planning based on intent"""
         logger.info("Planning processing")
-        
+
         try:
-            intent = state.get("detected_intent", "general_chat")
-            
-            # TODO: Integrate with existing planning system
-            execution_plan = {
+            intent = state.get("detected_intent", "general_chat") or "general_chat"
+            analysis = state.get("intent_analysis") or {}
+            tool_calls = state.get("tool_calls") or []
+            safety_status = state.get("safety_status", "safe")
+
+            execution_plan: Dict[str, Any] = {
+                "intent": intent,
                 "steps": [],
-                "tools_required": [],
-                "estimated_time": 0,
-                "complexity": "low"
+                "tools_required": [call["tool"] for call in tool_calls],
+                "estimated_time_seconds": 2,
+                "complexity": "low",
+                "metadata": {
+                    "confidence": state.get("intent_confidence", 0.0),
+                    "requires_clarification": analysis.get("requires_clarification", False),
+                    "safety_status": safety_status,
+                },
             }
-            
-            if intent == "code_generation":
-                execution_plan["steps"] = ["analyze_requirements", "generate_code", "validate_syntax"]
-                execution_plan["tools_required"] = ["code_generator", "syntax_validator"]
+
+            if intent in {"code_generation", "email_compose"}:
+                execution_plan["steps"] = [
+                    "understand_requirements",
+                    "draft_solution",
+                    "review_and_refine",
+                ]
                 execution_plan["complexity"] = "medium"
-            elif intent == "information_retrieval":
-                execution_plan["steps"] = ["search_knowledge", "rank_results", "synthesize_answer"]
-                execution_plan["tools_required"] = ["search_engine", "knowledge_base"]
+                execution_plan["estimated_time_seconds"] = 6
+            elif intent in {"weather_query", "time_query", "information_retrieval", "book_query"}:
+                execution_plan["steps"] = [
+                    "gather_context",
+                    "invoke_tools" if tool_calls else "search_internal_memory",
+                    "synthesize_answer",
+                ]
                 execution_plan["complexity"] = "low"
+                execution_plan["estimated_time_seconds"] = 4
             else:
-                execution_plan["steps"] = ["generate_response"]
-                execution_plan["tools_required"] = ["llm"]
-                execution_plan["complexity"] = "low"
-                
+                execution_plan["steps"] = ["analyze_prompt", "compose_response"]
+
+            if safety_status == "review_required":
+                execution_plan["requires_human_review"] = True
+
             state["execution_plan"] = execution_plan
-            
+
         except Exception as e:
             logger.error(f"Planning error: {e}")
             state["errors"].append(f"Planning error: {str(e)}")
-            
+
         return state
     
     async def _router_select(self, state: OrchestrationState) -> OrchestrationState:
         """LLM provider and model selection"""
         logger.info("Router selection processing")
-        
+
         try:
-            # TODO: Integrate with existing LLM router
-            intent = state.get("detected_intent", "general_chat")
+            messages = state.get("messages", [])
+            if not messages:
+                state["selected_provider"] = "fallback"
+                state["selected_model"] = "kari-fallback-v1"
+                state["routing_reason"] = "No conversation context available"
+                return state
+
+            conversation_history = state.get("conversation_history") or [
+                self._message_to_history_entry(message) for message in messages
+            ]
+            memory_context = state.get("memory_context") or {}
             plan = state.get("execution_plan", {})
-            
-            # Basic routing logic (placeholder)
-            if intent == "code_generation":
-                state["selected_provider"] = "openai"
-                state["selected_model"] = "gpt-4"
-                state["routing_reason"] = "Code generation requires advanced reasoning"
-            elif plan.get("complexity") == "high":
-                state["selected_provider"] = "anthropic"
-                state["selected_model"] = "claude-3-opus"
-                state["routing_reason"] = "High complexity task requires powerful model"
+            tool_calls = state.get("tool_calls") or []
+
+            profile = self._profile_manager.get_active_profile()
+            provider_preferences = (
+                asdict(profile.provider_preferences)
+                if profile and getattr(profile, "provider_preferences", None)
+                else {}
+            )
+
+            request = ChatRequest(
+                message=conversation_history[-1]["content"],
+                context={
+                    "conversation": conversation_history,
+                    "plan": plan,
+                    "safety": state.get("safety_evaluation"),
+                },
+                tools=[call["tool"] for call in tool_calls],
+                memory_context=memory_context.get("context_summary"),
+                user_preferences=provider_preferences,
+                preferred_model=provider_preferences.get("chat"),
+                conversation_id=state.get("session_id"),
+                stream=bool(state.get("streaming_enabled")),
+            )
+
+            provider_selection = await self._llm_router.select_provider(
+                request,
+                user_preferences=provider_preferences,
+            )
+
+            if provider_selection:
+                provider_name, model_name = provider_selection
+                state["selected_provider"] = provider_name
+                state["selected_model"] = model_name
+                state["routing_reason"] = (
+                    "Selected via LLM router policy"
+                )
             else:
-                state["selected_provider"] = "local"
-                state["selected_model"] = "llama-3.1-8b"
-                state["routing_reason"] = "Standard task suitable for local model"
-                
+                state["selected_provider"] = "fallback"
+                state["selected_model"] = "kari-fallback-v1"
+                state["routing_reason"] = "Router returned no provider; using fallback"
+
         except Exception as e:
             logger.error(f"Router selection error: {e}")
             state["errors"].append(f"Router selection error: {str(e)}")
-            
+
         return state
     
     async def _tool_exec(self, state: OrchestrationState) -> OrchestrationState:
         """Tool execution based on plan"""
         logger.info("Tool execution processing")
-        
+
         try:
+            tool_calls = state.get("tool_calls") or []
             plan = state.get("execution_plan", {})
-            tools_required = plan.get("tools_required", [])
-            
-            # TODO: Integrate with existing tool system
-            tool_results = []
-            
-            for tool_name in tools_required:
-                # Placeholder tool execution
-                result = {
-                    "tool": tool_name,
-                    "status": "success",
-                    "output": f"Mock output from {tool_name}",
-                    "execution_time": 0.1
-                }
-                tool_results.append(result)
-                
+
+            if not tool_calls:
+                state["tool_results"] = []
+                state["tool_execution_metadata"] = {"executed": 0}
+                return state
+
+            tool_service = await self._ensure_tool_service()
+            tool_results: List[Dict[str, Any]] = []
+            execution_metadata = {"executed": 0, "failed": 0}
+
+            for call in tool_calls:
+                tool_name = call.get("tool")
+                parameters = call.get("parameters", {})
+
+                if not tool_name:
+                    continue
+
+                tool_input = ToolInput(
+                    tool_name=tool_name,
+                    parameters=parameters,
+                    user_context={
+                        "intent": state.get("detected_intent"),
+                        "plan": plan,
+                    },
+                    user_id=state.get("user_id"),
+                    session_id=state.get("session_id"),
+                )
+
+                execution_metadata["executed"] += 1
+
+                try:
+                    output: ToolOutput = await tool_service.execute_tool(tool_input)
+                    tool_results.append(output.model_dump())
+                    if not output.success:
+                        execution_metadata["failed"] += 1
+                except Exception as exc:
+                    execution_metadata["failed"] += 1
+                    tool_results.append(
+                        {
+                            "tool": tool_name,
+                            "success": False,
+                            "error": str(exc),
+                            "parameters": parameters,
+                        }
+                    )
+                    state.setdefault("warnings", []).append(
+                        f"Tool '{tool_name}' failed: {exc}"
+                    )
+
             state["tool_results"] = tool_results
-            
+            state["tool_execution_metadata"] = execution_metadata
+
         except Exception as e:
             logger.error(f"Tool execution error: {e}")
             state["errors"].append(f"Tool execution error: {str(e)}")
-            
+
         return state
     
     async def _response_synth(self, state: OrchestrationState) -> OrchestrationState:
@@ -392,31 +764,64 @@ class LangGraphOrchestrator:
         
         try:
             messages = state.get("messages", [])
+            if not messages:
+                state["response"] = "I'm ready whenever you are."
+                state.setdefault("warnings", []).append(
+                    "No user message available for response synthesis"
+                )
+                return state
+
+            conversation_history = state.get("conversation_history") or [
+                self._message_to_history_entry(message) for message in messages
+            ]
+            memory_context = state.get("memory_context") or {}
             tool_results = state.get("tool_results", [])
-            selected_model = state.get("selected_model", "default")
-            
-            # TODO: Integrate with existing LLM providers
-            # For now, create a basic response
-            if messages:
-                user_message = messages[-1].content if messages else "Hello"
-                response = f"I understand you said: '{user_message}'. "
-                
-                if tool_results:
-                    response += f"I used {len(tool_results)} tools to help with your request. "
-                    
-                response += f"This response was generated using {selected_model}."
-                
-                state["response"] = response
-                state["response_metadata"] = {
-                    "model_used": selected_model,
-                    "tools_used": len(tool_results),
-                    "generation_time": 0.5
-                }
-                
-                # Add AI message to conversation
-                if "messages" not in state:
-                    state["messages"] = []
-                state["messages"].append(AIMessage(content=response))
+            provider_preferences = {}
+            profile = self._profile_manager.get_active_profile()
+            if profile and getattr(profile, "provider_preferences", None):
+                provider_preferences = asdict(profile.provider_preferences)
+
+            request = ChatRequest(
+                message=conversation_history[-1]["content"],
+                context={
+                    "conversation": conversation_history,
+                    "plan": state.get("execution_plan"),
+                    "tool_results": tool_results,
+                },
+                tools=[result.get("tool") for result in tool_results if isinstance(result, dict)],
+                memory_context=memory_context.get("context_summary"),
+                user_preferences=provider_preferences,
+                preferred_model=state.get("selected_model"),
+                conversation_id=state.get("session_id"),
+                stream=bool(state.get("streaming_enabled")),
+            )
+
+            chunks: List[str] = []
+            async for chunk in self._llm_router.process_chat_request(
+                request,
+                user_preferences=provider_preferences,
+            ):
+                chunks.append(chunk)
+
+            if not chunks:
+                chunks.append(
+                    "I'm here and ready to assist, but I didn't receive any content to respond to."
+                )
+
+            response_text = "".join(chunks).strip()
+
+            state["response"] = response_text
+            state["response_metadata"] = {
+                "provider": state.get("selected_provider", "fallback"),
+                "model": state.get("selected_model", "unknown"),
+                "tool_results": len(tool_results),
+                "chunks": len(chunks),
+            }
+
+            if state.get("streaming_enabled"):
+                state["stream_chunks"] = chunks
+
+            state.setdefault("messages", []).append(AIMessage(content=response_text))
             
         except Exception as e:
             logger.error(f"Response synthesis error: {e}")
@@ -427,21 +832,34 @@ class LangGraphOrchestrator:
     async def _approval_gate(self, state: OrchestrationState) -> OrchestrationState:
         """Human approval gate for sensitive operations"""
         logger.info("Approval gate processing")
-        
+
         try:
-            # TODO: Integrate with human-in-the-loop system
-            # For now, auto-approve unless explicitly marked for review
-            if state.get("requires_approval"):
+            requires_approval = bool(state.get("requires_approval"))
+            safety_status = state.get("safety_status")
+            plan = state.get("execution_plan") or {}
+
+            if safety_status == "review_required":
+                requires_approval = True
+
+            if plan.get("requires_human_review"):
+                requires_approval = True
+
+            state["requires_approval"] = requires_approval
+
+            if requires_approval:
                 state["approval_status"] = "pending"
-                state["approval_reason"] = "Awaiting human review"
+                state["approval_reason"] = plan.get(
+                    "review_reason",
+                    "Flagged by safety or planning policies",
+                )
             else:
                 state["approval_status"] = "approved"
-                state["approval_reason"] = "Auto-approved"
-                
+                state["approval_reason"] = "Policy auto-approval"
+
         except Exception as e:
             logger.error(f"Approval gate error: {e}")
             state["errors"].append(f"Approval gate error: {str(e)}")
-            
+
         return state
     
     async def _memory_write(self, state: OrchestrationState) -> OrchestrationState:
@@ -449,19 +867,47 @@ class LangGraphOrchestrator:
         logger.info("Memory write processing")
         
         try:
-            # TODO: Integrate with existing memory system
-            user_id = state.get("user_id")
+            memory_service = await self._resolve_memory_service()
+            if not memory_service or not hasattr(memory_service, "store_web_ui_memory"):
+                state.setdefault("warnings", []).append(
+                    "Memory service unavailable; skipping persistence"
+                )
+                return state
+
+            response = state.get("response")
+            if not response:
+                return state
+
+            tenant_id = state.get("tenant_id") or "default"
+            user_id = state.get("user_id") or "anonymous"
             session_id = state.get("session_id")
-            messages = state.get("messages", [])
-            
-            # Placeholder memory writing
-            logger.info(f"Storing conversation for user {user_id}, session {session_id}")
-            logger.info(f"Messages to store: {len(messages)}")
-            
+
+            metadata = {
+                "provider": state.get("selected_provider"),
+                "model": state.get("selected_model"),
+                "intent": state.get("detected_intent"),
+                "tool_execution": state.get("tool_execution_metadata"),
+                "safety": state.get("safety_evaluation"),
+            }
+
+            await memory_service.store_web_ui_memory(
+                tenant_id=tenant_id,
+                content=response,
+                user_id=user_id,
+                ui_source=UISource.API,
+                session_id=session_id,
+                conversation_id=session_id,
+                memory_type=MemoryType.CONVERSATION,
+                tags=["conversation", state.get("detected_intent", "general_chat")],
+                importance_score=5,
+                ai_generated=True,
+                metadata=metadata,
+            )
+
         except Exception as e:
             logger.error(f"Memory write error: {e}")
             state["errors"].append(f"Memory write error: {str(e)}")
-            
+
         return state
     
     # Conditional edge functions
@@ -523,20 +969,26 @@ class LangGraphOrchestrator:
             "messages": messages,
             "user_id": user_id,
             "session_id": session_id,
+            "tenant_id": None,
             "auth_status": None,
             "user_permissions": None,
+            "auth_context": {},
+            "user_profile": None,
             "safety_status": None,
             "safety_flags": None,
+            "safety_evaluation": None,
             "memory_context": None,
             "conversation_history": None,
             "detected_intent": None,
             "intent_confidence": None,
             "execution_plan": None,
+            "intent_analysis": None,
             "selected_provider": None,
             "selected_model": None,
             "routing_reason": None,
             "tool_calls": None,
             "tool_results": None,
+            "tool_execution_metadata": None,
             "response": None,
             "response_metadata": None,
             "requires_approval": None,
@@ -595,20 +1047,26 @@ class LangGraphOrchestrator:
             "messages": messages,
             "user_id": user_id,
             "session_id": session_id,
+            "tenant_id": None,
             "auth_status": None,
             "user_permissions": None,
+            "auth_context": {},
+            "user_profile": None,
             "safety_status": None,
             "safety_flags": None,
+            "safety_evaluation": None,
             "memory_context": None,
             "conversation_history": None,
             "detected_intent": None,
             "intent_confidence": None,
             "execution_plan": None,
+            "intent_analysis": None,
             "selected_provider": None,
             "selected_model": None,
             "routing_reason": None,
             "tool_calls": None,
             "tool_results": None,
+            "tool_execution_metadata": None,
             "response": None,
             "response_metadata": None,
             "requires_approval": None,

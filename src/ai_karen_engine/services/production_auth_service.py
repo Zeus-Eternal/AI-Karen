@@ -472,8 +472,45 @@ class ProductionAuthService(BaseService):
         payload = self._validate_jwt_token(token)
         if not payload or payload.get("type") != "access":
             return None
-        
-        return self.users.get(payload.get("email"))
+
+        email = payload.get("email")
+        if not email:
+            return None
+
+        # Tokens store the canonical email, so look it up directly before
+        # falling back to a case-insensitive search.
+        user = self.users.get(email) or self.users.get(email.lower())
+        if user:
+            return user
+
+        email_lower = email.lower()
+        for account in self.users.values():
+            if account.email.lower() == email_lower:
+                return account
+
+        return None
+
+    async def get_user(self, identifier: str) -> Optional[UserAccount]:
+        """Return a user by email or user identifier."""
+
+        if not identifier:
+            return None
+
+        # Direct dictionary lookup first (exact then case-insensitive).
+        user = self.users.get(identifier)
+        if user:
+            return user
+
+        normalized = identifier.strip().lower()
+        user = self.users.get(normalized)
+        if user:
+            return user
+
+        for account in self.users.values():
+            if account.user_id == identifier or account.email.lower() == normalized:
+                return account
+
+        return None
     
     async def refresh_access_token(self, refresh_token: str) -> Tuple[Optional[str], Optional[str]]:
         """
