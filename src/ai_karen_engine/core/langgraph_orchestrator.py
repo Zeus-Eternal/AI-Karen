@@ -9,11 +9,12 @@ auth_gate → safety_gate → memory_fetch → intent_detect → planner →
 router_select → tool_exec → response_synth → approval_gate → memory_write
 """
 
-from typing import Dict, Any, List, Optional, TypedDict, Annotated, Literal
-from dataclasses import dataclass, field
+from typing import Dict, Any, List, Optional, TypedDict, Annotated, Literal, Deque
+from dataclasses import dataclass, field, replace
 import asyncio
+from collections import deque
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
@@ -96,6 +97,16 @@ class LangGraphOrchestrator:
         self.checkpointer = MemorySaver() if self.config.checkpoint_enabled else None
         self.graph = None
         self._build_graph()
+
+        # Runtime telemetry
+        self._start_time = datetime.now(timezone.utc)
+        self._stats_lock = asyncio.Lock()
+        self._config_lock = asyncio.Lock()
+        self._active_sessions: Dict[str, datetime] = {}
+        self._total_processed: int = 0
+        self._total_failed: int = 0
+        self._latency_samples: Deque[float] = deque(maxlen=1000)
+        self._last_error: Optional[Dict[str, Any]] = None
         
     def _build_graph(self):
         """Build the orchestration graph with all nodes and edges"""
@@ -505,7 +516,7 @@ class LangGraphOrchestrator:
             Final state after processing
         """
         if not session_id:
-            session_id = f"{user_id}_{datetime.now().isoformat()}"
+            session_id = f"{user_id}_{datetime.now(timezone.utc).isoformat()}"
             
         # Initialize state
         initial_state: OrchestrationState = {
@@ -537,17 +548,27 @@ class LangGraphOrchestrator:
             "stream_chunks": None
         }
         
+        start_time = datetime.now(timezone.utc)
+        error_message: Optional[str] = None
+
+        await self._register_session(session_id)
+
         try:
             # Process through the graph
             thread_config = {"configurable": {"thread_id": session_id}}
             final_state = await self.graph.ainvoke(initial_state, config=thread_config)
-            
+
             return final_state
-            
+
         except Exception as e:
+            error_message = str(e)
             logger.error(f"Orchestration processing error: {e}")
-            initial_state["errors"].append(f"Processing error: {str(e)}")
+            initial_state["errors"].append(f"Processing error: {error_message}")
             return initial_state
+
+        finally:
+            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            await self._finalize_session(session_id, duration, error_message)
     
     async def stream_process(self, 
                            messages: List[BaseMessage], 
@@ -567,7 +588,7 @@ class LangGraphOrchestrator:
             State updates during processing
         """
         if not session_id:
-            session_id = f"{user_id}_{datetime.now().isoformat()}"
+            session_id = f"{user_id}_{datetime.now(timezone.utc).isoformat()}"
             
         # Initialize state (same as process method)
         initial_state: OrchestrationState = {
@@ -599,16 +620,117 @@ class LangGraphOrchestrator:
             "stream_chunks": []
         }
         
+        start_time = datetime.now(timezone.utc)
+        error_message: Optional[str] = None
+
+        await self._register_session(session_id)
+
         try:
             thread_config = {"configurable": {"thread_id": session_id}}
-            
+
             # Stream through the graph
             async for chunk in self.graph.astream(initial_state, config=thread_config):
                 yield chunk
-                
+
         except Exception as e:
+            error_message = str(e)
             logger.error(f"Orchestration streaming error: {e}")
-            yield {"error": f"Streaming error: {str(e)}"}
+            yield {"error": f"Streaming error: {error_message}"}
+
+        finally:
+            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+            await self._finalize_session(session_id, duration, error_message)
+
+    async def _register_session(self, session_id: str) -> None:
+        """Register an active orchestration session for telemetry."""
+
+        async with self._stats_lock:
+            self._active_sessions[session_id] = datetime.now(timezone.utc)
+
+    async def _finalize_session(
+        self,
+        session_id: str,
+        duration: float,
+        error_message: Optional[str] = None,
+    ) -> None:
+        """Finalize bookkeeping for a session."""
+
+        async with self._stats_lock:
+            self._active_sessions.pop(session_id, None)
+            if duration is not None:
+                self._latency_samples.append(max(duration, 0.0))
+            self._total_processed += 1
+
+            if error_message:
+                self._total_failed += 1
+                self._last_error = {
+                    "message": error_message,
+                    "timestamp": datetime.now(timezone.utc),
+                }
+
+    async def update_configuration(self, updates: Dict[str, Any]) -> OrchestrationConfig:
+        """Update orchestrator configuration and rebuild the graph."""
+
+        if not updates:
+            return self.config
+
+        allowed_fields = set(OrchestrationConfig.__annotations__.keys())
+        sanitized_updates = {
+            key: value
+            for key, value in updates.items()
+            if key in allowed_fields and value is not None
+        }
+
+        if not sanitized_updates:
+            return self.config
+
+        async with self._config_lock:
+            self.config = replace(self.config, **sanitized_updates)
+            self.checkpointer = (
+                MemorySaver() if self.config.checkpoint_enabled else None
+            )
+            self._build_graph()
+            return self.config
+
+    async def get_runtime_status(self) -> Dict[str, Any]:
+        """Return telemetry snapshot for orchestration runtime."""
+
+        uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
+
+        async with self._stats_lock:
+            active_sessions = len(self._active_sessions)
+            total_processed = self._total_processed
+            failed_sessions = self._total_failed
+            latency_samples = list(self._latency_samples)
+            last_error = self._last_error.copy() if self._last_error else None
+
+        average_latency = (
+            sum(latency_samples) / len(latency_samples)
+            if latency_samples
+            else 0.0
+        )
+        p95_latency = self._percentile(latency_samples, 0.95)
+
+        return {
+            "active_sessions": active_sessions,
+            "total_processed": total_processed,
+            "failed_sessions": failed_sessions,
+            "uptime": uptime,
+            "average_latency": average_latency,
+            "p95_latency": p95_latency,
+            "last_error": last_error,
+        }
+
+    @staticmethod
+    def _percentile(samples: List[float], percentile: float) -> float:
+        """Calculate percentile for latency samples."""
+
+        if not samples:
+            return 0.0
+
+        ordered = sorted(samples)
+        index = max(0, min(len(ordered) - 1, int(round(percentile * (len(ordered) - 1)))))
+        return ordered[index]
 
 
 # Factory function for easy instantiation

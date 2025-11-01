@@ -450,13 +450,75 @@ class TestErrorHandling:
         # Test with invalid input
         messages = [HumanMessage(content="test")]
         user_id = None  # Invalid user_id
-        
+
         chunks = []
         async for chunk in orchestrator.stream_process(messages, user_id):
             chunks.append(chunk)
-        
+
         # Should still produce chunks even with errors
         assert len(chunks) > 0
+
+    @pytest.mark.asyncio
+    async def test_runtime_status_reporting(self, orchestrator, monkeypatch):
+        """Runtime status should reflect processed conversations."""
+
+        async def successful_invoke(state, *_, **__):
+            # Simulate immediate success with populated response metadata
+            state["response"] = "ok"
+            state["response_metadata"] = {"route": "stub"}
+            return state
+
+        monkeypatch.setattr(orchestrator.graph, "ainvoke", successful_invoke)
+
+        messages = [HumanMessage(content="status check")]
+        user_id = "status_user"
+
+        await orchestrator.process(messages, user_id, session_id="status-session")
+
+        status = await orchestrator.get_runtime_status()
+
+        assert status["total_processed"] >= 1
+        assert status["active_sessions"] == 0
+        assert status["average_latency"] >= 0.0
+
+    @pytest.mark.asyncio
+    async def test_runtime_status_records_failures(self, orchestrator, monkeypatch):
+        """Failures should be tracked in runtime telemetry."""
+
+        async def failing_invoke(*_args, **_kwargs):
+            raise RuntimeError("synthetic failure")
+
+        monkeypatch.setattr(orchestrator.graph, "ainvoke", failing_invoke)
+
+        result = await orchestrator.process(
+            [HumanMessage(content="cause failure")],
+            user_id="failure_user",
+            session_id="failure-session",
+        )
+
+        assert any("Processing error" in error for error in result["errors"])
+
+        status = await orchestrator.get_runtime_status()
+        assert status["failed_sessions"] >= 1
+        assert status["total_processed"] >= status["failed_sessions"]
+        assert status["last_error"]["message"] == "synthetic failure"
+
+    @pytest.mark.asyncio
+    async def test_configuration_updates_rebuild_graph(self, orchestrator):
+        """Updating configuration should rebuild orchestration graph."""
+
+        original_streaming = orchestrator.config.streaming_enabled
+        original_max_retries = orchestrator.config.max_retries
+        updated_config = await orchestrator.update_configuration(
+            {
+                "streaming_enabled": not original_streaming,
+                "max_retries": original_max_retries + 1,
+            }
+        )
+
+        assert updated_config.streaming_enabled != original_streaming
+        assert orchestrator.config is updated_config
+        assert updated_config.max_retries == original_max_retries + 1
 
 
 class TestFactoryFunctions:
