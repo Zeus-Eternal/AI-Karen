@@ -8,16 +8,24 @@ with support for both synchronous and streaming responses.
 import asyncio
 import json
 import logging
+from dataclasses import asdict
+from datetime import datetime, timedelta, timezone
+from importlib import metadata
+from pathlib import Path
 from typing import Dict, Any, List, Optional
-from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
+try:  # Python 3.11+
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - compatibility for 3.10
+    import tomli as tomllib  # type: ignore
+
 from ..core.langgraph_orchestrator import (
-    get_default_orchestrator, 
+    get_default_orchestrator,
     OrchestrationConfig,
     LangGraphOrchestrator
 )
@@ -25,6 +33,7 @@ from ..core.streaming_integration import get_streaming_manager, StreamingManager
 from ..core.response.factory import get_global_orchestrator, create_response_orchestrator
 from ..services.auth_utils import get_current_user
 from ai_karen_engine.integrations.llm_registry import get_registry
+from ai_karen_engine.services.metrics_service import get_metrics_service
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +61,46 @@ class ChatResponse(BaseModel):
 
 class OrchestrationStatus(BaseModel):
     """Status model for orchestration system"""
+
     status: str = Field(..., description="System status")
     version: str = Field(..., description="Orchestration version")
     active_sessions: int = Field(..., description="Number of active sessions")
     total_processed: int = Field(..., description="Total conversations processed")
     uptime: float = Field(..., description="System uptime in seconds")
+    failed_sessions: int = Field(..., description="Sessions that ended with errors")
+    average_latency: float = Field(..., description="Average processing latency in seconds")
+    p95_latency: float = Field(..., description="95th percentile latency in seconds")
+    metrics_backend: str = Field(..., description="Active metrics backend")
+    last_error: Optional[str] = Field(None, description="Most recent error message")
+    last_error_at: Optional[datetime] = Field(None, description="Timestamp of the most recent error")
+
+
+def _resolve_version() -> str:
+    """Resolve Kari orchestration version from package metadata or pyproject."""
+
+    package_candidates = ("ai-karen", "ai_karen", "ai-karen-engine")
+    for candidate in package_candidates:
+        try:
+            return metadata.version(candidate)
+        except metadata.PackageNotFoundError:
+            continue
+
+    project_root = Path(__file__).resolve().parents[3]
+    pyproject_path = project_root / "pyproject.toml"
+    try:
+        with pyproject_path.open("rb") as handle:
+            data = tomllib.load(handle)
+    except Exception:
+        return "0.0.0"
+
+    if "tool" in data and "poetry" in data["tool"]:
+        return data["tool"]["poetry"].get("version", "0.0.0")
+    if "project" in data:
+        return data["project"].get("version", "0.0.0")
+    return "0.0.0"
+
+
+ORCHESTRATION_VERSION = _resolve_version()
 
 
 class ConfigUpdateRequest(BaseModel):
@@ -100,7 +144,8 @@ async def chat(
     Returns:
         Chat response with AI message and metadata
     """
-    start_time = datetime.now()
+    metrics_service = get_metrics_service()
+    start_time = datetime.now(timezone.utc)
     
     try:
         user_id = current_user.get("id") or current_user.get("user_id", "anonymous")
@@ -139,11 +184,30 @@ async def chat(
             session_id=request.session_id,
             config=request.config
         )
-        
+
         # Extract response
         response_text = result.get("response", "I apologize, but I couldn't generate a response.")
-        processing_time = (datetime.now() - start_time).total_seconds()
-        
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+        metrics_service.record_total_turn_time(
+            processing_time,
+            endpoint="orchestration.chat",
+            status="success" if not result.get("errors") else "error",
+        )
+
+        runtime_status = await orchestrator.get_runtime_status()
+        success_rate = (
+            1 - (runtime_status["failed_sessions"] / runtime_status["total_processed"])
+            if runtime_status["total_processed"]
+            else 1.0
+        )
+        metrics_service.update_turn_health(
+            success_rate=success_rate,
+            error_rate=1 - success_rate,
+            endpoint="orchestration.chat",
+            error_type="orchestration_error",
+        )
+
         return ChatResponse(
             response=response_text,
             session_id=result.get("session_id", request.session_id or "unknown"),
@@ -158,8 +222,27 @@ async def chat(
         
     except Exception as e:
         logger.error(f"Chat processing error: {e}")
-        processing_time = (datetime.now() - start_time).total_seconds()
-        
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+        metrics_service.record_total_turn_time(
+            processing_time,
+            endpoint="orchestration.chat",
+            status="error",
+        )
+
+        runtime_status = await orchestrator.get_runtime_status()
+        success_rate = (
+            1 - (runtime_status["failed_sessions"] / runtime_status["total_processed"])
+            if runtime_status["total_processed"]
+            else 0.0
+        )
+        metrics_service.update_turn_health(
+            success_rate=success_rate,
+            error_rate=1 - success_rate,
+            endpoint="orchestration.chat",
+            error_type="orchestration_error",
+        )
+
         return ChatResponse(
             response="I apologize, but an error occurred while processing your request.",
             session_id=request.session_id or "error",
@@ -232,7 +315,7 @@ async def chat_stream(
                 error_chunk = {
                     "type": "error",
                     "content": f"Streaming error: {str(e)}",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 }
                 yield f"data: {json.dumps(error_chunk)}\n\n"
         
@@ -266,15 +349,48 @@ async def get_status(
         System status information
     """
     try:
-        # TODO: Implement proper metrics collection
-        return OrchestrationStatus(
-            status="healthy",
-            version="1.0.0",
-            active_sessions=0,  # Placeholder
-            total_processed=0,  # Placeholder
-            uptime=0.0  # Placeholder
+        runtime_status = await orchestrator.get_runtime_status()
+        metrics_service = get_metrics_service()
+
+        success_rate = (
+            1 - (runtime_status["failed_sessions"] / runtime_status["total_processed"])
+            if runtime_status["total_processed"]
+            else 1.0
         )
-        
+        metrics_service.update_system_health(
+            active_connections=runtime_status["active_sessions"],
+            service="orchestration",
+        )
+        metrics_service.update_turn_health(
+            success_rate=success_rate,
+            error_rate=1 - success_rate,
+            endpoint="orchestration",
+            error_type="orchestration_error",
+        )
+
+        metrics_summary = metrics_service.get_stats_summary()
+        last_error = runtime_status.get("last_error")
+
+        status_label = "healthy"
+        if last_error and last_error.get("timestamp"):
+            error_age = datetime.now(timezone.utc) - last_error["timestamp"]
+            if error_age <= timedelta(minutes=5):
+                status_label = "degraded"
+
+        return OrchestrationStatus(
+            status=status_label,
+            version=ORCHESTRATION_VERSION,
+            active_sessions=runtime_status["active_sessions"],
+            total_processed=runtime_status["total_processed"],
+            uptime=runtime_status["uptime"],
+            failed_sessions=runtime_status["failed_sessions"],
+            average_latency=runtime_status["average_latency"],
+            p95_latency=runtime_status["p95_latency"],
+            metrics_backend=metrics_summary.get("metrics_backend", "unknown"),
+            last_error=last_error.get("message") if last_error else None,
+            last_error_at=last_error.get("timestamp") if last_error else None,
+        )
+
     except Exception as e:
         logger.error(f"Status check error: {e}")
         raise HTTPException(status_code=500, detail=f"Status check error: {str(e)}")
@@ -300,13 +416,37 @@ async def update_config(
         if not current_user.get("is_admin", False):
             raise HTTPException(status_code=403, detail="Admin permissions required")
         
-        # TODO: Implement configuration updates
-        # For now, just validate the request
         config_updates = request.dict(exclude_unset=True)
-        
-        logger.info(f"Configuration update requested: {config_updates}")
-        
-        return {"message": "Configuration updated successfully", "updates": config_updates}
+        sanitized_updates = {
+            key: value
+            for key, value in config_updates.items()
+            if value is not None
+        }
+
+        if not sanitized_updates:
+            return {
+                "message": "No configuration changes provided",
+                "updates": {},
+            }
+
+        updated_config = await orchestrator.update_configuration(sanitized_updates)
+        metrics_service = get_metrics_service()
+        runtime_status = await orchestrator.get_runtime_status()
+
+        metrics_service.update_system_health(
+            active_connections=runtime_status["active_sessions"],
+            service="orchestration",
+        )
+
+        logger.info(
+            "Configuration updated for LangGraph orchestrator",
+            extra={"updates": sanitized_updates},
+        )
+
+        return {
+            "message": "Configuration updated successfully",
+            "updates": asdict(updated_config),
+        }
         
     except HTTPException:
         raise
