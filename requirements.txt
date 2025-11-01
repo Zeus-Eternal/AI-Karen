@@ -6,6 +6,7 @@ prompt_toolkit
 pydantic
 pydantic-settings
 pytest
+pytest-timeout
 wheel
 transformers
 sentence-transformers
