@@ -1,13 +1,24 @@
-"""Base classes and concrete providers for voice integrations."""
+"""Production-grade voice provider implementations."""
 
 from __future__ import annotations
 
 import io
+import logging
 import math
+import os
 import wave
 from typing import Any, List
 
 import numpy as np
+
+try:  # pragma: no cover - optional dependency typing helpers
+    from openai import APIError, APIConnectionError, AuthenticationError, OpenAI, RateLimitError
+except ImportError:  # pragma: no cover - fallback for alternate OpenAI versions
+    from openai import OpenAI  # type: ignore
+
+    APIError = APIConnectionError = AuthenticationError = RateLimitError = Exception  # type: ignore
+
+logger = logging.getLogger(__name__)
 
 
 class VoiceProviderBase:
@@ -111,8 +122,153 @@ class DummyVoiceProvider(VoiceProviderBase):
         )
 
 
+class OpenAIVoiceProvider(VoiceProviderBase):
+    """Production integration for OpenAI text-to-speech and transcription APIs."""
+
+    def __init__(
+        self,
+        model: str | None = None,
+        *,
+        transcription_model: str | None = None,
+        voice: str = "alloy",
+        api_key: str | None = None,
+        organization: str | None = None,
+        base_url: str | None = None,
+        timeout: float | None = 30.0,
+        client: OpenAI | None = None,
+    ) -> None:
+        super().__init__(model or "gpt-4o-mini-tts")
+        self.transcription_model = transcription_model or "gpt-4o-mini-transcribe"
+        self.voice = voice
+
+        if client is not None:
+            self._client = client
+        else:
+            resolved_api_key = api_key or os.getenv("OPENAI_API_KEY")
+            if not resolved_api_key:
+                raise ValueError(
+                    "OpenAI API key must be provided via argument or OPENAI_API_KEY environment variable"
+                )
+
+            client_kwargs: dict[str, Any] = {"api_key": resolved_api_key}
+            if organization or os.getenv("OPENAI_ORG_ID"):
+                client_kwargs["organization"] = organization or os.getenv("OPENAI_ORG_ID")
+            if base_url or os.getenv("OPENAI_BASE_URL"):
+                client_kwargs["base_url"] = base_url or os.getenv("OPENAI_BASE_URL")
+            if timeout is not None:
+                client_kwargs["timeout"] = timeout
+
+            self._client = OpenAI(**client_kwargs)
+
+        self._last_tts_request: dict[str, Any] = {}
+        self._last_stt_request: dict[str, Any] = {}
+
+    def synthesize_speech(
+        self,
+        text: str,
+        *,
+        voice: str | None = None,
+        format: str = "wav",
+        sample_rate: int | None = None,
+        speed: float | None = None,
+        **kwargs: Any,
+    ) -> bytes:
+        if not text:
+            raise ValueError("Text must be provided for synthesis")
+
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "voice": voice or self.voice,
+            "input": text,
+            "format": format,
+        }
+        if sample_rate is not None:
+            payload["sample_rate"] = sample_rate
+        if speed is not None:
+            payload["speed"] = speed
+        payload.update(kwargs)
+
+        try:
+            response = self._client.audio.speech.create(**payload)
+            self._last_tts_request = payload
+        except (APIError, APIConnectionError, AuthenticationError, RateLimitError) as exc:  # pragma: no cover - network
+            logger.error("OpenAI speech synthesis failed: %s", exc)
+            raise RuntimeError("OpenAI speech synthesis request failed") from exc
+
+        if hasattr(response, "read"):
+            return response.read()
+        if hasattr(response, "content") and isinstance(response.content, (bytes, bytearray)):
+            return bytes(response.content)
+
+        # Fall back to dict representation for older SDKs
+        if hasattr(response, "to_dict"):
+            data = response.to_dict()
+        elif isinstance(response, dict):
+            data = response
+        else:  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected OpenAI speech response format")
+
+        audio_data = data.get("data") or data.get("audio") or data.get("content")
+        if isinstance(audio_data, (bytes, bytearray)):
+            return bytes(audio_data)
+        if isinstance(audio_data, str):
+            return audio_data.encode()
+
+        raise RuntimeError("OpenAI speech response did not include audio payload")
+
+    def recognize_speech(
+        self,
+        audio: bytes,
+        *,
+        language: str | None = None,
+        response_format: str = "text",
+        **kwargs: Any,
+    ) -> str:
+        if not audio:
+            raise ValueError("Audio payload is empty")
+
+        audio_buffer = io.BytesIO(audio)
+        audio_buffer.name = kwargs.pop("filename", "speech.wav")
+
+        payload: dict[str, Any] = {
+            "model": self.transcription_model,
+            "file": audio_buffer,
+            "response_format": response_format,
+        }
+        if language:
+            payload["language"] = language
+        payload.update(kwargs)
+
+        try:
+            result = self._client.audio.transcriptions.create(**payload)
+            self._last_stt_request = payload
+        except (APIError, APIConnectionError, AuthenticationError, RateLimitError) as exc:  # pragma: no cover - network
+            logger.error("OpenAI transcription failed: %s", exc)
+            raise RuntimeError("OpenAI transcription request failed") from exc
+
+        if isinstance(result, str):
+            return result
+        if hasattr(result, "text"):
+            return result.text
+        if hasattr(result, "to_dict"):
+            data = result.to_dict()
+        elif isinstance(result, dict):
+            data = result
+        else:  # pragma: no cover - defensive
+            raise RuntimeError("Unexpected OpenAI transcription response format")
+
+        if "text" in data and isinstance(data["text"], str):
+            return data["text"]
+
+        raise RuntimeError("OpenAI transcription response did not include text output")
+
+    def available_models(self) -> List[str]:
+        return [self.model, self.transcription_model]
+
+
 __all__ = [
     "VoiceProviderBase",
     "DummyVoiceProvider",
+    "OpenAIVoiceProvider",
 ]
 

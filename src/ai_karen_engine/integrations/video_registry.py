@@ -5,6 +5,7 @@ from __future__ import annotations
 from ai_karen_engine.integrations.provider_registry import ModelInfo, ProviderRegistry
 from ai_karen_engine.integrations.video_providers import (
     DummyVideoProvider,
+    OpenAIImageProvider,
     VideoProviderBase,
 )
 
@@ -21,6 +22,23 @@ class VideoRegistry(ProviderRegistry):
             models=[ModelInfo(name="dummy-video")],
             requires_api_key=False,
             default_model="dummy-video",
+        )
+
+        self.register_provider(
+            "openai",
+            OpenAIImageProvider,
+            description="OpenAI image generation models",
+            models=[
+                ModelInfo(
+                    name="gpt-image-1",
+                    description="Multi-modal image generation",
+                    capabilities=["image-generation"],
+                    default_settings={"size": "1024x1024"},
+                )
+            ],
+            requires_api_key=True,
+            default_model="gpt-image-1",
+            category="VISUAL",
         )
 
 
@@ -40,6 +58,7 @@ __all__ = [
     "ModelInfo",
     "VideoProviderBase",
     "DummyVideoProvider",
+    "OpenAIImageProvider",
     "VideoRegistry",
     "get_video_registry",
 ]

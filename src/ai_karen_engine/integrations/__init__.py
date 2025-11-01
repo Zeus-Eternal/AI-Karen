@@ -10,10 +10,12 @@ __all__ = [
     "VoiceRegistry",
     "VoiceProviderBase",
     "DummyVoiceProvider",
+    "OpenAIVoiceProvider",
     "get_voice_registry",
     "VideoRegistry",
     "VideoProviderBase",
     "DummyVideoProvider",
+    "OpenAIImageProvider",
     "get_video_registry",
 ]
 
@@ -47,12 +49,14 @@ def __getattr__(name):
         "VoiceRegistry",
         "VoiceProviderBase",
         "DummyVoiceProvider",
+        "OpenAIVoiceProvider",
         "get_voice_registry",
     }:
         from ai_karen_engine.integrations.voice_registry import (
             VoiceRegistry as _VoiceRegistry,
             VoiceProviderBase as _VoiceProviderBase,
             DummyVoiceProvider as _DummyVoiceProvider,
+            OpenAIVoiceProvider as _OpenAIVoiceProvider,
             get_voice_registry as _get_voice_registry,
         )
 
@@ -60,18 +64,21 @@ def __getattr__(name):
             "VoiceRegistry": _VoiceRegistry,
             "VoiceProviderBase": _VoiceProviderBase,
             "DummyVoiceProvider": _DummyVoiceProvider,
+            "OpenAIVoiceProvider": _OpenAIVoiceProvider,
             "get_voice_registry": _get_voice_registry,
         }[name]
     if name in {
         "VideoRegistry",
         "VideoProviderBase",
         "DummyVideoProvider",
+        "OpenAIImageProvider",
         "get_video_registry",
     }:
         from ai_karen_engine.integrations.video_registry import (
             VideoRegistry as _VideoRegistry,
             VideoProviderBase as _VideoProviderBase,
             DummyVideoProvider as _DummyVideoProvider,
+            OpenAIImageProvider as _OpenAIImageProvider,
             get_video_registry as _get_video_registry,
         )
 
@@ -79,6 +86,7 @@ def __getattr__(name):
             "VideoRegistry": _VideoRegistry,
             "VideoProviderBase": _VideoProviderBase,
             "DummyVideoProvider": _DummyVideoProvider,
+            "OpenAIImageProvider": _OpenAIImageProvider,
             "get_video_registry": _get_video_registry,
         }[name]
     raise AttributeError(name)
