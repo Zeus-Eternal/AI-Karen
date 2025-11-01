@@ -1,677 +1,606 @@
 /**
- * Intelligent Model Selector with Recommendations
- * Extends existing ModelSelector with task-based recommendations and performance metrics
+ * Intelligent Model Selector
+ * AI-powered model recommendations with task-based suggestions
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Brain, 
+  Lightbulb, 
+  Target, 
   Zap, 
-  TrendingUp, 
-  DollarSign, 
   Clock, 
-  Activity, 
-  Star, 
-  AlertTriangle,
+  DollarSign,
+  TrendingUp,
+  Star,
   CheckCircle,
-  BarChart3,
-  Target,
-  Lightbulb,
-  Filter,
-  Search,
-  RefreshCw,
-  Settings,
-  Info
+  AlertTriangle,
+  Info,
+  Sparkles,
+  Settings
 } from 'lucide-react';
-import { ModelRecommendation, ModelPerformanceMetrics, TaskSuitability } from '@/types/providers';
-import { Model } from '@/lib/model-utils';
 import { useToast } from '@/hooks/use-toast';
 
 interface IntelligentModelSelectorProps {
-  taskType?: string;
-  taskDescription?: string;
-  requirements?: ModelRequirements;
-  onModelSelect: (model: Model, recommendation?: ModelRecommendation) => void;
-  onCompareModels?: (models: Model[]) => void;
   showRecommendations?: boolean;
   showPerformanceMetrics?: boolean;
   showCostAnalysis?: boolean;
+  onModelSelected?: (model: ModelRecommendation) => void;
   className?: string;
 }
 
-interface ModelRequirements {
-  maxLatency?: number;
-  maxCost?: number;
-  minAccuracy?: number;
-  capabilities: string[];
-  constraints?: string[];
+interface TaskRequirements {
+  description: string;
+  type: 'text-generation' | 'code-generation' | 'analysis' | 'translation' | 'summarization' | 'qa' | 'creative' | 'custom';
+  priority: 'speed' | 'quality' | 'cost' | 'balanced';
+  complexity: 'simple' | 'moderate' | 'complex';
+  expectedVolume: 'low' | 'medium' | 'high';
+  budget?: number;
+  latencyRequirement?: number;
+  qualityThreshold?: number;
 }
 
-interface ModelWithRecommendation extends Model {
-  recommendation?: ModelRecommendation;
-  performanceMetrics?: ModelPerformanceMetrics;
-  usageAnalytics?: ModelUsageAnalytics;
+interface ModelRecommendation {
+  id: string;
+  name: string;
+  provider: string;
+  score: number;
+  reasoning: string[];
+  metrics: {
+    latency: number;
+    cost: number;
+    quality: number;
+    reliability: number;
+  };
+  suitability: {
+    taskMatch: number;
+    performanceMatch: number;
+    costMatch: number;
+    overallFit: number;
+  };
+  pros: string[];
+  cons: string[];
+  alternatives: string[];
+  estimatedCost: number;
+  estimatedLatency: number;
 }
 
-interface ModelUsageAnalytics {
-  popularityScore: number;
-  userRating: number;
-  successRate: number;
-  recentUsage: number;
-  trendDirection: 'up' | 'down' | 'stable';
+interface OptimizationSuggestion {
+  type: 'parameter_tuning' | 'prompt_optimization' | 'batch_processing' | 'caching' | 'model_switch';
+  title: string;
+  description: string;
+  impact: 'low' | 'medium' | 'high';
+  effort: 'low' | 'medium' | 'high';
+  potentialImprovement: {
+    speed?: number;
+    cost?: number;
+    quality?: number;
+  };
 }
 
 const IntelligentModelSelector: React.FC<IntelligentModelSelectorProps> = ({
-  taskType = 'general',
-  taskDescription,
-  requirements,
-  onModelSelect,
-  onCompareModels,
   showRecommendations = true,
   showPerformanceMetrics = true,
   showCostAnalysis = true,
+  onModelSelected,
   className
 }) => {
   const { toast } = useToast();
-  const [models, setModels] = useState<ModelWithRecommendation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+  const [taskRequirements, setTaskRequirements] = useState<TaskRequirements>({
+    description: '',
+    type: 'text-generation',
+    priority: 'balanced',
+    complexity: 'moderate',
+    expectedVolume: 'medium'
+  });
   const [recommendations, setRecommendations] = useState<ModelRecommendation[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'recommendation' | 'performance' | 'cost' | 'popularity'>('recommendation');
-  const [filterBy, setFilterBy] = useState<'all' | 'recommended' | 'local' | 'cloud'>('all');
-  const [selectedForComparison, setSelectedForComparison] = useState<Set<string>>(new Set());
+  const [optimizationSuggestions, setOptimizationSuggestions] = useState<OptimizationSuggestion[]>([]);
+  const [selectedModel, setSelectedModel] = useState<ModelRecommendation | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
 
-  // Load models and generate recommendations
   useEffect(() => {
-    loadModelsWithRecommendations();
-  }, [taskType, taskDescription, requirements]);
+    if (taskRequirements.description.trim()) {
+      const debounceTimer = setTimeout(() => {
+        analyzeRequirements();
+      }, 1000);
+      
+      return () => clearTimeout(debounceTimer);
+    }
+  }, [taskRequirements]);
 
-  const loadModelsWithRecommendations = async () => {
-    setLoading(true);
+  const analyzeRequirements = async () => {
+    if (!taskRequirements.description.trim()) return;
+    
+    setAnalyzing(true);
     try {
-      // Simulate API call to get models with recommendations
-      const response = await fetch('/api/models/intelligent-selection', {
+      const response = await fetch('/api/models/intelligent-recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          taskType,
-          taskDescription,
-          requirements
-        })
+        body: JSON.stringify({ requirements: taskRequirements })
       });
 
-      if (!response.ok) throw new Error('Failed to load models');
+      if (!response.ok) throw new Error('Failed to get recommendations');
 
       const data = await response.json();
-      setModels(data.models);
-      setRecommendations(data.recommendations);
+      setRecommendations(data.recommendations || []);
+      setOptimizationSuggestions(data.optimizations || []);
       
-      // Auto-select top recommendation
       if (data.recommendations.length > 0) {
-        const topModel = data.models.find((m: Model) => m.id === data.recommendations[0].modelId);
-        if (topModel) {
-          setSelectedModel(topModel);
-        }
+        setSelectedModel(data.recommendations[0]);
       }
     } catch (error) {
-      console.error('Error loading models:', error);
+      console.error('Error analyzing requirements:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load model recommendations',
+        title: 'Analysis Error',
+        description: 'Failed to analyze task requirements',
         variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      setAnalyzing(false);
     }
   };
 
-  // Filter and sort models
-  const filteredAndSortedModels = useMemo(() => {
-    let filtered = models.filter(model => {
-      // Search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        if (!model.name.toLowerCase().includes(query) &&
-            !model.description.toLowerCase().includes(query) &&
-            !model.capabilities?.some(cap => cap.toLowerCase().includes(query))) {
-          return false;
-        }
-      }
-
-      // Category filter
-      switch (filterBy) {
-        case 'recommended':
-          return model.recommendation && model.recommendation.score > 0.7;
-        case 'local':
-          return model.status === 'local';
-        case 'cloud':
-          return model.provider !== 'local';
-        default:
-          return true;
-      }
-    });
-
-    // Sort models
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'recommendation':
-          return (b.recommendation?.score || 0) - (a.recommendation?.score || 0);
-        case 'performance':
-          return (b.performanceMetrics?.latency.average || Infinity) - (a.performanceMetrics?.latency.average || Infinity);
-        case 'cost':
-          return (a.recommendation?.costEstimate.perRequest || Infinity) - (b.recommendation?.costEstimate.perRequest || Infinity);
-        case 'popularity':
-          return (b.usageAnalytics?.popularityScore || 0) - (a.usageAnalytics?.popularityScore || 0);
-        default:
-          return 0;
-      }
-    });
-
-    return filtered;
-  }, [models, searchQuery, filterBy, sortBy]);
-
-  const handleModelSelect = (model: Model) => {
+  const handleModelSelection = (model: ModelRecommendation) => {
     setSelectedModel(model);
-    const recommendation = recommendations.find(r => r.modelId === model.id);
-    onModelSelect(model, recommendation);
+    onModelSelected?.(model);
     
     toast({
       title: 'Model Selected',
-      description: `${model.name} selected for ${taskType} task`,
+      description: `${model.name} selected for your task`,
     });
   };
 
-  const handleComparisonToggle = (modelId: string) => {
-    const newSelection = new Set(selectedForComparison);
-    if (newSelection.has(modelId)) {
-      newSelection.delete(modelId);
-    } else if (newSelection.size < 4) { // Limit to 4 models for comparison
-      newSelection.add(modelId);
-    } else {
-      toast({
-        title: 'Comparison Limit',
-        description: 'You can compare up to 4 models at once',
-        variant: 'destructive'
-      });
-      return;
+  const getScoreColor = (score: number): string => {
+    if (score >= 90) return 'text-green-600';
+    if (score >= 70) return 'text-blue-600';
+    if (score >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getScoreBadgeVariant = (score: number) => {
+    if (score >= 90) return 'default';
+    if (score >= 70) return 'secondary';
+    return 'outline';
+  };
+
+  const getPriorityIcon = (priority: string) => {
+    switch (priority) {
+      case 'speed':
+        return <Zap className="w-4 h-4" />;
+      case 'quality':
+        return <Target className="w-4 h-4" />;
+      case 'cost':
+        return <DollarSign className="w-4 h-4" />;
+      default:
+        return <Settings className="w-4 h-4" />;
     }
-    setSelectedForComparison(newSelection);
   };
 
-  const handleCompareSelected = () => {
-    const modelsToCompare = models.filter(m => selectedForComparison.has(m.id));
-    onCompareModels?.(modelsToCompare);
+  const getImpactColor = (impact: string): string => {
+    switch (impact) {
+      case 'high':
+        return 'text-green-600';
+      case 'medium':
+        return 'text-yellow-600';
+      default:
+        return 'text-gray-600';
+    }
   };
-
-  const RecommendationCard: React.FC<{ model: ModelWithRecommendation }> = ({ model }) => {
-    const recommendation = model.recommendation;
-    if (!recommendation) return null;
-
-    const getScoreColor = (score: number) => {
-      if (score >= 0.8) return 'text-green-600 bg-green-100';
-      if (score >= 0.6) return 'text-yellow-600 bg-yellow-100';
-      return 'text-red-600 bg-red-100';
-    };
-
-    const getScoreLabel = (score: number) => {
-      if (score >= 0.8) return 'Excellent';
-      if (score >= 0.6) return 'Good';
-      if (score >= 0.4) return 'Fair';
-      return 'Poor';
-    };
-
-    return (
-      <div className="space-y-3">
-        {/* Recommendation Score */}
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Recommendation Score</span>
-          <Badge className={getScoreColor(recommendation.score)}>
-            {Math.round(recommendation.score * 100)}% - {getScoreLabel(recommendation.score)}
-          </Badge>
-        </div>
-
-        {/* Task Suitability */}
-        {recommendation.taskSuitability && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4" />
-              <span className="text-sm font-medium">Task Suitability</span>
-            </div>
-            <Progress value={recommendation.taskSuitability.suitabilityScore * 100} className="h-2" />
-            <div className="text-xs text-gray-600">
-              <div className="flex flex-wrap gap-1 mb-1">
-                <span className="font-medium">Strengths:</span>
-                {recommendation.taskSuitability.strengths.slice(0, 3).map((strength, idx) => (
-                  <Badge key={idx} variant="outline" className="text-xs">
-                    {strength}
-                  </Badge>
-                ))}
-              </div>
-              {recommendation.taskSuitability.limitations.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  <span className="font-medium">Limitations:</span>
-                  {recommendation.taskSuitability.limitations.slice(0, 2).map((limitation, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">
-                      {limitation}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Recommendation Reasons */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Lightbulb className="w-4 h-4" />
-            <span className="text-sm font-medium">Why Recommended</span>
-          </div>
-          <div className="space-y-1">
-            {recommendation.reasons.slice(0, 3).map((reason, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-xs">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <span>{reason.description}</span>
-                <Badge variant="outline" className="text-xs">
-                  {Math.round(reason.weight * 100)}%
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const PerformanceMetrics: React.FC<{ model: ModelWithRecommendation }> = ({ model }) => {
-    const metrics = model.performanceMetrics;
-    if (!metrics) return null;
-
-    return (
-      <div className="space-y-3">
-        {/* Latency */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            <span className="text-sm font-medium">Latency</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="text-center p-2 bg-gray-50 rounded">
-              <div className="font-medium">{metrics.latency.average.toFixed(0)}ms</div>
-              <div className="text-gray-600">Average</div>
-            </div>
-            <div className="text-center p-2 bg-gray-50 rounded">
-              <div className="font-medium">{metrics.latency.p95.toFixed(0)}ms</div>
-              <div className="text-gray-600">P95</div>
-            </div>
-            <div className="text-center p-2 bg-gray-50 rounded">
-              <div className="font-medium">{metrics.latency.p99.toFixed(0)}ms</div>
-              <div className="text-gray-600">P99</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Throughput */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4" />
-            <span className="text-sm font-medium">Throughput</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="text-center p-2 bg-gray-50 rounded">
-              <div className="font-medium">{metrics.throughput.requestsPerSecond.toFixed(1)}</div>
-              <div className="text-gray-600">Req/sec</div>
-            </div>
-            <div className="text-center p-2 bg-gray-50 rounded">
-              <div className="font-medium">{metrics.throughput.tokensPerSecond.toFixed(0)}</div>
-              <div className="text-gray-600">Tokens/sec</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Reliability */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" />
-            <span className="text-sm font-medium">Reliability</span>
-          </div>
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span>Uptime</span>
-              <span className="font-medium">{(metrics.reliability.uptime * 100).toFixed(2)}%</span>
-            </div>
-            <Progress value={metrics.reliability.uptime * 100} className="h-1" />
-            <div className="flex justify-between text-xs">
-              <span>Error Rate</span>
-              <span className="font-medium">{(metrics.reliability.errorRate * 100).toFixed(2)}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const CostAnalysis: React.FC<{ model: ModelWithRecommendation }> = ({ model }) => {
-    const cost = model.recommendation?.costEstimate;
-    if (!cost) return null;
-
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <DollarSign className="w-4 h-4" />
-          <span className="text-sm font-medium">Cost Analysis</span>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="text-center p-2 bg-gray-50 rounded">
-            <div className="font-medium">${cost.perRequest.toFixed(4)}</div>
-            <div className="text-gray-600">Per Request</div>
-          </div>
-          <div className="text-center p-2 bg-gray-50 rounded">
-            <div className="font-medium">${cost.monthly.toFixed(2)}</div>
-            <div className="text-gray-600">Monthly Est.</div>
-          </div>
-        </div>
-
-        {/* Cost Breakdown */}
-        <div className="space-y-1">
-          <div className="text-xs font-medium">Cost Breakdown</div>
-          {Object.entries(cost.breakdown).map(([key, value]) => (
-            <div key={key} className="flex justify-between text-xs">
-              <span className="capitalize">{key}</span>
-              <span>${value.toFixed(2)}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Cost Comparison */}
-        {cost.comparison.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-xs font-medium">vs Alternatives</div>
-            {cost.comparison.slice(0, 2).map((comp, idx) => (
-              <div key={idx} className="flex justify-between text-xs">
-                <span>{comp.modelId}</span>
-                <span className={comp.costDifference > 0 ? 'text-red-600' : 'text-green-600'}>
-                  {comp.costDifference > 0 ? '+' : ''}{comp.percentageDifference.toFixed(1)}%
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const ModelCard: React.FC<{ model: ModelWithRecommendation }> = ({ model }) => {
-    const isSelected = selectedModel?.id === model.id;
-    const isInComparison = selectedForComparison.has(model.id);
-    const recommendation = model.recommendation;
-
-    return (
-      <Card className={`cursor-pointer transition-all hover:shadow-md ${
-        isSelected ? 'ring-2 ring-blue-500' : ''
-      }`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg flex items-center gap-2">
-                {model.name}
-                {recommendation && recommendation.score >= 0.8 && (
-                  <Badge className="bg-green-100 text-green-800">
-                    <Star className="w-3 h-3 mr-1" />
-                    Top Pick
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription className="mt-1">
-                {model.description}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2 ml-4">
-              <Button
-                variant={isInComparison ? "default" : "outline"}
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleComparisonToggle(model.id);
-                }}
-              >
-                {isInComparison ? 'Added' : 'Compare'}
-              </Button>
-              <Button
-                variant={isSelected ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleModelSelect(model)}
-              >
-                {isSelected ? 'Selected' : 'Select'}
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent>
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              {showRecommendations && <TabsTrigger value="recommendation">Recommendation</TabsTrigger>}
-              {showPerformanceMetrics && <TabsTrigger value="performance">Performance</TabsTrigger>}
-              {showCostAnalysis && <TabsTrigger value="cost">Cost</TabsTrigger>}
-            </TabsList>
-            
-            <TabsContent value="overview" className="space-y-3">
-              {/* Basic Info */}
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">{model.provider}</Badge>
-                <Badge variant="outline">{model.type || 'General'}</Badge>
-                {model.status === 'local' && (
-                  <Badge className="bg-green-100 text-green-800">Local</Badge>
-                )}
-              </div>
-              
-              {/* Capabilities */}
-              {model.capabilities && (
-                <div className="space-y-1">
-                  <div className="text-sm font-medium">Capabilities</div>
-                  <div className="flex flex-wrap gap-1">
-                    {model.capabilities.slice(0, 4).map((cap, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {cap}
-                      </Badge>
-                    ))}
-                    {model.capabilities.length > 4 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{model.capabilities.length - 4} more
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Usage Analytics */}
-              {model.usageAnalytics && (
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" />
-                    <span>Popularity: {model.usageAnalytics.popularityScore.toFixed(1)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3" />
-                    <span>Rating: {model.usageAnalytics.userRating.toFixed(1)}/5</span>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-            
-            {showRecommendations && (
-              <TabsContent value="recommendation">
-                <RecommendationCard model={model} />
-              </TabsContent>
-            )}
-            
-            {showPerformanceMetrics && (
-              <TabsContent value="performance">
-                <PerformanceMetrics model={model} />
-              </TabsContent>
-            )}
-            
-            {showCostAnalysis && (
-              <TabsContent value="cost">
-                <CostAnalysis model={model} />
-              </TabsContent>
-            )}
-          </Tabs>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  if (loading) {
-    return (
-      <Card className={className}>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="text-center space-y-2">
-            <Brain className="w-8 h-8 animate-pulse mx-auto text-blue-500" />
-            <div>Analyzing models for your task...</div>
-            <div className="text-sm text-gray-600">Generating intelligent recommendations</div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Header */}
+      {/* Task Requirements Input */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Brain className="w-5 h-5" />
-            Intelligent Model Selection
+            Task Requirements
           </CardTitle>
           <CardDescription>
-            AI-powered recommendations for {taskType} tasks
-            {taskDescription && ` - ${taskDescription}`}
+            Describe your task to get intelligent model recommendations
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {/* Controls */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="description">Task Description</Label>
+            <Textarea
+              id="description"
+              value={taskRequirements.description}
+              onChange={(e) => setTaskRequirements(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Describe what you want to accomplish (e.g., 'Generate creative marketing copy for a tech startup', 'Analyze customer feedback sentiment', 'Write Python code for data processing')"
+              className="min-h-20"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="type">Task Type</Label>
+              <Select value={taskRequirements.type} onValueChange={(value: any) => setTaskRequirements(prev => ({ ...prev, type: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text-generation">Text Generation</SelectItem>
+                  <SelectItem value="code-generation">Code Generation</SelectItem>
+                  <SelectItem value="analysis">Analysis</SelectItem>
+                  <SelectItem value="translation">Translation</SelectItem>
+                  <SelectItem value="summarization">Summarization</SelectItem>
+                  <SelectItem value="qa">Q&A</SelectItem>
+                  <SelectItem value="creative">Creative Writing</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="priority">Priority</Label>
+              <Select value={taskRequirements.priority} onValueChange={(value: any) => setTaskRequirements(prev => ({ ...prev, priority: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="speed">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      Speed
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="quality">
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4" />
+                      Quality
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="cost">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Cost
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="balanced">
+                    <div className="flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      Balanced
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="complexity">Complexity</Label>
+              <Select value={taskRequirements.complexity} onValueChange={(value: any) => setTaskRequirements(prev => ({ ...prev, complexity: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="simple">Simple</SelectItem>
+                  <SelectItem value="moderate">Moderate</SelectItem>
+                  <SelectItem value="complex">Complex</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="volume">Expected Volume</Label>
+              <Select value={taskRequirements.expectedVolume} onValueChange={(value: any) => setTaskRequirements(prev => ({ ...prev, expectedVolume: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low (&lt;100/day)</SelectItem>
+                  <SelectItem value="medium">Medium (100-1000/day)</SelectItem>
+                  <SelectItem value="high">High (&gt;1000/day)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="budget">Budget ($/month, optional)</Label>
               <Input
-                placeholder="Search models..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                id="budget"
+                type="number"
+                value={taskRequirements.budget || ''}
+                onChange={(e) => setTaskRequirements(prev => ({ ...prev, budget: Number(e.target.value) || undefined }))}
+                placeholder="100"
               />
             </div>
-            
-            {/* Sort */}
-            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="recommendation">Recommendation</SelectItem>
-                <SelectItem value="performance">Performance</SelectItem>
-                <SelectItem value="cost">Cost</SelectItem>
-                <SelectItem value="popularity">Popularity</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {/* Filter */}
-            <Select value={filterBy} onValueChange={(value: any) => setFilterBy(value)}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Models</SelectItem>
-                <SelectItem value="recommended">Recommended</SelectItem>
-                <SelectItem value="local">Local Only</SelectItem>
-                <SelectItem value="cloud">Cloud Only</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {/* Refresh */}
-            <Button variant="outline" onClick={loadModelsWithRecommendations}>
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          </div>
 
-          {/* Comparison Bar */}
-          {selectedForComparison.size > 0 && (
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg mb-4">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                <span className="text-sm font-medium">
-                  {selectedForComparison.size} models selected for comparison
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedForComparison(new Set())}
-                >
-                  Clear
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleCompareSelected}
-                  disabled={selectedForComparison.size < 2}
-                >
-                  Compare Models
-                </Button>
-              </div>
+            <div>
+              <Label htmlFor="latency">Max Latency (ms, optional)</Label>
+              <Input
+                id="latency"
+                type="number"
+                value={taskRequirements.latencyRequirement || ''}
+                onChange={(e) => setTaskRequirements(prev => ({ ...prev, latencyRequirement: Number(e.target.value) || undefined }))}
+                placeholder="1000"
+              />
             </div>
-          )}
 
-          {/* Results Summary */}
-          <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
-            <span>
-              Showing {filteredAndSortedModels.length} of {models.length} models
-            </span>
-            {recommendations.length > 0 && (
-              <span>
-                {recommendations.filter(r => r.score >= 0.7).length} highly recommended
-              </span>
-            )}
+            <div>
+              <Label htmlFor="quality">Min Quality Score (0-100, optional)</Label>
+              <Input
+                id="quality"
+                type="number"
+                value={taskRequirements.qualityThreshold || ''}
+                onChange={(e) => setTaskRequirements(prev => ({ ...prev, qualityThreshold: Number(e.target.value) || undefined }))}
+                placeholder="80"
+                min="0"
+                max="100"
+              />
+            </div>
           </div>
+
+          {analyzing && (
+            <Alert>
+              <Sparkles className="w-4 h-4" />
+              <AlertDescription>
+                Analyzing your requirements and finding the best models...
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
-      {/* Model Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-        {filteredAndSortedModels.map((model) => (
-          <ModelCard key={model.id} model={model} />
-        ))}
-      </div>
+      {/* Model Recommendations */}
+      {showRecommendations && recommendations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5" />
+              Intelligent Recommendations
+            </CardTitle>
+            <CardDescription>
+              AI-powered model suggestions based on your requirements
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {recommendations.slice(0, 6).map((model, index) => (
+                <Card 
+                  key={model.id} 
+                  className={`cursor-pointer transition-all hover:shadow-md ${
+                    selectedModel?.id === model.id ? 'border-blue-500 bg-blue-50' : ''
+                  }`}
+                  onClick={() => handleModelSelection(model)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{model.name}</h3>
+                          {index === 0 && <Star className="w-4 h-4 text-yellow-500" />}
+                        </div>
+                        <p className="text-sm text-gray-600">{model.provider}</p>
+                      </div>
+                      <Badge 
+                        variant={getScoreBadgeVariant(model.score)}
+                        className={getScoreColor(model.score)}
+                      >
+                        {model.score}%
+                      </Badge>
+                    </div>
 
-      {filteredAndSortedModels.length === 0 && (
+                    {/* Suitability Metrics */}
+                    <div className="space-y-2 mb-3">
+                      <div className="flex justify-between text-sm">
+                        <span>Task Match</span>
+                        <span>{model.suitability.taskMatch}%</span>
+                      </div>
+                      <Progress value={model.suitability.taskMatch} className="h-1" />
+                      
+                      <div className="flex justify-between text-sm">
+                        <span>Performance</span>
+                        <span>{model.suitability.performanceMatch}%</span>
+                      </div>
+                      <Progress value={model.suitability.performanceMatch} className="h-1" />
+                      
+                      <div className="flex justify-between text-sm">
+                        <span>Cost Fit</span>
+                        <span>{model.suitability.costMatch}%</span>
+                      </div>
+                      <Progress value={model.suitability.costMatch} className="h-1" />
+                    </div>
+
+                    {/* Key Metrics */}
+                    {showPerformanceMetrics && (
+                      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{model.estimatedLatency}ms</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="w-3 h-3" />
+                          <span>${model.estimatedCost.toFixed(4)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Target className="w-3 h-3" />
+                          <span>{model.metrics.quality}% quality</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          <span>{model.metrics.reliability}% reliable</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Top Reasoning */}
+                    <div className="text-xs text-gray-600 mb-3">
+                      <div className="font-medium mb-1">Why this model:</div>
+                      <ul className="list-disc list-inside space-y-1">
+                        {model.reasoning.slice(0, 2).map((reason, idx) => (
+                          <li key={idx}>{reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Pros/Cons */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <div className="font-medium text-green-600 mb-1">Pros:</div>
+                        <ul className="space-y-1">
+                          {model.pros.slice(0, 2).map((pro, idx) => (
+                            <li key={idx} className="flex items-start gap-1">
+                              <CheckCircle className="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0" />
+                              <span>{pro}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="font-medium text-red-600 mb-1">Cons:</div>
+                        <ul className="space-y-1">
+                          {model.cons.slice(0, 2).map((con, idx) => (
+                            <li key={idx} className="flex items-start gap-1">
+                              <AlertTriangle className="w-3 h-3 text-red-600 mt-0.5 flex-shrink-0" />
+                              <span>{con}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {selectedModel?.id === model.id && (
+                      <div className="mt-3 pt-3 border-t">
+                        <Badge variant="default" className="w-full justify-center">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Selected
+                        </Badge>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Optimization Suggestions */}
+      {optimizationSuggestions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Optimization Suggestions
+            </CardTitle>
+            <CardDescription>
+              Ways to improve performance, reduce costs, or enhance quality
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              {optimizationSuggestions.map((suggestion, index) => (
+                <div key={index} className="p-4 border rounded-lg">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h4 className="font-medium">{suggestion.title}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{suggestion.description}</p>
+                    </div>
+                    <Badge 
+                      variant={suggestion.impact === 'high' ? 'default' : 'secondary'}
+                      className={getImpactColor(suggestion.impact)}
+                    >
+                      {suggestion.impact} impact
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Effort: {suggestion.effort}</span>
+                    <div className="flex items-center gap-3">
+                      {suggestion.potentialImprovement.speed && (
+                        <span className="text-green-600">
+                          +{suggestion.potentialImprovement.speed}% speed
+                        </span>
+                      )}
+                      {suggestion.potentialImprovement.cost && (
+                        <span className="text-green-600">
+                          -{suggestion.potentialImprovement.cost}% cost
+                        </span>
+                      )}
+                      {suggestion.potentialImprovement.quality && (
+                        <span className="text-green-600">
+                          +{suggestion.potentialImprovement.quality}% quality
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Selected Model Summary */}
+      {selectedModel && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Selected Model: {selectedModel.name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <h4 className="font-medium mb-2">Performance Estimates</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Expected Latency:</span>
+                    <span>{selectedModel.estimatedLatency}ms</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Cost per Request:</span>
+                    <span>${selectedModel.estimatedCost.toFixed(4)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Quality Score:</span>
+                    <span>{selectedModel.metrics.quality}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Reliability:</span>
+                    <span>{selectedModel.metrics.reliability}%</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Alternative Options</h4>
+                <div className="space-y-1">
+                  {selectedModel.alternatives.map((alt, idx) => (
+                    <div key={idx} className="text-sm text-gray-600">
+                      • {alt}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No Recommendations State */}
+      {!analyzing && recommendations.length === 0 && taskRequirements.description.trim() && (
         <Card>
           <CardContent className="text-center py-8">
-            <AlertTriangle className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-            <div className="text-gray-600">No models match your criteria</div>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => {
-                setSearchQuery('');
-                setFilterBy('all');
-              }}
-            >
-              Clear Filters
-            </Button>
+            <Brain className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-medium mb-2">No Recommendations Found</h3>
+            <p className="text-gray-600">
+              Try providing more details about your task or adjusting your requirements
+            </p>
           </CardContent>
         </Card>
       )}

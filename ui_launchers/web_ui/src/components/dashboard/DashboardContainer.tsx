@@ -26,7 +26,7 @@ import {
   X,
   Filter,
   Clock,
-  Template,
+  FileText as Template,
   Share2
 } from 'lucide-react';
 import {

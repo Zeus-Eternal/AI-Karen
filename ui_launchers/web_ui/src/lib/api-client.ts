@@ -309,7 +309,6 @@ export class ApiClient {
       headers: {
         // Don't set Content-Type for FormData, let browser set it
         ...config?.headers,
-        'Content-Type': undefined,
       },
     });
   }

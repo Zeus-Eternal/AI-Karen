@@ -60,7 +60,7 @@ export const Card: React.FC<CardProps> = ({
       className={cn(
         'relative flex flex-col rounded-[var(--component-card-border-radius,var(--radius-lg))]',
         'border border-[var(--component-card-border)] shadow-[var(--component-card-shadow)]',
-        'text-[var(--component-card-foreground)] transition-shadow duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+        'text-[var(--component-card-foreground)] transition-shadow [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-standard)]',
         'focus-within:ring-2 focus-within:ring-[var(--component-card-ring)] focus-within:ring-offset-2',
         'focus-within:ring-offset-[var(--component-card-ring-offset,var(--color-neutral-50))]',
         variantClasses,

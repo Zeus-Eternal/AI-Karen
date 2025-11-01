@@ -38,10 +38,14 @@ export function LocalizedText({
 }: LocalizedTextProps) {
   const { t } = useI18n();
   
-  const translationOptions: InterpolationOptions & PluralOptions & { ns?: string } = {
+  // Build translation options dynamically to match the expected type
+  const translationOptions: any = {
     ...values,
-    ns,
   };
+  
+  if (ns) {
+    translationOptions.ns = ns;
+  }
   
   if (typeof count === 'number') {
     translationOptions.count = count;

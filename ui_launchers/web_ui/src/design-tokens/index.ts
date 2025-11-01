@@ -668,7 +668,7 @@ export function getButtonToken(
   variant: ButtonVariant,
   property: keyof ComponentStateTokens,
 ): string | undefined {
-  return componentTokens.button[variant][property];
+  return componentTokens.button[variant]?.[property];
 }
 
 /**
@@ -678,7 +678,7 @@ export function getBadgeToken(
   variant: BadgeVariant,
   property: keyof ComponentStateTokens,
 ): string | undefined {
-  return componentTokens.badge[variant][property];
+  return componentTokens.badge[variant]?.[property];
 }
 
 /**

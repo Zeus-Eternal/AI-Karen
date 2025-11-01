@@ -31,7 +31,9 @@ export interface FocusManagementOptions {
 /**
  * Hook for managing focus within a container
  */
-export const useFocusManagement = (options: FocusManagementOptions = {}) => {
+export const useFocusManagement = <T extends HTMLElement = HTMLElement>(
+  options: FocusManagementOptions = {}
+) => {
   const {
     enabled = true,
     restoreFocus = true,
@@ -43,7 +45,7 @@ export const useFocusManagement = (options: FocusManagementOptions = {}) => {
     onFocusLeave,
   } = options;
 
-  const containerRef = useRef<HTMLElement>(null);
+  const containerRef = useRef<T | null>(null);
   const previouslyFocusedElement = useRef<HTMLElement | null>(null);
   const [isActive, setIsActive] = useState(false);
 
@@ -106,12 +108,13 @@ export const useFocusManagement = (options: FocusManagementOptions = {}) => {
 
   // Focus a specific element by selector or element reference
   const focusElement = useCallback((target: string | HTMLElement | null) => {
-    if (!target || !containerRef.current) return false;
+    const container = containerRef.current;
+    if (!target || !container) return false;
 
     let element: HTMLElement | null = null;
 
     if (typeof target === 'string') {
-      element = containerRef.current.querySelector(target);
+      element = container.querySelector(target);
     } else {
       element = target;
     }
@@ -126,7 +129,8 @@ export const useFocusManagement = (options: FocusManagementOptions = {}) => {
 
   // Initialize focus when component becomes active
   const initializeFocus = useCallback(() => {
-    if (!enabled || !containerRef.current) return;
+    const container = containerRef.current;
+    if (!enabled || !container) return;
 
     // Store previously focused element for restoration
     if (restoreFocus) {
@@ -149,8 +153,8 @@ export const useFocusManagement = (options: FocusManagementOptions = {}) => {
     }
 
     // If still no focus, focus the container itself
-    if (!focused && containerRef.current.tabIndex >= 0) {
-      containerRef.current.focus();
+    if (!focused && container.tabIndex >= 0) {
+      container.focus();
     }
 
     setIsActive(true);
@@ -208,10 +212,10 @@ export const useFocusManagement = (options: FocusManagementOptions = {}) => {
 
   // Handle focus events
   const handleFocus = useCallback((event: FocusEvent) => {
-    if (!enabled || !containerRef.current) return;
+    const container = containerRef.current;
+    if (!enabled || !container) return;
 
     const target = event.target as HTMLElement;
-    const container = containerRef.current;
 
     // Check if focus is entering the container
     if (container.contains(target) && !isActive) {
@@ -221,10 +225,10 @@ export const useFocusManagement = (options: FocusManagementOptions = {}) => {
   }, [enabled, isActive, onFocusEnter]);
 
   const handleBlur = useCallback((event: FocusEvent) => {
-    if (!enabled || !containerRef.current) return;
+    const container = containerRef.current;
+    if (!enabled || !container) return;
 
     const relatedTarget = event.relatedTarget as HTMLElement;
-    const container = containerRef.current;
 
     // Check if focus is leaving the container entirely
     if (!relatedTarget || !container.contains(relatedTarget)) {
@@ -284,7 +288,9 @@ export const useFocusManagement = (options: FocusManagementOptions = {}) => {
     focusElement,
     getFocusableElements,
     containerProps: {
-      ref: containerRef,
+      ref: (node: T | null) => {
+        containerRef.current = node;
+      },
       tabIndex: trapFocus ? -1 : undefined,
     },
   };
@@ -293,11 +299,11 @@ export const useFocusManagement = (options: FocusManagementOptions = {}) => {
 /**
  * Hook for focus trap specifically designed for modals and dialogs
  */
-export const useFocusTrap = (
+export const useFocusTrap = <T extends HTMLElement = HTMLElement>(
   isOpen: boolean,
   options: Omit<FocusManagementOptions, 'trapFocus'> = {}
 ) => {
-  return useFocusManagement({
+  return useFocusManagement<T>({
     ...options,
     enabled: isOpen,
     trapFocus: true,

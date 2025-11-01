@@ -21,7 +21,7 @@ export function FocusTrap({
   const {
     containerProps,
     isActive,
-  } = useFocusTrap(enabled, {
+  } = useFocusTrap<HTMLDivElement>(enabled, {
     initialFocus,
     restoreFocus,
   });
@@ -30,8 +30,8 @@ export function FocusTrap({
     <div
       {...containerProps}
       className={className}
-      data-focus-trap={enabled}
-      data-focus-active={isActive}
+      data-focus-trap={enabled ? 'true' : 'false'}
+      data-focus-active={isActive ? 'true' : 'false'}
     >
       {children}
     </div>

@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 export const enhancedCardVariants = cva(
   [
     'rounded-[var(--radius-lg)] border',
-    'transition-all duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+    'transition-all [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-standard)]',
     'will-change-transform',
   ],
   {

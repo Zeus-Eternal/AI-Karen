@@ -229,7 +229,7 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
 
         if (fileType === 'image') {
           // Get image dimensions
-          const img = new Image();
+          const img = document.createElement('img');
           img.src = fileUrl;
           await new Promise(resolve => { img.onload = resolve; });
           metadata.dimensions = { width: img.width, height: img.height };
@@ -339,17 +339,19 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Upload Area */}
-      <Card 
-        className={`border-2 border-dashed transition-colors cursor-pointer ${
-          isDragOver 
-            ? 'border-primary bg-primary/5' 
-            : 'border-muted-foreground/25 hover:border-primary/50'
-        }`}
+      <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
+        <Card 
+          className={`border-2 border-dashed transition-colors cursor-pointer ${
+            isDragOver 
+              ? 'border-primary bg-primary/5' 
+              : 'border-muted-foreground/25 hover:border-primary/50'
+          }`}
+        >
         <CardContent className="p-6 text-center">
           <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
           <p className="text-sm font-medium mb-2">
@@ -367,7 +369,8 @@ export const MultimodalFileUpload: React.FC<MultimodalFileUploadProps> = ({
             </Badge>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
 
       {/* Hidden file input */}
       <input

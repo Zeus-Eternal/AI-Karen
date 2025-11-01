@@ -750,7 +750,7 @@ const ProviderConfigInterface: React.FC<ProviderConfigInterfaceProps> = ({
                       </div>
                       <div className="flex items-center gap-2">
                         {getHealthIcon(health)}
-                        <Switch checked={provider.enabled} readOnly />
+                        <Switch checked={provider.enabled} disabled />
                       </div>
                     </div>
                     

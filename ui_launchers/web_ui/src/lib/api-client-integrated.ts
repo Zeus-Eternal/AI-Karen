@@ -7,8 +7,12 @@
  * Requirements: 5.2, 5.3, 1.1, 1.2
  */
 
-import { getApiClient, type ApiClient, type ApiRequest, type ApiResponse, type ApiError } from './api-client';
+import { getApiClient, type ApiClient, type RequestConfig, type ApiResponse, type ApiError } from './api-client';
 import { isAuthenticated, clearSession } from './auth/session';
+
+export interface ApiRequest extends RequestConfig {
+  endpoint: string;
+}
 
 export interface IntegratedApiClientOptions {
   autoRetryOn401?: boolean;
@@ -37,7 +41,8 @@ export class IntegratedApiClient {
   private async makeAuthenticatedRequest<T = any>(request: ApiRequest): Promise<ApiResponse<T>> {
     try {
       // Use regular API client with automatic cookie handling
-      return await this.apiClient.request<T>(request);
+      const { endpoint, ...config } = request;
+      return await this.apiClient.request<T>(endpoint, config);
     } catch (error: any) {
       // Simple 401 error handling - clear session and redirect to login
       if (error.status === 401) {
@@ -179,49 +184,26 @@ export class IntegratedApiClient {
    * Make a public request (no authentication)
    */
   async requestPublic<T = any>(request: ApiRequest): Promise<ApiResponse<T>> {
-    return this.apiClient.request<T>(request);
+    const { endpoint, ...config } = request;
+    return this.apiClient.request<T>(endpoint, config);
   }
 
   /**
    * Health check
    */
   async healthCheck(): Promise<ApiResponse<any>> {
-    return this.apiClient.healthCheck();
+    return this.apiClient.get('/api/health');
   }
 
   /**
    * Get backend URL
    */
   getBackendUrl(): string {
-    return this.apiClient.getBackendUrl();
-  }
-
-  /**
-   * Get endpoints
-   */
-  getEndpoints() {
-    return this.apiClient.getEndpoints();
-  }
-
-  /**
-   * Get endpoint statistics
-   */
-  getEndpointStats() {
-    return this.apiClient.getEndpointStats();
-  }
-
-  /**
-   * Reset endpoint statistics
-   */
-  resetEndpointStats(endpoint?: string): void {
-    this.apiClient.resetEndpointStats(endpoint);
-  }
-
-  /**
-   * Clear caches
-   */
-  clearCaches(): void {
-    this.apiClient.clearCaches();
+    // Access the private baseURL through a simple method
+    if (typeof window !== 'undefined') {
+      return `${window.location.protocol}//${window.location.host}/api`;
+    }
+    return process.env.NEXT_PUBLIC_API_URL || '/api';
   }
 
   /**
@@ -280,7 +262,6 @@ export function useIntegratedApiClient(options?: IntegratedApiClientOptions) {
 
 // Re-export types for convenience
 export type {
-  ApiRequest,
   ApiResponse,
   ApiError,
   IntegratedApiClientOptions as IntegratedApiClientOptionsType,

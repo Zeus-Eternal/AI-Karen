@@ -160,7 +160,7 @@ describe('EnhancedBadge', () => {
     expect(badge).toHaveClass('rounded-[var(--radius-full)]');
     expect(badge).toHaveClass('px-[var(--space-sm)]');
     expect(badge).toHaveClass('text-[var(--text-xs)]');
-    expect(badge).toHaveClass('duration-[var(--duration-fast)]');
+    expect(badge).toHaveClass('[transition-duration:var(--duration-fast)]');
     expect(badge).toHaveClass('bg-[var(--color-primary-500)]');
   });
 

@@ -90,20 +90,22 @@ const ModelUsageAnalytics: React.FC<ModelUsageAnalyticsProps> = ({
     }).format(amount);
   };
 
-  const getTrendIcon = (trend: 'increasing' | 'stable' | 'decreasing') => {
+  const getTrendIcon = (trend: 'increasing' | 'stable' | 'decreasing' | 'improving' | 'degrading') => {
     switch (trend) {
       case 'increasing':
+      case 'improving':
         return <TrendingUp className="w-4 h-4 text-green-600" />;
       case 'decreasing':
+      case 'degrading':
         return <TrendingDown className="w-4 h-4 text-red-600" />;
       default:
         return <Activity className="w-4 h-4 text-gray-600" />;
     }
   };
 
-  const getTrendColor = (trend: 'increasing' | 'stable' | 'decreasing', isGoodWhenIncreasing: boolean = true) => {
+  const getTrendColor = (trend: 'increasing' | 'stable' | 'decreasing' | 'improving' | 'degrading', isGoodWhenIncreasing: boolean = true) => {
     if (trend === 'stable') return 'text-gray-600';
-    const isPositive = (trend === 'increasing') === isGoodWhenIncreasing;
+    const isPositive = (trend === 'increasing' || trend === 'improving') === isGoodWhenIncreasing;
     return isPositive ? 'text-green-600' : 'text-red-600';
   };
 

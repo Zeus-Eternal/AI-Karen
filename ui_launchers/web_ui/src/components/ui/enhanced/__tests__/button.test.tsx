@@ -191,8 +191,8 @@ describe('EnhancedButton', () => {
     
     const button = screen.getByRole('button');
     expect(button).toHaveClass('rounded-[var(--radius-md)]');
-    expect(button).toHaveClass('duration-[var(--duration-fast)]');
-    expect(button).toHaveClass('ease-[var(--ease-standard)]');
+    expect(button).toHaveClass('[transition-duration:var(--duration-fast)]');
+    expect(button).toHaveClass('[transition-timing-function:var(--ease-standard)]');
     expect(button).toHaveClass('bg-[var(--color-primary-500)]');
   });
 });

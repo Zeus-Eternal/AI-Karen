@@ -7,159 +7,84 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { 
   BarChart3, 
+  Plus, 
+  X, 
   TrendingUp, 
+  TrendingDown, 
   Clock, 
-  DollarSign, 
-  Zap, 
-  CheckCircle, 
-  XCircle,
-  Star,
-  Award,
+  DollarSign,
+  Zap,
   Target,
   Activity,
-  Download,
-  Share
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
-import { ModelComparison, ComparisonResult } from '@/types/providers';
-import { Model } from '@/lib/model-utils';
 import { useToast } from '@/hooks/use-toast';
 
 interface ModelComparisonInterfaceProps {
-  models: Model[];
-  onClose?: () => void;
-  onSelectModel?: (model: Model) => void;
   className?: string;
 }
 
-interface ComparisonMetric {
+interface ModelForComparison {
+  id: string;
   name: string;
-  key: string;
-  unit: string;
-  format: (value: number) => string;
-  higherIsBetter: boolean;
-  category: 'performance' | 'cost' | 'capability' | 'reliability';
+  provider: string;
+  type: string;
+  metrics: {
+    latency: number;
+    throughput: number;
+    accuracy: number;
+    costPerRequest: number;
+    successRate: number;
+    memoryUsage: number;
+  };
+  capabilities: string[];
+  specifications: {
+    parameters: string;
+    contextLength: number;
+    quantization: string;
+    memoryRequirement: string;
+  };
+  benchmarks: {
+    name: string;
+    score: number;
+    percentile: number;
+  }[];
+  usage: {
+    totalRequests: number;
+    averageRequestsPerDay: number;
+    lastUsed: Date;
+  };
 }
 
-const COMPARISON_METRICS: ComparisonMetric[] = [
-  {
-    name: 'Average Latency',
-    key: 'latency.average',
-    unit: 'ms',
-    format: (v) => `${v.toFixed(0)}ms`,
-    higherIsBetter: false,
-    category: 'performance'
-  },
-  {
-    name: 'P95 Latency',
-    key: 'latency.p95',
-    unit: 'ms',
-    format: (v) => `${v.toFixed(0)}ms`,
-    higherIsBetter: false,
-    category: 'performance'
-  },
-  {
-    name: 'Throughput',
-    key: 'throughput.requestsPerSecond',
-    unit: 'req/s',
-    format: (v) => `${v.toFixed(1)}`,
-    higherIsBetter: true,
-    category: 'performance'
-  },
-  {
-    name: 'Tokens/Second',
-    key: 'throughput.tokensPerSecond',
-    unit: 'tok/s',
-    format: (v) => `${v.toFixed(0)}`,
-    higherIsBetter: true,
-    category: 'performance'
-  },
-  {
-    name: 'Accuracy Score',
-    key: 'accuracy.overallScore',
-    unit: '%',
-    format: (v) => `${(v * 100).toFixed(1)}%`,
-    higherIsBetter: true,
-    category: 'capability'
-  },
-  {
-    name: 'Uptime',
-    key: 'reliability.uptime',
-    unit: '%',
-    format: (v) => `${(v * 100).toFixed(2)}%`,
-    higherIsBetter: true,
-    category: 'reliability'
-  },
-  {
-    name: 'Error Rate',
-    key: 'reliability.errorRate',
-    unit: '%',
-    format: (v) => `${(v * 100).toFixed(2)}%`,
-    higherIsBetter: false,
-    category: 'reliability'
-  },
-  {
-    name: 'Cost per Request',
-    key: 'cost.perRequest',
-    unit: '$',
-    format: (v) => `$${v.toFixed(4)}`,
-    higherIsBetter: false,
-    category: 'cost'
-  },
-  {
-    name: 'Monthly Cost',
-    key: 'cost.monthly',
-    unit: '$',
-    format: (v) => `$${v.toFixed(2)}`,
-    higherIsBetter: false,
-    category: 'cost'
-  }
-];
-
-const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({
-  models,
-  onClose,
-  onSelectModel,
-  className
-}) => {
+const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({ className }) => {
   const { toast } = useToast();
-  const [comparison, setComparison] = useState<ModelComparison | null>(null);
+  const [availableModels, setAvailableModels] = useState<ModelForComparison[]>([]);
+  const [selectedModels, setSelectedModels] = useState<ModelForComparison[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'performance' | 'cost' | 'capability' | 'reliability'>('all');
+  const [comparisonMetric, setComparisonMetric] = useState<'latency' | 'cost' | 'accuracy' | 'throughput'>('latency');
 
   useEffect(() => {
-    generateComparison();
-  }, [models]);
+    loadAvailableModels();
+  }, []);
 
-  const generateComparison = async () => {
+  const loadAvailableModels = async () => {
     setLoading(true);
     try {
-      // Simulate API call to generate comparison
-      const response = await fetch('/api/models/compare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          modelIds: models.map(m => m.id),
-          criteria: COMPARISON_METRICS.map(m => ({
-            name: m.name,
-            weight: 1.0,
-            type: m.category
-          }))
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to generate comparison');
-
+      const response = await fetch('/api/models/comparison-data');
+      if (!response.ok) throw new Error('Failed to load models');
+      
       const data = await response.json();
-      setComparison(data);
+      setAvailableModels(data.models || []);
     } catch (error) {
-      console.error('Error generating comparison:', error);
+      console.error('Error loading models:', error);
       toast({
         title: 'Error',
-        description: 'Failed to generate model comparison',
+        description: 'Failed to load model comparison data',
         variant: 'destructive'
       });
     } finally {
@@ -167,66 +92,133 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({
     }
   };
 
-  const getMetricValue = (model: any, metricKey: string): number => {
-    const keys = metricKey.split('.');
-    let value = model;
-    for (const key of keys) {
-      value = value?.[key];
-      if (value === undefined) return 0;
-    }
-    return typeof value === 'number' ? value : 0;
-  };
-
-  const getBestValue = (metric: ComparisonMetric, values: number[]): number => {
-    return metric.higherIsBetter ? Math.max(...values) : Math.min(...values);
-  };
-
-  const getWorstValue = (metric: ComparisonMetric, values: number[]): number => {
-    return metric.higherIsBetter ? Math.min(...values) : Math.max(...values);
-  };
-
-  const getPerformanceScore = (value: number, best: number, worst: number, higherIsBetter: boolean): number => {
-    if (best === worst) return 100;
-    
-    if (higherIsBetter) {
-      return ((value - worst) / (best - worst)) * 100;
-    } else {
-      return ((worst - value) / (worst - best)) * 100;
+  const addModelToComparison = (modelId: string) => {
+    const model = availableModels.find(m => m.id === modelId);
+    if (model && !selectedModels.find(m => m.id === modelId)) {
+      if (selectedModels.length >= 4) {
+        toast({
+          title: 'Comparison Limit',
+          description: 'You can compare up to 4 models at once',
+          variant: 'destructive'
+        });
+        return;
+      }
+      setSelectedModels(prev => [...prev, model]);
     }
   };
 
-  const getScoreColor = (score: number): string => {
-    if (score >= 80) return 'text-green-600 bg-green-100';
-    if (score >= 60) return 'text-yellow-600 bg-yellow-100';
-    if (score >= 40) return 'text-orange-600 bg-orange-100';
-    return 'text-red-600 bg-red-100';
+  const removeModelFromComparison = (modelId: string) => {
+    setSelectedModels(prev => prev.filter(m => m.id !== modelId));
   };
 
-  const filteredMetrics = selectedCategory === 'all' 
-    ? COMPARISON_METRICS 
-    : COMPARISON_METRICS.filter(m => m.category === selectedCategory);
+  const getMetricValue = (model: ModelForComparison, metric: string): number => {
+    switch (metric) {
+      case 'latency':
+        return model.metrics.latency;
+      case 'cost':
+        return model.metrics.costPerRequest;
+      case 'accuracy':
+        return model.metrics.accuracy;
+      case 'throughput':
+        return model.metrics.throughput;
+      default:
+        return 0;
+    }
+  };
 
-  const exportComparison = () => {
-    if (!comparison) return;
+  const getBestModelForMetric = (metric: string): string | null => {
+    if (selectedModels.length === 0) return null;
     
-    const data = {
-      comparison,
-      timestamp: new Date().toISOString(),
-      models: models.map(m => ({ id: m.id, name: m.name }))
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `model-comparison-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: 'Exported',
-      description: 'Comparison data exported successfully'
+    const isLowerBetter = metric === 'latency' || metric === 'cost';
+    const bestModel = selectedModels.reduce((best, current) => {
+      const bestValue = getMetricValue(best, metric);
+      const currentValue = getMetricValue(current, metric);
+      
+      if (isLowerBetter) {
+        return currentValue < bestValue ? current : best;
+      } else {
+        return currentValue > bestValue ? current : best;
+      }
     });
+    
+    return bestModel.id;
+  };
+
+  const formatMetricValue = (value: number, metric: string): string => {
+    switch (metric) {
+      case 'latency':
+        return `${value.toFixed(0)}ms`;
+      case 'cost':
+        return `$${value.toFixed(4)}`;
+      case 'accuracy':
+        return `${(value * 100).toFixed(1)}%`;
+      case 'throughput':
+        return `${value.toFixed(1)} req/s`;
+      default:
+        return value.toString();
+    }
+  };
+
+  const getMetricIcon = (metric: string) => {
+    switch (metric) {
+      case 'latency':
+        return <Clock className="w-4 h-4" />;
+      case 'cost':
+        return <DollarSign className="w-4 h-4" />;
+      case 'accuracy':
+        return <Target className="w-4 h-4" />;
+      case 'throughput':
+        return <Zap className="w-4 h-4" />;
+      default:
+        return <Activity className="w-4 h-4" />;
+    }
+  };
+
+  const getPerformanceColor = (value: number, metric: string, isNormalized: boolean = false): string => {
+    if (isNormalized) {
+      if (value >= 80) return 'text-green-600';
+      if (value >= 60) return 'text-yellow-600';
+      return 'text-red-600';
+    }
+
+    // Raw values - context dependent
+    switch (metric) {
+      case 'latency':
+        if (value <= 100) return 'text-green-600';
+        if (value <= 500) return 'text-yellow-600';
+        return 'text-red-600';
+      case 'cost':
+        if (value <= 0.001) return 'text-green-600';
+        if (value <= 0.01) return 'text-yellow-600';
+        return 'text-red-600';
+      case 'accuracy':
+        if (value >= 0.9) return 'text-green-600';
+        if (value >= 0.7) return 'text-yellow-600';
+        return 'text-red-600';
+      case 'throughput':
+        if (value >= 10) return 'text-green-600';
+        if (value >= 5) return 'text-yellow-600';
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
+  const normalizeMetricForProgress = (value: number, metric: string, allValues: number[]): number => {
+    const min = Math.min(...allValues);
+    const max = Math.max(...allValues);
+    
+    if (min === max) return 100;
+    
+    const isLowerBetter = metric === 'latency' || metric === 'cost';
+    
+    if (isLowerBetter) {
+      // For metrics where lower is better, invert the scale
+      return ((max - value) / (max - min)) * 100;
+    } else {
+      // For metrics where higher is better
+      return ((value - min) / (max - min)) * 100;
+    }
   };
 
   if (loading) {
@@ -235,22 +227,8 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({
         <CardContent className="flex items-center justify-center p-8">
           <div className="text-center space-y-2">
             <BarChart3 className="w-8 h-8 animate-pulse mx-auto text-blue-500" />
-            <div>Analyzing models...</div>
-            <div className="text-sm text-gray-600">Generating detailed comparison</div>
+            <div>Loading model comparison data...</div>
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!comparison) {
-    return (
-      <Card className={className}>
-        <CardContent className="text-center py-8">
-          <div className="text-gray-600">Failed to generate comparison</div>
-          <Button onClick={generateComparison} className="mt-4">
-            Retry
-          </Button>
         </CardContent>
       </Card>
     );
@@ -258,258 +236,240 @@ const ModelComparisonInterface: React.FC<ModelComparisonInterfaceProps> = ({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Model Comparison
-              </CardTitle>
-              <CardDescription>
-                Detailed analysis of {models.length} models across multiple criteria
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={exportComparison}>
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-              <Button variant="outline">
-                <Share className="w-4 h-4 mr-2" />
-                Share
-              </Button>
-              {onClose && (
-                <Button variant="outline" onClick={onClose}>
-                  Close
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Winner Summary */}
-          {comparison.recommendation && (
-            <div className="p-4 bg-green-50 rounded-lg mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="w-5 h-5 text-green-600" />
-                <span className="font-medium text-green-800">Recommended Choice</span>
-              </div>
-              <div className="text-sm text-green-700">
-                <strong>{models.find(m => m.id === comparison.recommendation)?.name}</strong> 
-                {' '}scores highest overall with {comparison.summary.winnerScore.toFixed(1)}% rating
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {comparison.summary.keyDifferentiators.map((diff, idx) => (
-                  <Badge key={idx} variant="outline" className="text-xs">
-                    {diff}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Category Filter */}
-          <Tabs value={selectedCategory} onValueChange={(value: any) => setSelectedCategory(value)}>
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="performance">Performance</TabsTrigger>
-              <TabsTrigger value="capability">Capability</TabsTrigger>
-              <TabsTrigger value="reliability">Reliability</TabsTrigger>
-              <TabsTrigger value="cost">Cost</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </CardContent>
-      </Card>
-
-      {/* Comparison Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Detailed Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-3 font-medium">Metric</th>
-                  {models.map((model) => (
-                    <th key={model.id} className="text-center p-3 font-medium min-w-32">
-                      <div className="space-y-1">
-                        <div className="font-medium">{model.name}</div>
-                        <Badge variant="outline" className="text-xs">
-                          {model.provider}
-                        </Badge>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMetrics.map((metric) => {
-                  const values = models.map(model => getMetricValue(model, metric.key));
-                  const bestValue = getBestValue(metric, values);
-                  const worstValue = getWorstValue(metric, values);
-
-                  return (
-                    <tr key={metric.key} className="border-b hover:bg-gray-50">
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          {metric.category === 'performance' && <Activity className="w-4 h-4" />}
-                          {metric.category === 'cost' && <DollarSign className="w-4 h-4" />}
-                          {metric.category === 'capability' && <Target className="w-4 h-4" />}
-                          {metric.category === 'reliability' && <CheckCircle className="w-4 h-4" />}
-                          <span className="font-medium">{metric.name}</span>
-                        </div>
-                      </td>
-                      {models.map((model, idx) => {
-                        const value = values[idx];
-                        const score = getPerformanceScore(value, bestValue, worstValue, metric.higherIsBetter);
-                        const isBest = value === bestValue;
-                        const isWorst = value === worstValue && models.length > 1;
-
-                        return (
-                          <td key={model.id} className="p-3 text-center">
-                            <div className="space-y-2">
-                              <div className={`font-medium ${
-                                isBest ? 'text-green-600' : 
-                                isWorst ? 'text-red-600' : 
-                                'text-gray-900'
-                              }`}>
-                                {metric.format(value)}
-                                {isBest && <Star className="w-3 h-3 inline ml-1" />}
-                              </div>
-                              <div className="space-y-1">
-                                <Progress value={score} className="h-1" />
-                                <Badge 
-                                  variant="outline" 
-                                  className={`text-xs ${getScoreColor(score)}`}
-                                >
-                                  {score.toFixed(0)}%
-                                </Badge>
-                              </div>
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Model Details */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {comparison.results.map((result) => {
-          const model = models.find(m => m.id === result.modelId);
-          if (!model) return null;
-
-          return (
-            <Card key={result.modelId}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{model.name}</CardTitle>
+      {/* Model Selection */}
+      <div className="flex items-center gap-4">
+        <Select onValueChange={addModelToComparison}>
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Add model to compare" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableModels
+              .filter(model => !selectedModels.find(m => m.id === model.id))
+              .map(model => (
+                <SelectItem key={model.id} value={model.id}>
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-blue-100 text-blue-800">
-                      #{result.rank}
-                    </Badge>
-                    <Badge className={getScoreColor(result.totalScore)}>
-                      {result.totalScore.toFixed(0)}%
+                    <span>{model.name}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {model.provider}
                     </Badge>
                   </div>
-                </div>
-                <CardDescription>{model.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Strengths */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span className="font-medium text-sm">Strengths</span>
-                  </div>
-                  <div className="space-y-1">
-                    {result.strengths.slice(0, 3).map((strength, idx) => (
-                      <div key={idx} className="text-xs text-green-700 flex items-center gap-1">
-                        <div className="w-1 h-1 bg-green-500 rounded-full" />
-                        {strength}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
 
-                {/* Weaknesses */}
-                {result.weaknesses.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <XCircle className="w-4 h-4 text-red-600" />
-                      <span className="font-medium text-sm">Areas for Improvement</span>
-                    </div>
-                    <div className="space-y-1">
-                      {result.weaknesses.slice(0, 3).map((weakness, idx) => (
-                        <div key={idx} className="text-xs text-red-700 flex items-center gap-1">
-                          <div className="w-1 h-1 bg-red-500 rounded-full" />
-                          {weakness}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Button */}
-                {onSelectModel && (
-                  <Button 
-                    className="w-full" 
-                    variant={result.rank === 1 ? "default" : "outline"}
-                    onClick={() => onSelectModel(model)}
-                  >
-                    {result.rank === 1 ? 'Select Best Choice' : 'Select This Model'}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+        <Select value={comparisonMetric} onValueChange={(value: any) => setComparisonMetric(value)}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="latency">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Latency
+              </div>
+            </SelectItem>
+            <SelectItem value="cost">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                Cost per Request
+              </div>
+            </SelectItem>
+            <SelectItem value="accuracy">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                Accuracy
+              </div>
+            </SelectItem>
+            <SelectItem value="throughput">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Throughput
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Summary Insights */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Key Insights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Trade-offs */}
-            <div>
-              <h4 className="font-medium mb-2">Trade-offs to Consider</h4>
-              <div className="space-y-2">
-                {comparison.summary.tradeoffs.map((tradeoff, idx) => (
-                  <div key={idx} className="text-sm text-gray-600 flex items-start gap-2">
-                    <div className="w-1 h-1 bg-gray-400 rounded-full mt-2" />
-                    {tradeoff}
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* Selected Models */}
+      <div className="flex gap-2 flex-wrap">
+        {selectedModels.map(model => (
+          <Badge key={model.id} variant="secondary" className="flex items-center gap-2">
+            {model.name}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-4 w-4 p-0"
+              onClick={() => removeModelFromComparison(model.id)}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </Badge>
+        ))}
+      </div>
 
-            {/* Recommendations */}
-            <div>
-              <h4 className="font-medium mb-2">Recommendations</h4>
-              <div className="space-y-2">
-                {comparison.summary.recommendations.map((rec, idx) => (
-                  <div key={idx} className="text-sm text-gray-600 flex items-start gap-2">
-                    <div className="w-1 h-1 bg-blue-500 rounded-full mt-2" />
-                    {rec}
-                  </div>
-                ))}
+      {selectedModels.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-medium mb-2">No Models Selected</h3>
+            <p className="text-gray-600">
+              Select models from the dropdown above to start comparing their performance
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6">
+          {/* Comparison Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {getMetricIcon(comparisonMetric)}
+                {comparisonMetric.charAt(0).toUpperCase() + comparisonMetric.slice(1)} Comparison
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {selectedModels.map(model => {
+                  const metricValue = getMetricValue(model, comparisonMetric);
+                  const allValues = selectedModels.map(m => getMetricValue(m, comparisonMetric));
+                  const normalizedValue = normalizeMetricForProgress(metricValue, comparisonMetric, allValues);
+                  const isBest = getBestModelForMetric(comparisonMetric) === model.id;
+                  
+                  return (
+                    <div key={model.id} className="flex items-center gap-4">
+                      <div className="w-48">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{model.name}</span>
+                          {isBest && <CheckCircle className="w-4 h-4 text-green-600" />}
+                        </div>
+                        <div className="text-sm text-gray-600">{model.provider}</div>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-sm font-medium ${getPerformanceColor(metricValue, comparisonMetric)}`}>
+                            {formatMetricValue(metricValue, comparisonMetric)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {normalizedValue.toFixed(0)}%
+                          </span>
+                        </div>
+                        <Progress 
+                          value={normalizedValue} 
+                          className="h-2"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            </CardContent>
+          </Card>
+
+          {/* Detailed Comparison */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {selectedModels.map(model => (
+              <Card key={model.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{model.name}</CardTitle>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => removeModelFromComparison(model.id)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <CardDescription>{model.provider} • {model.type}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Key Metrics */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-gray-600">Latency</div>
+                      <div className={`font-medium ${getPerformanceColor(model.metrics.latency, 'latency')}`}>
+                        {model.metrics.latency.toFixed(0)}ms
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-gray-600">Cost</div>
+                      <div className={`font-medium ${getPerformanceColor(model.metrics.costPerRequest, 'cost')}`}>
+                        ${model.metrics.costPerRequest.toFixed(4)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-gray-600">Accuracy</div>
+                      <div className={`font-medium ${getPerformanceColor(model.metrics.accuracy, 'accuracy')}`}>
+                        {(model.metrics.accuracy * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-gray-600">Throughput</div>
+                      <div className={`font-medium ${getPerformanceColor(model.metrics.throughput, 'throughput')}`}>
+                        {model.metrics.throughput.toFixed(1)} req/s
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Specifications */}
+                  <div className="space-y-2 text-sm">
+                    <div className="font-medium">Specifications</div>
+                    <div className="space-y-1 text-gray-600">
+                      <div>Parameters: {model.specifications.parameters}</div>
+                      <div>Context: {model.specifications.contextLength.toLocaleString()}</div>
+                      <div>Memory: {model.specifications.memoryRequirement}</div>
+                    </div>
+                  </div>
+
+                  {/* Capabilities */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Capabilities</div>
+                    <div className="flex flex-wrap gap-1">
+                      {model.capabilities.slice(0, 3).map(capability => (
+                        <Badge key={capability} variant="outline" className="text-xs">
+                          {capability}
+                        </Badge>
+                      ))}
+                      {model.capabilities.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{model.capabilities.length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Usage Stats */}
+                  <div className="space-y-2 text-sm">
+                    <div className="font-medium">Usage</div>
+                    <div className="space-y-1 text-gray-600">
+                      <div>Total: {model.usage.totalRequests.toLocaleString()} requests</div>
+                      <div>Daily avg: {model.usage.averageRequestsPerDay.toFixed(0)}</div>
+                      <div>Last used: {new Date(model.usage.lastUsed).toLocaleDateString()}</div>
+                    </div>
+                  </div>
+
+                  {/* Top Benchmarks */}
+                  {model.benchmarks.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Top Benchmarks</div>
+                      <div className="space-y-1">
+                        {model.benchmarks.slice(0, 2).map(benchmark => (
+                          <div key={benchmark.name} className="flex justify-between text-sm">
+                            <span className="text-gray-600">{benchmark.name}</span>
+                            <span className="font-medium">{benchmark.score.toFixed(1)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 };

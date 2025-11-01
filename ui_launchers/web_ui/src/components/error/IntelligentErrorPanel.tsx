@@ -153,7 +153,7 @@ export const IntelligentErrorPanel: React.FC<IntelligentErrorPanelProps> = ({
         )
       );
 
-      setAnalysis(response);
+      setAnalysis(response.data);
     } catch (err: any) {
       console.error('Failed to fetch error analysis:', err);
       setFetchError(err.message || 'Failed to analyze error');

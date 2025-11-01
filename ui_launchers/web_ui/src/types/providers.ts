@@ -22,7 +22,7 @@ export interface ProviderConfigSchema {
 
 export interface ProviderConfigField {
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'multiselect' | 'password' | 'url' | 'file';
+  type: 'string' | 'number' | 'boolean' | 'select' | 'multiselect' | 'password' | 'url' | 'file' | 'textarea';
   label: string;
   description?: string;
   required: boolean;

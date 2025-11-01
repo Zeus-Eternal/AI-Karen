@@ -33,7 +33,7 @@ import {
   Bar,
   ScatterChart,
   Scatter,
-  TreeMap,
+  Treemap,
   Cell
 } from 'recharts';
 import { 
@@ -327,7 +327,7 @@ export const PerformanceAnalyticsDashboard: React.FC<PerformanceAnalyticsDashboa
                     />
                     <Scatter 
                       dataKey="duration" 
-                      fill={(entry: any) => entry.bottleneck ? '#ff4444' : '#8884d8'} 
+                      fill="#8884d8"
                     />
                   </ScatterChart>
                 </ResponsiveContainer>

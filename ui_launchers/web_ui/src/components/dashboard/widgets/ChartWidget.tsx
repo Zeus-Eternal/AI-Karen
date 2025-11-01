@@ -124,7 +124,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = (props) => {
               format: '%H:%M',
             },
           }),
-        },
+        } as any,
         {
           type: 'number',
           position: 'left',

@@ -15,7 +15,7 @@ export const enhancedButtonVariants = cva(
   [
     'inline-flex items-center justify-center gap-2',
     'rounded-[var(--radius-md)] font-medium',
-    'transition-all duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+    'transition-all [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-standard)]',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:ring-offset-2',
     'disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none',
     'select-none touch-manipulation',

@@ -285,7 +285,7 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
           { type: 'number', position: 'left', title: { text: 'Memory Count' } }
         ],
         title: { text: 'Confidence Score Distribution' }
-      } as AgChartOptions,
+      } as any,
 
       clusterDistribution: {
         data: analytics.content.clusterDistribution,
@@ -296,7 +296,7 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
           label: { enabled: true }
         }],
         title: { text: 'Memory Distribution by Cluster' }
-      } as AgChartOptions,
+      } as any,
 
       retentionCurve: {
         data: analytics.trends.retentionCurve,
@@ -429,9 +429,13 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
               <h3 className="text-lg font-semibold mb-4">Memory Growth</h3>
               {loading ? (
                 <div className="h-64 bg-gray-200 animate-pulse rounded"></div>
-              ) : (
+              ) : chartConfigs.memoryGrowth ? (
                 <div className="h-64">
                   <AgCharts options={chartConfigs.memoryGrowth} />
+                </div>
+              ) : (
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  No data available
                 </div>
               )}
             </Card>
@@ -440,9 +444,13 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
               <h3 className="text-lg font-semibold mb-4">Cluster Distribution</h3>
               {loading ? (
                 <div className="h-64 bg-gray-200 animate-pulse rounded"></div>
-              ) : (
+              ) : chartConfigs.clusterDistribution ? (
                 <div className="h-64">
                   <AgCharts options={chartConfigs.clusterDistribution} />
+                </div>
+              ) : (
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  No data available
                 </div>
               )}
             </Card>
@@ -492,9 +500,13 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
               <h3 className="text-lg font-semibold mb-4">Search Performance</h3>
               {loading ? (
                 <div className="h-64 bg-gray-200 animate-pulse rounded"></div>
-              ) : (
+              ) : chartConfigs.performanceMetrics ? (
                 <div className="h-64">
                   <AgCharts options={chartConfigs.performanceMetrics} />
+                </div>
+              ) : (
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  No data available
                 </div>
               )}
             </Card>
@@ -545,9 +557,13 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
               <h3 className="text-lg font-semibold mb-4">Confidence Distribution</h3>
               {loading ? (
                 <div className="h-64 bg-gray-200 animate-pulse rounded"></div>
-              ) : (
+              ) : chartConfigs.confidenceDistribution ? (
                 <div className="h-64">
                   <AgCharts options={chartConfigs.confidenceDistribution} />
+                </div>
+              ) : (
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  No data available
                 </div>
               )}
             </Card>
@@ -584,9 +600,13 @@ export const MemoryAnalytics: React.FC<MemoryAnalyticsProps> = ({
             <h3 className="text-lg font-semibold mb-4">Memory Retention Curve</h3>
             {loading ? (
               <div className="h-64 bg-gray-200 animate-pulse rounded"></div>
-            ) : (
+            ) : chartConfigs.retentionCurve ? (
               <div className="h-64">
                 <AgCharts options={chartConfigs.retentionCurve} />
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-gray-500">
+                No data available
               </div>
             )}
           </Card>

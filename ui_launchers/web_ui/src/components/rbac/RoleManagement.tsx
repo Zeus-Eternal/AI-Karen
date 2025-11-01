@@ -140,7 +140,7 @@ function RolesList({ searchTerm, onSearchChange, onRoleSelect, onEditRole }: Rol
     }
   });
 
-  const filteredRoles = roles.filter(role =>
+  const filteredRoles = (Array.isArray(roles) ? roles : roles?.data || []).filter(role =>
     role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     role.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -265,7 +265,7 @@ function UserRoleAssignments() {
                   <SelectValue placeholder="Choose a user" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.map((user) => (
+                  {(Array.isArray(users) ? users : users?.data || []).map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.username} ({user.email})
                     </SelectItem>
@@ -280,7 +280,7 @@ function UserRoleAssignments() {
                   <SelectValue placeholder="Choose a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.map((role) => (
+                  {(Array.isArray(roles) ? roles : roles?.data || []).map((role) => (
                     <SelectItem key={role.id} value={role.id}>
                       {role.name}
                     </SelectItem>
@@ -301,7 +301,10 @@ function UserRoleAssignments() {
           <CardTitle>Current User Role Assignments</CardTitle>
         </CardHeader>
         <CardContent>
-          <UserRoleTable users={users} roles={roles} />
+          <UserRoleTable 
+            users={Array.isArray(users) ? users : users?.data || []} 
+            roles={Array.isArray(roles) ? roles : roles?.data || []} 
+          />
         </CardContent>
       </Card>
     </div>
@@ -372,7 +375,7 @@ function RoleHierarchyView() {
         </AlertDescription>
       </Alert>
 
-      {hierarchy.map((item: any) => (
+      {(Array.isArray(hierarchy) ? hierarchy : hierarchy?.data || []).map((item: any) => (
         <Card key={item.roleId}>
           <CardHeader>
             <CardTitle>{item.roleName}</CardTitle>

@@ -10,6 +10,7 @@ import ReactFlow, {
   Controls,
   MiniMap,
   Background,
+  BackgroundVariant,
   Connection,
   ReactFlowProvider,
   ReactFlowInstance,
@@ -204,9 +205,9 @@ export function WorkflowBuilder({
       id: edge.id,
       source: edge.source,
       target: edge.target,
-      sourceHandle: edge.sourceHandle,
-      targetHandle: edge.targetHandle,
-      type: edge.type,
+      sourceHandle: edge.sourceHandle ?? undefined,
+      targetHandle: edge.targetHandle ?? undefined,
+      type: edge.type as 'default' | 'straight' | 'step' | 'smoothstep' | undefined,
       animated: edge.animated,
       style: edge.style,
       data: edge.data,
@@ -394,7 +395,7 @@ export function WorkflowBuilder({
           >
             <Controls />
             {showMiniMap && <MiniMap />}
-            {showBackground && <Background variant="dots" gap={12} size={1} />}
+            {showBackground && <Background variant={BackgroundVariant.Dots} gap={12} size={1} />}
           </ReactFlow>
         </div>
       </div>

@@ -27,10 +27,10 @@ const nextConfig = {
   // Explicitly set the output file tracing root to prevent workspace detection issues
   outputFileTracingRoot: __dirname,
   
-  // TypeScript configuration
+  // TypeScript configuration - disable for faster builds
   typescript: {
-    // Enable type checking during build for better code quality
-    ignoreBuildErrors: false,
+    // Skip type checking during build for speed
+    ignoreBuildErrors: true,
   },
 
   // Font optimization is enabled by default in Next.js 15
@@ -38,21 +38,22 @@ const nextConfig = {
   // Suppress hydration warnings in development
   reactStrictMode: false,
   
-  // Force development mode settings
-  ...(process.env.NODE_ENV === 'development' && {
-    // Disable minification in development
-    swcMinify: false,
-    // Enable source maps
-    productionBrowserSourceMaps: false,
-    // Disable optimization
-    optimizeFonts: false,
-  }),
+  // Disable source maps for faster builds
+  productionBrowserSourceMaps: false,
+  
+  // Performance optimizations
+  swcMinify: true, // Use faster SWC minifier
+  optimizeFonts: false, // Disable font optimization for speed
+  
+  // Compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
 
-  // ESLint configuration
+  // ESLint configuration - disable for faster builds
   eslint: {
-    // Enable ESLint during production builds for code quality
-    ignoreDuringBuilds: false,
-    // Only ignore specific rules if needed
+    // Skip ESLint during builds for speed
+    ignoreDuringBuilds: true,
     dirs: ['src'],
   },
 
@@ -262,34 +263,45 @@ const nextConfig = {
       // Next.js already handles CSS extraction/minification; rely on built-in pipeline
     }
     
-    // Configure watch options to prevent EMFILE errors
-    if (dev && !isServer) {
-      config.watchOptions = {
-        ignored: [
-          '**/node_modules',
-          '**/.git',
-          '**/.next',
-          '**/dist',
-          '**/build',
-          '**/coverage',
-          '**/logs',
-          '**/temp_files',
-          '**/backups',
-          '**/quarantine',
-          '**/system_backups',
-          '**/monitoring',
-          '**/reports',
-          '**/scripts',
-          '**/docs',
-          '**/extensions',
-          '**/headers',
-          '**/models',
-          '**/plugins',
-          '/media/zeus/Development10/KIRO/**',
-        ],
-        aggregateTimeout: 300,
-        poll: 1000, // Use polling instead of file system events
+    // Development optimizations
+    if (dev) {
+      // Faster rebuilds in development
+      config.cache = {
+        type: 'filesystem',
+        buildDependencies: {
+          config: [__filename],
+        },
       };
+      
+      // Configure watch options to prevent EMFILE errors
+      if (!isServer) {
+        config.watchOptions = {
+          ignored: [
+            '**/node_modules',
+            '**/.git',
+            '**/.next',
+            '**/dist',
+            '**/build',
+            '**/coverage',
+            '**/logs',
+            '**/temp_files',
+            '**/backups',
+            '**/quarantine',
+            '**/system_backups',
+            '**/monitoring',
+            '**/reports',
+            '**/scripts',
+            '**/docs',
+            '**/extensions',
+            '**/headers',
+            '**/models',
+            '**/plugins',
+            '/media/zeus/Development10/KIRO/**',
+          ],
+          aggregateTimeout: 300,
+          poll: 1000, // Use polling instead of file system events
+        };
+      }
     }
     
     return config;

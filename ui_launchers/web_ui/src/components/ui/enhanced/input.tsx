@@ -17,7 +17,7 @@ export const enhancedInputVariants = cva(
     'bg-[var(--color-neutral-50)] px-[var(--space-sm)] py-[var(--space-xs)]',
     'text-[var(--text-sm)] text-[var(--color-neutral-900)]',
     'ring-offset-[var(--color-neutral-50)]',
-    'transition-all duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+    'transition-all [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-standard)]',
     'file:border-0 file:bg-transparent file:text-[var(--text-sm)] file:font-medium',
     'placeholder:text-[var(--color-neutral-500)]',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:ring-offset-2',
@@ -79,7 +79,7 @@ export const enhancedInputVariants = cva(
 );
 
 export interface EnhancedInputProps
-  extends React.ComponentProps<'input'>,
+  extends Omit<React.ComponentProps<'input'>, 'size'>,
     VariantProps<typeof enhancedInputVariants> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;

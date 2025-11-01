@@ -41,6 +41,7 @@ export interface ThemeProviderProps {
   defaultTheme?: Theme;
   defaultDensity?: Density;
   storageKey?: string;
+  densityStorageKey?: string;
   attribute?: string;
   enableSystem?: boolean;
   disableTransitionOnChange?: boolean;
@@ -52,6 +53,7 @@ export function ThemeProvider({
   defaultTheme = 'system',
   defaultDensity = 'comfortable',
   storageKey = 'ui-theme',
+  densityStorageKey = 'ui-density',
   attribute = 'data-theme',
   enableSystem = true,
   disableTransitionOnChange = false,
@@ -117,7 +119,7 @@ export function ThemeProvider({
     }
 
     const storedTheme = localStorage.getItem(storageKey);
-    const storedDensity = localStorage.getItem(`${storageKey}-density`);
+    const storedDensity = localStorage.getItem(densityStorageKey);
 
     if (isValidTheme(storedTheme)) {
       setStoreTheme(storedTheme);
@@ -130,7 +132,7 @@ export function ThemeProvider({
     } else {
       setDensityState(defaultDensity);
     }
-  }, [defaultDensity, defaultTheme, setStoreTheme, storageKey, theme]);
+  }, [defaultDensity, defaultTheme, setStoreTheme, storageKey, densityStorageKey, theme]);
 
   // Persist theme preference for backwards compatibility consumers
   useEffect(() => {
@@ -184,9 +186,9 @@ export function ThemeProvider({
   const setDensity = useCallback((newDensity: Density) => {
     setDensityState(newDensity);
     if (typeof window !== 'undefined') {
-      localStorage.setItem(`${storageKey}-density`, newDensity);
+      localStorage.setItem(densityStorageKey, newDensity);
     }
-  }, [storageKey]);
+  }, [densityStorageKey]);
 
   const toggleTheme = useCallback(() => {
     if (theme === 'system') {

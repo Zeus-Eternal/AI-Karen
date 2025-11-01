@@ -123,7 +123,7 @@ export interface AriaReport {
 // ACCESSIBILITY TEST SUITE
 // ============================================================================
 
-export class AccessibilityTestSuite {
+export class AccessibilityTestSuiteImpl implements AccessibilityTestSuite {
   private container: Element | Document;
   private options: RunOptions;
 
@@ -613,7 +613,7 @@ export class AccessibilityTestSuite {
 // ============================================================================
 
 export function createAccessibilityTestSuite(container?: Element | Document): AccessibilityTestSuite {
-  return new AccessibilityTestSuite(container);
+  return new AccessibilityTestSuiteImpl(container);
 }
 
 export async function runQuickAccessibilityCheck(element?: Element | Document): Promise<boolean> {

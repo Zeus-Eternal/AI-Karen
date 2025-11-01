@@ -380,7 +380,7 @@ export const PerformanceAlertSystem: React.FC<PerformanceAlertSystemProps> = ({
                                 </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground">
-                                {getMetricDisplayName(rule.metric)} > {rule.threshold}
+                                {getMetricDisplayName(rule.metric)} &gt; {rule.threshold}
                               </p>
                             </div>
                             <div className="flex items-center space-x-2">

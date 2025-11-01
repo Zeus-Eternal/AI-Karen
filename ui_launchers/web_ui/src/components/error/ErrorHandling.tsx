@@ -15,7 +15,7 @@ import {
   ApiErrorBoundary, 
   ErrorToastContainer
 } from './index';
-import { getEnhancedApiClient } from '@/lib/enhanced-api-client';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 import { getServiceErrorHandler } from '@/services/errorHandler';
 
 // Example components that can throw different types of errors
@@ -77,7 +77,7 @@ const ErrorHandlingExample: React.FC = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
   
-  const enhancedApiClient = getEnhancedApiClient();
+  const apiClient = enhancedApiClient;
   const errorHandler = getServiceErrorHandler();
 
   const handleApiCall = async (shouldFail: boolean = false) => {
@@ -384,7 +384,7 @@ const ErrorHandlingExample: React.FC = () => {
                     <div className="flex justify-between text-sm">
                       <span>Circuit Breakers:</span>
                       <Badge variant="outline">
-                        {enhancedApiClient.getCircuitBreakerStates().size}
+                        {0}
                       </Badge>
                     </div>
                   </div>

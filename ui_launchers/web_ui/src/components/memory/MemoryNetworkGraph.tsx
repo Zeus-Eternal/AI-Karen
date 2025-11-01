@@ -23,13 +23,16 @@ import {
 } from 'lucide-react';
 import { getMemoryService } from '@/services/memoryService';
 import type { 
-  MemoryNetworkNode,
+  MemoryNetworkNode as BaseMemoryNetworkNode,
   MemoryNetworkEdge,
   MemoryNetworkData,
   MemoryCluster,
   NetworkStatistics,
   MemoryNetworkProps
 } from '@/types/memory';
+
+// Extend the base node type to be compatible with D3 simulation
+type MemoryNetworkNode = BaseMemoryNetworkNode & d3.SimulationNodeDatum;
 
 interface NetworkConfig {
   nodeSize: [number, number]; // [min, max]
@@ -311,7 +314,7 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         .strength(config.linkStrength))
       .force('charge', d3.forceManyBody().strength(config.chargeStrength))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(d => d.size + 2));
+      .force('collision', d3.forceCollide().radius(d => (d as MemoryNetworkNode).size + 2));
 
     simulationRef.current = simulation;
 
@@ -401,9 +404,12 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
         const connectedNodeIds = new Set<string>();
         links
           .style('stroke-opacity', edge => {
-            if (edge.source === d || edge.target === d) {
-              connectedNodeIds.add(typeof edge.source === 'string' ? edge.source : edge.source.id);
-              connectedNodeIds.add(typeof edge.target === 'string' ? edge.target : edge.target.id);
+            const sourceId = typeof edge.source === 'string' ? edge.source : (edge.source as MemoryNetworkNode).id;
+            const targetId = typeof edge.target === 'string' ? edge.target : (edge.target as MemoryNetworkNode).id;
+            
+            if (sourceId === d.id || targetId === d.id) {
+              connectedNodeIds.add(sourceId);
+              connectedNodeIds.add(targetId);
               return 1;
             }
             return 0.1;
@@ -447,26 +453,38 @@ export const MemoryNetworkGraph: React.FC<MemoryNetworkProps> = ({
     // Update positions on simulation tick
     simulation.on('tick', () => {
       links
-        .attr('x1', d => (d.source as MemoryNetworkNode).x!)
-        .attr('y1', d => (d.source as MemoryNetworkNode).y!)
-        .attr('x2', d => (d.target as MemoryNetworkNode).x!)
-        .attr('y2', d => (d.target as MemoryNetworkNode).y!);
+        .attr('x1', d => {
+          const source = d.source as any;
+          return typeof source === 'object' ? source.x : 0;
+        })
+        .attr('y1', d => {
+          const source = d.source as any;
+          return typeof source === 'object' ? source.y : 0;
+        })
+        .attr('x2', d => {
+          const target = d.target as any;
+          return typeof target === 'object' ? target.x : 0;
+        })
+        .attr('y2', d => {
+          const target = d.target as any;
+          return typeof target === 'object' ? target.y : 0;
+        });
 
-      nodes.attr('transform', d => `translate(${d.x},${d.y})`);
+      nodes.attr('transform', d => `translate(${(d as any).x || 0},${(d as any).y || 0})`);
 
       // Update cluster positions
       if (config.showClusters) {
         filteredData.clusters.forEach(cluster => {
           const clusterNodes = filteredData.nodes.filter(n => cluster.nodes.includes(n.id));
           if (clusterNodes.length > 0) {
-            cluster.centroid.x = d3.mean(clusterNodes, n => n.x!) || 0;
-            cluster.centroid.y = d3.mean(clusterNodes, n => n.y!) || 0;
+            cluster.centroid.x = d3.mean(clusterNodes, n => (n as any).x || 0) || 0;
+            cluster.centroid.y = d3.mean(clusterNodes, n => (n as any).y || 0) || 0;
           }
         });
 
         container.selectAll('.cluster circle')
-          .attr('cx', d => d.centroid.x)
-          .attr('cy', d => d.centroid.y);
+          .attr('cx', d => (d as MemoryCluster).centroid.x)
+          .attr('cy', d => (d as MemoryCluster).centroid.y);
       }
     });
 

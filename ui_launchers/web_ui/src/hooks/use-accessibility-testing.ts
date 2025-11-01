@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityTestSuite, type AccessibilityReport } from '../lib/accessibility/accessibility-testing';
+import { AccessibilityTestSuiteImpl, type AccessibilityTestSuite, type AccessibilityReport } from '../lib/accessibility/accessibility-testing';
 
 export interface UseAccessibilityTestingOptions {
   /** Whether to run tests automatically */
@@ -65,7 +65,7 @@ export function useAccessibilityTesting(
   // Initialize test suite
   useEffect(() => {
     if (elementRef.current) {
-      testSuiteRef.current = new AccessibilityTestSuite(elementRef.current);
+      testSuiteRef.current = new AccessibilityTestSuiteImpl(elementRef.current);
     }
   }, [elementRef]);
 
@@ -285,22 +285,22 @@ export function useAccessibilityMonitor(
 // Hook for accessibility testing in tests
 export function useAccessibilityTestRunner() {
   const runAccessibilityTest = useCallback(async (element: HTMLElement) => {
-    const testSuite = new AccessibilityTestSuite(element);
+    const testSuite = new AccessibilityTestSuiteImpl(element);
     return await testSuite.basic();
   }, []);
 
   const runKeyboardTest = useCallback(async (element: HTMLElement) => {
-    const testSuite = new AccessibilityTestSuite(element);
+    const testSuite = new AccessibilityTestSuiteImpl(element);
     return await testSuite.keyboard();
   }, []);
 
   const runScreenReaderTest = useCallback(async (element: HTMLElement) => {
-    const testSuite = new AccessibilityTestSuite(element);
+    const testSuite = new AccessibilityTestSuiteImpl(element);
     return await testSuite.screenReader();
   }, []);
 
   const runColorContrastTest = useCallback(async (element: HTMLElement) => {
-    const testSuite = new AccessibilityTestSuite(element);
+    const testSuite = new AccessibilityTestSuiteImpl(element);
     return await testSuite.colorContrast();
   }, []);
 

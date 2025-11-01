@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 
 const baseButtonClasses = [
   'inline-flex items-center justify-center gap-[var(--space-xs)] rounded-[var(--radius-md)] border font-medium',
-  'transition-[color,background-color,border-color,box-shadow,transform] duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+  'transition-[color,background-color,border-color,box-shadow,transform] [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-standard)]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
   'disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed',
   'active:scale-95 sm:active:scale-100',

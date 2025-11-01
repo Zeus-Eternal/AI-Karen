@@ -126,7 +126,6 @@ export const MemoryManagementTools: React.FC<MemoryEditorProps> = ({
 
       const result = await memoryService.searchMemories('', {
         userId,
-        tenantId,
         maxResults: 100
       });
 

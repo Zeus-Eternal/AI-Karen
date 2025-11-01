@@ -126,7 +126,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
   const schema = getSchemaForType(config.type);
   
   const form = useForm<WidgetConfig>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: config,
   });
 
@@ -585,7 +585,7 @@ export const WidgetConfigPanel: React.FC<WidgetConfigPanelProps> = ({
                         onClick={() => {
                           const currentLevels = field.value || [];
                           if (currentLevels.includes(level as any)) {
-                            field.onChange(currentLevels.filter(l => l !== level));
+                            field.onChange(currentLevels.filter((l: any) => l !== level));
                           } else {
                             field.onChange([...currentLevels, level]);
                           }

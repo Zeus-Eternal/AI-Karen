@@ -145,14 +145,14 @@ export function generateComponentProperties(): Record<string, string> {
   };
 
   Object.entries(designTokens.components.button).forEach(([variant, tokens]) => {
-    assignTokens(`button-${variant}`, tokens);
+    assignTokens(`button-${variant}`, tokens as unknown as Record<string, string | undefined>);
   });
 
   Object.entries(designTokens.components.badge).forEach(([variant, tokens]) => {
-    assignTokens(`badge-${variant}`, tokens);
+    assignTokens(`badge-${variant}`, tokens as unknown as Record<string, string | undefined>);
   });
 
-  assignTokens('card', designTokens.components.card);
+  assignTokens('card', designTokens.components.card as unknown as Record<string, string | undefined>);
 
   return properties;
 }

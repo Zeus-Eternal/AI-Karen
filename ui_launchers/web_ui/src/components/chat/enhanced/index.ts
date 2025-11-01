@@ -43,7 +43,7 @@ export type {
   MemoryReference,
   ReasoningChain,
   ReasoningStep,
-  SourceAttribution,
+  SourceAttribution as SourceAttributionType,
   Attachment,
   AttachmentMetadata,
   AttachmentAnalysis,

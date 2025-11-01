@@ -6,6 +6,11 @@ export { default as ModelPerformanceComparison } from './ModelPerformanceCompari
 export { default as ModelStatusMonitor } from './ModelStatusMonitor';
 export { default as ModelConfigurationPanel } from './ModelConfigurationPanel';
 export { default as EnhancedModelSelector } from './EnhancedModelSelector';
+export { default as ModelMetricsDashboard } from './ModelMetricsDashboard';
+export { default as CostTrackingSystem } from './CostTrackingSystem';
+export { default as ModelComparisonInterface } from './ModelComparisonInterface';
+export { default as IntelligentModelSelector } from './IntelligentModelSelector';
+export { default as ModelProviderManagementHub } from './ModelProviderManagementHub';
 
 // Re-export existing model components for compatibility
 export { default as ModelCard } from '../settings/ModelCard';

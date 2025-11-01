@@ -385,7 +385,10 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
   const handleShare = useCallback(async (config: ConversationShare): Promise<string> => {
     if (onShare) {
-      return await onShare(config);
+      onShare(config);
+      // Generate a mock URL since onShare doesn't return one
+      const shareId = `share-${Date.now()}`;
+      return `https://app.kari-ai.com/shared/${shareId}`;
     } else {
       // Mock share URL generation
       const shareId = `share-${Date.now()}`;
@@ -569,7 +572,7 @@ export const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
         {/* Context Panel */}
         {showContextPanel && enableContextPanel && (
           <>
-            <ResizableHandle withHandle />
+            <ResizableHandle />
             <ResizablePanel defaultSize={30} minSize={25} maxSize={50}>
               <div className="h-full flex flex-col gap-4 p-4">
                 {/* Threading */}

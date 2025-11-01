@@ -24,7 +24,7 @@ export const Badge: React.FC<BadgeProps> = ({
 }) => {
   const baseClasses = [
     'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
-    'transition-colors duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+    'transition-colors [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-standard)]',
     'tracking-[var(--letter-spacing-tight)]',
   ].join(' ');
 

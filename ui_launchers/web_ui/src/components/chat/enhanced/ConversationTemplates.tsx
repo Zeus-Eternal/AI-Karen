@@ -30,7 +30,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Template,
+  FileText as Template,
   Plus,
   Search,
   Code,
@@ -433,11 +433,12 @@ export const ConversationTemplates: React.FC<ConversationTemplatesProps> = ({
     const Icon = action.icon;
     
     return (
-      <Card key={action.id} className="hover:shadow-sm transition-shadow cursor-pointer">
-        <CardContent 
-          className="p-4"
-          onClick={() => onQuickActionSelect(action)}
-        >
+      <Card 
+        key={action.id} 
+        className="hover:shadow-sm transition-shadow cursor-pointer"
+        onClick={() => onQuickActionSelect(action)}
+      >
+        <CardContent className="p-4">
           <div className="flex items-center gap-3 mb-2">
             <Icon className="h-5 w-5 text-primary" />
             <div className="flex-1">

@@ -16,7 +16,7 @@ interface KeyboardNavigationContextValue {
   moveTo: (index: number) => void;
   
   // Registration methods
-  registerNavigationContainer: (element: HTMLElement) => void;
+  registerNavigationContainer: (element: HTMLElement) => (() => void) | void;
   unregisterNavigationContainer: () => void;
   
   // Settings
@@ -151,7 +151,9 @@ export function useNavigationContainer() {
     if (element) {
       const cleanup = registerNavigationContainer(element);
       return () => {
-        cleanup?.();
+        if (typeof cleanup === 'function') {
+          cleanup();
+        }
         unregisterNavigationContainer();
       };
     }

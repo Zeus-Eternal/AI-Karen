@@ -336,15 +336,17 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
             const IconComponent = categoryIcons[node.category as keyof typeof categoryIcons] || Settings;
             
             return (
-              <Card
+              <div
                 key={node.id}
-                className={`
-                  cursor-pointer transition-all duration-200 hover:shadow-md
-                  ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary'}
-                `}
                 draggable={!readOnly}
                 onDragStart={(e) => onDragStart(e, node)}
               >
+                <Card
+                  className={`
+                    cursor-pointer transition-all duration-200 hover:shadow-md
+                    ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary'}
+                  `}
+                >
                 <CardContent className="p-3">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
@@ -371,6 +373,7 @@ export function NodeLibrary({ readOnly = false }: NodeLibraryProps) {
                   </div>
                 </CardContent>
               </Card>
+              </div>
             );
           })}
           

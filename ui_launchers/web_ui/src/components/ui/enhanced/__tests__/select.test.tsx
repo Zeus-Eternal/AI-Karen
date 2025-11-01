@@ -155,7 +155,7 @@ describe('EnhancedSelect', () => {
     expect(trigger).toHaveClass('border-[var(--color-neutral-300)]');
     expect(trigger).toHaveClass('bg-[var(--color-neutral-50)]');
     expect(trigger).toHaveClass('text-[var(--color-neutral-900)]');
-    expect(trigger).toHaveClass('duration-[var(--duration-fast)]');
+    expect(trigger).toHaveClass('[transition-duration:var(--duration-fast)]');
   });
 
   it('should render with groups and separators', async () => {

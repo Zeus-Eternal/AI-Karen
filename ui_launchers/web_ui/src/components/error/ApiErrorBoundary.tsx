@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { getEnhancedApiClient } from '@/lib/enhanced-api-client';
+import { enhancedApiClient } from '@/lib/enhanced-api-client';
 
 interface ApiErrorBoundaryProps {
   children: ReactNode;
@@ -52,7 +52,7 @@ interface ApiError extends Error {
 export class ApiErrorBoundary extends Component<ApiErrorBoundaryProps, ApiErrorBoundaryState> {
   private retryTimeouts: NodeJS.Timeout[] = [];
   private networkStatusInterval: NodeJS.Timeout | null = null;
-  private enhancedApiClient = getEnhancedApiClient();
+  private enhancedApiClient = enhancedApiClient;
 
   constructor(props: ApiErrorBoundaryProps) {
     super(props);

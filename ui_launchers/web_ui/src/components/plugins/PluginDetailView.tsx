@@ -150,7 +150,7 @@ const LogEntry: React.FC<{ entry: any }> = ({ entry }) => {
       <div className="text-xs text-muted-foreground w-20 flex-shrink-0">
         {entry.timestamp.toLocaleTimeString()}
       </div>
-      <div className={`text-xs font-medium w-12 flex-shrink-0 uppercase ${levelColors[entry.level]}`}>
+      <div className={`text-xs font-medium w-12 flex-shrink-0 uppercase ${levelColors[entry.level as keyof typeof levelColors] || 'text-gray-500'}`}>
         {entry.level}
       </div>
       <div className="flex-1 text-sm">{entry.message}</div>

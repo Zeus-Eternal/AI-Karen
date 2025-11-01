@@ -1,0 +1,407 @@
+/**
+ * Accessibility Simulation Styles
+ * 
+ * CSS for simulating various accessibility conditions and impairments
+ * for testing and validation purposes.
+ */
+
+/* Visual Impairment Simulations */
+.visual-impairment-simulation {
+  /* Base simulation styles */
+  transition: all 0.3s ease;
+}
+
+/* Low Vision Simulation */
+.visual-impairment-simulation[data-visual-type="low-vision"] {
+  filter: blur(calc(var(--visual-severity, 0) * 0.05px));
+}
+
+.visual-impairment-simulation[data-visual-type="low-vision"] * {
+  font-size: calc(1em + (var(--visual-severity, 0) * 0.01em)) !important;
+  line-height: calc(1.5 + (var(--visual-severity, 0) * 0.01)) !important;
+}
+
+/* Color Blindness Simulation */
+.visual-impairment-simulation[data-visual-type="color-blind"] {
+  /* Protanopia (red-blind) simulation */
+  filter: 
+    sepia(100%) 
+    saturate(0%) 
+    hue-rotate(calc(var(--visual-severity, 0) * 3.6deg));
+}
+
+.visual-impairment-simulation[data-visual-type="color-blind"][data-color-blind-type="deuteranopia"] {
+  /* Deuteranopia (green-blind) simulation */
+  filter: 
+    sepia(50%) 
+    saturate(80%) 
+    hue-rotate(calc(var(--visual-severity, 0) * 2deg));
+}
+
+.visual-impairment-simulation[data-visual-type="color-blind"][data-color-blind-type="tritanopia"] {
+  /* Tritanopia (blue-blind) simulation */
+  filter: 
+    sepia(30%) 
+    saturate(120%) 
+    hue-rotate(calc(var(--visual-severity, 0) * -1deg));
+}
+
+/* Blindness Simulation */
+.visual-impairment-simulation[data-visual-type="blind"] {
+  filter: brightness(calc(100% - var(--visual-severity, 0) * 1%));
+}
+
+.visual-impairment-simulation[data-visual-type="blind"][style*="--visual-severity: 100"] {
+  filter: brightness(0%);
+}
+
+.visual-impairment-simulation[data-visual-type="blind"][style*="--visual-severity: 100"] * {
+  color: transparent !important;
+  background-color: black !important;
+  border-color: black !important;
+  box-shadow: none !important;
+}
+
+/* Motor Impairment Simulations */
+.motor-impairment-simulation {
+  /* Cursor modifications for motor impairments */
+  cursor: help;
+}
+
+.motor-impairment-simulation[data-motor-type="tremor"] {
+  /* Simulate tremor by adding subtle animation */
+  animation: tremor 0.1s infinite alternate;
+}
+
+@keyframes tremor {
+  0% { transform: translate(0px, 0px); }
+  25% { transform: translate(0.5px, 0.5px); }
+  50% { transform: translate(-0.5px, 0.5px); }
+  75% { transform: translate(0.5px, -0.5px); }
+  100% { transform: translate(-0.5px, -0.5px); }
+}
+
+.motor-impairment-simulation[data-motor-type="limited-mobility"] {
+  /* Increase target sizes for limited mobility */
+}
+
+.motor-impairment-simulation[data-motor-type="limited-mobility"] button,
+.motor-impairment-simulation[data-motor-type="limited-mobility"] a,
+.motor-impairment-simulation[data-motor-type="limited-mobility"] input,
+.motor-impairment-simulation[data-motor-type="limited-mobility"] [role="button"] {
+  min-height: 44px !important;
+  min-width: 44px !important;
+  padding: 12px 16px !important;
+  margin: 4px !important;
+}
+
+.motor-impairment-simulation[data-motor-type="one-hand"] {
+  /* Highlight keyboard-accessible elements */
+}
+
+.motor-impairment-simulation[data-motor-type="one-hand"] *:focus {
+  outline: 3px solid #0066cc !important;
+  outline-offset: 2px !important;
+}
+
+/* Cognitive Impairment Simulations */
+.cognitive-impairment-simulation {
+  /* Base cognitive simulation styles */
+}
+
+.cognitive-impairment-simulation[data-cognitive-type="attention"] {
+  /* Reduce distractions for attention difficulties */
+}
+
+.cognitive-impairment-simulation[data-cognitive-type="attention"] *:not(:focus):not(:hover) {
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.cognitive-impairment-simulation[data-cognitive-type="attention"] *:focus,
+.cognitive-impairment-simulation[data-cognitive-type="attention"] *:hover {
+  opacity: 1;
+  transform: scale(1.02);
+  z-index: 10;
+  position: relative;
+}
+
+.cognitive-impairment-simulation[data-cognitive-type="memory"] {
+  /* Add persistent visual cues for memory support */
+}
+
+.cognitive-impairment-simulation[data-cognitive-type="memory"] button::after,
+.cognitive-impairment-simulation[data-cognitive-type="memory"] a::after {
+  content: " (" attr(aria-label) ")";
+  font-size: 0.8em;
+  color: #666;
+  font-weight: normal;
+}
+
+.cognitive-impairment-simulation[data-cognitive-type="processing"] {
+  /* Slow down animations and transitions */
+}
+
+.cognitive-impairment-simulation[data-cognitive-type="processing"] * {
+  animation-duration: 2s !important;
+  transition-duration: 1s !important;
+}
+
+/* Reduced Motion Support */
+.cognitive-impairment-simulation[style*="--motion-preference: reduce"] *,
+.cognitive-impairment-simulation[style*="--motion-preference: reduce"] *::before,
+.cognitive-impairment-simulation[style*="--motion-preference: reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Screen Reader Simulation Styles */
+.screen-reader-simulation {
+  /* Visual indicators for screen reader simulation */
+}
+
+.screen-reader-simulation *:focus {
+  outline: 3px solid #ff6b35 !important;
+  outline-offset: 2px !important;
+  background-color: rgba(255, 107, 53, 0.1) !important;
+}
+
+.screen-reader-simulation [aria-live] {
+  border: 2px dashed #ff6b35 !important;
+  background-color: rgba(255, 107, 53, 0.05) !important;
+}
+
+.screen-reader-simulation [aria-live]::before {
+  content: "LIVE REGION";
+  position: absolute;
+  top: -20px;
+  left: 0;
+  font-size: 10px;
+  color: #ff6b35;
+  font-weight: bold;
+  background: white;
+  padding: 2px 4px;
+  border: 1px solid #ff6b35;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .visual-impairment-simulation,
+  .motor-impairment-simulation,
+  .cognitive-impairment-simulation {
+    /* Enhanced contrast for high contrast mode */
+    filter: contrast(150%) !important;
+  }
+  
+  .visual-impairment-simulation *,
+  .motor-impairment-simulation *,
+  .cognitive-impairment-simulation * {
+    border-width: 2px !important;
+    outline-width: 3px !important;
+  }
+}
+
+/* Focus Management Enhancements */
+.accessibility-simulation-active {
+  /* Global styles when any simulation is active */
+}
+
+.accessibility-simulation-active *:focus {
+  /* Enhanced focus indicators during simulation */
+  outline: 3px solid #0066cc !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 6px rgba(0, 102, 204, 0.2) !important;
+}
+
+.accessibility-simulation-active button:focus,
+.accessibility-simulation-active a:focus,
+.accessibility-simulation-active input:focus,
+.accessibility-simulation-active select:focus,
+.accessibility-simulation-active textarea:focus {
+  /* Extra emphasis for interactive elements */
+  transform: scale(1.02);
+  z-index: 100;
+  position: relative;
+}
+
+/* Keyboard Navigation Indicators */
+.keyboard-navigation-active {
+  /* Hide mouse cursor to encourage keyboard use */
+  cursor: none !important;
+}
+
+.keyboard-navigation-active * {
+  cursor: none !important;
+}
+
+.keyboard-navigation-active *:focus {
+  /* Very prominent focus indicators for keyboard navigation */
+  outline: 4px solid #ff0080 !important;
+  outline-offset: 3px !important;
+  background-color: rgba(255, 0, 128, 0.1) !important;
+  box-shadow: 
+    0 0 0 8px rgba(255, 0, 128, 0.2),
+    0 0 20px rgba(255, 0, 128, 0.3) !important;
+}
+
+/* Touch Target Enhancements */
+.touch-target-enhanced button,
+.touch-target-enhanced a,
+.touch-target-enhanced input,
+.touch-target-enhanced [role="button"],
+.touch-target-enhanced [tabindex="0"] {
+  /* Ensure minimum touch target size */
+  min-height: 44px !important;
+  min-width: 44px !important;
+  padding: 12px !important;
+  margin: 8px 4px !important;
+}
+
+/* Text Scaling Support */
+.text-scaling-active {
+  /* Support for text scaling preferences */
+  font-size: 1.2em !important;
+  line-height: 1.6 !important;
+}
+
+.text-scaling-active * {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+/* Color Coding for Accessibility Issues */
+.accessibility-issue-critical {
+  border: 3px solid #dc2626 !important;
+  background-color: rgba(220, 38, 38, 0.1) !important;
+}
+
+.accessibility-issue-high {
+  border: 2px solid #ea580c !important;
+  background-color: rgba(234, 88, 12, 0.1) !important;
+}
+
+.accessibility-issue-medium {
+  border: 2px solid #ca8a04 !important;
+  background-color: rgba(202, 138, 4, 0.1) !important;
+}
+
+.accessibility-issue-low {
+  border: 1px solid #0891b2 !important;
+  background-color: rgba(8, 145, 178, 0.1) !important;
+}
+
+/* Screen Reader Announcements Visualization */
+.sr-announcement {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #1f2937;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 14px;
+  max-width: 300px;
+  z-index: 9999;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.sr-announcement::before {
+  content: "🔊 Screen Reader: ";
+  font-weight: bold;
+  color: #60a5fa;
+}
+
+/* Utility Classes for Testing */
+.a11y-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.a11y-focusable:focus {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  padding: inherit !important;
+  margin: inherit !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: inherit !important;
+}
+
+/* Skip Link Styles */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 0 0 4px 4px;
+  z-index: 10000;
+  transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Print Styles for Accessibility Reports */
+@media print {
+  .visual-impairment-simulation,
+  .motor-impairment-simulation,
+  .cognitive-impairment-simulation {
+    /* Remove simulation effects for printing */
+    filter: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+  
+  .accessibility-issue-critical,
+  .accessibility-issue-high,
+  .accessibility-issue-medium,
+  .accessibility-issue-low {
+    /* Ensure issue indicators are visible in print */
+    border-color: #000 !important;
+    background-color: transparent !important;
+  }
+  
+  .accessibility-issue-critical::after {
+    content: " [CRITICAL]";
+    font-weight: bold;
+  }
+  
+  .accessibility-issue-high::after {
+    content: " [HIGH]";
+    font-weight: bold;
+  }
+  
+  .accessibility-issue-medium::after {
+    content: " [MEDIUM]";
+  }
+  
+  .accessibility-issue-low::after {
+    content: " [LOW]";
+  }
+}

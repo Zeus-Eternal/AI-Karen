@@ -74,7 +74,7 @@ export function AuditAnalytics({ className }: AuditAnalyticsProps) {
     queryFn: () => auditLogger.getStatistics(dateRange),
   });
 
-  const { data: userBehavior } = useQuery({
+  const { data: userBehavior = null } = useQuery<UserBehaviorPattern | null>({
     queryKey: ['audit', 'user-behavior', selectedUser, dateRange],
     queryFn: () => selectedUser ? getUserBehaviorPattern(selectedUser, dateRange) : null,
     enabled: !!selectedUser

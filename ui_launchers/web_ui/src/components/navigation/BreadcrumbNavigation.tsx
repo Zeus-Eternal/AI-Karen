@@ -137,7 +137,7 @@ export const breadcrumbNavigationVariants = cva(
 );
 
 export interface BreadcrumbNavigationProps
-  extends React.HTMLAttributes<HTMLNavElement>,
+  extends React.HTMLAttributes<HTMLElement>,
     VariantProps<typeof breadcrumbNavigationVariants> {
   items?: BreadcrumbItem[];
   routeConfig?: RouteConfig;
@@ -299,7 +299,7 @@ const BreadcrumbItem: React.FC<BreadcrumbItemProps> = ({ item, onClick }) => {
           'flex items-center',
           'text-[var(--color-neutral-600)] dark:text-[var(--color-neutral-400)]',
           'hover:text-[var(--color-primary-600)] dark:hover:text-[var(--color-primary-400)]',
-          'transition-colors duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+          'transition-colors [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-standard)]',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:rounded-[var(--radius-sm)]',
           'underline-offset-4 hover:underline'
         )}

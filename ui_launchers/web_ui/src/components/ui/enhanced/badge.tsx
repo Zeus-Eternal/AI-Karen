@@ -16,7 +16,7 @@ export const enhancedBadgeVariants = cva(
     'rounded-[var(--radius-full)] border',
     'px-[var(--space-sm)] py-[var(--space-3xs)]',
     'text-[var(--text-xs)] font-semibold',
-    'transition-all duration-[var(--duration-fast)] ease-[var(--ease-standard)]',
+    'transition-all [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-standard)]',
     'focus:outline-none focus:ring-2 focus:ring-offset-2',
     'select-none',
   ],
@@ -197,7 +197,7 @@ export const EnhancedBadge = React.forwardRef<HTMLDivElement, EnhancedBadgeProps
               'flex-shrink-0 ml-1 rounded-full',
               'hover:bg-black/10 dark:hover:bg-white/10',
               'focus:outline-none focus:ring-1 focus:ring-current',
-              'transition-colors duration-[var(--duration-fast)]',
+              'transition-colors [transition-duration:var(--duration-fast)]',
               'p-0.5'
             )}
             onClick={(e) => {

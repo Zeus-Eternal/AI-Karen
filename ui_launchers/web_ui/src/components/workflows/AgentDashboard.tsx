@@ -19,26 +19,16 @@ import {
   Clock, 
   CheckCircle, 
   AlertCircle, 
-  TrendingUp, 
-  TrendingDown,
+  TrendingUp,
   Cpu,
   MemoryStick,
-  Zap,
   Users,
-  Filter,
-  Search,
-  MoreVertical,
-  Trash2,
-  Edit
+  Search
 } from 'lucide-react';
 
 import { 
   Agent, 
-  AgentTask, 
-  AgentHealth, 
-  AgentMetrics,
-  HealthCheck,
-  HealthIssue 
+  AgentHealth
 } from '@/types/workflows';
 
 interface AgentDashboardProps {
@@ -47,7 +37,6 @@ interface AgentDashboardProps {
   onStopAgent?: (agentId: string) => Promise<void>;
   onRestartAgent?: (agentId: string) => Promise<void>;
   onConfigureAgent?: (agentId: string) => void;
-  onDeleteAgent?: (agentId: string) => Promise<void>;
   className?: string;
 }
 
@@ -73,13 +62,25 @@ const taskPriorityColors = {
   critical: 'bg-red-100 text-red-700',
 };
 
+const getHealthIcon = (health: AgentHealth) => {
+  switch (health.status) {
+    case 'healthy':
+      return <CheckCircle className="h-4 w-4 text-green-600" />;
+    case 'warning':
+      return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+    case 'critical':
+      return <AlertCircle className="h-4 w-4 text-red-600" />;
+    default:
+      return <AlertCircle className="h-4 w-4 text-gray-600" />;
+  }
+};
+
 export function AgentDashboard({
   agents,
   onStartAgent,
   onStopAgent,
   onRestartAgent,
   onConfigureAgent,
-  onDeleteAgent,
   className = '',
 }: AgentDashboardProps) {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -152,19 +153,6 @@ export function AgentDashboard({
 
   const formatResourceUsage = (usage: number) => {
     return `${(usage * 100).toFixed(1)}%`;
-  };
-
-  const getHealthIcon = (health: AgentHealth) => {
-    switch (health.status) {
-      case 'healthy':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'warning':
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-      case 'critical':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-600" />;
-    }
   };
 
   return (

@@ -41,7 +41,7 @@ export const appShellVariants = cva(
   [
     'min-h-screen bg-[var(--color-neutral-50)]',
     'dark:bg-[var(--color-neutral-950)]',
-    'transition-colors duration-[var(--duration-normal)] ease-[var(--ease-standard)]',
+    'transition-colors [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]',
   ],
   {
     variants: {
@@ -293,7 +293,7 @@ export const appShellSidebarVariants = cva(
     'flex flex-col',
     'bg-[var(--color-neutral-100)] dark:bg-[var(--color-neutral-900)]',
     'border-r border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-800)]',
-    'transition-all duration-[var(--duration-normal)] ease-[var(--ease-standard)]',
+    'transition-all [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]',
     'z-50',
   ],
   {
@@ -361,7 +361,7 @@ export const appShellHeaderVariants = cva(
     'bg-[var(--glass-background-strong)]',
     'border-b border-[var(--color-neutral-200)] dark:border-[var(--color-neutral-800)]',
     'backdrop-blur-[var(--backdrop-blur-lg)]',
-    'transition-colors duration-[var(--duration-normal)] ease-[var(--ease-standard)]',
+    'transition-colors [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]',
   ]
 );
 
@@ -391,7 +391,7 @@ export const appShellMainVariants = cva(
     'flex-1 min-h-0',
     'p-[var(--space-lg)]',
     'bg-[var(--color-neutral-50)] dark:bg-[var(--color-neutral-950)]',
-    'transition-colors duration-[var(--duration-normal)] ease-[var(--ease-standard)]',
+    'transition-colors [transition-duration:var(--duration-normal)] [transition-timing-function:var(--ease-standard)]',
   ]
 );
 
