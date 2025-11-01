@@ -35,6 +35,15 @@ interface SecurityDashboardData {
       email: string;
       session_count: number;
       role: string;
+      last_activity: string;
+      sessions: Array<{
+        session_token: string;
+        ip_address?: string;
+        user_agent?: string;
+        created_at: string;
+        last_accessed: string;
+        expires_at: string;
+      }>;
     }>;
   };
   ip_security: {
@@ -193,16 +202,15 @@ async function getSecurityOverview(adminUtils: any, todayStart: Date, hourAgo: D
  */
 function getSessionStatistics() {
   const stats = sessionTimeoutManager.getSessionStatistics();
-  
-  // Get concurrent sessions by user (mock data for now)
-  const concurrentSessions = [
-    {
-      user_id: 'user-1',
-      email: 'admin@example.com',
-      session_count: 2,
-      role: 'admin'
-    }
-  ];
+
+  const concurrentSessions = sessionTimeoutManager.getConcurrentSessionsByUser(25).map(summary => ({
+    user_id: summary.user_id,
+    email: summary.email,
+    session_count: summary.session_count,
+    role: summary.role,
+    last_activity: summary.last_activity,
+    sessions: summary.active_sessions
+  }));
 
   return {
     total_sessions: stats.totalActiveSessions,
