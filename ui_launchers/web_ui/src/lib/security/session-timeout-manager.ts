@@ -10,6 +10,22 @@
 import { getAdminDatabaseUtils } from '@/lib/database/admin-utils';
 import type { User, AdminSession } from '@/types/admin';
 
+export interface ConcurrentSessionSummary {
+  user_id: string;
+  email: string;
+  role: string;
+  session_count: number;
+  last_activity: string;
+  active_sessions: Array<{
+    session_token: string;
+    ip_address?: string;
+    user_agent?: string;
+    created_at: string;
+    last_accessed: string;
+    expires_at: string;
+  }>;
+}
+
 export interface SessionTimeoutConfig {
   warningThreshold: number; // Seconds before expiry to show warning
   extensionDuration: number; // Seconds to extend session
@@ -296,6 +312,72 @@ export class SessionTimeoutManager {
     }
 
     return stats;
+  }
+
+  getConcurrentSessionsByUser(limit = 10): ConcurrentSessionSummary[] {
+    const aggregated = new Map<
+      string,
+      {
+        user_id: string;
+        email: string;
+        role: string;
+        session_count: number;
+        last_activity: Date;
+        sessions: Array<AdminSession & { extensionsUsed: number }>;
+      }
+    >();
+
+    for (const session of this.activeSessions.values()) {
+      if (!session.is_active) {
+        continue;
+      }
+
+      const existing = aggregated.get(session.user_id);
+
+      if (!existing) {
+        aggregated.set(session.user_id, {
+          user_id: session.user_id,
+          email: session.user_email,
+          role: session.user_role,
+          session_count: 1,
+          last_activity: session.last_accessed,
+          sessions: [session]
+        });
+        continue;
+      }
+
+      existing.session_count += 1;
+      existing.sessions.push(session);
+
+      if (session.last_accessed > existing.last_activity) {
+        existing.last_activity = session.last_accessed;
+      }
+    }
+
+    return Array.from(aggregated.values())
+      .sort((a, b) => {
+        if (b.session_count !== a.session_count) {
+          return b.session_count - a.session_count;
+        }
+
+        return b.last_activity.getTime() - a.last_activity.getTime();
+      })
+      .slice(0, limit)
+      .map(summary => ({
+        user_id: summary.user_id,
+        email: summary.email,
+        role: summary.role,
+        session_count: summary.session_count,
+        last_activity: summary.last_activity.toISOString(),
+        active_sessions: summary.sessions.map(activeSession => ({
+          session_token: activeSession.session_token,
+          ip_address: activeSession.ip_address,
+          user_agent: activeSession.user_agent,
+          created_at: activeSession.created_at.toISOString(),
+          last_accessed: activeSession.last_accessed.toISOString(),
+          expires_at: activeSession.expires_at.toISOString()
+        }))
+      }));
   }
 
   /**
