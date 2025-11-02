@@ -6,6 +6,7 @@ with support for both synchronous and streaming responses.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 from dataclasses import asdict
@@ -38,6 +39,9 @@ from ai_karen_engine.services.metrics_service import get_metrics_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/orchestration", tags=["orchestration"])
+
+_METRICS_INTERVAL_SECONDS = 30
+_metrics_task: Optional[asyncio.Task] = None
 
 
 class ChatRequest(BaseModel):
@@ -560,26 +564,17 @@ async def debug_dry_run(
         if not current_user.get("is_admin", False):
             raise HTTPException(status_code=403, detail="Admin permissions required")
         
-        user_id = current_user.get("id") or current_user.get("user_id", "debug")
-        
-        # TODO: Implement dry-run functionality
-        # For now, return placeholder analysis
-        analysis = {
-            "message": request.message,
-            "predicted_intent": "general_chat",
-            "predicted_provider": "local",
-            "predicted_model": "llama-3.1-8b",
-            "routing_reason": "Standard task suitable for local model",
-            "estimated_processing_time": 2.5,
-            "required_tools": [],
-            "safety_assessment": "safe",
-            "approval_required": False
-        }
-        
+        analysis = await orchestrator.run_dry_run_analysis(
+            message=request.message,
+            session_id=request.session_id,
+            user=current_user,
+            context=request.context,
+        )
+
         return {
             "dry_run": True,
             "analysis": analysis,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
     except HTTPException:
@@ -590,10 +585,22 @@ async def debug_dry_run(
 
 
 # Background task for metrics collection
-async def collect_metrics():
+async def collect_metrics(orchestrator: LangGraphOrchestrator) -> None:
     """Background task to collect orchestration metrics"""
-    # TODO: Implement metrics collection
-    pass
+
+    metrics_service = get_metrics_service()
+
+    while True:
+        try:
+            snapshot = await orchestrator.get_runtime_status()
+            metrics_service.record_orchestrator_snapshot(snapshot)
+            await asyncio.sleep(_METRICS_INTERVAL_SECONDS)
+        except asyncio.CancelledError:
+            logger.info("Metrics collection task cancelled")
+            raise
+        except Exception as exc:
+            logger.error(f"Metrics collection error: {exc}")
+            await asyncio.sleep(_METRICS_INTERVAL_SECONDS)
 
 
 # Initialize background tasks
@@ -602,15 +609,19 @@ async def startup_event():
     """Initialize orchestration system on startup"""
     try:
         logger.info("Initializing LangGraph orchestration system...")
-        
+
         # Initialize orchestrator
         orchestrator = get_default_orchestrator()
-        
+
         # Initialize streaming manager
         streaming_manager = get_streaming_manager()
-        
+
+        global _metrics_task
+        if _metrics_task is None or _metrics_task.done():
+            _metrics_task = asyncio.create_task(collect_metrics(orchestrator))
+
         logger.info("LangGraph orchestration system initialized successfully")
-        
+
     except Exception as e:
         logger.error(f"Orchestration startup error: {e}")
 
@@ -620,10 +631,18 @@ async def shutdown_event():
     """Cleanup orchestration system on shutdown"""
     try:
         logger.info("Shutting down LangGraph orchestration system...")
-        
-        # TODO: Implement proper cleanup
-        
+
+        global _metrics_task
+        if _metrics_task is not None:
+            _metrics_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await _metrics_task
+            _metrics_task = None
+
+        orchestrator = get_default_orchestrator()
+        await orchestrator.shutdown()
+
         logger.info("LangGraph orchestration system shutdown complete")
-        
+
     except Exception as e:
         logger.error(f"Orchestration shutdown error: {e}")
