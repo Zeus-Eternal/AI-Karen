@@ -608,13 +608,14 @@ export default function LLMSettings() {
                     <CardDescription>
                     </CardDescription>
                   </div>
-                  <button
+                  <Button
                     onClick={() => {
                       window.dispatchEvent(new CustomEvent('navigate-to-model-library'));
                     }}
                     className="gap-2"
                   >
                     <Library className="h-4 w-4 " />
+                    Model Library
                   </Button>
                 </div>
               </CardHeader>

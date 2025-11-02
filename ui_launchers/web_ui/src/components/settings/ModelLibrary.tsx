@@ -122,6 +122,7 @@ export default function ModelLibrary() {
     variant: 'default',
     loading: false,
     onConfirm: async () => {},
+  });
 
   // Action loading states
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
