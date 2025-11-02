@@ -185,9 +185,6 @@ export const createMockAuthContext = (
     },
     login,
     logout,
-    devLogin: vi.fn(async (email?: string): Promise<void> => {
-      return Promise.resolve();
-    }),
     checkAuth,
     refreshSession: vi.fn(async (): Promise<boolean> => {
       return Promise.resolve(isAuthenticated);

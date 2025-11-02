@@ -23,6 +23,7 @@ import {
   getTimeoutManager,
   OperationType,
 } from "@/lib/connection/timeout-manager";
+import { connectivityLogger } from "@/lib/logging";
 
 export interface User {
   userId: string;
@@ -60,7 +61,6 @@ export interface AuthContextType {
   authState: AuthState;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
-  devLogin: (email?: string) => Promise<void>;
   checkAuth: () => Promise<boolean>;
   refreshSession: () => Promise<boolean>;
   clearError: () => void;
@@ -210,6 +210,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Enhanced logout with proper cleanup
   const logout = useCallback((): void => {
+    const currentUserEmail = user?.email;
+
     // Stop session refresh timer
     stopSessionRefreshTimer();
 
@@ -225,16 +227,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Call session logout to clear server-side session cookie
     sessionLogout().catch((error) => {
-      console.warn("Logout request failed:", error);
+      const errorObject =
+        error instanceof Error ? error : new Error(String(error));
+      connectivityLogger.logAuthentication(
+        "warn",
+        "Logout request failed",
+        {
+          email: currentUserEmail || undefined,
+          success: false,
+          failureReason: errorObject.message,
+        },
+        "logout",
+        errorObject
+      );
     });
 
-    console.log("AuthContext: User logged out");
+    connectivityLogger.logAuthentication(
+      "info",
+      "User session terminated",
+      {
+        email: currentUserEmail || undefined,
+        success: true,
+      },
+      "logout"
+    );
 
     // Immediate redirect to login after logout
     if (typeof window !== "undefined") {
       window.location.href = "/login";
     }
-  }, [stopSessionRefreshTimer]);
+  }, [stopSessionRefreshTimer, user]);
 
   // Session refresh functionality - will be defined after checkAuth
   const refreshSession = useCallback(async (): Promise<boolean> => {
@@ -332,10 +354,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     sessionRefreshTimer.current = setInterval(async () => {
-      console.log("AuthContext: Performing automatic session refresh");
       const success = await refreshSession();
       if (!success) {
-        console.warn("AuthContext: Session refresh failed, logging out");
+        connectivityLogger.logAuthentication(
+          "warn",
+          "Automatic session refresh failed",
+          {
+            success: false,
+            failureReason: "session_refresh_failed",
+          },
+          "token_refresh"
+        );
         logout();
       }
     }, sessionRefreshInterval);
@@ -343,15 +372,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Enhanced login method with improved error handling and ConnectionManager integration
   const login = async (credentials: LoginCredentials): Promise<void> => {
-    console.log("AuthContext: Starting login for", credentials.email);
+    const authenticationStartTime =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+
+    connectivityLogger.logAuthentication(
+      "info",
+      "Authentication attempt started",
+      {
+        email: credentials.email,
+        success: false,
+        attemptNumber: 1,
+      },
+      "login"
+    );
+
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Use ConnectionManager for reliable authentication request
-      // In development, try dev-login first, then fallback to regular login
-      const loginUrl = process.env.NODE_ENV === 'development' 
-        ? "/api/auth/dev-login" 
-        : "/api/auth/login";
       const timeout = timeoutManager.getTimeout(OperationType.AUTHENTICATION);
 
       const requestBody = {
@@ -361,7 +398,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
 
       const result = await connectionManager.makeRequest(
-        loginUrl,
+        "/api/auth/login",
         {
           method: "POST",
           headers: {
@@ -412,12 +449,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Start session refresh timer
       startSessionRefreshTimer();
 
-      console.log("AuthContext: Authentication successful", {
-        userId: user.userId,
-        role: user.role,
-        retryCount: result.retryCount,
-        duration: result.duration,
-      });
+      connectivityLogger.logAuthentication(
+        "info",
+        "Authentication successful",
+        {
+          email: user.email,
+          success: true,
+        },
+        "login",
+        undefined,
+        {
+          startTime: authenticationStartTime,
+          duration:
+            result.duration ??
+            ((typeof performance !== "undefined"
+              ? performance.now()
+              : Date.now()) - authenticationStartTime),
+          retryCount: result.retryCount,
+          metadata: {
+            statusCode: result.status,
+          },
+        }
+      );
 
       // Small delay to ensure state is fully updated before callback
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -437,94 +490,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Stop any existing session refresh timer
       stopSessionRefreshTimer();
 
-      console.error("AuthContext: Login failed", {
-        error: authError.message,
-        category: authError.category,
-        retryable: authError.retryable,
-        statusCode: authError.statusCode,
-      });
+      const errorObject =
+        error instanceof Error ? error : new Error(String(error));
+      const retryCount =
+        error instanceof ConnectionError &&
+        typeof error.retryCount === "number"
+          ? error.retryCount
+          : undefined;
+
+      connectivityLogger.logAuthentication(
+        "error",
+        "Authentication attempt failed",
+        {
+          email: credentials.email,
+          success: false,
+          failureReason: authError.message,
+        },
+        "login",
+        errorObject,
+        {
+          startTime: authenticationStartTime,
+          duration:
+            (typeof performance !== "undefined"
+              ? performance.now()
+              : Date.now()) - authenticationStartTime,
+          retryCount,
+          metadata: {
+            statusCode:
+              error instanceof ConnectionError ? error.statusCode : undefined,
+          },
+        }
+      );
 
       throw error;
     }
   };
-
-  // Dev login function for development environment
-  const devLogin = useCallback(
-    async (email: string = "admin@example.com"): Promise<void> => {
-      if (process.env.NODE_ENV === "production") {
-        throw new Error("Dev login is not available in production");
-      }
-
-      setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-      try {
-        const result = await connectionManager.makeRequest(
-          "/api/auth/dev-login",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({ email }),
-            credentials: "include",
-          },
-          {
-            timeout: timeoutManager.getTimeout(OperationType.AUTHENTICATION),
-            retryAttempts: 1,
-          }
-        );
-
-        const userData = result.data.user || result.data.user_data;
-        if (!userData) {
-          throw new Error("No user data in dev login response");
-        }
-
-        // Create user object
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id,
-          role: determineUserRole(userData.roles || []),
-          permissions: userData.permissions,
-        };
-
-        // Update authentication state
-        setUser(user);
-        setIsAuthenticated(true);
-        setAuthState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: null,
-          lastActivity: new Date(),
-        }));
-
-        // Start session refresh timer
-        startSessionRefreshTimer();
-
-        console.log("AuthContext: Dev login successful", {
-          userId: user.userId,
-          email: user.email,
-        });
-      } catch (error) {
-        console.error("AuthContext: Dev login failed", error);
-        const authError: AuthError = {
-          message: error instanceof Error ? error.message : "Dev login failed",
-          category: ErrorCategory.UNKNOWN_ERROR,
-          retryable: true,
-          timestamp: new Date(),
-        };
-        setAuthState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: authError,
-        }));
-        throw error;
-      }
-    },
-    [connectionManager, timeoutManager, startSessionRefreshTimer]
-  );
 
   // Role and permission checking functions
   const hasRole = useCallback(
@@ -572,34 +572,73 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkAuth = async (): Promise<boolean> => {
     // Prevent multiple simultaneous auth checks
     if (isCheckingAuth.current) {
-      console.log("AuthContext: Auth check already in progress, skipping");
+      connectivityLogger.logAuthentication(
+        "debug",
+        "Skipped redundant authentication check",
+        {
+          success: true,
+          failureReason: "in_progress",
+        },
+        "session_validation"
+      );
       return isAuthenticated;
     }
 
     isCheckingAuth.current = true;
-    console.log("AuthContext: Starting checkAuth");
+    const validationStartTime =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+
+    connectivityLogger.logAuthentication(
+      "debug",
+      "Starting authentication check",
+      {
+        success: false,
+      },
+      "session_validation"
+    );
 
     try {
       // First check if we already have a valid session in memory
       const currentUser = getCurrentUser();
       if (currentUser && isAuthenticated) {
-        console.log("AuthContext: Using existing session", {
-          userId: currentUser.userId,
-        });
+        connectivityLogger.logAuthentication(
+          "debug",
+          "Using cached authentication state",
+          {
+            email: currentUser.email,
+            success: true,
+          },
+          "session_validation"
+        );
         setAuthState((prev) => ({ ...prev, lastActivity: new Date() }));
         return true;
       }
 
       // Check for session cookie first
       if (!hasSessionCookie()) {
-        console.log("AuthContext: No session cookie found");
+        connectivityLogger.logAuthentication(
+          "info",
+          "No session cookie found",
+          {
+            success: false,
+            failureReason: "missing_session_cookie",
+          },
+          "session_validation"
+        );
         setUser(null);
         setIsAuthenticated(false);
         setAuthState((prev) => ({ ...prev, error: null }));
         return false;
       }
 
-      console.log("AuthContext: Session cookie found, validating...");
+      connectivityLogger.logAuthentication(
+        "debug",
+        "Session cookie detected, validating",
+        {
+          success: false,
+        },
+        "session_validation"
+      );
 
       // Use ConnectionManager for session validation
       const validateUrl = "/api/auth/validate-session";
@@ -648,17 +687,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           startSessionRefreshTimer();
         }
 
-        console.log("AuthContext: Session validated successfully", {
-          userId: user.userId,
-          email: user.email,
-          duration: result.duration,
-        });
+        connectivityLogger.logAuthentication(
+          "info",
+          "Session validation succeeded",
+          {
+            email: user.email,
+            success: true,
+          },
+          "session_validation",
+          undefined,
+          {
+            startTime: validationStartTime,
+            duration:
+              result.duration ??
+              ((typeof performance !== "undefined"
+                ? performance.now()
+                : Date.now()) - validationStartTime),
+            retryCount: result.retryCount,
+            metadata: {
+              statusCode: result.status,
+            },
+          }
+        );
         return true;
       }
 
       // Invalid session
-      console.log(
-        "AuthContext: Session validation failed - invalid session data"
+      connectivityLogger.logAuthentication(
+        "warn",
+        "Session validation failed - invalid session data",
+        {
+          success: false,
+          failureReason: "invalid_session",
+        },
+        "session_validation"
       );
       setUser(null);
       setIsAuthenticated(false);
@@ -677,12 +739,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }));
       stopSessionRefreshTimer();
 
-      console.error("AuthContext: Authentication check failed:", {
-        error: authError.message,
-        category: authError.category,
-        retryable: authError.retryable,
-        originalError: error,
-      });
+      const errorObject =
+        error instanceof Error ? error : new Error(String(error));
+      const retryCount =
+        error instanceof ConnectionError &&
+        typeof error.retryCount === "number"
+          ? error.retryCount
+          : undefined;
+
+      connectivityLogger.logAuthentication(
+        "error",
+        "Authentication check failed",
+        {
+          success: false,
+          failureReason: authError.message,
+        },
+        "session_validation",
+        errorObject,
+        {
+          startTime: validationStartTime,
+          duration:
+            (typeof performance !== "undefined"
+              ? performance.now()
+              : Date.now()) - validationStartTime,
+          retryCount,
+          metadata: {
+            category: authError.category,
+          },
+        }
+      );
 
       return false;
     } finally {
@@ -760,7 +845,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     authState,
     login,
     logout,
-    devLogin,
     checkAuth,
     refreshSession,
     clearError,
