@@ -194,6 +194,7 @@ export default function ModelLibraryIntegrationTest({
                 excellent: suggestionsData.recommendations?.excellent?.length || 0,
                 good: suggestionsData.recommendations?.good?.length || 0,
                 acceptable: suggestionsData.recommendations?.acceptable?.length || 0
+              });
 
             }
           } catch (error) {
@@ -257,13 +258,13 @@ export default function ModelLibraryIntegrationTest({
           toast({
             title: "Integration Test Completed",
             description: "All integration tests passed successfully! Model Library is fully integrated with LLM Settings.",
-
+          });
         } else {
           toast({
             title: "Integration Test Completed with Issues",
             description: "Some integration tests failed. Check the details for troubleshooting.",
             variant: "destructive",
-
+          });
         }
       } catch (error) {
         updateStepStatus('workflow_validation', 'failed', `Workflow validation failed: ${error}`);
@@ -274,7 +275,7 @@ export default function ModelLibraryIntegrationTest({
         title: "Integration Test Failed",
         description: "Some integration tests failed. Check the details below for troubleshooting.",
         variant: "destructive",
-
+      });
     } finally {
       setIsRunning(false);
     }
@@ -343,7 +344,7 @@ export default function ModelLibraryIntegrationTest({
         <CardContent className="space-y-4">
           {/* Test Controls */}
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={runIntegrationTest}
               disabled={isRunning}
               className="gap-2"

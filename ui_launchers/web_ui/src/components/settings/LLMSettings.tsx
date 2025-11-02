@@ -608,7 +608,7 @@ export default function LLMSettings() {
                     <CardDescription>
                     </CardDescription>
                   </div>
-                  <button
+                  <Button
                     onClick={() => {
                       window.dispatchEvent(new CustomEvent('navigate-to-model-library'));
                     }}

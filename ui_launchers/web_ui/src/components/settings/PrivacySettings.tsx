@@ -21,7 +21,7 @@ export default function PrivacySettings() {
     toast({
       title: `${featureName} (Planned Feature)`,
       description: `This functionality requires backend implementation and is not yet active.`,
-
+    });
   };
 
   return (

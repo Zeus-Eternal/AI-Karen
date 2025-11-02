@@ -137,13 +137,13 @@ export default function VoiceSettings() {
       toast({
         title: "Voice Settings Saved",
         description: "Your preferred voice has been updated.",
-
+      });
     } catch (error) {
       toast({
         title: "Error Saving Voice Settings",
         description: "Could not save voice preferences. localStorage might be disabled or full.",
         variant: "destructive",
-
+      });
     }
   };
   const resetToDefaults = () => {

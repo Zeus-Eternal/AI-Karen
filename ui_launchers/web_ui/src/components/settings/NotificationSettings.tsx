@@ -103,13 +103,13 @@ export default function NotificationSettings() {
       toast({
         title: "Notification Settings Saved",
         description: "Your notification preferences have been updated.",
-
+      });
     } catch (error) {
        toast({
           title: "Error Saving Notification Settings",
           description: "Could not save notification preferences. localStorage might be disabled or full.",
           variant: "destructive",
-
+       });
     }
   };
   const resetToDefaults = () => {
@@ -124,12 +124,13 @@ export default function NotificationSettings() {
         toast({
           title: "Notification Settings Reset",
           description: "Notification preferences have been reset to defaults.",
-
+        });
     } catch (error) {
         toast({
             title: "Error Resetting Notification Settings",
             description: "Could not reset notification preferences.",
             variant: "destructive",
+        });
 
     }
   };

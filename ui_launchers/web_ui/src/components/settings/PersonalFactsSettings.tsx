@@ -118,7 +118,7 @@ export default function PersonalFactsSettings() {
           title: "Error Saving Facts",
           description: "Could not save personal facts. localStorage might be disabled or full.",
           variant: "destructive",
-
+      });
     }
   };
   const saveSuggestedFactsToLocalStorage = (updatedSuggestedFacts: string[]) => {
@@ -131,7 +131,7 @@ export default function PersonalFactsSettings() {
         title: "Error Updating Suggested Facts",
         description: "Could not update the list of suggested facts.",
         variant: "destructive",
-
+      });
     }
   };
   const handleAddFact = (e: FormEvent<HTMLFormElement>) => {
@@ -143,7 +143,7 @@ export default function PersonalFactsSettings() {
       toast({
         title: "Fact Added",
         description: "Karen will now remember this new fact.",
-
+      });
     }
   };
   const handleDeleteFact = (indexToDelete: number) => {
@@ -152,14 +152,14 @@ export default function PersonalFactsSettings() {
     toast({
       title: "Fact Deleted",
       description: "Karen will no longer remember this fact.",
-
+    });
   };
   const handleClearAllFacts = () => {
     saveMainPersonalFactsToLocalStorage([]);
      toast({
         title: "All Manually Added Facts Cleared",
         description: "Karen has forgotten all facts you've manually added.",
-
+     });
   };
   const handleConfirmSuggestedFact = (factToConfirm: string) => {
     if (!personalFacts.includes(factToConfirm)) {
@@ -171,7 +171,7 @@ export default function PersonalFactsSettings() {
     toast({
       title: "Fact Confirmed & Saved",
       description: `"${factToConfirm.substring(0,30)}..." is now part of Karen's long-term knowledge.`,
-
+    });
   };
   const handleDismissSuggestedFact = (factToDismiss: string) => {
     const updatedSuggestedFacts = suggestedFactsForReview.filter(fact => fact !== factToDismiss);

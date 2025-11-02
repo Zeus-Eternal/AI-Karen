@@ -90,7 +90,7 @@ export default function ModelProviderIntegration({
         title: "Failed to Load Model Compatibility",
         description: "Could not load model compatibility information.",
         variant: "destructive",
-
+      });
     } finally {
       setLoading(false);
     }
@@ -102,13 +102,13 @@ export default function ModelProviderIntegration({
       toast({
         title: "Compatibility Refreshed",
         description: "Model compatibility information has been updated.",
-
+      });
     } catch (error) {
       toast({
         title: "Refresh Failed",
         description: "Could not refresh compatibility information.",
         variant: "destructive",
-
+      });
     } finally {
       setRefreshing(false);
     }
@@ -432,7 +432,7 @@ export default function ModelProviderIntegration({
                           toast({
                             title: "Provider Information",
                             description: `${provider.name}: ${provider.description}`,
-
+                          });
                         }
                       }}
                       className="gap-2"

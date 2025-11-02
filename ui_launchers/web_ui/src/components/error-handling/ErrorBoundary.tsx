@@ -228,7 +228,7 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
           )}
           <div className="flex flex-col gap-2">
             {canRetry && (
-              <button onClick={resetError} className="w-full" aria-label="Button">
+              <Button onClick={resetError} className="w-full" aria-label="Button">
                 <RefreshCw className="mr-2 h-4 w-4 " />
               </Button>
             )}

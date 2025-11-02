@@ -81,10 +81,10 @@ export default function ModelWorkflowTest({
       try {
         const models = await backend.makeRequestPublic('/api/models/library');
         const modelsArray = Array.isArray(models) ? models : [];
-        updateStepStatus('discover', 'completed', undefined, { 
+        updateStepStatus('discover', 'completed', undefined, {
           count: modelsArray.length || 0,
           models: modelsArray.slice(0, 3).map((m: any) => m.name) || []
-
+        });
       } catch (error) {
         updateStepStatus('discover', 'failed', 'Failed to load models from Model Library');
         throw error;
@@ -103,7 +103,7 @@ export default function ModelWorkflowTest({
               compatibilityResults.push({
                 provider,
                 compatible_models: suggestionsData.total_compatible_models || 0
-
+              });
             }
           } catch (error) {
           }
@@ -111,7 +111,7 @@ export default function ModelWorkflowTest({
         updateStepStatus('compatibility', 'completed', undefined, {
           providers_checked: compatibilityResults.length,
           results: compatibilityResults
-
+        });
       } catch (error) {
         updateStepStatus('compatibility', 'failed', 'Failed to check model compatibility');
         throw error;
@@ -125,12 +125,13 @@ export default function ModelWorkflowTest({
         updateStepStatus('download', 'completed', undefined, {
           simulated: true,
           message: 'Download simulation completed successfully'
-
+        });
       } catch (error) {
         // This is expected to fail in simulation, so we'll mark it as completed
         updateStepStatus('download', 'completed', undefined, {
           simulated: true,
           message: 'Download simulation completed (API not available)'
+        });
 
       }
       // Step 4: Provider Configuration
@@ -143,7 +144,7 @@ export default function ModelWorkflowTest({
         updateStepStatus('provider_setup', 'completed', undefined, {
           healthy_providers: statsData?.healthy_providers || 0,
           total_providers: statsData?.total_providers || 0
-
+        });
       } catch (error) {
         updateStepStatus('provider_setup', 'failed', 'Failed to validate provider configuration');
         throw error;
@@ -162,11 +163,12 @@ export default function ModelWorkflowTest({
         updateStepStatus('validation', 'completed', undefined, {
           checks: validationChecks,
           overall_status: 'healthy'
+        });
 
         toast({
           title: "Workflow Test Completed",
           description: "All integration tests passed successfully!",
-
+        });
       } catch (error) {
         updateStepStatus('validation', 'failed', 'End-to-end validation failed');
         throw error;
@@ -176,7 +178,7 @@ export default function ModelWorkflowTest({
         title: "Workflow Test Failed",
         description: "Some integration tests failed. Check the details below.",
         variant: "destructive",
-
+      });
     } finally {
       setIsRunning(false);
     }
@@ -233,7 +235,7 @@ export default function ModelWorkflowTest({
       <CardContent className="space-y-4">
         {/* Test Controls */}
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={runWorkflowTest}
             disabled={isRunning}
             className="gap-2"

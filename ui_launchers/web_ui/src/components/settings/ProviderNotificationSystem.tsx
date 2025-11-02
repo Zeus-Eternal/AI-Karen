@@ -55,6 +55,7 @@ export function ProviderNotificationSystem({
     performance_alerts: false,
     error_notifications: true,
     maintenance_notifications: true
+  });
 
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -148,7 +149,7 @@ export function ProviderNotificationSystem({
       toast({
         title: "Settings Saved",
         description: "Notification preferences have been updated.",
-
+      });
     } catch (error) {
       toast({
         title: "Save Failed",
