@@ -44,7 +44,9 @@ class HelloExtension(BaseExtension):
     
     def create_api_router(self) -> Optional[APIRouter]:
         """Create API routes for the Hello Extension."""
-        router = APIRouter()
+        router = super().create_api_router()
+        if router is None:
+            return None
         
         @router.get("/hello")
         async def get_hello():
