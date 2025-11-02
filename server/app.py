@@ -6,9 +6,8 @@ Creates and configures the FastAPI app with all components.
 
 import os
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
-from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Depends, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
@@ -35,7 +34,7 @@ logger = logging.getLogger("kari")
 
 # Extension system integration
 try:
-    from src.extensions.integration import initialize_extensions
+    from src.extensions.core.integration import initialize_extensions
     EXTENSIONS_AVAILABLE = True
 except ImportError:
     EXTENSIONS_AVAILABLE = False
@@ -127,284 +126,42 @@ def create_app() -> FastAPI:
     
     # Initialize extension system
     if EXTENSIONS_AVAILABLE:
-        try:
-            # Create a minimal extension router for immediate availability
-            from fastapi import APIRouter
-            extension_router = APIRouter(prefix="/api/extensions", tags=["extensions"])
-            
-            @extension_router.get("/")
-            async def list_extensions(
-                user_context: Dict[str, Any] = Depends(require_extension_read)
-            ):
-                """List all extensions with proper authentication and tenant isolation."""
-                logger.info(f"User {user_context['user_id']} (tenant: {user_context.get('tenant_id', 'default')}) listing extensions")
-                
-                # Apply tenant isolation - filter extensions based on user's tenant
-                tenant_id = user_context.get('tenant_id', 'default')
-                user_roles = user_context.get('roles', [])
-                
-                # Base extensions available to all authenticated users
-                extensions = {
-                    'analytics-dashboard': {
-                        'name': 'analytics-dashboard',
-                        'version': '1.0.0',
-                        'display_name': 'Analytics Dashboard',
-                        'description': 'Sample analytics dashboard extension',
-                        'category': 'analytics',
-                        'status': 'active',
-                        'capabilities': {
-                            'provides_ui': True,
-                            'provides_api': True,
-                            'provides_background_tasks': True,
-                            'provides_webhooks': False
-                        },
-                        'loaded_at': datetime.now(timezone.utc).isoformat(),
-                        'error': None,
-                        'tenant_access': [tenant_id] if tenant_id != 'system' else ['*']
-                    }
-                }
-                
-                # Add admin-only extensions for admin users
-                if 'admin' in user_roles:
-                    extensions['system-monitor'] = {
-                        'name': 'system-monitor',
-                        'version': '1.0.0',
-                        'display_name': 'System Monitor',
-                        'description': 'System monitoring and administration extension',
-                        'category': 'admin',
-                        'status': 'active',
-                        'capabilities': {
-                            'provides_ui': True,
-                            'provides_api': True,
-                            'provides_background_tasks': True,
-                            'provides_webhooks': True
-                        },
-                        'loaded_at': datetime.now(timezone.utc).isoformat(),
-                        'error': None,
-                        'tenant_access': ['*']
-                    }
-                
-                return {
-                    'extensions': extensions,
-                    'total': len(extensions),
-                    'loaded': len(extensions),
-                    'user_context': {
-                        'user_id': user_context['user_id'],
-                        'tenant_id': tenant_id,
-                        'roles': user_roles
-                    }
-                }
-            
-            @extension_router.get("/background-tasks/")
-            async def list_background_tasks(
-                extension_name: Optional[str] = None,
-                user_context: Dict[str, Any] = Depends(require_background_tasks)
-            ):
-                """List background tasks with proper authentication and tenant isolation."""
-                logger.info(f"User {user_context['user_id']} (tenant: {user_context.get('tenant_id', 'default')}) listing background tasks")
-                
-                # Apply tenant isolation for background tasks
-                tenant_id = user_context.get('tenant_id', 'default')
-                user_roles = user_context.get('roles', [])
-                
-                # Mock background tasks filtered by tenant and extension
-                tasks = []
-                
-                # Add sample tasks based on user permissions and tenant
-                if extension_name is None or extension_name == 'analytics-dashboard':
-                    tasks.append({
-                        'id': f'analytics_task_{tenant_id}',
-                        'name': 'Analytics Data Processing',
-                        'extension_name': 'analytics-dashboard',
-                        'status': 'running',
-                        'tenant_id': tenant_id,
-                        'created_by': user_context['user_id'],
-                        'created_at': datetime.now(timezone.utc).isoformat(),
-                        'next_run': (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
-                    })
-                
-                # Add admin tasks for admin users
-                if 'admin' in user_roles and (extension_name is None or extension_name == 'system-monitor'):
-                    tasks.append({
-                        'id': f'system_monitor_task_{tenant_id}',
-                        'name': 'System Health Check',
-                        'extension_name': 'system-monitor',
-                        'status': 'scheduled',
-                        'tenant_id': tenant_id,
-                        'created_by': user_context['user_id'],
-                        'created_at': datetime.now(timezone.utc).isoformat(),
-                        'next_run': (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
-                    })
-                
-                return {
-                    'tasks': tasks,
-                    'total': len(tasks),
-                    'extension_name': extension_name,
-                    'tenant_id': tenant_id
-                }
-            
-            @extension_router.post("/background-tasks/")
-            async def register_background_task(
-                task_data: Dict[str, Any],
-                user_context: Dict[str, Any] = Depends(require_background_tasks)
-            ):
-                """Register a new background task with proper authentication and tenant isolation."""
-                logger.info(f"User {user_context['user_id']} (tenant: {user_context.get('tenant_id', 'default')}) registering background task")
-                
-                # Validate required fields
-                required_fields = ['name', 'extension_name']
-                missing_fields = [field for field in required_fields if field not in task_data]
-                if missing_fields:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Missing required fields: {', '.join(missing_fields)}"
-                    )
-                
-                # Apply tenant isolation
-                tenant_id = user_context.get('tenant_id', 'default')
-                task_data['tenant_id'] = tenant_id
-                task_data['created_by'] = user_context['user_id']
-                task_data['created_at'] = datetime.now(timezone.utc).isoformat()
-                
-                # Generate task ID with tenant isolation
-                task_id = f"{task_data['extension_name']}_{task_data['name']}_{tenant_id}_{user_context['user_id']}"
-                task_id = task_id.replace(' ', '_').replace('-', '_').lower()
-                
-                # Mock task registration (in real implementation, this would interact with extension manager)
-                registered_task = {
-                    'id': task_id,
-                    'name': task_data['name'],
-                    'extension_name': task_data['extension_name'],
-                    'status': 'registered',
-                    'tenant_id': tenant_id,
-                    'created_by': user_context['user_id'],
-                    'created_at': task_data['created_at'],
-                    'schedule': task_data.get('schedule', 'manual'),
-                    'config': task_data.get('config', {}),
-                    'next_run': None
-                }
-                
-                logger.info(f"Background task registered: {task_id} for tenant {tenant_id}")
-                
-                return {
-                    'task': registered_task,
-                    'message': 'Background task registered successfully',
-                    'status': 'registered'
-                }
-            
-            @extension_router.get("/admin/status")
-            async def get_extension_admin_status(
-                api_key: str = Depends(api_key_header),
-                user_context: Dict[str, Any] = Depends(require_extension_admin)
-            ):
-                """Get extension system admin status with API key and admin authentication."""
-                # Validate API key for admin operations
-                if api_key != settings.secret_key:
-                    raise HTTPException(status_code=401, detail="Invalid or missing API key")
-                
-                logger.info(f"Admin user {user_context['user_id']} accessing extension admin status")
-                
-                # Return comprehensive extension system status
-                return {
-                    'extension_system': {
-                        'status': 'active',
-                        'total_extensions': 2,
-                        'active_extensions': 2,
-                        'failed_extensions': 0,
-                        'background_tasks_running': 1,
-                        'last_health_check': datetime.now(timezone.utc).isoformat()
-                    },
-                    'authentication': {
-                        'enabled': settings.extension_auth_enabled,
-                        'mode': settings.extension_auth_mode,
-                        'token_validation': 'active',
-                        'rate_limiting': settings.extension_enable_rate_limiting
-                    },
-                    'tenant_isolation': {
-                        'enabled': True,
-                        'active_tenants': ['default', 'dev-tenant'],
-                        'isolation_level': 'strict'
-                    },
-                    'admin_user': {
-                        'user_id': user_context['user_id'],
-                        'tenant_id': user_context.get('tenant_id', 'system'),
-                        'roles': user_context.get('roles', []),
-                        'permissions': user_context.get('permissions', [])
-                    }
-                }
-            
-            @extension_router.post("/admin/reload")
-            async def reload_extension_system(
-                api_key: str = Depends(api_key_header),
-                user_context: Dict[str, Any] = Depends(require_extension_admin)
-            ):
-                """Reload extension system with API key and admin authentication."""
-                # Validate API key for admin operations
-                if api_key != settings.secret_key:
-                    raise HTTPException(status_code=401, detail="Invalid or missing API key")
-                
-                logger.info(f"Admin user {user_context['user_id']} reloading extension system")
-                
+        async def initialize_extension_system() -> None:
+            """Initialize the production extension system and monitoring."""
+            try:
+                success = await initialize_extensions(
+                    app=app,
+                    extension_root="extensions",
+                    db_session=None,
+                    plugin_router=None
+                )
+                if not success:
+                    logger.warning("Extension system reported unsuccessful initialization")
+                    return
+
+                # Initialize extension health monitoring once the manager is available
                 try:
-                    # Mock extension system reload (in real implementation, this would reload extensions)
-                    reload_result = {
-                        'status': 'success',
-                        'reloaded_extensions': ['analytics-dashboard', 'system-monitor'],
-                        'failed_extensions': [],
-                        'reload_time': datetime.now(timezone.utc).isoformat(),
-                        'admin_user': user_context['user_id']
-                    }
-                    
-                    logger.info(f"Extension system reloaded successfully by {user_context['user_id']}")
-                    return reload_result
-                    
-                except Exception as e:
-                    logger.error(f"Extension system reload failed: {e}")
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Extension system reload failed: {str(e)}"
+                    from server.extension_health_monitor import initialize_extension_health_monitor
+
+                    extension_system = getattr(app.state, "extension_system", None)
+                    extension_manager = (
+                        extension_system.get_extension_manager()
+                        if extension_system and hasattr(extension_system, "get_extension_manager")
+                        else None
                     )
-            
-            app.include_router(extension_router)
-            logger.info("Extension system endpoints registered successfully")
-            
-            # Schedule full extension loading for startup
-            async def initialize_extension_system():
-                """Initialize the extension system on startup."""
-                try:
-                    success = await initialize_extensions(
-                        app=app,
-                        extension_root="extensions",
-                        db_session=None,  # Will be injected when database integration is ready
-                        plugin_router=None  # Will be injected when plugin orchestrator is ready
-                    )
-                    if success:
-                        logger.info("Extension system initialized successfully")
-                        
-                        # Initialize extension health monitoring
-                        try:
-                            from server.extension_health_monitor import initialize_extension_health_monitor
-                            
-                            # Get the extension manager from the extension system
-                            extension_system = getattr(app.state, 'extension_system', None)
-                            extension_manager = extension_system.extension_manager if extension_system else None
-                            
-                            await initialize_extension_health_monitor(extension_manager)
-                            logger.info("Extension health monitoring initialized")
-                        except Exception as e:
-                            logger.warning(f"Extension health monitoring initialization failed: {e}")
+                    if extension_manager:
+                        await initialize_extension_health_monitor(extension_manager)
+                        logger.info("Extension health monitoring initialized")
                     else:
-                        logger.warning("Extension system initialization failed")
-                except Exception as e:
-                    logger.error(f"Extension system initialization error: {e}")
-            
-            # Register the startup event
-            app.add_event_handler("startup", initialize_extension_system)
-            
-        except Exception as e:
-            logger.error(f"Failed to register extension system: {e}")
+                        logger.warning("Extension manager unavailable after initialization")
+                except Exception as monitor_error:
+                    logger.warning(f"Extension health monitoring initialization failed: {monitor_error}")
+            except Exception as exc:
+                logger.error(f"Extension system initialization error: {exc}")
+
+        app.add_event_handler("startup", initialize_extension_system)
     else:
-        logger.info("Extension system disabled - not available")
+        logger.info("Extension system disabled - integration module not available")
     
     # Add extension system shutdown handler
     @app.on_event("shutdown")

@@ -27,6 +27,43 @@ RUNTIME_ENV = (
     or "development"
 ).lower()
 
+DEV_ENVIRONMENTS = {"development", "dev", "local", "test", "testing"}
+
+
+def _is_dev_environment() -> bool:
+    """Return True when running in a development-like environment."""
+    return RUNTIME_ENV in DEV_ENVIRONMENTS
+
+
+def _default_environment() -> str:
+    """Provide the canonical environment name for the settings model."""
+    return RUNTIME_ENV
+
+
+def _default_debug() -> bool:
+    """Enable debug mode only for development environments by default."""
+    return _is_dev_environment()
+
+
+def _default_deployment_mode() -> str:
+    """Select production deployment mode automatically outside development."""
+    return "development" if _is_dev_environment() else "production"
+
+
+def _default_extension_auth_mode() -> str:
+    """Tighten extension auth defaults for production deployments."""
+    return "hybrid" if _is_dev_environment() else "strict"
+
+
+def _default_extension_dev_bypass() -> bool:
+    """Disable extension dev bypass when not in a development environment."""
+    return _is_dev_environment()
+
+
+def _default_extension_require_https() -> bool:
+    """Require HTTPS for extensions in production by default."""
+    return not _is_dev_environment()
+
 # Ensure critical environment variables are set
 # - In development/test: provide sensible defaults if missing
 # - In production: do NOT inject insecure defaults; require explicit configuration
@@ -69,7 +106,7 @@ if os.path.isdir(_src_path) and _src_path not in sys.path:
 
 class Settings(BaseSettings):
     app_name: str = "Kari AI Server"
-    environment: str = "development"
+    environment: str = Field(default_factory=_default_environment, env="ENVIRONMENT")
     secret_key: str = Field(..., env="SECRET_KEY")
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
@@ -84,13 +121,13 @@ class Settings(BaseSettings):
     prometheus_enabled: bool = True
     https_redirect: bool = False
     rate_limit: str = "300/minute"
-    debug: bool = Field(default=False, env="KARI_DEBUG_MODE")
+    debug: bool = Field(default_factory=_default_debug, env="KARI_DEBUG_MODE")
     plugin_dir: str = "/app/plugins"
     llm_refresh_interval: int = 3600
     
     # Performance Optimization Settings
     enable_performance_optimization: bool = Field(default=True, env="ENABLE_PERFORMANCE_OPTIMIZATION")
-    deployment_mode: str = Field(default="development", env="DEPLOYMENT_MODE")
+    deployment_mode: str = Field(default_factory=_default_deployment_mode, env="DEPLOYMENT_MODE")
     cpu_threshold: float = Field(default=80.0, env="CPU_THRESHOLD")
     memory_threshold: float = Field(default=85.0, env="MEMORY_THRESHOLD")
     response_time_threshold: float = Field(default=2.0, env="RESPONSE_TIME_THRESHOLD")
@@ -163,9 +200,9 @@ class Settings(BaseSettings):
     )
     
     # Extension Authentication Mode (development/hybrid/strict)
-    extension_auth_mode: str = Field(default="hybrid", env="EXTENSION_AUTH_MODE")
-    extension_dev_bypass_enabled: bool = Field(default=True, env="EXTENSION_DEV_BYPASS_ENABLED")
-    extension_require_https: bool = Field(default=False, env="EXTENSION_REQUIRE_HTTPS")
+    extension_auth_mode: str = Field(default_factory=_default_extension_auth_mode, env="EXTENSION_AUTH_MODE")
+    extension_dev_bypass_enabled: bool = Field(default_factory=_default_extension_dev_bypass, env="EXTENSION_DEV_BYPASS_ENABLED")
+    extension_require_https: bool = Field(default_factory=_default_extension_require_https, env="EXTENSION_REQUIRE_HTTPS")
     
     # Extension Permission Configuration
     extension_default_permissions: str = Field(
