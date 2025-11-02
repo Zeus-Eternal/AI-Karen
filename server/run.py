@@ -6,6 +6,7 @@ Handles CLI argument parsing and server startup with custom configuration.
 
 import argparse
 import logging
+import logging.config
 import os
 from typing import Optional
 
@@ -19,16 +20,52 @@ def configure_logging(log_level: str) -> None:
     """Configure application logging before the server starts."""
 
     level = getattr(logging, log_level.upper(), logging.INFO)
+    level_name = logging.getLevelName(level)
 
     # Reset existing handlers so repeated invocations (e.g. tests) reconfigure cleanly
     root_logger = logging.getLogger()
     for handler in list(root_logger.handlers):
         root_logger.removeHandler(handler)
 
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
+    logging_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "json": {
+                "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+                "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(module)s %(lineno)d",
+                "rename_fields": {"levelname": "severity", "asctime": "timestamp"},
+            },
+            "uvicorn_access": {
+                "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+                "fmt": "%(asctime)s %(levelname)s %(name)s %(client_addr)s %(request_line)s %(status_code)s",
+                "rename_fields": {"levelname": "severity", "asctime": "timestamp"},
+            },
+        },
+        "handlers": {
+            "default": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+                "formatter": "json",
+            },
+            "uvicorn_access": {
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+                "formatter": "uvicorn_access",
+            },
+        },
+        "loggers": {
+            "kari": {"handlers": ["default"], "level": level_name, "propagate": False},
+            "uvicorn": {"handlers": ["default"], "level": level_name, "propagate": False},
+            "uvicorn.error": {"handlers": ["default"], "level": level_name, "propagate": False},
+            "uvicorn.access": {"handlers": ["uvicorn_access"], "level": level_name, "propagate": False},
+        },
+        "root": {"handlers": ["default"], "level": level_name},
+    }
+
+    logging.config.dictConfig(logging_config)
+
+    # Ensure key loggers inherit the configured level (dictConfig mutates them but be explicit)
     logger.setLevel(level)
     logging.getLogger("uvicorn").setLevel(level)
     logging.getLogger("uvicorn.error").setLevel(level)
