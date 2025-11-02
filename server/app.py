@@ -28,7 +28,6 @@ from .startup import create_lifespan, register_startup_tasks
 from .database_config import get_database_config, database_lifespan
 from .admin_endpoints import register_admin_endpoints
 from .health_endpoints import register_health_endpoints
-from .debug_endpoints import register_debug_endpoints
 
 logger = logging.getLogger("kari")
 
@@ -43,15 +42,6 @@ except ImportError:
 # Global variables from original main.py
 ENABLED_PLUGINS = []
 PLUGIN_MAP = {}
-
-
-def setup_developer_api(app: FastAPI) -> None:
-    """Setup developer API endpoints (imported from ui_launchers.backend)"""
-    try:
-        from ui_launchers.backend.developer_api import setup_developer_api as setup_dev_api
-        setup_dev_api(app)
-    except ImportError:
-        logger.warning("Developer API not available")
 
 
 def create_app() -> FastAPI:
@@ -113,16 +103,11 @@ def create_app() -> FastAPI:
     register_admin_endpoints(app, settings)
     register_health_endpoints(app)
 
-    if settings.debug and environment != "production":
-        register_debug_endpoints(app, settings)
-    else:
-        logger.info("Debug endpoints disabled for non-debug or production environments")
+    # Debug endpoints removed for production readiness
+    logger.info("Debug endpoints have been removed for production deployment")
 
-    # Setup developer API (non-production only)
-    if environment != "production":
-        setup_developer_api(app)
-    else:
-        logger.info("Developer API disabled in production environment")
+    # Developer API removed for production readiness
+    logger.info("Developer API has been removed for production deployment")
     
     # Initialize extension system
     if EXTENSIONS_AVAILABLE:

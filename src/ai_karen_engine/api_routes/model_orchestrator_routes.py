@@ -576,8 +576,8 @@ async def _handle_model_download(job_id: str, request: ModelDownloadRequest, use
             "status": result.status
         }
         job["updated_at"] = datetime.now(timezone.utc)
-        
-        # TODO: Emit WebSocket event for real-time updates
+
+        # Emit real-time update via WebSocket
         await _emit_job_update(job_id, job)
         
     except ModelOrchestratorError as e:

@@ -879,8 +879,8 @@ class UnifiedMemoryService:
                 extra=audit_entry,
             )
 
-            # TODO: Store in dedicated audit table when implemented
-            # This would be part of the comprehensive audit logging system
+            # Audit entries are logged via structured logging with JSON serialization
+            # Future enhancement: Dedicated audit table for queryable audit history
 
         except Exception as e:
             logger.error(f"Failed to create audit entry: {e}")
