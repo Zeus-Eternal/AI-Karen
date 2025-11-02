@@ -389,6 +389,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      // Use ConnectionManager for reliable authentication request against the production login endpoint
+      const loginUrl = "/api/auth/login";
       const timeout = timeoutManager.getTimeout(OperationType.AUTHENTICATION);
 
       const requestBody = {

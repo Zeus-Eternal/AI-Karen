@@ -265,11 +265,12 @@ class TestPluginExecutionEngine:
     def test_execution_metrics(self, execution_engine):
         """Test execution metrics tracking."""
         metrics = execution_engine.get_execution_metrics()
-        
+
         assert "executions_total" in metrics
         assert "executions_successful" in metrics
         assert "executions_failed" in metrics
         assert "executions_timeout" in metrics
+        assert "executions_cancelled" in metrics
         assert "average_execution_time" in metrics
         assert "total_execution_time" in metrics
     
