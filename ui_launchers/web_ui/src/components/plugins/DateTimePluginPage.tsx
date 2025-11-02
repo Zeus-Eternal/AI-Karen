@@ -29,18 +29,18 @@ export default function DateTimePluginPage() {
         </div>
       </div>
 
-       <Alert>
+       <div role="alert" className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground">
         <Info className="h-4 w-4 " />
-        <AlertTitle>How to Use Date & Time Features</AlertTitle>
-        <AlertDescription>
+        <h5 className="mb-1 font-medium leading-none tracking-tight">How to Use Date & Time Features</h5>
+        <div className="text-sm [&_p]:leading-relaxed">
           <p>You can ask Karen AI for the current date or time directly in the chat interface. For example:</p>
           <ul className="list-disc list-inside pl-4 mt-1 text-xs sm:text-sm md:text-base">
               <li>"What's the date today?"</li>
               <li>"What time is it?"</li>
               <li>"What's the time in London?" or "Time in Detroit, MI"</li>
           </ul>
-        </AlertDescription>
-      </Alert>
+        </div>
+      </div>
 
       <Card>
         <CardHeader>
@@ -119,13 +119,13 @@ export default function DateTimePluginPage() {
                 <Label htmlFor="custom-time-endpoint">Custom Endpoint URL (if applicable)</Label>
                 <input id="custom-time-endpoint" placeholder="Enter custom API endpoint if needed" disabled />
             </div>
-            <Alert variant="default" className="bg-muted/30">
+            <div role="alert" className="bg-muted/30 relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground">
                 <Info className="h-4 w-4 !text-accent-foreground " />
-                <AlertTitle className="font-semibold text-accent-foreground text-sm md:text-base lg:text-lg">Developer Note</AlertTitle>
-                <AlertDescription className="text-muted-foreground text-xs sm:text-sm md:text-base">
+                <h5 className="font-semibold text-accent-foreground text-sm md:text-base lg:text-lg mb-1 font-medium leading-none tracking-tight">Developer Note</h5>
+                <div className="text-muted-foreground text-xs sm:text-sm md:text-base text-sm [&_p]:leading-relaxed">
                 This section is conceptual. Integrating a new time service would require updating Karen's core tools (`src/ai/tools/core-tools.ts`) to make calls to the new API, handle its specific response format, and manage the API key securely.
-                </AlertDescription>
-            </Alert>
+                </div>
+            </div>
         </CardContent>
         <CardFooter className="flex justify-end">
             <Button disabled >Save Custom Time Service Settings</Button>
@@ -133,13 +133,13 @@ export default function DateTimePluginPage() {
       </Card>
 
 
-      <Alert variant="destructive">
+      <div role="alert" className="relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground text-destructive border-destructive/50 dark:border-destructive [&>svg]:text-destructive">
         <AlertTriangle className="h-4 w-4 " />
-        <AlertTitle>Note on Location Accuracy</AlertTitle>
-        <AlertDescription>
+        <h5 className="mb-1 font-medium leading-none tracking-tight">Note on Location Accuracy</h5>
+        <div className="text-sm [&_p]:leading-relaxed">
           Free time services like `timeapi.io` and `worldtimeapi.org` are convenient but may not always perfectly resolve all location name variations. For the most robust experience with a wide range of locations, dedicated geolocation and time zone APIs (often requiring API keys) are typically used in production systems.
-        </AlertDescription>
-      </Alert>
+        </div>
+      </div>
 
     </div>
   );

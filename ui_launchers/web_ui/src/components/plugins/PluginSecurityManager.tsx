@@ -62,6 +62,8 @@ const computeInitialPolicy = (plugin: PluginInfo): SecurityPolicy => {
     allowNetworkAccess: false,
     allowFileSystemAccess: false,
     allowSystemCalls: false,
+    resourceLimits: undefined,
+    timeouts: undefined
   };
 
   return {
