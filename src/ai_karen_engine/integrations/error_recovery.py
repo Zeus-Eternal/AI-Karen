@@ -8,9 +8,14 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 import asyncio
 from datetime import datetime, timedelta
+
+from ai_karen_engine.integrations.registry import get_registry
+
+if TYPE_CHECKING:
+    from ai_karen_engine.integrations.registry import LLMRegistry
 
 logger = logging.getLogger("kari.error_recovery")
 
@@ -96,19 +101,26 @@ class RateLimitAction:
 class ErrorRecoverySystem:
     """Comprehensive error recovery system for LLM providers."""
 
-    def __init__(self, max_retries: int = 3, base_delay: float = 1.0):
+    def __init__(
+        self,
+        max_retries: int = 3,
+        base_delay: float = 1.0,
+        registry: Optional["LLMRegistry"] = None,
+    ):
         """
         Initialize error recovery system.
-        
+
         Args:
             max_retries: Maximum number of retry attempts
             base_delay: Base delay for exponential backoff
+            registry: Optional registry instance for provider metadata
         """
         self.max_retries = max_retries
         self.base_delay = base_delay
         self.retry_history: Dict[str, List[RetryAttempt]] = {}
         self.error_patterns: Dict[str, List[ClassifiedError]] = {}
         self.recovery_stats: Dict[str, Dict[str, int]] = {}
+        self._registry: Optional["LLMRegistry"] = registry or get_registry()
 
     def classify_error(self, provider_name: str, error: Exception, context: Dict[str, Any] = None) -> ClassifiedError:
         """
@@ -493,16 +505,90 @@ class ErrorRecoverySystem:
             }
             delay = provider_delays.get(provider_name.lower(), 60)
         
-        # Check if we have alternative providers
-        # This would be injected by the router/fallback manager
-        alternative_provider = None  # TODO: Get from router
-        
+        alternative_provider = self._select_alternative_provider(provider_name)
+
+        if alternative_provider:
+            user_message = (
+                f"Rate limited by {provider_name}, switching to {alternative_provider}"
+                f" after waiting {delay} seconds"
+            )
+        else:
+            user_message = (
+                f"Rate limited by {provider_name}, waiting {delay} seconds before retry"
+            )
+
         return RateLimitAction(
             should_retry=True,
             delay_seconds=delay,
             alternative_provider=alternative_provider,
-            user_message=f"Rate limited by {provider_name}, waiting {delay} seconds before retry"
+            user_message=user_message,
         )
+
+    def _select_alternative_provider(self, provider_name: str) -> Optional[str]:
+        """Select an alternative provider using registry metadata."""
+
+        if not self._registry:
+            logger.debug("Registry unavailable, cannot determine alternative provider")
+            return None
+
+        try:
+            healthy_providers = set(self._registry.list_llm_providers(healthy_only=True))
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning(
+                "Failed to list healthy providers from registry: %s", exc
+            )
+            healthy_providers = set()
+
+        try:
+            spec = self._registry.get_provider_spec(provider_name)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning(
+                "Unable to load provider spec for %s: %s", provider_name, exc
+            )
+            spec = None
+
+        candidate_names: List[str] = []
+
+        if spec and spec.can_fallback_to:
+            candidate_names.extend(spec.can_fallback_to)
+
+        if not candidate_names and healthy_providers:
+            # Choose highest priority healthy provider
+            ranked: List[Tuple[int, str]] = []
+            for candidate in healthy_providers:
+                if candidate == provider_name:
+                    continue
+                candidate_spec = self._registry.get_provider_spec(candidate)
+                if not candidate_spec:
+                    continue
+                ranked.append((candidate_spec.fallback_priority, candidate))
+
+            if ranked:
+                ranked.sort(reverse=True)
+                return ranked[0][1]
+            return None
+
+        for candidate in candidate_names:
+            if candidate == provider_name:
+                continue
+            if healthy_providers and candidate not in healthy_providers:
+                continue
+            return candidate
+
+        # As a last resort pick any other provider
+        if not healthy_providers:
+            try:
+                all_providers = self._registry.list_llm_providers(healthy_only=False)
+            except Exception:  # pragma: no cover - defensive logging
+                return None
+        else:
+            all_providers = list(healthy_providers)
+
+        for candidate in all_providers:
+            if candidate != provider_name:
+                return candidate
+
+        return None
 
     def recover_authentication(self, provider_name: str) -> AuthRecoveryResult:
         """
