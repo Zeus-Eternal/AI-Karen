@@ -115,7 +115,8 @@ class TestTrainingDataManager:
             dataset_id=dataset_id,
             data=[manager._example_to_dict(ex) for ex in sample_examples],
             format=DataFormat.JSON,
-            version_description="Initial test upload"
+            version_description="Initial test upload",
+            created_by="test_user"
         )
         
         assert version_id is not None
@@ -141,7 +142,8 @@ class TestTrainingDataManager:
         version_id = manager.upload_dataset(
             dataset_id=dataset_id,
             data=[manager._example_to_dict(ex) for ex in sample_examples],
-            format=DataFormat.JSON
+            format=DataFormat.JSON,
+            created_by="test_user"
         )
         
         # Test retrieval
@@ -287,7 +289,8 @@ class TestTrainingDataManager:
             dataset_id=dataset_id,
             data=[manager._example_to_dict(ex) for ex in sample_examples],
             format=DataFormat.JSON,
-            version_description="Initial version"
+            version_description="Initial version",
+            created_by="test_user"
         )
         
         # Create second version with modifications
@@ -304,7 +307,8 @@ class TestTrainingDataManager:
             dataset_id=dataset_id,
             data=[manager._example_to_dict(ex) for ex in modified_examples],
             format=DataFormat.JSON,
-            version_description="Added new example"
+            version_description="Added new example",
+            created_by="test_user"
         )
         
         # Test version listing
@@ -325,7 +329,8 @@ class TestTrainingDataManager:
             dataset_id=dataset_id,
             source_version=version1_id,
             description="Copy of version 1",
-            modifications={'confidence_adjustment': 0.1}
+            modifications={'confidence_adjustment': 0.1},
+            created_by="test_user"
         )
         
         v3_examples = manager.get_dataset(dataset_id, version3_id)
@@ -348,7 +353,8 @@ class TestTrainingDataManager:
         manager.upload_dataset(
             dataset_id=dataset_id,
             data=[manager._example_to_dict(ex) for ex in sample_examples],
-            format=DataFormat.JSON
+            format=DataFormat.JSON,
+            created_by="test_user"
         )
         
         # Test export
@@ -669,7 +675,8 @@ class TestTrainingDataManager:
             dataset_id=dataset_id,
             data=[manager._example_to_dict(ex) for ex in sample_examples],
             format=DataFormat.JSON,
-            version_description="Test upload"
+            version_description="Test upload",
+            created_by="test_user"
         )
         
         versions = manager.list_versions(dataset_id)
@@ -696,7 +703,8 @@ class TestTrainingDataManager:
                 dataset_id=dataset_id,
                 data=data,
                 format=DataFormat.JSON,
-                version_description=f"Sequential upload {i}"
+                version_description=f"Sequential upload {i}",
+                created_by="test_user"
             )
             results.append(result)
         

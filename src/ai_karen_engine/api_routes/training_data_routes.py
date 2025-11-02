@@ -353,7 +353,8 @@ async def upload_dataset_data(
             dataset_id=dataset_id,
             data=request.data,
             format=request.format,
-            version_description=request.version_description
+            version_description=request.version_description,
+            created_by=current_user.get("user_id", "unknown")
         )
         
         # Get validation report
@@ -395,7 +396,8 @@ async def upload_dataset_file(
             dataset_id=dataset_id,
             data=content,
             format=format,
-            version_description=version_description
+            version_description=version_description,
+            created_by=current_user.get("user_id", "unknown")
         )
         
         # Get validation report
@@ -498,7 +500,8 @@ async def enhance_dataset(
                 dataset_id=dataset_id,
                 data=[manager._example_to_dict(ex) for ex in enhanced_examples],
                 format=DataFormat.JSON,
-                version_description="Enhanced dataset"
+                version_description="Enhanced dataset",
+                created_by=current_user.get("user_id", "unknown")
             )
             
             return {
@@ -689,7 +692,8 @@ async def create_dataset_version(
             dataset_id=dataset_id,
             source_version=request.source_version,
             description=request.description,
-            modifications=request.modifications
+            modifications=request.modifications,
+            created_by=current_user.get("user_id", "unknown")
         )
         
         logger.info(f"Created version {version_id} for dataset {dataset_id}")
