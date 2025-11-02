@@ -244,11 +244,12 @@ class TrainingDataManager:
         return dataset_id
     
     def upload_dataset(
-        self, 
-        dataset_id: str, 
+        self,
+        dataset_id: str,
         data: Union[List[Dict[str, Any]], str, bytes],
         format: DataFormat,
-        version_description: str = "Initial upload"
+        version_description: str = "Initial upload",
+        created_by: Optional[str] = None
     ) -> str:
         """Upload training data to a dataset.
         
@@ -257,6 +258,7 @@ class TrainingDataManager:
             data: Training data (list of examples, file path, or raw bytes)
             format: Data format
             version_description: Description of this version
+            created_by: Identifier for the actor creating this version
             
         Returns:
             Version ID
@@ -265,17 +267,21 @@ class TrainingDataManager:
         metadata = self._load_dataset_metadata(dataset_id)
         if not metadata:
             raise ValueError(f"Dataset {dataset_id} not found")
-        
+
+        # Resolve creator for the new version
+        creator_id = created_by or metadata.created_by or "system"
+
         # Process and validate data
         examples = self._process_upload_data(data, format)
         validation_report = self.validate_dataset(examples)
-        
+
         # Create new version
         version_id = self._create_version(
-            dataset_id, 
-            examples, 
+            dataset_id,
+            examples,
             version_description,
-            validation_report
+            validation_report,
+            created_by=creator_id
         )
         
         # Update dataset metadata
@@ -706,11 +712,12 @@ class TrainingDataManager:
         return versions
     
     def create_version_from_existing(
-        self, 
-        dataset_id: str, 
+        self,
+        dataset_id: str,
         source_version: str,
         description: str,
-        modifications: Optional[Dict[str, Any]] = None
+        modifications: Optional[Dict[str, Any]] = None,
+        created_by: Optional[str] = None
     ) -> str:
         """Create a new version based on an existing version.
         
@@ -719,6 +726,7 @@ class TrainingDataManager:
             source_version: Source version ID
             description: Description of the new version
             modifications: Optional modifications to apply
+            created_by: Identifier for the actor creating this version
             
         Returns:
             New version ID
@@ -734,12 +742,18 @@ class TrainingDataManager:
         validation_report = self.validate_dataset(examples)
         
         # Create new version
+        # Determine creator
+        if created_by is None:
+            metadata = self._load_dataset_metadata(dataset_id)
+            created_by = metadata.created_by if metadata else "system"
+
         version_id = self._create_version(
-            dataset_id, 
-            examples, 
+            dataset_id,
+            examples,
             description,
             validation_report,
-            parent_version=source_version
+            parent_version=source_version,
+            created_by=created_by
         )
         
         return version_id
@@ -819,7 +833,8 @@ class TrainingDataManager:
             dataset_id=dataset_id,
             data=examples,
             format=DataFormat.JSON,  # Internal format
-            version_description="Initial import"
+            version_description="Initial import",
+            created_by=created_by
         )
         
         return dataset_id
@@ -950,12 +965,13 @@ class TrainingDataManager:
         }
     
     def _create_version(
-        self, 
-        dataset_id: str, 
+        self,
+        dataset_id: str,
         examples: List[TrainingExample],
         description: str,
         validation_report: ValidationReport,
-        parent_version: Optional[str] = None
+        parent_version: Optional[str] = None,
+        created_by: Optional[str] = None
     ) -> str:
         """Create a new dataset version."""
         version_id = str(uuid.uuid4())
@@ -979,12 +995,16 @@ class TrainingDataManager:
         checksum = self._calculate_checksum(examples_path)
         
         # Create version metadata
+        if created_by is None:
+            metadata = self._load_dataset_metadata(dataset_id)
+            created_by = metadata.created_by if metadata else "system"
+
         version_metadata = DatasetVersion(
             version_id=version_id,
             dataset_id=dataset_id,
             version_number=version_number,
             created_at=datetime.utcnow(),
-            created_by="system",  # TODO: Get from context
+            created_by=created_by,
             description=description,
             parent_version=parent_version,
             size=len(examples),

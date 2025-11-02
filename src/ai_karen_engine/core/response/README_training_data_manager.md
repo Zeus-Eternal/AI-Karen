@@ -41,7 +41,8 @@ version_id = manager.upload_dataset(
     dataset_id=dataset_id,
     data=training_examples,
     format=DataFormat.JSON,
-    version_description="Initial training data"
+    version_description="Initial training data",
+    created_by="trainer_user_id"
 )
 
 # Validate dataset quality
@@ -95,7 +96,8 @@ new_version_id = manager.create_version_from_existing(
     dataset_id=dataset_id,
     source_version=latest_version_id,
     description="Confidence score adjustments",
-    modifications={'confidence_adjustment': 0.1}
+    modifications={'confidence_adjustment': 0.1},
+    created_by="trainer_user_id"
 )
 ```
 
@@ -303,7 +305,8 @@ new_version = manager.create_version_from_existing(
     modifications={
         'confidence_adjustment': 0.1,
         'intent_mapping': {'old_intent': 'new_intent'}
-    }
+    },
+    created_by="trainer_user_id"
 )
 
 # List all versions with metadata
@@ -406,7 +409,8 @@ manager.upload_dataset(
     dataset_id=learning_dataset_id,
     data=[conversation_data],
     format=DataFormat.JSON,
-    version_description="Autonomous learning data"
+    version_description="Autonomous learning data",
+    created_by=conversation_data.get("user_id", "autonomous_agent")
 )
 
 # Enhance and validate
