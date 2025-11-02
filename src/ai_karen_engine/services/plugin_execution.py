@@ -1,5 +1,4 @@
-"""
-Plugin Execution Service with Sandboxing.
+"""Plugin Execution Service with Sandboxing.
 
 This service provides secure plugin execution with input/output validation,
 resource management, and timeout controls.
@@ -9,6 +8,7 @@ import asyncio
 import builtins
 import logging
 import os
+import re
 import resource
 import signal
 import sys
@@ -24,13 +24,19 @@ import uuid
 import importlib.util
 import multiprocessing
 import threading
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, TimeoutError
+from concurrent.futures import (
+    Future as ConcurrentFuture,
+    ProcessPoolExecutor,
+    ThreadPoolExecutor,
+    TimeoutError,
+)
 
 from pydantic import BaseModel, ConfigDict, Field, validator
 
 from ai_karen_engine.services.plugin_registry import (
-    PluginRegistry,
+    PluginManifest,
     PluginMetadata,
+    PluginRegistry,
     PluginStatus,
     get_plugin_registry,
 )
@@ -118,6 +124,30 @@ class ExecutionResult:
     started_at: datetime = field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ExecutionHandle:
+    """Track the asynchronous handle backing a plugin execution."""
+
+    request_id: str
+    mode: ExecutionMode
+    future: asyncio.Future
+    executor_future: Optional[ConcurrentFuture] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+    def cancel(self) -> bool:
+        """Attempt to cancel the underlying execution future."""
+
+        cancelled = False
+
+        if not self.future.done():
+            cancelled = self.future.cancel()
+
+        if self.executor_future and not self.executor_future.done():
+            cancelled = self.executor_future.cancel() or cancelled
+
+        return cancelled
 
 
 class PluginSandbox:
@@ -246,27 +276,29 @@ class PluginExecutionEngine:
     def __init__(self, registry: Optional[PluginRegistry] = None):
         """Initialize plugin execution engine."""
         self.registry = registry or get_plugin_registry()
-        
+
         # Execution settings
         self.default_resource_limits = ResourceLimits()
         self.default_security_policy = SecurityPolicy()
         self.default_timeout = 30
-        
+
         # Execution tracking
         self.active_executions: Dict[str, ExecutionResult] = {}
+        self.execution_handles: Dict[str, ExecutionHandle] = {}
         self.execution_history: List[ExecutionResult] = []
         self.max_history_size = 1000
-        
+
         # Thread/process pools
         self.thread_pool = ThreadPoolExecutor(max_workers=4)
         self.process_pool = ProcessPoolExecutor(max_workers=2)
-        
+
         # Metrics
         self.metrics = {
             "executions_total": 0,
             "executions_successful": 0,
             "executions_failed": 0,
             "executions_timeout": 0,
+            "executions_cancelled": 0,
             "average_execution_time": 0.0,
             "total_execution_time": 0.0
         }
@@ -290,13 +322,16 @@ class PluginExecutionEngine:
         
         # Track active execution
         self.active_executions[request.request_id] = result
-        
+
+        start_time = time.time()
+        plugin_result: Any = None
+
         try:
             # Validate plugin exists and is registered
             plugin_metadata = self.registry.get_plugin(request.plugin_name)
             if not plugin_metadata:
                 raise ValueError(f"Plugin '{request.plugin_name}' not found")
-            
+
             if plugin_metadata.status not in [PluginStatus.REGISTERED, PluginStatus.LOADED, PluginStatus.ACTIVE]:
                 raise ValueError(f"Plugin '{request.plugin_name}' is not available for execution")
             
@@ -304,35 +339,52 @@ class PluginExecutionEngine:
             sanitized_params = await self._validate_and_sanitize_input(
                 request.parameters, plugin_metadata
             )
-            
+
             # Set up resource limits and security policy
             resource_limits = ResourceLimits(**(request.resource_limits or {}))
             security_policy = SecurityPolicy(**(request.security_policy or {}))
-            
+
             # Execute plugin based on mode
             result.status = ExecutionStatus.RUNNING
-            start_time = time.time()
-            
+
             if request.execution_mode == ExecutionMode.DIRECT:
                 plugin_result = await self._execute_direct(
                     plugin_metadata, sanitized_params, resource_limits, security_policy
                 )
             elif request.execution_mode == ExecutionMode.THREAD:
                 plugin_result = await self._execute_in_thread(
-                    plugin_metadata, sanitized_params, resource_limits, security_policy, request.timeout_seconds
+                    plugin_metadata,
+                    sanitized_params,
+                    resource_limits,
+                    security_policy,
+                    request.timeout_seconds,
+                    request.request_id
                 )
             elif request.execution_mode == ExecutionMode.PROCESS:
                 plugin_result = await self._execute_in_process(
-                    plugin_metadata, sanitized_params, resource_limits, security_policy, request.timeout_seconds
+                    plugin_metadata,
+                    sanitized_params,
+                    resource_limits,
+                    security_policy,
+                    request.timeout_seconds,
+                    request.request_id
                 )
             else:  # SANDBOX mode
                 plugin_result = await self._execute_in_sandbox(
-                    plugin_metadata, sanitized_params, resource_limits, security_policy, request.timeout_seconds
+                    plugin_metadata,
+                    sanitized_params,
+                    resource_limits,
+                    security_policy,
+                    request.timeout_seconds,
+                    request.request_id
                 )
-            
+
+            if result.status == ExecutionStatus.CANCELLED:
+                raise asyncio.CancelledError()
+
             # Calculate execution time
             execution_time = time.time() - start_time
-            
+
             # Validate and sanitize output
             sanitized_result = await self._validate_and_sanitize_output(
                 plugin_result, plugin_metadata, resource_limits
@@ -346,12 +398,20 @@ class PluginExecutionEngine:
             
             # Update metrics
             self.metrics["executions_successful"] += 1
-            
+
+        except asyncio.CancelledError:
+            result.status = ExecutionStatus.CANCELLED
+            result.error = "Plugin execution cancelled"
+            result.execution_time = time.time() - start_time
+            result.completed_at = datetime.utcnow()
+            result.metadata.setdefault("cancel_requested", True)
+            self.metrics["executions_cancelled"] += 1
+            return result
         except TimeoutError:
             result.status = ExecutionStatus.TIMEOUT
             result.error = f"Plugin execution timed out after {request.timeout_seconds} seconds"
             self.metrics["executions_timeout"] += 1
-            
+
         except Exception as e:
             result.status = ExecutionStatus.FAILED
             result.error = str(e)
@@ -362,10 +422,11 @@ class PluginExecutionEngine:
         finally:
             # Clean up active execution
             self.active_executions.pop(request.request_id, None)
-            
+            self.execution_handles.pop(request.request_id, None)
+
             # Add to history
             self._add_to_history(result)
-            
+
             # Update metrics
             self.metrics["executions_total"] += 1
             self.metrics["total_execution_time"] += result.execution_time
@@ -403,24 +464,35 @@ class PluginExecutionEngine:
         parameters: Dict[str, Any],
         resource_limits: ResourceLimits,
         security_policy: SecurityPolicy,
-        timeout_seconds: int
+        timeout_seconds: int,
+        request_id: str
     ) -> Any:
         """Execute plugin in a separate thread."""
+
         def thread_execution():
             plugin_module = self._load_plugin_module_sync(plugin_metadata)
             entry_point = getattr(plugin_module, plugin_metadata.manifest.entry_point)
 
             with PluginSandbox(resource_limits, security_policy) as sandbox:
                 return sandbox.run(entry_point, parameters)
-        
-        # Execute in thread pool with timeout
-        loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(self.thread_pool, thread_execution)
-        
+
+        executor_future = self.thread_pool.submit(thread_execution)
+        loop = asyncio.get_running_loop()
+        wrapped_future = asyncio.wrap_future(executor_future, loop=loop)
+
+        self.execution_handles[request_id] = ExecutionHandle(
+            request_id=request_id,
+            mode=ExecutionMode.THREAD,
+            future=wrapped_future,
+            executor_future=executor_future
+        )
+
         try:
-            return await asyncio.wait_for(future, timeout=timeout_seconds)
+            return await asyncio.wait_for(wrapped_future, timeout=timeout_seconds)
         except asyncio.TimeoutError:
             raise TimeoutError(f"Plugin execution timed out after {timeout_seconds} seconds")
+        finally:
+            self.execution_handles.pop(request_id, None)
     
     async def _execute_in_process(
         self,
@@ -428,7 +500,8 @@ class PluginExecutionEngine:
         parameters: Dict[str, Any],
         resource_limits: ResourceLimits,
         security_policy: SecurityPolicy,
-        timeout_seconds: int
+        timeout_seconds: int,
+        request_id: str
     ) -> Any:
         """Execute plugin in a separate process."""
         def process_execution():
@@ -440,21 +513,30 @@ class PluginExecutionEngine:
                     return sandbox.run(entry_point, parameters)
             except Exception as e:
                 return {"error": str(e), "traceback": traceback.format_exc()}
-        
-        # Execute in process pool with timeout
-        loop = asyncio.get_event_loop()
-        future = loop.run_in_executor(self.process_pool, process_execution)
-        
+
+        executor_future = self.process_pool.submit(process_execution)
+        loop = asyncio.get_running_loop()
+        wrapped_future = asyncio.wrap_future(executor_future, loop=loop)
+
+        self.execution_handles[request_id] = ExecutionHandle(
+            request_id=request_id,
+            mode=ExecutionMode.PROCESS,
+            future=wrapped_future,
+            executor_future=executor_future
+        )
+
         try:
-            result = await asyncio.wait_for(future, timeout=timeout_seconds)
-            
+            result = await asyncio.wait_for(wrapped_future, timeout=timeout_seconds)
+
             # Check if result contains error
             if isinstance(result, dict) and "error" in result:
                 raise Exception(result["error"])
-            
+
             return result
         except asyncio.TimeoutError:
             raise TimeoutError(f"Plugin execution timed out after {timeout_seconds} seconds")
+        finally:
+            self.execution_handles.pop(request_id, None)
     
     async def _execute_in_sandbox(
         self,
@@ -462,13 +544,19 @@ class PluginExecutionEngine:
         parameters: Dict[str, Any],
         resource_limits: ResourceLimits,
         security_policy: SecurityPolicy,
-        timeout_seconds: int
+        timeout_seconds: int,
+        request_id: str
     ) -> Any:
         """Execute plugin in enhanced sandbox mode."""
         # For now, use process execution as the sandbox
         # In a production environment, this could use containers or more advanced sandboxing
         return await self._execute_in_process(
-            plugin_metadata, parameters, resource_limits, security_policy, timeout_seconds
+            plugin_metadata,
+            parameters,
+            resource_limits,
+            security_policy,
+            timeout_seconds,
+            request_id
         )
     
     async def _load_plugin_module(self, plugin_metadata: PluginMetadata):
@@ -496,24 +584,225 @@ class PluginExecutionEngine:
         return module
     
     async def _validate_and_sanitize_input(
-        self, 
-        parameters: Dict[str, Any], 
+        self,
+        parameters: Dict[str, Any],
         plugin_metadata: PluginMetadata
     ) -> Dict[str, Any]:
         """Validate and sanitize plugin input parameters."""
         # Basic validation
         if not isinstance(parameters, dict):
             raise ValueError("Plugin parameters must be a dictionary")
-        
+
         # Size limit check
         import json
         param_size = len(json.dumps(parameters, default=str))
         if param_size > 1024 * 1024:  # 1MB limit
             raise ValueError("Plugin parameters too large")
-        
-        # TODO: Add more sophisticated validation based on plugin manifest
-        # For now, return parameters as-is
-        return parameters
+
+        manifest = plugin_metadata.manifest
+        extras = getattr(manifest, "model_extra", {}) or {}
+        schema = extras.get("parameters") or extras.get("input_schema") or {}
+        allow_additional = extras.get("allow_additional_parameters", True)
+
+        sanitized: Dict[str, Any] = {}
+
+        for name, rules in schema.items():
+            is_required = bool(rules.get("required"))
+            has_default = "default" in rules
+            value_present = name in parameters
+
+            if not value_present and not has_default and is_required:
+                raise ValueError(
+                    f"Missing required parameter '{name}' for plugin '{manifest.name}'"
+                )
+
+            if not value_present and has_default:
+                sanitized[name] = rules["default"]
+                continue
+
+            if not value_present:
+                continue
+
+            sanitized[name] = self._apply_parameter_rules(
+                name, parameters[name], rules, manifest
+            )
+
+        if allow_additional:
+            for key, value in parameters.items():
+                if key not in sanitized:
+                    sanitized[key] = value
+        else:
+            unexpected = set(parameters) - set(schema)
+            if unexpected:
+                joined = ", ".join(sorted(unexpected))
+                raise ValueError(
+                    f"Unexpected parameters for plugin '{manifest.name}': {joined}"
+                )
+
+        return sanitized
+
+    def _apply_parameter_rules(
+        self,
+        name: str,
+        value: Any,
+        rules: Dict[str, Any],
+        manifest: PluginManifest
+    ) -> Any:
+        """Apply manifest rules to a parameter value."""
+
+        expected_type = rules.get("type")
+        coerced_value = value
+
+        if expected_type:
+            coerced_value = self._coerce_parameter_type(
+                name, coerced_value, expected_type, manifest
+            )
+
+        if isinstance(coerced_value, str):
+            if rules.get("strip", True):
+                coerced_value = coerced_value.strip()
+
+            max_length = rules.get("max_length")
+            min_length = rules.get("min_length")
+
+            if max_length is not None and len(coerced_value) > max_length:
+                raise ValueError(
+                    f"Parameter '{name}' exceeds maximum length of {max_length}"
+                )
+
+            if min_length is not None and len(coerced_value) < min_length:
+                raise ValueError(
+                    f"Parameter '{name}' must be at least {min_length} characters"
+                )
+
+            pattern = rules.get("pattern")
+            if pattern and not re.fullmatch(pattern, coerced_value):
+                raise ValueError(
+                    f"Parameter '{name}' does not match required pattern"
+                )
+
+        if isinstance(coerced_value, (int, float)):
+            minimum = rules.get("min")
+            maximum = rules.get("max")
+
+            if minimum is not None and coerced_value < minimum:
+                raise ValueError(
+                    f"Parameter '{name}' must be greater than or equal to {minimum}"
+                )
+
+            if maximum is not None and coerced_value > maximum:
+                raise ValueError(
+                    f"Parameter '{name}' must be less than or equal to {maximum}"
+                )
+
+        allowed_values = rules.get("enum") or rules.get("choices")
+        if allowed_values is not None and coerced_value not in allowed_values:
+            allowed_display = ", ".join(map(str, allowed_values))
+            raise ValueError(
+                f"Parameter '{name}' must be one of: {allowed_display}"
+            )
+
+        if isinstance(coerced_value, list):
+            item_rules = rules.get("items", {})
+            if item_rules:
+                coerced_value = [
+                    self._apply_parameter_rules(
+                        f"{name}[{idx}]", item, item_rules, manifest
+                    )
+                    for idx, item in enumerate(coerced_value)
+                ]
+
+        if isinstance(coerced_value, dict):
+            nested_schema = rules.get("properties") or {}
+            allow_nested_extra = rules.get("allow_additional_properties", True)
+
+            if nested_schema:
+                validated: Dict[str, Any] = {}
+                for key, val in coerced_value.items():
+                    if key in nested_schema:
+                        validated[key] = self._apply_parameter_rules(
+                            f"{name}.{key}", val, nested_schema[key], manifest
+                        )
+                    elif allow_nested_extra:
+                        validated[key] = val
+                    else:
+                        raise ValueError(
+                            f"Unexpected nested parameter '{name}.{key}' in plugin '{manifest.name}'"
+                        )
+                coerced_value = validated
+
+        return coerced_value
+
+    def _coerce_parameter_type(
+        self,
+        name: str,
+        value: Any,
+        expected_type: str,
+        manifest: PluginManifest
+    ) -> Any:
+        """Coerce a parameter value into the expected manifest type."""
+
+        type_map = {
+            "string": str,
+            "str": str,
+            "integer": int,
+            "int": int,
+            "float": float,
+            "number": (int, float),
+            "boolean": bool,
+            "bool": bool,
+            "array": list,
+            "list": list,
+            "object": dict,
+            "dict": dict,
+        }
+
+        normalized_type = expected_type.lower()
+        target_type = type_map.get(normalized_type)
+
+        if not target_type:
+            logger.warning(
+                "Unknown parameter type '%s' in manifest '%s'", expected_type, manifest.name
+            )
+            return value
+
+        # Handle common coercions for primitive types
+        if normalized_type in {"string", "str"}:
+            return str(value)
+
+        if normalized_type in {"integer", "int"}:
+            if isinstance(value, bool):
+                raise ValueError(f"Parameter '{name}' must be an integer")
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                raise ValueError(f"Parameter '{name}' must be an integer") from None
+
+        if normalized_type in {"float", "number"}:
+            if isinstance(value, bool):
+                raise ValueError(f"Parameter '{name}' must be a number")
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                raise ValueError(f"Parameter '{name}' must be a number") from None
+
+        if normalized_type in {"boolean", "bool"}:
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                lowered = value.strip().lower()
+                if lowered in {"true", "1", "yes", "y", "on"}:
+                    return True
+                if lowered in {"false", "0", "no", "n", "off"}:
+                    return False
+            raise ValueError(f"Parameter '{name}' must be a boolean value")
+
+        if not isinstance(value, target_type):
+            raise ValueError(
+                f"Parameter '{name}' must be of type '{expected_type}'"
+            )
+
+        return value
     
     async def _validate_and_sanitize_output(
         self,
@@ -553,23 +842,42 @@ class PluginExecutionEngine:
     async def cancel_execution(self, request_id: str) -> bool:
         """
         Cancel an active plugin execution.
-        
+
         Args:
             request_id: Request ID to cancel
-            
+
         Returns:
             True if cancellation successful, False otherwise
         """
         if request_id not in self.active_executions:
             return False
-        
+
         try:
             result = self.active_executions[request_id]
+            handle = self.execution_handles.get(request_id)
+
+            if handle and handle.future.done():
+                # Execution already completed but cleanup not processed yet
+                return False
+
             result.status = ExecutionStatus.CANCELLED
             result.completed_at = datetime.utcnow()
-            
-            # TODO: Implement actual cancellation logic for threads/processes
-            
+            result.metadata["cancel_requested"] = True
+            result.metadata["cancelled_at"] = result.completed_at.isoformat()
+
+            cancel_success = False
+            if handle:
+                cancel_success = handle.cancel()
+                self.execution_handles.pop(request_id, None)
+
+            if not cancel_success:
+                logger.warning(
+                    "Cancellation requested for %s but underlying execution could not be interrupted",
+                    request_id
+                )
+
+            # Ensure active map cleanup mirrors execute_plugin finally block
+            self.active_executions.pop(request_id, None)
             return True
         except Exception as e:
             logger.error(f"Failed to cancel execution {request_id}: {e}")
