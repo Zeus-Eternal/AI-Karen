@@ -34,6 +34,47 @@ export interface ExtensionQueryParams {
   order?: 'asc' | 'desc';
 }
 
+export interface ExtensionManifestMetadata {
+  name: string;
+  version: string;
+  display_name: string;
+  description: string;
+  author: string;
+  license: string;
+  category: string;
+  tags: string[];
+  api_version?: string;
+  kari_min_version?: string;
+  capabilities?: Record<string, boolean>;
+  resources?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export interface ExtensionRegistryEntry {
+  name: string;
+  version: string;
+  status: string;
+  directory: string;
+  loaded_at?: number | string | null;
+  error_message?: string | null;
+  manifest: ExtensionManifestMetadata;
+}
+
+export interface ExtensionRegistrySummaryResponse {
+  extensions: Record<string, ExtensionRegistryEntry>;
+  summary: Record<string, number>;
+  total_count: number;
+}
+
+export interface ExtensionHealthSummary {
+  total_extensions: number;
+  healthy_extensions: number;
+  unhealthy_extensions: number;
+  health_percentage: number;
+  last_check_times: Record<string, number>;
+  extension_health: Record<string, 'green' | 'yellow' | 'red'>;
+}
+
 export interface ExtensionInstallRequest {
   extensionId: string;
   version?: string;
