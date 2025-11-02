@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeError } from '@/lib/safe-console';
 import { useToast } from "@/hooks/use-toast";
 import { getKarenBackend } from '@/lib/karen-backend';
-import { 
-  handleApiError, 
+import {
   handleDownloadError,
   showSuccess,
-  showInfo,
-  showWarning
+  showInfo
 } from '@/lib/error-handler';
+
+type ApiDownloadStatus = Record<string, any>;
 
 interface DownloadTask {
   id: string;
@@ -26,6 +26,127 @@ interface DownloadTask {
   startTime: number;
   lastUpdateTime: number;
 }
+
+type DownloadTaskStatus = DownloadTask["status"];
+
+const STATUS_MAP: Record<string, DownloadTaskStatus> = {
+  pending: "pending",
+  queued: "pending",
+  running: "downloading",
+  downloading: "downloading",
+  in_progress: "downloading",
+  paused: "paused",
+  completed: "completed",
+  success: "completed",
+  done: "completed",
+  error: "error",
+  failed: "error",
+  failure: "error",
+  cancelled: "cancelled",
+  canceled: "cancelled"
+};
+
+const generateTaskId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `download-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const toUnixSeconds = (value?: number | string | Date | null): number => {
+  if (value == null) {
+    return Date.now() / 1000;
+  }
+
+  if (typeof value === 'number') {
+    // Detect if already in seconds (10 digits) or milliseconds (13 digits)
+    if (value > 1e12) {
+      return value / 1000;
+    }
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed / 1000;
+    }
+    const numeric = Number(value);
+    if (!Number.isNaN(numeric)) {
+      return toUnixSeconds(numeric);
+    }
+  }
+
+  if (value instanceof Date) {
+    return value.getTime() / 1000;
+  }
+
+  return Date.now() / 1000;
+};
+
+const calculateSpeed = (apiResponse: ApiDownloadStatus): number => {
+  const downloaded = apiResponse.downloaded_size ?? apiResponse.bytes_downloaded ?? apiResponse.current_size;
+  if (!downloaded) {
+    return 0;
+  }
+
+  const start = toUnixSeconds(apiResponse.start_time ?? apiResponse.started_at);
+  const elapsed = Math.max(0, (Date.now() / 1000) - start);
+  if (elapsed <= 0) {
+    return 0;
+  }
+
+  return downloaded / elapsed;
+};
+
+const normaliseProgress = (rawProgress?: number | null): number => {
+  if (rawProgress == null || Number.isNaN(rawProgress)) {
+    return 0;
+  }
+
+  if (rawProgress > 1) {
+    return Math.min(100, rawProgress);
+  }
+
+  return Math.max(0, rawProgress * 100);
+};
+
+const resolveStatus = (status?: string | null): DownloadTaskStatus => {
+  if (!status) {
+    return "pending";
+  }
+
+  const key = status.toLowerCase();
+  return STATUS_MAP[key] ?? "pending";
+};
+
+export const createDownloadTaskFromApiResponse = (apiResponse: ApiDownloadStatus): DownloadTask => {
+  const status = resolveStatus(apiResponse.status ?? apiResponse.state);
+  const totalBytes = apiResponse.total_size ?? apiResponse.size ?? apiResponse.estimated_size ?? 0;
+  const downloadedBytes = apiResponse.downloaded_size ?? apiResponse.bytes_downloaded ?? apiResponse.current_size ?? 0;
+
+  return {
+    id: apiResponse.task_id ?? apiResponse.job_id ?? apiResponse.id ?? generateTaskId(),
+    modelId: apiResponse.model_id ?? apiResponse.model ?? apiResponse.modelId ?? "unknown-model",
+    modelName: apiResponse.filename
+      ?? apiResponse.model_name
+      ?? apiResponse.artifact
+      ?? apiResponse.display_name
+      ?? apiResponse.model_id
+      ?? apiResponse.model
+      ?? "Unknown Model",
+    status,
+    progress: normaliseProgress(apiResponse.progress),
+    downloadedBytes,
+    totalBytes,
+    speed: apiResponse.speed ?? apiResponse.download_speed ?? calculateSpeed(apiResponse),
+    estimatedTimeRemaining: apiResponse.estimated_time_remaining ?? apiResponse.eta ?? 0,
+    error: apiResponse.error ?? apiResponse.error_message,
+    startTime: toUnixSeconds(apiResponse.start_time ?? apiResponse.started_at ?? apiResponse.created_at),
+    lastUpdateTime: Date.now() / 1000,
+  };
+};
 
 interface DownloadStatusHookReturn {
   downloadTasks: DownloadTask[];
@@ -58,46 +179,18 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
   const backend = getKarenBackend();
 
   // Derived state
-  const activeDownloads = downloadTasks.filter(task => 
+  const activeDownloads = downloadTasks.filter(task =>
     task.status === 'downloading' || task.status === 'pending' || task.status === 'paused'
   );
   const completedDownloads = downloadTasks.filter(task => task.status === 'completed');
   const erroredDownloads = downloadTasks.filter(task => task.status === 'error');
 
-  // Convert API response to DownloadTask
-  const convertApiResponseToTask = (apiResponse: any): DownloadTask => {
-    return {
-      id: apiResponse.task_id,
-      modelId: apiResponse.model_id,
-      modelName: apiResponse.filename || apiResponse.model_id, // Use filename or fallback to model_id
-      status: apiResponse.status,
-      progress: apiResponse.progress || 0,
-      downloadedBytes: apiResponse.downloaded_size || 0,
-      totalBytes: apiResponse.total_size || 0,
-      speed: calculateSpeed(apiResponse),
-      estimatedTimeRemaining: apiResponse.estimated_time_remaining || 0,
-      error: apiResponse.error_message,
-      startTime: apiResponse.start_time || Date.now() / 1000,
-      lastUpdateTime: Date.now() / 1000
-    };
-  };
-
-  // Calculate download speed from API response
-  const calculateSpeed = (apiResponse: any): number => {
-    if (!apiResponse.start_time || !apiResponse.downloaded_size) return 0;
-    
-    const elapsedTime = (Date.now() / 1000) - apiResponse.start_time;
-    if (elapsedTime <= 0) return 0;
-    
-    return apiResponse.downloaded_size / elapsedTime;
-  };
-
   // Get download status for a specific task
   const getDownloadStatus = useCallback(async (taskId: string): Promise<DownloadTask | null> => {
     try {
-      const response = await backend.makeRequestPublic(`/api/models/download/${taskId}`);
+      const response = await backend.makeRequestPublic(`/api/models/download/jobs/${taskId}`);
       if (response) {
-        return convertApiResponseToTask(response);
+        return createDownloadTaskFromApiResponse(response);
       }
       return null;
     } catch (error) {
@@ -152,13 +245,13 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
   // Cancel download
   const cancelDownload = useCallback(async (taskId: string) => {
     try {
-      await backend.makeRequestPublic(`/api/models/download/${taskId}`, {
-        method: 'DELETE'
+      await backend.makeRequestPublic(`/api/models/download/jobs/${taskId}/cancel`, {
+        method: 'POST'
       });
 
       // Update local state
-      setDownloadTasks(prev => prev.map(task => 
-        task.id === taskId 
+      setDownloadTasks(prev => prev.map(task =>
+        task.id === taskId
           ? { ...task, status: 'cancelled' as const }
           : task
       ));
@@ -171,19 +264,47 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
     }
   }, [backend, toast]);
 
-  // Pause download (placeholder - not implemented in backend yet)
+  // Pause download
   const pauseDownload = useCallback(async (taskId: string) => {
-    // TODO: Implement when backend supports pause functionality
-    showWarning("Pause Not Available", "Download pause functionality is not yet implemented.");
-    throw new Error("Pause functionality not implemented");
-  }, [toast]);
+    try {
+      await backend.makeRequestPublic(`/api/models/download/jobs/${taskId}/pause`, {
+        method: 'POST'
+      });
 
-  // Resume download (placeholder - not implemented in backend yet)
+      setDownloadTasks(prev => prev.map(task =>
+        task.id === taskId
+          ? { ...task, status: 'paused' as const }
+          : task
+      ));
+
+      showInfo("Download Paused", "The download has been paused successfully.");
+    } catch (error) {
+      safeError(`Failed to pause download ${taskId}:`, error);
+      handleDownloadError(error, "download");
+      throw error;
+    }
+  }, [backend, toast]);
+
+  // Resume download
   const resumeDownload = useCallback(async (taskId: string) => {
-    // TODO: Implement when backend supports resume functionality
-    showWarning("Resume Not Available", "Download resume functionality is not yet implemented.");
-    throw new Error("Resume functionality not implemented");
-  }, [toast]);
+    try {
+      await backend.makeRequestPublic(`/api/models/download/jobs/${taskId}/resume`, {
+        method: 'POST'
+      });
+
+      setDownloadTasks(prev => prev.map(task =>
+        task.id === taskId
+          ? { ...task, status: 'downloading' as const }
+          : task
+      ));
+
+      showInfo("Download Resumed", "The download has been resumed successfully.");
+    } catch (error) {
+      safeError(`Failed to resume download ${taskId}:`, error);
+      handleDownloadError(error, "download");
+      throw error;
+    }
+  }, [backend, toast]);
 
   // Retry download
   const retryDownload = useCallback(async (taskId: string) => {
@@ -196,12 +317,18 @@ export function useDownloadStatus(): DownloadStatusHookReturn {
       // Start a new download for the same model
       const response = await backend.makeRequestPublic('/api/models/download', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ model_id: task.modelId })
       });
 
       if (response) {
-        const newTask = convertApiResponseToTask(response);
-        
+        const newTask = createDownloadTaskFromApiResponse({
+          ...response,
+          model_id: task.modelId
+        });
+
         // Remove old task and add new one
         setDownloadTasks(prev => [
           ...prev.filter(t => t.id !== taskId),

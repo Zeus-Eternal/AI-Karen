@@ -3,6 +3,7 @@ import { Model } from '@/lib/model-utils';
 import { modelSelectionService, ModelSelectionResult } from '@/lib/model-selection-service';
 import { getKarenBackend } from '@/lib/karen-backend';
 import { safeError, safeLog } from '@/lib/safe-console';
+import { createDownloadTaskFromApiResponse, type DownloadTask } from '@/hooks/use-download-status';
 
 interface UseModelSelectionOptions {
   autoSelect?: boolean;
@@ -179,18 +180,33 @@ export function useModelSelection(options: UseModelSelectionOptions = {}): UseMo
  */
 export function useModelActions() {
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
-  
-  const downloadModel = useCallback(async (modelId: string): Promise<void> => {
+
+  const downloadModel = useCallback(async (modelId: string): Promise<DownloadTask> => {
     try {
       setActionLoading(prev => ({ ...prev, [modelId]: true }));
-      
+
       const backend = getKarenBackend();
-      await backend.makeRequestPublic<void>(`/api/models/${modelId}/download`, {
+      const response = await backend.makeRequestPublic(`/api/models/download`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ model_id: modelId })
       });
-      
-      // TODO: Handle download progress updates
-      
+
+      if (!response) {
+        throw new Error('Download request returned an empty response');
+      }
+
+      const task = createDownloadTaskFromApiResponse({
+        ...response,
+        model_id: modelId
+      });
+
+      safeLog('Download initiated', { modelId, taskId: task.id, status: task.status });
+
+      return task;
+
     } catch (err) {
       safeError('Failed to download model:', err);
       throw err;

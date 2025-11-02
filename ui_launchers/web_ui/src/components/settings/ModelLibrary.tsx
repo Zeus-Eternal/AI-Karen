@@ -38,9 +38,8 @@ import {
 } from '@/lib/error-handler';
 import { HelpTooltip, HelpSection, QuickHelp } from '@/components/ui/help-tooltip';
 import { ContextualHelp, HelpCallout, QuickStartHelp } from '@/components/ui/contextual-help';
-import { useDownloadStatus } from '@/hooks/use-download-status';
+import { useDownloadStatus, createDownloadTaskFromApiResponse } from '@/hooks/use-download-status';
 import ConfirmationDialog from '@/components/ui/confirmation-dialog';
-import type { DownloadTask } from '@/hooks/use-download-status';
 import ModelCard from './ModelCard';
 import DownloadManager from './DownloadManager';
 
@@ -165,6 +164,9 @@ export default function ModelLibrary() {
   const {
     downloadTasks,
     activeDownloads,
+    addDownloadTask,
+    refreshDownloads,
+    startPolling,
     cancelDownload,
     pauseDownload,
     resumeDownload,
@@ -417,25 +419,40 @@ export default function ModelLibrary() {
     
     try {
       switch (action) {
-        case 'download':
+        case 'download': {
           const response = await backend.makeRequestPublic(`/api/models/download`, {
             method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ model_id: modelId })
           });
-          
-          if (response && (response as any).task_id) {
-            // The download status hook will automatically pick up this task
-            showSuccess(
-              "Download Started", 
-              `Download of ${modelName} has been initiated. Check the Download Manager for progress.`
-            );
-            
-            // Show download manager if there are active downloads
-            if (!showDownloadManager) {
-              setShowDownloadManager(true);
-            }
+
+          if (!response) {
+            throw new Error('Failed to start download');
+          }
+
+          const normalizedTask = createDownloadTaskFromApiResponse({
+            ...response,
+            model_id: modelId,
+            filename: response.filename ?? modelName,
+            model_name: response.model_name ?? modelName
+          });
+
+          addDownloadTask(normalizedTask);
+          await refreshDownloads();
+          startPolling();
+
+          showSuccess(
+            "Download Started",
+            `Download of ${modelName} has been initiated. Check the Download Manager for progress.`
+          );
+
+          if (!showDownloadManager) {
+            setShowDownloadManager(true);
           }
           break;
+        }
         
         case 'delete':
           await backend.makeRequestPublic(`/api/models/${modelId}`, {
@@ -446,31 +463,49 @@ export default function ModelLibrary() {
         
         case 'cancel':
           // Find the task ID for this model
-          const task = downloadTasks.find(t => t.modelId === modelId);
-          if (task) {
-            await cancelDownload(task.id);
-          } else {
-            // Fallback to direct API call
-            await backend.makeRequestPublic(`/api/models/download/${modelId}`, {
-              method: 'DELETE'
-            });
-            showInfo("Download Cancelled", `Download of ${modelName} has been cancelled.`);
+          {
+            const task = downloadTasks.find(t => t.modelId === modelId);
+            if (task) {
+              await cancelDownload(task.id);
+              await refreshDownloads();
+            } else {
+              showWarning(
+                "Download Task Not Found",
+                `Unable to locate an active download for ${modelName}. Please refresh the library or open the Download Manager.`
+              );
+            }
           }
           break;
-        
+
         case 'pause':
-          const pauseTask = downloadTasks.find(t => t.modelId === modelId);
-          if (pauseTask) {
-            await pauseDownload(pauseTask.id);
-            showInfo("Download Paused", `Download of ${modelName} has been paused.`);
+          {
+            const pauseTask = downloadTasks.find(t => t.modelId === modelId);
+            if (pauseTask) {
+              await pauseDownload(pauseTask.id);
+              await refreshDownloads();
+              showInfo("Download Paused", `Download of ${modelName} has been paused.`);
+            } else {
+              showWarning(
+                "Download Task Not Found",
+                `Unable to locate an active download for ${modelName}. Please refresh the library or open the Download Manager.`
+              );
+            }
           }
           break;
-        
+
         case 'resume':
-          const resumeTask = downloadTasks.find(t => t.modelId === modelId);
-          if (resumeTask) {
-            await resumeDownload(resumeTask.id);
-            showInfo("Download Resumed", `Download of ${modelName} has been resumed.`);
+          {
+            const resumeTask = downloadTasks.find(t => t.modelId === modelId);
+            if (resumeTask) {
+              await resumeDownload(resumeTask.id);
+              await refreshDownloads();
+              showInfo("Download Resumed", `Download of ${modelName} has been resumed.`);
+            } else {
+              showWarning(
+                "Download Task Not Found",
+                `Unable to locate an active download for ${modelName}. Please refresh the library or open the Download Manager.`
+              );
+            }
           }
           break;
       }
