@@ -60,7 +60,6 @@ export interface AuthContextType {
   authState: AuthState;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
-  devLogin: (email?: string) => Promise<void>;
   checkAuth: () => Promise<boolean>;
   refreshSession: () => Promise<boolean>;
   clearError: () => void;
@@ -347,11 +346,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Use ConnectionManager for reliable authentication request
-      // In development, try dev-login first, then fallback to regular login
-      const loginUrl = process.env.NODE_ENV === 'development' 
-        ? "/api/auth/dev-login" 
-        : "/api/auth/login";
+      // Use ConnectionManager for reliable authentication request against the production login endpoint
+      const loginUrl = "/api/auth/login";
       const timeout = timeoutManager.getTimeout(OperationType.AUTHENTICATION);
 
       const requestBody = {
@@ -447,84 +443,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     }
   };
-
-  // Dev login function for development environment
-  const devLogin = useCallback(
-    async (email: string = "admin@example.com"): Promise<void> => {
-      if (process.env.NODE_ENV === "production") {
-        throw new Error("Dev login is not available in production");
-      }
-
-      setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-      try {
-        const result = await connectionManager.makeRequest(
-          "/api/auth/dev-login",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({ email }),
-            credentials: "include",
-          },
-          {
-            timeout: timeoutManager.getTimeout(OperationType.AUTHENTICATION),
-            retryAttempts: 1,
-          }
-        );
-
-        const userData = result.data.user || result.data.user_data;
-        if (!userData) {
-          throw new Error("No user data in dev login response");
-        }
-
-        // Create user object
-        const user: User = {
-          userId: userData.user_id,
-          email: userData.email,
-          roles: userData.roles || [],
-          tenantId: userData.tenant_id,
-          role: determineUserRole(userData.roles || []),
-          permissions: userData.permissions,
-        };
-
-        // Update authentication state
-        setUser(user);
-        setIsAuthenticated(true);
-        setAuthState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: null,
-          lastActivity: new Date(),
-        }));
-
-        // Start session refresh timer
-        startSessionRefreshTimer();
-
-        console.log("AuthContext: Dev login successful", {
-          userId: user.userId,
-          email: user.email,
-        });
-      } catch (error) {
-        console.error("AuthContext: Dev login failed", error);
-        const authError: AuthError = {
-          message: error instanceof Error ? error.message : "Dev login failed",
-          category: ErrorCategory.UNKNOWN_ERROR,
-          retryable: true,
-          timestamp: new Date(),
-        };
-        setAuthState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: authError,
-        }));
-        throw error;
-      }
-    },
-    [connectionManager, timeoutManager, startSessionRefreshTimer]
-  );
 
   // Role and permission checking functions
   const hasRole = useCallback(
@@ -760,7 +678,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     authState,
     login,
     logout,
-    devLogin,
     checkAuth,
     refreshSession,
     clearError,

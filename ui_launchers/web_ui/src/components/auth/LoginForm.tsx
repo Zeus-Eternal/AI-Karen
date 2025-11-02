@@ -19,11 +19,8 @@ interface LoginFormProps {
   onSuccess?: () => void;
 }
 
-const DEV_ADMIN_EMAIL = process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL || 'admin@example.com';
-const DEV_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD || 'adminadmin';
-
 export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
-  const { login, devLogin } = useAuth();
+  const { login } = useAuth();
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -114,7 +111,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               <Input
                 id="email"
                 type="email"
-                placeholder={process.env.NODE_ENV === 'development' ? DEV_ADMIN_EMAIL : 'Enter your email'}
+                placeholder="Enter your email"
                 value={credentials.email}
                 onChange={handleInputChange('email')}
                 disabled={isLoading}
@@ -129,7 +126,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               <Input
                 id="password"
                 type="password"
-                placeholder={process.env.NODE_ENV === 'development' ? DEV_ADMIN_PASSWORD : 'Enter your password'}
+                placeholder="Enter your password"
                 value={credentials.password}
                 onChange={handleInputChange('password')}
                 disabled={isLoading}
@@ -158,45 +155,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                   Enter the 6-digit code from your authenticator app
                 </p>
               </div>
-            )}
-
-            {/* Development Hint - convenience only, no bypass */}
-            {process.env.NODE_ENV === 'development' && !credentials.email && !credentials.password && (
-              <Alert>
-                <AlertDescription className="flex items-center justify-between">
-                  <span><strong>Development Mode:</strong> Use {DEV_ADMIN_EMAIL} / {DEV_ADMIN_PASSWORD}</span>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCredentials({ email: DEV_ADMIN_EMAIL, password: DEV_ADMIN_PASSWORD, totp_code: '' })}
-                    >
-                      Fill
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          setIsLoading(true);
-                          setError('');
-                          await devLogin(DEV_ADMIN_EMAIL);
-                          onSuccess?.();
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : 'Dev login failed');
-                        } finally {
-                          setIsLoading(false);
-                        }
-                      }}
-                      disabled={isLoading}
-                    >
-                      Dev Login
-                    </Button>
-                  </div>
-                </AlertDescription>
-              </Alert>
             )}
 
             {/* Simple Error Display - clear feedback without complex recovery */}
