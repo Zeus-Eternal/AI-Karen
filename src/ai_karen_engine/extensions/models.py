@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -186,7 +187,7 @@ class ExtensionRecord:
     instance: Any  # BaseExtension instance
     status: ExtensionStatus
     directory: Path
-    loaded_at: Optional[float] = None
+    loaded_at: Optional[datetime] = None
     error_message: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -196,7 +197,7 @@ class ExtensionRecord:
             "version": self.manifest.version,
             "status": self.status.value,
             "directory": str(self.directory),
-            "loaded_at": self.loaded_at,
+            "loaded_at": self.loaded_at.isoformat() if self.loaded_at else None,
             "error_message": self.error_message,
             "manifest": self.manifest.to_dict(),
         }

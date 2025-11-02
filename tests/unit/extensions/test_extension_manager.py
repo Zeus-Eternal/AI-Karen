@@ -17,13 +17,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from ai_karen_engine.extensions.manager import ExtensionManager
 from ai_karen_engine.extensions.models import (
-    ExtensionManifest, 
-    ExtensionRecord, 
+    ExtensionManifest,
+    ExtensionRecord,
     ExtensionStatus,
     ExtensionContext
 )
 from ai_karen_engine.extensions.base import BaseExtension
 from ai_karen_engine.plugins.router import PluginRouter
+from ai_karen_engine.services.plugin_registry import (
+    PluginManifest,
+    PluginMetadata,
+    PluginStatus,
+    get_plugin_registry,
+)
 
 
 class MockExtension(BaseExtension):
@@ -50,7 +56,36 @@ class TestExtensionManager:
         temp_dir = tempfile.mkdtemp()
         yield Path(temp_dir)
         shutil.rmtree(temp_dir)
-    
+
+    @pytest.fixture(autouse=True)
+    def ensure_plugin_dependency(self):
+        """Ensure required test plugins are present in the registry."""
+        registry = get_plugin_registry()
+        registry.plugins.clear()
+        registry.plugins_by_category.clear()
+        registry.plugins_by_type.clear()
+
+        manifest = PluginManifest(
+            name="hello_world",
+            version="1.0.0",
+            description="Test hello world plugin",
+            author="Test",
+            module="plugins.hello_world",
+        )
+        metadata = PluginMetadata(
+            manifest=manifest,
+            path=Path("."),
+            status=PluginStatus.ACTIVE,
+        )
+        registry.plugins[manifest.name] = metadata
+        registry._update_indices()
+
+        yield
+
+        registry.plugins.clear()
+        registry.plugins_by_category.clear()
+        registry.plugins_by_type.clear()
+
     @pytest.fixture
     def mock_plugin_router(self):
         """Create mock plugin router."""
@@ -87,6 +122,8 @@ class TestExtensionManager:
             "description": "A test extension",
             "author": "Test Author",
             "license": "MIT",
+            "category": "general",
+            "tags": ["test"],
             "api_version": "1.0",
             "kari_min_version": "0.4.0",
             "capabilities": {
@@ -139,7 +176,10 @@ class {class_name}(BaseExtension):
     def _get_extension_class_name(self, extension_name: str) -> str:
         """Convert kebab/underscore to PascalCase + 'Extension' suffix."""
         words = extension_name.replace("-", "_").split("_")
-        return "".join(word.capitalize() for word in words) + "Extension"
+        base_name = "".join(word.capitalize() for word in words)
+        if base_name.lower().endswith("extension"):
+            return base_name
+        return base_name + "Extension"
     
     # Test Discovery
     @pytest.mark.asyncio
