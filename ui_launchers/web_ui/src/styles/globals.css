@@ -3,6 +3,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Modern Design Tokens */
+@import './modern-design-tokens.css';
+
 /* Base layer - Production optimizations */
 @layer base {
   * {
