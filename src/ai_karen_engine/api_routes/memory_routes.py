@@ -37,23 +37,11 @@ except ImportError:
     MEMORY_SERVICE_AVAILABLE = False
 
 try:
-    from ai_karen_engine.auth.rbac_middleware import get_rbac_manager, get_current_user  # type: ignore
+    from ai_karen_engine.auth.rbac_middleware import get_current_user  # type: ignore
     RBAC_AVAILABLE = True
-except ImportError:
-    # Fallback to the current RBAC middleware module if available
-    try:
-        from ai_karen_engine.middleware import rbac as _rbac  # type: ignore
-        RBAC_AVAILABLE = True
-    except Exception:
-        # In development we don't want noisy warnings when RBAC is attached at runtime
-        import os as _os
-        _env = (_os.getenv("ENVIRONMENT") or _os.getenv("KARI_ENV") or "development").lower()
-        if _env in ("production", "staging"):
-            logger.warning("RBAC not available, using fallback")
-        else:
-            logger.info("RBAC module import unavailable; will use runtime RBAC if configured")
-        # Runtime check_rbac_scope consults request.app.state.rbac; mark available for dev
-        RBAC_AVAILABLE = _env not in ("production", "staging")
+except ImportError:  # pragma: no cover - defensive
+    logger.warning("RBAC middleware unavailable; memory routes will operate without role enforcement")
+    RBAC_AVAILABLE = False
 
 try:
     from ai_karen_engine.services.metrics_service import get_metrics_service

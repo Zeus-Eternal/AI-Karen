@@ -35,7 +35,7 @@ from ai_karen_engine.api_routes.unified_schemas import (
     ErrorType,
     SuccessResponse
 )
-from ai_karen_engine.middleware.rbac import require_scopes, check_scope
+from ai_karen_engine.auth.rbac_middleware import require_scopes, check_scope
 
 logger = logging.getLogger(__name__)
 

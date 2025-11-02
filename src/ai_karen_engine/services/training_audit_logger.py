@@ -11,7 +11,7 @@ Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field, asdict
@@ -137,7 +137,7 @@ class TrainingAuditLogger:
     
     def __init__(self):
         """Initialize training audit logger."""
-        self.base_audit_logger = get_audit_logger()
+        self._base_audit_logger = None
         self.training_logger = get_logger("training_audit")
         
         # Event counters for metrics
@@ -189,26 +189,28 @@ class TrainingAuditLogger:
                 self.training_logger.info(event.message, **extra)
             
             # Also log to base audit system for centralized tracking
-            self.base_audit_logger.log_audit_event({
-                "event_type": "training_operation",
-                "severity": event.severity.value,
-                "message": event.message,
-                "user_id": event.user_id,
-                "tenant_id": event.tenant_id,
-                "ip_address": event.ip_address,
-                "correlation_id": event.correlation_id,
-                "metadata": {
-                    "training_event_type": event.event_type.value,
-                    "training_job_id": event.training_job_id,
-                    "model_id": event.model_id,
-                    "dataset_id": event.dataset_id,
-                    "operation_type": event.operation_type,
-                    "resource_type": event.resource_type,
-                    "success": event.success,
-                    "duration_ms": event.duration_ms,
-                    **event.metadata
-                }
-            })
+            base_logger = self._get_base_audit_logger()
+            if base_logger:
+                base_logger.log_audit_event({
+                    "event_type": "training_operation",
+                    "severity": event.severity.value,
+                    "message": event.message,
+                    "user_id": event.user_id,
+                    "tenant_id": event.tenant_id,
+                    "ip_address": event.ip_address,
+                    "correlation_id": event.correlation_id,
+                    "metadata": {
+                        "training_event_type": event.event_type.value,
+                        "training_job_id": event.training_job_id,
+                        "model_id": event.model_id,
+                        "dataset_id": event.dataset_id,
+                        "operation_type": event.operation_type,
+                        "resource_type": event.resource_type,
+                        "success": event.success,
+                        "duration_ms": event.duration_ms,
+                        **event.metadata
+                    }
+                })
             
         except Exception as e:
             logger.error(f"Failed to log training audit event: {e}")
@@ -491,7 +493,12 @@ class TrainingAuditLogger:
             permission_granted=False,
             success=False,
             security_flags=["unauthorized_access"],
-            metadata=metadata
+            metadata={
+                "permission_required": permission_required,
+                "permission_granted": False,
+                "granted": False,
+                **metadata,
+            }
         )
         self._log_event(event)
     
@@ -622,6 +629,14 @@ class TrainingAuditLogger:
             "resources_accessed": [],
             "security_events": 0
         }
+
+    def _get_base_audit_logger(self):
+        try:
+            logger_instance = get_audit_logger()
+        except Exception:  # pragma: no cover - optional integration
+            logger_instance = None
+        self._base_audit_logger = logger_instance
+        return logger_instance
 
 
 # Global training audit logger instance
