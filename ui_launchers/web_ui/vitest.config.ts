@@ -17,6 +17,9 @@ export default defineConfig({
     typecheck: {
       tsconfig: path.resolve(__dirname, 'tsconfig.json'),
     },
+    alias: {
+      nodemailer: path.resolve(__dirname, 'stubs/nodemailer.ts'),
+    },
     server: {
       deps: {
         inline: [

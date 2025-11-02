@@ -52,10 +52,18 @@ export class EmailIntegration {
     fullName: string,
     invitedByName: string,
     invitationLink: string,
-    expiryDate: Date
+    expiryDate: Date,
+    customMessage?: string
   ) {
     const { emailService } = await import('./email-service');
-    return emailService.sendAdminInvitation(email, fullName, invitedByName, invitationLink, expiryDate);
+    return emailService.sendAdminInvitation(
+      email,
+      fullName,
+      invitedByName,
+      invitationLink,
+      expiryDate,
+      customMessage
+    );
   }
   
   /**

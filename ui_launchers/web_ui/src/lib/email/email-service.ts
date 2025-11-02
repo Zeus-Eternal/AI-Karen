@@ -4,9 +4,10 @@
  * Core email service for sending emails, managing templates, and handling
  * different email providers (SMTP, SendGrid, SES, etc.).
  */
+import nodemailer, { Transporter } from 'nodemailer';
 import {  EmailMessage, EmailServiceConfig, SendEmailResponse, EmailTemplate, EmailTemplateVariables, EmailNotification, EmailNotificationType, BulkEmailOperation, EmailServiceHealth } from './types';
 import { TemplateEngine, EmailTemplateManager } from './template-engine';
-import { getEmailServiceConfig, testEmailService } from './config';
+import { getEmailServiceConfig, testEmailService, getSystemName } from './config';
 /**
  * Email Service Provider Interface
  */
@@ -18,33 +19,66 @@ interface EmailProvider {
  * SMTP Email Provider
  */
 class SMTPProvider implements EmailProvider {
-  constructor(private config: EmailServiceConfig) {}
+  private transporter: Transporter;
+
+  constructor(private config: EmailServiceConfig) {
+    if (!config.smtp_host) {
+      throw new Error('SMTP host is required for SMTP provider');
+    }
+    const port = config.smtp_port ?? 587;
+    this.transporter = nodemailer.createTransport({
+      host: config.smtp_host,
+      port,
+      secure: config.smtp_secure ?? port === 465,
+      auth: config.smtp_user && config.smtp_password
+        ? { user: config.smtp_user, pass: config.smtp_password }
+        : undefined,
+    });
+  }
+
   async send(message: EmailMessage): Promise<SendEmailResponse> {
-    // In a real implementation, this would use nodemailer or similar
-    // For now, return a mock response
     if (this.config.test_mode) {
-      console.log('SMTP Test Mode - Email would be sent:', {
+      return {
+        success: true,
+        message_id: `smtp_test_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+      };
+    }
+
+    try {
+      const mail = await this.transporter.sendMail({
         to: message.to,
         subject: message.subject,
-        html: message.html_content.substring(0, 100) + '...',
+        html: message.html_content,
+        text: message.text_content,
+        from: this.config.from_name
+          ? `${this.config.from_name} <${this.config.from_email}>`
+          : this.config.from_email,
+        replyTo: message.reply_to || this.config.reply_to_email,
+      });
 
       return {
         success: true,
-        message_id: `smtp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        message_id: mail.messageId,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown SMTP error',
       };
     }
-    // Simulate sending
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message_id: `smtp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-
-      }, 100);
-
   }
+
   async testConnection(): Promise<boolean> {
-    return this.config.enabled && !!this.config.smtp_host;
+    if (this.config.test_mode) {
+      return true;
+    }
+
+    try {
+      await this.transporter.verify();
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 /**
@@ -137,6 +171,7 @@ export class EmailService {
       template_id: template.id,
       template_variables: variables,
       priority: options.priority || 'normal',
+      reply_to: options.replyTo || this.config.reply_to_email,
       status: 'queued',
       scheduled_at: options.scheduledAt,
       retry_count: 0,
@@ -196,6 +231,7 @@ export class EmailService {
       subject,
       html_content: htmlContent,
       text_content: textContent || this.htmlToText(htmlContent),
+      reply_to: options.replyTo || this.config.reply_to_email,
       priority: options.priority || 'normal',
       status: 'queued',
       scheduled_at: options.scheduledAt,
@@ -231,7 +267,8 @@ export class EmailService {
     fullName: string,
     invitedByName: string,
     invitationLink: string,
-    expiryDate: Date
+    expiryDate: Date,
+    customMessage?: string
   ): Promise<SendEmailResponse> {
     // Get admin invitation template
     const templates = await EmailTemplateManager.createDefaultTemplates('system');
@@ -244,10 +281,11 @@ export class EmailService {
     }
     const variables = {
       full_name: fullName,
-      system_name: 'AI Karen Admin System',
+      system_name: getSystemName(),
       invited_by_name: invitedByName,
       invitation_link: invitationLink,
       expiry_date: expiryDate.toLocaleDateString(),
+      custom_message: customMessage || '',
     };
     return this.sendTemplateEmail(email, template, variables, { priority: 'high' });
   }
@@ -369,7 +407,8 @@ export class NotificationService {
           data.fullName,
           data.invitedByName,
           data.invitationLink,
-          data.expiryDate
+          data.expiryDate,
+          data.customMessage
         );
       case 'user_welcome':
         return this.emailService.sendUserWelcome(

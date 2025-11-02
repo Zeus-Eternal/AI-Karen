@@ -19,7 +19,7 @@ export const DEFAULT_EMAIL_CONFIG: EmailServiceConfig = {
   from_name: process.env.EMAIL_FROM_NAME || 'AI Karen Admin',
   reply_to_email: process.env.EMAIL_REPLY_TO || '',
   enabled: process.env.EMAIL_ENABLED !== 'false',
-  test_mode: process.env.EMAIL_ === 'true',
+  test_mode: process.env.EMAIL_TEST_MODE === 'true',
 };
 // Default email queue configuration
 export const DEFAULT_QUEUE_CONFIG: EmailQueueConfig = {
@@ -76,6 +76,12 @@ export const DEFAULT_TEMPLATES = {
         <div style="text-align: center; margin: 30px 0;">
           <a href="{{invitation_link}}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Accept Invitation</a>
         </div>
+        {{#if custom_message}}
+        <div style="background-color: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+          <p style="margin: 0 0 8px; font-weight: 600; color: #333;">Personal message from {{invited_by_name}}:</p>
+          <p style="margin: 0; white-space: pre-line; color: #444;">{{custom_message}}</p>
+        </div>
+        {{/if}}
         <p>This invitation will expire on {{expiry_date}}.</p>
         <p>If you have any questions, please contact your system administrator.</p>
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
@@ -87,11 +93,16 @@ Hello {{full_name}},
 You have been invited to join {{system_name}} as an administrator by {{invited_by_name}}.
 To accept this invitation and set up your account, please visit:
 {{invitation_link}}
+{{#if custom_message}}
+
+Personal message from {{invited_by_name}}:
+{{custom_message}}
+{{/if}}
 This invitation will expire on {{expiry_date}}.
 If you have any questions, please contact your system administrator.
 This is an automated message from {{system_name}}. Please do not reply to this email.
     `,
-    variables: ['full_name', 'system_name', 'invited_by_name', 'invitation_link', 'expiry_date'],
+    variables: ['full_name', 'system_name', 'invited_by_name', 'invitation_link', 'expiry_date', 'custom_message'],
   },
   user_welcome: {
     name: 'User Welcome',
