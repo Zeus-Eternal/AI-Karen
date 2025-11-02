@@ -121,9 +121,9 @@ The components use:
 
 ## Testing
 
-Test pages are available at:
-- `/model-selector-test` - Comprehensive test page showing all variants
-- `/chat` - Integration test in the main chat interface
+The components are validated directly inside the production chat experience.  Use the
+`/chat` route to exercise model selection behaviour within the fully authenticated
+workflow.
 
 ## Authentication
 
