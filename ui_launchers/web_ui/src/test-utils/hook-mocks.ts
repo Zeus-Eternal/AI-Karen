@@ -294,9 +294,6 @@ export const createRealisticMockAuth = (user: User | null, isAuthenticated: bool
     logout: vi.fn((): void => {
       return;
     }),
-    devLogin: vi.fn(async (email?: string): Promise<void> => {
-      return Promise.resolve();
-    }),
     checkAuth: vi.fn(async (): Promise<boolean> => {
       return Promise.resolve(isAuthenticated);
     }),
