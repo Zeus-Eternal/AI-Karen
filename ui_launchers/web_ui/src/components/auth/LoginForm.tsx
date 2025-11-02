@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Brain } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { connectivityLogger } from '@/lib/logging';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -51,17 +52,36 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
       setIsLoading(true);
       // Direct call to authentication context - no retry logic
       await login(credentials);
-      console.log('Login completed successfully, calling onSuccess callback');
+      connectivityLogger.logAuthentication(
+        'info',
+        'Login form submission succeeded',
+        {
+          email: credentials.email,
+          success: true,
+        },
+        'login'
+      );
       // Call success callback if provided
       onSuccess?.();
     } catch (error) {
       // Simple error handling - clear error display without complex recovery
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       setError(errorMessage);
-      
+
+      connectivityLogger.logAuthentication(
+        'warn',
+        'Login form submission failed',
+        {
+          email: credentials.email,
+          success: false,
+          failureReason: errorMessage,
+        },
+        'login'
+      );
+
       // Simple 2FA detection - no complex flow management
-      if (errorMessage.toLowerCase().includes('2fa') || 
-          errorMessage.toLowerCase().includes('two factor') || 
+      if (errorMessage.toLowerCase().includes('2fa') ||
+          errorMessage.toLowerCase().includes('two factor') ||
           errorMessage.toLowerCase().includes('two-factor')) {
         setShowTwoFactor(true);
       }
