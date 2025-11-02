@@ -24,18 +24,32 @@ from typing import Any, Dict, List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, Request
 from fastapi.responses import JSONResponse
 
-from ai_karen_engine.utils.dependency_checks import import_pydantic
-# Simple auth - removed complex security imports
-# from ai_karen_engine.security.model_security import (
-#     ModelSecurityManager,
-#     LicenseManager,
-#     ModelAuditEvent,
-#     RBACError
-# )
-# from ai_karen_engine.middleware.rbac import require_scopes
+from ai_karen_engine.error_tracking import get_model_orchestrator_error_tracker
 from ai_karen_engine.health import get_model_orchestrator_health_checker
 from ai_karen_engine.monitoring import get_model_orchestrator_metrics
-from ai_karen_engine.error_tracking import get_model_orchestrator_error_tracker
+from ai_karen_engine.services.model_orchestrator_service import (
+    ModelOrchestratorService,
+    ModelOrchestratorError,
+    ModelSummary,
+    ModelInfo,
+    DownloadRequest,
+    DownloadResult,
+    MigrationResult,
+    EnsureResult,
+    GCResult,
+    RemoveResult,
+    E_NET,
+    E_DISK,
+    E_PERM,
+    E_LICENSE,
+    E_VERIFY,
+    E_SCHEMA,
+    E_COMPAT,
+    E_QUOTA,
+    E_NOT_FOUND,
+    E_INVALID,
+)
+from ai_karen_engine.utils.dependency_checks import import_pydantic
 
 BaseModel, Field = import_pydantic("BaseModel", "Field")
 
@@ -43,58 +57,6 @@ logger = logging.getLogger("kari.model_orchestrator_api")
 
 router = APIRouter(prefix="/api/models", tags=["model-orchestrator"])
 
-# Import plugin service
-try:
-    import sys
-    from pathlib import Path
-    plugin_path = Path(__file__).parent.parent.parent.parent / "plugin_marketplace" / "ai" / "model-orchestrator"
-    sys.path.append(str(plugin_path))
-    
-    from ai_karen_engine.services.model_orchestrator_service import (
-        ModelOrchestratorService, 
-        ModelOrchestratorError,
-        ModelSummary,
-        ModelInfo,
-        DownloadRequest,
-        DownloadResult,
-        MigrationResult,
-        EnsureResult,
-        GCResult,
-        RemoveResult,
-        E_NET, E_DISK, E_PERM, E_LICENSE, E_VERIFY, E_SCHEMA, E_COMPAT, E_QUOTA, E_NOT_FOUND, E_INVALID
-    )
-except ImportError as e:
-    logger.error(f"Failed to import model orchestrator service: {e}")
-    # Create fallback classes to prevent import errors
-    class ModelOrchestratorService:
-        def __init__(self, *args, **kwargs):
-            pass
-
-    class ModelOrchestratorError(Exception):
-        def __init__(self, code, message, details=None):
-            self.code = code
-            self.message = message
-            self.details = details or {}
-            super().__init__(f"{code}: {message}")
-
-    class RemoveResult:
-        def __init__(self, model_id: str, deleted_artifacts=None, warnings=None, metadata=None):
-            self.model_id = model_id
-            self.deleted_artifacts = deleted_artifacts or []
-            self.warnings = warnings or []
-            self.metadata = metadata or {}
-
-    # Error codes
-    E_NET = "E_NET"
-    E_DISK = "E_DISK"
-    E_PERM = "E_PERM"
-    E_LICENSE = "E_LICENSE"
-    E_VERIFY = "E_VERIFY"
-    E_SCHEMA = "E_SCHEMA"
-    E_COMPAT = "E_COMPAT"
-    E_QUOTA = "E_QUOTA"
-    E_NOT_FOUND = "E_NOT_FOUND"
-    E_INVALID = "E_INVALID"
 
 # Global service instance
 _orchestrator_service: Optional[ModelOrchestratorService] = None
