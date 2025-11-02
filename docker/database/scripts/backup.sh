@@ -194,4 +194,525 @@ backup_elasticsearch() {
     fi
     
     # Backup each index
-    local indices=$(curl -s "http://$host:$port/_cat/indices?format=json" | jq -r '.[].index' 2>/dev/null || echo "")\n    \n    if [ -n \"$indices\" ]; then\n        for index in $indices; do\n            # Skip system indices\n            if [[ \"$index\" == .* ]]; then\n                log \"INFO\" \"Skipping system index: $index\"\n                continue\n            fi\n            \n            log \"INFO\" \"Backing up index: $index\"\n            \n            # Export index mapping\n            local mapping_file=\"$backup_dir/elasticsearch_${index}_mapping.json\"\n            if curl -s \"http://$host:$port/$index/_mapping\" > \"$mapping_file\"; then\n                log \"SUCCESS\" \"Index mapping saved: $mapping_file\"\n            else\n                log \"WARN\" \"Failed to backup mapping for index: $index\"\n            fi\n            \n            # Export index settings\n            local settings_file=\"$backup_dir/elasticsearch_${index}_settings.json\"\n            if curl -s \"http://$host:$port/$index/_settings\" > \"$settings_file\"; then\n                log \"SUCCESS\" \"Index settings saved: $settings_file\"\n            else\n                log \"WARN\" \"Failed to backup settings for index: $index\"\n            fi\n            \n            # Export index data (limited to prevent huge files)\n            local data_file=\"$backup_dir/elasticsearch_${index}_data.json\"\n            if curl -s \"http://$host:$port/$index/_search?size=10000&scroll=1m\" > \"$data_file\"; then\n                log \"SUCCESS\" \"Index data saved: $data_file (limited to 10000 docs)\"\n            else\n                log \"WARN\" \"Failed to backup data for index: $index\"\n            fi\n        done\n    else\n        log \"INFO\" \"No indices found to backup\"\n    fi\n    \n    # Compress all Elasticsearch files\n    find \"$backup_dir\" -name \"elasticsearch_*.json\" -exec gzip {} \\;\n    log \"SUCCESS\" \"Elasticsearch backups compressed\"\n    \n    return 0\n}\n\n# Function to backup Milvus\nbackup_milvus() {\n    local backup_dir=\"$1\"\n    \n    log \"INFO\" \"Backing up Milvus...\"\n    \n    # Milvus backup requires Python\n    if ! command -v python3 > /dev/null 2>&1; then\n        log \"ERROR\" \"Python3 is required for Milvus backup\"\n        return 1\n    fi\n    \n    # Install pymilvus if not available\n    if ! python3 -c \"import pymilvus\" > /dev/null 2>&1; then\n        log \"INFO\" \"Installing pymilvus...\"\n        pip3 install pymilvus > /dev/null 2>&1\n    fi\n    \n    # Create Milvus backup script\n    cat > /tmp/milvus_backup.py << 'EOF'\n#!/usr/bin/env python3\nimport os\nimport sys\nimport json\nfrom pymilvus import connections, utility, Collection\n\ndef backup_milvus(backup_dir):\n    host = os.getenv('MILVUS_HOST', 'localhost')\n    port = os.getenv('MILVUS_PORT', '19530')\n    \n    try:\n        connections.connect(alias=\"default\", host=host, port=port)\n        \n        # Get list of collections\n        collections = utility.list_collections()\n        \n        backup_info = {\n            \"timestamp\": os.popen('date -Iseconds').read().strip(),\n            \"collections\": []\n        }\n        \n        for collection_name in collections:\n            print(f\"Backing up collection: {collection_name}\")\n            \n            try:\n                collection = Collection(collection_name)\n                collection.load()\n                \n                # Get collection info\n                collection_info = {\n                    \"name\": collection_name,\n                    \"schema\": {\n                        \"fields\": []\n                    },\n                    \"num_entities\": collection.num_entities\n                }\n                \n                # Get schema information\n                for field in collection.schema.fields:\n                    field_info = {\n                        \"name\": field.name,\n                        \"dtype\": str(field.dtype),\n                        \"is_primary\": field.is_primary,\n                        \"auto_id\": field.auto_id if hasattr(field, 'auto_id') else False\n                    }\n                    \n                    if hasattr(field, 'max_length'):\n                        field_info[\"max_length\"] = field.max_length\n                    if hasattr(field, 'dim'):\n                        field_info[\"dim\"] = field.dim\n                        \n                    collection_info[\"schema\"][\"fields\"].append(field_info)\n                \n                # Get index information\n                try:\n                    indexes = collection.indexes\n                    collection_info[\"indexes\"] = []\n                    for index in indexes:\n                        index_info = {\n                            \"field_name\": index.field_name,\n                            \"index_name\": index.index_name,\n                            \"params\": index.params\n                        }\n                        collection_info[\"indexes\"].append(index_info)\n                except:\n                    collection_info[\"indexes\"] = []\n                \n                backup_info[\"collections\"].append(collection_info)\n                \n                # Save collection metadata\n                collection_file = os.path.join(backup_dir, f\"milvus_{collection_name}_metadata.json\")\n                with open(collection_file, 'w') as f:\n                    json.dump(collection_info, f, indent=2)\n                \n                print(f\"Collection {collection_name} metadata saved\")\n                \n            except Exception as e:\n                print(f\"Error backing up collection {collection_name}: {e}\")\n                continue\n        \n        # Save overall backup info\n        backup_file = os.path.join(backup_dir, \"milvus_backup_info.json\")\n        with open(backup_file, 'w') as f:\n            json.dump(backup_info, f, indent=2)\n        \n        print(f\"Milvus backup completed. {len(collections)} collections processed.\")\n        return 0\n        \n    except Exception as e:\n        print(f\"Failed to backup Milvus: {e}\")\n        return 1\n\nif __name__ == \"__main__\":\n    if len(sys.argv) != 2:\n        print(\"Usage: python3 milvus_backup.py <backup_dir>\")\n        sys.exit(1)\n    \n    backup_dir = sys.argv[1]\n    sys.exit(backup_milvus(backup_dir))\nEOF\n    \n    chmod +x /tmp/milvus_backup.py\n    \n    # Run Milvus backup\n    if python3 /tmp/milvus_backup.py \"$backup_dir\"; then\n        log \"SUCCESS\" \"Milvus backup completed\"\n        \n        # Compress backup files\n        find \"$backup_dir\" -name \"milvus_*.json\" -exec gzip {} \\;\n        log \"SUCCESS\" \"Milvus backups compressed\"\n    else\n        log \"ERROR\" \"Milvus backup failed\"\n        rm -f /tmp/milvus_backup.py\n        return 1\n    fi\n    \n    rm -f /tmp/milvus_backup.py\n    return 0\n}\n\n# Function to backup DuckDB\nbackup_duckdb() {\n    local backup_dir=\"$1\"\n    \n    log \"INFO\" \"Backing up DuckDB...\"\n    \n    local db_path=\"${DUCKDB_PATH:-./data/duckdb/kari_duckdb.db}\"\n    \n    if [ -f \"$db_path\" ]; then\n        local backup_file=\"$backup_dir/duckdb_backup.db\"\n        \n        # Copy database file\n        if cp \"$db_path\" \"$backup_file\"; then\n            log \"SUCCESS\" \"DuckDB file copied: $backup_file\"\n            \n            # Compress backup\n            gzip \"$backup_file\"\n            log \"SUCCESS\" \"DuckDB backup compressed\"\n        else\n            log \"ERROR\" \"Failed to copy DuckDB file\"\n            return 1\n        fi\n        \n        # Export schema if DuckDB CLI is available\n        if command -v duckdb > /dev/null 2>&1; then\n            local schema_file=\"$backup_dir/duckdb_schema.sql\"\n            if duckdb \"$db_path\" \".schema\" > \"$schema_file\" 2>/dev/null; then\n                log \"SUCCESS\" \"DuckDB schema exported: $schema_file\"\n                gzip \"$schema_file\"\n            else\n                log \"WARN\" \"Failed to export DuckDB schema\"\n            fi\n        fi\n    else\n        log \"WARN\" \"DuckDB file not found: $db_path\"\n        return 1\n    fi\n    \n    return 0\n}\n\n# Function to backup MinIO (if present)\nbackup_minio() {\n    local backup_dir=\"$1\"\n    \n    log \"INFO\" \"Backing up MinIO...\"\n    \n    # Check if MinIO container is running\n    if ! $COMPOSE_CMD ps minio | grep -q \"Up\" 2>/dev/null; then\n        log \"INFO\" \"MinIO container not running, skipping backup\"\n        return 0\n    fi\n    \n    # Copy MinIO data directory from container\n    local container_name=$($COMPOSE_CMD ps -q minio)\n    if [ -n \"$container_name\" ]; then\n        local minio_backup_dir=\"$backup_dir/minio_data\"\n        mkdir -p \"$minio_backup_dir\"\n        \n        if docker cp \"$container_name:/data\" \"$minio_backup_dir/\"; then\n            log \"SUCCESS\" \"MinIO data copied: $minio_backup_dir\"\n            \n            # Create tar archive\n            tar -czf \"$backup_dir/minio_data.tar.gz\" -C \"$minio_backup_dir\" data\n            rm -rf \"$minio_backup_dir\"\n            log \"SUCCESS\" \"MinIO backup archived\"\n        else\n            log \"ERROR\" \"Failed to copy MinIO data\"\n            return 1\n        fi\n    else\n        log \"ERROR\" \"MinIO container not found\"\n        return 1\n    fi\n    \n    return 0\n}\n\n# Function to create backup manifest\ncreate_backup_manifest() {\n    local backup_dir=\"$1\"\n    local services=\"$2\"\n    \n    local manifest_file=\"$backup_dir/backup_manifest.json\"\n    \n    cat > \"$manifest_file\" << EOF\n{\n  \"backup_info\": {\n    \"timestamp\": \"$(date -Iseconds)\",\n    \"version\": \"1.0\",\n    \"services\": \"$services\",\n    \"backup_type\": \"full\"\n  },\n  \"files\": [\nEOF\n    \n    # List all backup files\n    find \"$backup_dir\" -type f -not -name \"backup_manifest.json\" | while read -r file; do\n        local relative_path=$(echo \"$file\" | sed \"s|$backup_dir/||\")\n        local file_size=$(stat -f%z \"$file\" 2>/dev/null || stat -c%s \"$file\" 2>/dev/null || echo \"unknown\")\n        local file_hash=$(sha256sum \"$file\" 2>/dev/null | cut -d' ' -f1 || echo \"unknown\")\n        \n        echo \"    {\"\n        echo \"      \\\"path\\\": \\\"$relative_path\\\",\"\n        echo \"      \\\"size\\\": $file_size,\"\n        echo \"      \\\"sha256\\\": \\\"$file_hash\\\"\"\n        echo \"    },\"\n    done | sed '$ s/,$//' >> \"$manifest_file\"\n    \n    cat >> \"$manifest_file\" << EOF\n  ]\n}\nEOF\n    \n    log \"SUCCESS\" \"Backup manifest created: $manifest_file\"\n}\n\n# Function to show usage information\nshow_usage() {\n    echo \"AI Karen Database Stack Backup Script\"\n    echo \"\"\n    echo \"Usage: $0 [options]\"\n    echo \"\"\n    echo \"Options:\"\n    echo \"  --service <name>     Backup only specific service\"\n    echo \"  --output-dir <dir>   Custom backup output directory\"\n    echo \"  --compress           Compress entire backup directory\"\n    echo \"  --verify             Verify backup integrity after creation\"\n    echo \"  --help               Show this help message\"\n    echo \"\"\n    echo \"Services: postgres, redis, elasticsearch, milvus, duckdb, minio\"\n    echo \"\"\n    echo \"Examples:\"\n    echo \"  $0                           # Backup all services\"\n    echo \"  $0 --service postgres        # Backup only PostgreSQL\"\n    echo \"  $0 --compress                # Create compressed backup\"\n    echo \"  $0 --output-dir /tmp/backup  # Custom backup location\"\n}\n\n# Main function\nmain() {\n    local specific_service=\"\"\n    local output_dir=\"\"\n    local compress_backup=\"false\"\n    local verify_backup=\"false\"\n    \n    # Parse command line arguments\n    while [[ $# -gt 0 ]]; do\n        case $1 in\n            --service)\n                specific_service=\"$2\"\n                shift 2\n                ;;\n            --output-dir)\n                output_dir=\"$2\"\n                shift 2\n                ;;\n            --compress)\n                compress_backup=\"true\"\n                shift\n                ;;\n            --verify)\n                verify_backup=\"true\"\n                shift\n                ;;\n            --help)\n                show_usage\n                exit 0\n                ;;\n            *)\n                log \"ERROR\" \"Unknown option: $1\"\n                show_usage\n                exit 1\n                ;;\n        esac\n    done\n    \n    # Check Docker Compose availability\n    check_docker_compose\n    \n    # Create backup directory\n    local timestamp=$(date +%Y%m%d_%H%M%S)\n    if [ -n \"$output_dir\" ]; then\n        local backup_base_dir=\"$output_dir/$timestamp\"\n    else\n        local backup_base_dir=\"./backups/full/$timestamp\"\n    fi\n    \n    mkdir -p \"$backup_base_dir\"\n    log \"INFO\" \"Backup directory: $backup_base_dir\"\n    \n    # Install required tools\n    log \"INFO\" \"Installing required tools...\"\n    if command -v apk > /dev/null 2>&1; then\n        apk add --no-cache curl postgresql-client redis jq gzip tar > /dev/null 2>&1 || true\n    elif command -v apt-get > /dev/null 2>&1; then\n        apt-get update > /dev/null 2>&1 && apt-get install -y curl postgresql-client redis-tools jq gzip tar > /dev/null 2>&1 || true\n    fi\n    \n    # Perform backups\n    local services_backed_up=()\n    local backup_success=true\n    \n    if [ -n \"$specific_service\" ]; then\n        case \"$specific_service\" in\n            \"postgres\")\n                if backup_postgres \"$backup_base_dir\"; then\n                    services_backed_up+=(\"postgres\")\n                else\n                    backup_success=false\n                fi\n                ;;\n            \"redis\")\n                if backup_redis \"$backup_base_dir\"; then\n                    services_backed_up+=(\"redis\")\n                else\n                    backup_success=false\n                fi\n                ;;\n            \"elasticsearch\")\n                if backup_elasticsearch \"$backup_base_dir\"; then\n                    services_backed_up+=(\"elasticsearch\")\n                else\n                    backup_success=false\n                fi\n                ;;\n            \"milvus\")\n                if backup_milvus \"$backup_base_dir\"; then\n                    services_backed_up+=(\"milvus\")\n                else\n                    backup_success=false\n                fi\n                ;;\n            \"duckdb\")\n                if backup_duckdb \"$backup_base_dir\"; then\n                    services_backed_up+=(\"duckdb\")\n                else\n                    backup_success=false\n                fi\n                ;;\n            \"minio\")\n                if backup_minio \"$backup_base_dir\"; then\n                    services_backed_up+=(\"minio\")\n                else\n                    backup_success=false\n                fi\n                ;;\n            *)\n                log \"ERROR\" \"Unknown service: $specific_service\"\n                exit 1\n                ;;\n        esac\n    else\n        # Backup all services\n        backup_postgres \"$backup_base_dir\" && services_backed_up+=(\"postgres\") || backup_success=false\n        backup_redis \"$backup_base_dir\" && services_backed_up+=(\"redis\") || backup_success=false\n        backup_elasticsearch \"$backup_base_dir\" && services_backed_up+=(\"elasticsearch\") || backup_success=false\n        backup_milvus \"$backup_base_dir\" && services_backed_up+=(\"milvus\") || backup_success=false\n        backup_duckdb \"$backup_base_dir\" && services_backed_up+=(\"duckdb\") || backup_success=false\n        backup_minio \"$backup_base_dir\" && services_backed_up+=(\"minio\") || backup_success=false\n    fi\n    \n    # Create backup manifest\n    local services_list=$(IFS=','; echo \"${services_backed_up[*]}\")\n    create_backup_manifest \"$backup_base_dir\" \"$services_list\"\n    \n    # Compress backup if requested\n    if [ \"$compress_backup\" = \"true\" ]; then\n        log \"INFO\" \"Compressing backup directory...\"\n        local archive_name=\"ai_karen_backup_$timestamp.tar.gz\"\n        local archive_path=\"$(dirname \"$backup_base_dir\")/$archive_name\"\n        \n        if tar -czf \"$archive_path\" -C \"$(dirname \"$backup_base_dir\")\" \"$(basename \"$backup_base_dir\")\"; then\n            log \"SUCCESS\" \"Backup compressed: $archive_path\"\n            rm -rf \"$backup_base_dir\"\n        else\n            log \"ERROR\" \"Failed to compress backup\"\n            backup_success=false\n        fi\n    fi\n    \n    # Verify backup if requested\n    if [ \"$verify_backup\" = \"true\" ]; then\n        log \"INFO\" \"Verifying backup integrity...\"\n        # TODO: Implement backup verification\n        log \"WARN\" \"Backup verification not yet implemented\"\n    fi\n    \n    # Show results\n    echo \"\"\n    if [ \"$backup_success\" = \"true\" ]; then\n        log \"SUCCESS\" \"🎉 Backup completed successfully!\"\n        log \"INFO\" \"Services backed up: ${services_backed_up[*]}\"\n        if [ \"$compress_backup\" = \"true\" ]; then\n            log \"INFO\" \"Backup archive: $archive_path\"\n        else\n            log \"INFO\" \"Backup directory: $backup_base_dir\"\n        fi\n    else\n        log \"ERROR\" \"Backup completed with errors\"\n        log \"INFO\" \"Successfully backed up: ${services_backed_up[*]}\"\n        exit 1\n    fi\n}\n\n# Change to script directory\ncd \"$(dirname \"$0\")/..\"\n\n# Run main function with all arguments\nmain \"$@\"
+    local indices=$(curl -s "http://$host:$port/_cat/indices?format=json" | jq -r '.[].index' 2>/dev/null || echo "")
+
+    if [ -n "$indices" ]; then
+        while IFS= read -r index; do
+            # Skip system indices
+            if [[ "$index" == .* ]]; then
+                log "INFO" "Skipping system index: $index"
+                continue
+            fi
+            
+            log "INFO" "Backing up index: $index"
+            
+            # Export index mapping
+            local mapping_file="$backup_dir/elasticsearch_${index}_mapping.json"
+            if curl -s "http://$host:$port/$index/_mapping" > "$mapping_file"; then
+                log "SUCCESS" "Index mapping saved: $mapping_file"
+            else
+                log "WARN" "Failed to backup mapping for index: $index"
+            fi
+            
+            # Export index settings
+            local settings_file="$backup_dir/elasticsearch_${index}_settings.json"
+            if curl -s "http://$host:$port/$index/_settings" > "$settings_file"; then
+                log "SUCCESS" "Index settings saved: $settings_file"
+            else
+                log "WARN" "Failed to backup settings for index: $index"
+            fi
+            
+            # Export index data (limited to prevent huge files)
+            local data_file="$backup_dir/elasticsearch_${index}_data.json"
+            if curl -s "http://$host:$port/$index/_search?size=10000&scroll=1m" > "$data_file"; then
+                log "SUCCESS" "Index data saved: $data_file (limited to 10000 docs)"
+            else
+                log "WARN" "Failed to backup data for index: $index"
+            fi
+        done <<< "$indices"
+    else
+        log "INFO" "No indices found to backup"
+    fi
+    
+    # Compress all Elasticsearch files
+    find "$backup_dir" -name "elasticsearch_*.json" -exec gzip {} \;
+    log "SUCCESS" "Elasticsearch backups compressed"
+    
+    return 0
+}
+
+# Function to backup Milvus
+backup_milvus() {
+    local backup_dir="$1"
+    
+    log "INFO" "Backing up Milvus..."
+    
+    # Milvus backup requires Python
+    if ! command -v python3 > /dev/null 2>&1; then
+        log "ERROR" "Python3 is required for Milvus backup"
+        return 1
+    fi
+    
+    # Install pymilvus if not available
+    if ! python3 -c "import pymilvus" > /dev/null 2>&1; then
+        log "INFO" "Installing pymilvus..."
+        pip3 install pymilvus > /dev/null 2>&1
+    fi
+    
+    # Create Milvus backup script
+    cat > /tmp/milvus_backup.py << 'EOF'
+#!/usr/bin/env python3
+import os
+import sys
+import json
+from pymilvus import connections, utility, Collection
+
+def backup_milvus(backup_dir):
+    host = os.getenv('MILVUS_HOST', 'localhost')
+    port = os.getenv('MILVUS_PORT', '19530')
+    
+    try:
+        connections.connect(alias="default", host=host, port=port)
+        
+        # Get list of collections
+        collections = utility.list_collections()
+        
+        backup_info = {
+            "timestamp": os.popen('date -Iseconds').read().strip(),
+            "collections": []
+        }
+        
+        for collection_name in collections:
+            print(f"Backing up collection: {collection_name}")
+            
+            try:
+                collection = Collection(collection_name)
+                collection.load()
+                
+                # Get collection info
+                collection_info = {
+                    "name": collection_name,
+                    "schema": {
+                        "fields": []
+                    },
+                    "num_entities": collection.num_entities
+                }
+                
+                # Get schema information
+                for field in collection.schema.fields:
+                    field_info = {
+                        "name": field.name,
+                        "dtype": str(field.dtype),
+                        "is_primary": field.is_primary,
+                        "auto_id": field.auto_id if hasattr(field, 'auto_id') else False
+                    }
+                    
+                    if hasattr(field, 'max_length'):
+                        field_info["max_length"] = field.max_length
+                    if hasattr(field, 'dim'):
+                        field_info["dim"] = field.dim
+                        
+                    collection_info["schema"]["fields"].append(field_info)
+                
+                # Get index information
+                try:
+                    indexes = collection.indexes
+                    collection_info["indexes"] = []
+                    for index in indexes:
+                        index_info = {
+                            "field_name": index.field_name,
+                            "index_name": index.index_name,
+                            "params": index.params
+                        }
+                        collection_info["indexes"].append(index_info)
+                except:
+                    collection_info["indexes"] = []
+                
+                backup_info["collections"].append(collection_info)
+                
+                # Save collection metadata
+                collection_file = os.path.join(backup_dir, f"milvus_{collection_name}_metadata.json")
+                with open(collection_file, 'w') as f:
+                    json.dump(collection_info, f, indent=2)
+                
+                print(f"Collection {collection_name} metadata saved")
+                
+            except Exception as e:
+                print(f"Error backing up collection {collection_name}: {e}")
+                continue
+        
+        # Save overall backup info
+        backup_file = os.path.join(backup_dir, "milvus_backup_info.json")
+        with open(backup_file, 'w') as f:
+            json.dump(backup_info, f, indent=2)
+        
+        print(f"Milvus backup completed. {len(collections)} collections processed.")
+        return 0
+        
+    except Exception as e:
+        print(f"Failed to backup Milvus: {e}")
+        return 1
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python3 milvus_backup.py <backup_dir>")
+        sys.exit(1)
+    
+    backup_dir = sys.argv[1]
+    sys.exit(backup_milvus(backup_dir))
+EOF
+    
+    chmod +x /tmp/milvus_backup.py
+    
+    # Run Milvus backup
+    if python3 /tmp/milvus_backup.py "$backup_dir"; then
+        log "SUCCESS" "Milvus backup completed"
+        
+        # Compress backup files
+        find "$backup_dir" -name "milvus_*.json" -exec gzip {} \;
+        log "SUCCESS" "Milvus backups compressed"
+    else
+        log "ERROR" "Milvus backup failed"
+        rm -f /tmp/milvus_backup.py
+        return 1
+    fi
+    
+    rm -f /tmp/milvus_backup.py
+    return 0
+}
+
+# Function to backup DuckDB
+backup_duckdb() {
+    local backup_dir="$1"
+    
+    log "INFO" "Backing up DuckDB..."
+    
+    local db_path="${DUCKDB_PATH:-./data/duckdb/kari_duckdb.db}"
+    
+    if [ -f "$db_path" ]; then
+        local backup_file="$backup_dir/duckdb_backup.db"
+        
+        # Copy database file
+        if cp "$db_path" "$backup_file"; then
+            log "SUCCESS" "DuckDB file copied: $backup_file"
+            
+            # Compress backup
+            gzip "$backup_file"
+            log "SUCCESS" "DuckDB backup compressed"
+        else
+            log "ERROR" "Failed to copy DuckDB file"
+            return 1
+        fi
+        
+        # Export schema if DuckDB CLI is available
+        if command -v duckdb > /dev/null 2>&1; then
+            local schema_file="$backup_dir/duckdb_schema.sql"
+            if duckdb "$db_path" ".schema" > "$schema_file" 2>/dev/null; then
+                log "SUCCESS" "DuckDB schema exported: $schema_file"
+                gzip "$schema_file"
+            else
+                log "WARN" "Failed to export DuckDB schema"
+            fi
+        fi
+    else
+        log "WARN" "DuckDB file not found: $db_path"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Function to backup MinIO (if present)
+backup_minio() {
+    local backup_dir="$1"
+    
+    log "INFO" "Backing up MinIO..."
+    
+    # Check if MinIO container is running
+    if ! $COMPOSE_CMD ps minio | grep -q "Up" 2>/dev/null; then
+        log "INFO" "MinIO container not running, skipping backup"
+        return 0
+    fi
+    
+    # Copy MinIO data directory from container
+    local container_name=$($COMPOSE_CMD ps -q minio)
+    if [ -n "$container_name" ]; then
+        local minio_backup_dir="$backup_dir/minio_data"
+        mkdir -p "$minio_backup_dir"
+        
+        if docker cp "$container_name:/data" "$minio_backup_dir/"; then
+            log "SUCCESS" "MinIO data copied: $minio_backup_dir"
+            
+            # Create tar archive
+            tar -czf "$backup_dir/minio_data.tar.gz" -C "$minio_backup_dir" data
+            rm -rf "$minio_backup_dir"
+            log "SUCCESS" "MinIO backup archived"
+        else
+            log "ERROR" "Failed to copy MinIO data"
+            return 1
+        fi
+    else
+        log "ERROR" "MinIO container not found"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Function to create backup manifest
+create_backup_manifest() {
+    local backup_dir="$1"
+    local services="$2"
+    
+    local manifest_file="$backup_dir/backup_manifest.json"
+    
+    cat > "$manifest_file" << EOF
+{
+  "backup_info": {
+    "timestamp": "$(date -Iseconds)",
+    "version": "1.0",
+    "services": "$services",
+    "backup_type": "full"
+  },
+  "files": [
+EOF
+    
+    # List all backup files
+    find "$backup_dir" -type f -not -name "backup_manifest.json" | while read -r file; do
+        local relative_path=$(echo "$file" | sed "s|$backup_dir/||")
+        local file_size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo "unknown")
+        local file_hash=$(sha256sum "$file" 2>/dev/null | cut -d' ' -f1 || echo "unknown")
+        
+        echo "    {"
+        echo "      \"path\": \"$relative_path\","
+        echo "      \"size\": $file_size,"
+        echo "      \"sha256\": \"$file_hash\""
+        echo "    },"
+    done | sed '$ s/,$//' >> "$manifest_file"
+    
+    cat >> "$manifest_file" << EOF
+  ]
+}
+EOF
+    
+    log "SUCCESS" "Backup manifest created: $manifest_file"
+}
+
+# Function to show usage information
+show_usage() {
+    echo "AI Karen Database Stack Backup Script"
+    echo ""
+    echo "Usage: $0 [options]"
+    echo ""
+    echo "Options:"
+    echo "  --service <name>     Backup only specific service"
+    echo "  --output-dir <dir>   Custom backup output directory"
+    echo "  --compress           Compress entire backup directory"
+    echo "  --verify             Verify backup integrity after creation"
+    echo "  --help               Show this help message"
+    echo ""
+    echo "Services: postgres, redis, elasticsearch, milvus, duckdb, minio"
+    echo ""
+    echo "Examples:"
+    echo "  $0                           # Backup all services"
+    echo "  $0 --service postgres        # Backup only PostgreSQL"
+    echo "  $0 --compress                # Create compressed backup"
+    echo "  $0 --output-dir /tmp/backup  # Custom backup location"
+}
+
+# Main function
+main() {
+    local specific_service=""
+    local output_dir=""
+    local compress_backup="false"
+    local verify_backup="false"
+    
+    # Parse command line arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --service)
+                specific_service="$2"
+                shift 2
+                ;;
+            --output-dir)
+                output_dir="$2"
+                shift 2
+                ;;
+            --compress)
+                compress_backup="true"
+                shift
+                ;;
+            --verify)
+                verify_backup="true"
+                shift
+                ;;
+            --help)
+                show_usage
+                exit 0
+                ;;
+            *)
+                log "ERROR" "Unknown option: $1"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Check Docker Compose availability
+    check_docker_compose
+    
+    # Create backup directory
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+    if [ -n "$output_dir" ]; then
+        local backup_base_dir="$output_dir/$timestamp"
+    else
+        local backup_base_dir="./backups/full/$timestamp"
+    fi
+    
+    mkdir -p "$backup_base_dir"
+    log "INFO" "Backup directory: $backup_base_dir"
+    
+    # Install required tools
+    log "INFO" "Installing required tools..."
+    if command -v apk > /dev/null 2>&1; then
+        apk add --no-cache curl postgresql-client redis jq gzip tar > /dev/null 2>&1 || true
+    elif command -v apt-get > /dev/null 2>&1; then
+        apt-get update > /dev/null 2>&1 && apt-get install -y curl postgresql-client redis-tools jq gzip tar > /dev/null 2>&1 || true
+    fi
+    
+    # Perform backups
+    local services_backed_up=()
+    local backup_success=true
+    
+    if [ -n "$specific_service" ]; then
+        case "$specific_service" in
+            "postgres")
+                if backup_postgres "$backup_base_dir"; then
+                    services_backed_up+=("postgres")
+                else
+                    backup_success=false
+                fi
+                ;;
+            "redis")
+                if backup_redis "$backup_base_dir"; then
+                    services_backed_up+=("redis")
+                else
+                    backup_success=false
+                fi
+                ;;
+            "elasticsearch")
+                if backup_elasticsearch "$backup_base_dir"; then
+                    services_backed_up+=("elasticsearch")
+                else
+                    backup_success=false
+                fi
+                ;;
+            "milvus")
+                if backup_milvus "$backup_base_dir"; then
+                    services_backed_up+=("milvus")
+                else
+                    backup_success=false
+                fi
+                ;;
+            "duckdb")
+                if backup_duckdb "$backup_base_dir"; then
+                    services_backed_up+=("duckdb")
+                else
+                    backup_success=false
+                fi
+                ;;
+            "minio")
+                if backup_minio "$backup_base_dir"; then
+                    services_backed_up+=("minio")
+                else
+                    backup_success=false
+                fi
+                ;;
+            *)
+                log "ERROR" "Unknown service: $specific_service"
+                exit 1
+                ;;
+        esac
+    else
+        # Backup all services
+        backup_postgres "$backup_base_dir" && services_backed_up+=("postgres") || backup_success=false
+        backup_redis "$backup_base_dir" && services_backed_up+=("redis") || backup_success=false
+        backup_elasticsearch "$backup_base_dir" && services_backed_up+=("elasticsearch") || backup_success=false
+        backup_milvus "$backup_base_dir" && services_backed_up+=("milvus") || backup_success=false
+        backup_duckdb "$backup_base_dir" && services_backed_up+=("duckdb") || backup_success=false
+        backup_minio "$backup_base_dir" && services_backed_up+=("minio") || backup_success=false
+    fi
+    
+    # Create backup manifest
+    local services_list=$(IFS=','; echo "${services_backed_up[*]}")
+    create_backup_manifest "$backup_base_dir" "$services_list"
+    
+    local archive_path=""
+
+    # Compress backup if requested
+    if [ "$compress_backup" = "true" ]; then
+        log "INFO" "Compressing backup directory..."
+        local archive_name="ai_karen_backup_$timestamp.tar.gz"
+        archive_path="$(dirname "$backup_base_dir")/$archive_name"
+
+        if tar -czf "$archive_path" -C "$(dirname "$backup_base_dir")" "$(basename "$backup_base_dir")"; then
+            log "SUCCESS" "Backup compressed: $archive_path"
+            rm -rf "$backup_base_dir"
+        else
+            log "ERROR" "Failed to compress backup"
+            backup_success=false
+        fi
+    fi
+
+    # Verify backup if requested
+    if [ "$verify_backup" = "true" ]; then
+        log "INFO" "Verifying backup integrity..."
+
+        if [ "$compress_backup" = "true" ]; then
+            if [ -f "$archive_path" ]; then
+                if tar -tzf "$archive_path" > /dev/null 2>&1; then
+                    log "SUCCESS" "Archive integrity verified: $archive_path"
+                else
+                    log "ERROR" "Archive verification failed: $archive_path"
+                    backup_success=false
+                fi
+            else
+                log "ERROR" "Backup archive not found: $archive_path"
+                backup_success=false
+            fi
+        else
+            if [ -d "$backup_base_dir" ]; then
+                if find "$backup_base_dir" -mindepth 1 -type f -print -quit | grep -q .; then
+                    log "SUCCESS" "Backup directory verified: $backup_base_dir"
+                else
+                    log "ERROR" "Backup directory is empty: $backup_base_dir"
+                    backup_success=false
+                fi
+            else
+                log "ERROR" "Backup directory not found: $backup_base_dir"
+                backup_success=false
+            fi
+        fi
+    fi
+    # Show results
+    echo ""
+    if [ "$backup_success" = "true" ]; then
+        log "SUCCESS" "Backup completed successfully!"
+        log "INFO" "Services backed up: ${services_backed_up[*]}"
+        if [ "$compress_backup" = "true" ]; then
+            log "INFO" "Backup archive: $archive_path"
+        else
+            log "INFO" "Backup directory: $backup_base_dir"
+        fi
+    else
+        log "ERROR" "Backup completed with errors"
+        log "INFO" "Successfully backed up: ${services_backed_up[*]}"
+        exit 1
+    fi
+}
+
+# Change to script directory
+cd "$(dirname "$0")/.."
+
+# Run main function with all arguments
+main "$@"
