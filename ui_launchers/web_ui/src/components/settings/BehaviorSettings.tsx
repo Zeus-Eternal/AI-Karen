@@ -167,17 +167,17 @@ export default function BehaviorSettings() {
           <div className="px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="memoryDepth">Memory Depth</Label>
-              <select
+              <Select
                 value={settings.memoryDepth}
-                onValueChange={(value) = aria-label="Select option"> handleSettingChange('memoryDepth', value as MemoryDepth)}
+                onValueChange={(value) => handleSettingChange('memoryDepth', value as MemoryDepth)}
               >
-                <selectTrigger id="memoryDepth" aria-label="Select option">
-                  <selectValue placeholder="Select memory depth" />
+                <SelectTrigger id="memoryDepth" aria-label="Select option">
+                  <SelectValue placeholder="Select memory depth" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
-                  <selectItem value="short" aria-label="Select option">Short (Recent context)</SelectItem>
-                  <selectItem value="medium" aria-label="Select option">Medium (Key topics from session)</SelectItem>
-                  <selectItem value="long" aria-label="Select option">Long (Broader understanding)</SelectItem>
+                <SelectContent aria-label="Select option">
+                  <SelectItem value="short" aria-label="Select option">Short (Recent context)</SelectItem>
+                  <SelectItem value="medium" aria-label="Select option">Medium (Key topics from session)</SelectItem>
+                  <SelectItem value="long" aria-label="Select option">Long (Broader understanding)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Controls how far back Karen considers conversation history.</p>
@@ -186,18 +186,18 @@ export default function BehaviorSettings() {
           <div className="px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="personalityTone">Personality Tone</Label>
-              <select
+              <Select
                 value={settings.personalityTone}
-                onValueChange={(value) = aria-label="Select option"> handleSettingChange('personalityTone', value as PersonalityTone)}
+                onValueChange={(value) => handleSettingChange('personalityTone', value as PersonalityTone)}
               >
-                <selectTrigger id="personalityTone" aria-label="Select option">
-                  <selectValue placeholder="Select tone" />
+                <SelectTrigger id="personalityTone" aria-label="Select option">
+                  <SelectValue placeholder="Select tone" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
-                  <selectItem value="neutral" aria-label="Select option">Neutral</SelectItem>
-                  <selectItem value="friendly" aria-label="Select option">Friendly</SelectItem>
-                  <selectItem value="formal" aria-label="Select option">Formal</SelectItem>
-                  <selectItem value="humorous" aria-label="Select option">Humorous</SelectItem>
+                <SelectContent aria-label="Select option">
+                  <SelectItem value="neutral" aria-label="Select option">Neutral</SelectItem>
+                  <SelectItem value="friendly" aria-label="Select option">Friendly</SelectItem>
+                  <SelectItem value="formal" aria-label="Select option">Formal</SelectItem>
+                  <SelectItem value="humorous" aria-label="Select option">Humorous</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Influences the style of Karen's responses.</p>
@@ -206,17 +206,17 @@ export default function BehaviorSettings() {
           <div className="px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="personalityVerbosity">Personality Verbosity</Label>
-              <select
+              <Select
                 value={settings.personalityVerbosity}
-                onValueChange={(value) = aria-label="Select option"> handleSettingChange('personalityVerbosity', value as PersonalityVerbosity)}
+                onValueChange={(value) => handleSettingChange('personalityVerbosity', value as PersonalityVerbosity)}
               >
-                <selectTrigger id="personalityVerbosity" aria-label="Select option">
-                  <selectValue placeholder="Select verbosity" />
+                <SelectTrigger id="personalityVerbosity" aria-label="Select option">
+                  <SelectValue placeholder="Select verbosity" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
-                  <selectItem value="concise" aria-label="Select option">Concise (To the point)</SelectItem>
-                  <selectItem value="balanced" aria-label="Select option">Balanced (Detailed but not overly long)</SelectItem>
-                  <selectItem value="detailed" aria-label="Select option">Detailed (Thorough explanations)</SelectItem>
+                <SelectContent aria-label="Select option">
+                  <SelectItem value="concise" aria-label="Select option">Concise (To the point)</SelectItem>
+                  <SelectItem value="balanced" aria-label="Select option">Balanced (Detailed but not overly long)</SelectItem>
+                  <SelectItem value="detailed" aria-label="Select option">Detailed (Thorough explanations)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground sm:text-sm md:text-base">Determines the length and detail of Karen's answers.</p>

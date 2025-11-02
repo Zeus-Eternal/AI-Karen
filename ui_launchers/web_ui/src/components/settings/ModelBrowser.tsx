@@ -65,13 +65,14 @@ export default function ModelBrowser({ models, setModels, providers }: ModelBrow
             value={downloadUrl}
             onChange={(e) => setDownloadUrl(e.target.value)}
           />
-          <button
-            onClick={() => {
+          <Button
+            onClick={async () => {
               if (!downloadUrl.trim()) return;
               try {
                 const res = await backend.makeRequestPublic<any>(`/api/models/local/download`, {
                   method: 'POST',
                   body: JSON.stringify({ url: downloadUrl })
+                });
 
                 if (res?.job_id) {
                   toast({ title: 'Download started', description: res.path });

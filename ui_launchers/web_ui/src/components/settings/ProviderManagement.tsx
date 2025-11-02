@@ -43,7 +43,7 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
         title: info.title,
         description: info.message,
         variant: "destructive",
-
+      });
     } finally {
       setLoading(false);
     }
@@ -146,7 +146,7 @@ function ModelRecommendations({ provider }: ModelRecommendationsProps) {
                       toast({
                         title: "Opening Model Library",
                         description: `Showing models compatible with ${provider.name}`,
-
+                      });
                     }}
                     className="text-xs h-7 sm:text-sm md:text-base"
                   >
@@ -275,6 +275,7 @@ export default function ProviderManagement({
       const updated = { ...prev };
       delete updated[providerName];
       return updated;
+    });
 
     // Clear existing timeout
     const existingTimeout = validationTimeouts.get(providerName);

@@ -122,6 +122,7 @@ export default function ModelLibrary() {
     variant: 'default',
     loading: false,
     onConfirm: async () => {},
+  });
 
   // Action loading states
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
@@ -222,6 +223,7 @@ export default function ModelLibrary() {
         modelsIsArray: Array.isArray(response?.models),
         modelsLength: response?.models?.length || 0,
         fullResponse: response
+      });
 
       if (response && 'models' in response && Array.isArray(response.models)) {
         setModels(response.models);
@@ -339,6 +341,7 @@ export default function ModelLibrary() {
             setConfirmationDialog(prev => ({ ...prev, loading: false }));
           }
         }
+      });
 
       return;
     }
@@ -353,6 +356,7 @@ export default function ModelLibrary() {
           const response = await backend.makeRequestPublic(`/api/models/download`, {
             method: 'POST',
             body: JSON.stringify({ model_id: modelId })
+          });
 
           if (response && (response as any).task_id) {
             // The download status hook will automatically pick up this task
@@ -369,6 +373,7 @@ export default function ModelLibrary() {
         case 'delete':
           await backend.makeRequestPublic(`/api/models/${modelId}`, {
             method: 'DELETE'
+          });
 
           showSuccess("Model Deleted", `${modelName} has been removed from local storage.`);
           break;
@@ -381,6 +386,7 @@ export default function ModelLibrary() {
             // Fallback to direct API call
             await backend.makeRequestPublic(`/api/models/download/${modelId}`, {
               method: 'DELETE'
+            });
 
             showInfo("Download Cancelled", `Download of ${modelName} has been cancelled.`);
           }
@@ -561,7 +567,7 @@ export default function ModelLibrary() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               </Button>
               {activeDownloads.length > 0 && (
-                <button
+                <Button
                   variant={showDownloadManager ? "default" : "outline"}
                   size="sm"
                   onClick={() => setShowDownloadManager(!showDownloadManager)}
@@ -739,7 +745,7 @@ export default function ModelLibrary() {
                 toast({
                   title: "Integration Test",
                   description: "Testing Model Library integration with LLM Settings...",
-
+                });
               }}
               className="gap-2"
             >
@@ -777,16 +783,16 @@ export default function ModelLibrary() {
               </div>
             {/* Sort Controls */}
             <div className="flex items-center gap-2">
-              <select value={sortBy} onValueChange={(value) = aria-label="Select option"> setSortBy(value as SortOption)}>
-                <selectTrigger className="w-[120px]" aria-label="Select option">
-                  <selectValue placeholder="Sort by" />
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+                <SelectTrigger className="w-[120px]" aria-label="Select option">
+                  <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
-                <selectContent aria-label="Select option">
-                  <selectItem value="name" aria-label="Select option">Name</SelectItem>
-                  <selectItem value="size" aria-label="Select option">Size</SelectItem>
-                  <selectItem value="parameters" aria-label="Select option">Parameters</SelectItem>
-                  <selectItem value="provider" aria-label="Select option">Provider</SelectItem>
-                  <selectItem value="status" aria-label="Select option">Status</SelectItem>
+                <SelectContent aria-label="Select option">
+                  <SelectItem value="name" aria-label="Select option">Name</SelectItem>
+                  <SelectItem value="size" aria-label="Select option">Size</SelectItem>
+                  <SelectItem value="parameters" aria-label="Select option">Parameters</SelectItem>
+                  <SelectItem value="provider" aria-label="Select option">Provider</SelectItem>
+                  <SelectItem value="status" aria-label="Select option">Status</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -801,28 +807,28 @@ export default function ModelLibrary() {
           </div>
           {/* Filter Controls */}
           <div className="flex flex-wrap gap-2">
-            <select value={filterProvider} onValueChange={setFilterProvider} aria-label="Select option">
-              <selectTrigger className="w-[140px]" aria-label="Select option">
-                <selectValue placeholder="Provider" />
+            <Select value={filterProvider} onValueChange={setFilterProvider} aria-label="Select option">
+              <SelectTrigger className="w-[140px]" aria-label="Select option">
+                <SelectValue placeholder="Provider" />
               </SelectTrigger>
-              <selectContent aria-label="Select option">
-                <selectItem value="all" aria-label="Select option">All Providers</SelectItem>
+              <SelectContent aria-label="Select option">
+                <SelectItem value="all" aria-label="Select option">All Providers</SelectItem>
                 {availableProviders.map(provider => (
-                  <selectItem key={provider} value={provider} aria-label="Select option">
+                  <SelectItem key={provider} value={provider} aria-label="Select option">
                     {provider}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <select value={filterStatus} onValueChange={setFilterStatus} aria-label="Select option">
-              <selectTrigger className="w-[120px]" aria-label="Select option">
-                <selectValue placeholder="Status" />
+            <Select value={filterStatus} onValueChange={setFilterStatus} aria-label="Select option">
+              <SelectTrigger className="w-[120px]" aria-label="Select option">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
-              <selectContent aria-label="Select option">
-                <selectItem value="all" aria-label="Select option">All Status</SelectItem>
-                <selectItem value="local" aria-label="Select option">Local</SelectItem>
-                <selectItem value="available" aria-label="Select option">Available</SelectItem>
-                <selectItem value="downloading" aria-label="Select option">Downloading</SelectItem>
+              <SelectContent aria-label="Select option">
+                <SelectItem value="all" aria-label="Select option">All Status</SelectItem>
+                <SelectItem value="local" aria-label="Select option">Local</SelectItem>
+                <SelectItem value="available" aria-label="Select option">Available</SelectItem>
+                <SelectItem value="downloading" aria-label="Select option">Downloading</SelectItem>
               </SelectContent>
             </Select>
             <select value={filterSize} onValueChange={setFilterSize} aria-label="Select option">

@@ -83,16 +83,17 @@ export default function PersonaSettings() {
         customPersonaInstructions: newInstructions,
       };
       localStorage.setItem(KAREN_SETTINGS_LS_KEY, JSON.stringify(updatedFullSettings));
-      setInstructions(newInstructions); 
+      setInstructions(newInstructions);
       toast({
         title: "Persona Instructions Saved",
         description: "Karen's core persona instructions have been updated.",
-
+      });
     } catch (error) {
       toast({
         title: "Error Saving Instructions",
         description: "Could not save persona instructions. localStorage might be disabled or full.",
         variant: "destructive",
+      });
 
     }
   };
@@ -101,12 +102,12 @@ export default function PersonaSettings() {
   };
   const handleClear = () => {
     const clearedInstructions = '';
-    setInstructions(clearedInstructions); 
-    savePersonaInstructionsToLocalStorage(clearedInstructions); 
+    setInstructions(clearedInstructions);
+    savePersonaInstructionsToLocalStorage(clearedInstructions);
     toast({
       title: "Persona Instructions Cleared",
       description: "Karen's custom persona instructions have been cleared.",
-
+    });
   };
   return (
     <Card>
@@ -136,7 +137,7 @@ export default function PersonaSettings() {
         <Button variant="outline" onClick={handleClear} disabled={!instructions.trim()} >
           <Trash2 className="mr-2 h-4 w-4 " /> Clear Instructions
         </Button>
-        <button onClick={handleSave} aria-label="Button">
+        <Button onClick={handleSave} aria-label="Button">
           <Save className="mr-2 h-4 w-4 " /> Save Instructions
         </Button>
       </CardFooter>

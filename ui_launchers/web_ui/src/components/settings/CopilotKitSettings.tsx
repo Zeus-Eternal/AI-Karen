@@ -123,7 +123,7 @@ export default function CopilotKitSettings() {
                >
                 <RotateCcw className="h-4 w-4 mr-2 " />
               </Button>
-              <button
+              <Button
                 onClick={handleSave}
                 disabled={saving || !hasChanges}
                aria-label="Button">
